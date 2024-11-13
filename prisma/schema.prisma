@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model News {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  publishedAt DateTime @default(now())
+  authorId    Int
+  author      User     @relation(fields: [authorId], references: [id], name: "UserNews")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  books     Book[] // Relation to track books uploaded by this user
+
+  News News[] @relation(name: "UserNews")
+}
+
+model Book {
+  id            Int      @id @default(autoincrement())
+  title         String
+  author        String
+  publishedDate DateTime
+  genre         String?
+  isbn          String   @unique
+  description   String?
+  available     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  addedById     Int // Foreign key to reference the user who added the book
+  addedBy       User     @relation(fields: [addedById], references: [id]) // Relation to the User model
+}
