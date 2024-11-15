@@ -1,6 +1,7 @@
 'use client'
 
 import { SessionProvider } from 'next-auth/react'
+import { ChakraProvider, defaultSystem  } from '@chakra-ui/react';
 import React from "react";
 
 type Props = {
@@ -8,5 +9,9 @@ type Props = {
 }
 
 export const Providers = ({ children }: Props) => {
-    return <SessionProvider>{children}</SessionProvider>
+    return <SessionProvider>
+        <ChakraProvider value={defaultSystem}>
+            {children}
+        </ChakraProvider>
+    </SessionProvider>
 }
