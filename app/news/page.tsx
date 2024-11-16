@@ -1,7 +1,6 @@
 import React from 'react';
-import { use } from 'react';
 import { prisma } from '@/lib/prisma';
-import Navbar from '@/components/Navbar';
+import Navbar from '../../components/Navbar';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import {
@@ -15,27 +14,53 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import SearchBar from './search-bar';
 
-export default function News({ params }: { params: Promise<{ search: string }> }) {
-    // Use `use` to resolve the `params` Promise
-    const { search } = use(params);
+interface Article {
+    id: number;
+    title: string;
+    content: string;
+    publishedAt: Date;
+    author: { name: string | null };
+}
 
-    // Construct the `whereClause` based on the resolved `search` parameter
-    const whereClause = search
+interface PageProps {
+    searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export const dynamic = 'force-dynamic';
+
+export default async function Articles({ searchParams }: PageProps) {
+    // Handle both string and array cases for searchParams
+    const pageParam = typeof searchParams.page === 'string' ? searchParams.page :
+        Array.isArray(searchParams.page) ? searchParams.page[0] : '1';
+    const searchParam = typeof searchParams.search === 'string' ? searchParams.search :
+        Array.isArray(searchParams.search) ? searchParams.search[0] : '';
+
+    const page = parseInt(pageParam);
+    const searchTerm = searchParam;
+    const articlesPerPage = 10;
+
+    const whereClause = searchTerm
         ? {
             OR: [
-                { title: { contains: search, mode: 'insensitive' } },
-                { author: { name: { contains: search, mode: 'insensitive' } } },
+                { title: { contains: searchTerm, mode: 'insensitive' } },
+                { content: { contains: searchTerm, mode: 'insensitive' } },
+                { author: { name: { contains: searchTerm, mode: 'insensitive' } } },
             ],
         }
         : {};
 
-    // Fetch articles using Prisma
-    const articles = use(
+    const [articles, totalArticles] = await Promise.all([
         prisma.news.findMany({
             where: whereClause,
             include: { author: true },
-        })
-    );
+            orderBy: { publishedAt: 'desc' }, // Sort by newest first
+            skip: (page - 1) * articlesPerPage,
+            take: articlesPerPage,
+        }),
+        prisma.news.count({ where: whereClause }),
+    ]);
+
+    const totalPages = Math.ceil(totalArticles / articlesPerPage);
 
     return (
         <div className="min-h-screen bg-background">
@@ -43,7 +68,7 @@ export default function News({ params }: { params: Promise<{ search: string }> }
             <div className="container mx-auto py-8">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                        <CardTitle>Manage News Articles</CardTitle>
+                        <CardTitle>Manage Articles</CardTitle>
                         <Link href="/news/new">
                             <Button>Add New Article</Button>
                         </Link>
@@ -55,8 +80,8 @@ export default function News({ params }: { params: Promise<{ search: string }> }
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Title</TableHead>
-                                        <TableHead>Published At</TableHead>
                                         <TableHead>Author</TableHead>
+                                        <TableHead>Published At</TableHead>
                                         <TableHead>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -64,8 +89,8 @@ export default function News({ params }: { params: Promise<{ search: string }> }
                                     {articles.map((article) => (
                                         <TableRow key={article.id}>
                                             <TableCell>{article.title}</TableCell>
+                                            <TableCell>{article.author?.name || 'Unknown'}</TableCell>
                                             <TableCell>{new Date(article.publishedAt).toLocaleDateString()}</TableCell>
-                                            <TableCell>{article.author?.name || 'N/A'}</TableCell>
                                             <TableCell>
                                                 <Link href={`/news/${article.id}`}>
                                                     <Button variant="outline" size="sm">
@@ -78,6 +103,25 @@ export default function News({ params }: { params: Promise<{ search: string }> }
                                 </TableBody>
                             </Table>
                         </div>
+
+                        <div className="flex justify-center items-center gap-2 mt-4">
+                            {Array.from({ length: totalPages }, (_, index) => (
+                                <Link
+                                    key={index + 1}
+                                    href={`/news?page=${index + 1}&search=${searchTerm}`}
+                                >
+                                    <Button
+                                        variant={page === index + 1 ? "default" : "outline"}
+                                        size="sm"
+                                    >
+                                        {index + 1}
+                                    </Button>
+                                </Link>
+                            ))}
+                        </div>
+                        <p className="text-center text-sm text-muted-foreground mt-2">
+                            Page {page} of {totalPages}
+                        </p>
                     </CardContent>
                 </Card>
             </div>

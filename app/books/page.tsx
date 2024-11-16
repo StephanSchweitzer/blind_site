@@ -1,4 +1,3 @@
-// app/books/page.tsx
 import React from 'react';
 import { prisma } from '@/lib/prisma';
 import Navbar from '../../components/Navbar';
@@ -21,6 +20,7 @@ interface Book {
     author: string;
     genre: string | null;
     available: boolean;
+    createdAt: Date; // Ensure createdAt is included for sorting
 }
 
 interface PageProps {
@@ -53,6 +53,7 @@ export default async function Books({ searchParams }: PageProps) {
     const [books, totalBooks] = await Promise.all([
         prisma.book.findMany({
             where: whereClause,
+            orderBy: { createdAt: 'desc' }, // Sort by creation date in descending order
             skip: (page - 1) * booksPerPage,
             take: booksPerPage,
         }),
