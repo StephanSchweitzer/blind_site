@@ -9,9 +9,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
-    const [bookCount, newsCount] = await Promise.all([
+    const [bookCount, newsCount, genreCount] = await Promise.all([
         prisma.book.count(),
         prisma.news.count(),
+        prisma.genre.count(),
     ]);
 
     return (
@@ -23,7 +24,7 @@ export default async function Dashboard() {
                         <CardTitle>Admin Dashboard</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="p-6 bg-blue-50 rounded-lg">
                                 <h2 className="text-2xl font-bold mb-2">Books</h2>
                                 <p className="text-4xl font-extrabold">{bookCount}</p>
@@ -36,6 +37,13 @@ export default async function Dashboard() {
                                 <p className="text-4xl font-extrabold">{newsCount}</p>
                                 <Link href="/news">
                                     <Button className="mt-4">Manage News</Button>
+                                </Link>
+                            </div>
+                            <div className="p-6 bg-purple-50 rounded-lg">
+                                <h2 className="text-2xl font-bold mb-2">Genres</h2>
+                                <p className="text-4xl font-extrabold">{genreCount}</p>
+                                <Link href="/genres">
+                                    <Button className="mt-4">Manage Genres</Button>
                                 </Link>
                             </div>
                         </div>

@@ -8,10 +8,11 @@ export async function POST(req: NextRequest) {
         title,
         author,
         publishedDate,
-        genre,
+        genreId, // Changed from genre to genreId
         isbn,
         description,
         available,
+
     } = await req.json();
 
     try {
@@ -23,16 +24,25 @@ export async function POST(req: NextRequest) {
                 title,
                 author,
                 publishedDate: new Date(publishedDate),
-                genre,
+                genreId, // This now references the Genre model
                 isbn,
                 description,
                 available,
                 addedById,
             },
+            include: {
+                genre: true, // Include the genre details in the response
+            },
         });
-        return NextResponse.json({ message: 'Book added successfully', book: newBook }, { status: 201 });
+        return NextResponse.json(
+            { message: 'Book added successfully', book: newBook },
+            { status: 201 }
+        );
     } catch (error) {
         console.error('Failed to add book:', error);
-        return NextResponse.json({ error: 'Failed to add book' }, { status: 400 });
+        return NextResponse.json(
+            { error: 'Failed to add book' },
+            { status: 400 }
+        );
     }
 }

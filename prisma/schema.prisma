@@ -24,21 +24,37 @@ model User {
   role      String   @default("user")
   createdAt DateTime @default(now())
   books     Book[] // Relation to track books uploaded by this user
-
-  News News[] @relation(name: "UserNews")
+  News      News[]   @relation(name: "UserNews")
 }
 
 model Book {
-  id            Int      @id @default(autoincrement())
-  title         String
-  author        String
-  publishedDate DateTime
-  genre         String?
-  isbn          String   @unique
-  description   String?
-  available     Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  addedById     Int // Foreign key to reference the user who added the book
-  addedBy       User     @relation(fields: [addedById], references: [id]) // Relation to the User model
+  id                   Int         @id @default(autoincrement())
+  title                String
+  author               String
+  publishedDate        DateTime?
+  isbn                 String?     @unique
+  description          String?
+  readingDurationHours Int?
+  available            Boolean     @default(true)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  addedById            Int // Foreign key to reference the user who added the book
+  addedBy              User        @relation(fields: [addedById], references: [id])
+  genres               BookGenre[] // Relation to genres through the junction table
+}
+
+model Genre {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String?
+  books       BookGenre[] // Relation to books through the junction table
+}
+
+model BookGenre {
+  book    Book  @relation(fields: [bookId], references: [id])
+  bookId  Int
+  genre   Genre @relation(fields: [genreId], references: [id])
+  genreId Int
+
+  @@id([bookId, genreId])
 }
