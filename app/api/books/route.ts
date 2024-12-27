@@ -1,48 +1,72 @@
-// app/api/books/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
-    const {
-        title,
-        author,
-        publishedDate,
-        genreId, // Changed from genre to genreId
-        isbn,
-        description,
-        available,
-
-    } = await req.json();
-
     try {
-        // Replace with actual user ID from session
-        const addedById = 1; // Placeholder
+        const session = await getServerSession(authOptions);
+
+        if (!session?.user?.id) {
+            return new Response(JSON.stringify({
+                success: false,
+                message: 'Unauthorized'
+            }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const userId = parseInt(session.user.id, 10);
+        const formData = await req.json();
+
+        console.log("this is my user ID " + userId)
 
         const newBook = await prisma.book.create({
             data: {
-                title,
-                author,
-                publishedDate: new Date(publishedDate),
-                genreId, // This now references the Genre model
-                isbn,
-                description,
-                available,
-                addedById,
+                title: formData.title,
+                author: formData.author,
+                publishedDate: new Date(formData.publishedDate),
+                isbn: formData.isbn,
+                description: formData.description,
+                available: formData.available,
+                addedById: userId,
+                genres: {
+                    create: formData.genres.map((genreId: number) => ({
+                        genre: {
+                            connect: {
+                                id: genreId
+                            }
+                        }
+                    }))
+                }
             },
             include: {
-                genre: true, // Include the genre details in the response
-            },
+                genres: {
+                    include: {
+                        genre: true
+                    }
+                }
+            }
         });
-        return NextResponse.json(
-            { message: 'Book added successfully', book: newBook },
-            { status: 201 }
-        );
+
+        return new Response(JSON.stringify({
+            success: true,
+            message: 'Book added successfully',
+            book: newBook
+        }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+        });
     } catch (error) {
-        console.error('Failed to add book:', error);
-        return NextResponse.json(
-            { error: 'Failed to add book' },
-            { status: 400 }
-        );
+        console.error('API Error:', error);
+        return new Response(JSON.stringify({
+            success: false,
+            message: error instanceof Error ? error.message : 'Failed to add book'
+        }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
 }

@@ -5,11 +5,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
-    // 1. Session retrieval
+
     let session;
+
     try {
         session = await getServerSession(authOptions);
         console.log("Session retrieved:", session);
+
     } catch (error) {
         console.error("Session retrieval failed:", error);
         return NextResponse.json(
@@ -18,7 +20,6 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    // 2. Session validation
     if (!session?.user?.id) {
         console.log("Invalid session:", session);
         return NextResponse.json(

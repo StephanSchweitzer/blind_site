@@ -145,16 +145,15 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
     try {
-        const genres = await fetchGenres();
-        return NextResponse.json({ data: genres });
-    } catch (error: any) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            return handlePrismaError(error);
-        }
-        if (error instanceof Prisma.PrismaClientValidationError) {
-            return handleValidationError(error);
-        }
-        return handleGenericError(error);
+        const genres = await prisma.genre.findMany({
+            orderBy: {
+                name: 'asc',
+            },
+        });
+        return NextResponse.json(genres);
+    } catch (error) {
+        console.error('Error fetching genres:', error);
+        return NextResponse.json({ error: 'Failed to fetch genres' }, { status: 500 });
     }
 }
 
