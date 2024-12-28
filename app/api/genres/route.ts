@@ -98,7 +98,7 @@ async function parseAndValidateBody(request: NextRequest): Promise<GenreBody> {
 
 // Database operations
 async function createGenre(data: GenreBody) {
-    return await prisma.genre.create({
+    return prisma.genre.create({
         data: {
             name: data.name,
             description: data.description,
@@ -107,7 +107,7 @@ async function createGenre(data: GenreBody) {
 }
 
 async function fetchGenres() {
-    return await prisma.genre.findMany({
+    return prisma.genre.findMany({
         orderBy: {
             name: 'asc',
         },

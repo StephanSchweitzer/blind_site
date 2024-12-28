@@ -12,9 +12,15 @@ export async function OPTIONS() {
     return NextResponse.json({}, { headers: corsHeaders });
 }
 
+interface Params {
+    params: Promise<{
+        id: string;
+    }>;
+}
+
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: Params
 ) {
     try {
         const body = await request.json();
@@ -32,9 +38,11 @@ export async function PUT(
             );
         }
 
+        const { id } = await params;
+
         const genre = await prisma.genre.update({
             where: {
-                id: parseInt(params.id, 10)
+                id: parseInt(id, 10)
             },
             data: {
                 name: body.name,
@@ -74,7 +82,7 @@ export async function DELETE(
 ) {
     try {
         await prisma.genre.delete({
-            where: { id: params.id },
+            where: { id: parseInt(params.id, 10) },
         });
         return NextResponse.json({ status: 'success' });
     } catch (error: any) {
