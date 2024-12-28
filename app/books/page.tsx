@@ -1,5 +1,6 @@
 import React from 'react';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import Navbar from '../../components/Navbar';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
@@ -15,29 +16,25 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import SearchBar from './search-bar';
 import { Suspense } from 'react';
 
-type BookWithRelations = {
-    id: number;
-    title: string;
-    author: string;
-    publishedDate: Date | null;
-    isbn: string | null;
-    description: string | null;
-    readingDurationMinutes: number | null;
-    available: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    addedById: number;
-    addedBy: {
-        name: string | null;
-        email: string;
-    };
-    genres: {
-        genre: {
-            name: string;
+type BookWithRelations = Prisma.BookGetPayload<{
+    include: {
+        addedBy: {
+            select: {
+                name: true;
+                email: true;
+            };
         };
-    }[];
-}
-
+        genres: {
+            select: {
+                genre: {
+                    select: {
+                        name: true;
+                    };
+                };
+            };
+        };
+    };
+}>;
 interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
@@ -56,21 +53,34 @@ export default async function Books({ searchParams }: PageProps) {
     const searchTerm = searchParam;
     const booksPerPage = 10;
 
-    const whereClause = searchTerm
-        ? {
-            OR: [
-                { title: { contains: searchTerm, mode: 'insensitive' } },
-                { author: { contains: searchTerm, mode: 'insensitive' } },
-                { genres: {
-                        some: {
-                            genre: {
-                                name: { contains: searchTerm, mode: 'insensitive' }
+    const whereClause: Prisma.BookWhereInput = {
+        OR: [
+            {
+                title: {
+                    contains: searchTerm,
+                    mode: Prisma.QueryMode.insensitive
+                }
+            },
+            {
+                author: {
+                    contains: searchTerm,
+                    mode: Prisma.QueryMode.insensitive
+                }
+            },
+            {
+                genres: {
+                    some: {
+                        genre: {
+                            name: {
+                                contains: searchTerm,
+                                mode: Prisma.QueryMode.insensitive
                             }
                         }
-                    }},
-            ],
-        }
-        : {};
+                    }
+                }
+            }
+        ]
+    };
 
     const [books, totalBooks]: [BookWithRelations[], number] = await Promise.all([
         prisma.book.findMany({

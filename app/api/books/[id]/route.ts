@@ -41,7 +41,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
-    const id = await Promise.resolve(params.id);
+    const { id } = await params;
     const {
         title,
         author,
