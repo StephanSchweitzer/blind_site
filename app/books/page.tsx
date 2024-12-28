@@ -13,28 +13,44 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import SearchBar from './search-bar';
+import { Suspense } from 'react';
 
-interface Book {
+type BookWithRelations = {
     id: number;
     title: string;
     author: string;
-    genre: string | null;
+    publishedDate: Date | null;
+    isbn: string | null;
+    description: string | null;
+    readingDurationMinutes: number | null;
     available: boolean;
-    createdAt: Date; // Ensure createdAt is included for sorting
+    createdAt: Date;
+    updatedAt: Date;
+    addedById: number;
+    addedBy: {
+        name: string | null;
+        email: string;
+    };
+    genres: {
+        genre: {
+            name: string;
+        };
+    }[];
 }
 
 interface PageProps {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export const dynamic = 'force-dynamic';
 
 export default async function Books({ searchParams }: PageProps) {
-    // Handle both string and array cases for searchParams
-    const pageParam = typeof searchParams.page === 'string' ? searchParams.page :
-        Array.isArray(searchParams.page) ? searchParams.page[0] : '1';
-    const searchParam = typeof searchParams.search === 'string' ? searchParams.search :
-        Array.isArray(searchParams.search) ? searchParams.search[0] : '';
+    const params = await searchParams;
+
+    const pageParam = typeof params.page === 'string' ? params.page :
+        Array.isArray(params.page) ? params.page[0] : '1';
+    const searchParam = typeof params.search === 'string' ? params.search :
+        Array.isArray(params.search) ? params.search[0] : '';
 
     const page = parseInt(pageParam);
     const searchTerm = searchParam;
@@ -45,17 +61,40 @@ export default async function Books({ searchParams }: PageProps) {
             OR: [
                 { title: { contains: searchTerm, mode: 'insensitive' } },
                 { author: { contains: searchTerm, mode: 'insensitive' } },
-                { genre: { contains: searchTerm, mode: 'insensitive' } },
+                { genres: {
+                        some: {
+                            genre: {
+                                name: { contains: searchTerm, mode: 'insensitive' }
+                            }
+                        }
+                    }},
             ],
         }
         : {};
 
-    const [books, totalBooks] = await Promise.all([
+    const [books, totalBooks]: [BookWithRelations[], number] = await Promise.all([
         prisma.book.findMany({
             where: whereClause,
-            orderBy: { createdAt: 'desc' }, // Sort by creation date in descending order
+            orderBy: { createdAt: 'desc' },
             skip: (page - 1) * booksPerPage,
             take: booksPerPage,
+            include: {
+                addedBy: {
+                    select: {
+                        name: true,
+                        email: true,
+                    },
+                },
+                genres: {
+                    select: {
+                        genre: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
         }),
         prisma.book.count({ where: whereClause }),
     ]);
@@ -74,24 +113,48 @@ export default async function Books({ searchParams }: PageProps) {
                         </Link>
                     </CardHeader>
                     <CardContent>
-                        <SearchBar />
+                        <Suspense fallback={<div>Loading...</div>}>
+                            <SearchBar />
+                        </Suspense>
                         <div className="rounded-md border">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Title</TableHead>
                                         <TableHead>Author</TableHead>
-                                        <TableHead>Genre</TableHead>
+                                        <TableHead>Genres</TableHead>
+                                        <TableHead>Reading Time</TableHead>
+                                        {/*<TableHead>Added By</TableHead>*/}
                                         <TableHead>Available</TableHead>
                                         <TableHead>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {books.map((book) => (
+                                    {books.map((book: BookWithRelations) => (
                                         <TableRow key={book.id}>
-                                            <TableCell>{book.title}</TableCell>
+                                            <TableCell>
+                                                <div>
+                                                    <div>{book.title}</div>
+                                                    {book.isbn && (
+                                                        <div className="text-sm text-muted-foreground">
+                                                            ISBN: {book.isbn}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                             <TableCell>{book.author}</TableCell>
-                                            <TableCell>{book.genre || 'N/A'}</TableCell>
+                                            <TableCell>
+                                                {book.genres.map(g => g.genre.name).join(', ') || 'N/A'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {book.readingDurationMinutes
+                                                    ? `${book.readingDurationMinutes} mins`
+                                                    : 'N/A'
+                                                }
+                                            </TableCell>
+                                            {/*<TableCell>*/}
+                                            {/*    {book.addedBy.name || book.addedBy.email}*/}
+                                            {/*</TableCell>*/}
                                             <TableCell>{book.available ? 'Yes' : 'No'}</TableCell>
                                             <TableCell>
                                                 <Link href={`/books/${book.id}`}>

@@ -4,17 +4,31 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
 interface Params {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export async function GET(req: NextRequest, { params }: Params) {
-    const { id } = params;
+    const { id } = await params;
 
     try {
         const book = await prisma.book.findUnique({
             where: { id: parseInt(id, 10) },
+            include: {
+                genres: {
+                    include: {
+                        genre: true
+                    }
+                },
+                addedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            }
         });
         if (!book) {
             return NextResponse.json({ error: 'Book not found' }, { status: 404 });
@@ -27,31 +41,64 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
-    const { id } = params;
+    const id = await Promise.resolve(params.id);
     const {
         title,
         author,
         publishedDate,
-        genre,
+        genres,
         isbn,
         description,
         available,
+        readingDurationMinutes,
     } = await req.json();
 
     try {
-        await prisma.book.update({
+        const updatedBook = await prisma.book.update({
             where: { id: parseInt(id, 10) },
             data: {
                 title,
                 author,
-                publishedDate: new Date(publishedDate),
-                genre,
+                publishedDate: publishedDate ? new Date(publishedDate) : undefined,
                 isbn,
                 description,
+                readingDurationMinutes,
                 available,
+                updatedAt: new Date(),
+                // Handle genres relationship
+                genres: {
+                    // Delete existing genre relationships
+                    deleteMany: {},
+                    // Create new genre relationships
+                    create: genres?.map((genreId: number) => ({
+                        genre: {
+                            connect: {
+                                id: genreId
+                            }
+                        }
+                    }))
+                }
             },
+            include: {
+                genres: {
+                    include: {
+                        genre: true
+                    }
+                },
+                addedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            }
         });
-        return NextResponse.json({ message: 'Book updated successfully' });
+
+        return NextResponse.json({
+            message: 'Book updated successfully',
+            book: updatedBook
+        });
     } catch (error) {
         console.error('Failed to update book:', error);
         return NextResponse.json({ error: 'Failed to update book' }, { status: 400 });

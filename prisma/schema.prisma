@@ -28,19 +28,19 @@ model User {
 }
 
 model Book {
-  id                   Int         @id @default(autoincrement())
-  title                String
-  author               String
-  publishedDate        DateTime?
-  isbn                 String?     @unique
-  description          String?
-  readingDurationHours Int?
-  available            Boolean     @default(true)
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
-  addedById            Int // Foreign key to reference the user who added the book
-  addedBy              User        @relation(fields: [addedById], references: [id])
-  genres               BookGenre[] // Relation to genres through the junction table
+  id                     Int         @id @default(autoincrement())
+  title                  String
+  author                 String
+  publishedDate          DateTime?
+  isbn                   String?     @unique
+  description            String?
+  readingDurationMinutes Int?
+  available              Boolean     @default(true)
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  addedById              Int // Foreign key to reference the user who added the book
+  addedBy                User        @relation(fields: [addedById], references: [id])
+  genres                 BookGenre[] // Relation to genres through the junction table
 }
 
 model Genre {

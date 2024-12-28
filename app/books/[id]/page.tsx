@@ -1,4 +1,3 @@
-// app/books/[id]/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,14 +9,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
+interface Genre {
+    id: number;
+    name: string;
+    description?: string;
+}
+
 interface Book {
     id: number;
     title: string;
     author: string;
     publishedDate: string;
-    genre?: string | null;
-    isbn: string;
-    description?: string | null;
+    genres: { genre: Genre }[];
+    isbn?: string;
+    description?: string;
+    readingDurationMinutes?: number;
     available: boolean;
 }
 
@@ -27,6 +33,20 @@ export default function EditBook() {
     const { id } = params;
 
     const [formData, setFormData] = useState<Book | null>(null);
+    const [availableGenres, setAvailableGenres] = useState<Genre[]>([]);
+    const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
+
+    // Fetch available genres
+    useEffect(() => {
+        async function fetchGenres() {
+            const res = await fetch('/api/genres');
+            if (res.ok) {
+                const data = await res.json();
+                setAvailableGenres(data);
+            }
+        }
+        fetchGenres();
+    }, []);
 
     useEffect(() => {
         async function fetchBook() {
@@ -35,10 +55,11 @@ export default function EditBook() {
                 const data = await res.json();
                 setFormData({
                     ...data,
-                    publishedDate: data.publishedDate.split('T')[0],
+                    publishedDate: data.publishedDate ? data.publishedDate.split('T')[0] : '',
                 });
+                // Set initially selected genres
+                setSelectedGenres(data.genres.map((g: { genre: Genre }) => g.genre.id));
             } else {
-                // Handle error, e.g., book not found
                 router.push('/books');
             }
         }
@@ -61,15 +82,25 @@ export default function EditBook() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const submitData = {
+            ...formData,
+            genres: selectedGenres,
+            readingDurationMinutes: formData.readingDurationMinutes
+                ? parseInt(formData.readingDurationMinutes.toString())
+                : null
+        };
+
         const res = await fetch(`/api/books/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
+            body: JSON.stringify(submitData),
         });
+
         if (res.ok) {
             router.push('/books');
         } else {
             // Handle error
+            console.error('Failed to update book');
         }
     };
 
@@ -97,6 +128,7 @@ export default function EditBook() {
                                     onChange={handleChange}
                                 />
                             </div>
+
                             {/* Author */}
                             <div>
                                 <label htmlFor="author" className="block text-sm font-medium">
@@ -111,56 +143,84 @@ export default function EditBook() {
                                     onChange={handleChange}
                                 />
                             </div>
+
                             {/* Published Date */}
                             <div>
-                                <label
-                                    htmlFor="publishedDate"
-                                    className="block text-sm font-medium"
-                                >
-                                    Published Date *
+                                <label htmlFor="publishedDate" className="block text-sm font-medium">
+                                    Published Date
                                 </label>
                                 <Input
                                     type="date"
                                     name="publishedDate"
                                     id="publishedDate"
-                                    required
                                     value={formData.publishedDate}
                                     onChange={handleChange}
                                 />
                             </div>
-                            {/* Genre */}
+
+                            {/* Genres */}
                             <div>
-                                <label htmlFor="genre" className="block text-sm font-medium">
-                                    Genre
+                                <label className="block text-sm font-medium mb-2">
+                                    Genres
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {availableGenres.map((genre) => (
+                                        <div key={genre.id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`genre-${genre.id}`}
+                                                checked={selectedGenres.includes(genre.id)}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedGenres(prev => [...prev, genre.id]);
+                                                    } else {
+                                                        setSelectedGenres(prev =>
+                                                            prev.filter(id => id !== genre.id)
+                                                        );
+                                                    }
+                                                }}
+                                            />
+                                            <label
+                                                htmlFor={`genre-${genre.id}`}
+                                                className="text-sm"
+                                            >
+                                                {genre.name}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Reading Duration */}
+                            <div>
+                                <label htmlFor="readingDurationMinutes" className="block text-sm font-medium">
+                                    Reading Duration (minutes)
                                 </label>
                                 <Input
-                                    type="text"
-                                    name="genre"
-                                    id="genre"
-                                    value={formData.genre || ''}
+                                    type="number"
+                                    name="readingDurationMinutes"
+                                    id="readingDurationMinutes"
+                                    value={formData.readingDurationMinutes || ''}
                                     onChange={handleChange}
                                 />
                             </div>
+
                             {/* ISBN */}
                             <div>
                                 <label htmlFor="isbn" className="block text-sm font-medium">
-                                    ISBN *
+                                    ISBN
                                 </label>
                                 <Input
                                     type="text"
                                     name="isbn"
                                     id="isbn"
-                                    required
-                                    value={formData.isbn}
+                                    value={formData.isbn || ''}
                                     onChange={handleChange}
                                 />
                             </div>
+
                             {/* Description */}
                             <div>
-                                <label
-                                    htmlFor="description"
-                                    className="block text-sm font-medium"
-                                >
+                                <label htmlFor="description" className="block text-sm font-medium">
                                     Description
                                 </label>
                                 <Textarea
@@ -170,18 +230,25 @@ export default function EditBook() {
                                     onChange={handleChange}
                                 />
                             </div>
+
                             {/* Available */}
                             <div className="flex items-center">
                                 <Checkbox
-                                    name="available"
                                     id="available"
+                                    name="available"
                                     checked={formData.available}
-                                    onChange={handleChange}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        setFormData(prev => ({
+                                            ...prev!,
+                                            available: e.target.checked
+                                        }));
+                                    }}
                                 />
                                 <label htmlFor="available" className="ml-2 text-sm font-medium">
                                     Available
                                 </label>
                             </div>
+
                             <Button type="submit" className="mt-4">
                                 Update Book
                             </Button>
