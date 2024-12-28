@@ -1,5 +1,6 @@
 import React from 'react';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import Navbar from '../../components/Navbar';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
@@ -13,47 +14,68 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import SearchBar from './search-bar';
+import { Suspense } from 'react';
 
-interface Article {
-    id: number;
-    title: string;
-    content: string;
-    publishedAt: Date;
-    author: { name: string | null };
-}
+type NewsWithAuthor = Prisma.NewsGetPayload<{
+    include: {
+        author: true;
+    };
+}>;
 
 interface PageProps {
-    searchParams: { [key: string]: string | string[] | undefined };
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export const dynamic = 'force-dynamic';
 
 export default async function Articles({ searchParams }: PageProps) {
-    // Handle both string and array cases for searchParams
-    const pageParam = typeof searchParams.page === 'string' ? searchParams.page :
-        Array.isArray(searchParams.page) ? searchParams.page[0] : '1';
-    const searchParam = typeof searchParams.search === 'string' ? searchParams.search :
-        Array.isArray(searchParams.search) ? searchParams.search[0] : '';
+    const params = await searchParams;
+
+    const pageParam = typeof params.page === 'string' ? params.page :
+        Array.isArray(params.page) ? params.page[0] : '1';
+    const searchParam = typeof params.search === 'string' ? params.search :
+        Array.isArray(params.search) ? params.search[0] : '';
 
     const page = parseInt(pageParam);
     const searchTerm = searchParam;
     const articlesPerPage = 10;
 
-    const whereClause = searchTerm
+    const whereClause: Prisma.NewsWhereInput = searchTerm
         ? {
             OR: [
-                { title: { contains: searchTerm, mode: 'insensitive' } },
-                { content: { contains: searchTerm, mode: 'insensitive' } },
-                { author: { name: { contains: searchTerm, mode: 'insensitive' } } },
-            ],
+                {
+                    title: {
+                        contains: searchTerm,
+                        mode: Prisma.QueryMode.insensitive
+                    }
+                },
+                {
+                    content: {
+                        contains: searchTerm,
+                        mode: Prisma.QueryMode.insensitive
+                    }
+                },
+                {
+                    author: {
+                        name: {
+                            contains: searchTerm,
+                            mode: Prisma.QueryMode.insensitive
+                        }
+                    }
+                }
+            ]
         }
         : {};
 
     const [articles, totalArticles] = await Promise.all([
         prisma.news.findMany({
             where: whereClause,
-            include: { author: true },
-            orderBy: { publishedAt: 'desc' }, // Sort by newest first
+            include: {
+                author: true
+            },
+            orderBy: {
+                publishedAt: 'desc'
+            },
             skip: (page - 1) * articlesPerPage,
             take: articlesPerPage,
         }),
@@ -74,7 +96,9 @@ export default async function Articles({ searchParams }: PageProps) {
                         </Link>
                     </CardHeader>
                     <CardContent>
-                        <SearchBar />
+                        <Suspense fallback={<div>Loading...</div>}>
+                            <SearchBar />
+                        </Suspense>
                         <div className="rounded-md border">
                             <Table>
                                 <TableHeader>
@@ -86,7 +110,7 @@ export default async function Articles({ searchParams }: PageProps) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {articles.map((article) => (
+                                    {articles.map((article: NewsWithAuthor) => (
                                         <TableRow key={article.id}>
                                             <TableCell>{article.title}</TableCell>
                                             <TableCell>{article.author?.name || 'Unknown'}</TableCell>

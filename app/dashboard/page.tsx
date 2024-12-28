@@ -32,18 +32,18 @@ export default async function Dashboard() {
                                     <Button className="mt-4">Manage Books</Button>
                                 </Link>
                             </div>
-                            <div className="p-6 bg-green-50 rounded-lg">
-                                <h2 className="text-2xl font-bold mb-2">News Articles</h2>
-                                <p className="text-4xl font-extrabold">{newsCount}</p>
-                                <Link href="/news">
-                                    <Button className="mt-4">Manage News</Button>
-                                </Link>
-                            </div>
                             <div className="p-6 bg-purple-50 rounded-lg">
                                 <h2 className="text-2xl font-bold mb-2">Genres</h2>
                                 <p className="text-4xl font-extrabold">{genreCount}</p>
                                 <Link href="/genres">
                                     <Button className="mt-4">Manage Genres</Button>
+                                </Link>
+                            </div>
+                            <div className="p-6 bg-green-50 rounded-lg">
+                                <h2 className="text-2xl font-bold mb-2">News Articles</h2>
+                                <p className="text-4xl font-extrabold">{newsCount}</p>
+                                <Link href="/news">
+                                    <Button className="mt-4">Manage News</Button>
                                 </Link>
                             </div>
                         </div>
