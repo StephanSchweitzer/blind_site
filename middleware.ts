@@ -14,12 +14,10 @@ export default withAuth(
 
 export const config = {
     matcher: [
-        // Protect all backend API routes except for GET requests
         '/api/news/:path*',
         '/api/books/:path*',
-        // Protect backend pages and frontend pages
-        '/dashboard/:path*', // Protect dashboard and its subroutes
-        '/news/:path*', // Protect news pages
-        '/books/:path*', // Protect books pages
+        '/dashboard/:path*',
+        '/news/:path*',
+        '/books/:path*',
     ],
 };

@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 
 interface Genre {
     id: number;
@@ -35,6 +37,8 @@ export default function EditBook() {
     const [formData, setFormData] = useState<Book | null>(null);
     const [availableGenres, setAvailableGenres] = useState<Genre[]>([]);
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Fetch available genres
     useEffect(() => {
@@ -66,6 +70,18 @@ export default function EditBook() {
         fetchBook();
     }, [id, router]);
 
+    const handleGenreSelect = (genreId: number) => {
+        setSelectedGenres(prev => {
+            return prev.includes(genreId)
+                ? prev.filter(id => id !== genreId)
+                : [...prev, genreId];
+        });
+    };
+
+    const removeGenre = (genreId: number) => {
+        setSelectedGenres(prev => prev.filter(id => id !== genreId));
+    };
+
     if (!formData) {
         return <div>Loading...</div>;
     }
@@ -73,10 +89,12 @@ export default function EditBook() {
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
-        const { name, value, type, checked } = e.target;
+        const { name, value } = e.target;
+        const isCheckbox = e.target instanceof HTMLInputElement && e.target.type === 'checkbox';
+
         setFormData((prevData) => ({
             ...prevData!,
-            [name]: type === 'checkbox' ? checked : value,
+            [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
         }));
     };
 
@@ -163,31 +181,74 @@ export default function EditBook() {
                                 <label className="block text-sm font-medium mb-2">
                                     Genres
                                 </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {availableGenres.map((genre) => (
-                                        <div key={genre.id} className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id={`genre-${genre.id}`}
-                                                checked={selectedGenres.includes(genre.id)}
-                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedGenres(prev => [...prev, genre.id]);
-                                                    } else {
-                                                        setSelectedGenres(prev =>
-                                                            prev.filter(id => id !== genre.id)
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                            <label
-                                                htmlFor={`genre-${genre.id}`}
-                                                className="text-sm"
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {selectedGenres.map(genreId => {
+                                        const genre = availableGenres.find(g => g.id === genreId);
+                                        return genre ? (
+                                            <div
+                                                key={genre.id}
+                                                className="bg-primary/10 text-primary rounded-full px-3 py-1 text-sm flex items-center"
                                             >
                                                 {genre.name}
-                                            </label>
-                                        </div>
-                                    ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeGenre(genre.id)}
+                                                    className="ml-2 hover:text-primary/80"
+                                                >
+                                                    <X className="h-3 w-3"/>
+                                                </button>
+                                            </div>
+                                        ) : null;
+                                    })}
                                 </div>
+                                <Popover open={open} onOpenChange={setOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={open}
+                                            className="w-full justify-between"
+                                        >
+                                            Select genres...
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0">
+                                        <div className="p-2">
+                                            <Input
+                                                placeholder="Search genres..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="mb-2"
+                                            />
+                                            <div className="max-h-60 overflow-y-auto">
+                                                {availableGenres
+                                                    .filter(genre =>
+                                                        genre.name.toLowerCase().includes(searchQuery.toLowerCase())
+                                                    )
+                                                    .map((genre) => (
+                                                        <div
+                                                            key={genre.id}
+                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-primary/10 rounded-sm cursor-pointer"
+                                                            onClick={() => {
+                                                                handleGenreSelect(genre.id);
+                                                                setSearchQuery('');
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={`mr-2 h-4 w-4 ${
+                                                                    selectedGenres.includes(genre.id)
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                }`}
+                                                            />
+                                                            {genre.name}
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
 
                             {/* Reading Duration */}
