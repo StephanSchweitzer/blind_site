@@ -3,14 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
 interface Params {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
+
 
 // GET: Fetch a specific article by ID
 export async function GET(req: NextRequest, { params }: Params) {
-    const { id } = params;
+    const { id } = await params;
 
     try {
         const article = await prisma.news.findUnique({
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
 // PUT: Update a specific article by ID
 export async function PUT(req: NextRequest, { params }: Params) {
-    const { id } = params;
+    const { id } = await params;
 
     try {
         const { title, content } = await req.json();
@@ -59,7 +60,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
 // DELETE: Delete a specific article by ID
 export async function DELETE(req: NextRequest, { params }: Params) {
-    const { id } = params;
+    const { id } = await params;
 
     try {
         await prisma.news.delete({
