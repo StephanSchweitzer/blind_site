@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import EditGenreForm from './edit-genre-form';
-import Navbar from "@/components/Navbar";
+import BackendNavbar from "@/components/Backend-Navbar";
 import React from "react";
 
 interface Props {
@@ -27,7 +27,7 @@ export default async function EditGenrePage({ params }: Props) {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar/>
+            <BackendNavbar/>
             <div className="container mx-auto py-6">
                 <Card>
                     <CardHeader>

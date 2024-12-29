@@ -1,5 +1,5 @@
 // app/genres/layout.tsx
-import Navbar from '@/components/Navbar';
+import BackendNavbar from '@/components/Backend-Navbar';
 
 export default function GenresLayout({
                                          children,

@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import BackendNavbar from '@/components/Backend-Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,7 +40,7 @@ export default function AddArticle() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar />
+            <BackendNavbar />
             <div className="container mx-auto py-8">
                 <Card>
                     <CardHeader>

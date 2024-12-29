@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Check, ChevronsUpDown, X } from "lucide-react";
-import Navbar from "@/components/Navbar";
+import BackendNavbar from "@/components/Backend-Navbar";
 
 interface Genre {
     id: string;
@@ -117,7 +117,7 @@ export default function AddBook() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar/>
+            <BackendNavbar/>
             <div className="container mx-auto py-8">
                 <div className="max-w-4xl mx-auto">
                     <Card>

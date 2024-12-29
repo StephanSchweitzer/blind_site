@@ -1,7 +1,7 @@
 import React from 'react';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import Navbar from '../../components/Navbar';
+import BackendNavbar from '../../components/Backend-Navbar';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import {
@@ -113,7 +113,7 @@ export default async function Books({ searchParams }: PageProps) {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar />
+            <BackendNavbar />
             <div className="container mx-auto py-8">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
