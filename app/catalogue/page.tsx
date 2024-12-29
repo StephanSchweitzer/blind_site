@@ -1,23 +1,32 @@
-// app/catalogue/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { SearchBar } from './_components/search/SearchBar';
-import { BookList } from './_components/search/BookList';
-import { Pagination } from './_components/search/Pagination';
-import { BookModal } from './_components/search/BookModal';
+import { SearchBar } from '@/catalogue/search/SearchBar';
+import { BookList } from '@/catalogue/search/BookList';
+import { Pagination } from '@/catalogue/search/Pagination';
+import { BookModal } from '@/catalogue/search/BookModal';
 import { Book } from '@prisma/client';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 
 const ITEMS_PER_PAGE = 9;
 
+// Define the BookWithGenres type at the page level
+interface BookWithGenres extends Book {
+    genres: {
+        genre: {
+            id: number;
+            name: string;
+        };
+    }[];
+}
+
 export default function BooksPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const [books, setBooks] = useState<Book[]>([]);
+    const [books, setBooks] = useState<BookWithGenres[]>([]);  // Updated type
     const [totalPages, setTotalPages] = useState(1);
-    const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+    const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);  // Updated type
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
     const [availableGenres, setAvailableGenres] = useState<{ id: number; name: string; }[]>([]);
@@ -57,7 +66,7 @@ export default function BooksPage() {
 
             const response = await fetch(`/api/books?${queryParams.toString()}`);
             const data = await response.json();
-            setBooks(data.books);
+            setBooks(data.books);  // API response includes genres
             setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
         } catch (error) {
             console.error('Error fetching books:', error);
@@ -83,7 +92,7 @@ export default function BooksPage() {
         setCurrentPage(page);
     };
 
-    const handleBookClick = (book: Book) => {
+    const handleBookClick = (book: BookWithGenres) => {  // Updated type
         setSelectedBook(book);
         setIsModalOpen(true);
     };
