@@ -1,2 +1,11 @@
-durée
-éditeur / édition
+BACKEND:
+Add add users section
+Add profile section "qui suis je" (maybe, this is extra)
+edit Coups de coeur and Add add coups de coeur section
+éditeur / édition : Is this like the publisher?
+
+
+
+FRONTEND:
+make the frontend page for coups de couer
+Contact section
