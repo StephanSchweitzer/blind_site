@@ -10,13 +10,13 @@ const FrontendNavbar: React.FC = () => {
         <div className="w-full">
             {/* Top banner image with black sides */}
             <div className="relative w-full bg-black">
-                <div className="max-w-[2400px] mx-auto px-8 sm:px-12 md:px-16 lg:px-24">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6"> {/* Matching the main content width and padding */}
                     <div className="relative">
-                        <img
+                        <a href="/"> <img
                             src="/eca_logo.png"
                             alt="Banner"
                             className="w-full h-auto"
-                        />
+                        /></a>
                     </div>
                 </div>
             </div>
