@@ -12,7 +12,6 @@ import { Check, ChevronsUpDown, X } from "lucide-react";
 import BackendNavbar from "@/components/Backend-Navbar";
 import { useRouter } from 'next/navigation';
 
-
 interface Genre {
     id: string;
     name: string;
@@ -27,6 +26,7 @@ export default function AddBook() {
         isbn: '',
         description: '',
         available: true,
+        readingDurationMinutes: '',
     });
     const [genres, setGenres] = useState<Genre[]>([]);
     const [open, setOpen] = useState(false);
@@ -245,6 +245,19 @@ export default function AddBook() {
                                         required
                                         value={formData.isbn}
                                         onChange={handleChange}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="readingDurationMinutes" className="block text-sm font-medium">
+                                        Reading Duration (minutes)
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        name="readingDurationMinutes"
+                                        id="readingDurationMinutes"
+                                        value={formData.readingDurationMinutes}
+                                        onChange={handleChange}
+                                        min="0"
                                     />
                                 </div>
                                 <div>

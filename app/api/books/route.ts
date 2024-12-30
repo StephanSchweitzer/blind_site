@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
 
         let whereClause: any = {};
 
-        // Handle genre filtering
         if (genres.length > 0) {
             whereClause.genres = {
                 some: {
@@ -27,7 +26,6 @@ export async function GET(request: NextRequest) {
             };
         }
 
-        // Handle search filtering
         if (search) {
             const searchFilter = filter === 'all' ? {
                 OR: [
@@ -110,8 +108,6 @@ export async function POST(req: NextRequest) {
         const userId = parseInt(session.user.id, 10);
         const formData = await req.json();
 
-        console.log("this is my user ID " + userId)
-
         const newBook = await prisma.book.create({
             data: {
                 title: formData.title,
@@ -120,6 +116,7 @@ export async function POST(req: NextRequest) {
                 isbn: formData.isbn,
                 description: formData.description,
                 available: formData.available,
+                readingDurationMinutes: formData.readingDurationMinutes ? parseInt(formData.readingDurationMinutes) : null,
                 addedById: userId,
                 genres: {
                     create: formData.genres.map((genreId: number) => ({
