@@ -1,11 +1,15 @@
 BACKEND:
 Add add users section
 Add profile section "qui suis je" (maybe, this is extra)
-edit Coups de coeur and Add add coups de coeur section
+edit Coups de coeur and Add add coups de coeur section. Dont forget
+to add a part where the team can record themselves and attach it to a coup de coeur
+Add reading time to the add book sections
 éditeur / édition : Is this like the publisher?
 
 
 
 FRONTEND:
 make the frontend page for coups de couer
+Make the readingDuration show up as hours and minutes instead of just minutes
+I need to find a way to adapt the size of the popup to account for the size of the description
 Contact section
