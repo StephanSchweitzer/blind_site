@@ -115,7 +115,7 @@ export default function EditBook() {
         });
 
         if (res.ok) {
-            router.push('/books');
+            router.push('/admin/books');
         } else {
             // Handle error
             console.error('Failed to update book');

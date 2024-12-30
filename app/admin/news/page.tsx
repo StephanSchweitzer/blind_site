@@ -116,7 +116,7 @@ export default async function Articles({ searchParams }: PageProps) {
                                             <TableCell>{article.author?.name || 'Unknown'}</TableCell>
                                             <TableCell>{new Date(article.publishedAt).toLocaleDateString()}</TableCell>
                                             <TableCell>
-                                                <Link href={`/app/admin/news/${article.id}`}>
+                                                <Link href={`/admin/news/${article.id}`}>
                                                     <Button variant="outline" size="sm">
                                                         Edit
                                                     </Button>

@@ -45,7 +45,7 @@ export default function EditArticle() {
             body: JSON.stringify(formData),
         });
         if (res.ok) {
-            router.push('/news');
+            router.push('/admin/news');
         } else {
             // Handle error
         }

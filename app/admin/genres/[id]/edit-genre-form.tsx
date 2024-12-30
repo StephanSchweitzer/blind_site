@@ -50,7 +50,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
             }
 
             // Wait for navigation to complete before refreshing
-            await router.push('/genres');
+            await router.push('/admin/genres');
             router.refresh();
         } catch (err) {
             console.error('Submit error:', err);
@@ -96,7 +96,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                 <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.push('/genres')}
+                    onClick={() => router.push('/admin/genres')}
                 >
                     Cancel
                 </Button>

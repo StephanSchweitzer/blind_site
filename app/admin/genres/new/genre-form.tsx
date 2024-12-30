@@ -90,7 +90,7 @@ export default function GenreForm() {
                 <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.push('/genres')}
+                    onClick={() => router.push('/admin/genres')}
                 >
                     Cancel
                 </Button>

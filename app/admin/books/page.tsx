@@ -167,7 +167,7 @@ export default async function Books({ searchParams }: PageProps) {
                                             {/*</TableCell>*/}
                                             <TableCell>{book.available ? 'Yes' : 'No'}</TableCell>
                                             <TableCell>
-                                                <Link href={`/app/admin/books/${book.id}`}>
+                                                <Link href={`/admin/books/${book.id}`}>
                                                     <Button variant="outline" size="sm">
                                                         Edit
                                                     </Button>

@@ -93,7 +93,7 @@ export default async function Genres({ searchParams }: PageProps) {
                                             <TableCell>{genre.name}</TableCell>
                                             <TableCell>{genre.description || 'N/A'}</TableCell>
                                             <TableCell>
-                                                <Link href={`/app/admin/genres/${genre.id}`}>
+                                                <Link href={`/admin/genres/${genre.id}`}>
                                                     <Button variant="outline" size="sm">
                                                         Edit
                                                     </Button>
