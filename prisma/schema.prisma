@@ -17,37 +17,61 @@ model News {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  role      String   @default("user")
-  createdAt DateTime @default(now())
-  books     Book[] // Relation to track books uploaded by this user
-  News      News[]   @relation(name: "UserNews")
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  password     String
+  name         String?
+  role         String         @default("user")
+  createdAt    DateTime       @default(now())
+  books        Book[]
+  News         News[]         @relation(name: "UserNews")
+  CoupsDeCoeur CoupsDeCoeur[]
 }
 
 model Book {
-  id                     Int         @id @default(autoincrement())
+  id                     Int                 @id @default(autoincrement())
   title                  String
   author                 String
   publishedDate          DateTime?
-  isbn                   String?     @unique
+  isbn                   String?             @unique
   description            String?
   readingDurationMinutes Int?
-  available              Boolean     @default(true)
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
-  addedById              Int // Foreign key to reference the user who added the book
-  addedBy                User        @relation(fields: [addedById], references: [id])
-  genres                 BookGenre[] // Relation to genres through the junction table
+  available              Boolean             @default(true)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  addedById              Int
+  addedBy                User                @relation(fields: [addedById], references: [id])
+  genres                 BookGenre[]
+  CoupsDeCoeurBooks      CoupsDeCoeurBooks[]
 }
 
 model Genre {
   id          Int         @id @default(autoincrement())
   name        String      @unique
   description String?
-  books       BookGenre[] // Relation to books through the junction table
+  books       BookGenre[]
+}
+
+model CoupsDeCoeur {
+  id          Int                 @id @default(autoincrement())
+  title       String
+  description String
+  audioPath   String
+  active      Boolean             @default(true)
+  addedById   Int
+  addedBy     User                @relation(fields: [addedById], references: [id])
+  books       CoupsDeCoeurBooks[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model CoupsDeCoeurBooks {
+  coupsDeCoeur   CoupsDeCoeur @relation(fields: [coupsDeCoeurId], references: [id])
+  coupsDeCoeurId Int
+  book           Book         @relation(fields: [bookId], references: [id])
+  bookId         Int
+
+  @@id([coupsDeCoeurId, bookId])
 }
 
 model BookGenre {
