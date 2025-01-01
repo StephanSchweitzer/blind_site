@@ -1,4 +1,3 @@
-// app/admin/manage_coups_de_coeur/components/book-selector.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -36,38 +35,35 @@ interface BookSelectorProps {
 }
 
 export default function BookSelector({ selectedBooks, onSelectedBooksChange }: BookSelectorProps) {
-    const [recentBooks, setRecentBooks] = useState<Book[]>([]);
-    const [additionalBooks, setAdditionalBooks] = useState<Book[]>([]);
+    const [selectedBookDetails, setSelectedBookDetails] = useState<Book[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<Book[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    // Initial fetch of recent books
+    // Fetch details of selected books
     useEffect(() => {
-        const fetchRecentBooks = async () => {
-            try {
-                const response = await fetch('/api/books?recent=true');
-                if (response.ok) {
-                    const data = await response.json();
-                    setRecentBooks(data.books);
-
-                    // Only set initial selection if no books are currently selected
-                    if (selectedBooks.length === 0) {
-                        const allBookIds = data.books.map((book: Book) => book.id);
-                        onSelectedBooksChange(allBookIds);
+        const fetchSelectedBookDetails = async () => {
+            if (selectedBooks.length > 0) {
+                try {
+                    const response = await fetch(`/api/books?ids=${selectedBooks.join(',')}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setSelectedBookDetails(data.books);
                     }
+                } catch (error) {
+                    console.error('Error fetching selected books:', error);
                 }
-            } catch (error) {
-                console.error('Error fetching recent books:', error);
+            } else {
+                setSelectedBookDetails([]);
             }
         };
 
-        fetchRecentBooks();
-    }, []);
+        fetchSelectedBookDetails();
+    }, [selectedBooks]);
 
-    // Handle book search
+    // Handle search
     useEffect(() => {
         const searchBooks = async () => {
             if (!debouncedSearchTerm) {
@@ -80,12 +76,9 @@ export default function BookSelector({ selectedBooks, onSelectedBooksChange }: B
                 const response = await fetch(`/api/books?search=${encodeURIComponent(debouncedSearchTerm)}`);
                 if (response.ok) {
                     const data = await response.json();
-                    // Filter out books that are already in recentBooks or additionalBooks
-                    const existingBookIds = new Set([
-                        ...recentBooks.map(book => book.id),
-                        ...additionalBooks.map(book => book.id)
-                    ]);
-                    setSearchResults(data.books.filter(book => !existingBookIds.has(book.id)));
+                    // Filter out already selected books from search results
+                    const selectedBookIds = new Set(selectedBooks);
+                    setSearchResults(data.books.filter((book: Book) => !selectedBookIds.has(book.id)));
                 }
             } catch (error) {
                 console.error('Error searching books:', error);
@@ -95,50 +88,29 @@ export default function BookSelector({ selectedBooks, onSelectedBooksChange }: B
         };
 
         searchBooks();
-    }, [debouncedSearchTerm, recentBooks, additionalBooks]);
+    }, [debouncedSearchTerm, selectedBooks]);
 
     const toggleBookSelection = (bookId: number, book?: Book) => {
         if (selectedBooks.includes(bookId)) {
-            // If deselecting from additional books, remove it from the list
-            if (book && additionalBooks.some(b => b.id === bookId)) {
-                setAdditionalBooks(prev => prev.filter(b => b.id !== bookId));
-            }
             onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
         } else {
-            // If selecting from search results, add to additional books
-            if (book && !recentBooks.some(b => b.id === bookId) && !additionalBooks.some(b => b.id === bookId)) {
-                setAdditionalBooks(prev => [...prev, book]);
-            }
             onSelectedBooksChange([...selectedBooks, bookId]);
         }
     };
 
     const handleSelectAll = (checked: boolean, books: Book[]) => {
         if (checked) {
-            // Add all currently visible books that aren't already selected
-            const newSelections = books.map(book => {
-                // If the book isn't in recentBooks or additionalBooks, add it to additionalBooks
-                if (!recentBooks.some(b => b.id === book.id) && !additionalBooks.some(b => b.id === book.id)) {
-                    setAdditionalBooks(prev => [...prev, book]);
-                }
-                return book.id;
-            });
-            onSelectedBooksChange([...new Set([...selectedBooks, ...newSelections])]);
+            const newSelections = [...new Set([...selectedBooks, ...books.map(book => book.id)])];
+            onSelectedBooksChange(newSelections);
         } else {
-            // Remove all currently visible books
-            const visibleBookIds = new Set(books.map(book => book.id));
-            // Remove deselected books from additionalBooks
-            setAdditionalBooks(prev => prev.filter(book => !visibleBookIds.has(book.id)));
-            onSelectedBooksChange(selectedBooks.filter(id => !visibleBookIds.has(id)));
+            const bookIdsToRemove = new Set(books.map(book => book.id));
+            onSelectedBooksChange(selectedBooks.filter(id => !bookIdsToRemove.has(id)));
         }
     };
 
     const areAllSelected = (books: Book[]) => {
         return books.length > 0 && books.every(book => selectedBooks.includes(book.id));
     };
-
-    // Combine recentBooks and additionalBooks for the main display
-    const allVisibleBooks = [...recentBooks, ...additionalBooks];
 
     const BookTable = ({ books, isSearchResults = false }: { books: Book[], isSearchResults?: boolean }) => (
         <Table>
@@ -223,7 +195,7 @@ export default function BookSelector({ selectedBooks, onSelectedBooksChange }: B
 
             {/* Main Books Table */}
             <div className="border rounded-lg">
-                <BookTable books={allVisibleBooks} />
+                <BookTable books={selectedBookDetails} />
             </div>
 
             {/* Selected Books Summary */}

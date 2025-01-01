@@ -13,9 +13,29 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '9');
         const genres = searchParams.getAll('genres').map(Number);
         const recent = searchParams.get('recent') === 'true';
+        const ids = searchParams.get('ids')?.split(',').map(Number).filter(id => !isNaN(id));
         const skip = (page - 1) * limit;
 
         let whereClause: any = {};
+
+        // If IDs are provided, fetch only those specific books
+        if (ids && ids.length > 0) {
+            whereClause.id = {
+                in: ids
+            };
+            // When fetching by IDs, we don't want to apply pagination
+            const books = await prisma.book.findMany({
+                where: whereClause,
+                include: {
+                    genres: {
+                        include: {
+                            genre: true
+                        }
+                    }
+                },
+            });
+            return NextResponse.json({ books });
+        }
 
         // Handle genres filter
         if (genres.length > 0) {
