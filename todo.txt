@@ -10,6 +10,5 @@ Add reading time to the add book sections
 
 FRONTEND:
 make the frontend page for coups de couer
-Make the readingDuration show up as hours and minutes instead of just minutes
-I need to find a way to adapt the size of the popup to account for the size of the description
 Contact section
+Make it so that you can search for books by their description as well

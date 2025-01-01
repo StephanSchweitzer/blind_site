@@ -71,7 +71,7 @@ export default async function Dashboard() {
                             <div className="p-6 rounded-lg border bg-pink-50/50 hover:bg-pink-50 transition-colors">
                                 <h2 className="text-2xl font-bold mb-2 text-pink-700">Coups de Cœur</h2>
                                 <p className="text-4xl font-extrabold">{coupsDeCoeurCount}</p>
-                                <a href="/admin/manage_coups_de_coeurs">
+                                <a href="/admin/manage_coups_de_coeur">
                                     <Button
                                         variant="outline"
                                         className="mt-4 w-full border-pink-200 bg-pink-100 hover:bg-pink-200 text-pink-700"

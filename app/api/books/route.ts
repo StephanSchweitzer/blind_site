@@ -12,10 +12,12 @@ export async function GET(request: NextRequest) {
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '9');
         const genres = searchParams.getAll('genres').map(Number);
+        const recent = searchParams.get('recent') === 'true';
         const skip = (page - 1) * limit;
 
         let whereClause: any = {};
 
+        // Handle genres filter
         if (genres.length > 0) {
             whereClause.genres = {
                 some: {
@@ -26,6 +28,26 @@ export async function GET(request: NextRequest) {
             };
         }
 
+        // Handle recent books filter
+        if (recent) {
+            // Get the most recent coup de coeur
+            const lastCoupDeCoeur = await prisma.coupsDeCoeur.findFirst({
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            });
+
+            if (lastCoupDeCoeur) {
+                whereClause = {
+                    ...whereClause,
+                    createdAt: {
+                        gte: lastCoupDeCoeur.createdAt
+                    }
+                };
+            }
+        }
+
+        // Handle search filter
         if (search) {
             const searchFilter = filter === 'all' ? {
                 OR: [
@@ -71,7 +93,7 @@ export async function GET(request: NextRequest) {
                 },
                 skip,
                 take: limit,
-                orderBy: { title: 'asc' }
+                orderBy: { createdAt: 'desc' }
             }),
             prisma.book.count({ where: whereClause })
         ]);
