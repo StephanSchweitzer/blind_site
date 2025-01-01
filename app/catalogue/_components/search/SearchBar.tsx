@@ -1,4 +1,3 @@
-// app/catalogue/_components/search/SearchBar.tsx
 import React, { useState } from 'react';
 import { Search, X, ChevronsUpDown, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -40,9 +39,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     };
 
     return (
-        <div className="space-y-4">
-            <div className="flex gap-2 w-full">
-                <div className="relative flex-1">
+        <div>
+            <div className="flex gap-2 w-full items-center">
+                {/* Search input - 45% */}
+                <div className="relative w-[45%]">
                     <input
                         type="text"
                         value={searchTerm}
@@ -52,20 +52,77 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     />
                     <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
                 </div>
+
+                {/* Filter select - 20% */}
                 <select
                     value={selectedFilter}
                     onChange={(e) => onFilterChange(e.target.value)}
-                    className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-[20%] px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                     <option value="all">All</option>
                     <option value="title">Title</option>
                     <option value="author">Author</option>
                     <option value="genre">Genre</option>
                 </select>
+
+                {/* Genre selector - 30% */}
+                <div className="w-[30%]">
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={open}
+                                className="w-full justify-between"
+                            >
+                                {selectedGenres.length > 0
+                                    ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} selected`
+                                    : "Select genres..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[250px] p-0">
+                            <div className="p-2">
+                                <Input
+                                    placeholder="Search genres..."
+                                    value={genreSearchQuery}
+                                    onChange={(e) => setGenreSearchQuery(e.target.value)}
+                                    className="mb-2"
+                                />
+                                <div className="max-h-60 overflow-y-auto">
+                                    {availableGenres
+                                        .filter(genre =>
+                                            genre.name.toLowerCase().includes(genreSearchQuery.toLowerCase())
+                                        )
+                                        .map((genre) => (
+                                            <div
+                                                key={genre.id}
+                                                className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-blue-50 rounded-sm cursor-pointer"
+                                                onClick={() => {
+                                                    handleGenreSelect(genre.id);
+                                                    setGenreSearchQuery('');
+                                                }}
+                                            >
+                                                <Check
+                                                    className={`mr-2 h-4 w-4 ${
+                                                        selectedGenres.includes(genre.id)
+                                                            ? "opacity-100"
+                                                            : "opacity-0"
+                                                    }`}
+                                                />
+                                                {genre.name}
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </div>
 
-            <div>
-                <div className="flex flex-wrap gap-2 mb-2">
+            {/* Selected genres tags */}
+            {selectedGenres.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
                     {selectedGenres.map(genreId => {
                         const genre = availableGenres.find(g => g.id === genreId);
                         return genre ? (
@@ -85,56 +142,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         ) : null;
                     })}
                 </div>
-
-                <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="w-full justify-between"
-                        >
-                            Select genres...
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                        <div className="p-2">
-                            <Input
-                                placeholder="Search genres..."
-                                value={genreSearchQuery}
-                                onChange={(e) => setGenreSearchQuery(e.target.value)}
-                                className="mb-2"
-                            />
-                            <div className="max-h-60 overflow-y-auto">
-                                {availableGenres
-                                    .filter(genre =>
-                                        genre.name.toLowerCase().includes(genreSearchQuery.toLowerCase())
-                                    )
-                                    .map((genre) => (
-                                        <div
-                                            key={genre.id}
-                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-blue-50 rounded-sm cursor-pointer"
-                                            onClick={() => {
-                                                handleGenreSelect(genre.id);
-                                                setGenreSearchQuery('');
-                                            }}
-                                        >
-                                            <Check
-                                                className={`mr-2 h-4 w-4 ${
-                                                    selectedGenres.includes(genre.id)
-                                                        ? "opacity-100"
-                                                        : "opacity-0"
-                                                }`}
-                                            />
-                                            {genre.name}
-                                        </div>
-                                    ))}
-                            </div>
-                        </div>
-                    </PopoverContent>
-                </Popover>
-            </div>
+            )}
         </div>
     );
 };

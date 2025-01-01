@@ -28,7 +28,7 @@ const FrontendNavbar: React.FC = () => {
                         {/* Desktop menu */}
                         <div className="hidden md:flex space-x-6">
                             <a href="/catalogue" className="hover:text-gray-200">Catalogue</a>
-                            <a href="/coups_de_coeur" className="hover:text-gray-200">Coups de Coeur</a>
+                            <a href="/coups_de_coeur" className="hover:text-gray-200">Coups de Cœur</a>
                             <a href="/derniers_infos" className="hover:text-gray-200">Derniéres infos</a>
                             <a href="/contact" className="hover:text-gray-200">Contact</a>
                         </div>
