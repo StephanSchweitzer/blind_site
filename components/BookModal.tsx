@@ -52,13 +52,10 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
         if (!('speechSynthesis' in window)) return;
 
         try {
-            // Ensure clean state
             window.speechSynthesis.cancel();
 
-            // Split text into sentences, making sure to handle text without punctuation
             let sentences: string[] = text.match(/[^.!?]+[.!?]+/g) || [];
 
-            // If no sentences were found or if there's remaining text without punctuation
             if (sentences.join('').length < text.length) {
                 const remainingText = text.replace(sentences.join(''), '').trim();
                 if (remainingText) {
@@ -66,7 +63,6 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                 }
             }
 
-            // If still no sentences, use the entire text
             if (sentences.length === 0) {
                 sentences = [text];
             }
@@ -75,7 +71,6 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                 const utterance = new SpeechSynthesisUtterance(sentence.trim());
                 utterance.lang = lang;
 
-                // Only log errors that aren't from user interruption
                 utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
                     if (event.error !== 'interrupted') {
                         console.error(`Speech error: ${event.error}`);

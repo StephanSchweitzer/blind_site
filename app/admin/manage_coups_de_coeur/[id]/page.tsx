@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Switch } from '@/components/ui/custom-switch';
+import { Switch } from '@/components/ui/switch';
 import BookSelector from '../components/book-selector';
 
 interface BookWithDetails {
@@ -194,7 +194,7 @@ export default function EditCoupDeCoeurPage() {
                                 <Switch
                                     id="active"
                                     checked={formData.active}
-                                    onChange={(checked) =>
+                                    onCheckedChange={(checked: boolean) =>
                                         setFormData(prev => ({ ...prev!, active: checked }))
                                     }
                                 />

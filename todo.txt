@@ -12,3 +12,5 @@ FRONTEND:
 make the frontend page for coups de couer
 Contact section
 Make it so that you can search for books by their description as well
+fix the voice that reads the books to you, it's horrible
+Make the add books to coup de coeur switches not custom switches and the shadcn switches

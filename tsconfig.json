@@ -20,9 +20,10 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@/catalogue/*": ["./app/catalogue/_components/*"]
+      "@/catalogue/*": ["./app/catalogue/_components/*"],
+      "@/coups-de-coeur/*": ["./app/coups-de-coeur/components/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/next-auth.d.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/next-auth.d.ts", "coups-de-coeur.ts"],
   "exclude": ["node_modules"]
 }
