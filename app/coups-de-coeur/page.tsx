@@ -6,6 +6,7 @@ import { Pagination } from '@/coups-de-coeur/Pagination';
 import { AudioPlayer } from '@/coups-de-coeur/AudioPlayer';
 import { BookList } from '@/coups-de-coeur/BookList';
 import { BookModal } from '@/components/BookModal';
+import FrontendNavbar from "@/components/Frontend-Navbar";
 import type { Book, CoupDeCoeur, CoupsDeCoeurResponse } from '@/types/coups-de-coeur';
 
 export default function CoupsDeCoeurPage() {
@@ -17,7 +18,6 @@ export default function CoupsDeCoeurPage() {
     const [selectedBook, setSelectedBook] = useState<Book | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Only fetch on mount and page changes, not on search changes
     useEffect(() => {
         const fetchCoupsDeCoeur = async () => {
             setIsLoading(true);
@@ -44,7 +44,6 @@ export default function CoupsDeCoeurPage() {
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
-        // No longer triggers a fetch
     };
 
     const handleResultSelect = async (id: number) => {
@@ -71,59 +70,94 @@ export default function CoupsDeCoeurPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold text-center mb-4">Coups de coeur</h1>
-
-            <p className="text-center mb-8">
-                A commander au 01 88 32 31 47 ou 48 ou par courriel à{' '}
-                <a href="mailto:lecteurs.eca@gmail.com" className="text-blue-600 hover:text-blue-800">
-                    lecteurs.eca@gmail.com
-                </a>
-            </p>
-
-            <div className="mb-8">
-                <SearchBar
-                    searchTerm={searchTerm}
-                    onSearchChange={handleSearchChange}
-                    onResultSelect={handleResultSelect}
-                />
+        <main className="min-h-screen relative">
+            <div className="hidden lg:block fixed inset-y-0 w-full">
+                <div className="h-full max-w-6xl mx-auto">
+                    <div className="h-full flex">
+                        <div className="w-16 h-full bg-gradient-to-r from-transparent to-gray-100"></div>
+                        <div className="flex-1"></div>
+                        <div className="w-16 h-full bg-gradient-to-l from-transparent to-gray-100"></div>
+                    </div>
+                </div>
             </div>
 
-            {isLoading ? (
-                <div className="text-center py-8">Chargement...</div>
-            ) : coupsDeCoeur.length === 0 ? (
-                <div className="text-center py-8">Aucun résultat trouvé</div>
-            ) : (
-                <>
-                    <div className="mb-12 p-6 bg-white rounded-lg shadow">
-                        <h2 className="text-2xl font-bold mb-4">{coupsDeCoeur[0].title}</h2>
+            <div className="relative">
+                <FrontendNavbar />
 
-                        <AudioPlayer
-                            src={coupsDeCoeur[0].audioPath}
-                            title={coupsDeCoeur[0].title}
-                        />
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-white">
+                    <section className="text-center space-y-4">
+                        <h1 className="text-3xl font-bold">Coups de coeur</h1>
+                        <p className="text-lg text-gray-700">
+                            A commander au{' '}
+                            <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
+                            <br />
+                            ou par courriel à{' '}
+                            <a href="mailto:lecteurs.eca@gmail.com" className="text-blue-600 hover:text-blue-800">
+                                lecteurs.eca@gmail.com
+                            </a>
+                        </p>
+                    </section>
 
-                        <p className="mb-6 text-gray-700">{coupsDeCoeur[0].description}</p>
+                    <div className="space-y-8">
+                        <div className="mb-8">
+                            <SearchBar
+                                searchTerm={searchTerm}
+                                onSearchChange={handleSearchChange}
+                                onResultSelect={handleResultSelect}
+                            />
+                        </div>
 
-                        <BookList
-                            books={coupsDeCoeur[0].books}
-                            onBookClick={handleBookClick}
+                        {isLoading ? (
+                            <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                                <p className="mt-4 text-gray-600">Chargement...</p>
+                            </div>
+                        ) : coupsDeCoeur.length === 0 ? (
+                            <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                <p className="text-gray-600">Aucun résultat trouvé</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                                    <div className="p-6">
+                                        <h2 className="text-2xl font-bold mb-4 text-gray-800">
+                                            {coupsDeCoeur[0].title}
+                                        </h2>
+
+                                        <div className="mb-6">
+                                            <AudioPlayer
+                                                src={coupsDeCoeur[0].audioPath}
+                                                title={coupsDeCoeur[0].title}
+                                            />
+                                        </div>
+
+                                        <p className="mb-6 text-gray-700 leading-relaxed">
+                                            {coupsDeCoeur[0].description}
+                                        </p>
+
+                                        <BookList
+                                            books={coupsDeCoeur[0].books}
+                                            onBookClick={handleBookClick}
+                                        />
+                                    </div>
+                                </div>
+
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onPageChange={handlePageChange}
+                                />
+                            </>
+                        )}
+
+                        <BookModal
+                            book={selectedBook}
+                            isOpen={isModalOpen}
+                            onClose={() => setIsModalOpen(false)}
                         />
                     </div>
-
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={handlePageChange}
-                    />
-
-                    <BookModal
-                        book={selectedBook}
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                    />
-                </>
-            )}
-        </div>
+                </div>
+            </div>
+        </main>
     );
 }
