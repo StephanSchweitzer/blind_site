@@ -53,8 +53,14 @@ export default async function Home() {
                         <p>ECA compte aujourd'hui 263 auditeurs déficients visuels et 108 lecteurs bénévoles. D'autre part, un certain nombre de bienfaiteurs, par leurs dons ou cotisations de soutien, permettent à ECA de poursuivre sa mission.</p>
                         <p className="text-sm italic">Note: ECA est depuis Septembre 2018 une délégation des Auxiliaires des Aveugles, association-loi de 1901, à vocation nationale. (Mise à jour décembre 2023)</p>
                     </section>
+
+                    <LoginButton/>
+                    <LogoutButton/>
+
                 </div>
             </div>
+
+
         </main>
     );
 }
