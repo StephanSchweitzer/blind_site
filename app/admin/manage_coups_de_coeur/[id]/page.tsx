@@ -1,4 +1,3 @@
-// app/admin/manage_coups_de_coeur/[id]/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -41,25 +40,27 @@ interface CoupDeCoeur {
     updatedAt: string;
 }
 
-export default function Page() {
+export default function EditCoupDeCoeurPage() {
     const router = useRouter();
     const params = useParams();
     const { id } = params;
 
     const [formData, setFormData] = useState<CoupDeCoeur | null>(null);
+    const [bookMap, setBookMap] = useState<Record<number, BookWithDetails['book']>>({});
 
     useEffect(() => {
         async function fetchCoupDeCoeur() {
             try {
-                console.log('Fetching coup de coeur with id:', id);
                 const res = await fetch(`/api/coups-de-coeur/${id}`);
                 if (res.ok) {
                     const data = await res.json();
-                    console.log('Fetched data:', data);
-                    console.log('Books in fetched data:', data.books);
-                    console.log('First book structure:', data.books[0]);
-                    console.log('Mapped book IDs:', data.books.map(book => book.book.id));
                     setFormData(data);
+                    // Create initial book map
+                    const initialBookMap = data.books.reduce((acc: Record<number, BookWithDetails['book']>, curr: BookWithDetails) => {
+                        acc[curr.book.id] = curr.book;
+                        return acc;
+                    }, {});
+                    setBookMap(initialBookMap);
                 } else {
                     console.error('Error fetching coup de coeur');
                     router.push('/admin/manage_coups_de_coeur');
@@ -209,11 +210,6 @@ export default function Page() {
                                 <BookSelector
                                     selectedBooks={formData.books.map(book => book.book.id)}
                                     onSelectedBooksChange={(bookIds: number[]) => {
-                                        const existingBooks = formData.books.reduce((acc, curr) => {
-                                            acc[curr.book.id] = curr.book;
-                                            return acc;
-                                        }, {} as Record<number, any>);
-
                                         setFormData(prev => {
                                             if (!prev) return null;
                                             return {
@@ -221,7 +217,7 @@ export default function Page() {
                                                 books: bookIds.map(id => ({
                                                     coupsDeCoeurId: prev.id,
                                                     bookId: id,
-                                                    book: existingBooks[id] || {
+                                                    book: bookMap[id] || {
                                                         id,
                                                         title: '',
                                                         author: '',
@@ -238,6 +234,8 @@ export default function Page() {
                                             };
                                         });
                                     }}
+                                    mode="edit"
+                                    coupDeCoeurId={parseInt(id as string)}
                                 />
                             </div>
 

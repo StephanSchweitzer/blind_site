@@ -1,4 +1,3 @@
-// app/admin/manage_coups_de_coeur/new/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -36,10 +35,7 @@ export default function AddCoupDeCoeur() {
             const res = await fetch('/api/coups-de-coeur', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...formData,
-                    bookIds: formData.bookIds // Make sure bookIds is included
-                }),
+                body: JSON.stringify(formData),
             });
 
             if (res.ok) {
@@ -127,6 +123,7 @@ export default function AddCoupDeCoeur() {
                                     onSelectedBooksChange={(bookIds) =>
                                         setFormData(prev => ({ ...prev, bookIds }))
                                     }
+                                    mode="create"
                                 />
                             </div>
 
