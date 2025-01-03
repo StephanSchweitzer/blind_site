@@ -65,7 +65,15 @@ export async function GET(request: NextRequest) {
                 include: {
                     books: {
                         include: {
-                            book: true
+                            book: {
+                                include: {
+                                    genres: {
+                                        include: {
+                                            genre: true
+                                        }
+                                    }
+                                }
+                            }
                         }
                     },
                     addedBy: {
