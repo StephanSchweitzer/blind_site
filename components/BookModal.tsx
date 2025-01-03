@@ -123,7 +123,10 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
 
                     audio.onerror = (error) => {
                         console.error('Audio playback error:', error);
-                        console.error('Audio error details:', error.currentTarget);
+                        // @ts-ignore
+                        if ("currentTarget" in error) {
+                            console.error('Audio error details:', error.currentTarget);
+                        }
                         setIsSpeaking(false);
                     };
 
