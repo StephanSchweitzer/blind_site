@@ -62,9 +62,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     <option value="all">All</option>
                     <option value="title">Title</option>
                     <option value="author">Author</option>
+                    <option value="description">Description</option>
                     <option value="genre">Genre</option>
                 </select>
 
+                {/* Rest of the component remains the same */}
                 {/* Genre selector - 30% */}
                 <div className="w-[30%]">
                     <Popover open={open} onOpenChange={setOpen}>
