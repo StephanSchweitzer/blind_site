@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SearchBar } from '@/catalogue/search/SearchBar';
 import { BookList } from '@/catalogue/search/BookList';
 import { Pagination } from '@/components/ui/custom-pagination';
@@ -24,12 +24,18 @@ export default function BooksPage() {
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [books, setBooks] = useState<BookWithGenres[]>([]);
-    const [totalBooks, setTotalBooks] = useState(0);
+    const [totalBooks, setTotalBooks] = useState<number | null>(null);
     const [totalPages, setTotalPages] = useState(1);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
     const [availableGenres, setAvailableGenres] = useState<{ id: number; name: string; }[]>([]);
+
+    // New states for transitions
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [previousBooks, setPreviousBooks] = useState<BookWithGenres[]>([]);
+    const contentRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchGenres = async () => {
@@ -44,11 +50,7 @@ export default function BooksPage() {
         fetchGenres();
     }, []);
 
-    useEffect(() => {
-        fetchBooks();
-    }, [searchTerm, selectedFilter, currentPage, selectedGenres]);
-
-    const fetchBooks = async () => {
+    const fetchBooks = useCallback(async () => {
         try {
             const queryParams = new URLSearchParams({
                 search: searchTerm,
@@ -65,13 +67,42 @@ export default function BooksPage() {
 
             const response = await fetch(`/api/books?${queryParams.toString()}`);
             const data = await response.json();
-            setBooks(data.books);
-            setTotalBooks(data.total);
-            setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
+            return data;
         } catch (error) {
             console.error('Error fetching books:', error);
+            return null;
         }
-    };
+    }, [searchTerm, selectedFilter, currentPage, selectedGenres]);
+
+    useEffect(() => {
+        const loadBooks = async () => {
+            // Start transition if this is not the initial load
+            if (books.length > 0) {
+                setIsTransitioning(true);
+                setPreviousBooks(books);
+            }
+
+            const data = await fetchBooks();
+
+            if (data) {
+                // Slight delay to allow for fade transition
+                setTimeout(() => {
+                    setBooks(data.books);
+                    setTotalBooks(data.total);
+                    setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
+                    setIsTransitioning(false);
+                    setIsInitialLoading(false);
+
+                    // Smooth scroll after content has updated
+                    if (books.length > 0) {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                }, 150);
+            }
+        };
+
+        loadBooks();
+    }, [fetchBooks]);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
@@ -89,12 +120,20 @@ export default function BooksPage() {
     };
 
     const handlePageChange = (page: number) => {
-        setCurrentPage(page);
+        if (page !== currentPage) {
+            setCurrentPage(page);
+        }
     };
 
     const handleBookClick = (book: BookWithGenres) => {
         setSelectedBook(book);
         setIsModalOpen(true);
+    };
+
+    const renderBookList = (books: BookWithGenres[]) => {
+        return (
+            <BookList books={books} onBookClick={handleBookClick} />
+        );
     };
 
     return (
@@ -116,7 +155,9 @@ export default function BooksPage() {
                     <section className="text-center space-y-4">
                         <h1 className="text-3xl font-bold text-gray-100">Catalogue des livres</h1>
                         <p className="text-lg text-gray-300">
-                            <span className="font-semibold">{totalBooks} titres au catalogue!</span>
+                            <span className="font-semibold">
+                                {totalBooks === null ? 'Chargement du catalogue...' : `${totalBooks} titres au catalogue !`}
+                            </span>
                             <br />
                             Consultez-nous si vous avez une recherche particulière,
                             et commandez au <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
@@ -143,7 +184,28 @@ export default function BooksPage() {
                             availableGenres={availableGenres}
                         />
 
-                        <BookList books={books} onBookClick={handleBookClick} />
+                        <div ref={contentRef} className="relative min-h-[200px]">
+                            {isInitialLoading ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+                                    <p className="mt-4 text-gray-300">Chargement des livres...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Previous content with fade-out effect */}
+                                    {isTransitioning && previousBooks.length > 0 && (
+                                        <div className="absolute inset-0 transition-opacity duration-150 ease-out opacity-0">
+                                            {renderBookList(previousBooks)}
+                                        </div>
+                                    )}
+
+                                    {/* Current content with fade-in effect */}
+                                    <div className={`transition-opacity duration-150 ease-in ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                                        {renderBookList(books)}
+                                    </div>
+                                </>
+                            )}
+                        </div>
 
                         <Pagination
                             currentPage={currentPage}
