@@ -35,7 +35,7 @@ const FrontendNavbar = () => {
             </div>
 
             {/* Navigation bar */}
-            <nav className="bg-[#4B9AD3] text-white py-4">
+            <nav className="bg-[#0E1113] text-white py-4">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6">
                     <div className="flex justify-between items-center">
                         {/* Desktop menu */}

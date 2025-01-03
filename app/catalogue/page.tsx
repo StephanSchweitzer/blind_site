@@ -10,7 +10,6 @@ import FrontendNavbar from "@/components/Frontend-Navbar";
 
 const ITEMS_PER_PAGE = 9;
 
-// Define the BookWithGenres type at the page level
 interface BookWithGenres extends Book {
     genres: {
         genre: {
@@ -24,15 +23,14 @@ export default function BooksPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const [books, setBooks] = useState<BookWithGenres[]>([]);  // Updated type
+    const [books, setBooks] = useState<BookWithGenres[]>([]);
     const [totalPages, setTotalPages] = useState(1);
-    const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);  // Updated type
+    const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
     const [availableGenres, setAvailableGenres] = useState<{ id: number; name: string; }[]>([]);
 
     useEffect(() => {
-        // Fetch available genres when component mounts
         const fetchGenres = async () => {
             try {
                 const response = await fetch('/api/genres');
@@ -66,7 +64,7 @@ export default function BooksPage() {
 
             const response = await fetch(`/api/books?${queryParams.toString()}`);
             const data = await response.json();
-            setBooks(data.books);  // API response includes genres
+            setBooks(data.books);
             setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
         } catch (error) {
             console.error('Error fetching books:', error);
@@ -92,19 +90,19 @@ export default function BooksPage() {
         setCurrentPage(page);
     };
 
-    const handleBookClick = (book: BookWithGenres) => {  // Updated type
+    const handleBookClick = (book: BookWithGenres) => {
         setSelectedBook(book);
         setIsModalOpen(true);
     };
 
     return (
-        <main className="min-h-screen relative">
+        <main className="min-h-screen relative bg-gray-900">
             <div className="hidden lg:block fixed inset-y-0 w-full">
                 <div className="h-full max-w-6xl mx-auto">
                     <div className="h-full flex">
-                        <div className="w-16 h-full bg-gradient-to-r from-transparent to-gray-100"></div>
+                        <div className="w-16 h-full bg-gradient-to-r from-transparent to-gray-800"></div>
                         <div className="flex-1"></div>
-                        <div className="w-16 h-full bg-gradient-to-l from-transparent to-gray-100"></div>
+                        <div className="w-16 h-full bg-gradient-to-l from-transparent to-gray-800"></div>
                     </div>
                 </div>
             </div>
@@ -112,21 +110,21 @@ export default function BooksPage() {
             <div className="relative">
                 <FrontendNavbar />
 
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-white">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-gray-800">
                     <section className="text-center space-y-4">
-                        <h1 className="text-3xl font-bold">Catalogue des livres</h1>
-                        <p className="text-lg text-gray-700">
+                        <h1 className="text-3xl font-bold text-gray-100">Catalogue des livres</h1>
+                        <p className="text-lg text-gray-300">
                             <span className="font-semibold">{books.length} titres au catalogue!</span>
                             <br />
                             Consultez-nous si vous avez une recherche particulière,
                             et commandez au <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
                             <br />
                             ou par courriel à{' '}
-                            <a href="mailto:ass.eca@wanadoo.fr" className="text-blue-600 hover:text-blue-800">
+                            <a href="mailto:ass.eca@wanadoo.fr" className="text-blue-400 hover:text-blue-300">
                                 ass.eca@wanadoo.fr
                             </a>{' '}
                             ou{' '}
-                            <a href="mailto:lecteurs.eca@orange.fr" className="text-blue-600 hover:text-blue-800">
+                            <a href="mailto:lecteurs.eca@orange.fr" className="text-blue-400 hover:text-blue-300">
                                 lecteurs.eca@orange.fr
                             </a>
                         </p>

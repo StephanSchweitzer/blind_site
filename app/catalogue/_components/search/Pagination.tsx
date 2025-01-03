@@ -1,4 +1,3 @@
-// components/search/Pagination.tsx
 import React from 'react';
 
 interface PaginationProps {
@@ -17,7 +16,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             <button
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-4 py-2 border rounded-lg disabled:opacity-50"
+                className="px-4 py-2 border rounded-lg bg-white text-gray-800 hover:bg-gray-100 disabled:opacity-70 disabled:bg-gray-200"
             >
                 Previous
             </button>
@@ -28,8 +27,8 @@ export const Pagination: React.FC<PaginationProps> = ({
                         onClick={() => onPageChange(page)}
                         className={`px-4 py-2 border rounded-lg ${
                             currentPage === page
-                                ? 'bg-blue-500 text-white'
-                                : 'hover:bg-gray-100'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-white text-gray-800 hover:bg-gray-100'
                         }`}
                     >
                         {page}
@@ -39,7 +38,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             <button
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 border rounded-lg disabled:opacity-50"
+                className="px-4 py-2 border rounded-lg bg-white text-gray-800 hover:bg-gray-100 disabled:opacity-70 disabled:bg-gray-200"
             >
                 Next
             </button>

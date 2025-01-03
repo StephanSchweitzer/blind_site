@@ -8,7 +8,7 @@ interface AudioPlayerProps {
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title }) => {
     return (
         <div className="my-4">
-            <div className="mb-2 text-sm text-gray-600">Audio: {title}</div>
+            <div className="mb-2 text-sm text-gray-300">Audio: {title}</div>
             <audio
                 controls
                 className="w-full"

@@ -70,13 +70,13 @@ export default function CoupsDeCoeurPage() {
     };
 
     return (
-        <main className="min-h-screen relative">
+        <main className="min-h-screen relative bg-gray-900">
             <div className="hidden lg:block fixed inset-y-0 w-full">
                 <div className="h-full max-w-6xl mx-auto">
                     <div className="h-full flex">
-                        <div className="w-16 h-full bg-gradient-to-r from-transparent to-gray-100"></div>
+                        <div className="w-16 h-full bg-gradient-to-r from-transparent to-gray-800"></div>
                         <div className="flex-1"></div>
-                        <div className="w-16 h-full bg-gradient-to-l from-transparent to-gray-100"></div>
+                        <div className="w-16 h-full bg-gradient-to-l from-transparent to-gray-800"></div>
                     </div>
                 </div>
             </div>
@@ -84,15 +84,15 @@ export default function CoupsDeCoeurPage() {
             <div className="relative">
                 <FrontendNavbar />
 
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-white">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-gray-800">
                     <section className="text-center space-y-4">
-                        <h1 className="text-3xl font-bold">Coups de coeur</h1>
-                        <p className="text-lg text-gray-700">
+                        <h1 className="text-3xl font-bold text-gray-100">Coups de coeur</h1>
+                        <p className="text-lg text-gray-300">
                             A commander au{' '}
                             <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
                             <br />
                             ou par courriel à{' '}
-                            <a href="mailto:lecteurs.eca@gmail.com" className="text-blue-600 hover:text-blue-800">
+                            <a href="mailto:lecteurs.eca@gmail.com" className="text-blue-400 hover:text-blue-300">
                                 lecteurs.eca@gmail.com
                             </a>
                         </p>
@@ -109,18 +109,18 @@ export default function CoupsDeCoeurPage() {
 
                         {isLoading ? (
                             <div className="text-center py-8">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Chargement...</p>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
+                                <p className="mt-4 text-gray-300">Chargement...</p>
                             </div>
                         ) : coupsDeCoeur.length === 0 ? (
-                            <div className="text-center py-8 bg-gray-50 rounded-lg">
-                                <p className="text-gray-600">Aucun résultat trouvé</p>
+                            <div className="text-center py-8 bg-gray-700 rounded-lg">
+                                <p className="text-gray-300">Aucun résultat trouvé</p>
                             </div>
                         ) : (
                             <>
-                                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                                <div className="bg-gray-700 rounded-lg shadow-lg overflow-hidden">
                                     <div className="p-6">
-                                        <h2 className="text-2xl font-bold mb-4 text-gray-800">
+                                        <h2 className="text-2xl font-bold mb-4 text-gray-100">
                                             {coupsDeCoeur[0].title}
                                         </h2>
 
@@ -131,7 +131,7 @@ export default function CoupsDeCoeurPage() {
                                             />
                                         </div>
 
-                                        <p className="mb-6 text-gray-700 leading-relaxed">
+                                        <p className="mb-6 text-gray-300 leading-relaxed">
                                             {coupsDeCoeur[0].description}
                                         </p>
 

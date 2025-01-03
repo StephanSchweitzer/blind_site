@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@ark-ui/react": "^4.4.3",
+    "@aws-sdk/client-polly": "^3.721.0",
+    "@aws-sdk/client-s3": "^3.721.0",
     "@chakra-ui/icons": "^2.2.4",
     "@chakra-ui/react": "^3.1.1",
     "@chakra-ui/theme-tools": "^2.2.6",

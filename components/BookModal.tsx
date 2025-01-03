@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Book as BookType } from '@prisma/client';
+import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import {
     Dialog,
     DialogContent,
@@ -7,6 +8,15 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Volume2 } from 'lucide-react';
+
+// Initialize AWS Polly
+const pollyClient = new PollyClient({
+    region: 'us-east-1',
+    credentials: {
+        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!
+    }
+});
 
 interface BookWithGenres extends BookType {
     genres: {
@@ -25,9 +35,10 @@ interface BookModalProps {
 
 export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
-    if (!book) return null;
-
+    // Rest of the utility functions remain the same
     const formatMinutes = (minutes: number): string => {
         if (!minutes) return '';
         const hours = Math.floor(minutes / 60);
@@ -38,51 +49,119 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
         return `${hours} heure${hours > 1 ? 's' : ''} et ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`;
     };
 
-    const generateFrenchText = () => {
-        console.log(book)
+    const generateFrenchText = useCallback(() => {
+        if (!book) return '';
         const genres = book.genres.map(g => g.genre.name).join(' et ');
         const description = book.description;
         const duration = book.readingDurationMinutes
             ? `Durée de l'enregistrement: ${formatMinutes(book.readingDurationMinutes)}. `
             : '';
-        return `${book.title}, écrit par ${book.author}. Ce livre appartient aux genres suivants: ${genres}. ${duration}${description ? `Description: ${description}` : 'Aucune description disponible.'}`;
-    };
+        return `${book.title}. écrit par ${book.author}. Ce livre appartient aux genres suivants: ${genres}. ${duration}${description ? `Description: ${description}` : 'Aucune description disponible.'}`;
+    }, [book]);
 
-    const speak = (text: string, lang = 'fr-FR') => {
-        if (!('speechSynthesis' in window)) return;
+    useEffect(() => {
+        return () => {
+            if (audioElement) {
+                audioElement.pause();
+                audioElement.remove();
+            }
+        };
+    }, [audioElement]);
 
+    const speak = useCallback(async (text: string) => {
         try {
-            window.speechSynthesis.cancel();
+            setIsLoading(true);
+            setIsSpeaking(true);
+            // Split by sentences to create more natural chunks
+            const sentences = text.split(/[.!?]+/);
+            let currentChunk = '';
+            const chunks = [];
 
-            let sentences: string[] = text.match(/[^.!?]+[.!?]+/g) || [];
+            for (const sentence of sentences) {
+                if ((currentChunk + sentence).length < 2800) {
+                    currentChunk += sentence + '. ';
+                } else {
+                    chunks.push(currentChunk);
+                    currentChunk = sentence + '. ';
+                }
+            }
+            if (currentChunk) chunks.push(currentChunk);
+            const audioUrls: string[] = [];
 
-            if (sentences.join('').length < text.length) {
-                const remainingText = text.replace(sentences.join(''), '').trim();
-                if (remainingText) {
-                    sentences.push(remainingText);
+            for (const chunk of chunks) {
+                const command = new SynthesizeSpeechCommand({
+                    Engine: 'neural',
+                    LanguageCode: 'fr-FR',
+                    Text: chunk,
+                    OutputFormat: 'mp3',
+                    VoiceId: 'Lea'
+                });
+
+                const response = await pollyClient.send(command);
+                const audioData = await response.AudioStream?.transformToByteArray();
+
+                if (audioData) {
+                    const blob = new Blob([audioData], { type: 'audio/mpeg' });
+                    const url = URL.createObjectURL(blob);
+                    audioUrls.push(url);
                 }
             }
 
-            if (sentences.length === 0) {
-                sentences = [text];
-            }
+            let currentIndex = 0;
+            const playNext = async () => {
+                if (currentIndex < audioUrls.length) {
+                    const audio = new Audio(audioUrls[currentIndex]);
+                    setAudioElement(audio);
+                    setIsLoading(false);  // Stop loading when first audio starts
 
-            sentences.forEach((sentence, index) => {
-                const utterance = new SpeechSynthesisUtterance(sentence.trim());
-                utterance.lang = lang;
+                    audio.onended = () => {
+                        URL.revokeObjectURL(audioUrls[currentIndex]);
+                        currentIndex++;
+                        playNext();
+                        setIsLoading(false);
+                    };
 
-                utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
-                    if (event.error !== 'interrupted') {
-                        console.error(`Speech error: ${event.error}`);
+                    audio.onerror = (error) => {
+                        console.error('Audio playback error:', error);
+                        console.error('Audio error details:', error.currentTarget);
+                        setIsSpeaking(false);
+                    };
+
+                    try {
+                        await audio.play();
+                        console.log('Playback started for chunk:', currentIndex + 1);
+                    } catch (error) {
+                        console.error('Playback failed:', error);
+                        setIsSpeaking(false);
                     }
-                };
+                } else {
+                    console.log('All chunks completed');
+                    setIsSpeaking(false);
+                    setAudioElement(null);
+                }
+            };
 
-                window.speechSynthesis.speak(utterance);
-            });
+            playNext();
+            setIsLoading(false);
         } catch (error) {
             console.error('Speech synthesis error:', error);
+            setIsLoading(false);
+            setIsSpeaking(false);
         }
-    };
+    }, []);
+
+    const stopSpeaking = useCallback(() => {
+        if (audioElement) {
+            audioElement.pause();
+            audioElement.currentTime = 0;
+        }
+        setIsSpeaking(false);
+        setAudioElement(null);
+    }, [audioElement]);
+
+    const [isLoading, setIsLoading] = useState(false);
+
+    if (!book) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -92,7 +171,6 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                         {book.title}
                     </DialogTitle>
                 </DialogHeader>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                         <p className="text-gray-600" aria-label="Auteur">Auteur: {book.author}</p>
@@ -154,12 +232,21 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                                 </button>
                             ) : null}
                             <button
-                                onClick={() => speak(generateFrenchText())}
-                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                aria-label="Lire les informations en français"
+                                onClick={() => isSpeaking ? stopSpeaking() : speak(generateFrenchText())}
+                                className={`flex items-center justify-center px-4 py-2 ${
+                                    isSpeaking && !isLoading ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+                                } text-white rounded-lg relative w-48 h-10`}
+                                disabled={isLoading}
+                                aria-label={isSpeaking ? "Arrêter la lecture" : "Lire les informations en français"}
                             >
-                                <Volume2 className="w-4 h-4 mr-2" />
-                                Lire en français
+                                {isLoading ? (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white" />
+                                ) : (
+                                    <>
+                                        <Volume2 className="w-4 h-4 mr-2" />
+                                        {isSpeaking ? 'Arrêter la lecture' : 'Lire en français'}
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>

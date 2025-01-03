@@ -1,4 +1,3 @@
-// app/catalogue/_components/search/BookList.tsx
 import React from 'react';
 import { Book as BookType } from '@prisma/client';
 
@@ -23,9 +22,9 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                 <div
                     key={book.id}
                     onClick={() => onBookClick(book)}
-                    className="border rounded-lg p-4 cursor-pointer hover:shadow-lg transition-shadow"
+                    className="bg-white border rounded-lg p-4 cursor-pointer hover:shadow-lg transition-shadow"
                 >
-                    <h3 className="text-lg font-semibold">{book.title}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{book.title}</h3>
                     <p className="text-gray-600">{book.author}</p>
                     <div className="flex flex-wrap gap-1 mt-2">
                         {book.genres.map(({ genre }) => (
@@ -33,8 +32,8 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 key={genre.id}
                                 className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full"
                             >
-                {genre.name}
-              </span>
+                                {genre.name}
+                            </span>
                         ))}
                     </div>
                     <p className="text-sm text-gray-500 mt-2">
@@ -43,15 +42,14 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                             : 'Duration not specified'}
                     </p>
                     <div className="mt-2">
-            <span className={`px-2 py-1 rounded-full text-sm ${
-                book.available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-            }`}>
-              {book.available ? 'Available' : 'Unavailable'}
-            </span>
+                        <span className={`px-2 py-1 rounded-full text-sm ${
+                            book.available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                            {book.available ? 'Available' : 'Unavailable'}
+                        </span>
                     </div>
                 </div>
             ))}
         </div>
     );
 };
-
