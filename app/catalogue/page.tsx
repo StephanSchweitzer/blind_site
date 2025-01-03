@@ -24,6 +24,7 @@ export default function BooksPage() {
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [books, setBooks] = useState<BookWithGenres[]>([]);
+    const [totalBooks, setTotalBooks] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,6 +66,7 @@ export default function BooksPage() {
             const response = await fetch(`/api/books?${queryParams.toString()}`);
             const data = await response.json();
             setBooks(data.books);
+            setTotalBooks(data.total);
             setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
         } catch (error) {
             console.error('Error fetching books:', error);
@@ -114,7 +116,7 @@ export default function BooksPage() {
                     <section className="text-center space-y-4">
                         <h1 className="text-3xl font-bold text-gray-100">Catalogue des livres</h1>
                         <p className="text-lg text-gray-300">
-                            <span className="font-semibold">{books.length} titres au catalogue!</span>
+                            <span className="font-semibold">{totalBooks} titres au catalogue!</span>
                             <br />
                             Consultez-nous si vous avez une recherche particulière,
                             et commandez au <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48

@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import BookSelector from '../components/book-selector';
+import AudioRecorder from '@/components/AudioRecorder';
 
 interface BookWithDetails {
     coupsDeCoeurId: number;
@@ -47,6 +48,8 @@ export default function EditCoupDeCoeurPage() {
 
     const [formData, setFormData] = useState<CoupDeCoeur | null>(null);
     const [bookMap, setBookMap] = useState<Record<number, BookWithDetails['book']>>({});
+    const [tempAudioBlob, setTempAudioBlob] = useState<Blob | null>(null);
+    const [isRerecording, setIsRerecording] = useState(false);
 
     useEffect(() => {
         async function fetchCoupDeCoeur() {
@@ -55,7 +58,6 @@ export default function EditCoupDeCoeurPage() {
                 if (res.ok) {
                     const data = await res.json();
                     setFormData(data);
-                    // Create initial book map
                     const initialBookMap = data.books.reduce((acc: Record<number, BookWithDetails['book']>, curr: BookWithDetails) => {
                         acc[curr.book.id] = curr.book;
                         return acc;
@@ -76,10 +78,6 @@ export default function EditCoupDeCoeurPage() {
         }
     }, [id, router]);
 
-    if (!formData) {
-        return <div>Loading...</div>;
-    }
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prevData => ({
@@ -92,15 +90,33 @@ export default function EditCoupDeCoeurPage() {
         e.preventDefault();
 
         try {
+            let audioPath = formData!.audioPath;
+
+            if (tempAudioBlob) {
+                const timestamp = new Date().getTime();
+                const filename = `coup_description_${timestamp}.mp3`;
+                const audioFormData = new FormData();
+                audioFormData.append('audio', tempAudioBlob, filename);
+
+                const uploadRes = await fetch('/api/upload-audio', {
+                    method: 'POST',
+                    body: audioFormData,
+                });
+
+                if (!uploadRes.ok) throw new Error('Failed to upload audio');
+                const { filepath } = await uploadRes.json();
+                audioPath = filepath;
+            }
+
             const res = await fetch(`/api/coups-de-coeur/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title: formData.title,
-                    description: formData.description,
-                    audioPath: formData.audioPath,
-                    active: formData.active,
-                    bookIds: formData.books.map(book => book.book.id)
+                    title: formData!.title,
+                    description: formData!.description,
+                    audioPath,
+                    active: formData!.active,
+                    bookIds: formData!.books.map(book => book.book.id)
                 }),
             });
 
@@ -135,6 +151,10 @@ export default function EditCoupDeCoeurPage() {
             }
         }
     };
+
+    if (!formData) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div className="min-h-screen bg-background">
@@ -177,17 +197,29 @@ export default function EditCoupDeCoeurPage() {
                             </div>
 
                             <div>
-                                <label htmlFor="audioPath" className="block text-sm font-medium">
-                                    Audio Path *
+                                <label className="block text-sm font-medium">
+                                    Audio Recording *
                                 </label>
-                                <Input
-                                    type="text"
-                                    name="audioPath"
-                                    id="audioPath"
-                                    required
-                                    value={formData.audioPath}
-                                    onChange={handleChange}
-                                />
+                                {!isRerecording ? (
+                                    <div className="space-y-2">
+                                        <audio src={formData.audioPath} controls className="w-full" />
+                                        <Button
+                                            type="button"
+                                            onClick={() => setIsRerecording(true)}
+                                            variant="outline"
+                                        >
+                                            Record New Audio
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <AudioRecorder
+                                        onConfirm={setTempAudioBlob}
+                                        onClear={() => {
+                                            setTempAudioBlob(null);
+                                            setIsRerecording(false);
+                                        }}
+                                    />
+                                )}
                             </div>
 
                             <div className="flex items-center gap-2">
