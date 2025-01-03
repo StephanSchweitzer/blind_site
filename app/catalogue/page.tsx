@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from '@/catalogue/search/SearchBar';
 import { BookList } from '@/catalogue/search/BookList';
-import { Pagination } from '@/catalogue/search/Pagination';
+import { Pagination } from '@/components/ui/custom-pagination';
 import { BookModal } from '@/components/BookModal';
 import { Book } from '@prisma/client';
 import FrontendNavbar from "@/components/Frontend-Navbar";

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from '@/coups-de-coeur/SearchBar';
-import { Pagination } from '@/coups-de-coeur/Pagination';
+import { Pagination } from '@/components/ui/custom-pagination';
 import { AudioPlayer } from '@/coups-de-coeur/AudioPlayer';
 import { BookList } from '@/coups-de-coeur/BookList';
 import { BookModal } from '@/components/BookModal';
