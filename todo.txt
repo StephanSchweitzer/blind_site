@@ -1,7 +1,6 @@
 BACKEND:
 Add add users section
 Add profile section "qui suis je" (maybe, this is extra)
-to add a part where the team can record themselves and attach it to a coup de coeur
 éditeur / édition : Is this like the publisher?
 
 

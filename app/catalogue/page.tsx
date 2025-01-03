@@ -93,9 +93,23 @@ export default function BooksPage() {
                     setIsTransitioning(false);
                     setIsInitialLoading(false);
 
-                    // Smooth scroll after content has updated
+                    // Custom smooth scroll after content has updated
                     if (books.length > 0) {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        const scrollToTop = () => {
+                            const currentPosition = window.pageYOffset;
+                            if (currentPosition > 0) {
+                                window.requestAnimationFrame(() => {
+                                    // Slower, smoother scroll - move 15% of remaining distance per frame
+                                    window.scrollTo(0, currentPosition * 0.85);
+                                    if (currentPosition * 0.85 > 1) {
+                                        scrollToTop();
+                                    } else {
+                                        window.scrollTo(0, 0);
+                                    }
+                                });
+                            }
+                        };
+                        scrollToTop();
                     }
                 }, 150);
             }
