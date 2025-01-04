@@ -1,5 +1,6 @@
 import './globals.css'
 import { Providers } from './providers'
+import React from "react";
 
 export const metadata = {
     title: 'ECA Aveugles',
