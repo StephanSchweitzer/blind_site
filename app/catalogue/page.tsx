@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SearchBar } from '@/catalogue/search/SearchBar';
 import { BookList } from '@/catalogue/search/BookList';
-import { Pagination } from '@/components/ui/custom-pagination';
 import { BookModal } from '@/components/BookModal';
+import { CustomPagination } from "@/components/ui/custom-pagination";
 import { Book } from '@prisma/client';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 
@@ -133,12 +133,6 @@ export default function BooksPage() {
         setCurrentPage(1);
     };
 
-    const handlePageChange = (page: number) => {
-        if (page !== currentPage) {
-            setCurrentPage(page);
-        }
-    };
-
     const handleBookClick = (book: BookWithGenres) => {
         setSelectedBook(book);
         setIsModalOpen(true);
@@ -204,6 +198,10 @@ export default function BooksPage() {
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
                                     <p className="mt-4 text-gray-300">Chargement des livres...</p>
                                 </div>
+                            ) : books.length === 0 ? (
+                                <div className="text-center py-8 bg-gray-700 rounded-lg">
+                                    <p className="text-gray-300">Aucun résultat trouvé</p>
+                                </div>
                             ) : (
                                 <>
                                     {/* Previous content with fade-out effect */}
@@ -221,18 +219,20 @@ export default function BooksPage() {
                             )}
                         </div>
 
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={handlePageChange}
+                        {totalPages > 1 && (
+                            <CustomPagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                            />
+                        )}
+
+                        <BookModal
+                            book={selectedBook}
+                            isOpen={isModalOpen}
+                            onClose={() => setIsModalOpen(false)}
                         />
                     </div>
-
-                    <BookModal
-                        book={selectedBook}
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                    />
                 </div>
             </div>
         </main>

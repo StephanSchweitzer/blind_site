@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SearchBar } from '@/coups-de-coeur/SearchBar';
-import { Pagination } from '@/components/ui/custom-pagination';
 import { AudioPlayer } from '@/coups-de-coeur/AudioPlayer';
 import { BookList } from '@/coups-de-coeur/BookList';
 import { BookModal } from '@/components/BookModal';
 import FrontendNavbar from "@/components/Frontend-Navbar";
+import { CustomPagination } from "@/components/ui/custom-pagination";
 import type { Book, CoupDeCoeur, CoupsDeCoeurResponse } from '@/types/coups-de-coeur';
 
 export default function CoupsDeCoeurPage() {
@@ -90,12 +90,6 @@ export default function CoupsDeCoeurPage() {
     const handleBookClick = (book: Book) => {
         setSelectedBook(book);
         setIsModalOpen(true);
-    };
-
-    const handlePageChange = (page: number) => {
-        if (page !== currentPage) {
-            setCurrentPage(page);
-        }
     };
 
     const renderContent = (content: CoupDeCoeur[]) => {
@@ -190,11 +184,13 @@ export default function CoupsDeCoeurPage() {
                             </div>
                         )}
 
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={handlePageChange}
-                        />
+                        {totalPages > 1 && (
+                            <CustomPagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                            />
+                        )}
 
                         <BookModal
                             book={selectedBook}

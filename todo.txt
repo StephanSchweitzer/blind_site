@@ -8,3 +8,4 @@ Add profile section "qui suis je" (maybe, this is extra)
 FRONTEND:
 Contact section
 Make the add books to coup de coeur switches not custom switches and the shadcn switches
+Fix pagination

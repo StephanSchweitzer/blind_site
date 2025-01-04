@@ -1,56 +1,67 @@
-import React from 'react';
+'use client';
 
-interface PaginationProps {
+import React, { useEffect, useState } from 'react';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination"
+
+interface CustomPaginationProps {
     currentPage: number;
     totalPages: number;
     onPageChange: (page: number) => void;
 }
 
-export const Pagination: React.FC<PaginationProps> = ({
-                                                          currentPage,
-                                                          totalPages,
-                                                          onPageChange,
-                                                      }) => {
+export const CustomPagination: React.FC<CustomPaginationProps> = ({
+                                                                      currentPage,
+                                                                      totalPages,
+                                                                      onPageChange,
+                                                                  }) => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 640);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     const getPageNumbers = () => {
         const pageNumbers = [];
-        const showPages = 5; // Total number of page buttons to show (including ellipsis)
 
-        if (totalPages <= showPages) {
-            // If total pages is less than or equal to showPages, show all pages
-            return Array.from({ length: totalPages }, (_, i) => i + 1);
+        if (isMobile) {
+            // Mobile: Only show current page
+            return [currentPage];
         }
 
-        // Always add first page
+        // Desktop layout
         pageNumbers.push(1);
-
-        // Calculate start and end of page numbers around current page
         let start = Math.max(2, currentPage - 1);
         let end = Math.min(totalPages - 1, currentPage + 1);
 
-        // Adjust start and end to show more numbers if we're at the beginning or end
         if (currentPage <= 3) {
-            end = 4;
+            end = Math.min(4, totalPages - 1);
         }
         if (currentPage >= totalPages - 2) {
-            start = totalPages - 3;
+            start = Math.max(totalPages - 3, 2);
         }
 
-        // Add ellipsis before middle numbers if needed
         if (start > 2) {
             pageNumbers.push('...');
         }
 
-        // Add middle numbers
         for (let i = start; i <= end; i++) {
             pageNumbers.push(i);
         }
 
-        // Add ellipsis after middle numbers if needed
         if (end < totalPages - 1) {
             pageNumbers.push('...');
         }
 
-        // Always add last page
         if (totalPages > 1) {
             pageNumbers.push(totalPages);
         }
@@ -59,61 +70,99 @@ export const Pagination: React.FC<PaginationProps> = ({
     };
 
     return (
-        <div className="flex justify-center items-center gap-2 mt-8">
-            <button
-                onClick={() => onPageChange(1)}
-                disabled={currentPage === 1}
-                className="px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50 disabled:bg-gray-800"
-            >
-                ⟪
-            </button>
-            <button
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50 disabled:bg-gray-800"
-            >
-                ←
-            </button>
-            <div className="flex gap-2">
+        <Pagination className="mt-4 sm:mt-8">
+            <PaginationContent className="gap-1 sm:gap-2">
+                {/* First page button - desktop only */}
+                {!isMobile && (
+                    <PaginationItem className="hidden sm:block">
+                        <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                onPageChange(1);
+                            }}
+                            className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 text-sm sm:text-base"
+                        >
+                            ⟪
+                        </PaginationLink>
+                    </PaginationItem>
+                )}
+
+                {/* Previous button */}
+                <PaginationItem>
+                    <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage > 1) onPageChange(currentPage - 1);
+                        }}
+                        className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 text-sm sm:text-base"
+                    >
+                        ←
+                    </PaginationPrevious>
+                </PaginationItem>
+
+                {/* Page numbers */}
                 {getPageNumbers().map((page, index) => (
                     typeof page === 'number' ? (
-                        <button
-                            key={index}
-                            onClick={() => onPageChange(page)}
-                            className={`px-4 py-2 border border-gray-600 rounded-lg ${
-                                currentPage === page
-                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                    : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                            }`}
-                        >
-                            {page}
-                        </button>
+                        <PaginationItem key={index}>
+                            <PaginationLink
+                                href="#"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    onPageChange(page);
+                                }}
+                                className={`px-2 sm:px-4 py-1 sm:py-2 border border-gray-600 rounded-lg text-sm sm:text-base ${
+                                    currentPage === page
+                                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                                }`}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
                     ) : (
                         <span
                             key={index}
-                            className="px-4 py-2 text-gray-400"
+                            className="px-1 sm:px-2 py-1 sm:py-2 text-gray-400 text-sm sm:text-base hidden sm:inline"
                         >
                             {page}
                         </span>
                     )
                 ))}
-            </div>
-            <button
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50 disabled:bg-gray-800"
-            >
-                →
-            </button>
-            <button
-                onClick={() => onPageChange(totalPages)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50 disabled:bg-gray-800"
-            >
-                ⟫
-            </button>
-        </div>
+
+                {/* Next button */}
+                <PaginationItem>
+                    <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < totalPages) onPageChange(currentPage + 1);
+                        }}
+                        className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 text-sm sm:text-base"
+                    >
+                        →
+                    </PaginationNext>
+                </PaginationItem>
+
+                {/* Last page button - desktop only */}
+                {!isMobile && (
+                    <PaginationItem className="hidden sm:block">
+                        <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                onPageChange(totalPages);
+                            }}
+                            className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 text-sm sm:text-base"
+                        >
+                            ⟫
+                        </PaginationLink>
+                    </PaginationItem>
+                )}
+            </PaginationContent>
+        </Pagination>
     );
 };
 
-export default Pagination;
+export default CustomPagination;
