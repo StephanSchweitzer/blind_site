@@ -17,13 +17,9 @@ export default function CoupsDeCoeurPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedBook, setSelectedBook] = useState<Book | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
-    // Keep track of previous content
-    const [previousContent, setPreviousContent] = useState<CoupDeCoeur[]>([]);
     const [isTransitioning, setIsTransitioning] = useState(false);
-
-    // Ref for the content container
     const contentRef = useRef<HTMLDivElement>(null);
+    const audioRef = useRef<HTMLAudioElement>(null);
 
     const fetchCoupsDeCoeur = useCallback(async (page: number) => {
         try {
@@ -34,7 +30,6 @@ export default function CoupsDeCoeurPage() {
 
             const response = await fetch(`/api/coups-de-coeur?${queryParams.toString()}`);
             const data: CoupsDeCoeurResponse = await response.json();
-
             return data;
         } catch (error) {
             console.error('Error fetching coups de coeur:', error);
@@ -43,33 +38,40 @@ export default function CoupsDeCoeurPage() {
     }, []);
 
     useEffect(() => {
-        const loadPage = async () => {
-            // Don't show loading state on subsequent page loads
-            if (!isLoading) {
-                setIsTransitioning(true);
-                setPreviousContent(coupsDeCoeur);
-            }
+        let isMounted = true;
 
+        const loadPage = async () => {
+            setIsTransitioning(true);
+
+            // Fetch new data
             const data = await fetchCoupsDeCoeur(currentPage);
 
-            if (data) {
-                // Slight delay to allow for fade transition
-                setTimeout(() => {
-                    setCoupsDeCoeur(data.items);
-                    setTotalPages(data.totalPages);
-                    setIsLoading(false);
-                    setIsTransitioning(false);
+            if (data && isMounted) {
+                // Update content immediately but keep transition state
+                setCoupsDeCoeur(data.items);
+                setTotalPages(data.totalPages);
+                setIsLoading(false);
 
-                    // Smooth scroll after content has updated
-                    if (!isLoading) {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                // Allow a brief moment for the audio to load
+                setTimeout(() => {
+                    if (isMounted) {
+                        setIsTransitioning(false);
+
+                        // Smooth scroll after content has updated
+                        if (!isLoading) {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
                     }
-                }, 150);
+                }, 300); // Increased delay to ensure audio loads
             }
         };
 
         loadPage();
-    }, [currentPage, fetchCoupsDeCoeur]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [currentPage, fetchCoupsDeCoeur, isLoading]);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
@@ -94,6 +96,7 @@ export default function CoupsDeCoeurPage() {
 
     const renderContent = (content: CoupDeCoeur[]) => {
         if (!content.length) return null;
+
         return (
             <div className="bg-gray-700 rounded-lg shadow-lg overflow-hidden">
                 <div className="p-6">
@@ -103,6 +106,7 @@ export default function CoupsDeCoeurPage() {
 
                     <div className="mb-6">
                         <AudioPlayer
+                            key={`audio-${currentPage}-${content[0].audioPath}`}
                             src={content[0].audioPath}
                             title={content[0].title}
                         />
@@ -169,18 +173,11 @@ export default function CoupsDeCoeurPage() {
                                 <p className="text-gray-300">Aucun résultat trouvé</p>
                             </div>
                         ) : (
-                            <div ref={contentRef} className="relative">
-                                {/* Previous content with fade-out effect */}
-                                {isTransitioning && previousContent.length > 0 && (
-                                    <div className="absolute inset-0 transition-opacity duration-150 ease-out opacity-0">
-                                        {renderContent(previousContent)}
-                                    </div>
-                                )}
-
-                                {/* Current content with fade-in effect */}
-                                <div className={`transition-opacity duration-150 ease-in ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                                    {renderContent(coupsDeCoeur)}
-                                </div>
+                            <div
+                                ref={contentRef}
+                                className={`transition-opacity duration-300 ease-in-out ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
+                            >
+                                {renderContent(coupsDeCoeur)}
                             </div>
                         )}
 
