@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
@@ -23,13 +25,16 @@ const FrontendNavbar = () => {
             <div className="relative w-full bg-black">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6">
                     <div className="relative">
-                        <a href="/">
-                            <img
+                        <Link href="/">
+                            <Image
                                 src="/eca_logo.png"
                                 alt="Banner"
                                 className="w-full h-auto"
+                                width={1024}
+                                height={200}
+                                priority
                             />
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -41,13 +46,13 @@ const FrontendNavbar = () => {
                         {/* Desktop menu */}
                         <div className="hidden md:flex space-x-6">
                             {navLinks.map((link) => (
-                                <a
+                                <Link
                                     key={link.href}
                                     href={link.href}
                                     className="hover:text-gray-200"
                                 >
                                     {link.label}
-                                </a>
+                                </Link>
                             ))}
                         </div>
 
@@ -64,13 +69,13 @@ const FrontendNavbar = () => {
                     {isMenuOpen && (
                         <div className="md:hidden mt-4 space-y-4">
                             {navLinks.map((link) => (
-                                <a
+                                <Link
                                     key={link.href}
                                     href={link.href}
                                     className="block hover:text-gray-200"
                                 >
                                     {link.label}
-                                </a>
+                                </Link>
                             ))}
                         </div>
                     )}

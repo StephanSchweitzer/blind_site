@@ -1,5 +1,6 @@
+// app/admin/news/articles-table.tsx
 'use client';
-// app/admin/books/books-table.tsx
+
 import { useCallback, useState, useTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -16,38 +17,26 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from 'use-debounce';
 
-type Book = {
+type Article = {
     id: number;
     title: string;
-    author: string;
-    isbn?: string | null;
-    readingDurationMinutes?: number | null;
-    available: boolean;
-    genres: {
-        genre: {
-            name: string;
-        };
-    }[];
-    addedBy: {
+    publishedAt: Date;
+    author: {
         name: string | null;
-        email: string;
-    };
-    publishedDate: Date | null;
-    description: string | null;
-    addedById: number;
+    } | null;
 };
 
-interface BooksTableProps {
-    initialBooks: Book[];
+interface ArticlesTableProps {
+    initialArticles: Article[];
     initialPage: number;
     initialSearch: string;
     totalPages: number;
 }
 
-export function BooksTable({ initialBooks, initialPage, initialSearch, totalPages }: BooksTableProps) {
+export function ArticlesTable({ initialArticles, initialPage, initialSearch, totalPages }: ArticlesTableProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const [books, setBooks] = useState(initialBooks);
+    const [articles, setArticles] = useState(initialArticles);
     const [page, setPage] = useState(initialPage);
     const [search, setSearch] = useState(initialSearch);
     const [isPending, startTransition] = useTransition();
@@ -78,15 +67,15 @@ export function BooksTable({ initialBooks, initialPage, initialSearch, totalPage
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle>Manage Books</CardTitle>
-                <Link href="/admin/books/new">
-                    <Button>Add New Book</Button>
+                <CardTitle>Manage Articles</CardTitle>
+                <Link href="/admin/news/new">
+                    <Button>Add New Article</Button>
                 </Link>
             </CardHeader>
             <CardContent>
                 <div className="flex items-center space-x-2 mb-4">
                     <Input
-                        placeholder="Search books..."
+                        placeholder="Search articles..."
                         value={search}
                         onChange={(e) => handleSearch(e.target.value)}
                         className="max-w-sm"
@@ -100,38 +89,18 @@ export function BooksTable({ initialBooks, initialPage, initialSearch, totalPage
                             <TableRow>
                                 <TableHead>Title</TableHead>
                                 <TableHead>Author</TableHead>
-                                <TableHead>Genres</TableHead>
-                                <TableHead>Reading Time</TableHead>
-                                <TableHead>Available</TableHead>
+                                <TableHead>Published At</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {books.map((book) => (
-                                <TableRow key={book.id}>
+                            {articles.map((article) => (
+                                <TableRow key={article.id}>
+                                    <TableCell>{article.title}</TableCell>
+                                    <TableCell>{article.author?.name || 'Unknown'}</TableCell>
+                                    <TableCell>{new Date(article.publishedAt).toLocaleDateString()}</TableCell>
                                     <TableCell>
-                                        <div>
-                                            <div>{book.title}</div>
-                                            {book.isbn && (
-                                                <div className="text-sm text-muted-foreground">
-                                                    ISBN: {book.isbn}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{book.author}</TableCell>
-                                    <TableCell>
-                                        {book.genres.map(g => g.genre.name).join(', ') || 'N/A'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {book.readingDurationMinutes
-                                            ? `${book.readingDurationMinutes} mins`
-                                            : 'N/A'
-                                        }
-                                    </TableCell>
-                                    <TableCell>{book.available ? 'Yes' : 'No'}</TableCell>
-                                    <TableCell>
-                                        <Link href={`/admin/books/${book.id}`}>
+                                        <Link href={`/admin/news/${article.id}`}>
                                             <Button variant="outline" size="sm">
                                                 Edit
                                             </Button>

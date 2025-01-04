@@ -1,5 +1,6 @@
+// app/admin/manage_coups_de_coeur/coups-table.tsx
 'use client';
-// app/admin/books/books-table.tsx
+
 import { useCallback, useState, useTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -16,38 +17,46 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from 'use-debounce';
 
-type Book = {
+interface Book {
     id: number;
     title: string;
-    author: string;
-    isbn?: string | null;
-    readingDurationMinutes?: number | null;
-    available: boolean;
-    genres: {
-        genre: {
-            name: string;
-        };
-    }[];
-    addedBy: {
-        name: string | null;
-        email: string;
-    };
-    publishedDate: Date | null;
     description: string | null;
     addedById: number;
+    createdAt: Date;
+    updatedAt: Date;
+    author: string;
+    publishedDate: Date | null;
+    isbn: string | null;
+    readingDurationMinutes: number | null;
+    available: boolean;
+}
+
+interface CoupDeCoeurBook {
+    book: Book;
+}
+
+type CoupDeCoeur = {
+    id: number;
+    title: string;
+    active: boolean;
+    createdAt: Date;
+    addedBy: {
+        name: string | null;
+    } | null;
+    books: CoupDeCoeurBook[];
 };
 
-interface BooksTableProps {
-    initialBooks: Book[];
+interface CoupsTableProps {
+    initialItems: CoupDeCoeur[];
     initialPage: number;
     initialSearch: string;
     totalPages: number;
 }
 
-export function BooksTable({ initialBooks, initialPage, initialSearch, totalPages }: BooksTableProps) {
+export function CoupsTable({ initialItems, initialPage, initialSearch, totalPages }: CoupsTableProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const [books, setBooks] = useState(initialBooks);
+    const [items, setItems] = useState(initialItems);
     const [page, setPage] = useState(initialPage);
     const [search, setSearch] = useState(initialSearch);
     const [isPending, startTransition] = useTransition();
@@ -78,15 +87,15 @@ export function BooksTable({ initialBooks, initialPage, initialSearch, totalPage
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle>Manage Books</CardTitle>
-                <Link href="/admin/books/new">
-                    <Button>Add New Book</Button>
+                <CardTitle>Manage Coups de Coeur</CardTitle>
+                <Link href="/admin/manage_coups_de_coeur/new">
+                    <Button>Add New Coup de Coeur</Button>
                 </Link>
             </CardHeader>
             <CardContent>
                 <div className="flex items-center space-x-2 mb-4">
                     <Input
-                        placeholder="Search books..."
+                        placeholder="Search coups de coeur..."
                         value={search}
                         onChange={(e) => handleSearch(e.target.value)}
                         className="max-w-sm"
@@ -99,39 +108,23 @@ export function BooksTable({ initialBooks, initialPage, initialSearch, totalPage
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Title</TableHead>
-                                <TableHead>Author</TableHead>
-                                <TableHead>Genres</TableHead>
-                                <TableHead>Reading Time</TableHead>
-                                <TableHead>Available</TableHead>
+                                <TableHead>Added By</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Books</TableHead>
+                                <TableHead>Created At</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {books.map((book) => (
-                                <TableRow key={book.id}>
+                            {items.map((item) => (
+                                <TableRow key={item.id}>
+                                    <TableCell>{item.title}</TableCell>
+                                    <TableCell>{item.addedBy?.name || 'Unknown'}</TableCell>
+                                    <TableCell>{item.active ? 'Active' : 'Inactive'}</TableCell>
+                                    <TableCell>{item.books.length} books</TableCell>
+                                    <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
                                     <TableCell>
-                                        <div>
-                                            <div>{book.title}</div>
-                                            {book.isbn && (
-                                                <div className="text-sm text-muted-foreground">
-                                                    ISBN: {book.isbn}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{book.author}</TableCell>
-                                    <TableCell>
-                                        {book.genres.map(g => g.genre.name).join(', ') || 'N/A'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {book.readingDurationMinutes
-                                            ? `${book.readingDurationMinutes} mins`
-                                            : 'N/A'
-                                        }
-                                    </TableCell>
-                                    <TableCell>{book.available ? 'Yes' : 'No'}</TableCell>
-                                    <TableCell>
-                                        <Link href={`/admin/books/${book.id}`}>
+                                        <Link href={`/admin/manage_coups_de_coeur/${item.id}`}>
                                             <Button variant="outline" size="sm">
                                                 Edit
                                             </Button>
