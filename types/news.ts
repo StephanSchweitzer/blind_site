@@ -16,7 +16,6 @@ export interface NewsResponse {
     totalItems: number;
 }
 
-// Helper for displaying French labels
 export const newsTypeLabels: Record<NewsType, string> = {
     GENERAL: 'Informations générales',
     EVENEMENT: 'Événement',
@@ -25,10 +24,9 @@ export const newsTypeLabels: Record<NewsType, string> = {
     PROGRAMMATION: 'Programmation'
 } as const;
 
-// Helper for colors
 export const newsTypeColors: Record<NewsType, string> = {
-    GENERAL: 'bg-gray-500',
-    EVENEMENT: 'bg-blue-500',
+    GENERAL: 'bg-blue-500',  // or whatever colors you want
+    EVENEMENT: 'bg-indigo-500',
     ANNONCE: 'bg-yellow-500',
     ACTUALITE: 'bg-green-500',
     PROGRAMMATION: 'bg-purple-500'

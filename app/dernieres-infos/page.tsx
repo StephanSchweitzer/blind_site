@@ -24,6 +24,9 @@ export default function DernieresInfoPage() {
         setIsLoading(true);
         setError(null);
 
+        console.log('Color for EVENEMENT:', newsTypeColors['EVENEMENT']);
+        console.log('Available colors:', newsTypeColors);
+
         try {
             const queryParams = new URLSearchParams({
                 page: page.toString(),
@@ -103,6 +106,7 @@ export default function DernieresInfoPage() {
 
     return (
         <main className="min-h-screen relative bg-gray-900">
+            {/* Background gradients and navbar stay the same */}
             <div className="hidden lg:block fixed inset-y-0 w-full">
                 <div className="h-full max-w-6xl mx-auto">
                     <div className="h-full flex">
@@ -117,6 +121,7 @@ export default function DernieresInfoPage() {
                 <FrontendNavbar />
 
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8">
+                    {/* Header section stays the same */}
                     <section className="text-center space-y-4">
                         <h1 className="text-3xl font-bold text-gray-100">
                             Dernières Informations
@@ -127,6 +132,7 @@ export default function DernieresInfoPage() {
                     </section>
 
                     <div className="space-y-8">
+                        {/* Search and filter buttons stay the same */}
                         <div className="flex flex-col sm:flex-row gap-4 items-center">
                             <div className="flex-1 w-full">
                                 <SearchBar
@@ -144,6 +150,7 @@ export default function DernieresInfoPage() {
                             </button>
                         </div>
 
+                        {/* Filter buttons */}
                         {showFilters && (
                             <div className="bg-gray-800 rounded-lg p-4 flex flex-wrap gap-4">
                                 <button
@@ -162,7 +169,7 @@ export default function DernieresInfoPage() {
                                         onClick={() => handleTypeChange(type)}
                                         className={`px-4 py-2 rounded-full transition-colors duration-300 ${
                                             selectedType === type
-                                                ? 'bg-blue-500 text-white'
+                                                ? newsTypeColors[type] + ' text-white'
                                                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                         }`}
                                     >
@@ -173,6 +180,7 @@ export default function DernieresInfoPage() {
                             </div>
                         )}
 
+                        {/* Loading, error, and empty states stay the same */}
                         {isLoading && !initialLoadComplete ? (
                             <div className="text-center py-8">
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
@@ -187,12 +195,13 @@ export default function DernieresInfoPage() {
                                 <p className="text-gray-300">Aucune actualité trouvée</p>
                             </div>
                         ) : (
+                            // News posts list
                             <div className="space-y-6">
                                 {newsPosts.map((post) => (
                                     <article key={post.id} className="bg-gray-800 rounded-lg p-6 shadow-lg">
                                         <div className="flex items-center gap-4 mb-4">
                                             <h2 className="text-xl font-bold text-gray-100">{post.title}</h2>
-                                            <span className={`px-3 py-1 rounded-full text-sm ${newsTypeColors[post.type]} text-white`}>
+                                            <span className={`px-3 py-1 rounded-full text-sm ${newsTypeColors[post.type]} ${post.type === 'ANNONCE' ? 'text-gray-900' : 'text-white'}`}>
                                                 {newsTypeLabels[post.type]}
                                             </span>
                                         </div>
@@ -205,6 +214,7 @@ export default function DernieresInfoPage() {
                             </div>
                         )}
 
+                        {/* Pagination */}
                         {totalPages > 1 && (
                             <CustomPagination
                                 currentPage={currentPage}

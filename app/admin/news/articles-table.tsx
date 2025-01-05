@@ -1,3 +1,4 @@
+// components/ArticlesTable.tsx
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,12 +16,13 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { useDebounce } from 'use-debounce';
 import { useEffect, useState } from 'react';
+import { NewsType, newsTypeLabels, newsTypeColors } from '@/types/news';  // Update this import
 
 type Article = {
     id: number;
     title: string;
     publishedAt: Date;
-    type: string;
+    type: NewsType;
     author: {
         name: string | null;
     } | null;
@@ -124,8 +126,15 @@ export function ArticlesTable({
                                 initialArticles.map((article) => (
                                     <TableRow key={article.id} className="border-b border-gray-700 hover:bg-gray-750">
                                         <TableCell className="text-gray-200">{article.title}</TableCell>
-                                        <TableCell className="text-gray-200">{article.type}</TableCell>
-                                        <TableCell className="text-gray-200">{article.author?.name || 'Inconnu'}</TableCell>
+                                        <TableCell>
+                                            <span
+                                                className={`px-2 py-1 rounded-full text-sm font-medium  ${article.type === 'ANNONCE' ? 'text-gray-900' : 'text-white'}`}>
+                                                {newsTypeLabels[article.type]}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell
+                                            className="text-gray-200">{article.author?.name || 'Inconnu'}</TableCell>
+
                                         <TableCell className="text-gray-200">
                                             {new Date(article.publishedAt).toLocaleDateString('fr-FR')}
                                         </TableCell>
@@ -149,7 +158,7 @@ export function ArticlesTable({
 
                 {totalPages > 1 && (
                     <>
-                        <div className="flex justify-center items-center gap-2 mt-6">
+                    <div className="flex justify-center items-center gap-2 mt-6">
                             {Array.from({ length: totalPages }, (_, index) => (
                                 <Button
                                     key={index + 1}

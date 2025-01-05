@@ -63,7 +63,14 @@ module.exports = {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
-  			}
+  			},
+			newstype: {
+				gray: 'hsl(215, 20%, 65%)',
+				blue: 'hsl(210, 100%, 50%)',
+				yellow: 'hsl(45, 100%, 50%)',
+				green: 'hsl(142, 70%, 45%)',
+				purple: 'hsl(270, 60%, 60%)'
+			}
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
