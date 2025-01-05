@@ -14,7 +14,7 @@ const FrontendNavbar = () => {
     const navLinks = [
         { href: '/catalogue', label: 'Catalogue' },
         { href: '/coups-de-coeur', label: 'Coups de Cœur' },
-        { href: '/derniers_infos', label: 'Derniéres infos' },
+        { href: '/dernieres-infos', label: 'Derniéres infos' },
         { href: '/contact', label: 'Contact' },
         ...(isAuthenticated ? [{ href: '/admin', label: 'Administration' }] : [])
     ];

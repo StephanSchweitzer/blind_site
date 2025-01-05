@@ -22,6 +22,7 @@
       "@/*": ["./*"],
       "@/catalogue/*": ["./app/catalogue/_components/*"],
       "@/coups-de-coeur/*": ["./app/coups-de-coeur/components/*"],
+      "@/dernieres-infos/*": ["./app/dernieres-infos/components/*"],
       "@/admin/*": ["./components/ui/admin/*"]
     }
   },

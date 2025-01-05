@@ -7,10 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NewsType {
+  GENERAL // Informations générales
+  EVENEMENT // Événement
+  ANNONCE // Annonce
+  ACTUALITE // Actualité
+  PROGRAMMATION // Programmation
+}
+
 model News {
   id          Int      @id @default(autoincrement())
   title       String
   content     String
+  type        NewsType @default(GENERAL)
   publishedAt DateTime @default(now())
   authorId    Int
   author      User     @relation(fields: [authorId], references: [id], name: "UserNews")

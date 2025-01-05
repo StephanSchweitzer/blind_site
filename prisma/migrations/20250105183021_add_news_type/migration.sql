@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "NewsType" AS ENUM ('GENERAL', 'EVENEMENT', 'ANNONCE', 'ACTUALITE', 'PROGRAMMATION');
+
+-- AlterTable
+ALTER TABLE "News" ADD COLUMN     "type" "NewsType" NOT NULL DEFAULT 'GENERAL';
