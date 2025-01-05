@@ -7,24 +7,44 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {NewsType, newsTypeLabels} from '@/types/news';
+import type { NewsPost } from '@/types/news';
 
 export default function EditArticle() {
     const router = useRouter();
     const params = useParams();
     const { id } = params;
 
-    const [formData, setFormData] = useState<any>(null);
+    const [formData, setFormData] = useState<NewsPost | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchArticle() {
-            const res = await fetch(`/api/news/${id}`);
-            const data = await res.json();
-            setFormData(data);
+            try {
+                const res = await fetch(`/api/news/${id}`);
+                if (!res.ok) {
+                    throw new Error('Failed to fetch article');
+                }
+                const data = await res.json();
+                setFormData(data);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'An error occurred');
+            } finally {
+                setIsLoading(false);
+            }
         }
         fetchArticle();
     }, [id]);
 
-    if (!formData) {
+    if (isLoading) {
         return (
             <div className="min-h-screen bg-gray-950 flex items-center justify-center">
                 <span className="text-gray-200">Chargement...</span>
@@ -32,25 +52,49 @@ export default function EditArticle() {
         );
     }
 
+    if (error || !formData) {
+        return (
+            <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+                <span className="text-red-400">{error || 'Article non trouvé'}</span>
+            </div>
+        );
+    }
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData((prevData: any) => ({
-            ...prevData,
+        setFormData((prevData) => ({
+            ...prevData!,
             [name]: value,
         }));
     };
 
+    const handleTypeChange = (value: NewsType) => {  // Assuming NewsType is your enum/type
+        setFormData((prevData) => {
+            if (!prevData) return null;
+            return {
+                ...prevData,
+                type: value,
+            };
+        });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const res = await fetch(`/api/news/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-        });
-        if (res.ok) {
+        try {
+            const res = await fetch(`/api/news/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || 'Une erreur est survenue');
+            }
+
             router.push('/admin/news');
-        } else {
-            // Gérer l'erreur
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Une erreur est survenue');
         }
     };
 
@@ -61,7 +105,7 @@ export default function EditArticle() {
                     <CardHeader className="border-b border-gray-700">
                         <CardTitle className="text-gray-100">Modifier la dernière info</CardTitle>
                         <CardDescription className="text-gray-400">
-                            Modifier l'informations de la dernière info
+                            Modifier l'information de la dernière info
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
@@ -81,6 +125,32 @@ export default function EditArticle() {
                                     placeholder="Entrez le titre de l'article"
                                 />
                             </div>
+
+                            <div>
+                                <label htmlFor="type" className="block text-sm font-medium text-gray-200 mb-2">
+                                    Type d'information *
+                                </label>
+                                <Select
+                                    value={formData.type}
+                                    onValueChange={handleTypeChange}
+                                >
+                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600">
+                                        <SelectValue placeholder="Sélectionnez le type" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-700">
+                                        {Object.entries(newsTypeLabels).map(([value, label]) => (
+                                            <SelectItem
+                                                key={value}
+                                                value={value}
+                                                className="text-gray-100 focus:bg-gray-700 focus:text-gray-100"
+                                            >
+                                                {label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             <div>
                                 <label htmlFor="content" className="block text-sm font-medium text-gray-200 mb-2">
                                     Contenu *
@@ -95,6 +165,13 @@ export default function EditArticle() {
                                     placeholder="Entrez le contenu de l'article"
                                 />
                             </div>
+
+                            {error && (
+                                <div className="text-red-400 text-sm mt-2">
+                                    {error}
+                                </div>
+                            )}
+
                             <div className="flex justify-end space-x-4 pt-4">
                                 <Button
                                     type="button"

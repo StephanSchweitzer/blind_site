@@ -131,6 +131,11 @@ export async function GET(req: NextRequest) {
                                 contains: search,
                                 mode: 'insensitive' as Prisma.QueryMode
                             }
+                        },
+                        {
+                            type: {
+                                equals: search.toUpperCase() as News['type']
+                            }
                         }
                     ]
                 }] : [])
