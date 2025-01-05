@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import BackendNavbar from '@/components/Backend-Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import BookSelector from '../components/book-selector';
 import AudioRecorder from '@/components/AudioRecorder';
 
@@ -50,6 +50,8 @@ export default function EditCoupDeCoeurPage() {
     const [bookMap, setBookMap] = useState<Record<number, BookWithDetails['book']>>({});
     const [tempAudioBlob, setTempAudioBlob] = useState<Blob | null>(null);
     const [isRerecording, setIsRerecording] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         async function fetchCoupDeCoeur() {
@@ -64,11 +66,11 @@ export default function EditCoupDeCoeurPage() {
                     }, {});
                     setBookMap(initialBookMap);
                 } else {
-                    console.error('Error fetching coup de coeur');
+                    setError('Échec du chargement du coup de cœur');
                     router.push('/admin/manage_coups_de_coeur');
                 }
             } catch (error) {
-                console.error('Error:', error);
+                setError('Erreur lors du chargement du coup de cœur');
                 router.push('/admin/manage_coups_de_coeur');
             }
         }
@@ -88,6 +90,8 @@ export default function EditCoupDeCoeurPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
+        setError(null);
 
         try {
             let audioPath = formData!.audioPath;
@@ -103,7 +107,7 @@ export default function EditCoupDeCoeurPage() {
                     body: audioFormData,
                 });
 
-                if (!uploadRes.ok) throw new Error('Failed to upload audio');
+                if (!uploadRes.ok) throw new Error('Échec du téléchargement audio');
                 const { filepath } = await uploadRes.json();
                 audioPath = filepath;
             }
@@ -124,16 +128,17 @@ export default function EditCoupDeCoeurPage() {
                 router.push('/admin/manage_coups_de_coeur');
                 router.refresh();
             } else {
-                const error = await res.json();
-                console.error('Error updating coup de coeur:', error);
+                throw new Error('Échec de la mise à jour du coup de cœur');
             }
         } catch (error) {
-            console.error('Error submitting form:', error);
+            setError(error instanceof Error ? error.message : 'Échec de la mise à jour du coup de cœur');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleDelete = async () => {
-        if (window.confirm('Are you sure you want to delete this Coup de Coeur?')) {
+        if (window.confirm('Êtes-vous sûr de vouloir supprimer ce coup de cœur ?')) {
             try {
                 const res = await fetch(`/api/coups-de-coeur/${id}`, {
                     method: 'DELETE',
@@ -143,35 +148,45 @@ export default function EditCoupDeCoeurPage() {
                     router.push('/admin/manage_coups_de_coeur');
                     router.refresh();
                 } else {
-                    const error = await res.json();
-                    console.error('Error deleting coup de coeur:', error);
+                    setError('Échec de la suppression du coup de cœur');
                 }
             } catch (error) {
-                console.error('Error:', error);
+                setError('Erreur lors de la suppression');
             }
         }
     };
 
     if (!formData) {
-        return <div>Loading...</div>;
+        return <div className="flex justify-center items-center min-h-screen">
+            <p className="text-gray-200">Chargement...</p>
+        </div>;
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            <BackendNavbar />
-            <div className="container mx-auto py-8">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <CardTitle>Edit Coup de Coeur</CardTitle>
-                        <Button variant="destructive" onClick={handleDelete}>
-                            Delete
-                        </Button>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label htmlFor="title" className="block text-sm font-medium">
-                                    Title *
+        <div className="space-y-4">
+            <Card className="bg-gray-900 border-gray-800">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-gray-700">
+                    <CardTitle className="text-gray-100">Modifier le Coup de Cœur</CardTitle>
+                    <Button
+                        variant="destructive"
+                        onClick={handleDelete}
+                        className="bg-red-900 hover:bg-red-800 text-gray-100"
+                    >
+                        Supprimer
+                    </Button>
+                </CardHeader>
+                <CardContent className="pt-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {error && (
+                            <Alert variant="destructive">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        <div className="grid gap-6">
+                            <div className="space-y-2">
+                                <label htmlFor="title" className="text-sm font-medium text-gray-200">
+                                    Titre *
                                 </label>
                                 <Input
                                     type="text"
@@ -180,11 +195,12 @@ export default function EditCoupDeCoeurPage() {
                                     required
                                     value={formData.title}
                                     onChange={handleChange}
+                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
                                 />
                             </div>
 
-                            <div>
-                                <label htmlFor="description" className="block text-sm font-medium">
+                            <div className="space-y-2">
+                                <label htmlFor="description" className="text-sm font-medium text-gray-200">
                                     Description *
                                 </label>
                                 <Textarea
@@ -193,22 +209,28 @@ export default function EditCoupDeCoeurPage() {
                                     required
                                     value={formData.description}
                                     onChange={handleChange}
+                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium">
-                                    Audio Recording *
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">
+                                    Enregistrement Audio *
                                 </label>
                                 {!isRerecording ? (
                                     <div className="space-y-2">
-                                        <audio src={formData.audioPath} controls className="w-full" />
+                                        <audio
+                                            src={formData.audioPath}
+                                            controls
+                                            className="w-full bg-gray-800 rounded-md"
+                                        />
                                         <Button
                                             type="button"
                                             onClick={() => setIsRerecording(true)}
                                             variant="outline"
+                                            className="w-full bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
                                         >
-                                            Record New Audio
+                                            Nouvel Enregistrement
                                         </Button>
                                     </div>
                                 ) : (
@@ -222,22 +244,23 @@ export default function EditCoupDeCoeurPage() {
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center space-x-2">
                                 <Switch
                                     id="active"
                                     checked={formData.active}
                                     onCheckedChange={(checked: boolean) =>
                                         setFormData(prev => ({ ...prev!, active: checked }))
                                     }
+                                    className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-400"
                                 />
-                                <label htmlFor="active" className="text-sm font-medium">
-                                    Active
+                                <label htmlFor="active" className="text-sm font-medium text-gray-200">
+                                    Actif
                                 </label>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium">
-                                    Select Books *
+                                <label className="text-sm font-medium text-gray-200">
+                                    Sélectionner les Livres *
                                 </label>
                                 <BookSelector
                                     selectedBooks={formData.books.map(book => book.book.id)}
@@ -270,26 +293,28 @@ export default function EditCoupDeCoeurPage() {
                                     coupDeCoeurId={parseInt(id as string)}
                                 />
                             </div>
+                        </div>
 
-                            <div className="flex justify-end gap-4">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => router.push('/admin/manage_coups_de_coeur')}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={formData.books.length === 0}
-                                >
-                                    Update Coup de Coeur
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
+                        <div className="flex justify-end gap-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => router.push('/admin/manage_coups_de_coeur')}
+                                className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                            >
+                                Annuler
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isLoading || formData.books.length === 0}
+                                className="bg-gray-700 hover:bg-gray-600 text-gray-100"
+                            >
+                                {isLoading ? 'Mise à jour...' : 'Mettre à jour le Coup de Cœur'}
+                            </Button>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
 }

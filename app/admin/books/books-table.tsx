@@ -1,7 +1,7 @@
 'use client';
-// app/admin/books/books-table.tsx
-import { useCallback, useState, useTransition } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from 'use-debounce';
 
@@ -46,94 +46,117 @@ interface BooksTableProps {
 
 export function BooksTable({ initialBooks, initialPage, initialSearch, totalPages }: BooksTableProps) {
     const router = useRouter();
-    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [books, setBooks] = useState(initialBooks);
-    const [page, setPage] = useState(initialPage);
     const [search, setSearch] = useState(initialSearch);
-    const [isPending, startTransition] = useTransition();
-
     const [debouncedSearch] = useDebounce(search, 300);
 
-    const updateUrl = useCallback((newPage: number, newSearch: string) => {
-        const params = new URLSearchParams();
-        params.set('page', newPage.toString());
-        if (newSearch) params.set('search', newSearch);
+    // Get current page from URL
+    const currentPage = parseInt(searchParams.get('page') || '1');
 
-        startTransition(() => {
-            router.push(`${pathname}?${params.toString()}`, { scroll: false });
-        });
-    }, [pathname, router]);
+    // Update books when initialBooks changes
+    useEffect(() => {
+        setBooks(initialBooks);
+    }, [initialBooks]);
+
+    // Update search when URL changes
+    useEffect(() => {
+        const searchFromUrl = searchParams.get('search') || '';
+        setSearch(searchFromUrl);
+    }, [searchParams]);
 
     const handleSearch = (value: string) => {
         setSearch(value);
-        setPage(1);
-        updateUrl(1, value);
+        const params = new URLSearchParams(searchParams);
+        if (value) {
+            params.set('search', value);
+        } else {
+            params.delete('search');
+        }
+        params.set('page', '1'); // Reset to first page on search
+        router.push(`?${params.toString()}`);
     };
 
     const handlePageChange = (newPage: number) => {
-        setPage(newPage);
-        updateUrl(newPage, search);
+        const params = new URLSearchParams(searchParams);
+        params.set('page', newPage.toString());
+        if (search) {
+            params.set('search', search);
+        }
+        router.push(`?${params.toString()}`);
     };
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle>Manage Books</CardTitle>
+        <Card className="bg-gray-900 border-gray-800">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-700">
+                <div>
+                    <CardTitle className="text-gray-100">Gestion des livres</CardTitle>
+                    <CardDescription className="text-gray-400">
+                        Gérer et modifiez les livres
+                    </CardDescription>
+                </div>
                 <Link href="/admin/books/new">
-                    <Button>Add New Book</Button>
+                    <Button className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500">
+                        Ajouter un nouveau livre
+                    </Button>
                 </Link>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
                 <div className="flex items-center space-x-2 mb-4">
                     <Input
-                        placeholder="Search books..."
+                        placeholder="Recherche de livres..."
                         value={search}
                         onChange={(e) => handleSearch(e.target.value)}
-                        className="max-w-sm"
+                        className="max-w-sm bg-white text-gray-900 placeholder:text-gray-500"
                     />
-                    {isPending && <span>Loading...</span>}
                 </div>
 
-                <div className="rounded-md border">
+                <div className="rounded-md border border-gray-700 bg-gray-800">
                     <Table>
                         <TableHeader>
-                            <TableRow>
-                                <TableHead>Title</TableHead>
-                                <TableHead>Author</TableHead>
-                                <TableHead>Genres</TableHead>
-                                <TableHead>Reading Time</TableHead>
-                                <TableHead>Available</TableHead>
-                                <TableHead>Actions</TableHead>
+                            <TableRow className="border-b border-gray-700 bg-gray-800">
+                                <TableHead className="text-gray-200 font-medium">Titre</TableHead>
+                                <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
+                                <TableHead className="text-gray-200 font-medium">Genres</TableHead>
+                                <TableHead className="text-gray-200 font-medium">Durée de lecture</TableHead>
+                                <TableHead className="text-gray-200 font-medium">Disponible</TableHead>
+                                <TableHead className="text-gray-200 font-medium">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {books.map((book) => (
-                                <TableRow key={book.id}>
-                                    <TableCell>
+                                <TableRow key={book.id} className="border-b border-gray-700 hover:bg-gray-750">
+                                    <TableCell className="text-gray-200">
                                         <div>
                                             <div>{book.title}</div>
                                             {book.isbn && (
-                                                <div className="text-sm text-muted-foreground">
+                                                <div className="text-sm text-gray-400">
                                                     ISBN: {book.isbn}
                                                 </div>
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell>{book.author}</TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-gray-200">{book.author}</TableCell>
+                                    <TableCell className="text-gray-200">
                                         {book.genres.map(g => g.genre.name).join(', ') || 'N/A'}
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-gray-200">
                                         {book.readingDurationMinutes
                                             ? `${book.readingDurationMinutes} mins`
                                             : 'N/A'
                                         }
                                     </TableCell>
-                                    <TableCell>{book.available ? 'Yes' : 'No'}</TableCell>
+                                    <TableCell className="text-gray-200">
+                                        {book.available ? 'Oui' : 'Non'}
+                                    </TableCell>
                                     <TableCell>
                                         <Link href={`/admin/books/${book.id}`}>
-                                            <Button variant="outline" size="sm">
-                                                Edit
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                            >
+                                                Editer
                                             </Button>
                                         </Link>
                                     </TableCell>
@@ -143,20 +166,23 @@ export function BooksTable({ initialBooks, initialPage, initialSearch, totalPage
                     </Table>
                 </div>
 
-                <div className="flex justify-center items-center gap-2 mt-4">
+                <div className="flex justify-center items-center gap-2 mt-6">
                     {Array.from({ length: totalPages }, (_, index) => (
                         <Button
                             key={index + 1}
-                            variant={page === index + 1 ? "default" : "outline"}
+                            variant={currentPage === index + 1 ? "default" : "outline"}
                             size="sm"
+                            className={currentPage === index + 1
+                                ? "bg-white text-gray-900 hover:bg-gray-100"
+                                : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
                             onClick={() => handlePageChange(index + 1)}
                         >
                             {index + 1}
                         </Button>
                     ))}
                 </div>
-                <p className="text-center text-sm text-muted-foreground mt-2">
-                    Page {page} of {totalPages}
+                <p className="text-center text-sm text-gray-400 mt-2">
+                    Page {currentPage} of {totalPages}
                 </p>
             </CardContent>
         </Card>

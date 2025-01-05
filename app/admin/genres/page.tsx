@@ -1,8 +1,7 @@
 // app/admin/genres/page.tsx
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import BackendNavbar from '@/components/Backend-Navbar';
-import { GenresTable } from './genre-table';
+import { GenresTable } from './genres-table';
 
 interface PageProps {
     searchParams: { [key: string]: string | string[] | undefined };
@@ -33,7 +32,7 @@ async function getGenres(page: number, searchTerm: string) {
     const [genres, totalGenres] = await Promise.all([
         prisma.genre.findMany({
             where: whereClause,
-            orderBy: { name: 'asc' },
+            orderBy: { name: 'asc' }, // Keep the original ordering
             skip: (page - 1) * genresPerPage,
             take: genresPerPage,
         }),
@@ -59,16 +58,13 @@ export default async function Genres({ searchParams }: PageProps) {
     const { genres, totalGenres, totalPages } = await getGenres(page, searchTerm);
 
     return (
-        <div className="min-h-screen bg-background">
-            <BackendNavbar />
-            <div className="container mx-auto py-8">
-                <GenresTable
-                    initialGenres={genres}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                />
-            </div>
+        <div className="space-y-4">
+            <GenresTable
+                initialGenres={genres}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages}
+            />
         </div>
     );
 }

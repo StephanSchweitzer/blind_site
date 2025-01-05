@@ -223,7 +223,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                                 className="bg-red-500 hover:bg-red-600"
                             >
                                 <Mic className="w-4 h-4 mr-2" />
-                                {segments.length > 0 ? 'Continue Recording' : 'Start Recording'}
+                                {segments.length > 0 ? 'Continuer l\'enregistrement' : 'Démarrer l\'enregistrement'}
                             </Button>
                         ) : (
                             <Button
@@ -232,7 +232,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                                 variant="destructive"
                             >
                                 <Square className="w-4 h-4 mr-2" />
-                                Stop Recording
+                                Arrêter l'enregistrement
                             </Button>
                         )}
                         {isRecording && (
@@ -256,7 +256,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                                         </Button>
                                     )}
                                     {segment.isConfirmed && (
-                                        <span className="text-sm text-green-600 font-medium">Previous Recording</span>
+                                        <span className="text-sm text-green-600 font-medium">Enregistrement précédent</span>
                                     )}
                                 </div>
                             ))}
@@ -268,7 +268,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                                     className="flex-grow"
                                 >
                                     <Check className="w-4 h-4 mr-2" />
-                                    Confirm Recording
+                                    Confirmer l'enregistrement
                                 </Button>
                                 <Button
                                     type="button"
@@ -276,7 +276,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                                     onClick={handleDiscard}
                                 >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    Discard All
+                                    Jeter tout
                                 </Button>
                             </div>
                         </div>
@@ -287,14 +287,14 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
             {isConfirmed && finalAudioUrl && (
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-green-600">Recording confirmed</span>
+                        <span className="text-sm font-medium text-green-600">Enregistrement confirmé</span>
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => setIsConfirmed(false)}
                         >
-                            Edit Recording
+                            Modifier l'enregistrement
                         </Button>
                     </div>
                     <audio src={finalAudioUrl} controls className="w-full" />

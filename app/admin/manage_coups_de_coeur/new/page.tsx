@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/custom-switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import BookSelector from '../components/book-selector';
 import AudioRecorder from '@/components/AudioRecorder';
 
@@ -20,6 +21,8 @@ export default function AddCoupDeCoeur() {
         bookIds: [] as number[]
     });
     const [tempAudioBlob, setTempAudioBlob] = useState<Blob | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -32,7 +35,13 @@ export default function AddCoupDeCoeur() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!tempAudioBlob) return;
+        if (!tempAudioBlob) {
+            setError('Audio recording is required');
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
 
         try {
             // First, upload the audio file
@@ -59,102 +68,119 @@ export default function AddCoupDeCoeur() {
                 }),
             });
 
-            if (res.ok) {
-                router.push('/admin/manage_coups_de_coeur');
-                router.refresh();
-            } else {
+            if (!res.ok) {
                 const error = await res.json();
-                console.error('Error creating coup de coeur:', error);
+                throw new Error(error.message || 'Failed to create coup de coeur');
             }
-        } catch (error) {
-            console.error('Error submitting form:', error);
+
+            router.push('/admin/manage_coups_de_coeur');
+            router.refresh();
+        } catch (err) {
+            console.error('Error submitting form:', err);
+            setError(err instanceof Error ? err.message : 'Failed to create coup de coeur');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-background">
-            <BackendNavbar />
-            <div className="container mx-auto py-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Add New Coup de Coeur</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label htmlFor="title" className="block text-sm font-medium">
-                                    Title *
-                                </label>
-                                <Input
-                                    type="text"
-                                    name="title"
-                                    id="title"
-                                    required
-                                    value={formData.title}
-                                    onChange={handleChange}
-                                />
-                            </div>
+                <div className="space-y-4">
+                    <Card className="bg-gray-900 border-gray-800">
+                        <CardHeader className="border-b border-gray-700">
+                            <CardTitle className="text-gray-100">Ajouter un nouveau coup de coeur</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                {error && (
+                                    <Alert variant="destructive">
+                                        <AlertDescription>{error}</AlertDescription>
+                                    </Alert>
+                                )}
 
-                            <div>
-                                <label htmlFor="description" className="block text-sm font-medium">
-                                    Description *
-                                </label>
-                                <Textarea
-                                    name="description"
-                                    id="description"
-                                    required
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                />
-                            </div>
+                                <div className="grid gap-6">
+                                    <div className="space-y-2">
+                                        <label htmlFor="title" className="text-sm font-medium text-gray-200">
+                                            Titre *
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            name="title"
+                                            id="title"
+                                            required
+                                            value={formData.title}
+                                            onChange={handleChange}
+                                            className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                            placeholder="Le titre principal de ce coup de cœur"
 
-                            <div>
-                                <label className="block text-sm font-medium">
-                                    Audio Recording *
-                                </label>
-                                <AudioRecorder
-                                    onConfirm={setTempAudioBlob}
-                                    onClear={() => setTempAudioBlob(null)}
-                                />
-                            </div>
+                                        />
+                                    </div>
 
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id="active"
-                                    checked={formData.active}
-                                    onChange={(checked) =>
-                                        setFormData(prev => ({ ...prev, active: checked }))
-                                    }
-                                />
-                                <label htmlFor="active" className="text-sm font-medium">
-                                    Active
-                                </label>
-                            </div>
+                                    <div className="space-y-2">
+                                        <label htmlFor="description" className="text-sm font-medium text-gray-200">
+                                            Description *
+                                        </label>
+                                        <Textarea
+                                            name="description"
+                                            id="description"
+                                            required
+                                            value={formData.description}
+                                            onChange={handleChange}
+                                            className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
+                                            placeholder="Informations générales ajoutées en haut du coup de coeur"
+                                        />
+                                    </div>
 
-                            <div className="space-y-2">
-                                <label className="block text-sm font-medium">
-                                    Select Books *
-                                </label>
-                                <BookSelector
-                                    selectedBooks={formData.bookIds}
-                                    onSelectedBooksChange={(bookIds) =>
-                                        setFormData(prev => ({ ...prev, bookIds }))
-                                    }
-                                    mode="create"
-                                />
-                            </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">
+                                            Enregistrement audio *
+                                        </label>
+                                        <div className="bg-gray-800 border border-gray-700 rounded-md p-4">
+                                            <AudioRecorder
+                                                onConfirm={setTempAudioBlob}
+                                                onClear={() => setTempAudioBlob(null)}
+                                            />
+                                        </div>
+                                    </div>
 
-                            <Button
-                                type="submit"
-                                className="mt-4"
-                                disabled={formData.bookIds.length === 0 || !tempAudioBlob}
-                            >
-                                Create Coup de Coeur
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">
+                                            Sélectionner les livres *
+                                        </label>
+                                        <div className="bg-gray-800 border border-gray-700 rounded-md">
+                                            <BookSelector
+                                                selectedBooks={formData.bookIds}
+                                                onSelectedBooksChange={(bookIds) =>
+                                                    setFormData(prev => ({ ...prev, bookIds }))
+                                                }
+                                                mode="create"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="active"
+                                            checked={formData.active}
+                                            onChange={(checked) =>
+                                                setFormData(prev => ({ ...prev, active: checked }))
+                                            }
+                                        />
+                                        <label htmlFor="active" className="text-sm font-medium text-gray-200">
+                                            Actif
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    type="submit"
+                                    disabled={isLoading || formData.bookIds.length === 0 || !tempAudioBlob}
+                                    className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100"
+                                >
+                                    {isLoading ? 'En ajoutant...' : 'Ajouter le coup de coeur'}
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
     );
 }

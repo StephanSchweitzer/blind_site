@@ -1,10 +1,6 @@
 // app/admin/books/page.tsx
-import { Suspense } from 'react';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import BackendNavbar from '../../../components/Backend-Navbar';
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import SearchBar from './search-bar';
 import { BooksTable } from './books-table';
 
 type BookWithRelations = Prisma.BookGetPayload<{
@@ -107,16 +103,13 @@ export default async function Books({ searchParams }: PageProps) {
     const { books, totalBooks, totalPages } = await getBooks(page, searchTerm);
 
     return (
-        <div className="min-h-screen bg-background">
-            <BackendNavbar />
-            <div className="container mx-auto py-8">
-                <BooksTable
-                    initialBooks={books}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                />
-            </div>
+        <div className="space-y-4">
+            <BooksTable
+                initialBooks={books}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages}
+            />
         </div>
     );
 }

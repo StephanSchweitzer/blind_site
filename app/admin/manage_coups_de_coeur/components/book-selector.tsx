@@ -43,7 +43,7 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-    // Single useEffect for initial load
+    // Original fetch logic remains the same
     useEffect(() => {
         const fetchInitialBooks = async () => {
             if (initialLoadDone) return;
@@ -62,8 +62,6 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
                     const response = await fetch(`${url}${params.toString()}`);
                     if (response.ok) {
                         const data = await response.json();
-
-                        // Store books in the map
                         const newBookMap = new Map<number, Book>(data.books.map((book: Book) => [book.id, book]));
                         setBookDetailsMap(newBookMap);
 
@@ -75,7 +73,7 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
                 }
                 setInitialLoadDone(true);
             } catch (error) {
-                console.error('Error fetching books:', error);
+                console.error('Erreur lors du chargement des livres:', error);
                 setInitialLoadDone(true);
             }
         };
@@ -83,7 +81,6 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
         fetchInitialBooks();
     }, [mode, coupDeCoeurId]);
 
-    // Search books effect
     useEffect(() => {
         const searchBooks = async () => {
             if (!debouncedSearchTerm) {
@@ -93,7 +90,6 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
 
             setIsSearching(true);
             try {
-                // When searching, we want to search all books regardless of mode
                 const params = new URLSearchParams({
                     search: debouncedSearchTerm
                 });
@@ -103,7 +99,6 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
                     const data = await response.json();
                     setSearchResults(data.books);
 
-                    // Add new books to the map
                     const newBookMap = new Map<number, Book>(bookDetailsMap);
                     data.books.forEach((book: Book) => {
                         newBookMap.set(book.id, book);
@@ -111,7 +106,7 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
                     setBookDetailsMap(newBookMap);
                 }
             } catch (error) {
-                console.error('Error searching books:', error);
+                console.error('Erreur lors de la recherche:', error);
             } finally {
                 setIsSearching(false);
             }
@@ -142,30 +137,30 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
         return books.length > 0 && books.every(book => selectedBooks.includes(book.id));
     };
 
-    // Get selected book details from the map
     const selectedBookDetails = Array.from(bookDetailsMap.values())
         .filter(book => selectedBooks.includes(book.id));
 
     const BookTable = ({ books, isSearchResults = false }: { books: Book[], isSearchResults?: boolean }) => (
         <Table>
             <TableHeader>
-                <TableRow>
-                    <TableHead>
+                <TableRow className="border-b border-gray-700 bg-gray-800">
+                    <TableHead className="text-gray-200 font-medium">
                         <div className="flex items-center gap-2">
                             <Switch
                                 id={`select-all-${isSearchResults ? 'search' : 'main'}`}
                                 checked={areAllSelected(books)}
                                 onChange={(checked) => handleSelectAll(checked, books)}
+                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
                             />
-                            <label htmlFor={`select-all-${isSearchResults ? 'search' : 'main'}`} className="text-sm font-medium">
-                                Select All
+                            <label htmlFor={`select-all-${isSearchResults ? 'search' : 'main'}`} className="text-sm font-medium text-gray-200">
+                                Tout sélectionner
                             </label>
                         </div>
                     </TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Author</TableHead>
-                    <TableHead>ISBN</TableHead>
-                    <TableHead>Added Date</TableHead>
+                    <TableHead className="text-gray-200 font-medium">Titre</TableHead>
+                    <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
+                    <TableHead className="text-gray-200 font-medium">ISBN</TableHead>
+                    <TableHead className="text-gray-200 font-medium">Date d'ajout</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -174,28 +169,29 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
                     return (
                         <TableRow
                             key={book.id}
-                            className={isSelected && isSearchResults ? "opacity-50" : ""}
+                            className={`border-b border-gray-700 hover:bg-gray-750 ${isSelected && isSearchResults ? "opacity-50" : ""}`}
                         >
-                            <TableCell>
+                            <TableCell className="text-gray-200">
                                 <Switch
                                     id={`book-${book.id}`}
                                     checked={isSelected}
                                     onChange={() => toggleBookSelection(book.id)}
+                                    className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
                                 />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-gray-200">
                                 <div className="flex flex-col">
                                     <span>{book.title}</span>
                                     {isSelected && isSearchResults && (
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-sm text-gray-400">
                                             Ce livre appartient déjà à la liste
                                         </span>
                                     )}
                                 </div>
                             </TableCell>
-                            <TableCell>{book.author}</TableCell>
-                            <TableCell>{book.isbn || 'N/A'}</TableCell>
-                            <TableCell>{new Date(book.createdAt).toLocaleDateString()}</TableCell>
+                            <TableCell className="text-gray-200">{book.author}</TableCell>
+                            <TableCell className="text-gray-200">{book.isbn || 'N/A'}</TableCell>
+                            <TableCell className="text-gray-200">{new Date(book.createdAt).toLocaleDateString()}</TableCell>
                         </TableRow>
                     );
                 })}
@@ -206,34 +202,37 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">
-                    {mode === 'edit' ? 'Selected Books' : 'Recent Books'}
+                <h3 className="text-lg font-medium text-gray-100">
+                    {mode === 'edit' ? 'Livres sélectionnés' : 'Livres récents'}
                 </h3>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button variant="outline">Search All Books</Button>
+                        <Button className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600">
+                            Rechercher des livres
+                        </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700">
                         <DialogHeader>
-                            <DialogTitle>Search Books</DialogTitle>
+                            <DialogTitle className="text-gray-100">Recherche de livres</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
                             <Input
                                 type="search"
-                                placeholder="Search books by title, author, or ISBN..."
+                                placeholder="Rechercher par titre, auteur ou ISBN..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-white text-gray-900 placeholder:text-gray-500"
                             />
                             {isSearching ? (
-                                <p className="text-center py-4">Loading...</p>
+                                <p className="text-center py-4 text-gray-200">Chargement...</p>
                             ) : (
                                 <>
                                     {searchResults.length > 0 ? (
                                         <BookTable books={searchResults} isSearchResults={true} />
                                     ) : (
                                         debouncedSearchTerm && (
-                                            <p className="text-center text-muted-foreground py-4">
-                                                No books found matching your search.
+                                            <p className="text-center text-gray-400 py-4">
+                                                Aucun livre trouvé correspondant à votre recherche.
                                             </p>
                                         )
                                     )}
@@ -244,13 +243,13 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
                 </Dialog>
             </div>
 
-            <div className="border rounded-lg">
+            <div className="border border-gray-700 rounded-lg bg-gray-800">
                 <BookTable books={selectedBookDetails} />
             </div>
 
             <div className="mt-4">
-                <p className="text-sm text-muted-foreground">
-                    {selectedBooks.length} books selected
+                <p className="text-sm text-gray-400">
+                    {selectedBooks.length} livres sélectionnés
                 </p>
             </div>
         </div>

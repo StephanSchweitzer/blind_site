@@ -90,16 +90,13 @@ export default async function CoupsDeCoeur({ searchParams }: PageProps) {
     const { items, totalItems, totalPages } = await getCoupsDeCoeur(page, searchTerm);
 
     return (
-        <div className="min-h-screen bg-background">
-            <BackendNavbar />
-            <div className="container mx-auto py-8">
-                <CoupsTable
-                    initialItems={items}
+        <div className="space-y-4">
+            <CoupsTable
+                initialItems={items}
                     initialPage={page}
                     initialSearch={searchTerm}
                     totalPages={totalPages}
                 />
             </div>
-        </div>
     );
 }

@@ -1,3 +1,4 @@
+// app/admin/news/page.tsx
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import BackendNavbar from '../../../components/Backend-Navbar';
@@ -79,16 +80,14 @@ export default async function Articles({ searchParams }: PageProps) {
     const { articles, totalArticles, totalPages } = await getArticles(page, searchTerm);
 
     return (
-        <div className="min-h-screen bg-background">
-            <BackendNavbar />
-            <div className="container mx-auto py-8">
-                <ArticlesTable
-                    initialArticles={articles}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                />
-            </div>
+        <div className="space-y-4">
+            <ArticlesTable
+                initialArticles={articles}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages}
+            />
         </div>
-    );
+)
+    ;
 }

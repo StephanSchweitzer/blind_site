@@ -43,7 +43,6 @@ export default function GenreForm() {
                 throw new Error(data.error || 'Failed to create genre');
             }
 
-            // Wait for navigation to complete before refreshing
             router.push('/admin/genres');
             router.refresh();
         } catch (err) {
@@ -62,37 +61,41 @@ export default function GenreForm() {
                 </Alert>
             )}
             <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name" className="text-gray-200">Nom</Label>
                 <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    placeholder="Genre name"
+                    placeholder="Nom du genre"
+                    className="bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-500"
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description" className="text-gray-200">Description</Label>
                 <Input
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Genre description (optional)"
+                    placeholder="Description du genre (optionnel)"
+                    className="bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-500"
                 />
             </div>
             <div className="flex gap-4">
                 <Button
                     type="submit"
                     disabled={isLoading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                    {isLoading ? 'Creating...' : 'Create Genre'}
+                    {isLoading ? 'Création...' : 'Créer le Genre'}
                 </Button>
                 <Button
                     type="button"
                     variant="outline"
                     onClick={() => router.push('/admin/genres')}
+                    className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
                 >
-                    Cancel
+                    Annuler
                 </Button>
             </div>
         </form>

@@ -1,6 +1,6 @@
 // app/admin/page.tsx
 import { prisma } from '@/lib/prisma';
-import { AdminLayout, AdminCard } from '@/components/ui/admin';
+import { AdminCard } from '@/components/ui/admin';
 import { AdminDashboardCard } from '@/components/ui/admin/AdminDashboardCard';
 
 export const dynamic = 'force-dynamic';
@@ -14,42 +14,41 @@ export default async function Dashboard() {
     ]);
 
     return (
-        <AdminLayout>
-            <AdminCard>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <AdminDashboardCard
-                        title="Catalogue"
-                        count={bookCount}
-                        href="/admin/books"
-                        buttonText="Gestion du catalogue"
-                        accentColor="blue"
-                    />
+        <AdminCard className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <AdminDashboardCard
+                    title="Catalogue"
+                    count={bookCount}
+                    href="/admin/books"
+                    buttonText="Gestion du catalogue"
+                    accentColor="blue"
+                />
 
-                    <AdminDashboardCard
-                        title="Genres"
-                        count={genreCount}
-                        href="/admin/genres"
-                        buttonText="Gestion des genres"
-                        accentColor="purple"
-                    />
+                <AdminDashboardCard
+                    title="Genres"
+                    count={genreCount}
+                    href="/admin/genres"
+                    buttonText="Gestion des genres"
+                    accentColor="purple"
+                />
 
-                    <AdminDashboardCard
-                        title="Dernières infos"
-                        count={newsCount}
-                        href="/admin/news"
-                        buttonText="Gestion des dernières infos"
-                        accentColor="green"
-                    />
+                <AdminDashboardCard
+                    title="Dernières infos"
+                    count={newsCount}
+                    href="/admin/news"
+                    buttonText="Gestion des dernières infos"
+                    accentColor="green"
+                />
 
-                    <AdminDashboardCard
-                        title="Coups de Cœur"
-                        count={coupsDeCoeurCount}
-                        href="/admin/manage_coups_de_coeur"
-                        buttonText="Gestion des Coups de Cœurs"
-                        accentColor="pink"
-                    />
-                </div>
-            </AdminCard>
-        </AdminLayout>
+                <AdminDashboardCard
+                    title="Coups de Cœur"
+                    count={coupsDeCoeurCount}
+                    href="/admin/manage_coups_de_coeur"
+                    buttonText="Gestion des Coups de Cœurs"
+                    accentColor="pink"
+                />
+            </div>
+        </AdminCard>
+
     );
 }
