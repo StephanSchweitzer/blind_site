@@ -1,4 +1,4 @@
-BACKEND:
+BACKEND:npm run dev
 Add add users section
 Add profile section "qui suis je" (maybe, this is extra)
 éditeur / édition : Is this like the publisher?
@@ -9,3 +9,4 @@ Make the add books to coup de coeur switches not custom switches and the shadcn 
 FRONTEND:
 Contact section
 make the navbar use links and not hrefs to make it faster
+Add the white center box for dernieres information and make the boxes a little lighter
