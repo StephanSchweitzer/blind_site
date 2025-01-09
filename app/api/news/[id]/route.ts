@@ -8,15 +8,16 @@ import { News } from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
 
 interface RouteParams {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 // GET: Fetch a specific article by ID
 export async function GET(req: NextRequest, { params }: RouteParams) {
     try {
-        const id = parseInt(params.id, 10);
+        const { id: string_id } = await params;  // Correctly destructure 'id' and rename to string_id
+        const id = parseInt(string_id, 10);
 
         if (isNaN(id)) {
             return NextResponse.json(
@@ -77,7 +78,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const id = parseInt(params.id, 10);
+        const { id: string_id } = await params;  // Correctly destructure 'id' and rename to string_id
+        const id = parseInt(string_id, 10);
         if (isNaN(id)) {
             return NextResponse.json(
                 { error: 'ID invalide' },
@@ -169,7 +171,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const id = parseInt(params.id, 10);
+        const { id: string_id } = await params;  // Correctly destructure 'id' and rename to string_id
+        const id = parseInt(string_id, 10);
 
         if (isNaN(id)) {
             return NextResponse.json(
