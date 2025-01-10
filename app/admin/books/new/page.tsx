@@ -189,7 +189,7 @@ export default function AddBook() {
                                     required
                                     value={formData.title}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                     placeholder="Indiquer le titre du livre"
                                 />
                             </div>
@@ -205,7 +205,7 @@ export default function AddBook() {
                                     required
                                     value={formData.author}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                     placeholder="Indiquer l'auteur du livre"
                                 />
                             </div>
@@ -296,7 +296,7 @@ export default function AddBook() {
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={open}
-                                            className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
+                                            className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
                                         >
                                             Sélectionner les genres associés...
                                         </Button>
@@ -350,7 +350,7 @@ export default function AddBook() {
                                     required
                                     value={formData.isbn}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                     placeholder="Indiquer le numéro ISBN du livre (facultatif)"
                                 />
                             </div>
@@ -366,7 +366,7 @@ export default function AddBook() {
                                     value={formData.readingDurationMinutes}
                                     onChange={handleChange}
                                     min="0"
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                     placeholder="Indiquer la durée de l'enregistrement en minutes"
                                 />
                             </div>
@@ -380,7 +380,7 @@ export default function AddBook() {
                                     id="description"
                                     value={formData.description}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[150px]"
                                     placeholder="Décrire le livre pour aider les utilisateurs à comprendre de quoi il s'agit."
                                 />
                             </div>
@@ -407,7 +407,7 @@ export default function AddBook() {
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100"
+                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100"
                         >
                             {isLoading ? 'En ajoutant...' : 'Ajouter le livre'}
                         </Button>

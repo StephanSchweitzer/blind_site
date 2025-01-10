@@ -139,7 +139,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
-                    className="w-full justify-start bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
+                    className="w-full justify-start bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
                 >
                     <Search className="w-4 h-4 mr-2" />
                     Rechercher sur Google Books
@@ -153,7 +153,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="bg-gray-700 border-gray-600 text-gray-100"
+                            className="bg-gray-700 border-gray-400 text-gray-100 "
                         />
                         <Button
                             onClick={() => searchBooks()}

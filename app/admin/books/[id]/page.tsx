@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import {Card, CardHeader, CardTitle, CardContent, CardDescription} from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -18,7 +18,7 @@ interface Genre {
     description?: string;
 }
 
-interface Book {
+interface Livre {
     id: number;
     title: string;
     author: string;
@@ -32,25 +32,25 @@ interface Book {
     available: boolean;
 }
 
-export default function EditBook() {
+export default function EditionLivre() {
     const router = useRouter();
     const params = useParams();
     const { id } = params;
 
-    const [formData, setFormData] = useState<Book | null>(null);
-    const [availableGenres, setAvailableGenres] = useState<Genre[]>([]);
-    const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
+    const [formData, setFormData] = useState<Livre | null>(null);
+    const [genresDisponibles, setGenresDisponibles] = useState<Genre[]>([]);
+    const [genresSelectionnes, setGenresSelectionnes] = useState<number[]>([]);
     const [open, setOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [rechercheQuery, setRechercheQuery] = useState('');
+    const [erreur, setErreur] = useState<string | null>(null);
+    const [chargement, setChargement] = useState(false);
 
-    // Generate array of years
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => (currentYear - i).toString());
+    // Générer un tableau d'années
+    const anneeActuelle = new Date().getFullYear();
+    const annees = Array.from({ length: anneeActuelle - 1900 + 1 }, (_, i) => (anneeActuelle - i).toString());
 
-    // Array of months
-    const months = [
+    // Tableau des mois
+    const mois = [
         { value: '01', label: 'janvier' },
         { value: '02', label: 'février' },
         { value: '03', label: 'mars' },
@@ -58,101 +58,101 @@ export default function EditBook() {
         { value: '05', label: 'mai' },
         { value: '06', label: 'juin' },
         { value: '07', label: 'juillet' },
-        { value: '08', label: 'aout' },
+        { value: '08', label: 'août' },
         { value: '09', label: 'septembre' },
         { value: '10', label: 'octobre' },
         { value: '11', label: 'novembre' },
         { value: '12', label: 'décembre' }
     ];
 
-    // Fetch available genres
+    // Récupérer les genres disponibles
     useEffect(() => {
-        async function fetchGenres() {
+        async function recupererGenres() {
             try {
                 const res = await fetch('/api/genres');
                 if (res.ok) {
-                    const data = await res.json();
-                    setAvailableGenres(data);
+                    const donnees = await res.json();
+                    setGenresDisponibles(donnees);
                 }
-            } catch (error) {
-                setError('Failed to fetch genres');
+            } catch (erreur) {
+                setErreur('Échec de la récupération des genres');
             }
         }
-        fetchGenres();
+        recupererGenres();
     }, []);
 
     useEffect(() => {
-        async function fetchBook() {
+        async function recupererLivre() {
             try {
                 const res = await fetch(`/api/books/${id}`);
                 if (res.ok) {
-                    const data = await res.json();
-                    const date = new Date(data.publishedDate);
+                    const donnees = await res.json();
+                    const date = new Date(donnees.publishedDate);
 
                     setFormData({
-                        ...data,
+                        ...donnees,
                         publishedMonth: (date.getMonth() + 1).toString().padStart(2, '0'),
                         publishedYear: date.getFullYear().toString(),
                     });
-                    setSelectedGenres(data.genres.map((g: { genre: Genre }) => g.genre.id));
+                    setGenresSelectionnes(donnees.genres.map((g: { genre: Genre }) => g.genre.id));
                 } else {
                     router.push('/admin/books');
                 }
-            } catch (error) {
-                setError('Failed to fetch book');
+            } catch (erreur) {
+                setErreur('Échec de la récupération du livre');
                 router.push('/admin/books');
             }
         }
         if (id) {
-            fetchBook();
+            recupererLivre();
         }
     }, [id, router]);
 
-    const handleGenreSelect = (genreId: number) => {
-        setSelectedGenres(prev => {
+    const gererSelectionGenre = (genreId: number) => {
+        setGenresSelectionnes(prev => {
             return prev.includes(genreId)
                 ? prev.filter(id => id !== genreId)
                 : [...prev, genreId];
         });
     };
 
-    const removeGenre = (genreId: number) => {
-        setSelectedGenres(prev => prev.filter(id => id !== genreId));
+    const supprimerGenre = (genreId: number) => {
+        setGenresSelectionnes(prev => prev.filter(id => id !== genreId));
     };
 
     if (!formData) {
         return <div className="flex justify-center items-center min-h-screen">
-            <p className="text-gray-200">Loading...</p>
+            <p className="text-gray-200">Chargement...</p>
         </div>;
     }
 
-    const handleChange = (
+    const gererChangement = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
-        const isCheckbox = e.target instanceof HTMLInputElement && e.target.type === 'checkbox';
+        const estCheckbox = e.target instanceof HTMLInputElement && e.target.type === 'checkbox';
 
         setFormData((prevData) => ({
             ...prevData!,
-            [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
+            [name]: estCheckbox ? (e.target as HTMLInputElement).checked : value,
         }));
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const gererSoumission = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        setError(null);
+        setChargement(true);
+        setErreur(null);
 
         try {
-            // Create a formatted date string (YYYY-MM-01)
-            const formattedDate = formData.publishedYear && formData.publishedMonth
+            // Créer une chaîne de date formatée (AAAA-MM-01)
+            const dateFormatee = formData.publishedYear && formData.publishedMonth
                 ? `${formData.publishedYear}-${formData.publishedMonth}-01`
                 : null;
 
-            const submitData = {
+            const donneesSoumission = {
                 ...formData,
-                genres: selectedGenres,
-                publishedDate: formattedDate,
+                genres: genresSelectionnes,
+                publishedDate: dateFormatee,
                 readingDurationMinutes: formData.readingDurationMinutes
                     ? parseInt(formData.readingDurationMinutes.toString())
                     : null
@@ -161,19 +161,19 @@ export default function EditBook() {
             const res = await fetch(`/api/books/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(submitData),
+                body: JSON.stringify(donneesSoumission),
             });
 
             if (!res.ok) {
-                throw new Error('Failed to update book');
+                throw new Error('Échec de la mise à jour du livre');
             }
 
             router.push('/admin/books');
             router.refresh();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to update book');
+            setErreur(err instanceof Error ? err.message : 'Échec de la mise à jour du livre');
         } finally {
-            setIsLoading(false);
+            setChargement(false);
         }
     };
 
@@ -181,20 +181,23 @@ export default function EditBook() {
         <div className="space-y-4">
             <Card className="bg-gray-900 border-gray-800">
                 <CardHeader className="border-b border-gray-700">
-                    <CardTitle className="text-gray-100">Edit Book</CardTitle>
+                    <CardTitle className="text-gray-100">Modifier le livre</CardTitle>
+                    <CardDescription className="text-gray-400">
+                        Modifier les détails du livre et les genres associés
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {error && (
+                    <form onSubmit={gererSoumission} className="space-y-6">
+                        {erreur && (
                             <Alert variant="destructive">
-                                <AlertDescription>{error}</AlertDescription>
+                                <AlertDescription>{erreur}</AlertDescription>
                             </Alert>
                         )}
 
                         <div className="grid gap-6">
                             <div className="space-y-2">
                                 <label htmlFor="title" className="text-sm font-medium text-gray-200">
-                                    Title *
+                                    Titre *
                                 </label>
                                 <Input
                                     type="text"
@@ -202,14 +205,14 @@ export default function EditBook() {
                                     id="title"
                                     required
                                     value={formData.title}
-                                    onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    onChange={gererChangement}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                 />
                             </div>
 
                             <div className="space-y-2">
                                 <label htmlFor="author" className="text-sm font-medium text-gray-200">
-                                    Author *
+                                    Auteur *
                                 </label>
                                 <Input
                                     type="text"
@@ -217,15 +220,15 @@ export default function EditBook() {
                                     id="author"
                                     required
                                     value={formData.author}
-                                    onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    onChange={gererChangement}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-200">
-                                        Published Month *
+                                        Mois de publication *
                                     </label>
                                     <Select
                                         value={formData.publishedMonth}
@@ -233,17 +236,17 @@ export default function EditBook() {
                                             setFormData(prev => ({ ...prev!, publishedMonth: value }))
                                         }
                                     >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100">
-                                            <SelectValue placeholder="Select Month" />
+                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100 border-gray-100">
+                                            <SelectValue placeholder="Sélectionner un mois" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-gray-800 border-gray-700">
-                                            {months.map(month => (
+                                            {mois.map(mois => (
                                                 <SelectItem
-                                                    key={month.value}
-                                                    value={month.value}
+                                                    key={mois.value}
+                                                    value={mois.value}
                                                     className="text-gray-100 hover:bg-gray-700 focus:bg-gray-700 focus:text-gray-100"
                                                 >
-                                                    {month.label}
+                                                    {mois.label}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -252,7 +255,7 @@ export default function EditBook() {
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-200">
-                                        Published Year *
+                                        Année de publication *
                                     </label>
                                     <Select
                                         value={formData.publishedYear}
@@ -260,17 +263,17 @@ export default function EditBook() {
                                             setFormData(prev => ({ ...prev!, publishedYear: value }))
                                         }
                                     >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100">
-                                            <SelectValue placeholder="Select Year" />
+                                        <SelectTrigger className="bg-gray-800 text-gray-100 border-gray-100">
+                                            <SelectValue placeholder="Sélectionner une année" />
                                         </SelectTrigger>
                                         <SelectContent className="max-h-[200px] overflow-y-auto bg-gray-800 border-gray-700">
-                                            {years.map(year => (
+                                            {annees.map(annee => (
                                                 <SelectItem
-                                                    key={year}
-                                                    value={year}
+                                                    key={annee}
+                                                    value={annee}
                                                     className="text-gray-100 hover:bg-gray-700 focus:bg-gray-700 focus:text-gray-100"
                                                 >
-                                                    {year}
+                                                    {annee}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -283,8 +286,8 @@ export default function EditBook() {
                                     Genres
                                 </label>
                                 <div className="flex flex-wrap gap-2 mb-2">
-                                    {selectedGenres.map(genreId => {
-                                        const genre = availableGenres.find(g => g.id === genreId);
+                                    {genresSelectionnes.map(genreId => {
+                                        const genre = genresDisponibles.find(g => g.id === genreId);
                                         return genre ? (
                                             <div
                                                 key={genre.id}
@@ -293,7 +296,7 @@ export default function EditBook() {
                                                 {genre.name}
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeGenre(genre.id)}
+                                                    onClick={() => supprimerGenre(genre.id)}
                                                     className="ml-2 hover:text-gray-400"
                                                 >
                                                     <X className="h-3 w-3"/>
@@ -308,37 +311,37 @@ export default function EditBook() {
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={open}
-                                            className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
+                                            className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
                                         >
-                                            Select genres...
+                                            Sélectionner des genres...
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
                                         <div className="p-2">
                                             <Input
-                                                placeholder="Search genres..."
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                placeholder="Rechercher des genres..."
+                                                value={rechercheQuery}
+                                                onChange={(e) => setRechercheQuery(e.target.value)}
                                                 className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
                                             />
                                             <div className="max-h-60 overflow-y-auto">
-                                                {availableGenres
+                                                {genresDisponibles
                                                     .filter(genre =>
-                                                        genre.name.toLowerCase().includes(searchQuery.toLowerCase())
+                                                        genre.name.toLowerCase().includes(rechercheQuery.toLowerCase())
                                                     )
                                                     .map((genre) => (
                                                         <div
                                                             key={genre.id}
                                                             className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
                                                             onClick={() => {
-                                                                handleGenreSelect(genre.id);
-                                                                setSearchQuery('');
+                                                                gererSelectionGenre(genre.id);
+                                                                setRechercheQuery('');
                                                             }}
                                                         >
                                                             <Check
                                                                 className={`mr-2 h-4 w-4 ${
-                                                                    selectedGenres.includes(genre.id)
+                                                                    genresSelectionnes.includes(genre.id)
                                                                         ? "opacity-100"
                                                                         : "opacity-0"
                                                                 }`}
@@ -361,25 +364,26 @@ export default function EditBook() {
                                     name="isbn"
                                     id="isbn"
                                     value={formData.isbn || ''}
-                                    onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    onChange={gererChangement}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                 />
                             </div>
 
                             <div className="space-y-2">
                                 <label htmlFor="readingDurationMinutes" className="text-sm font-medium text-gray-200">
-                                    Reading Duration (minutes)
+                                    Durée de lecture (minutes)
                                 </label>
                                 <Input
                                     type="number"
                                     name="readingDurationMinutes"
                                     id="readingDurationMinutes"
                                     value={formData.readingDurationMinutes || ''}
-                                    onChange={handleChange}
+                                    onChange={gererChangement}
                                     min="0"
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                 />
                             </div>
+
                             <div className="space-y-2">
                                 <label htmlFor="description" className="text-sm font-medium text-gray-200">
                                     Description
@@ -388,8 +392,8 @@ export default function EditBook() {
                                     name="description"
                                     id="description"
                                     value={formData.description || ''}
-                                    onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
+                                    onChange={gererChangement}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
                                 />
                             </div>
 
@@ -407,17 +411,17 @@ export default function EditBook() {
                                     className="border-gray-700 data-[state=checked]:bg-gray-700"
                                 />
                                 <label htmlFor="available" className="text-sm font-medium text-gray-200">
-                                    Available
+                                    Disponible
                                 </label>
                             </div>
                         </div>
 
                         <Button
                             type="submit"
-                            disabled={isLoading}
+                            disabled={chargement}
                             className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100"
                         >
-                            {isLoading ? 'Updating...' : 'Update Book'}
+                            {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
                         </Button>
                     </form>
                 </CardContent>
