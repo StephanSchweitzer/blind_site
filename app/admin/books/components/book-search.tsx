@@ -63,7 +63,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
 
         try {
             console.log('Searching for:', searchQuery);
-            const url = `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(searchQuery)}&maxResults=5`;
+            const url = `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(searchQuery)}&maxResults=5&langRestrict=fr&country=FR`;
             console.log('Request URL:', url);
 
             const response = await fetch(url);
