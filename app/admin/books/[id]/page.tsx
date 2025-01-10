@@ -10,7 +10,18 @@ import {Card, CardHeader, CardTitle, CardContent, CardDescription} from '@/compo
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
 
 interface Genre {
     id: number;
@@ -35,7 +46,7 @@ interface Livre {
 export default function EditionLivre() {
     const router = useRouter();
     const params = useParams();
-    const { id } = params;
+    const {id} = params;
 
     const [formData, setFormData] = useState<Livre | null>(null);
     const [genresDisponibles, setGenresDisponibles] = useState<Genre[]>([]);
@@ -44,25 +55,26 @@ export default function EditionLivre() {
     const [rechercheQuery, setRechercheQuery] = useState('');
     const [erreur, setErreur] = useState<string | null>(null);
     const [chargement, setChargement] = useState(false);
+    const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
     // Générer un tableau d'années
     const anneeActuelle = new Date().getFullYear();
-    const annees = Array.from({ length: anneeActuelle - 1900 + 1 }, (_, i) => (anneeActuelle - i).toString());
+    const annees = Array.from({length: anneeActuelle - 1900 + 1}, (_, i) => (anneeActuelle - i).toString());
 
     // Tableau des mois
     const mois = [
-        { value: '01', label: 'janvier' },
-        { value: '02', label: 'février' },
-        { value: '03', label: 'mars' },
-        { value: '04', label: 'avril' },
-        { value: '05', label: 'mai' },
-        { value: '06', label: 'juin' },
-        { value: '07', label: 'juillet' },
-        { value: '08', label: 'août' },
-        { value: '09', label: 'septembre' },
-        { value: '10', label: 'octobre' },
-        { value: '11', label: 'novembre' },
-        { value: '12', label: 'décembre' }
+        {value: '01', label: 'janvier'},
+        {value: '02', label: 'février'},
+        {value: '03', label: 'mars'},
+        {value: '04', label: 'avril'},
+        {value: '05', label: 'mai'},
+        {value: '06', label: 'juin'},
+        {value: '07', label: 'juillet'},
+        {value: '08', label: 'août'},
+        {value: '09', label: 'septembre'},
+        {value: '10', label: 'octobre'},
+        {value: '11', label: 'novembre'},
+        {value: '12', label: 'décembre'}
     ];
 
     // Récupérer les genres disponibles
@@ -78,6 +90,7 @@ export default function EditionLivre() {
                 setErreur('Échec de la récupération des genres');
             }
         }
+
         recupererGenres();
     }, []);
 
@@ -103,6 +116,7 @@ export default function EditionLivre() {
                 router.push('/admin/books');
             }
         }
+
         if (id) {
             recupererLivre();
         }
@@ -129,7 +143,7 @@ export default function EditionLivre() {
     const gererChangement = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
-        const { name, value } = e.target;
+        const {name, value} = e.target;
         const estCheckbox = e.target instanceof HTMLInputElement && e.target.type === 'checkbox';
 
         setFormData((prevData) => ({
@@ -160,7 +174,7 @@ export default function EditionLivre() {
 
             const res = await fetch(`/api/books/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(donneesSoumission),
             });
 
@@ -174,6 +188,29 @@ export default function EditionLivre() {
             setErreur(err instanceof Error ? err.message : 'Échec de la mise à jour du livre');
         } finally {
             setChargement(false);
+        }
+    };
+
+    const gererSuppression = async () => {
+        setSuppressionEnCours(true);
+        setErreur(null);
+
+        try {
+            const res = await fetch(`/api/books/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Échec de la suppression du livre');
+            }
+
+            router.push('/admin/books');
+            router.refresh();
+        } catch (err) {
+            console.error('Delete error:', err);
+            setErreur(err instanceof Error ? err.message : 'Échec de la suppression du livre');
+            setSuppressionEnCours(false);
         }
     };
 
@@ -233,11 +270,12 @@ export default function EditionLivre() {
                                     <Select
                                         value={formData.publishedMonth}
                                         onValueChange={(value) =>
-                                            setFormData(prev => ({ ...prev!, publishedMonth: value }))
+                                            setFormData(prev => ({...prev!, publishedMonth: value}))
                                         }
                                     >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100 border-gray-100">
-                                            <SelectValue placeholder="Sélectionner un mois" />
+                                        <SelectTrigger
+                                            className="bg-gray-800 border-gray-700 text-gray-100 border-gray-100">
+                                            <SelectValue placeholder="Sélectionner un mois"/>
                                         </SelectTrigger>
                                         <SelectContent className="bg-gray-800 border-gray-700">
                                             {mois.map(mois => (
@@ -260,13 +298,14 @@ export default function EditionLivre() {
                                     <Select
                                         value={formData.publishedYear}
                                         onValueChange={(value) =>
-                                            setFormData(prev => ({ ...prev!, publishedYear: value }))
+                                            setFormData(prev => ({...prev!, publishedYear: value}))
                                         }
                                     >
                                         <SelectTrigger className="bg-gray-800 text-gray-100 border-gray-100">
-                                            <SelectValue placeholder="Sélectionner une année" />
+                                            <SelectValue placeholder="Sélectionner une année"/>
                                         </SelectTrigger>
-                                        <SelectContent className="max-h-[200px] overflow-y-auto bg-gray-800 border-gray-700">
+                                        <SelectContent
+                                            className="max-h-[200px] overflow-y-auto bg-gray-800 border-gray-700">
                                             {annees.map(annee => (
                                                 <SelectItem
                                                     key={annee}
@@ -416,14 +455,54 @@ export default function EditionLivre() {
                             </div>
                         </div>
 
-                        <Button
-                            type="submit"
-                            disabled={chargement}
-                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100"
-                        >
-                            {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
-                        </Button>
-                    </form>
+                        <div className="flex gap-4">
+                            <Button
+                                type="submit"
+                                disabled={chargement || suppressionEnCours}
+                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-100"
+                            >
+                                {chargement && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
+                            </Button>
+
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        disabled={chargement || suppressionEnCours}
+                                        className="bg-red-900 hover:bg-red-800 text-red-200"
+                                    >
+                                        {suppressionEnCours && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                        {suppressionEnCours ? 'Suppression...' : 'Supprimer le livre'}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-gray-900 border-gray-800">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="text-gray-100">
+                                            Confirmer la suppression
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription className="text-gray-400">
+                                            Êtes-vous sûr de vouloir supprimer ce livre ? Cette action est irréversible.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel
+                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                        >
+                                            Annuler
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={gererSuppression}
+                                            className="bg-red-900 hover:bg-red-800 text-red-200"
+                                        >
+                                            Supprimer
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    </form>s
                 </CardContent>
             </Card>
         </div>
