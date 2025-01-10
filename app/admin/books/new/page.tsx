@@ -9,21 +9,43 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useRouter } from 'next/navigation';
+import BookSearch from "@/app/admin/books/components/book-search"; // Adjust the import path as needed
 
 interface Genre {
     id: string;
     name: string;
 }
 
+interface FormData {
+    title: string;
+    author: string;
+    publishedYear: string;
+    publishedMonth: string;
+    genres: string[];
+    isbn: string;
+    description: string;
+    available: boolean;
+    readingDurationMinutes: string;
+}
+
+interface BookSearchData {
+    title: string;
+    author: string;
+    description: string;
+    isbn: string;
+    publishedMonth: string;
+    publishedYear: string;
+}
+
 export default function AddBook() {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<FormData>({
         title: '',
         author: '',
         publishedYear: '',
         publishedMonth: '',
-        genres: [] as string[],
+        genres: [],
         isbn: '',
         description: '',
         available: true,
@@ -79,6 +101,13 @@ export default function AddBook() {
         }));
     };
 
+    const handleBookSelect = (bookData: BookSearchData) => {
+        setFormData(prev => ({
+            ...prev,
+            ...bookData
+        }));
+    };
+
     const handleGenreSelect = (genreId: string) => {
         setFormData(prevData => {
             const newGenres = prevData.genres.includes(genreId)
@@ -103,7 +132,6 @@ export default function AddBook() {
         setIsLoading(true);
         setError(null);
 
-        // Create a formatted date string (YYYY-MM-01 for first of the month)
         const formattedDate = formData.publishedYear && formData.publishedMonth
             ? `${formData.publishedYear}-${formData.publishedMonth}-01`
             : null;
@@ -146,6 +174,8 @@ export default function AddBook() {
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
+
+                        <BookSearch onBookSelect={handleBookSelect} />
 
                         <div className="grid gap-6">
                             <div className="space-y-2">
@@ -268,7 +298,8 @@ export default function AddBook() {
                                             aria-expanded={open}
                                             className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
                                         >
-                                            Sélectionner les genres associés...                                        </Button>
+                                            Sélectionner les genres associés...
+                                        </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
                                         <div className="p-2">
@@ -321,7 +352,6 @@ export default function AddBook() {
                                     onChange={handleChange}
                                     className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
                                     placeholder="Indiquer le numéro ISBN du livre (facultatif)"
-
                                 />
                             </div>
 
@@ -338,7 +368,6 @@ export default function AddBook() {
                                     min="0"
                                     className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
                                     placeholder="Indiquer la durée de l'enregistrement en minutes"
-
                                 />
                             </div>
 
@@ -353,7 +382,6 @@ export default function AddBook() {
                                     onChange={handleChange}
                                     className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
                                     placeholder="Décrire le livre pour aider les utilisateurs à comprendre de quoi il s'agit."
-
                                 />
                             </div>
 
