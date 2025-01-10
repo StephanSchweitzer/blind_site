@@ -86,6 +86,27 @@ export function BooksTable({ initialBooks, initialPage, initialSearch, totalPage
         router.push(`?${params.toString()}`);
     };
 
+    const getVisiblePages = (current: number, total: number) => {
+        const delta = 2;
+        const range = [];
+        for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i++) {
+            range.push(i);
+        }
+        if (current - delta > 2) {
+            range.unshift('...');
+        }
+        if (current + delta < total - 1) {
+            range.push('...');
+        }
+        range.unshift(1);
+        if (total > 1) {
+            range.push(total);
+        }
+        return range;
+    };
+
+    const visiblePages = getVisiblePages(currentPage, totalPages);
+
     return (
         <Card className="bg-gray-900 border-gray-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-700">
@@ -167,19 +188,55 @@ export function BooksTable({ initialBooks, initialPage, initialSearch, totalPage
                 </div>
 
                 <div className="flex justify-center items-center gap-2 mt-6">
-                    {Array.from({ length: totalPages }, (_, index) => (
-                        <Button
-                            key={index + 1}
-                            variant={currentPage === index + 1 ? "default" : "outline"}
-                            size="sm"
-                            className={currentPage === index + 1
-                                ? "bg-white text-gray-900 hover:bg-gray-100"
-                                : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
-                            onClick={() => handlePageChange(index + 1)}
-                        >
-                            {index + 1}
-                        </Button>
+                    <Button
+                        size="sm"
+                        className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage === 1}
+                    >
+                        {'<<'}
+                    </Button>
+                    <Button
+                        size="sm"
+                        className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                    >
+                        {'<'}
+                    </Button>
+                    {visiblePages.map((page, index) => (
+                        typeof page === 'number' ? (
+                            <Button
+                                key={index}
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                className={currentPage === page
+                                    ? "bg-white text-gray-900 hover:bg-gray-100"
+                                    : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                onClick={() => handlePageChange(page)}
+                            >
+                                {page}
+                            </Button>
+                        ) : (
+                            <span key={index} className="text-gray-400">{page}</span>
+                        )
                     ))}
+                    <Button
+                        size="sm"
+                        className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                    >
+                        {'>'}
+                    </Button>
+                    <Button
+                        size="sm"
+                        className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                    >
+                        {'>>'}
+                    </Button>
                 </div>
                 <p className="text-center text-sm text-gray-400 mt-2">
                     Page {currentPage} of {totalPages}
