@@ -4,7 +4,9 @@ import { Prisma } from '@prisma/client';
 import { GenresTable } from './genres-table';
 
 interface PageProps {
-    searchParams: { [key: string]: string | string[] | undefined };
+    searchParams: Promise<{
+        [key: string]: string | string[] | undefined
+    }>;
 }
 
 export const dynamic = 'force-dynamic';
@@ -47,10 +49,12 @@ async function getGenres(page: number, searchTerm: string) {
 }
 
 export default async function Genres({ searchParams }: PageProps) {
-    const pageParam = typeof searchParams.page === 'string' ? searchParams.page :
-        Array.isArray(searchParams.page) ? searchParams.page[0] : '1';
-    const searchParam = typeof searchParams.search === 'string' ? searchParams.search :
-        Array.isArray(searchParams.search) ? searchParams.search[0] : '';
+    const params = await searchParams;
+
+    const pageParam = typeof params.page === 'string' ? params.page :
+        Array.isArray(params.page) ? params.page[0] : '1';
+    const searchParam = typeof params.search === 'string' ? params.search :
+        Array.isArray(params.search) ? params.search[0] : '';
 
     const page = parseInt(pageParam);
     const searchTerm = searchParam;
