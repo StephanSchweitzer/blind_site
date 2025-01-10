@@ -27,10 +27,12 @@ type GenreWithBooks = Prisma.GenreGetPayload<{
 }>;
 
 interface PageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
-    searchParams: { [key: string]: string | string[] | undefined };
+    }>;
+    searchParams: Promise<{
+        [key: string]: string | string[] | undefined
+    }>;
 }
 
 async function getGenre(id: number, page: number = 1) {
@@ -67,9 +69,12 @@ async function getGenre(id: number, page: number = 1) {
 }
 
 export default async function EditGenrePage({ params, searchParams }: PageProps) {
-    const { id } = params;
-    const page = typeof searchParams.page === 'string'
-        ? parseInt(searchParams.page, 10)
+    const resolvedParams = await params;
+    const resolvedSearchParams = await searchParams;
+
+    const { id } = resolvedParams;
+    const page = typeof resolvedSearchParams.page === 'string'
+        ? parseInt(resolvedSearchParams.page, 10)
         : 1;
 
     const genre = await getGenre(parseInt(id, 10), page);

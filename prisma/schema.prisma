@@ -86,7 +86,7 @@ model CoupsDeCoeurBooks {
 model BookGenre {
   book    Book  @relation(fields: [bookId], references: [id])
   bookId  Int
-  genre   Genre @relation(fields: [genreId], references: [id])
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
   genreId Int
 
   @@id([bookId, genreId])

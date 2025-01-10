@@ -77,19 +77,32 @@ export async function PUT(
 }
 
 export async function DELETE(
-    request: Request,
-    { params }: { params: { id: string } }
+    request: NextRequest,
+    { params }: Params
 ) {
     try {
+        const { id } = await params;
+
         await prisma.genre.delete({
-            where: { id: parseInt(params.id, 10) },
+            where: { id: parseInt(id, 10) },
         });
-        return NextResponse.json({ status: 'success' });
-    } catch (error: any) {
-        console.error('Server error deleting genre:', error);
+
         return NextResponse.json(
-            { error: 'Failed to delete genre', details: error.message },
-            { status: 500 }
+            { success: true },
+            {
+                status: 200,
+                headers: corsHeaders
+            }
+        );
+    } catch (error) {
+        console.error('Error deleting genre:', error);
+
+        return NextResponse.json(
+            { error: 'Failed to delete genre' },
+            {
+                status: 500,
+                headers: corsHeaders
+            }
         );
     }
 }
