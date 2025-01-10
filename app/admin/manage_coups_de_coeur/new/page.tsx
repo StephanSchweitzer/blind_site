@@ -109,7 +109,7 @@ export default function AddCoupDeCoeur() {
                                             required
                                             value={formData.title}
                                             onChange={handleChange}
-                                            className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                            className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                             placeholder="Le titre principal de ce coup de cœur"
 
                                         />
@@ -125,7 +125,7 @@ export default function AddCoupDeCoeur() {
                                             required
                                             value={formData.description}
                                             onChange={handleChange}
-                                            className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
+                                            className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[150px]"
                                             placeholder="Informations générales ajoutées en haut du coup de coeur"
                                         />
                                     </div>

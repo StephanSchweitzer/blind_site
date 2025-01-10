@@ -83,7 +83,7 @@ export default function AddArticle() {
                                     required
                                     value={formData.title}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                     placeholder="Entrez le titre de l'article"
                                 />
                             </div>
@@ -96,7 +96,7 @@ export default function AddArticle() {
                                     value={formData.type}
                                     onValueChange={handleTypeChange}
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600">
+                                    <SelectTrigger className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600">
                                         <SelectValue placeholder="Sélectionnez le type" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-gray-800 border-gray-700">
@@ -123,7 +123,7 @@ export default function AddArticle() {
                                     required
                                     value={formData.content}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[200px]"
+                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[200px]"
                                     placeholder="Entrez le contenu de l'article"
                                 />
                             </div>

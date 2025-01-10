@@ -82,7 +82,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                                 onChange={(e) => setName(e.target.value)}
                                 required
                                 placeholder="Nom du genre"
-                                className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
                             />
                         </div>
 
@@ -95,7 +95,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Description du genre (optionnel)"
-                                className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
                             />
                         </div>
                     </div>

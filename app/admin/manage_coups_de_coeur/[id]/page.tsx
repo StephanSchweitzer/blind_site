@@ -195,7 +195,7 @@ export default function EditCoupDeCoeurPage() {
                                     required
                                     value={formData.title}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
                                 />
                             </div>
 

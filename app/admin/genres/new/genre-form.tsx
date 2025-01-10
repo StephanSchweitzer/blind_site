@@ -68,7 +68,7 @@ export default function GenreForm() {
                     onChange={(e) => setName(e.target.value)}
                     required
                     placeholder="Nom du genre"
-                    className="bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-500"
+                    className="bg-gray-800 border-gray-100 text-gray-100 placeholder:text-gray-400"
                 />
             </div>
             <div className="space-y-2">
@@ -78,7 +78,7 @@ export default function GenreForm() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Description du genre (optionnel)"
-                    className="bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-500"
+                    className="bg-gray-800 border-gray-100 text-gray-100 placeholder:text-gray-400"
                 />
             </div>
             <div className="flex gap-4">
