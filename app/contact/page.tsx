@@ -39,23 +39,22 @@ export default async function Contact() {
                                 <p>71, avenue de Breteuil, 75015 Paris</p>
 
                                 <p className="font-bold">
-                                    Tel: + 33 1 88 32 31 47 ou + 33 1 88 32 31 48
+                                    Tel : + 33 1 88 32 31 47 ou + 33 1 88 32 31 48
                                 </p>
 
-                                <p>Courriel: <a href="mailto:ecapermanence@gmail.com" className="text-blue-400 hover:text-blue-300">
+                                <p>Courriel : <a href="mailto:ecapermanence@gmail.com" className="text-blue-400 hover:text-blue-300">
                                     ecapermanence@gmail.com
                                 </a></p>
                             </div>
 
                             <div className="space-y-2 mt-6">
-                                <p className="font-bold">Permanences: Mardis de 10 h à 17 h, Jeudis de 10 h à 13 h</p>
-                                <p className="font-bold">(hors vacances scolaires)</p>
+                                <p className="font-bold">Permanences : Mardis de 9 h 30 h à 17 h, Jeudis de 9 h 30 à 13 h</p>
                             </div>
 
                             <div className="space-y-2 mt-6">
-                                <p><span className="font-semibold">Métro:</span> Duroc (ligne 10 ou 13), Ségur (ligne 10),</p>
+                                <p><span className="font-semibold">Métro :</span> Duroc (ligne 10 ou 13), Ségur (ligne 10),</p>
                                 <p className="ml-14">Sèvres-Lecourbe (ligne 6)</p>
-                                <p><span className="font-semibold">Autobus:</span> 92, 82, 89, 28, 70</p>
+                                <p><span className="font-semibold">Autobus :</span> 92, 82, 89, 28, 70</p>
                             </div>
                         </div>
                     </section>

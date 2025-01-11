@@ -22,6 +22,9 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
+import YearCommandSelect from "@/components/ui/year-select";
+import DurationInputs from "@/components/ui/duration-inputs";
+
 
 interface Genre {
     id: number;
@@ -56,26 +59,6 @@ export default function EditionLivre() {
     const [erreur, setErreur] = useState<string | null>(null);
     const [chargement, setChargement] = useState(false);
     const [suppressionEnCours, setSuppressionEnCours] = useState(false);
-
-    // Générer un tableau d'années
-    const anneeActuelle = new Date().getFullYear();
-    const annees = Array.from({length: anneeActuelle - 1900 + 1}, (_, i) => (anneeActuelle - i).toString());
-
-    // Tableau des mois
-    const mois = [
-        {value: '01', label: 'janvier'},
-        {value: '02', label: 'février'},
-        {value: '03', label: 'mars'},
-        {value: '04', label: 'avril'},
-        {value: '05', label: 'mai'},
-        {value: '06', label: 'juin'},
-        {value: '07', label: 'juillet'},
-        {value: '08', label: 'août'},
-        {value: '09', label: 'septembre'},
-        {value: '10', label: 'octobre'},
-        {value: '11', label: 'novembre'},
-        {value: '12', label: 'décembre'}
-    ];
 
     // Récupérer les genres disponibles
     useEffect(() => {
@@ -265,244 +248,195 @@ export default function EditionLivre() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-200">
-                                        Mois de publication *
+                                        Année de publication *
                                     </label>
-                                    <Select
-                                        value={formData.publishedMonth}
-                                        onValueChange={(value) =>
-                                            setFormData(prev => ({...prev!, publishedMonth: value}))
+                                    <YearCommandSelect
+                                        value={formData.publishedYear}
+                                        onChange={(value: string) =>
+                                            setFormData(prev => prev ? {...prev, publishedYear: value} : null)
                                         }
-                                    >
-                                        <SelectTrigger
-                                            className="bg-gray-800 border-gray-700 text-gray-100 border-gray-100">
-                                            <SelectValue placeholder="Sélectionner un mois"/>
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-gray-800 border-gray-700">
-                                            {mois.map(mois => (
-                                                <SelectItem
-                                                    key={mois.value}
-                                                    value={mois.value}
-                                                    className="text-gray-100 hover:bg-gray-700 focus:bg-gray-700 focus:text-gray-100"
-                                                >
-                                                    {mois.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        startYear={1900}
+                                        endYear={new Date().getFullYear()}
+                                    />
                                 </div>
+                            </div>
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-200">
-                                        Année de publication *
+                                        Genres
                                     </label>
-                                    <Select
-                                        value={formData.publishedYear}
-                                        onValueChange={(value) =>
-                                            setFormData(prev => ({...prev!, publishedYear: value}))
-                                        }
-                                    >
-                                        <SelectTrigger className="bg-gray-800 text-gray-100 border-gray-100">
-                                            <SelectValue placeholder="Sélectionner une année"/>
-                                        </SelectTrigger>
-                                        <SelectContent
-                                            className="max-h-[200px] overflow-y-auto bg-gray-800 border-gray-700">
-                                            {annees.map(annee => (
-                                                <SelectItem
-                                                    key={annee}
-                                                    value={annee}
-                                                    className="text-gray-100 hover:bg-gray-700 focus:bg-gray-700 focus:text-gray-100"
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {genresSelectionnes.map(genreId => {
+                                            const genre = genresDisponibles.find(g => g.id === genreId);
+                                            return genre ? (
+                                                <div
+                                                    key={genre.id}
+                                                    className="bg-gray-800 text-gray-200 rounded-full px-3 py-1 text-sm flex items-center border border-gray-700"
                                                 >
-                                                    {annee}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Genres
-                                </label>
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                    {genresSelectionnes.map(genreId => {
-                                        const genre = genresDisponibles.find(g => g.id === genreId);
-                                        return genre ? (
-                                            <div
-                                                key={genre.id}
-                                                className="bg-gray-800 text-gray-200 rounded-full px-3 py-1 text-sm flex items-center border border-gray-700"
+                                                    {genre.name}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => supprimerGenre(genre.id)}
+                                                        className="ml-2 hover:text-gray-400"
+                                                    >
+                                                        <X className="h-3 w-3"/>
+                                                    </button>
+                                                </div>
+                                            ) : null;
+                                        })}
+                                    </div>
+                                    <Popover open={open} onOpenChange={setOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={open}
+                                                className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
                                             >
-                                                {genre.name}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => supprimerGenre(genre.id)}
-                                                    className="ml-2 hover:text-gray-400"
-                                                >
-                                                    <X className="h-3 w-3"/>
-                                                </button>
+                                                Sélectionner des genres...
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
+                                            <div className="p-2">
+                                                <Input
+                                                    placeholder="Rechercher des genres..."
+                                                    value={rechercheQuery}
+                                                    onChange={(e) => setRechercheQuery(e.target.value)}
+                                                    className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
+                                                />
+                                                <div className="max-h-60 overflow-y-auto">
+                                                    {genresDisponibles
+                                                        .filter(genre =>
+                                                            genre.name.toLowerCase().includes(rechercheQuery.toLowerCase())
+                                                        )
+                                                        .map((genre) => (
+                                                            <div
+                                                                key={genre.id}
+                                                                className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
+                                                                onClick={() => {
+                                                                    gererSelectionGenre(genre.id);
+                                                                    setRechercheQuery('');
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={`mr-2 h-4 w-4 ${
+                                                                        genresSelectionnes.includes(genre.id)
+                                                                            ? "opacity-100"
+                                                                            : "opacity-0"
+                                                                    }`}
+                                                                />
+                                                                {genre.name}
+                                                            </div>
+                                                        ))}
+                                                </div>
                                             </div>
-                                        ) : null;
-                                    })}
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
-                                <Popover open={open} onOpenChange={setOpen}>
-                                    <PopoverTrigger asChild>
+
+                                <div className="space-y-2">
+                                    <label htmlFor="isbn" className="text-sm font-medium text-gray-200">
+                                        ISBN
+                                    </label>
+                                    <Input
+                                        type="text"
+                                        name="isbn"
+                                        id="isbn"
+                                        value={formData.isbn || ''}
+                                        onChange={gererChangement}
+                                        className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    />
+                                </div>
+
+                            <DurationInputs
+                                formData={formData}
+                                handleChange={gererChangement}  // Using your existing handler name 'gererChangement'
+                            />
+
+
+                                <div className="space-y-2">
+                                    <label htmlFor="description" className="text-sm font-medium text-gray-200">
+                                        Description
+                                    </label>
+                                    <Textarea
+                                        name="description"
+                                        id="description"
+                                        value={formData.description || ''}
+                                        onChange={gererChangement}
+                                        className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
+                                    />
+                                </div>
+
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="available"
+                                        name="available"
+                                        checked={formData.available}
+                                        onCheckedChange={(checked) => {
+                                            setFormData(prev => ({
+                                                ...prev!,
+                                                available: checked as boolean
+                                            }));
+                                        }}
+                                        className="border-gray-700 data-[state=checked]:bg-gray-700"
+                                    />
+                                    <label htmlFor="available" className="text-sm font-medium text-gray-200">
+                                        Disponible
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4">
+                                <Button
+                                    type="submit"
+                                    disabled={chargement || suppressionEnCours}
+                                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-100"
+                                >
+                                    {chargement && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                    {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
+                                </Button>
+
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
                                         <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={open}
-                                            className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
-                                        >
-                                            Sélectionner des genres...
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
-                                        <div className="p-2">
-                                            <Input
-                                                placeholder="Rechercher des genres..."
-                                                value={rechercheQuery}
-                                                onChange={(e) => setRechercheQuery(e.target.value)}
-                                                className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
-                                            />
-                                            <div className="max-h-60 overflow-y-auto">
-                                                {genresDisponibles
-                                                    .filter(genre =>
-                                                        genre.name.toLowerCase().includes(rechercheQuery.toLowerCase())
-                                                    )
-                                                    .map((genre) => (
-                                                        <div
-                                                            key={genre.id}
-                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
-                                                            onClick={() => {
-                                                                gererSelectionGenre(genre.id);
-                                                                setRechercheQuery('');
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={`mr-2 h-4 w-4 ${
-                                                                    genresSelectionnes.includes(genre.id)
-                                                                        ? "opacity-100"
-                                                                        : "opacity-0"
-                                                                }`}
-                                                            />
-                                                            {genre.name}
-                                                        </div>
-                                                    ))}
-                                            </div>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label htmlFor="isbn" className="text-sm font-medium text-gray-200">
-                                    ISBN
-                                </label>
-                                <Input
-                                    type="text"
-                                    name="isbn"
-                                    id="isbn"
-                                    value={formData.isbn || ''}
-                                    onChange={gererChangement}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label htmlFor="readingDurationMinutes" className="text-sm font-medium text-gray-200">
-                                    Durée de lecture (minutes)
-                                </label>
-                                <Input
-                                    type="number"
-                                    name="readingDurationMinutes"
-                                    id="readingDurationMinutes"
-                                    value={formData.readingDurationMinutes || ''}
-                                    onChange={gererChangement}
-                                    min="0"
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label htmlFor="description" className="text-sm font-medium text-gray-200">
-                                    Description
-                                </label>
-                                <Textarea
-                                    name="description"
-                                    id="description"
-                                    value={formData.description || ''}
-                                    onChange={gererChangement}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
-                                />
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="available"
-                                    name="available"
-                                    checked={formData.available}
-                                    onCheckedChange={(checked) => {
-                                        setFormData(prev => ({
-                                            ...prev!,
-                                            available: checked as boolean
-                                        }));
-                                    }}
-                                    className="border-gray-700 data-[state=checked]:bg-gray-700"
-                                />
-                                <label htmlFor="available" className="text-sm font-medium text-gray-200">
-                                    Disponible
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <Button
-                                type="submit"
-                                disabled={chargement || suppressionEnCours}
-                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-100"
-                            >
-                                {chargement && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
-                            </Button>
-
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        disabled={chargement || suppressionEnCours}
-                                        className="bg-red-900 hover:bg-red-800 text-red-200"
-                                    >
-                                        {suppressionEnCours && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                        {suppressionEnCours ? 'Suppression...' : 'Supprimer le livre'}
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="bg-gray-900 border-gray-800">
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle className="text-gray-100">
-                                            Confirmer la suppression
-                                        </AlertDialogTitle>
-                                        <AlertDialogDescription className="text-gray-400">
-                                            Êtes-vous sûr de vouloir supprimer ce livre ? Cette action est irréversible.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel
-                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                        >
-                                            Annuler
-                                        </AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={gererSuppression}
+                                            type="button"
+                                            variant="destructive"
+                                            disabled={chargement || suppressionEnCours}
                                             className="bg-red-900 hover:bg-red-800 text-red-200"
                                         >
-                                            Supprimer
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    </form>s
+                                            {suppressionEnCours && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                            {suppressionEnCours ? 'Suppression...' : 'Supprimer le livre'}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="bg-gray-900 border-gray-800">
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="text-gray-100">
+                                                Confirmer la suppression
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription className="text-gray-400">
+                                                Êtes-vous sûr de vouloir supprimer ce livre ? Cette action est
+                                                irréversible.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel
+                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                            >
+                                                Annuler
+                                            </AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={gererSuppression}
+                                                className="bg-red-900 hover:bg-red-800 text-red-200"
+                                            >
+                                                Supprimer
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                    </form>
+                    s
                 </CardContent>
             </Card>
         </div>

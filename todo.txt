@@ -1,12 +1,72 @@
-BACKEND:npm run dev
+BACKEND:
 Add add users section
 Add profile section "qui suis je" (maybe, this is extra)
-éditeur / édition : Is this like the publisher?
+
+
+éditeur / édition : This is like the publisher?!!!!!
+
+
+Rename rechercher les livrs in coup de coeur to ajouter un livre existant et creer un livre
+
+
+The date formatting for coup de coeur creee le is wrong
+
+
 Make the add books to coup de coeur switches not custom switches and the shadcn switches
+Pagination for the books associated with genres doesn't work, it gives a 400 page not found. Make it a component, not a seperate page
+Make the backend book section have a filter for genre and also maybe search bar filters for author etc like the front
+have the search bar remember what you searched or the filter / page you're on when you edit a book?
+Make the entire row clickable and not just the edit button on the left, maybe remove the edit button
+Make "selectionner les livres" clickable to open the search books modal in the modify coup de coeur
 
 
+To add new books to the new coup de coeur, im limited with 9 new books because i don't specify the amount I want, and it is automatically
+limited by the API. I need to make sure i'm not limited at 9
+
+
+
+
+You need to be able to add books and edit books from the coup de coeur page, this will be easier if i use a modal
+and i just import that modal component onto each page
+
+Make it so when you add a genre in add book backend, the search isn't erased
+
+
+ajouter un article has to be changed to ajouter un info
+
+
+
+Right now ISBN is necessary, it must not be necessary
+If someone enters an isbn that exists already, there must be a message that is displayed that says "this isbn exists already, please choose another
+or remove it" instead of just getting a server error
+
+
+Description for coup de coeur should not be obligatoire
+Enregistrement should not be obligatoire
+
+
+There has to be a version of each coup de coeur that is able to be generated for printing purposes
+
+Delete programmation from the dernieres info categories
+
+Make the whole box for the dashboard clickable for navigation
+
+For the books pages, when there is a genre already associated, the bar for "selectionner les genres" should change to "selectionner plus des genres"
+to indicate that there is already something associated
+
+Add colors to the genre tags like the type of derniere info tags
 
 FRONTEND:
 Contact section
 make the navbar use links and not hrefs to make it faster
 Add the white center box for dernieres information and make the boxes a little lighter
+
+
+For coups de coeur, il faut avoir background white, text blanc
+
+There has to be a version of each coup de coeur that is able to be generated for printing purposes
+
+
+Make the blue words on black another color that stands out better
+
+Add colors to the genre tags like the type of derniere info tags

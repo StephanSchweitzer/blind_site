@@ -7,11 +7,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Check, X } from "lucide-react";
 import { useRouter } from 'next/navigation';
-import BookSearch from "@/app/admin/books/components/book-search"; // Adjust the import path as needed
+import BookSearch from "@/app/admin/books/components/book-search";
+import YearCommandSelect from "@/components/ui/year-select";
+import DurationInputs from "@/components/ui/duration-inputs";
 
 interface Genre {
     id: string;
@@ -58,24 +59,6 @@ export default function AddBook() {
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
-    // Generate array of years from 1900 to current year
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => (currentYear - i).toString());
-
-    const months = [
-        { value: '01', label: 'janvier' },
-        { value: '02', label: 'février' },
-        { value: '03', label: 'mars' },
-        { value: '04', label: 'avril' },
-        { value: '05', label: 'mai' },
-        { value: '06', label: 'juin' },
-        { value: '07', label: 'juillet' },
-        { value: '08', label: 'aout' },
-        { value: '09', label: 'septembre' },
-        { value: '10', label: 'octobre' },
-        { value: '11', label: 'novembre' },
-        { value: '12', label: 'décembre' }
-    ];
 
     useEffect(() => {
         const fetchGenres = async () => {
@@ -133,7 +116,7 @@ export default function AddBook() {
         setError(null);
 
         const formattedDate = formData.publishedYear && formData.publishedMonth
-            ? `${formData.publishedYear}-${formData.publishedMonth}-01`
+            ? `${formData.publishedYear}-01-01`
             : null;
 
         try {
@@ -213,56 +196,16 @@ export default function AddBook() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-200">
-                                        Mois de publication *
-                                    </label>
-                                    <Select
-                                        value={formData.publishedMonth}
-                                        onValueChange={(value) =>
-                                            setFormData(prev => ({ ...prev, publishedMonth: value }))
-                                        }
-                                    >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100">
-                                            <SelectValue placeholder="Sélectionner le mois" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-gray-800 border-gray-700">
-                                            {months.map(month => (
-                                                <SelectItem
-                                                    key={month.value}
-                                                    value={month.value}
-                                                    className="text-gray-100 hover:bg-gray-700 focus:bg-gray-700 focus:text-gray-100"
-                                                >
-                                                    {month.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">
                                         Année de publication *
                                     </label>
-                                    <Select
+                                    <YearCommandSelect
                                         value={formData.publishedYear}
-                                        onValueChange={(value) =>
-                                            setFormData(prev => ({ ...prev, publishedYear: value }))
+                                        onChange={(value) =>
+                                            setFormData(prev => ({...prev, publishedYear: value}))
                                         }
-                                    >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-100">
-                                            <SelectValue placeholder="Sélectionner l'année" />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-[200px] overflow-y-auto bg-gray-800 border-gray-700">
-                                            {years.map(year => (
-                                                <SelectItem
-                                                    key={year}
-                                                    value={year}
-                                                    className="text-gray-100 hover:bg-gray-700 focus:bg-gray-700 focus:text-gray-100"
-                                                >
-                                                    {year}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        startYear={1900}
+                                        endYear={new Date().getFullYear()}
+                                    />
                                 </div>
                             </div>
 
@@ -355,21 +298,8 @@ export default function AddBook() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <label htmlFor="readingDurationMinutes" className="text-sm font-medium text-gray-200">
-                                    Durée de la lecture (minutes)
-                                </label>
-                                <Input
-                                    type="number"
-                                    name="readingDurationMinutes"
-                                    id="readingDurationMinutes"
-                                    value={formData.readingDurationMinutes}
-                                    onChange={handleChange}
-                                    min="0"
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
-                                    placeholder="Indiquer la durée de l'enregistrement en minutes"
-                                />
-                            </div>
+                            <DurationInputs formData={formData} handleChange={handleChange} />
+
 
                             <div className="space-y-2">
                                 <label htmlFor="description" className="text-sm font-medium text-gray-200">

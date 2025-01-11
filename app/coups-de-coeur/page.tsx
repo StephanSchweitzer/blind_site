@@ -115,9 +115,9 @@ export default function CoupsDeCoeurPage() {
                             <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
                             <br />
                             ou par courriel à{' '}
-                            <a href="mailto:lecteurs.eca@gmail.com"
+                            <a href="mailto:ecapermanence@gmail.com"
                                className="text-blue-400 hover:text-blue-300 transition-colors duration-300">
-                                lecteurs.eca@gmail.com
+                                ecapermanence@gmail.com
                             </a>
                         </p>
                     </section>
