@@ -264,9 +264,7 @@ export default function EditCoupDeCoeurPage() {
                                 <label
                                     className="text-sm font-medium text-gray-200 cursor-pointer"
                                     onClick={() => {
-                                        console.log('Label clicked');
                                         setIsBookSelectorOpen(true);
-                                        console.log('isBookSelectorOpen set to:', true);
                                     }}
                                 >
                                     Sélectionner les livres *

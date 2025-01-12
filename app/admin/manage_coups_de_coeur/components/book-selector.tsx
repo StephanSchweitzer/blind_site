@@ -18,6 +18,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { useDebounce } from 'use-debounce';
+import {AddBookButtonBackend} from "@/admin/BookModalBackend";
 
 interface Book {
     id: number;
@@ -50,9 +51,9 @@ export default function BookSelector({
     const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
 
-    // Original fetch logic remains the same
     useEffect(() => {
         const fetchInitialBooks = async () => {
             if (initialLoadDone) return;
@@ -71,7 +72,10 @@ export default function BookSelector({
                     const response = await fetch(`${url}${params.toString()}`);
                     if (response.ok) {
                         const data = await response.json();
-                        const newBookMap = new Map<number, Book>(data.books.map((book: Book) => [book.id, book]));
+                        // Fix the type by explicitly mapping to Book type
+                        const newBookMap = new Map<number, Book>(
+                            data.books.map((book: Book) => [book.id, book])
+                        );
                         setBookDetailsMap(newBookMap);
 
                         if (mode === 'create') {
@@ -80,15 +84,45 @@ export default function BookSelector({
                         }
                     }
                 }
-                setInitialLoadDone(true);
             } catch (error) {
-                console.error('Erreur lors du chargement des livres:', error);
+                console.error('Error loading books:', error);
+            } finally {
                 setInitialLoadDone(true);
             }
         };
 
         fetchInitialBooks();
-    }, [mode, coupDeCoeurId]);
+    }, [mode, coupDeCoeurId, refreshTrigger]);
+
+    const handleBookAdded = async (newBookId: number) => {
+        console.log('Book added, refreshing list with new book ID:', newBookId);
+
+        try {
+            // Fetch the new book
+            const response = await fetch(`/api/books?ids=${newBookId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch new book');
+            }
+
+            const data = await response.json();
+
+            // Update book map with proper typing
+            setBookDetailsMap(prev => {
+                const newMap = new Map<number, Book>(prev);
+                if (data.books?.[0]) {
+                    newMap.set(newBookId, data.books[0]);
+                }
+                return newMap;
+            });
+
+            // Add the new book to selected books
+            toggleBookSelection(newBookId);
+            setInitialLoadDone(false);
+        } catch (error) {
+            console.error('Error handling new book:', error);
+        }
+    };
+
 
     useEffect(() => {
         const searchBooks = async () => {
@@ -208,55 +242,63 @@ export default function BookSelector({
         </Table>
     );
 
+    console.log('BookDetailsMap size:', bookDetailsMap.size);
+    console.log('Selected books:', selectedBooks);
+    console.log('Selected book details:', selectedBookDetails);
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-100">
                     {mode === 'edit' ? 'Livres sélectionnés' : 'Livres récents'}
                 </h3>
-                <Dialog
-                    open={isOpen}
-                    onOpenChange={onDialogOpenChange}
-                >
-                    <DialogTrigger asChild>
-                        <Button className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600">
-                            Ajouter un livre existant
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700">
-                        <DialogHeader>
-                            <DialogTitle className="text-gray-100">Recherche de livres</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                            <Input
-                                type="search"
-                                placeholder="Rechercher par titre, auteur ou ISBN..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-white text-gray-900 placeholder:text-gray-500"
-                            />
-                            {isSearching ? (
-                                <p className="text-center py-4 text-gray-200">Chargement...</p>
-                            ) : (
-                                <>
-                                    {searchResults.length > 0 ? (
-                                        <BookTable books={searchResults} isSearchResults={true} />
-                                    ) : (
-                                        debouncedSearchTerm && (
-                                            <p className="text-center text-gray-400 py-4">
-                                                Aucun livre trouvé correspondant à votre recherche.
-                                            </p>
-                                        )
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <div className="flex gap-2"> {/* Add a container for the buttons */}
+                    <AddBookButtonBackend onBookAdded={handleBookAdded} />
+
+                    <Dialog
+                        open={isOpen}
+                        onOpenChange={onDialogOpenChange}
+                    >
+                        <DialogTrigger asChild>
+                            <Button className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600">
+                                Ajouter un livre existant
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700">
+                            <DialogHeader>
+                                <DialogTitle className="text-gray-100">Recherche de livres</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                                <Input
+                                    type="search"
+                                    placeholder="Rechercher par titre, auteur ou ISBN..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="bg-white text-gray-900 placeholder:text-gray-500"
+                                />
+                                {isSearching ? (
+                                    <p className="text-center py-4 text-gray-200">Chargement...</p>
+                                ) : (
+                                    <>
+                                        {searchResults.length > 0 ? (
+                                            <BookTable books={searchResults} isSearchResults={true}/>
+                                        ) : (
+                                            debouncedSearchTerm && (
+                                                <p className="text-center text-gray-400 py-4">
+                                                    Aucun livre trouvé correspondant à votre recherche.
+                                                </p>
+                                            )
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <div className="border border-gray-700 rounded-lg bg-gray-800">
-                <BookTable books={selectedBookDetails} />
+                <BookTable books={selectedBookDetails}/>
             </div>
 
             <div className="mt-4">
@@ -265,5 +307,6 @@ export default function BookSelector({
                 </p>
             </div>
         </div>
-    );
-}
+        );
+        }
+

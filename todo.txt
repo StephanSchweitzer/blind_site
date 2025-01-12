@@ -4,11 +4,12 @@ Add profile section "qui suis je" (maybe, this is extra)
 
 Rename rechercher les livrs in coup de coeur to ajouter un livre existant et creer un livre
 
-
-Make the add books to coup de coeur switches not custom switches and the shadcn switches
 Pagination for the books associated with genres doesn't work, it gives a 400 page not found. Make it a component, not a seperate page
+
 Make the backend book section have a filter for genre and also maybe search bar filters for author etc like the front
+
 have the search bar remember what you searched or the filter / page you're on when you edit a book?
+
 Make the entire row clickable and not just the edit button on the left, maybe remove the edit button
 
 
