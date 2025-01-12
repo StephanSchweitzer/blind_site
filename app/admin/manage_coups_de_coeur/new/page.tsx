@@ -182,7 +182,7 @@ export default function AddCoupDeCoeur() {
                                                 }
                                                 mode="create"
                                                 onDialogOpenChange={setIsBookSelectorOpen}
-                                                isOpen={isBookSelectorOpen}  // Add this
+                                                isOpen={isBookSelectorOpen}
                                             />
                                         </div>
                                     </div>

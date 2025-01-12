@@ -139,7 +139,11 @@ export function CoupsTable({ initialItems, initialPage, initialSearch, totalPage
                                     <TableCell className="text-gray-200">{item.active ? 'Actif' : 'Inactif'}</TableCell>
                                     <TableCell className="text-gray-200">{item.books.length} livres</TableCell>
                                     <TableCell className="text-gray-200">
-                                        {new Date(item.createdAt).toLocaleDateString()}
+                                        {new Date(item.createdAt).toLocaleDateString('fr-FR', {
+                                            month: 'numeric',
+                                            day: 'numeric',
+                                            year: 'numeric'
+                                        })}
                                     </TableCell>
                                     <TableCell>
                                         <Link href={`/admin/manage_coups_de_coeur/${item.id}`}>

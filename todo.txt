@@ -2,14 +2,7 @@ BACKEND:
 Add add users section
 Add profile section "qui suis je" (maybe, this is extra)
 
-
-éditeur / édition : This is like the publisher?!!!!!
-
-
 Rename rechercher les livrs in coup de coeur to ajouter un livre existant et creer un livre
-
-
-The date formatting for coup de coeur creee le is wrong
 
 
 Make the add books to coup de coeur switches not custom switches and the shadcn switches
@@ -17,7 +10,6 @@ Pagination for the books associated with genres doesn't work, it gives a 400 pag
 Make the backend book section have a filter for genre and also maybe search bar filters for author etc like the front
 have the search bar remember what you searched or the filter / page you're on when you edit a book?
 Make the entire row clickable and not just the edit button on the left, maybe remove the edit button
-Make "selectionner les livres" clickable to open the search books modal in the modify coup de coeur
 
 
 To add new books to the new coup de coeur, im limited with 9 new books because i don't specify the amount I want, and it is automatically

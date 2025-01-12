@@ -52,6 +52,8 @@ export default function EditCoupDeCoeurPage() {
     const [isRerecording, setIsRerecording] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isBookSelectorOpen, setIsBookSelectorOpen] = useState(false);
+
 
     useEffect(() => {
         async function fetchCoupDeCoeur() {
@@ -259,8 +261,15 @@ export default function EditCoupDeCoeurPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Sélectionner les Livres *
+                                <label
+                                    className="text-sm font-medium text-gray-200 cursor-pointer"
+                                    onClick={() => {
+                                        console.log('Label clicked');
+                                        setIsBookSelectorOpen(true);
+                                        console.log('isBookSelectorOpen set to:', true);
+                                    }}
+                                >
+                                    Sélectionner les livres *
                                 </label>
                                 <BookSelector
                                     selectedBooks={formData.books.map(book => book.book.id)}
@@ -291,6 +300,8 @@ export default function EditCoupDeCoeurPage() {
                                     }}
                                     mode="edit"
                                     coupDeCoeurId={parseInt(id as string)}
+                                    onDialogOpenChange={setIsBookSelectorOpen}
+                                    isOpen={isBookSelectorOpen}
                                 />
                             </div>
                         </div>
