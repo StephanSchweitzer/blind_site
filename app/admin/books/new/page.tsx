@@ -20,22 +20,22 @@ interface Genre {
 }
 
 interface FormData {
+    publisher: string | undefined;
     title: string;
     author: string;
     publishedYear: string;
-    publishedMonth: string;
     genres: string[];
-    isbn: string;
-    description: string;
+    isbn: string | undefined;
+    description: string | undefined;
     available: boolean;
-    readingDurationMinutes: string;
+    readingDurationMinutes: string | undefined;
 }
 
 interface BookSearchData {
     title: string;
     author: string;
     description: string;
-    isbn: string;
+    isbn: string | undefined;
     publishedMonth: string;
     publishedYear: string;
 }
@@ -44,8 +44,8 @@ export default function AddBook() {
     const [formData, setFormData] = useState<FormData>({
         title: '',
         author: '',
+        publisher: '',
         publishedYear: '',
-        publishedMonth: '',
         genres: [],
         isbn: '',
         description: '',
@@ -115,7 +115,7 @@ export default function AddBook() {
         setIsLoading(true);
         setError(null);
 
-        const formattedDate = formData.publishedYear && formData.publishedMonth
+        const formattedDate = formData.publishedYear
             ? `${formData.publishedYear}-01-01`
             : null;
 
@@ -190,6 +190,21 @@ export default function AddBook() {
                                     onChange={handleChange}
                                     className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                     placeholder="Indiquer l'auteur du livre"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="publisher" className="text-sm font-medium text-gray-200">
+                                    Éditeur
+                                </label>
+                                <Input
+                                    type="text"
+                                    name="publisher"
+                                    id="publisher"
+                                    value={formData.publisher || ''}
+                                    onChange={handleChange}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    placeholder="Indiquer l'éditeur du livre"
                                 />
                             </div>
 
@@ -290,7 +305,6 @@ export default function AddBook() {
                                     type="text"
                                     name="isbn"
                                     id="isbn"
-                                    required
                                     value={formData.isbn}
                                     onChange={handleChange}
                                     className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
@@ -298,7 +312,7 @@ export default function AddBook() {
                                 />
                             </div>
 
-                            <DurationInputs formData={formData} handleChange={handleChange} />
+                            <DurationInputs formData={formData} handleChange={handleChange}/>
 
 
                             <div className="space-y-2">

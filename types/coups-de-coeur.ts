@@ -12,6 +12,7 @@ export interface Book {
     publishedDate: Date | null;
     readingDurationMinutes: number | null;
     isbn: string | null;
+    publisher: string | null;
     available: boolean;
     createdAt: Date;
     updatedAt: Date;

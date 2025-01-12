@@ -36,8 +36,7 @@ interface Livre {
     id: number;
     title: string;
     author: string;
-    publishedDate: string;
-    publishedMonth: string;
+    publisher: string | undefined;
     publishedYear: string;
     genres: { genre: Genre }[];
     isbn?: string;
@@ -142,8 +141,8 @@ export default function EditionLivre() {
 
         try {
             // Créer une chaîne de date formatée (AAAA-MM-01)
-            const dateFormatee = formData.publishedYear && formData.publishedMonth
-                ? `${formData.publishedYear}-${formData.publishedMonth}-01`
+            const dateFormatee = formData.publishedYear
+                ? `${formData.publishedYear}-01-01`
                 : null;
 
             const donneesSoumission = {
@@ -245,6 +244,21 @@ export default function EditionLivre() {
                                 />
                             </div>
 
+                            <div className="space-y-2">
+                                <label htmlFor="publisher" className="text-sm font-medium text-gray-200">
+                                    Éditeur *
+                                </label>
+                                <Input
+                                    type="text"
+                                    name="publisher"
+                                    id="publisher"
+                                    required
+                                    value={formData.publisher || ''}
+                                    onChange={gererChangement}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                />
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-200">
@@ -261,93 +275,93 @@ export default function EditionLivre() {
                                 </div>
                             </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">
-                                        Genres
-                                    </label>
-                                    <div className="flex flex-wrap gap-2 mb-2">
-                                        {genresSelectionnes.map(genreId => {
-                                            const genre = genresDisponibles.find(g => g.id === genreId);
-                                            return genre ? (
-                                                <div
-                                                    key={genre.id}
-                                                    className="bg-gray-800 text-gray-200 rounded-full px-3 py-1 text-sm flex items-center border border-gray-700"
-                                                >
-                                                    {genre.name}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => supprimerGenre(genre.id)}
-                                                        className="ml-2 hover:text-gray-400"
-                                                    >
-                                                        <X className="h-3 w-3"/>
-                                                    </button>
-                                                </div>
-                                            ) : null;
-                                        })}
-                                    </div>
-                                    <Popover open={open} onOpenChange={setOpen}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={open}
-                                                className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">
+                                    Genres
+                                </label>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {genresSelectionnes.map(genreId => {
+                                        const genre = genresDisponibles.find(g => g.id === genreId);
+                                        return genre ? (
+                                            <div
+                                                key={genre.id}
+                                                className="bg-gray-800 text-gray-200 rounded-full px-3 py-1 text-sm flex items-center border border-gray-700"
                                             >
-                                                Sélectionner des genres...
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
-                                            <div className="p-2">
-                                                <Input
-                                                    placeholder="Rechercher des genres..."
-                                                    value={rechercheQuery}
-                                                    onChange={(e) => setRechercheQuery(e.target.value)}
-                                                    className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
-                                                />
-                                                <div className="max-h-60 overflow-y-auto">
-                                                    {genresDisponibles
-                                                        .filter(genre =>
-                                                            genre.name.toLowerCase().includes(rechercheQuery.toLowerCase())
-                                                        )
-                                                        .map((genre) => (
-                                                            <div
-                                                                key={genre.id}
-                                                                className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
-                                                                onClick={() => {
-                                                                    gererSelectionGenre(genre.id);
-                                                                    setRechercheQuery('');
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={`mr-2 h-4 w-4 ${
-                                                                        genresSelectionnes.includes(genre.id)
-                                                                            ? "opacity-100"
-                                                                            : "opacity-0"
-                                                                    }`}
-                                                                />
-                                                                {genre.name}
-                                                            </div>
-                                                        ))}
-                                                </div>
+                                                {genre.name}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => supprimerGenre(genre.id)}
+                                                    className="ml-2 hover:text-gray-400"
+                                                >
+                                                    <X className="h-3 w-3"/>
+                                                </button>
                                             </div>
-                                        </PopoverContent>
-                                    </Popover>
+                                        ) : null;
+                                    })}
                                 </div>
+                                <Popover open={open} onOpenChange={setOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={open}
+                                            className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
+                                        >
+                                            Sélectionner des genres...
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
+                                        <div className="p-2">
+                                            <Input
+                                                placeholder="Rechercher des genres..."
+                                                value={rechercheQuery}
+                                                onChange={(e) => setRechercheQuery(e.target.value)}
+                                                className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
+                                            />
+                                            <div className="max-h-60 overflow-y-auto">
+                                                {genresDisponibles
+                                                    .filter(genre =>
+                                                        genre.name.toLowerCase().includes(rechercheQuery.toLowerCase())
+                                                    )
+                                                    .map((genre) => (
+                                                        <div
+                                                            key={genre.id}
+                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
+                                                            onClick={() => {
+                                                                gererSelectionGenre(genre.id);
+                                                                setRechercheQuery('');
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={`mr-2 h-4 w-4 ${
+                                                                    genresSelectionnes.includes(genre.id)
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                }`}
+                                                            />
+                                                            {genre.name}
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
 
-                                <div className="space-y-2">
-                                    <label htmlFor="isbn" className="text-sm font-medium text-gray-200">
-                                        ISBN
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        name="isbn"
-                                        id="isbn"
-                                        value={formData.isbn || ''}
-                                        onChange={gererChangement}
-                                        className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
-                                    />
-                                </div>
+                            <div className="space-y-2">
+                                <label htmlFor="isbn" className="text-sm font-medium text-gray-200">
+                                    ISBN
+                                </label>
+                                <Input
+                                    type="text"
+                                    name="isbn"
+                                    id="isbn"
+                                    value={formData.isbn || ''}
+                                    onChange={gererChangement}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                />
+                            </div>
 
                             <DurationInputs
                                 formData={formData}
@@ -355,53 +369,53 @@ export default function EditionLivre() {
                             />
 
 
-                                <div className="space-y-2">
-                                    <label htmlFor="description" className="text-sm font-medium text-gray-200">
-                                        Description
-                                    </label>
-                                    <Textarea
-                                        name="description"
-                                        id="description"
-                                        value={formData.description || ''}
-                                        onChange={gererChangement}
-                                        className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
-                                    />
-                                </div>
-
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="available"
-                                        name="available"
-                                        checked={formData.available}
-                                        onCheckedChange={(checked) => {
-                                            setFormData(prev => ({
-                                                ...prev!,
-                                                available: checked as boolean
-                                            }));
-                                        }}
-                                        className="border-gray-700 data-[state=checked]:bg-gray-700"
-                                    />
-                                    <label htmlFor="available" className="text-sm font-medium text-gray-200">
-                                        Disponible
-                                    </label>
-                                </div>
+                            <div className="space-y-2">
+                                <label htmlFor="description" className="text-sm font-medium text-gray-200">
+                                    Description
+                                </label>
+                                <Textarea
+                                    name="description"
+                                    id="description"
+                                    value={formData.description || ''}
+                                    onChange={gererChangement}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
+                                />
                             </div>
 
-                            <div className="flex gap-4">
-                                <Button
-                                    type="submit"
-                                    disabled={chargement || suppressionEnCours}
-                                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-100"
-                                >
-                                    {chargement && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                    {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
-                                </Button>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="available"
+                                    name="available"
+                                    checked={formData.available}
+                                    onCheckedChange={(checked) => {
+                                        setFormData(prev => ({
+                                            ...prev!,
+                                            available: checked as boolean
+                                        }));
+                                    }}
+                                    className="border-gray-700 data-[state=checked]:bg-gray-700"
+                                />
+                                <label htmlFor="available" className="text-sm font-medium text-gray-200">
+                                    Disponible
+                                </label>
+                            </div>
+                        </div>
 
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="destructive"
+                        <div className="flex gap-4">
+                            <Button
+                                type="submit"
+                                disabled={chargement || suppressionEnCours}
+                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-100"
+                            >
+                                {chargement && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
+                            </Button>
+
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
                                             disabled={chargement || suppressionEnCours}
                                             className="bg-red-900 hover:bg-red-800 text-red-200"
                                         >

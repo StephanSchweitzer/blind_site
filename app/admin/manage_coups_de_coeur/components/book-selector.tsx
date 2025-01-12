@@ -32,16 +32,25 @@ interface BookSelectorProps {
     onSelectedBooksChange: (bookIds: number[]) => void;
     mode: 'edit' | 'create';
     coupDeCoeurId?: number;
+    onDialogOpenChange?: (open: boolean) => void;
+    isOpen?: boolean;
 }
 
-export default function BookSelector({ selectedBooks = [], onSelectedBooksChange, mode, coupDeCoeurId }: BookSelectorProps) {
-    const [bookDetailsMap, setBookDetailsMap] = useState<Map<number, Book>>(new Map());
+export default function BookSelector({
+                                         selectedBooks = [],
+                                         onSelectedBooksChange,
+                                         mode,
+                                         coupDeCoeurId,
+                                         onDialogOpenChange,
+                                         isOpen = false  // Add this
+                                     }: BookSelectorProps) {    const [bookDetailsMap, setBookDetailsMap] = useState<Map<number, Book>>(new Map());
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<Book[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
+
 
     // Original fetch logic remains the same
     useEffect(() => {
@@ -205,10 +214,13 @@ export default function BookSelector({ selectedBooks = [], onSelectedBooksChange
                 <h3 className="text-lg font-medium text-gray-100">
                     {mode === 'edit' ? 'Livres sélectionnés' : 'Livres récents'}
                 </h3>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Dialog
+                    open={isOpen}
+                    onOpenChange={onDialogOpenChange}
+                >
                     <DialogTrigger asChild>
                         <Button className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600">
-                            Rechercher des livres
+                            Ajouter un livre existant
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700">

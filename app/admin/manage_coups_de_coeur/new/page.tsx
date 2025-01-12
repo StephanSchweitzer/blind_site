@@ -24,6 +24,8 @@ export default function AddCoupDeCoeur() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const [isBookSelectorOpen, setIsBookSelectorOpen] = useState(false);
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -35,8 +37,15 @@ export default function AddCoupDeCoeur() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log('Starting form submission...', { formData, tempAudioBlob });
+
         if (!tempAudioBlob) {
             setError('Audio recording is required');
+            return;
+        }
+
+        if (formData.bookIds.length === 0) {
+            setError('Please select at least one book');
             return;
         }
 
@@ -50,15 +59,26 @@ export default function AddCoupDeCoeur() {
             const audioFormData = new FormData();
             audioFormData.append('audio', tempAudioBlob, filename);
 
+            console.log('Uploading audio...', filename);
             const uploadRes = await fetch('/api/upload-audio', {
                 method: 'POST',
                 body: audioFormData,
             });
 
-            if (!uploadRes.ok) throw new Error('Failed to upload audio');
+            if (!uploadRes.ok) {
+                const uploadError = await uploadRes.json();
+                throw new Error(`Failed to upload audio: ${uploadError.message || uploadRes.statusText}`);
+            }
+
             const { filepath } = await uploadRes.json();
+            console.log('Audio uploaded successfully:', filepath);
 
             // Then create the coup de coeur with the file path
+            console.log('Creating coup de coeur...', {
+                ...formData,
+                audioPath: filepath,
+            });
+
             const res = await fetch('/api/coups-de-coeur', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -69,10 +89,11 @@ export default function AddCoupDeCoeur() {
             });
 
             if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.message || 'Failed to create coup de coeur');
+                const errorData = await res.json();
+                throw new Error(`Failed to create coup de coeur: ${errorData.message || res.statusText}`);
             }
 
+            console.log('Coup de coeur created successfully');
             router.push('/admin/manage_coups_de_coeur');
             router.refresh();
         } catch (err) {
@@ -143,7 +164,14 @@ export default function AddCoupDeCoeur() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">
+                                        <label
+                                            className="text-sm font-medium text-gray-200 cursor-pointer"
+                                            onClick={() => {
+                                                console.log('Label clicked');
+                                                setIsBookSelectorOpen(true);
+                                                console.log('isBookSelectorOpen set to:', true);
+                                            }}
+                                        >
                                             Sélectionner les livres *
                                         </label>
                                         <div className="bg-gray-800 border border-gray-700 rounded-md">
@@ -153,6 +181,8 @@ export default function AddCoupDeCoeur() {
                                                     setFormData(prev => ({ ...prev, bookIds }))
                                                 }
                                                 mode="create"
+                                                onDialogOpenChange={setIsBookSelectorOpen}
+                                                isOpen={isBookSelectorOpen}  // Add this
                                             />
                                         </div>
                                     </div>
@@ -162,7 +192,7 @@ export default function AddCoupDeCoeur() {
                                             id="active"
                                             checked={formData.active}
                                             onChange={(checked) =>
-                                                setFormData(prev => ({ ...prev, active: checked }))
+                                                setFormData(prev => ({...prev, active: checked}))
                                             }
                                         />
                                         <label htmlFor="active" className="text-sm font-medium text-gray-200">

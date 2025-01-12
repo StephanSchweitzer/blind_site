@@ -69,6 +69,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const {
         title,
         author,
+        publisher,
         publishedDate,
         genres,
         isbn,
@@ -83,6 +84,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
             data: {
                 title,
                 author,
+                publisher,
                 publishedDate: publishedDate ? new Date(publishedDate) : undefined,
                 isbn,
                 description,

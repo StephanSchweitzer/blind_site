@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
                 OR: [
                     { title: { contains: search, mode: 'insensitive' } },
                     { author: { contains: search, mode: 'insensitive' } },
+                    { publisher: { contains: search, mode: 'insensitive' } },
                     { description: { contains: search, mode: 'insensitive' } },
                     {
                         genres: {
@@ -155,6 +156,7 @@ export async function POST(req: NextRequest) {
             data: {
                 title: formData.title,
                 author: formData.author,
+                publisher: formData.publisher,
                 publishedDate: new Date(formData.publishedDate),
                 isbn: formData.isbn,
                 description: formData.description,
