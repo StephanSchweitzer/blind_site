@@ -259,38 +259,49 @@ export function BookFormBackendBase({
                                         Sélectionner les genres associés...
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
-                                    <div className="p-2">
-                                        <Input
-                                            placeholder="Recherche de genres..."
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
-                                        />
-                                        <div className="max-h-60 overflow-y-auto">
-                                            {genres
-                                                .filter(genre =>
-                                                    genre.name.toLowerCase().includes(searchQuery.toLowerCase())
-                                                )
-                                                .map((genre) => (
-                                                    <div
-                                                        key={genre.id}
-                                                        className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
-                                                        onClick={() => {
-                                                            handleGenreSelect(genre.id);
-                                                            setSearchQuery('');
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={`mr-2 h-4 w-4 ${
-                                                                formData.genres.includes(genre.id)
-                                                                    ? "opacity-100"
-                                                                    : "opacity-0"
-                                                            }`}
-                                                        />
-                                                        {genre.name}
-                                                    </div>
-                                                ))}
+                                <PopoverContent className="w-64 p-0 bg-gray-800 border-gray-700">
+                                    <div className="flex flex-col h-80">
+                                        <div className="p-2">
+                                            <Input
+                                                placeholder="Recherche de genres..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
+                                            />
+                                        </div>
+                                        <div
+                                            className="flex-1 overflow-y-auto"
+                                            onWheel={(e) => {
+                                                e.stopPropagation();
+                                                const container = e.currentTarget;
+                                                container.scrollTop += e.deltaY;
+                                            }}
+                                        >
+                                            <div className="p-2">
+                                                {genres
+                                                    .filter(genre =>
+                                                        genre.name.toLowerCase().includes(searchQuery.toLowerCase())
+                                                    )
+                                                    .map((genre) => (
+                                                        <div
+                                                            key={genre.id}
+                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
+                                                            onClick={() => {
+                                                                handleGenreSelect(genre.id);
+                                                                setSearchQuery('');
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={`mr-2 h-4 w-4 ${
+                                                                    formData.genres.includes(genre.id)
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                }`}
+                                                            />
+                                                            {genre.name}
+                                                        </div>
+                                                    ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </PopoverContent>
