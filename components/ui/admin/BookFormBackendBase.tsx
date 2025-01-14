@@ -420,22 +420,28 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
             ? `${formData.publishedYear}-01-01`
             : null;
 
+        // Format the submission data
+        const submissionData = {
+            ...formData,
+            publishedDate: formattedDate,
+            genres: formData.genres.filter(Boolean), // Filter out any null values
+            readingDurationMinutes: formData.readingDurationMinutes
+                ? parseInt(formData.readingDurationMinutes.toString())
+                : null
+        };
+
         const response = await fetch(`/api/books/${bookId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...formData,
-                publishedDate: formattedDate,
-            }),
+            body: JSON.stringify(submissionData),
         });
 
         if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Failed to update book');
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || 'Failed to update book');
         }
 
-        const updatedBook = await response.json();
-        return updatedBook.id;
+        return parseInt(bookId);
     };
 
     return (

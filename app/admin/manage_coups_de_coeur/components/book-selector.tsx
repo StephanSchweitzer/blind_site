@@ -19,6 +19,9 @@ import {
 } from "@/components/ui/dialog";
 import { useDebounce } from 'use-debounce';
 import {AddBookButtonBackend} from "@/admin/BookModalBackend";
+import { EditBookModal } from '@/admin/EditBookModal';
+import {BookFormData} from "@/admin/BookFormBackendBase";
+
 
 interface Book {
     id: number;
@@ -52,7 +55,8 @@ export default function BookSelector({
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
-
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [selectedBookForEdit, setSelectedBookForEdit] = useState<(Book & { formData: BookFormData }) | null>(null);
 
     useEffect(() => {
         const fetchInitialBooks = async () => {
@@ -120,6 +124,61 @@ export default function BookSelector({
             setInitialLoadDone(false);
         } catch (error) {
             console.error('Error handling new book:', error);
+        }
+    };
+
+
+    const handleRowClick = async (book: Book) => {
+        try {
+            const response = await fetch(`/api/books/${book.id}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch book details');
+            }
+            const bookDetails = await response.json();
+
+            // Get genre IDs from the join table data structure
+            const genreIds = bookDetails.genres.map((g: { genre: { id: string } }) => g.genre.id);
+
+            const formData: BookFormData = {
+                title: bookDetails.title || '',
+                author: bookDetails.author || '',
+                publisher: bookDetails.publisher || undefined,
+                publishedYear: bookDetails.publishedDate ?
+                    new Date(bookDetails.publishedDate).getFullYear().toString() :
+                    '',
+                genres: genreIds, // Now correctly mapping the genre IDs
+                isbn: bookDetails.isbn || undefined,
+                description: bookDetails.description || undefined,
+                available: Boolean(bookDetails.available),
+                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || undefined
+            };
+
+            setSelectedBookForEdit({
+                ...book,
+                formData
+            });
+            setEditModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching book details:', error);
+        }
+    };
+
+    const handleBookEdited = async (bookId: number) => {
+        // Get the current list of book IDs from selectedBooks
+        if (selectedBooks.length > 0) {
+            try {
+                // Fetch fresh data for all currently selected books
+                const response = await fetch(`/api/books?ids=${selectedBooks.join(',')}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Update the book details map with fresh data
+                    setBookDetailsMap(new Map(
+                        data.books.map((book: Book) => [book.id, book])
+                    ));
+                }
+            } catch (error) {
+                console.error('Error refreshing book data:', error);
+            }
         }
     };
 
@@ -212,9 +271,17 @@ export default function BookSelector({
                     return (
                         <TableRow
                             key={book.id}
-                            className={`border-b border-gray-700 hover:bg-gray-750 ${isSelected && isSearchResults ? "opacity-50" : ""}`}
+                            className={`border-b border-gray-700 hover:bg-gray-750 cursor-pointer ${
+                                isSelected && isSearchResults ? "opacity-50" : ""
+                            }`}
+                            onClick={() => handleRowClick(book)}
                         >
-                            <TableCell className="text-gray-200">
+                            <TableCell
+                                className="text-gray-200"
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Prevent row click when clicking checkbox
+                                }}
+                            >
                                 <Switch
                                     id={`book-${book.id}`}
                                     checked={isSelected}
@@ -252,7 +319,7 @@ export default function BookSelector({
                 <h3 className="text-lg font-medium text-gray-100">
                     {mode === 'edit' ? 'Livres sélectionnés' : 'Livres récents'}
                 </h3>
-                <div className="flex gap-2"> {/* Add a container for the buttons */}
+                <div className="flex gap-2">
                     <AddBookButtonBackend onBookAdded={handleBookAdded} />
 
                     <Dialog
@@ -306,7 +373,18 @@ export default function BookSelector({
                     {selectedBooks.length} livres sélectionnés
                 </p>
             </div>
+
+            {/* Add the EditBookModal here */}
+            {selectedBookForEdit && (
+                <EditBookModal
+                    isOpen={editModalOpen}
+                    onOpenChange={setEditModalOpen}
+                    bookId={selectedBookForEdit.id.toString()}
+                    initialData={selectedBookForEdit.formData}
+                    onBookEdited={handleBookEdited}
+                />
+            )}
         </div>
-        );
-        }
+    );
+}
 
