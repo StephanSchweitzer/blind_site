@@ -2,8 +2,6 @@ BACKEND:
 Add add users section
 Add profile section "qui suis je" (maybe, this is extra)
 
-Rename rechercher les livrs in coup de coeur to ajouter un livre existant et creer un livre
-
 Pagination for the books associated with genres doesn't work, it gives a 400 page not found. Make it a component, not a seperate page
 
 Make the backend book section have a filter for genre and also maybe search bar filters for author etc like the front
@@ -16,7 +14,7 @@ Make the entire row clickable and not just the edit button on the left, maybe re
 To add new books to the new coup de coeur, im limited with 9 new books because i don't specify the amount I want, and it is automatically
 limited by the API. I need to make sure i'm not limited at 9
 
-
+Make the search bar work with characters with accents like they didn't have accents or something, and the other way around
 
 
 You need to be able to add books and edit books from the coup de coeur page, this will be easier if i use a modal

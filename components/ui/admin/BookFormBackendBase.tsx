@@ -6,13 +6,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
 import YearCommandSelect from "@/components/ui/year-select";
 import DurationInputs from "@/components/ui/duration-inputs";
 import {Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import { Plus } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+
 
 interface Genre {
     id: string;
@@ -132,14 +134,21 @@ export function BookFormBackendBase({
         setError(null);
 
         try {
-            const newBookId = await onSubmit(formData); // Get the ID from onSubmit
+            const newBookId = await onSubmit(formData);
             console.log('Form submission successful, calling onSuccess with ID:', newBookId);
             if (onSuccess) {
-                onSuccess(newBookId); // Pass the ID to onSuccess
+                onSuccess(newBookId);
             }
         } catch (err) {
             console.error('Submit error:', err);
-            setError(err instanceof Error ? err.message : 'Failed to process book');
+            // Update the error state with the error message
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to process book');
+            }
+            // Return early to prevent further execution
+            return;
         } finally {
             setIsLoading(false);
         }
@@ -153,8 +162,12 @@ export function BookFormBackendBase({
             <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
-                        <Alert variant="destructive">
-                            <AlertDescription>{error}</AlertDescription>
+                        <Alert variant="destructive" className="border-red-500 bg-red-900/20">
+                            <AlertCircle className="h-4 w-4 text-red-400" />
+                            <AlertTitle className="text-red-400">Erreur</AlertTitle>
+                            <AlertDescription className="text-gray-200 mt-1">
+                                {error}
+                            </AlertDescription>
                         </Alert>
                     )}
 
@@ -378,24 +391,31 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
             ? `${formData.publishedYear}-01-01`
             : null;
 
-        const response = await fetch('/api/books', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...formData,
-                publishedDate: formattedDate,
-            }),
-        });
+        try {
+            const response = await fetch('/api/books', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...formData,
+                    publishedDate: formattedDate,
+                }),
+            });
 
-        // Get the response data once
-        const data = await response.json();
+            const data = await response.json();
 
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to create book');
+            if (!response.ok) {
+                if (response.status === 409) {
+                    throw new Error('Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.');
+                }
+                throw new Error(data.message || 'Échec de la création du livre');
+            }
+
+            console.log('New book created with ID:', data.book.id);
+            return data.book.id;
+        } catch (error) {
+            // Re-throw the error so it's caught by the form's error handler
+            throw error;
         }
-
-        console.log('New book created with ID:', data.book.id);
-        return data.book.id; // Return the ID from the book object
     };
 
     return (
@@ -420,28 +440,36 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
             ? `${formData.publishedYear}-01-01`
             : null;
 
-        // Format the submission data
-        const submissionData = {
-            ...formData,
-            publishedDate: formattedDate,
-            genres: formData.genres.filter(Boolean), // Filter out any null values
-            readingDurationMinutes: formData.readingDurationMinutes
-                ? parseInt(formData.readingDurationMinutes.toString())
-                : null
-        };
+        try {
+            const submissionData = {
+                ...formData,
+                publishedDate: formattedDate,
+                genres: formData.genres.filter(Boolean),
+                readingDurationMinutes: formData.readingDurationMinutes
+                    ? parseInt(formData.readingDurationMinutes.toString())
+                    : null
+            };
 
-        const response = await fetch(`/api/books/${bookId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(submissionData),
-        });
+            const response = await fetch(`/api/books/${bookId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(submissionData),
+            });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.error || 'Failed to update book');
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 409) {
+                    throw new Error('Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.');
+                }
+                throw new Error(data.message || 'Échec de la mise à jour du livre');
+            }
+
+            return parseInt(bookId);
+        } catch (error) {
+            // Re-throw the error so it's caught by the form's error handler
+            throw error;
         }
-
-        return parseInt(bookId);
     };
 
     return (

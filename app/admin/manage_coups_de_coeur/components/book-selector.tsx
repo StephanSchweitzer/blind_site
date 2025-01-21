@@ -142,15 +142,15 @@ export default function BookSelector({
             const formData: BookFormData = {
                 title: bookDetails.title || '',
                 author: bookDetails.author || '',
-                publisher: bookDetails.publisher || undefined,
+                publisher: bookDetails.publisher || '', // Change to empty string
                 publishedYear: bookDetails.publishedDate ?
                     new Date(bookDetails.publishedDate).getFullYear().toString() :
                     '',
-                genres: genreIds, // Now correctly mapping the genre IDs
-                isbn: bookDetails.isbn || undefined,
-                description: bookDetails.description || undefined,
+                genres: genreIds,
+                isbn: bookDetails.isbn || '', // Change to empty string
+                description: bookDetails.description || '', // Change to empty string
                 available: Boolean(bookDetails.available),
-                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || undefined
+                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || '' // Change to empty string
             };
 
             setSelectedBookForEdit({

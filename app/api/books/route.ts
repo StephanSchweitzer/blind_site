@@ -152,6 +152,22 @@ export async function POST(req: NextRequest) {
         const userId = parseInt(session.user.id, 10);
         const formData = await req.json();
 
+        const existingBook = await prisma.book.findUnique({
+            where: {
+                isbn: formData.isbn
+            }
+        });
+
+        if (existingBook) {
+            return new Response(JSON.stringify({
+                success: false,
+                message: 'A book with this ISBN already exists'
+            }), {
+                status: 409,  // Conflict status code
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
         const newBook = await prisma.book.create({
             data: {
                 title: formData.title,
