@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BooksTable } from './books-table';
+import { notFound } from 'next/navigation';
 
 type BookWithRelations = Prisma.BookGetPayload<{
     include: {
@@ -30,90 +31,188 @@ interface PageProps {
 }
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-async function getBooks(page: number, searchTerm: string) {
+async function getBooks(page: number, searchTerm: string, filter: string = 'all', genreIds: number[] = []) {
     const booksPerPage = 10;
 
-    const whereClause: Prisma.BookWhereInput = {
-        OR: [
-            {
-                title: {
-                    contains: searchTerm,
-                    mode: Prisma.QueryMode.insensitive
-                }
-            },
-            {
-                author: {
-                    contains: searchTerm,
-                    mode: Prisma.QueryMode.insensitive
-                }
-            },
-            {
-                genres: {
-                    some: {
-                        genre: {
-                            name: {
+    let whereClause: Prisma.BookWhereInput = {};
+
+    if (searchTerm) {
+        switch (filter) {
+            case 'title':
+                whereClause = {
+                    title: {
+                        contains: searchTerm,
+                        mode: Prisma.QueryMode.insensitive
+                    }
+                };
+                break;
+            case 'author':
+                whereClause = {
+                    author: {
+                        contains: searchTerm,
+                        mode: Prisma.QueryMode.insensitive
+                    }
+                };
+                break;
+            case 'description':
+                whereClause = {
+                    description: {
+                        contains: searchTerm,
+                        mode: Prisma.QueryMode.insensitive
+                    }
+                };
+                break;
+            case 'genre':
+                whereClause = {
+                    genres: {
+                        some: {
+                            genre: {
+                                name: {
+                                    contains: searchTerm,
+                                    mode: Prisma.QueryMode.insensitive
+                                }
+                            }
+                        }
+                    }
+                };
+                break;
+            default:
+                whereClause = {
+                    OR: [
+                        {
+                            title: {
                                 contains: searchTerm,
                                 mode: Prisma.QueryMode.insensitive
+                            }
+                        },
+                        {
+                            author: {
+                                contains: searchTerm,
+                                mode: Prisma.QueryMode.insensitive
+                            }
+                        },
+                        {
+                            description: {
+                                contains: searchTerm,
+                                mode: Prisma.QueryMode.insensitive
+                            }
+                        },
+                        {
+                            genres: {
+                                some: {
+                                    genre: {
+                                        name: {
+                                            contains: searchTerm,
+                                            mode: Prisma.QueryMode.insensitive
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                };
+        }
+    }
+
+    // Add genre filter if genreIds are provided
+    if (genreIds.length > 0) {
+        whereClause = {
+            ...whereClause,
+            AND: [
+                {
+                    genres: {
+                        some: {
+                            genreId: {
+                                in: genreIds
                             }
                         }
                     }
                 }
-            }
-        ]
-    };
+            ]
+        };
+    }
 
-    const [books, totalBooks] = await Promise.all([
-        prisma.book.findMany({
-            where: whereClause,
-            orderBy: { createdAt: 'desc' },
-            skip: (page - 1) * booksPerPage,
-            take: booksPerPage,
-            include: {
-                addedBy: {
-                    select: {
-                        name: true,
-                        email: true,
+    try {
+        const [books, totalBooks, genres] = await Promise.all([
+            prisma.book.findMany({
+                where: whereClause,
+                orderBy: { createdAt: 'desc' },
+                skip: Math.max(0, (page - 1) * booksPerPage),
+                take: booksPerPage,
+                include: {
+                    addedBy: {
+                        select: {
+                            name: true,
+                            email: true,
+                        },
                     },
-                },
-                genres: {
-                    select: {
-                        genre: {
-                            select: {
-                                name: true,
+                    genres: {
+                        select: {
+                            genre: {
+                                select: {
+                                    name: true,
+                                },
                             },
                         },
                     },
                 },
-            },
-        }),
-        prisma.book.count({ where: whereClause }),
-    ]);
+            }),
+            prisma.book.count({ where: whereClause }),
+            prisma.genre.findMany({
+                select: {
+                    id: true,
+                    name: true,
+                },
+                orderBy: {
+                    name: 'asc',
+                },
+            }),
+        ]);
 
-    return { books, totalBooks, totalPages: Math.ceil(totalBooks / booksPerPage) };
+        return {
+            books,
+            totalBooks,
+            totalPages: Math.ceil(totalBooks / booksPerPage),
+            availableGenres: genres,
+        };
+    } catch (error) {
+        console.error('Error fetching books:', error);
+        throw new Error('Failed to fetch books');
+    }
 }
 
 export default async function Books({ searchParams }: PageProps) {
-    const params = await searchParams;
+    try {
+        const params = await searchParams;
 
-    const pageParam = typeof params.page === 'string' ? params.page :
-        Array.isArray(params.page) ? params.page[0] : '1';
-    const searchParam = typeof params.search === 'string' ? params.search :
-        Array.isArray(params.search) ? params.search[0] : '';
+        const page = Math.max(1, parseInt(
+            Array.isArray(params.page) ? params.page[0] : params.page || '1'
+        ));
+        const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
+        const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
+        const genreIds = (Array.isArray(params.genres) ? params.genres[0] : params.genres || '')
+            .split(',')
+            .filter(Boolean)
+            .map(Number)
+            .filter(id => !isNaN(id));
 
-    const page = parseInt(pageParam);
-    const searchTerm = searchParam;
+        const { books, totalPages, availableGenres } = await getBooks(page, searchTerm, filter, genreIds);
 
-    const { books, totalBooks, totalPages } = await getBooks(page, searchTerm);
-
-    return (
-        <div className="space-y-4">
-            <BooksTable
-                initialBooks={books}
-                initialPage={page}
-                initialSearch={searchTerm}
-                totalPages={totalPages}
-            />
-        </div>
-    );
+        return (
+            <div className="space-y-4">
+                <BooksTable
+                    initialBooks={books}
+                    initialPage={page}
+                    initialSearch={searchTerm}
+                    totalPages={totalPages}
+                    availableGenres={availableGenres}
+                />
+            </div>
+        );
+    } catch (error) {
+        console.error('Error in Books page:', error);
+        notFound();
+    }
 }
