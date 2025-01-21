@@ -2,8 +2,6 @@ BACKEND:
 Add add users section
 Add profile section "qui suis je" (maybe, this is extra)
 
-Pagination for the books associated with genres doesn't work, it gives a 400 page not found. Make it a component, not a seperate page
-
 Make the backend book section have a filter for genre and also maybe search bar filters for author etc like the front
 
 have the search bar remember what you searched or the filter / page you're on when you edit a book?

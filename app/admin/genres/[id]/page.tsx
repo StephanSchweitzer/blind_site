@@ -136,7 +136,8 @@ export default async function EditGenrePage({ params, searchParams }: PageProps)
                                     Page {page} sur {totalPages}
                                 </span>
                                 <Link
-                                    href={`/genres/${id}?page=${page + 1}`}
+                                    href={`/admin/genres/${id}?page=${page + 1}`}
+                                    scroll={false}
                                     className={`px-3 py-1 text-sm rounded-md ${
                                         page >= totalPages
                                             ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
