@@ -66,11 +66,28 @@ export default function BooksPage() {
             }
 
             const response = await fetch(`/api/books?${queryParams.toString()}`);
-            const data = await response.json();
-            return data;
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const text = await response.text(); // Get response as text first
+
+            try {
+                const data = JSON.parse(text); // Try to parse it
+                return data;
+            } catch (parseError) {
+                console.error('Failed to parse JSON:', text);
+                throw new Error('Invalid JSON response from server');
+            }
         } catch (error) {
             console.error('Error fetching books:', error);
-            return null;
+            return {
+                books: [],
+                total: 0,
+                page: 1,
+                totalPages: 0
+            };
         }
     }, [searchTerm, selectedFilter, currentPage, selectedGenres]);
 

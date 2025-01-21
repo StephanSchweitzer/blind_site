@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 
 interface Params {
     params: Promise<{
@@ -78,9 +79,18 @@ export async function PUT(req: NextRequest, { params }: Params) {
         readingDurationMinutes,
     } = await req.json();
 
+    // Updated ISBN check with unaccent
     const existingBook = await prisma.book.findFirst({
         where: {
-            isbn,
+            OR: [
+                { isbn },
+                {
+                    isbn: {
+                        equals: Prisma.sql`unaccent(${isbn})`,
+                        mode: 'insensitive'
+                    }
+                }
+            ],
             NOT: {
                 id: parseInt(id, 10)  // Exclude current book
             }

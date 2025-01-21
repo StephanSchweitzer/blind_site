@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
     try {
@@ -34,7 +34,13 @@ export async function GET(request: NextRequest) {
                     }
                 },
             });
-            return NextResponse.json({ books });
+            return new Response(
+                JSON.stringify({ books }),
+                {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
         }
 
         // Handle genres filter
@@ -50,7 +56,6 @@ export async function GET(request: NextRequest) {
 
         // Handle recent books filter
         if (recent) {
-            // Get the most recent coup de coeur
             const lastCoupDeCoeur = await prisma.coupsDeCoeur.findFirst({
                 orderBy: {
                     createdAt: 'desc'
@@ -71,15 +76,38 @@ export async function GET(request: NextRequest) {
         if (search) {
             const searchFilter = filter === 'all' ? {
                 OR: [
-                    { title: { contains: search, mode: 'insensitive' } },
-                    { author: { contains: search, mode: 'insensitive' } },
-                    { publisher: { contains: search, mode: 'insensitive' } },
-                    { description: { contains: search, mode: 'insensitive' } },
+                    {
+                        title: {
+                            mode: 'insensitive',
+                            contains: search
+                        }
+                    },
+                    {
+                        author: {
+                            mode: 'insensitive',
+                            contains: search
+                        }
+                    },
+                    {
+                        publisher: {
+                            mode: 'insensitive',
+                            contains: search
+                        }
+                    },
+                    {
+                        description: {
+                            mode: 'insensitive',
+                            contains: search
+                        }
+                    },
                     {
                         genres: {
                             some: {
                                 genre: {
-                                    name: { contains: search, mode: 'insensitive' }
+                                    name: {
+                                        mode: 'insensitive',
+                                        contains: search
+                                    }
                                 }
                             }
                         }
@@ -89,12 +117,18 @@ export async function GET(request: NextRequest) {
                 genres: {
                     some: {
                         genre: {
-                            name: { contains: search, mode: 'insensitive' }
+                            name: {
+                                mode: 'insensitive',
+                                contains: search
+                            }
                         }
                     }
                 }
             } : {
-                [filter]: { contains: search, mode: 'insensitive' }
+                [filter]: {
+                    mode: 'insensitive',
+                    contains: search
+                }
             };
 
             whereClause = {
@@ -120,17 +154,39 @@ export async function GET(request: NextRequest) {
             prisma.book.count({ where: whereClause })
         ]);
 
-        return NextResponse.json({
-            books,
-            total,
-            page,
-            totalPages: Math.ceil(total / limit)
-        });
+        return new Response(
+            JSON.stringify({
+                books,
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            }),
+            {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
     } catch (error) {
         console.error('Error in books API:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+        return new Response(
+            JSON.stringify({
+                error: 'Internal server error',
+                message: errorMessage,
+                books: [],
+                total: 0,
+                page: 1,
+                totalPages: 0
+            }),
+            {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            }
         );
     }
 }
@@ -140,32 +196,41 @@ export async function POST(req: NextRequest) {
         const session = await getServerSession(authOptions);
 
         if (!session?.user?.id) {
-            return new Response(JSON.stringify({
-                success: false,
-                message: 'Unauthorized'
-            }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' },
-            });
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    message: 'Unauthorized'
+                }),
+                {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
         }
 
         const userId = parseInt(session.user.id, 10);
         const formData = await req.json();
 
-        const existingBook = await prisma.book.findUnique({
+        const existingBook = await prisma.book.findFirst({
             where: {
-                isbn: formData.isbn
+                isbn: {
+                    equals: formData.isbn,
+                    mode: 'insensitive'
+                }
             }
         });
 
         if (existingBook) {
-            return new Response(JSON.stringify({
-                success: false,
-                message: 'A book with this ISBN already exists'
-            }), {
-                status: 409,  // Conflict status code
-                headers: { 'Content-Type': 'application/json' },
-            });
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    message: 'A book with this ISBN already exists'
+                }),
+                {
+                    status: 409,
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
         }
 
         const newBook = await prisma.book.create({
@@ -198,22 +263,28 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        return new Response(JSON.stringify({
-            success: true,
-            message: 'Book added successfully',
-            book: newBook
-        }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return new Response(
+            JSON.stringify({
+                success: true,
+                message: 'Book added successfully',
+                book: newBook
+            }),
+            {
+                status: 201,
+                headers: { 'Content-Type': 'application/json' },
+            }
+        );
     } catch (error) {
         console.error('API Error:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            message: error instanceof Error ? error.message : 'Failed to add book'
-        }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return new Response(
+            JSON.stringify({
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to add book'
+            }),
+            {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            }
+        );
     }
 }
