@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect  } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -53,6 +53,14 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
     const [open, setOpen] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (open && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [open]);
+
 
     const searchBooks = async () => {
         if (!searchQuery.trim()) return;
@@ -142,7 +150,6 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             </PopoverTrigger>
             <PopoverContent
                 className="w-[500px] p-4 bg-gray-800 border-gray-700"
-                onOpenAutoFocus={(e) => e.preventDefault()}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="space-y-2 mb-4">

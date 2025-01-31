@@ -203,13 +203,12 @@ export default function EditCoupDeCoeurPage() {
 
                             <div className="space-y-2">
                                 <label htmlFor="description" className="text-sm font-medium text-gray-200">
-                                    Description *
+                                    Description
                                 </label>
                                 <Textarea
                                     name="description"
                                     id="description"
-                                    required
-                                    value={formData.description}
+                                    value={formData.description || ""}
                                     onChange={handleChange}
                                     className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
                                 />
@@ -217,7 +216,7 @@ export default function EditCoupDeCoeurPage() {
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-200">
-                                    Enregistrement Audio *
+                                    Enregistrement Audio
                                 </label>
                                 {!isRerecording ? (
                                     <div className="space-y-2">

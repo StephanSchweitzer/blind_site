@@ -9,13 +9,6 @@ have the search bar remember what you searched or the filter / page you're on wh
 ### Had to cancel this because it was really hard with prisma
 
 
-Make it so when you add a genre in add book backend, the search isn't erased
-
-
-If someone enters an isbn that exists already, there must be a message that is displayed that says "this isbn exists already, please choose another
-or remove it" instead of just getting a server error
-
-
 Description for coup de coeur should not be obligatoire
 Enregistrement should not be obligatoire
 

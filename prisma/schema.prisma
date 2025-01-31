@@ -65,8 +65,8 @@ model Genre {
 model CoupsDeCoeur {
   id          Int                 @id @default(autoincrement())
   title       String
-  description String
-  audioPath   String
+  description String?
+  audioPath   String?
   active      Boolean             @default(true)
   addedById   Int
   addedBy     User                @relation(fields: [addedById], references: [id])

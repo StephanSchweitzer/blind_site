@@ -105,24 +105,23 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    let session;
-
     try {
-        session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
+        // Authenticate the user
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await req.json();
-        const { title, description, audioPath, bookIds, active = true } = body;
+        const userId = session.user.id; // Assuming your session contains the user ID
 
-        // Input validation
-        if (!title || !description || !audioPath || !bookIds || !Array.isArray(bookIds)) {
+        // Parse request body
+        const body = await req.json();
+        const { title, description, audioPath, bookIds, active } = body;
+
+        // Validate required fields
+        if (!title || !Array.isArray(bookIds) || bookIds.length === 0) {
             return NextResponse.json(
-                { error: 'Title, description, audioPath, and bookIds array are required' },
+                { error: 'Title and at least one book are required' },
                 { status: 400 }
             );
         }
@@ -135,18 +134,17 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Create new Coup de Coeur entry
         const newCoupDeCoeur = await prisma.coupsDeCoeur.create({
             data: {
                 title,
-                description,
-                audioPath,
-                active,
-                addedById: parsedAuthorId,
+                description: description || null,
+                audioPath: audioPath || null,
+                active: active ?? true,
+                addedById: parsedAuthorId, // Link to the user who created it
                 books: {
-                    create: bookIds.map(bookId => ({
-                        book: {
-                            connect: { id: parseInt(bookId, 10) }
-                        }
+                    create: bookIds.map((bookId: number) => ({
+                        book: { connect: { id: bookId } }
                     }))
                 }
             },
@@ -159,14 +157,11 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        return NextResponse.json(
-            { message: 'Coup de coeur created successfully', coupDeCoeur: newCoupDeCoeur },
-            { status: 201 }
-        );
+        return NextResponse.json(newCoupDeCoeur, { status: 201 });
     } catch (error) {
-        console.error('Database operation failed:', error);
+        console.error('Error creating coup de coeur:', error);
         return NextResponse.json(
-            { error: 'Database operation failed' },
+            { error: 'Failed to create coup de coeur' },
             { status: 500 }
         );
     }

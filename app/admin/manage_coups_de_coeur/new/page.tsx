@@ -40,8 +40,7 @@ export default function AddCoupDeCoeur() {
         console.log('Starting form submission...', { formData, tempAudioBlob });
 
         if (!tempAudioBlob) {
-            setError('Audio recording is required');
-            return;
+            console.warn('No audio provided, continuing without it.');
         }
 
         if (formData.bookIds.length === 0) {
@@ -53,38 +52,38 @@ export default function AddCoupDeCoeur() {
         setError(null);
 
         try {
-            // First, upload the audio file
-            const timestamp = new Date().getTime();
-            const filename = `coup_description_${timestamp}.mp3`;
-            const audioFormData = new FormData();
-            audioFormData.append('audio', tempAudioBlob, filename);
+            let audioFilePath = '';
 
-            console.log('Uploading audio...', filename);
-            const uploadRes = await fetch('/api/upload-audio', {
-                method: 'POST',
-                body: audioFormData,
-            });
+            if (tempAudioBlob) {
+                const timestamp = new Date().getTime();
+                const filename = `coup_description_${timestamp}.mp3`;
+                const audioFormData = new FormData();
+                audioFormData.append('audio', tempAudioBlob, filename);
 
-            if (!uploadRes.ok) {
-                const uploadError = await uploadRes.json();
-                throw new Error(`Failed to upload audio: ${uploadError.message || uploadRes.statusText}`);
+                console.log('Uploading audio...', filename);
+                const uploadRes = await fetch('/api/upload-audio', {
+                    method: 'POST',
+                    body: audioFormData,
+                });
+
+                if (!uploadRes.ok) {
+                    const uploadError = await uploadRes.json();
+                    throw new Error(`Failed to upload audio: ${uploadError.message || uploadRes.statusText}`);
+                }
+
+                const { filepath } = await uploadRes.json();
+                console.log('Audio uploaded successfully:', filepath);
+                audioFilePath = filepath;
             }
 
-            const { filepath } = await uploadRes.json();
-            console.log('Audio uploaded successfully:', filepath);
-
-            // Then create the coup de coeur with the file path
-            console.log('Creating coup de coeur...', {
-                ...formData,
-                audioPath: filepath,
-            });
 
             const res = await fetch('/api/coups-de-coeur', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
-                    audioPath: filepath,
+                    description: formData.description || undefined,
+                    audioPath: audioFilePath || undefined,
                 }),
             });
 
@@ -138,12 +137,11 @@ export default function AddCoupDeCoeur() {
 
                                     <div className="space-y-2">
                                         <label htmlFor="description" className="text-sm font-medium text-gray-200">
-                                            Description *
+                                            Description
                                         </label>
                                         <Textarea
                                             name="description"
                                             id="description"
-                                            required
                                             value={formData.description}
                                             onChange={handleChange}
                                             className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[150px]"
@@ -153,7 +151,7 @@ export default function AddCoupDeCoeur() {
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-200">
-                                            Enregistrement audio *
+                                            Enregistrement audio
                                         </label>
                                         <div className="bg-gray-800 border border-gray-700 rounded-md p-4">
                                             <AudioRecorder
@@ -201,7 +199,7 @@ export default function AddCoupDeCoeur() {
 
                                 <Button
                                     type="submit"
-                                    disabled={isLoading || formData.bookIds.length === 0 || !tempAudioBlob}
+                                    disabled={isLoading || formData.bookIds.length === 0}
                                     className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100"
                                 >
                                     {isLoading ? 'En ajoutant...' : 'Ajouter le coup de coeur'}

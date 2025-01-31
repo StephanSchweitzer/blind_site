@@ -42,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     try {
         const { title, description, audioPath, bookIds, active } = await req.json();
 
-        if (!title || !description || !audioPath || !bookIds || !Array.isArray(bookIds)) {
+        if (!title || !bookIds || !Array.isArray(bookIds)) {
             return NextResponse.json(
                 { error: 'Title, description, audioPath, and bookIds array are required' },
                 { status: 400 }
