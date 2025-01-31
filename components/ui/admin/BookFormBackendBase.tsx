@@ -329,7 +329,7 @@ export function BookFormBackendBase({
                                 type="text"
                                 name="isbn"
                                 id="isbn"
-                                value={formData.isbn}
+                                value={formData.isbn || ''}
                                 onChange={handleChange}
                                 className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                 placeholder="Indiquer le numéro ISBN du livre (facultatif)"
@@ -430,11 +430,16 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
 }
 
 
+import { useToast } from "@/hooks/use-toast";
+import { Toast } from "@/components/ui/toast";
+
 export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
     bookId: string,
     initialData: BookFormData,
     onSuccess?: (bookId: number) => void
 }) {
+    const { toast } = useToast();
+
     const handleSubmit = async (formData: BookFormData): Promise<number> => {
         const formattedDate = formData.publishedYear
             ? `${formData.publishedYear}-01-01`
@@ -455,8 +460,6 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
                     : null
             };
 
-            console.log('Submitting data:', submissionData); // Debug log
-
             const response = await fetch(`/api/books/${bookId}`, {
                 method: 'PUT',
                 headers: {
@@ -467,17 +470,36 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
+                let errorMessage = 'Échec de la mise à jour du livre';
+
                 if (response.status === 409) {
-                    throw new Error('Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.');
+                    errorMessage = 'Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.';
+                } else if (errorData?.message) {
+                    errorMessage = errorData.message;
                 }
-                throw new Error(errorData?.message || 'Échec de la mise à jour du livre');
+
+                toast({
+                    variant: "destructive",
+                    // @ts-ignore
+                    title: <span className="text-2xl font-bold">Erreur</span>,
+                    description: <span className="text-xl mt-2">{errorMessage}</span>,
+                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
+                });
+
+                return Promise.reject();
             }
 
-            const data = await response.json();
+            toast({
+                // @ts-ignore
+                title: <span className="text-2xl font-bold">Succès</span>,
+                description: <span className="text-xl mt-2">Le livre a été mis à jour avec succès</span>,
+                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+            });
+
             return parseInt(bookId);
         } catch (error) {
             console.error('Submit error:', error);
-            throw error;
+            return Promise.reject();
         }
     };
 

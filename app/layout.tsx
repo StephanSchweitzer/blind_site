@@ -1,6 +1,7 @@
 import './globals.css'
 import { Providers } from './providers'
 import React from "react";
+import { Toaster } from "@/components/ui/toaster"
 
 export const metadata = {
     title: 'ECA Aveugles',
@@ -16,6 +17,7 @@ export default function RootLayout({
         <html lang="en">
         <body>
         <Providers>{children}</Providers>
+        <Toaster />
         </body>
         </html>
     )

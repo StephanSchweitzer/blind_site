@@ -14,7 +14,6 @@ and i just import that modal component onto each page
 Make it so when you add a genre in add book backend, the search isn't erased
 
 
-Right now ISBN is necessary, it must not be necessary
 If someone enters an isbn that exists already, there must be a message that is displayed that says "this isbn exists already, please choose another
 or remove it" instead of just getting a server error
 
