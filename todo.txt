@@ -18,11 +18,6 @@ make the navbar use links and not hrefs to make it faster
 Add the white center box for dernieres information and make the boxes a little lighter
 
 
-For coups de coeur, il faut avoir background white, text blanc
-
-There has to be a version of each coup de coeur that is able to be generated for printing purposes
-
-
 Make the blue words on black another color that stands out better
 
 Add colors to the genre tags like the type of derniere info tags

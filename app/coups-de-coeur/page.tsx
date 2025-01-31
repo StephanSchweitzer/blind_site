@@ -7,6 +7,10 @@ import { BookModal } from '@/components/BookModal';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import type { Book, CoupDeCoeur, CoupsDeCoeurResponse } from '@/types/coups-de-coeur';
+//import { PDFButton } from "components/PDFButton";
+import {PDFButton} from "@/coups-de-coeur/PDFButton";
+import { PDFContent } from '@/coups-de-coeur/PDFContent';
+import generatePDF from 'react-to-pdf';
 
 export default function CoupsDeCoeurPage() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +22,8 @@ export default function CoupsDeCoeurPage() {
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const contentRef = useRef<HTMLDivElement>(null);
+    const [isExporting, setIsExporting] = useState(false);
+    const pdfContentRef = useRef<HTMLDivElement>(null);
 
     const fetchCoupsDeCoeur = useCallback(async (page: number) => {
         try {
@@ -84,6 +90,25 @@ export default function CoupsDeCoeurPage() {
             console.error('Error finding coup de coeur position:', error);
         }
     };
+
+    const handleExport = async () => {
+        if (!pdfContentRef.current) return;
+        setIsExporting(true);
+        try {
+            await generatePDF(pdfContentRef, {
+                filename: `${coupsDeCoeur[0].title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
+                page: {
+                    margin: 20,
+                    format: 'a4'
+                }
+            });
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
 
     const handleBookClick = (book: Book) => {
         setSelectedBook(book);
@@ -168,6 +193,20 @@ export default function CoupsDeCoeurPage() {
                     </div>
                 </div>
             </div>
+
+            {coupsDeCoeur.length > 0 && (
+                <>
+                    <PDFContent
+                        ref={pdfContentRef}
+                        content={coupsDeCoeur}
+                    />
+                    <PDFButton
+                        onExport={handleExport}
+                        isExporting={isExporting}
+                    />
+                </>
+            )}
+
         </main>
     );
 }

@@ -39,7 +39,11 @@ export default async function Home() {
                     </section>
 
                     <section className="space-y-4">
-                        <p className="text-gray-100">Grâce à sa vaste unité de stockage, ECA garde en mémoire les meilleurs enregistrements réalisés par ses lecteurs bénévoles. Inscrits au catalogue <a href="/catalogue" className="text-white font-semibold italic hover:text-blue-300">Lu Pour Vous !</a> consultable sur ce site, les livres lus sont ainsi mis à la disposition des adhérents. Mais ECA n'est pas, et ne fonctionne pas, comme une bibliothèque sonore de prêts. L'adhérent, qui choisit un titre dans <a href="/catalogue" className="text-white font-semibold italic hover:text-blue-300">Lu pour Vous !</a>, reçoit un CD-MP3 gravé à son intention qui lui reste acquis.</p>
+                        <p className="text-gray-100">
+                            Grâce à sa vaste unité de stockage, ECA garde en mémoire les meilleurs enregistrements réalisés par ses lecteurs bénévoles.
+                            Inscrits au catalogue <a href="/catalogue" className="text-white font-semibold italic hover:text-blue-300">Lu Pour Vous !</a>
+                            consultable sur ce site, les livres lus sont ainsi mis à la disposition des adhérents. Mais ECA n'est pas, et ne fonctionne pas, comme une bibliothèque sonore de prêts. L'adhérent, qui choisit un titre dans <a href="/catalogue" className="text-white font-semibold italic hover:text-blue-300">Lu pour Vous !</a>,
+                            reçoit un CD-MP3 gravé à son intention qui lui reste acquis.</p>
                     </section>
 
                     <section className="space-y-4">
