@@ -249,7 +249,7 @@ export function BookFormBackendBase({
                                     return genre ? (
                                         <div
                                             key={genre.id}
-                                            className="bg-gray-800 text-gray-200 rounded-full px-3 py-1 text-sm flex items-center border border-gray-700"
+                                            className="bg-blue-200 text-gray-000 rounded-full px-3 py-1 text-sm flex items-center border border-gray-700"
                                         >
                                             {genre.name}
                                             <button
@@ -271,7 +271,9 @@ export function BookFormBackendBase({
                                         aria-expanded={open}
                                         className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
                                     >
-                                        Sélectionner les genres associés...
+                                        {formData.genres.length > 0
+                                            ? 'Sélectionner plus des genres associés...'
+                                            : 'Sélectionner les genres associés...'}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-0 bg-gray-800 border-gray-700">

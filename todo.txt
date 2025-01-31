@@ -12,12 +12,6 @@ If the user doesn't confirm their audio, and they try to submit a coup de coeur,
 
 There has to be a version of each coup de coeur that is able to be generated for printing purposes
 
-
-For the books pages, when there is a genre already associated, the bar for "selectionner les genres" should change to "selectionner plus des genres"
-to indicate that there is already something associated
-
-Add colors to the genre tags like the type of derniere info tags
-
 FRONTEND:
 Contact section
 make the navbar use links and not hrefs to make it faster
