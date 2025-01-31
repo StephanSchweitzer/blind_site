@@ -124,30 +124,34 @@ export function ArticlesTable({
                                 </TableRow>
                             ) : (
                                 initialArticles.map((article) => (
-                                    <TableRow key={article.id} className="border-b border-gray-700 hover:bg-gray-750">
+                                    <TableRow
+                                        key={article.id}
+                                        className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                        onClick={() => window.location.href = `/admin/news/${article.id}`}
+                                    >
                                         <TableCell className="text-gray-200">{article.title}</TableCell>
                                         <TableCell>
-                                            <span
-                                                className={`px-2 py-1 rounded-full text-sm font-medium  ${article.type === 'ANNONCE' ? 'text-gray-900' : 'text-white'}`}>
-                                                {newsTypeLabels[article.type]}
-                                            </span>
+                                <span
+                                    className={`px-2 py-1 rounded-full text-sm font-medium text-white`}>
+                                    {newsTypeLabels[article.type]}
+                                </span>
                                         </TableCell>
-                                        <TableCell
-                                            className="text-gray-200">{article.author?.name || 'Inconnu'}</TableCell>
-
+                                        <TableCell className="text-gray-200">{article.author?.name || 'Inconnu'}</TableCell>
                                         <TableCell className="text-gray-200">
                                             {new Date(article.publishedAt).toLocaleDateString('fr-FR')}
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/admin/news/${article.id}`}>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                                >
-                                                    Modifier
-                                                </Button>
-                                            </Link>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); // Prevent row click when clicking the button
+                                                    window.location.href = `/admin/news/${article.id}`;
+                                                }}
+                                            >
+                                                Modifier
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -158,7 +162,7 @@ export function ArticlesTable({
 
                 {totalPages > 1 && (
                     <>
-                    <div className="flex justify-center items-center gap-2 mt-6">
+                        <div className="flex justify-center items-center gap-2 mt-6">
                             {Array.from({ length: totalPages }, (_, index) => (
                                 <Button
                                     key={index + 1}

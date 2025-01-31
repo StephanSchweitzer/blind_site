@@ -133,7 +133,11 @@ export function CoupsTable({ initialItems, initialPage, initialSearch, totalPage
                         </TableHeader>
                         <TableBody>
                             {items.map((item) => (
-                                <TableRow key={item.id} className="border-b border-gray-700 hover:bg-gray-750">
+                                <TableRow
+                                    key={item.id}
+                                    className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                    onClick={() => window.location.href = `/admin/manage_coups_de_coeur/${item.id}`}
+                                >
                                     <TableCell className="text-gray-200">{item.title}</TableCell>
                                     <TableCell className="text-gray-200">{item.addedBy?.name || 'Inconnu'}</TableCell>
                                     <TableCell className="text-gray-200">{item.active ? 'Actif' : 'Inactif'}</TableCell>
@@ -146,15 +150,17 @@ export function CoupsTable({ initialItems, initialPage, initialSearch, totalPage
                                         })}
                                     </TableCell>
                                     <TableCell>
-                                        <Link href={`/admin/manage_coups_de_coeur/${item.id}`}>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                            >
-                                                Modifier
-                                            </Button>
-                                        </Link>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent row click when clicking the button
+                                                window.location.href = `/admin/manage_coups_de_coeur/${item.id}`;
+                                            }}
+                                        >
+                                            Modifier
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}

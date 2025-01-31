@@ -107,19 +107,25 @@ export function GenresTable({ initialGenres, initialPage, initialSearch, totalPa
                         </TableHeader>
                         <TableBody>
                             {genres.map((genre) => (
-                                <TableRow key={genre.id} className="border-b border-gray-700 hover:bg-gray-750">
+                                <TableRow
+                                    key={genre.id}
+                                    className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                    onClick={() => window.location.href = `/admin/genres/${genre.id}`}
+                                >
                                     <TableCell className="text-gray-200">{genre.name}</TableCell>
                                     <TableCell className="text-gray-200">{genre.description || 'N/A'}</TableCell>
                                     <TableCell>
-                                        <Link href={`/admin/genres/${genre.id}`}>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                            >
-                                                Modifier
-                                            </Button>
-                                        </Link>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent row click when clicking the button
+                                                window.location.href = `/admin/genres/${genre.id}`;
+                                            }}
+                                        >
+                                            Modifier
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
