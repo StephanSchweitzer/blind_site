@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Loader2 } from "lucide-react";
 
 interface BookSearchProps {
@@ -62,19 +63,14 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
         setResults([]);
 
         try {
-            console.log('Searching for:', searchQuery);
             const url = `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(searchQuery)}&maxResults=5&langRestrict=fr&country=FR`;
-            console.log('Request URL:', url);
 
             const response = await fetch(url);
-            console.log('Response status:', response.status);
-
             if (!response.ok) {
                 throw new Error(`API request failed with status ${response.status}`);
             }
 
             const data: GoogleBooksResponse = await response.json();
-            console.log('API Response:', data);
 
             if (data.items) {
                 const formattedResults: BookResult[] = data.items.map(item => {
@@ -89,7 +85,6 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                         publishedDate: volumeInfo.publishedDate ? new Date(volumeInfo.publishedDate) : null
                     };
                 });
-                console.log('Formatted results:', formattedResults);
                 setResults(formattedResults);
                 if (formattedResults.length === 0) {
                     setSearchError('No books found');
@@ -145,7 +140,11 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                     Rechercher sur Google Books
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[500px] p-4 bg-gray-800 border-gray-700">
+            <PopoverContent
+                className="w-[500px] p-4 bg-gray-800 border-gray-700"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="space-y-2 mb-4">
                     <div className="flex gap-2">
                         <Input
@@ -153,10 +152,13 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="bg-gray-700 border-gray-400 text-gray-100 "
+                            className="bg-gray-700 border-gray-400 text-gray-100"
                         />
                         <Button
-                            onClick={() => searchBooks()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                searchBooks();
+                            }}
                             disabled={isLoading}
                             className="bg-gray-700 hover:bg-gray-600 text-gray-100 whitespace-nowrap"
                         >
@@ -173,36 +175,46 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                     </p>
                 </div>
 
-                <div className="max-h-[300px] overflow-y-auto space-y-2">
-                    {searchError && (
-                        <p className="text-red-400 text-center mb-2">{searchError}</p>
-                    )}
-                    {results.map((book, index) => (
-                        <Card
-                            key={index}
-                            className="p-3 cursor-pointer bg-gray-700 hover:bg-gray-600 border-gray-600"
-                            onClick={() => handleSelect(book)}
-                        >
-                            <h3 className="font-semibold text-gray-100">{book.title}</h3>
-                            {book.author && (
-                                <p className="text-sm text-gray-300">par {book.author}</p>
-                            )}
-                            {book.publishedDate && (
-                                <p className="text-sm text-gray-400">
-                                    Publié le {book.publishedDate.toLocaleDateString('fr-FR')}
-                                </p>
-                            )}
-                            {book.description && (
-                                <p className="text-sm text-gray-300 line-clamp-2 mt-1">
-                                    {book.description}
-                                </p>
-                            )}
-                        </Card>
-                    ))}
-                    {results.length === 0 && !isLoading && !searchError && hasSearched && (
-                        <p className="text-gray-400 text-center">Aucun résultat trouvé</p>
-                    )}
-                </div>
+                <ScrollArea
+                    className="h-[300px]"
+                    onWheel={(e) => {
+                        e.stopPropagation();
+                    }}
+                >
+                    <div className="space-y-2">
+                        {searchError && (
+                            <p className="text-red-400 text-center mb-2">{searchError}</p>
+                        )}
+                        {results.map((book, index) => (
+                            <Card
+                                key={index}
+                                className="p-3 cursor-pointer bg-gray-700 hover:bg-gray-600 border-gray-600"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelect(book);
+                                }}
+                            >
+                                <h3 className="font-semibold text-gray-100">{book.title}</h3>
+                                {book.author && (
+                                    <p className="text-sm text-gray-300">par {book.author}</p>
+                                )}
+                                {book.publishedDate && (
+                                    <p className="text-sm text-gray-400">
+                                        Publié le {book.publishedDate.toLocaleDateString('fr-FR')}
+                                    </p>
+                                )}
+                                {book.description && (
+                                    <p className="text-sm text-gray-300 line-clamp-2 mt-1">
+                                        {book.description}
+                                    </p>
+                                )}
+                            </Card>
+                        ))}
+                        {results.length === 0 && !isLoading && !searchError && hasSearched && (
+                            <p className="text-gray-400 text-center">Aucun résultat trouvé</p>
+                        )}
+                    </div>
+                </ScrollArea>
             </PopoverContent>
         </Popover>
     );
