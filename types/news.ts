@@ -20,8 +20,7 @@ export const newsTypeLabels: Record<NewsType, string> = {
     GENERAL: 'Informations générales',
     EVENEMENT: 'Événement',
     ANNONCE: 'Annonce',
-    ACTUALITE: 'Actualité',
-    PROGRAMMATION: 'Programmation'
+    ACTUALITE: 'Actualité'
 } as const;
 
 export const newsTypeColors: Record<NewsType, string> = {

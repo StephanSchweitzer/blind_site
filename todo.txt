@@ -8,16 +8,10 @@ have the search bar remember what you searched or the filter / page you're on wh
 ###Make the search bar work with characters with accents like they didn't have accents or something, and the other way around
 ### Had to cancel this because it was really hard with prisma
 
-
-Description for coup de coeur should not be obligatoire
-Enregistrement should not be obligatoire
-
+If the user doesn't confirm their audio, and they try to submit a coup de coeur, it should warn them ?
 
 There has to be a version of each coup de coeur that is able to be generated for printing purposes
 
-Delete programmation from the dernieres info categories
-
-Make the whole box for the dashboard clickable for navigation
 
 For the books pages, when there is a genre already associated, the bar for "selectionner les genres" should change to "selectionner plus des genres"
 to indicate that there is already something associated
