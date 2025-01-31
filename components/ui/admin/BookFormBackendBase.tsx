@@ -14,6 +14,8 @@ import DurationInputs from "@/components/ui/duration-inputs";
 import {Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import { Plus } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { Toast } from "@/components/ui/toast";
 
 
 interface Genre {
@@ -386,6 +388,8 @@ export function BookFormBackendBase({
 }
 
 export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number) => void }) {
+    const { toast } = useToast();
+
     const handleSubmit = async (formData: BookFormData): Promise<number> => {
         const formattedDate = formData.publishedYear
             ? `${formData.publishedYear}-01-01`
@@ -404,17 +408,36 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
             const data = await response.json();
 
             if (!response.ok) {
+                let errorMessage = 'Échec de la création du livre';
+
                 if (response.status === 409) {
-                    throw new Error('Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.');
+                    errorMessage = 'Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.';
+                } else if (data?.message) {
+                    errorMessage = data.message;
                 }
-                throw new Error(data.message || 'Échec de la création du livre');
+
+                toast({
+                    variant: "destructive",
+                    // @ts-ignore
+                    title: <span className="text-2xl font-bold">Erreur</span>,
+                    description: <span className="text-xl mt-2">{errorMessage}</span>,
+                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
+                });
+
+                return Promise.reject();
             }
 
-            console.log('New book created with ID:', data.book.id);
+            toast({
+                // @ts-ignore
+                title: <span className="text-2xl font-bold">Succès</span>,
+                description: <span className="text-xl mt-2">Le livre a été créé avec succès</span>,
+                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+            });
+
             return data.book.id;
         } catch (error) {
-            // Re-throw the error so it's caught by the form's error handler
-            throw error;
+            console.error('Submit error:', error);
+            return Promise.reject();
         }
     };
 
@@ -428,10 +451,6 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
         />
     );
 }
-
-
-import { useToast } from "@/hooks/use-toast";
-import { Toast } from "@/components/ui/toast";
 
 export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
     bookId: string,
