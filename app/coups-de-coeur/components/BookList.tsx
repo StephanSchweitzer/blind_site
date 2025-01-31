@@ -37,13 +37,13 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                         {books.map((book) => (
                             <div
                                 key={book.id}
-                                className="pl-4 cursor-pointer hover:bg-gray-600 p-2 rounded-lg transition-colors"
+                                className="pl-4 cursor-pointer hover:bg-gray-800 p-2 rounded-lg transition-colors"
                                 onClick={() => onBookClick(book)}
                             >
                                 <div className="font-bold text-gray-100">{book.title}</div>
-                                <div className="italic text-gray-400">{book.author}</div>
+                                <div className="italic text-gray-200">{book.author}</div>
                                 {book.description && (
-                                    <p className="mt-2 text-gray-300">{book.description}</p>
+                                    <p className="mt-2 text-white">{book.description}</p>
                                 )}
                             </div>
                         ))}

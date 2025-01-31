@@ -193,15 +193,15 @@ export default function DernieresInfoPage() {
                             // News posts list
                             <div className="space-y-6">
                                 {newsPosts.map((post) => (
-                                    <article key={post.id} className="bg-gray-700 rounded-lg p-6 shadow-lg">
+                                    <article key={post.id} className="bg-gray-900 rounded-lg p-6 shadow-lg">
                                         <div className="flex items-center gap-4 mb-4">
-                                            <h2 className="text-xl font-bold text-gray-100">{post.title}</h2>
+                                            <h2 className="text-xl font-bold text-white">{post.title}</h2>
                                             <span className={`px-3 py-1 rounded-full text-sm ${newsTypeColors[post.type]} ${post.type === 'ANNONCE' ? 'text-gray-900' : 'text-white'}`}>
                                                 {newsTypeLabels[post.type]}
                                             </span>
                                         </div>
                                         <p className="text-gray-300">{post.content}</p>
-                                        <div className="mt-4 text-sm text-gray-400">
+                                        <div className="mt-4 text-sm text-gray-100">
                                             Par {post.author.name} • {new Date(post.publishedAt).toLocaleDateString('fr-FR')}
                                         </div>
                                     </article>
