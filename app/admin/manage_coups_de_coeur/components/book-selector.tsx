@@ -70,6 +70,7 @@ export default function BookSelector({
                     params.append('ids', selectedBooks.join(','));
                 } else if (mode === 'create') {
                     params.append('recent', 'true');
+                    params.append('limit', '1000');
                 }
 
                 if (params.toString()) {
