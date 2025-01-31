@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { Search, X, ChevronsUpDown, Check } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -16,17 +15,32 @@ import {
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDebounce } from 'use-debounce';
+import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
 
-type Book = {
+interface BookFormData {
+    title: string;
+    author: string;
+    publisher: string | undefined;
+    publishedYear: string;
+    genres: string[];
+    isbn: string | undefined;
+    description: string | undefined;
+    available: boolean;
+    readingDurationMinutes: string | undefined;
+}
+
+interface Book {
     id: number;
     title: string;
     author: string;
-    isbn?: string | null;
-    readingDurationMinutes?: number | null;
+    isbn: string | null;
+    readingDurationMinutes: number | null;
     available: boolean;
     genres: {
         genre: {
+            id?: string;  // Made id optional
             name: string;
         };
     }[];
@@ -37,7 +51,12 @@ type Book = {
     publishedDate: Date | null;
     description: string | null;
     addedById: number;
-};
+    publisher: string | null;  // Changed from optional (?) to union with null
+}
+
+interface BookWithFormData extends Book {
+    formData: BookFormData;
+}
 
 interface BooksTableProps {
     initialBooks: Book[];
@@ -47,13 +66,13 @@ interface BooksTableProps {
     availableGenres?: { id: number; name: string; }[];
 }
 
-export function BooksTable({
-                               initialBooks = [],
-                               initialPage = 1,
-                               initialSearch = '',
-                               totalPages = 1,
-                               availableGenres = []
-                           }: BooksTableProps) {
+export default function BooksTable({
+                                       initialBooks = [],
+                                       initialPage = 1,
+                                       initialSearch = '',
+                                       totalPages = 1,
+                                       availableGenres = []
+                                   }: BooksTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [books, setBooks] = useState<Book[]>(initialBooks);
@@ -63,8 +82,10 @@ export function BooksTable({
     const [genreSearchQuery, setGenreSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [debouncedSearch] = useDebounce(search, 300);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
 
-    // Get current page from URL with fallback
     const currentPage = parseInt(searchParams?.get('page') || '1');
 
     useEffect(() => {
@@ -72,6 +93,93 @@ export function BooksTable({
             setBooks(initialBooks);
         }
     }, [initialBooks]);
+
+    const handleBookEdit = async (book: Book, e?: React.MouseEvent) => {
+        if (e) {
+            e.stopPropagation();
+        }
+
+        try {
+            const response = await fetch(`/api/books/${book.id}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch book details');
+            }
+            const bookDetails = await response.json();
+
+            const genreIds = bookDetails.genres.map((g: { genre: { id: string } }) => g.genre.id);
+
+            const formData: BookFormData = {
+                title: bookDetails.title,
+                author: bookDetails.author,
+                publisher: bookDetails.publisher || undefined,
+                publishedYear: bookDetails.publishedDate ?
+                    new Date(bookDetails.publishedDate).getFullYear().toString() :
+                    new Date().getFullYear().toString(),
+                genres: genreIds,
+                isbn: bookDetails.isbn || undefined,
+                description: bookDetails.description || undefined,
+                available: Boolean(bookDetails.available),
+                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || undefined
+            };
+
+            const selectedBookWithForm: BookWithFormData = {
+                ...bookDetails,
+                formData
+            };
+
+            setSelectedBook(selectedBookWithForm);
+            setIsEditModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching book details:', error);
+        }
+    };
+
+    const handleBookEdited = async (bookId: number) => {
+        try {
+            const response = await fetch(`/api/books/${bookId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch updated book');
+            }
+            const updatedBook = await response.json();
+
+            setBooks(prevBooks =>
+                prevBooks.map(book =>
+                    book.id === bookId ? { ...updatedBook } : book
+                )
+            );
+
+            setIsEditModalOpen(false);
+            setSelectedBook(null);
+        } catch (error) {
+            console.error('Error updating book data:', error);
+        }
+    };
+
+    const handleBookAdded = async (bookId: number) => {
+        try {
+            const response = await fetch('/api/books');
+            if (!response.ok) {
+                throw new Error('Failed to fetch books');
+            }
+            const data = await response.json();
+
+            // Add console.log to see the structure
+            console.log('API Response:', data);
+
+            // Check if the data has a books property
+            const allBooks = data.books || data;  // handle both possible structures
+
+            if (!Array.isArray(allBooks)) {
+                throw new Error('Books data is not in the expected format');
+            }
+
+            // Replace entire books state
+            setBooks(allBooks);
+            setIsAddModalOpen(false);
+        } catch (error) {
+            console.error('Error fetching books data:', error);
+        }
+    };
 
     useEffect(() => {
         if (!searchParams) return;
@@ -114,7 +222,7 @@ export function BooksTable({
         if (genres.length > 0) params.set('genres', genres.join(','));
         else params.delete('genres');
 
-        params.set('page', '1'); // Reset to first page on search
+        params.set('page', '1');
         router.push(`?${params.toString()}`);
     };
 
@@ -159,11 +267,13 @@ export function BooksTable({
                         Gérer et modifiez les livres
                     </CardDescription>
                 </div>
-                <Link href="/admin/books/new">
-                    <Button className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500">
-                        Ajouter un nouveau livre
-                    </Button>
-                </Link>
+                <Button
+                    className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500"
+                    onClick={() => setIsAddModalOpen(true)}
+                >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ajouter un nouveau livre
+                </Button>
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="space-y-4">
@@ -287,7 +397,11 @@ export function BooksTable({
                         </TableHeader>
                         <TableBody>
                             {books && books.map((book) => (
-                                <TableRow key={book.id} className="border-b border-gray-700 hover:bg-gray-750">
+                                <TableRow
+                                    key={book.id}
+                                    className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                    onClick={() => handleBookEdit(book)}
+                                >
                                     <TableCell className="text-gray-200">
                                         <div>
                                             <div>{book.title}</div>
@@ -311,16 +425,15 @@ export function BooksTable({
                                     <TableCell className="text-gray-200">
                                         {book.available ? 'Oui' : 'Non'}
                                     </TableCell>
-                                    <TableCell>
-                                        <Link href={`/admin/books/${book.id}`}>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                            >
-                                                Editer
-                                            </Button>
-                                        </Link>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                            onClick={(e) => handleBookEdit(book, e)}
+                                        >
+                                            Editer
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -383,6 +496,36 @@ export function BooksTable({
                     Page {currentPage} sur {totalPages}
                 </p>
             </CardContent>
+
+            {/* Add Book Modal */}
+            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-100">Ajouter un nouveau livre</DialogTitle>
+                    </DialogHeader>
+                    <div className="overflow-y-auto px-1">
+                        <AddBookFormBackend onSuccess={handleBookAdded} />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Book Modal */}
+            {selectedBook && (
+                <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                        <DialogHeader>
+                            <DialogTitle className="text-gray-100">Modifier le livre</DialogTitle>
+                        </DialogHeader>
+                        <div className="overflow-y-auto px-1">
+                            <EditBookFormBackend
+                                bookId={selectedBook.id.toString()}
+                                initialData={selectedBook.formData}
+                                onSuccess={handleBookEdited}
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </Card>
     );
 }

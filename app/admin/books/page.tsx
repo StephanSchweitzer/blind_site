@@ -1,7 +1,7 @@
 // app/admin/books/page.tsx
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { BooksTable } from './books-table';
+import BooksTable from './books-table';
 import { notFound } from 'next/navigation';
 
 type BookWithRelations = Prisma.BookGetPayload<{

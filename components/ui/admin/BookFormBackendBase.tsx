@@ -442,32 +442,41 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
 
         try {
             const submissionData = {
-                ...formData,
+                title: formData.title,
+                author: formData.author,
+                publisher: formData.publisher || null,
                 publishedDate: formattedDate,
                 genres: formData.genres.filter(Boolean),
+                isbn: formData.isbn || null,
+                description: formData.description || null,
+                available: formData.available,
                 readingDurationMinutes: formData.readingDurationMinutes
                     ? parseInt(formData.readingDurationMinutes.toString())
                     : null
             };
 
+            console.log('Submitting data:', submissionData); // Debug log
+
             const response = await fetch(`/api/books/${bookId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify(submissionData),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
                 if (response.status === 409) {
                     throw new Error('Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.');
                 }
-                throw new Error(data.message || 'Échec de la mise à jour du livre');
+                throw new Error(errorData?.message || 'Échec de la mise à jour du livre');
             }
 
+            const data = await response.json();
             return parseInt(bookId);
         } catch (error) {
-            // Re-throw the error so it's caught by the form's error handler
+            console.error('Submit error:', error);
             throw error;
         }
     };

@@ -86,7 +86,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
                 { isbn },
                 {
                     isbn: {
-                        equals: Prisma.sql`unaccent(${isbn})`,
+                        equals: isbn,
                         mode: 'insensitive'
                     }
                 }
