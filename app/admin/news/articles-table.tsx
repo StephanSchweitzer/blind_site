@@ -90,7 +90,7 @@ export function ArticlesTable({
                 </div>
                 <Link href="/admin/news/new">
                     <Button className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500">
-                        Ajouter un Article
+                        Ajouter un info
                     </Button>
                 </Link>
             </CardHeader>

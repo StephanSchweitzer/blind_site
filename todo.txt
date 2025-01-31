@@ -5,17 +5,13 @@ Add profile section "qui suis je" (maybe, this is extra)
 have the search bar remember what you searched or the filter / page you're on when you edit a book?
 
 
-Make the search bar work with characters with accents like they didn't have accents or something, and the other way around
-
+###Make the search bar work with characters with accents like they didn't have accents or something, and the other way around
+### Had to cancel this because it was really hard with prisma
 
 You need to be able to add books and edit books from the coup de coeur page, this will be easier if i use a modal
 and i just import that modal component onto each page
 
 Make it so when you add a genre in add book backend, the search isn't erased
-
-
-ajouter un article has to be changed to ajouter un info
-
 
 
 Right now ISBN is necessary, it must not be necessary
