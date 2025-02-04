@@ -1,19 +1,7 @@
 // app/admin/manage_coups_de_coeur/page.tsx
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import BackendNavbar from '../../../components/Backend-Navbar';
 import { CoupsTable } from './coups-table';
-
-type CoupsDeCoeurWithUser = Prisma.CoupsDeCoeurGetPayload<{
-    include: {
-        addedBy: true;
-        books: {
-            include: {
-                book: true;
-            };
-        };
-    };
-}>;
 
 interface PageProps {
     searchParams: Promise<{
@@ -92,7 +80,7 @@ export default async function CoupsDeCoeur({ searchParams }: PageProps) {
     const page = parseInt(pageParam);
     const searchTerm = searchParam;
 
-    const { items, totalItems, totalPages } = await getCoupsDeCoeur(page, searchTerm);
+    const { items, totalPages } = await getCoupsDeCoeur(page, searchTerm);
 
     return (
         <div className="space-y-4">

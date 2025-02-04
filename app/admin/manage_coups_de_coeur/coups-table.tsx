@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useDebounce } from 'use-debounce';
 
 interface Book {
     id: number;
@@ -52,12 +51,11 @@ interface CoupsTableProps {
     totalPages: number;
 }
 
-export function CoupsTable({ initialItems, initialPage, initialSearch, totalPages }: CoupsTableProps) {
+export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [items, setItems] = useState(initialItems);
     const [search, setSearch] = useState(initialSearch);
-    const [debouncedSearch] = useDebounce(search, 300);
 
     // Get current page from URL
     const currentPage = parseInt(searchParams.get('page') || '1');

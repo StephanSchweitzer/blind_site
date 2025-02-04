@@ -78,6 +78,7 @@ export default function BooksPage() {
                 return data;
             } catch (parseError) {
                 console.error('Failed to parse JSON:', text);
+                console.error('Parse error:', parseError);
                 throw new Error('Invalid JSON response from server');
             }
         } catch (error) {
@@ -133,7 +134,7 @@ export default function BooksPage() {
         };
 
         loadBooks();
-    }, [fetchBooks]);
+    }, [fetchBooks, books]);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);

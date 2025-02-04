@@ -16,7 +16,6 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useDebounce } from 'use-debounce';
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
 
 interface BookFormData {
@@ -28,7 +27,8 @@ interface BookFormData {
     isbn: string | undefined;
     description: string | undefined;
     available: boolean;
-    readingDurationMinutes: string | undefined;
+    readingDurationMinutes: number | undefined;
+    [key: string]: string | number | boolean | string[] | undefined;  // Updated to match BookFormData types
 }
 
 interface Book {
@@ -51,7 +51,7 @@ interface Book {
     publishedDate: Date | null;
     description: string | null;
     addedById: number;
-    publisher: string | null;  // Changed from optional (?) to union with null
+    publisher: string | null;
 }
 
 interface BookWithFormData extends Book {
@@ -68,7 +68,6 @@ interface BooksTableProps {
 
 export default function BooksTable({
                                        initialBooks = [],
-                                       initialPage = 1,
                                        initialSearch = '',
                                        totalPages = 1,
                                        availableGenres = []
@@ -81,7 +80,6 @@ export default function BooksTable({
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
     const [genreSearchQuery, setGenreSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
-    const [debouncedSearch] = useDebounce(search, 300);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
@@ -155,7 +153,7 @@ export default function BooksTable({
         }
     };
 
-    const handleBookAdded = async (bookId: number) => {
+    const handleBookAdded = async () => {
         try {
             const response = await fetch('/api/books');
             if (!response.ok) {

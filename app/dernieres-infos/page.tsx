@@ -5,7 +5,7 @@ import { SearchBar } from '@/dernieres-infos/SearchBar';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import { Tag, Filter } from 'lucide-react';
-import type { NewsPost, NewsResponse } from '@/types/news';
+import type { NewsPost } from '@/types/news';
 import { newsTypeLabels, newsTypeColors } from '@/types/news';
 
 export default function DernieresInfoPage() {
@@ -14,7 +14,7 @@ export default function DernieresInfoPage() {
     const [newsPosts, setNewsPosts] = useState<NewsPost[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [, setIsTransitioning] = useState(false);
     const [selectedType, setSelectedType] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
     const [isLoading, setIsLoading] = useState(true);

@@ -4,26 +4,6 @@ import { Prisma } from '@prisma/client';
 import BooksTable from './books-table';
 import { notFound } from 'next/navigation';
 
-type BookWithRelations = Prisma.BookGetPayload<{
-    include: {
-        addedBy: {
-            select: {
-                name: true;
-                email: true;
-            };
-        };
-        genres: {
-            select: {
-                genre: {
-                    select: {
-                        name: true;
-                    };
-                };
-            };
-        };
-    };
-}>;
-
 interface PageProps {
     searchParams: Promise<{
         [key: string]: string | string[] | undefined

@@ -121,10 +121,9 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                         setIsLoading(false);
                     };
 
-                    audio.onerror = (error) => {
+                    audio.onerror = (error: Event | string) => {
                         console.error('Audio playback error:', error);
-                        // @ts-ignore
-                        if ("currentTarget" in error) {
+                        if (typeof error !== 'string' && 'currentTarget' in error) {
                             console.error('Audio error details:', error.currentTarget);
                         }
                         setIsSpeaking(false);
@@ -198,7 +197,7 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                         )}
                         {book.readingDurationMinutes && (
                             <p className="text-gray-600 mt-2" aria-label="Durée de lecture">
-                                Durée de l'enregistrement: {formatMinutes(book.readingDurationMinutes)}
+                                Durée de l&apos;enregistrement: {formatMinutes(book.readingDurationMinutes)}
                             </p>
                         )}
                     </div>
@@ -208,7 +207,7 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                             className={`${isExpanded ? 'max-h-96' : 'max-h-32'} overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 transition-all duration-300`}
                             role="region"
                             aria-label="Description du livre"
-                            aria-expanded={isExpanded}
+                            //aria-expanded={isExpanded}
                         >
                             <p className="text-gray-600">
                                 {book.description || 'Aucune description disponible.'}

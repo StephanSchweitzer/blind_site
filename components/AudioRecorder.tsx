@@ -37,7 +37,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
             if (finalAudioUrl) URL.revokeObjectURL(finalAudioUrl);
             if (audioContextRef.current) audioContextRef.current.close();
         };
-    }, []);
+    }, [finalAudioUrl, segments]);
 
     const startRecording = async () => {
         try {
@@ -232,7 +232,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                                 variant="destructive"
                             >
                                 <Square className="w-4 h-4 mr-2" />
-                                Arrêter l'enregistrement
+                                Arrêter l&apos;enregistrement
                             </Button>
                         )}
                         {isRecording && (
@@ -268,7 +268,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                                     className="flex-grow"
                                 >
                                     <Check className="w-4 h-4 mr-2" />
-                                    Confirmer l'enregistrement
+                                    Confirmer l&apos;enregistrement
                                 </Button>
                                 <Button
                                     type="button"
@@ -294,7 +294,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                             size="sm"
                             onClick={() => setIsConfirmed(false)}
                         >
-                            Modifier l'enregistrement
+                            Modifier l&apos;enregistrement
                         </Button>
                     </div>
                     <audio src={finalAudioUrl} controls className="w-full" />

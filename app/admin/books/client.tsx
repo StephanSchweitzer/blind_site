@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Book } from '@prisma/client';
 
 type BookWithRelations = {
     id: string;

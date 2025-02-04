@@ -15,7 +15,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title }) => {
                 aria-label={`Audio player for ${title}`}
             >
                 <source src={src} type="audio/mpeg" />
-                Votre navigateur ne supporte pas l'élément audio.
+                Votre navigateur ne supporte pas l&apos;élément audio.
             </audio>
         </div>
     );

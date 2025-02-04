@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { useDebounce } from 'use-debounce';
 import { useEffect, useState } from 'react';
-import { NewsType, newsTypeLabels, newsTypeColors } from '@/types/news';  // Update this import
+import { NewsType, newsTypeLabels } from '@/types/news';  // Update this import
 
 type Article = {
     id: number;
@@ -37,7 +37,6 @@ interface ArticlesTableProps {
 
 export function ArticlesTable({
                                   initialArticles,
-                                  initialPage = 1,
                                   initialSearch = '',
                                   totalPages = 1
                               }: ArticlesTableProps) {
@@ -55,7 +54,7 @@ export function ArticlesTable({
         if (searchFromUrl !== search) {
             setSearch(searchFromUrl);
         }
-    }, [searchParams]);
+    }, [searchParams, search]);
 
     // Handle search input changes
     useEffect(() => {
@@ -69,7 +68,7 @@ export function ArticlesTable({
             params.set('page', '1'); // Reset to first page on search
             router.push(`?${params.toString()}`);
         }
-    }, [debouncedSearch, router]);
+    }, [debouncedSearch, router, searchParams]);
 
     const handlePageChange = (newPage: number) => {
         if (newPage < 1 || newPage > totalPages) return;

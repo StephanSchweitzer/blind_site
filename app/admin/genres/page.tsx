@@ -59,7 +59,7 @@ export default async function Genres({ searchParams }: PageProps) {
     const page = parseInt(pageParam);
     const searchTerm = searchParam;
 
-    const { genres, totalGenres, totalPages } = await getGenres(page, searchTerm);
+    const { genres, totalPages } = await getGenres(page, searchTerm);
 
     return (
         <div className="space-y-4">

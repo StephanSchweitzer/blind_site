@@ -1,6 +1,5 @@
 // app/genres/new/page.tsx
 import React from 'react';
-import BackendNavbar from '@/components/Backend-Navbar';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import GenreForm from './genre-form';
 

@@ -106,14 +106,6 @@ async function createGenre(data: GenreBody) {
     });
 }
 
-async function fetchGenres() {
-    return prisma.genre.findMany({
-        orderBy: {
-            name: 'asc',
-        },
-    });
-}
-
 // Request handlers
 export async function POST(request: NextRequest) {
     try {
@@ -126,22 +118,28 @@ export async function POST(request: NextRequest) {
             message: 'Genre created successfully'
         }, { status: 201 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
             return handlePrismaError(error);
         }
         if (error instanceof Prisma.PrismaClientValidationError) {
             return handleValidationError(error);
         }
-        if (error.message === 'Name is required') {
+        if (error instanceof Error && error.message === 'Name is required') {
             return NextResponse.json({
                 success: false,
                 error: error.message
             }, { status: 400 });
         }
-        return handleGenericError(error);
+        // Ensure error is of type Error before passing to handleGenericError
+        if (error instanceof Error) {
+            return handleGenericError(error);
+        }
+        // Fallback for non-Error types
+        return handleGenericError(new Error('An unknown error occurred'));
     }
 }
+
 
 export async function GET() {
     try {

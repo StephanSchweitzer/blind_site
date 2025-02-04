@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import {Card, CardHeader, CardTitle, CardContent, CardDescription} from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
     AlertDialog,
@@ -45,6 +44,7 @@ interface Livre {
     available: boolean;
 }
 
+
 export default function EditionLivre() {
     const router = useRouter();
     const params = useParams();
@@ -69,6 +69,7 @@ export default function EditionLivre() {
                     setGenresDisponibles(donnees);
                 }
             } catch (erreur) {
+                console.error('Erreur lors de la récupération des genres:', erreur); // Log detailed error for debugging
                 setErreur('Échec de la récupération des genres');
             }
         }
@@ -94,7 +95,7 @@ export default function EditionLivre() {
                     router.push('/admin/books');
                 }
             } catch (erreur) {
-                setErreur('Échec de la récupération du livre');
+                setErreur('Échec de la récupération du livre' + erreur);
                 router.push('/admin/books');
             }
         }

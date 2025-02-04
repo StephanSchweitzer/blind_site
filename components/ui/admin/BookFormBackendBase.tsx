@@ -11,12 +11,8 @@ import { Check, X } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
 import YearCommandSelect from "@/components/ui/year-select";
 import DurationInputs from "@/components/ui/duration-inputs";
-import {Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog";
-import { Plus } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { Toast } from "@/components/ui/toast";
-
 
 interface Genre {
     id: string;
@@ -32,7 +28,8 @@ export interface BookFormData {
     isbn: string | undefined;
     description: string | undefined;
     available: boolean;
-    readingDurationMinutes: string | undefined;
+    readingDurationMinutes: number | undefined;
+    [key: string]: string | number | boolean | string[] | undefined;  // Updated to match BookFormData types
 }
 
 interface BookSearchData {
@@ -70,7 +67,7 @@ export function BookFormBackendBase({
         isbn: '',
         description: '',
         available: true,
-        readingDurationMinutes: '',
+        readingDurationMinutes: 0,
     });
     const [genres, setGenres] = useState<Genre[]>([]);
     const [open, setOpen] = useState(false);
@@ -87,6 +84,7 @@ export function BookFormBackendBase({
                     setGenres(data);
                 }
             } catch (error) {
+                console.error('You gotta error when you tried to fetch the genres:', error);
                 setError('Failed to fetch genres');
             }
         };
@@ -420,7 +418,7 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
 
                 toast({
                     variant: "destructive",
-                    // @ts-ignore
+                    // @ts-expect-error from a JSX file
                     title: <span className="text-2xl font-bold">Erreur</span>,
                     description: <span className="text-xl mt-2">{errorMessage}</span>,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
@@ -430,7 +428,7 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
             }
 
             toast({
-                // @ts-ignore
+                // @ts-expect-error from a JSX file
                 title: <span className="text-2xl font-bold">Succès</span>,
                 description: <span className="text-xl mt-2">Le livre a été créé avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
@@ -501,7 +499,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
 
                 toast({
                     variant: "destructive",
-                    // @ts-ignore
+                    // @ts-expect-error from a JSX file
                     title: <span className="text-2xl font-bold">Erreur</span>,
                     description: <span className="text-xl mt-2">{errorMessage}</span>,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
@@ -511,7 +509,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
             }
 
             toast({
-                // @ts-ignore
+                // @ts-expect-error from a JSX file
                 title: <span className="text-2xl font-bold">Succès</span>,
                 description: <span className="text-xl mt-2">Le livre a été mis à jour avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"

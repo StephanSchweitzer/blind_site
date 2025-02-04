@@ -3,6 +3,14 @@ import { compare } from 'bcrypt';
 import { type NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
+type CustomUser = {
+    id: string;
+    email: string | null;
+    name: string | null;
+    randomKey: string;
+};
+
+
 export const authOptions: NextAuthOptions = {
     session: {
         strategy: 'jwt',
@@ -64,7 +72,7 @@ export const authOptions: NextAuthOptions = {
         },
         jwt: ({ token, user }) => {
             if (user) {
-                const u = user as unknown as any;
+                const u = user as unknown as CustomUser;
                 return {
                     ...token,
                     id: u.id,

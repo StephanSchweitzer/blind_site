@@ -18,6 +18,31 @@ make the navbar use links and not hrefs to make it faster
 Add the white center box for dernieres information and make the boxes a little lighter
 
 
-Make the blue words on black another color that stands out better
-
 Add colors to the genre tags like the type of derniere info tags
+
+SATURDAY MEETING
+
+The categories in the page search have to be in french
+Contact formulaire
+Add publisher to the little google site description and also add it automatically to the new book form
+Readd number of pages for the books
+
+Rename coups de coeur Nouveau livrs or sortie du mois or something else. To be seen
+
+For editing books you need to make sure that empty is ok, which right now
+
+Add a year is a click dropdown now ? Needs to change
+
+The genre filter in the books backend has to be exact, not contains
+
+Make sure that you can break lines for dernieres info in the way that it's displayed on the front end
+
+inscription / adhesion
+
+Mobile version expand description takes the whole screen and you can't close it anymore
+
+Adapt the pdf and add pagination
+
+Add the sub title field to books so that it can contain or not contain a sub title explanitory
+
+If there was a change to coups de coeur, and the user leaves the page, the changes should be saved ONLY FOR EDIT

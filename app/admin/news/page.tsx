@@ -3,12 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { ArticlesTable } from './articles-table';
 
-type NewsWithAuthor = Prisma.NewsGetPayload<{
-    include: {
-        author: true;
-    };
-}>;
-
 interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }

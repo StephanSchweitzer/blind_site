@@ -1,9 +1,9 @@
-// app/api/coups-de-coeur/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
     try {
@@ -14,21 +14,41 @@ export async function GET(request: NextRequest) {
         const recent = searchParams.get('recent') === 'true';
         const skip = (page - 1) * limit;
 
-        let whereClause: any = {};
+        let whereClause: Prisma.CoupsDeCoeurWhereInput = {};
 
         // Search functionality
         if (search) {
             whereClause = {
                 OR: [
-                    { title: { contains: search, mode: 'insensitive' } },
-                    { description: { contains: search, mode: 'insensitive' } },
+                    {
+                        title: {
+                            contains: search,
+                            mode: 'insensitive' as Prisma.QueryMode
+                        }
+                    },
+                    {
+                        description: {
+                            contains: search,
+                            mode: 'insensitive' as Prisma.QueryMode
+                        }
+                    },
                     {
                         books: {
                             some: {
                                 book: {
                                     OR: [
-                                        { title: { contains: search, mode: 'insensitive' } },
-                                        { author: { contains: search, mode: 'insensitive' } }
+                                        {
+                                            title: {
+                                                contains: search,
+                                                mode: 'insensitive' as Prisma.QueryMode
+                                            }
+                                        },
+                                        {
+                                            author: {
+                                                contains: search,
+                                                mode: 'insensitive' as Prisma.QueryMode
+                                            }
+                                        }
                                     ]
                                 }
                             }
@@ -40,15 +60,12 @@ export async function GET(request: NextRequest) {
 
         // Recent books functionality
         if (recent) {
-            // Get the most recent coup de coeur
             const lastCoupDeCoeur = await prisma.coupsDeCoeur.findFirst({
                 orderBy: {
                     createdAt: 'desc'
                 }
             });
 
-            // If there's a last coup de coeur, get books after its date
-            // If not, all books will be considered "recent"
             if (lastCoupDeCoeur) {
                 whereClause = {
                     ...whereClause,
@@ -111,8 +128,6 @@ export async function POST(req: NextRequest) {
         if (!session || !session.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-
-        const userId = session.user.id; // Assuming your session contains the user ID
 
         // Parse request body
         const body = await req.json();

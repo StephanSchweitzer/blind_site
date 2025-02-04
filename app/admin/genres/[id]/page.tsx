@@ -1,30 +1,11 @@
 // app/genres/[id]/page.tsx
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
 import { notFound } from 'next/navigation';
 import EditGenreForm from './edit-genre-form';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import Link from 'next/link';
 
 const ITEMS_PER_PAGE = 10;
-
-type GenreWithBooks = Prisma.GenreGetPayload<{
-    include: {
-        books: {
-            select: {
-                book: {
-                    select: {
-                        title: true;
-                        author: true;
-                    };
-                };
-            };
-        };
-        _count: {
-            select: { books: true };
-        };
-    };
-}>;
 
 interface PageProps {
     params: Promise<{

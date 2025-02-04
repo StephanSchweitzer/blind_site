@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import BackendNavbar from '@/components/Backend-Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -90,7 +89,7 @@ export default function AddArticle() {
 
                             <div>
                                 <label htmlFor="type" className="block text-sm font-medium text-gray-200 mb-2">
-                                    Type d'information *
+                                    Type d&apos;information *
                                 </label>
                                 <Select
                                     value={formData.type}
@@ -141,7 +140,7 @@ export default function AddArticle() {
                                     type="submit"
                                     className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500"
                                 >
-                                    Ajouter l'information
+                                    Ajouter l&apos;information
                                 </Button>
                             </div>
                         </form>

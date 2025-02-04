@@ -52,9 +52,8 @@ export default function BookSelector({
     const [searchResults, setSearchResults] = useState<Book[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [refreshTrigger] = useState(0);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [selectedBookForEdit, setSelectedBookForEdit] = useState<(Book & { formData: BookFormData }) | null>(null);
 
@@ -63,7 +62,7 @@ export default function BookSelector({
             if (initialLoadDone) return;
 
             try {
-                let url = '/api/books?';
+                const url = '/api/books?';
                 const params = new URLSearchParams();
 
                 if (mode === 'edit' && selectedBooks.length > 0) {
@@ -97,7 +96,7 @@ export default function BookSelector({
         };
 
         fetchInitialBooks();
-    }, [mode, coupDeCoeurId, refreshTrigger]);
+    }, [mode, coupDeCoeurId, refreshTrigger, initialLoadDone, onSelectedBooksChange, selectedBooks]);
 
     const handleBookAdded = async (newBookId: number) => {
         console.log('Book added, refreshing list with new book ID:', newBookId);
@@ -164,7 +163,7 @@ export default function BookSelector({
         }
     };
 
-    const handleBookEdited = async (bookId: number) => {
+    const handleBookEdited = async () => {
         // Get the current list of book IDs from selectedBooks
         if (selectedBooks.length > 0) {
             try {
@@ -216,7 +215,7 @@ export default function BookSelector({
         };
 
         searchBooks();
-    }, [debouncedSearchTerm, mode]);
+    }, [debouncedSearchTerm, mode, bookDetailsMap]);
 
     const toggleBookSelection = (bookId: number) => {
         if (selectedBooks.includes(bookId)) {
@@ -263,7 +262,7 @@ export default function BookSelector({
                     <TableHead className="text-gray-200 font-medium">Titre</TableHead>
                     <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
                     <TableHead className="text-gray-200 font-medium">ISBN</TableHead>
-                    <TableHead className="text-gray-200 font-medium">Date d'ajout</TableHead>
+                    <TableHead className="text-gray-200 font-medium">Date d&apos;ajout</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>

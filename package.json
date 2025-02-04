@@ -35,6 +35,7 @@
     "@swc/helpers": "^0.5.15",
     "@tanstack/react-query": "^5.62.15",
     "@types/csv-parse": "^1.2.5",
+    "@vercel/postgres": "^0.10.0",
     "bcrypt": "^5.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

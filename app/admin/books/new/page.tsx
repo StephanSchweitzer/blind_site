@@ -28,7 +28,7 @@ interface FormData {
     isbn: string | undefined;
     description: string | undefined;
     available: boolean;
-    readingDurationMinutes: string | undefined;
+    readingDurationMinutes: number | undefined;
 }
 
 interface BookSearchData {
@@ -50,7 +50,7 @@ export default function AddBook() {
         isbn: '',
         description: '',
         available: true,
-        readingDurationMinutes: '',
+        readingDurationMinutes: 0,
     });
     const [genres, setGenres] = useState<Genre[]>([]);
     const [open, setOpen] = useState(false);
@@ -69,7 +69,7 @@ export default function AddBook() {
                     setGenres(data);
                 }
             } catch (error) {
-                setError('Failed to fetch genres');
+                setError('Failed to fetch genres ' + error);
             }
         };
 

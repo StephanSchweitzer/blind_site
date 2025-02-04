@@ -44,3 +44,5 @@ next-env.d.ts
 eca-aws-info.txt
 stephan-aws-info.txt
 public/coup_descriptions/
+
+*.sql

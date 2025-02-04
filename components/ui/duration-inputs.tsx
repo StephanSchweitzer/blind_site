@@ -1,10 +1,16 @@
 // DurationInputs.tsx
-
 import React from 'react';
 
 export interface FormData {
-    readingDurationMinutes?: string | number;  // Made optional with ?
-    [key: string]: any;
+    title: string;
+    author: string;
+    publisher: string | undefined;
+    publishedYear: string;
+    genres: string[] | { genre: { id: number; name: string; description?: string; } }[];
+    isbn?: string | undefined;
+    description?: string | undefined;
+    available: boolean;
+    readingDurationMinutes?: number | undefined;
 }
 
 export interface DurationInputsProps {

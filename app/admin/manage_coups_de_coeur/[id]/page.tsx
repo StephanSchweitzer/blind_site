@@ -72,7 +72,7 @@ export default function EditCoupDeCoeurPage() {
                     router.push('/admin/manage_coups_de_coeur');
                 }
             } catch (error) {
-                setError('Erreur lors du chargement du coup de cœur');
+                setError('Erreur lors du chargement du coup de cœur ' + error);
                 router.push('/admin/manage_coups_de_coeur');
             }
         }
@@ -153,7 +153,8 @@ export default function EditCoupDeCoeurPage() {
                     setError('Échec de la suppression du coup de cœur');
                 }
             } catch (error) {
-                setError('Erreur lors de la suppression');
+                console.error('Erreur lors de la suppression:', error);
+                setError('Une erreur est survenue lors de la suppression.');
             }
         }
     };

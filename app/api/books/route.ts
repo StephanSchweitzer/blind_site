@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
         const ids = searchParams.get('ids')?.split(',').map(Number).filter(id => !isNaN(id));
         const skip = (page - 1) * limit;
 
-        let whereClause: any = {};
+        let whereClause: Prisma.BookWhereInput = {};
 
         // If IDs are provided, fetch only those specific books
         if (ids && ids.length > 0) {
@@ -78,25 +78,25 @@ export async function GET(request: NextRequest) {
                 OR: [
                     {
                         title: {
-                            mode: 'insensitive',
+                            mode: 'insensitive' as Prisma.QueryMode,
                             contains: search
                         }
                     },
                     {
                         author: {
-                            mode: 'insensitive',
+                            mode: 'insensitive' as Prisma.QueryMode,
                             contains: search
                         }
                     },
                     {
                         publisher: {
-                            mode: 'insensitive',
+                            mode: 'insensitive' as Prisma.QueryMode,
                             contains: search
                         }
                     },
                     {
                         description: {
-                            mode: 'insensitive',
+                            mode: 'insensitive' as Prisma.QueryMode,
                             contains: search
                         }
                     },
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
                             some: {
                                 genre: {
                                     name: {
-                                        mode: 'insensitive',
+                                        mode: 'insensitive' as Prisma.QueryMode,
                                         contains: search
                                     }
                                 }
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
                     some: {
                         genre: {
                             name: {
-                                mode: 'insensitive',
+                                mode: 'insensitive' as Prisma.QueryMode,
                                 contains: search
                             }
                         }
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
                 }
             } : {
                 [filter]: {
-                    mode: 'insensitive',
+                    mode: 'insensitive' as Prisma.QueryMode,
                     contains: search
                 }
             };

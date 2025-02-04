@@ -1,11 +1,6 @@
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from "next-auth";
 import FrontendNavbar from "@/components/Frontend-Navbar";
-import { LoginButton, LogoutButton } from "@/app/auth";
 
 export default async function Contact() {
-    const session = await getServerSession(authOptions);
-
     return (
         <main className="min-h-screen relative bg-gray-900">
             <div className="hidden lg:block fixed inset-y-0 w-full">

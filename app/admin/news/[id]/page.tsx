@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import BackendNavbar from '@/components/Backend-Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -105,7 +104,7 @@ export default function EditArticle() {
                     <CardHeader className="border-b border-gray-700">
                         <CardTitle className="text-gray-100">Modifier la dernière info</CardTitle>
                         <CardDescription className="text-gray-400">
-                            Modifier l'information de la dernière info
+                            Modifier l&apos;information de la dernière info
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
@@ -128,7 +127,7 @@ export default function EditArticle() {
 
                             <div>
                                 <label htmlFor="type" className="block text-sm font-medium text-gray-200 mb-2">
-                                    Type d'information *
+                                    Type d&apos;information *
                                 </label>
                                 <Select
                                     value={formData.type}

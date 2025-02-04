@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useDebounce } from 'use-debounce';
 
 type Genre = {
     id: number;
@@ -29,12 +28,11 @@ interface GenresTableProps {
     totalPages: number;
 }
 
-export function GenresTable({ initialGenres, initialPage, initialSearch, totalPages }: GenresTableProps) {
+export function GenresTable({ initialGenres, initialSearch, totalPages }: GenresTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [genres, setGenres] = useState(initialGenres);
     const [search, setSearch] = useState(initialSearch);
-    const [debouncedSearch] = useDebounce(search, 300);
 
     // Get current page from URL
     const currentPage = parseInt(searchParams.get('page') || '1');
