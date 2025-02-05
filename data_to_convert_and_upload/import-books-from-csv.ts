@@ -1,8 +1,7 @@
-const { PrismaClient } = require('@prisma/client')
 const { parse } = require('csv-parse/sync')
 const fs = require('fs/promises')
 
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma';
 
 interface BookCSV {
     title: string
