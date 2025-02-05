@@ -110,31 +110,12 @@ export default function BooksPage() {
                     setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
                     setIsTransitioning(false);
                     setIsInitialLoading(false);
-
-                    // Custom smooth scroll after content has updated
-                    if (books.length > 0) {
-                        // const scrollToTop = () => {
-                        //     const currentPosition = window.pageYOffset;
-                        //     if (currentPosition > 0) {
-                        //         window.requestAnimationFrame(() => {
-                        //             // Slower, smoother scroll - move 15% of remaining distance per frame
-                        //             window.scrollTo(0, currentPosition * 0.85);
-                        //             if (currentPosition * 0.85 > 1) {
-                        //                 scrollToTop();
-                        //             } else {
-                        //                 window.scrollTo(0, 0);
-                        //             }
-                        //         });
-                        //     }
-                        // };
-                        // scrollToTop();
-                    }
                 }, 150);
             }
         };
 
         loadBooks();
-    }, [fetchBooks, books]);
+    }, [fetchBooks, isInitialLoading]);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);

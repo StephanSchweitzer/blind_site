@@ -56,7 +56,7 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
         const duration = book.readingDurationMinutes
             ? `Durée de l'enregistrement: ${formatMinutes(book.readingDurationMinutes)}. `
             : '';
-        return `${book.title}. écrit par ${book.author}. Ce livre appartient aux genres suivants: ${genres}. ${duration}${description ? `Description: ${description}` : 'Aucune description disponible.'}`;
+        return `${book.title}. écrit par ${book.author}. ${duration}${description ? `Description: ${description}` : 'Aucune description disponible.'}`;
     }, [book]);
 
     useEffect(() => {
