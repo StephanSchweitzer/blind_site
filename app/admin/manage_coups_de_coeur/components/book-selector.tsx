@@ -200,12 +200,13 @@ export default function BookSelector({
                 if (response.ok) {
                     const data = await response.json();
                     setSearchResults(data.books);
-
-                    const newBookMap = new Map<number, Book>(bookDetailsMap);
-                    data.books.forEach((book: Book) => {
-                        newBookMap.set(book.id, book);
+                    setBookDetailsMap(prev => {
+                        const newMap = new Map(prev);
+                        data.books.forEach((book: Book) => {
+                            newMap.set(book.id, book);
+                        });
+                        return newMap;
                     });
-                    setBookDetailsMap(newBookMap);
                 }
             } catch (error) {
                 console.error('Erreur lors de la recherche:', error);
@@ -215,7 +216,7 @@ export default function BookSelector({
         };
 
         searchBooks();
-    }, [debouncedSearchTerm, mode, bookDetailsMap]);
+    }, [debouncedSearchTerm]); // Remove bookDetailsMap from dependencies
 
     const toggleBookSelection = (bookId: number) => {
         if (selectedBooks.includes(bookId)) {
@@ -274,12 +275,12 @@ export default function BookSelector({
                             className={`border-b border-gray-700 hover:bg-gray-750 cursor-pointer ${
                                 isSelected && isSearchResults ? "opacity-50" : ""
                             }`}
-                            onClick={() => handleRowClick(book)}
+                            onClick={() => isSearchResults ? toggleBookSelection(book.id) : handleRowClick(book)}
                         >
                             <TableCell
                                 className="text-gray-200"
                                 onClick={(e) => {
-                                    e.stopPropagation(); // Prevent row click when clicking checkbox
+                                    e.stopPropagation();
                                 }}
                             >
                                 <Switch
@@ -294,8 +295,8 @@ export default function BookSelector({
                                     <span>{book.title}</span>
                                     {isSelected && isSearchResults && (
                                         <span className="text-sm text-gray-400">
-                                            Ce livre appartient déjà à la liste
-                                        </span>
+                                        Ce livre appartient déjà à la liste
+                                    </span>
                                     )}
                                 </div>
                             </TableCell>
@@ -308,10 +309,6 @@ export default function BookSelector({
             </TableBody>
         </Table>
     );
-
-    console.log('BookDetailsMap size:', bookDetailsMap.size);
-    console.log('Selected books:', selectedBooks);
-    console.log('Selected book details:', selectedBookDetails);
 
     return (
         <div className="space-y-4">
