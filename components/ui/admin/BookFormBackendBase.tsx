@@ -1,4 +1,4 @@
-// BookFormBase.tsx - This will contain the shared form logic
+// BookFormBase.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Check, X } from "lucide-react";
+import { Check, X, AlertCircle } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
 import YearCommandSelect from "@/components/ui/year-select";
 import DurationInputs from "@/components/ui/duration-inputs";
-import { AlertCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 interface Genre {
@@ -29,7 +28,7 @@ export interface BookFormData {
     description: string | undefined;
     available: boolean;
     readingDurationMinutes: number | undefined;
-    [key: string]: string | number | boolean | string[] | undefined;  // Updated to match BookFormData types
+    [key: string]: string | number | boolean | string[] | undefined;
 }
 
 interface BookSearchData {
@@ -47,7 +46,9 @@ interface BookFormBackendBaseProps {
     submitButtonText: string;
     loadingText: string;
     title: string;
-    onSuccess?: (bookId: number) => void;
+    onSuccess?: (bookId: number, isDeleted?: boolean) => void;
+    onDelete?: () => Promise<void>;
+    showDelete?: boolean;
 }
 
 export function BookFormBackendBase({
@@ -56,7 +57,9 @@ export function BookFormBackendBase({
                                         submitButtonText,
                                         loadingText,
                                         title,
-                                        onSuccess
+                                        onSuccess,
+                                        onDelete,
+                                        showDelete
                                     }: BookFormBackendBaseProps) {
     const [formData, setFormData] = useState<BookFormData>(initialData || {
         title: '',
@@ -84,7 +87,7 @@ export function BookFormBackendBase({
                     setGenres(data);
                 }
             } catch (error) {
-                console.error('You gotta error when you tried to fetch the genres:', error);
+                console.error('Error fetching genres:', error);
                 setError('Failed to fetch genres');
             }
         };
@@ -129,28 +132,42 @@ export function BookFormBackendBase({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Form submission started in BookFormBackendBase');
         setIsLoading(true);
         setError(null);
 
         try {
             const newBookId = await onSubmit(formData);
-            console.log('Form submission successful, calling onSuccess with ID:', newBookId);
             if (onSuccess) {
                 onSuccess(newBookId);
             }
         } catch (err) {
-            console.error('Submit error:', err);
-            // Update the error state with the error message
             if (err instanceof Error) {
                 setError(err.message);
             } else {
                 setError('Failed to process book');
             }
-            // Return early to prevent further execution
             return;
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleDeleteClick = async () => {
+        if (!onDelete) return;
+
+        if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
+            setIsLoading(true);
+            try {
+                await onDelete();
+            } catch (err) {
+                if (err instanceof Error) {
+                    setError(err.message);
+                } else {
+                    setError('Failed to delete book');
+                }
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -340,7 +357,6 @@ export function BookFormBackendBase({
 
                         <DurationInputs formData={formData} handleChange={handleChange}/>
 
-
                         <div className="space-y-2">
                             <label htmlFor="description" className="text-sm font-medium text-gray-200">
                                 Description
@@ -374,13 +390,27 @@ export function BookFormBackendBase({
                         </div>
                     </div>
 
-                    <Button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100"
-                    >
-                        {isLoading ? loadingText : submitButtonText}
-                    </Button>
+                    <div className="space-y-4">
+                        <Button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100"
+                        >
+                            {isLoading ? loadingText : submitButtonText}
+                        </Button>
+
+                        {showDelete && onDelete && (
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={isLoading}
+                                onClick={handleDeleteClick}
+                                className="w-full bg-red-700 hover:bg-red-600 text-gray-100 border-red-500"
+                            >
+                                Supprimer le livre
+                            </Button>
+                        )}
+                    </div>
                 </form>
             </CardContent>
         </Card>
@@ -418,7 +448,7 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
 
                 toast({
                     variant: "destructive",
-                    // @ts-expect-error from a JSX file
+                    // @ts-expect-error is jsx title not supported
                     title: <span className="text-2xl font-bold">Erreur</span>,
                     description: <span className="text-xl mt-2">{errorMessage}</span>,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
@@ -428,7 +458,7 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
             }
 
             toast({
-                // @ts-expect-error from a JSX file
+                // @ts-expect-error is jsx title not supported
                 title: <span className="text-2xl font-bold">Succès</span>,
                 description: <span className="text-xl mt-2">Le livre a été créé avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
@@ -455,9 +485,35 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
 export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
     bookId: string,
     initialData: BookFormData,
-    onSuccess?: (bookId: number) => void
+    onSuccess?: (bookId: number, isDeleted?: boolean) => void
 }) {
     const { toast } = useToast();
+
+    const handleDelete = async (): Promise<void> => {
+        try {
+            const response = await fetch(`/api/books/${bookId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete book');
+            }
+
+            toast({
+                // @ts-expect-error same jsx problem
+                title: <span className="text-2xl font-bold">Succès</span>,
+                description: <span className="text-xl mt-2">Le livre a été supprimé avec succès</span>,
+                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+            });
+
+            if (onSuccess) {
+                onSuccess(parseInt(bookId), true); // Added true here for isDeleted
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            throw error;
+        }
+    };
 
     const handleSubmit = async (formData: BookFormData): Promise<number> => {
         const formattedDate = formData.publishedYear
@@ -499,7 +555,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
 
                 toast({
                     variant: "destructive",
-                    // @ts-expect-error from a JSX file
+                    // @ts-expect-error is jsx title not supported
                     title: <span className="text-2xl font-bold">Erreur</span>,
                     description: <span className="text-xl mt-2">{errorMessage}</span>,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
@@ -509,7 +565,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
             }
 
             toast({
-                // @ts-expect-error from a JSX file
+                // @ts-expect-error is jsx title not supported
                 title: <span className="text-2xl font-bold">Succès</span>,
                 description: <span className="text-xl mt-2">Le livre a été mis à jour avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
@@ -526,6 +582,8 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
         <BookFormBackendBase
             initialData={initialData}
             onSubmit={handleSubmit}
+            onDelete={handleDelete}
+            showDelete={true}
             submitButtonText="Mettre à jour le livre"
             loadingText="En cours de mise à jour..."
             title="Modifier le livre"

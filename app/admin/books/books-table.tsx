@@ -28,7 +28,7 @@ interface BookFormData {
     description: string | undefined;
     available: boolean;
     readingDurationMinutes: number | undefined;
-    [key: string]: string | number | boolean | string[] | undefined;  // Updated to match BookFormData types
+    [key: string]: string | number | boolean | string[] | undefined;
 }
 
 interface Book {
@@ -40,7 +40,7 @@ interface Book {
     available: boolean;
     genres: {
         genre: {
-            id?: string;  // Made id optional
+            id?: string;
             name: string;
         };
     }[];
@@ -132,7 +132,14 @@ export default function BooksTable({
         }
     };
 
-    const handleBookEdited = async (bookId: number) => {
+    const handleBookEdited = async (bookId: number, isDeleted = false) => {
+        if (isDeleted) {
+            setBooks(prevBooks => prevBooks.filter(book => book.id !== bookId));
+            setIsEditModalOpen(false);
+            setSelectedBook(null);
+            return;
+        }
+
         try {
             const response = await fetch(`/api/books/${bookId}`);
             if (!response.ok) {
@@ -160,18 +167,12 @@ export default function BooksTable({
                 throw new Error('Failed to fetch books');
             }
             const data = await response.json();
-
-            // Add console.log to see the structure
-            console.log('API Response:', data);
-
-            // Check if the data has a books property
-            const allBooks = data.books || data;  // handle both possible structures
+            const allBooks = data.books || data;
 
             if (!Array.isArray(allBooks)) {
                 throw new Error('Books data is not in the expected format');
             }
 
-            // Replace entire books state
             setBooks(allBooks);
             setIsAddModalOpen(false);
         } catch (error) {
@@ -274,6 +275,7 @@ export default function BooksTable({
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
+                {/* Search and filters */}
                 <div className="space-y-4">
                     <div className="flex gap-2 w-full items-center">
                         <div className="relative w-[45%]">
@@ -357,6 +359,7 @@ export default function BooksTable({
                         )}
                     </div>
 
+                    {/* Selected genres */}
                     {selectedGenres.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {selectedGenres.map(genreId => {
@@ -381,6 +384,7 @@ export default function BooksTable({
                     )}
                 </div>
 
+                {/* Books table */}
                 <div className="rounded-md border border-gray-700 bg-gray-800 mt-4">
                     <Table>
                         <TableHeader>
@@ -439,6 +443,7 @@ export default function BooksTable({
                     </Table>
                 </div>
 
+                {/* Pagination */}
                 <div className="flex justify-center items-center gap-2 mt-6">
                     <Button
                         size="sm"
