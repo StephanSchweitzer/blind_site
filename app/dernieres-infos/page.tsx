@@ -13,7 +13,6 @@ export default function DernieresInfoPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [newsPosts, setNewsPosts] = useState<NewsPost[]>([]);
     const [totalPages, setTotalPages] = useState(1);
-    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [, setIsTransitioning] = useState(false);
     const [selectedType, setSelectedType] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
@@ -23,9 +22,6 @@ export default function DernieresInfoPage() {
     const fetchNewsPosts = useCallback(async (page: number) => {
         setIsLoading(true);
         setError(null);
-
-        console.log('Color for EVENEMENT:', newsTypeColors['EVENEMENT']);
-        console.log('Available colors:', newsTypeColors);
 
         try {
             const queryParams = new URLSearchParams({
@@ -63,36 +59,21 @@ export default function DernieresInfoPage() {
     }, [selectedType, searchTerm]);
 
     useEffect(() => {
-        const initialLoad = async () => {
-            const data = await fetchNewsPosts(1);
-            if (data) {
-                setNewsPosts(data.items);
-                setTotalPages(data.totalPages);
-                setInitialLoadComplete(true);
-            }
-        };
-
-        initialLoad();
-    }, [fetchNewsPosts]);
-
-    useEffect(() => {
-        if (!initialLoadComplete) return;
-
         const loadPage = async () => {
             setIsTransitioning(true);
             const data = await fetchNewsPosts(currentPage);
             if (data) {
-                setTimeout(() => {
-                    setNewsPosts(data.items);
-                    setTotalPages(data.totalPages);
-                    setIsTransitioning(false);
+                setNewsPosts(data.items);
+                setTotalPages(data.totalPages);
+                setIsTransitioning(false);
+                if (currentPage !== 1) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                }, 300);
+                }
             }
         };
 
         loadPage();
-    }, [currentPage, fetchNewsPosts, initialLoadComplete]);
+    }, [currentPage, fetchNewsPosts]);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
@@ -176,7 +157,7 @@ export default function DernieresInfoPage() {
                             </div>
                         )}
 
-                        {isLoading && !initialLoadComplete ? (
+                        {isLoading ? (
                             <div className="text-center py-8">
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
                                 <p className="mt-4 text-gray-300">Chargement des actualités...</p>
@@ -190,15 +171,14 @@ export default function DernieresInfoPage() {
                                 <p className="text-gray-300">Aucune actualité trouvée</p>
                             </div>
                         ) : (
-                            // News posts list
                             <div className="space-y-6">
                                 {newsPosts.map((post) => (
                                     <article key={post.id} className="bg-gray-900 rounded-lg p-6 shadow-lg">
                                         <div className="flex items-center gap-4 mb-4">
                                             <h2 className="text-xl font-bold text-white">{post.title}</h2>
                                             <span className={`px-3 py-1 rounded-full text-sm ${newsTypeColors[post.type]} ${post.type === 'ANNONCE' ? 'text-gray-900' : 'text-white'}`}>
-                                                {newsTypeLabels[post.type]}
-                                            </span>
+                        {newsTypeLabels[post.type]}
+                    </span>
                                         </div>
                                         <p className="text-gray-300">{post.content}</p>
                                         <div className="mt-4 text-sm text-gray-100">

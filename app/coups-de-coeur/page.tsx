@@ -24,8 +24,10 @@ export default function CoupsDeCoeurPage() {
     const contentRef = useRef<HTMLDivElement>(null);
     const [isExporting, setIsExporting] = useState(false);
     const pdfContentRef = useRef<HTMLDivElement>(null);
+    const isFirstRender = useRef(true);
 
     const fetchCoupsDeCoeur = useCallback(async (page: number) => {
+        console.log('Fetching page:', page);
         try {
             const queryParams = new URLSearchParams({
                 page: page.toString(),
@@ -41,25 +43,10 @@ export default function CoupsDeCoeurPage() {
         }
     }, []);
 
-    // Initial data load
+
     useEffect(() => {
-        const initialLoad = async () => {
-            const data = await fetchCoupsDeCoeur(1);
-            if (data) {
-                setCoupsDeCoeur(data.items);
-                setTotalPages(data.totalPages);
-                setInitialLoadComplete(true);
-            }
-        };
-
-        initialLoad();
-    }, [fetchCoupsDeCoeur]);
-
-    // Handle page changes
-    useEffect(() => {
-        if (!initialLoadComplete) return;
-
         const loadPage = async () => {
+            console.log('Loading page:', currentPage, 'isFirstRender:', isFirstRender.current);
             setIsTransitioning(true);
             const data = await fetchCoupsDeCoeur(currentPage);
             if (data) {
@@ -67,13 +54,21 @@ export default function CoupsDeCoeurPage() {
                     setCoupsDeCoeur(data.items);
                     setTotalPages(data.totalPages);
                     setIsTransitioning(false);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }, 300); // Match this with CSS transition duration
+                    setInitialLoadComplete(true);
+                    if (!isFirstRender.current) {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                }, 300);
             }
         };
 
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+        }
+
         loadPage();
-    }, [currentPage, fetchCoupsDeCoeur, initialLoadComplete]);
+    }, [currentPage, fetchCoupsDeCoeur]);
+
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);

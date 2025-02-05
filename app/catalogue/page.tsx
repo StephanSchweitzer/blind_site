@@ -26,19 +26,16 @@ export default function BooksPage() {
     const [books, setBooks] = useState<BookWithGenres[]>([]);
     const [totalBooks, setTotalBooks] = useState<number | null>(null);
     const [totalPages, setTotalPages] = useState(1);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
     const [availableGenres, setAvailableGenres] = useState<{ id: number; name: string; }[]>([]);
-
-    // New states for transitions
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [previousBooks, setPreviousBooks] = useState<BookWithGenres[]>([]);
     const contentRef = useRef<HTMLDivElement>(null);
-    const isFirstRender = useRef(true);
 
-
+    // Fetch genres only once on component mount
     useEffect(() => {
         const fetchGenres = async () => {
             try {
@@ -52,37 +49,34 @@ export default function BooksPage() {
         fetchGenres();
     }, []);
 
+    // Memoized function to create query params
+    const createQueryParams = useCallback(() => {
+        const queryParams = new URLSearchParams({
+            search: searchTerm,
+            filter: selectedFilter,
+            page: currentPage.toString(),
+            limit: ITEMS_PER_PAGE.toString(),
+        });
+
+        selectedGenres.forEach(genreId => {
+            queryParams.append('genres', genreId.toString());
+        });
+
+        return queryParams;
+    }, [searchTerm, selectedFilter, currentPage, selectedGenres]);
+
+    // Memoized fetch books function
     const fetchBooks = useCallback(async () => {
         try {
-            const queryParams = new URLSearchParams({
-                search: searchTerm,
-                filter: selectedFilter,
-                page: currentPage.toString(),
-                limit: ITEMS_PER_PAGE.toString(),
-            });
-
-            if (selectedGenres.length > 0) {
-                selectedGenres.forEach(genreId => {
-                    queryParams.append('genres', genreId.toString());
-                });
-            }
-
+            const queryParams = createQueryParams();
             const response = await fetch(`/api/books?${queryParams.toString()}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const text = await response.text(); // Get response as text first
-
-            try {
-                const data = JSON.parse(text); // Try to parse it
-                return data;
-            } catch (parseError) {
-                console.error('Failed to parse JSON:', text);
-                console.error('Parse error:', parseError);
-                throw new Error('Invalid JSON response from server');
-            }
+            const text = await response.text();
+            return JSON.parse(text);
         } catch (error) {
             console.error('Error fetching books:', error);
             return {
@@ -92,35 +86,41 @@ export default function BooksPage() {
                 totalPages: 0
             };
         }
-    }, [searchTerm, selectedFilter, currentPage, selectedGenres]);
+    }, [createQueryParams]);
 
+    // Combined effect for fetching books
     useEffect(() => {
+        let isMounted = true;
+
         const loadBooks = async () => {
-            // Check if this is not the initial load using the ref
-            if (!isFirstRender.current) {
-                setIsTransitioning(true);
-                // Use callback form to avoid dependency on books
-                setPreviousBooks(prevBooks => prevBooks);
-            } else {
-                isFirstRender.current = false;
-            }
+            setIsLoading(true);
+            setIsTransitioning(true);
+
+            // Store current books as previous before fetching new ones
+            setBooks(currentBooks => {
+                setPreviousBooks(currentBooks);
+                return currentBooks;
+            });
 
             const data = await fetchBooks();
 
-            if (data) {
+            if (isMounted && data) {
                 setTimeout(() => {
-                    // Update all states at once to minimize re-renders
                     setBooks(data.books);
                     setTotalBooks(data.total);
                     setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
                     setIsTransitioning(false);
-                    setIsInitialLoading(false);
+                    setIsLoading(false);
                 }, 150);
             }
         };
 
         loadBooks();
-    }, [fetchBooks, isInitialLoading]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [fetchBooks]);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
@@ -142,11 +142,9 @@ export default function BooksPage() {
         setIsModalOpen(true);
     };
 
-    const renderBookList = (books: BookWithGenres[]) => {
-        return (
-            <BookList books={books} onBookClick={handleBookClick} />
-        );
-    };
+    const renderBookList = (books: BookWithGenres[]) => (
+        <BookList books={books} onBookClick={handleBookClick} />
+    );
 
     return (
         <main className="min-h-screen relative bg-gray-900">
@@ -197,7 +195,7 @@ export default function BooksPage() {
                         />
 
                         <div ref={contentRef} className="relative min-h-[200px]">
-                            {isInitialLoading ? (
+                            {isLoading ? (
                                 <div className="flex flex-col items-center justify-center py-12">
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
                                     <p className="mt-4 text-gray-300">Chargement des livres...</p>
