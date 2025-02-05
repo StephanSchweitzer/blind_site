@@ -36,6 +36,8 @@ export default function BooksPage() {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [previousBooks, setPreviousBooks] = useState<BookWithGenres[]>([]);
     const contentRef = useRef<HTMLDivElement>(null);
+    const isFirstRender = useRef(true);
+
 
     useEffect(() => {
         const fetchGenres = async () => {
@@ -94,17 +96,21 @@ export default function BooksPage() {
 
     useEffect(() => {
         const loadBooks = async () => {
-            // Start transition if this is not the initial load
-            if (books.length > 0) {
+            // Check if this is not the initial load using the ref
+            if (!isFirstRender.current) {
                 setIsTransitioning(true);
-                setPreviousBooks(books);
+                // Use callback form to avoid dependency on books
+                setPreviousBooks(prevBooks => prevBooks);
+            } else {
+                isFirstRender.current = false;
             }
 
             const data = await fetchBooks();
 
             if (data) {
-                // Slight delay to allow for fade transition
                 setTimeout(() => {
+                    // Update all states at once to minimize re-renders
+                    setPreviousBooks(prevBooks => data.books); // Update previousBooks first
                     setBooks(data.books);
                     setTotalBooks(data.total);
                     setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));

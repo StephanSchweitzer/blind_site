@@ -51,7 +51,6 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
 
     const generateFrenchText = useCallback(() => {
         if (!book) return '';
-        const genres = book.genres.map(g => g.genre.name).join(' et ');
         const description = book.description;
         const duration = book.readingDurationMinutes
             ? `Durée de l'enregistrement: ${formatMinutes(book.readingDurationMinutes)}. `
