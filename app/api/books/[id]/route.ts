@@ -78,36 +78,26 @@ export async function PUT(req: NextRequest, { params }: Params) {
         readingDurationMinutes,
     } = await req.json();
 
-    // Updated ISBN check with unaccent
-    const existingBook = await prisma.book.findFirst({
-        where: {
-            OR: [
-                { isbn },
-                {
-                    isbn: {
-                        equals: isbn,
-                        mode: 'insensitive'
-                    }
-                }
-            ],
-            NOT: {
-                id: parseInt(id, 10)  // Exclude current book
-            }
-        }
-    });
 
-    if (existingBook) {
-        return NextResponse.json(
-            {
-                error: 'Another book with this ISBN already exists',
-                message: 'Another book with this ISBN already exists'
-            },
-            {
-                status: 409,
-                headers: corsHeaders
+    if (isbn?.trim()) {
+        const existingBook = await prisma.book.findFirst({
+            where: {
+                isbn,
+                NOT: {id: parseInt(id, 10)}
             }
-        );
+        });
+
+        if (existingBook) {
+            return NextResponse.json(
+                {
+                    error: 'Another book with this ISBN already exists',
+                    message: 'Another book with this ISBN already exists'
+                },
+                {status: 409, headers: corsHeaders}
+            );
+        }
     }
+
 
     try {
         const updatedBook = await prisma.book.update({
