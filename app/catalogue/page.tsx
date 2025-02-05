@@ -110,7 +110,6 @@ export default function BooksPage() {
             if (data) {
                 setTimeout(() => {
                     // Update all states at once to minimize re-renders
-                    setPreviousBooks(prevBooks => data.books); // Update previousBooks first
                     setBooks(data.books);
                     setTotalBooks(data.total);
                     setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
