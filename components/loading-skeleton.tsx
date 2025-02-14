@@ -2,7 +2,11 @@
 
 import { Loader2 } from 'lucide-react';
 
-export function LoadingSkeleton() {
+interface LoadingSkeletonProps {
+    message?: string;
+}
+
+export function LoadingSkeleton({ message = "Chargement..." }: LoadingSkeletonProps) {
     return (
         <div className="w-full h-full min-h-screen flex flex-col bg-gray-900">
             {/* Top loading bar */}
@@ -22,7 +26,7 @@ export function LoadingSkeleton() {
             <div className="flex-1 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-                    <p className="text-sm text-gray-400">Loading...</p>
+                    <p className="text-sm text-gray-400">{message}</p>
                 </div>
             </div>
         </div>
