@@ -21,6 +21,7 @@ import { useDebounce } from 'use-debounce';
 import {AddBookButtonBackend} from "@/admin/BookModalBackend";
 import { EditBookModal } from '@/admin/EditBookModal';
 import {BookFormData} from "@/admin/BookFormBackendBase";
+import {toast} from "@/hooks/use-toast";
 
 
 interface Book {
@@ -56,6 +57,7 @@ export default function BookSelector({
     const [refreshTrigger] = useState(0);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [selectedBookForEdit, setSelectedBookForEdit] = useState<(Book & { formData: BookFormData }) | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const fetchInitialBooks = async () => {
@@ -129,6 +131,9 @@ export default function BookSelector({
 
 
     const handleRowClick = async (book: Book) => {
+        setIsLoading(true);
+        document.body.style.cursor = 'wait';
+
         try {
             const response = await fetch(`/api/books/${book.id}`);
             if (!response.ok) {
@@ -136,21 +141,20 @@ export default function BookSelector({
             }
             const bookDetails = await response.json();
 
-            // Get genre IDs from the join table data structure
             const genreIds = bookDetails.genres.map((g: { genre: { id: string } }) => g.genre.id);
 
             const formData: BookFormData = {
                 title: bookDetails.title || '',
                 author: bookDetails.author || '',
-                publisher: bookDetails.publisher || '', // Change to empty string
+                publisher: bookDetails.publisher || '',
                 publishedYear: bookDetails.publishedDate ?
                     new Date(bookDetails.publishedDate).getFullYear().toString() :
                     '',
                 genres: genreIds,
-                isbn: bookDetails.isbn || '', // Change to empty string
-                description: bookDetails.description || '', // Change to empty string
+                isbn: bookDetails.isbn || '',
+                description: bookDetails.description || '',
                 available: Boolean(bookDetails.available),
-                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || '' // Change to empty string
+                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || ''
             };
 
             setSelectedBookForEdit({
@@ -160,6 +164,14 @@ export default function BookSelector({
             setEditModalOpen(true);
         } catch (error) {
             console.error('Error fetching book details:', error);
+            toast({
+                title: "Error",
+                description: "Failed to load book details. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsLoading(false);
+            document.body.style.cursor = 'default';
         }
     };
 
@@ -272,9 +284,12 @@ export default function BookSelector({
                     return (
                         <TableRow
                             key={book.id}
-                            className={`border-b border-gray-700 hover:bg-gray-750 cursor-pointer ${
-                                isSelected && isSearchResults ? "opacity-50" : ""
-                            }`}
+                            className={`
+                            border-b border-gray-700 
+                            hover:bg-gray-750 
+                            ${isLoading ? '[&]:hover:cursor-wait' : 'cursor-pointer'}
+                            ${isSelected && isSearchResults ? "opacity-50" : ""}
+                        `}
                             onClick={() => isSearchResults ? toggleBookSelection(book.id) : handleRowClick(book)}
                         >
                             <TableCell
@@ -371,7 +386,6 @@ export default function BookSelector({
                 </p>
             </div>
 
-            {/* Add the EditBookModal here */}
             {selectedBookForEdit && (
                 <EditBookModal
                     isOpen={editModalOpen}

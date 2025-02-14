@@ -83,7 +83,7 @@ export default function BooksTable({
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
-
+    const [isLoading, setIsLoading] = useState(false);
     const currentPage = parseInt(searchParams?.get('page') || '1');
 
     useEffect(() => {
@@ -92,10 +92,13 @@ export default function BooksTable({
         }
     }, [initialBooks]);
 
-    const handleBookEdit = async (book: Book, e?: React.MouseEvent) => {
+    const openBookEditModal = async (book: Book, e?: React.MouseEvent) => {
         if (e) {
             e.stopPropagation();
         }
+
+        setIsLoading(true);
+        document.body.style.cursor = 'wait';
 
         try {
             const response = await fetch(`/api/books/${book.id}`);
@@ -129,6 +132,9 @@ export default function BooksTable({
             setIsEditModalOpen(true);
         } catch (error) {
             console.error('Error fetching book details:', error);
+        } finally {
+            setIsLoading(false);
+            document.body.style.cursor = 'default';
         }
     };
 
@@ -401,8 +407,12 @@ export default function BooksTable({
                             {books && books.map((book) => (
                                 <TableRow
                                     key={book.id}
-                                    className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
-                                    onClick={() => handleBookEdit(book)}
+                                    className={`
+                                    border-b border-gray-700 
+                                    hover:bg-gray-750 
+                                    ${isLoading ? '[&]:hover:cursor-wait' : 'cursor-pointer'}
+                                `}
+                                    onClick={() => openBookEditModal(book)}
                                 >
                                     <TableCell className="text-gray-200">
                                         <div>
@@ -432,7 +442,7 @@ export default function BooksTable({
                                             variant="outline"
                                             size="sm"
                                             className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                            onClick={(e) => handleBookEdit(book, e)}
+                                            onClick={(e) => openBookEditModal(book, e)}
                                         >
                                             Editer
                                         </Button>
