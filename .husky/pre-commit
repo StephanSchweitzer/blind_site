@@ -1,6 +1,3 @@
-# Enable error tracing
-set -x
-
 # Check if dependencies are in sync
 echo "🔍 Checking if dependencies are in sync..."
 pnpm install --frozen-lockfile || {
