@@ -1,8 +1,25 @@
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(js|jsx|ts|tsx)$')
+# Enable error tracing
+set -x
+
+# Check if dependencies are in sync
+echo "🔍 Checking if dependencies are in sync..."
+pnpm install --frozen-lockfile || {
+    echo "❌ Dependencies are out of sync. Run 'pnpm install' and try committing again."
+    exit 1
+}
+
+# ESLint check using pnpm
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(js|jsx|ts|tsx)$' || true)
+
 if [ -n "$STAGED_FILES" ]; then
     echo "🔍 Running ESLint on staged files..."
-    /home/stef/blind_site/node_modules/.bin/eslint $STAGED_FILES || {
+    pnpm eslint $STAGED_FILES || {
         echo "❌ ESLint failed. Fix the errors and try committing again."
         exit 1
     }
+else
+    echo "No JavaScript/TypeScript files to lint, proceeding with commit"
 fi
+
+# If we get here, everything is good
+exit 0
