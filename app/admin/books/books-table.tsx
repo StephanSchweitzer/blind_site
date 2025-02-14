@@ -420,8 +420,8 @@ export default function BooksTable({
                                     </TableCell>
                                     <TableCell className="text-gray-200">
                                         {book.readingDurationMinutes
-                                            ? `${book.readingDurationMinutes} mins`
-                                            : 'N/A'
+                                            ? `${Math.floor(book.readingDurationMinutes / 60)}h ${book.readingDurationMinutes % 60}min`
+                                            : 'N/D'
                                         }
                                     </TableCell>
                                     <TableCell className="text-gray-200">
