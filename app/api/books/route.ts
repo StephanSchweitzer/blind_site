@@ -211,26 +211,29 @@ export async function POST(req: NextRequest) {
         const userId = parseInt(session.user.id, 10);
         const formData = await req.json();
 
-        const existingBook = await prisma.book.findFirst({
-            where: {
-                isbn: {
-                    equals: formData.isbn,
-                    mode: 'insensitive'
+        // Only check for existing ISBN if one is provided and it's not empty
+        if (formData.isbn?.trim()) {
+            const existingBook = await prisma.book.findFirst({
+                where: {
+                    isbn: {
+                        equals: formData.isbn,
+                        mode: 'insensitive'
+                    }
                 }
-            }
-        });
+            });
 
-        if (existingBook) {
-            return new Response(
-                JSON.stringify({
-                    success: false,
-                    message: 'A book with this ISBN already exists'
-                }),
-                {
-                    status: 409,
-                    headers: { 'Content-Type': 'application/json' },
-                }
-            );
+            if (existingBook) {
+                return new Response(
+                    JSON.stringify({
+                        success: false,
+                        message: 'A book with this ISBN already exists'
+                    }),
+                    {
+                        status: 409,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            }
         }
 
         const newBook = await prisma.book.create({
@@ -239,7 +242,7 @@ export async function POST(req: NextRequest) {
                 author: formData.author,
                 publisher: formData.publisher,
                 publishedDate: new Date(formData.publishedDate),
-                isbn: formData.isbn,
+                isbn: formData.isbn?.trim() || null, // Set to null if empty or undefined
                 description: formData.description,
                 available: formData.available,
                 readingDurationMinutes: formData.readingDurationMinutes ? parseInt(formData.readingDurationMinutes) : null,
