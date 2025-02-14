@@ -1,5 +1,5 @@
 // types/news.ts
-import { News, Prisma } from '@prisma/client';
+import { News } from '@prisma/client';
 
 export type NewsType = News['type'];
 

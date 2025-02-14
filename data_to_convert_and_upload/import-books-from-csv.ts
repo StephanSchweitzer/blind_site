@@ -1,5 +1,5 @@
-const { parse } = require('csv-parse/sync')
-const fs = require('fs/promises')
+import {parse} from 'csv-parse/sync';
+import fs from 'fs/promises';
 
 import { prisma } from '@/lib/prisma';
 
@@ -98,7 +98,7 @@ async function importBooks() {
                     console.log(`Added book (without ISBN): ${record.title}`)
                     added++
                 } catch (retryError) {
-                    console.error(`Failed to process book even without ISBN: ${record.title}`)
+                    console.error(`Failed to process book '${record.title}':`, retryError);
                     continue
                 }
             }
