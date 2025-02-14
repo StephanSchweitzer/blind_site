@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
+import {toast} from "@/hooks/use-toast";
 
 interface BookFormData {
     title: string;
@@ -132,6 +133,11 @@ export default function BooksTable({
             setIsEditModalOpen(true);
         } catch (error) {
             console.error('Error fetching book details:', error);
+            toast({
+                title: "Erreur",
+                description: "Échec du chargement des détails du livre. Veuillez réessayer.",
+                variant: "destructive"
+            });
         } finally {
             setIsLoading(false);
             document.body.style.cursor = 'default';

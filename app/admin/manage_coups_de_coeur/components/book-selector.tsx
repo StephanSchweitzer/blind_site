@@ -165,8 +165,8 @@ export default function BookSelector({
         } catch (error) {
             console.error('Error fetching book details:', error);
             toast({
-                title: "Error",
-                description: "Failed to load book details. Please try again.",
+                title: "Erreur",
+                description: "Échec du chargement des détails du livre. Veuillez réessayer.",
                 variant: "destructive"
             });
         } finally {
