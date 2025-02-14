@@ -173,13 +173,9 @@ export default function BooksPage() {
                             et commandez au <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
                             <br />
                             ou par courriel à{' '}
-                            <a href="mailto:ass.eca@wanadoo.fr" className="text-blue-400 hover:text-blue-300">
-                                ass.eca@wanadoo.fr
+                            <a href="mailto:ecapermanence@gmail.com" className="text-blue-400 hover:text-blue-300">
+                                ecapermanence@gmail.com
                             </a>{' '}
-                            ou{' '}
-                            <a href="mailto:lecteurs.eca@orange.fr" className="text-blue-400 hover:text-blue-300">
-                                lecteurs.eca@orange.fr
-                            </a>
                         </p>
                     </section>
 

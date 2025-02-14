@@ -57,3 +57,9 @@ Make the modal not close until there is a correct response from the API
 A form that lets you request books from the book page
 
 A character limit for the descriptions of books in coup de coeur so there isn't so much text in a page
+
+When there is an error, the modal for the book closes, and all information is lost, which is very annoying for the user
+
+Make the publication year field a regular text field, preferably numbers only. Not a dropdown
+
+I need to make dernieres info respect line breaks
