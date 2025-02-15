@@ -18,11 +18,10 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { useDebounce } from 'use-debounce';
-import {AddBookButtonBackend} from "@/admin/BookModalBackend";
+import { AddBookButtonBackend } from "@/admin/BookModalBackend";
 import { EditBookModal } from '@/admin/EditBookModal';
-import {BookFormData} from "@/admin/BookFormBackendBase";
-import {toast} from "@/hooks/use-toast";
-
+import { BookFormData } from "@/admin/BookFormBackendBase";
+import { toast } from "@/hooks/use-toast";
 
 interface Book {
     id: number;
@@ -48,14 +47,15 @@ export default function BookSelector({
                                          mode,
                                          coupDeCoeurId,
                                          onDialogOpenChange,
-                                         isOpen = false  // Add this
-                                     }: BookSelectorProps) {    const [bookDetailsMap, setBookDetailsMap] = useState<Map<number, Book>>(new Map());
+                                         isOpen = false
+                                     }: BookSelectorProps) {
+    const [bookDetailsMap, setBookDetailsMap] = useState<Map<number, Book>>(new Map());
+    const [displayedBookIds, setDisplayedBookIds] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<Book[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
-    const [refreshTrigger] = useState(0);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [selectedBookForEdit, setSelectedBookForEdit] = useState<(Book & { formData: BookFormData }) | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -68,8 +68,10 @@ export default function BookSelector({
                 const url = '/api/books?';
                 const params = new URLSearchParams();
 
-                if (mode === 'edit' && selectedBooks.length > 0) {
-                    params.append('ids', selectedBooks.join(','));
+                if (mode === 'edit') {
+                    if (selectedBooks.length > 0) {
+                        params.append('ids', selectedBooks.join(','));
+                    }
                 } else if (mode === 'create') {
                     params.append('recent', 'true');
                     params.append('limit', '1000');
@@ -79,14 +81,15 @@ export default function BookSelector({
                     const response = await fetch(`${url}${params.toString()}`);
                     if (response.ok) {
                         const data = await response.json();
-                        // Fix the type by explicitly mapping to Book type
                         const newBookMap = new Map<number, Book>(
                             data.books.map((book: Book) => [book.id, book])
                         );
                         setBookDetailsMap(newBookMap);
 
+                        const bookIds = data.books.map((book: Book) => book.id);
+                        setDisplayedBookIds(bookIds);
+
                         if (mode === 'create') {
-                            const bookIds = data.books.map((book: Book) => book.id);
                             onSelectedBooksChange(bookIds);
                         }
                     }
@@ -99,13 +102,45 @@ export default function BookSelector({
         };
 
         fetchInitialBooks();
-    }, [mode, coupDeCoeurId, refreshTrigger, initialLoadDone, onSelectedBooksChange, selectedBooks]);
+    }, [mode, coupDeCoeurId, initialLoadDone, onSelectedBooksChange, selectedBooks]);
+
+    useEffect(() => {
+        const searchBooks = async () => {
+            if (!debouncedSearchTerm) {
+                setSearchResults([]);
+                return;
+            }
+
+            setIsSearching(true);
+            try {
+                const params = new URLSearchParams({
+                    search: debouncedSearchTerm
+                });
+
+                const response = await fetch(`/api/books?${params.toString()}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setSearchResults(data.books);
+                    setBookDetailsMap(prev => {
+                        const newMap = new Map(prev);
+                        data.books.forEach((book: Book) => {
+                            newMap.set(book.id, book);
+                        });
+                        return newMap;
+                    });
+                }
+            } catch (error) {
+                console.error('Erreur lors de la recherche:', error);
+            } finally {
+                setIsSearching(false);
+            }
+        };
+
+        searchBooks();
+    }, [debouncedSearchTerm]);
 
     const handleBookAdded = async (newBookId: number) => {
-        console.log('Book added, refreshing list with new book ID:', newBookId);
-
         try {
-            // Fetch the new book
             const response = await fetch(`/api/books?ids=${newBookId}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch new book');
@@ -113,23 +148,22 @@ export default function BookSelector({
 
             const data = await response.json();
 
-            // Update book map with proper typing
-            setBookDetailsMap(prev => {
-                const newMap = new Map<number, Book>(prev);
-                if (data.books?.[0]) {
+            if (data.books?.[0]) {
+                // Update the book details map
+                setBookDetailsMap(prev => {
+                    const newMap = new Map(prev);
                     newMap.set(newBookId, data.books[0]);
-                }
-                return newMap;
-            });
+                    return newMap;
+                });
 
-            // Add the new book to selected books
-            toggleBookSelection(newBookId);
-            setInitialLoadDone(false);
+                // Add to displayed books and select it
+                setDisplayedBookIds(prev => [...prev, newBookId]);
+                toggleBookSelection(newBookId, true);
+            }
         } catch (error) {
             console.error('Error handling new book:', error);
         }
     };
-
 
     const handleRowClick = async (book: Book) => {
         setIsLoading(true);
@@ -179,14 +213,11 @@ export default function BookSelector({
     };
 
     const handleBookEdited = async () => {
-        // Get the current list of book IDs from selectedBooks
-        if (selectedBooks.length > 0) {
+        if (displayedBookIds.length > 0) {
             try {
-                // Fetch fresh data for all currently selected books
-                const response = await fetch(`/api/books?ids=${selectedBooks.join(',')}`);
+                const response = await fetch(`/api/books?ids=${displayedBookIds.join(',')}`);
                 if (response.ok) {
                     const data = await response.json();
-                    // Update the book details map with fresh data
                     setBookDetailsMap(new Map(
                         data.books.map((book: Book) => [book.id, book])
                     ));
@@ -197,47 +228,16 @@ export default function BookSelector({
         }
     };
 
-
-    useEffect(() => {
-        const searchBooks = async () => {
-            if (!debouncedSearchTerm) {
-                setSearchResults([]);
-                return;
-            }
-
-            setIsSearching(true);
-            try {
-                const params = new URLSearchParams({
-                    search: debouncedSearchTerm
-                });
-
-                const response = await fetch(`/api/books?${params.toString()}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setSearchResults(data.books);
-                    setBookDetailsMap(prev => {
-                        const newMap = new Map(prev);
-                        data.books.forEach((book: Book) => {
-                            newMap.set(book.id, book);
-                        });
-                        return newMap;
-                    });
-                }
-            } catch (error) {
-                console.error('Erreur lors de la recherche:', error);
-            } finally {
-                setIsSearching(false);
-            }
-        };
-
-        searchBooks();
-    }, [debouncedSearchTerm]); // Remove bookDetailsMap from dependencies
-
-    const toggleBookSelection = (bookId: number) => {
-        if (selectedBooks.includes(bookId)) {
+    const toggleBookSelection = (bookId: number, forceAdd: boolean = false) => {
+        if (selectedBooks.includes(bookId) && !forceAdd) {
             onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
         } else {
+            // Add to selection
             onSelectedBooksChange([...selectedBooks, bookId]);
+            // Also ensure it's in the displayed list
+            if (!displayedBookIds.includes(bookId)) {
+                setDisplayedBookIds(prev => [...prev, bookId]);
+            }
         }
     };
 
@@ -255,8 +255,8 @@ export default function BookSelector({
         return books.length > 0 && books.every(book => selectedBooks.includes(book.id));
     };
 
-    const selectedBookDetails = Array.from(bookDetailsMap.values())
-        .filter(book => selectedBooks.includes(book.id));
+    const displayedBookDetails = Array.from(bookDetailsMap.values())
+        .filter(book => displayedBookIds.includes(book.id));
 
     const BookTable = ({ books, isSearchResults = false }: { books: Book[], isSearchResults?: boolean }) => (
         <Table>
@@ -282,48 +282,53 @@ export default function BookSelector({
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {books.map((book) => {
-                    const isSelected = selectedBooks.includes(book.id);
-                    return (
-                        <TableRow
-                            key={book.id}
-                            className={`
+                {books.map((book) => (
+                    <TableRow
+                        key={book.id}
+                        className={`
                             border-b border-gray-700 
                             hover:bg-gray-750 
                             ${isLoading ? '[&]:hover:cursor-wait' : 'cursor-pointer'}
-                            ${isSelected && isSearchResults ? "opacity-50" : ""}
+                            ${isSearchResults && displayedBookIds.includes(book.id) ? "opacity-50" : ""}
                         `}
-                            onClick={() => isSearchResults ? toggleBookSelection(book.id) : handleRowClick(book)}
+                        onClick={() => {
+                            if (isSearchResults) {
+                                toggleBookSelection(book.id, true);
+                            } else {
+                                handleRowClick(book);
+                            }
+                        }}
+                    >
+                        <TableCell
+                            className="text-gray-200"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                            }}
                         >
-                            <TableCell
-                                className="text-gray-200"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                }}
-                            >
-                                <Switch
-                                    id={`book-${book.id}`}
-                                    checked={isSelected}
-                                    onChange={() => toggleBookSelection(book.id)}
-                                    className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
-                                />
-                            </TableCell>
-                            <TableCell className="text-gray-200">
-                                <div className="flex flex-col">
-                                    <span>{book.title}</span>
-                                    {isSelected && isSearchResults && (
-                                        <span className="text-sm text-gray-400">
+                            <Switch
+                                id={`book-${book.id}`}
+                                checked={selectedBooks.includes(book.id)}
+                                onChange={() => toggleBookSelection(book.id)}
+                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
+                            />
+                        </TableCell>
+                        <TableCell className="text-gray-200">
+                            <div className="flex flex-col">
+                                <span>{book.title}</span>
+                                {isSearchResults && displayedBookIds.includes(book.id) && (
+                                    <span className="text-sm text-gray-400">
                                         Ce livre appartient déjà à la liste
                                     </span>
-                                    )}
-                                </div>
-                            </TableCell>
-                            <TableCell className="text-gray-200">{book.author}</TableCell>
-                            <TableCell className="text-gray-200">{book.isbn || 'N/A'}</TableCell>
-                            <TableCell className="text-gray-200">{new Date(book.createdAt).toLocaleDateString()}</TableCell>
-                        </TableRow>
-                    );
-                })}
+                                )}
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-gray-200">{book.author}</TableCell>
+                        <TableCell className="text-gray-200">{book.isbn || 'N/A'}</TableCell>
+                        <TableCell className="text-gray-200">
+                            {new Date(book.createdAt).toLocaleDateString()}
+                        </TableCell>
+                    </TableRow>
+                ))}
             </TableBody>
         </Table>
     );
@@ -363,7 +368,7 @@ export default function BookSelector({
                                 ) : (
                                     <>
                                         {searchResults.length > 0 ? (
-                                            <BookTable books={searchResults} isSearchResults={true}/>
+                                            <BookTable books={searchResults} isSearchResults={true} />
                                         ) : (
                                             debouncedSearchTerm && (
                                                 <p className="text-center text-gray-400 py-4">
@@ -380,12 +385,12 @@ export default function BookSelector({
             </div>
 
             <div className="border border-gray-700 rounded-lg bg-gray-800">
-                <BookTable books={selectedBookDetails}/>
+                <BookTable books={displayedBookDetails} />
             </div>
 
             <div className="mt-4">
                 <p className="text-sm text-gray-400">
-                    {selectedBooks.length} livres sélectionnés
+                    {selectedBooks.length} livres sélectionnés sur {displayedBookIds.length} livres dans la liste
                 </p>
             </div>
 
@@ -400,5 +405,4 @@ export default function BookSelector({
             )}
         </div>
     );
-}
-
+    }
