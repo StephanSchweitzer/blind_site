@@ -47,19 +47,8 @@ Add the sub title field to books so that it can contain or not contain a sub tit
 
 If there was a change to coups de coeur, and the user leaves the page, the changes should be saved ONLY FOR EDIT
 
-There is still english in the search books part of the front end
-
-
-There's a problem with publishing books, the ISBN has to be unique and not null
-
-Make the modal not close until there is a correct response from the API
-
 A form that lets you request books from the book page
 
 A character limit for the descriptions of books in coup de coeur so there isn't so much text in a page
 
 When there is an error, the modal for the book closes, and all information is lost, which is very annoying for the user
-
-Make the publication year field a regular text field, preferably numbers only. Not a dropdown
-
-I need to make dernieres info respect line breaks

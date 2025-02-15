@@ -47,7 +47,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         type="text"
                         value={searchTerm}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        placeholder="Search books..."
+                        placeholder="Recherche de livres..."
                         className="w-full px-4 py-2 pl-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
@@ -59,9 +59,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     onChange={(e) => onFilterChange(e.target.value)}
                     className="w-[20%] px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                    <option value="all">All</option>
-                    <option value="title">Title</option>
-                    <option value="author">Author</option>
+                    <option value="all">Tous</option>
+                    <option value="title">Titre</option>
+                    <option value="author">Auteur</option>
                     <option value="description">Description</option>
                     <option value="genre">Genre</option>
                 </select>
@@ -79,7 +79,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                             >
                                 {selectedGenres.length > 0
                                     ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} selected`
-                                    : "Select genres..."}
+                                    : "Sélectionner les genres..."}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
                             </Button>
                         </PopoverTrigger>
