@@ -1,4 +1,3 @@
-// EditBookModal.tsx
 import React from 'react';
 import {
     Dialog,
@@ -15,6 +14,7 @@ interface EditBookModalProps {
     bookId: string;
     initialData: BookFormData;
     onBookEdited?: (bookId: number) => void;
+    onBookDeleted?: (bookId: number) => void;
 }
 
 export function EditBookModal({
@@ -22,22 +22,29 @@ export function EditBookModal({
                                   onOpenChange,
                                   bookId,
                                   initialData,
-                                  onBookEdited
+                                  onBookEdited,
+                                  onBookDeleted
                               }: EditBookModalProps) {
-    const handleSuccess = (bookId: number) => {
-        console.log('Book edited successfully, closing modal');
-        if (onBookEdited) {
-            console.log('Calling onBookEdited callback with bookId:', bookId);
-            onBookEdited(bookId);
+    const handleSuccess = (bookId: number, isDeleted?: boolean) => {
+        console.log('Book operation completed successfully, closing modal');
+        if (isDeleted) {
+            if (onBookDeleted) {
+                console.log('Calling onBookDeleted callback with bookId:', bookId);
+                onBookDeleted(bookId);
+            }
+        } else {
+            if (onBookEdited) {
+                console.log('Calling onBookEdited callback with bookId:', bookId);
+                onBookEdited(bookId);
+            }
         }
         onOpenChange(false);
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent
-                className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700"
-            >
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+
                 <DialogHeader>
                     <DialogTitle className="text-gray-100">Modifier le livre</DialogTitle>
                 </DialogHeader>

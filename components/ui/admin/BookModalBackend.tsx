@@ -1,8 +1,9 @@
 // BookModalBackend.tsx
 import React from 'react';
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import {
     Dialog,
+    DialogClose,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -28,9 +29,8 @@ export function BookModalBackend({ isOpen, onOpenChange, onBookAdded }: BookModa
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent
-                className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700"
-            >
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+
                 <DialogHeader>
                     <DialogTitle className="text-gray-100">Ajouter un nouveau livre</DialogTitle>
                 </DialogHeader>

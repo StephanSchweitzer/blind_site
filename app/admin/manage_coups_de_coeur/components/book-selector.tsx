@@ -139,30 +139,87 @@ export default function BookSelector({
         searchBooks();
     }, [debouncedSearchTerm]);
 
+
     const handleBookAdded = async (newBookId: number) => {
         try {
             const response = await fetch(`/api/books?ids=${newBookId}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch new book');
-            }
+
+            if (!response.ok) throw new Error('Failed to fetch new book');
 
             const data = await response.json();
 
-            if (data.books?.[0]) {
-                // Update the book details map
-                setBookDetailsMap(prev => {
-                    const newMap = new Map(prev);
+            setBookDetailsMap(prev => {
+                const newMap = new Map(prev);
+                if (data.books?.[0]) {
                     newMap.set(newBookId, data.books[0]);
-                    return newMap;
-                });
+                }
+                return newMap;
+            });
 
-                // Add to displayed books and select it
-                setDisplayedBookIds(prev => [...prev, newBookId]);
-                toggleBookSelection(newBookId, true);
-            }
+            toggleBookSelection(newBookId, true);
+
         } catch (error) {
-            console.error('Error handling new book:', error);
+            console.error('Error refreshing book data after addition:', error);
+            toast({
+                title: "Erreur",
+                description: "Échec de l'ajout du livre",
+                variant: "destructive"
+            });
         }
+    };
+
+    const handleBookEdited = async () => {
+        if (displayedBookIds.length > 0) {
+            try {
+                const response = await fetch(`/api/books?ids=${displayedBookIds.join(',')}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setBookDetailsMap(new Map(
+                        data.books.map((book: Book) => [book.id, book])
+                    ));
+                }
+            } catch (error) {
+                console.error('Error refreshing book data:', error);
+            }
+        }
+    };
+
+    const handleBookDeleted = async (deletedBookId: number) => {
+        if (displayedBookIds.length > 0) {
+            const updatedBookIds = displayedBookIds.filter(id => id !== deletedBookId);
+            setDisplayedBookIds(updatedBookIds);
+
+            if (selectedBooks?.includes(deletedBookId)) {
+                const updatedSelectedBooks = selectedBooks.filter(id => id !== deletedBookId);
+                onSelectedBooksChange(updatedSelectedBooks);
+            }
+
+            try {
+                if (updatedBookIds.length > 0) {
+                    const response = await fetch(`/api/books?ids=${updatedBookIds.join(',')}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setBookDetailsMap(new Map(
+                            data.books.map((book: Book) => [book.id, book])
+                        ));
+                    }
+                } else {
+                    setBookDetailsMap(new Map());
+                }
+            } catch (error) {
+                console.error('Error refreshing book data after deletion:', error);
+            }
+        }
+    };
+
+    const updateCoupDeCoeurBook = async (coupDeCoeurId: number, bookId: number, isRemoving: boolean) => {
+        const response = await fetch(`/api/coups-de-coeur/${coupDeCoeurId}/books`, {
+            method: isRemoving ? 'DELETE' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookId })
+        });
+
+        if (!response.ok) throw new Error();
     };
 
     const handleRowClick = async (book: Book) => {
@@ -212,32 +269,37 @@ export default function BookSelector({
         }
     };
 
-    const handleBookEdited = async () => {
-        if (displayedBookIds.length > 0) {
-            try {
-                const response = await fetch(`/api/books?ids=${displayedBookIds.join(',')}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setBookDetailsMap(new Map(
-                        data.books.map((book: Book) => [book.id, book])
-                    ));
-                }
-            } catch (error) {
-                console.error('Error refreshing book data:', error);
-            }
-        }
-    };
-
     const toggleBookSelection = (bookId: number, forceAdd: boolean = false) => {
-        if (selectedBooks.includes(bookId) && !forceAdd) {
+        const isRemoving = selectedBooks.includes(bookId) && !forceAdd;
+
+        if (isRemoving) {
             onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
         } else {
-            // Add to selection
             onSelectedBooksChange([...selectedBooks, bookId]);
-            // Also ensure it's in the displayed list
             if (!displayedBookIds.includes(bookId)) {
                 setDisplayedBookIds(prev => [...prev, bookId]);
             }
+        }
+
+        if (selectedBooks.includes(bookId)) {
+
+        }
+
+        if (coupDeCoeurId) {
+            updateCoupDeCoeurBook(coupDeCoeurId, bookId, isRemoving).catch(error => {
+                console.error(error);
+                toast({
+                    title: "Erreur",
+                    description: `Échec de ${isRemoving ? "la suppression" : "l'ajout"} du livre`,
+                    variant: "destructive"
+                });
+
+                if (isRemoving) {
+                    onSelectedBooksChange([...selectedBooks, bookId]);
+                } else {
+                    onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
+                }
+            });
         }
     };
 
@@ -351,7 +413,7 @@ export default function BookSelector({
                                 Ajouter un livre existant
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700">
+                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
                             <DialogHeader>
                                 <DialogTitle className="text-gray-100">Recherche de livres</DialogTitle>
                             </DialogHeader>
@@ -401,6 +463,7 @@ export default function BookSelector({
                     bookId={selectedBookForEdit.id.toString()}
                     initialData={selectedBookForEdit.formData}
                     onBookEdited={handleBookEdited}
+                    onBookDeleted={handleBookDeleted}
                 />
             )}
         </div>

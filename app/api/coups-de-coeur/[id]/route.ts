@@ -110,3 +110,53 @@ export async function DELETE(req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: 'Failed to delete coup de coeur' }, { status: 500 });
     }
 }
+
+// api/coups-de-coeur/[id]/route.ts
+export async function PATCH(req: NextRequest, { params }: Params) {
+    const { id } = await params;
+    try {
+        const updates = await req.json();
+
+        // Build the update data based on what was provided
+        const updateData: any = {};
+
+        if ('bookIds' in updates) {
+            await prisma.coupsDeCoeurBooks.deleteMany({
+                where: { coupsDeCoeurId: parseInt(id, 10) }
+            });
+
+            updateData.books = {
+                create: updates.bookIds.map((bookId: number) => ({
+                    book: {
+                        connect: { id: bookId }
+                    }
+                }))
+            };
+        }
+
+        if ('title' in updates) updateData.title = updates.title;
+        if ('description' in updates) updateData.description = updates.description;
+        if ('audioPath' in updates) updateData.audioPath = updates.audioPath;
+        if ('active' in updates) updateData.active = updates.active;
+
+        const updatedCoupDeCoeur = await prisma.coupsDeCoeur.update({
+            where: { id: parseInt(id, 10) },
+            data: updateData,
+            include: {
+                books: {
+                    include: {
+                        book: true
+                    }
+                }
+            }
+        });
+
+        return NextResponse.json({ coupDeCoeur: updatedCoupDeCoeur });
+    } catch (error) {
+        console.error('Failed to update coup de coeur:', error);
+        return NextResponse.json(
+            { error: 'Failed to update coup de coeur' },
+            { status: 500 }
+        );
+    }
+}
