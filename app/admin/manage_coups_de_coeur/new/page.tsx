@@ -152,12 +152,10 @@ export default function AddCoupDeCoeur() {
                                         <label className="text-sm font-medium text-gray-200">
                                             Enregistrement audio
                                         </label>
-                                        <div className="bg-gray-800 border border-gray-700 rounded-md p-4">
                                             <AudioRecorder
                                                 onConfirm={setTempAudioBlob}
                                                 onClear={() => setTempAudioBlob(null)}
                                             />
-                                        </div>
                                     </div>
 
                                     <div className="space-y-2">
