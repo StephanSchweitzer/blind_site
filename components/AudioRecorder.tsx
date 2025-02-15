@@ -265,7 +265,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                                 <Button
                                     type="button"
                                     onClick={handleConfirm}
-                                    className="flex-grow"
+                                    className="w-full bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
                                 >
                                     <Check className="w-4 h-4 mr-2" />
                                     Confirmer l&apos;enregistrement
