@@ -14,6 +14,7 @@ interface BookSearchProps {
         isbn: string;
         publishedMonth: string;
         publishedYear: string;
+        pageCount: number;
     }) => void;
 }
 
@@ -28,6 +29,7 @@ interface VolumeInfo {
     description?: string;
     publishedDate?: string;
     industryIdentifiers?: IndustryIdentifier[];
+    pageCount: number;
 }
 
 interface BookItem {
@@ -44,6 +46,7 @@ interface BookResult {
     description: string;
     isbn: string;
     publishedDate: Date | null;
+    pageCount: number;
 }
 
 const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
@@ -90,7 +93,8 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                         isbn: volumeInfo.industryIdentifiers ?
                             volumeInfo.industryIdentifiers.find(id => id.type === 'ISBN_13')?.identifier ||
                             volumeInfo.industryIdentifiers[0]?.identifier || '' : '',
-                        publishedDate: volumeInfo.publishedDate ? new Date(volumeInfo.publishedDate) : null
+                        publishedDate: volumeInfo.publishedDate ? new Date(volumeInfo.publishedDate) : null,
+                        pageCount: volumeInfo.pageCount
                     };
                 });
                 setResults(formattedResults);
@@ -129,7 +133,8 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             description: book.description,
             isbn: book.isbn,
             publishedMonth: month,
-            publishedYear: year
+            publishedYear: year,
+            pageCount: book.pageCount
         });
 
         setOpen(false);

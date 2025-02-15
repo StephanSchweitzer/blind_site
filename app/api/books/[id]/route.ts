@@ -76,6 +76,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         description,
         available,
         readingDurationMinutes,
+        pageCount
     } = await req.json();
 
 
@@ -110,6 +111,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
                 isbn,
                 description,
                 readingDurationMinutes,
+                pageCount,
                 available,
                 updatedAt: new Date(),
                 // Handle genres relationship

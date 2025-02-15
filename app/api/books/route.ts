@@ -246,6 +246,7 @@ export async function POST(req: NextRequest) {
                 description: formData.description,
                 available: formData.available,
                 readingDurationMinutes: formData.readingDurationMinutes ? parseInt(formData.readingDurationMinutes) : null,
+                pageCount: formData.pageCount ? parseInt(formData.pageCount) : null,
                 addedById: userId,
                 genres: {
                     create: formData.genres.map((genreId: number) => ({

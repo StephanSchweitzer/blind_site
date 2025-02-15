@@ -29,6 +29,7 @@ interface BookFormData {
     description: string | undefined;
     available: boolean;
     readingDurationMinutes: number | undefined;
+    pageCount: number | undefined;
     [key: string]: string | number | boolean | string[] | undefined;
 }
 
@@ -38,6 +39,7 @@ interface Book {
     author: string;
     isbn: string | null;
     readingDurationMinutes: number | null;
+    pageCount: number | undefined;
     available: boolean;
     genres: {
         genre: {
@@ -121,7 +123,8 @@ export default function BooksTable({
                 isbn: bookDetails.isbn || undefined,
                 description: bookDetails.description || undefined,
                 available: Boolean(bookDetails.available),
-                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || undefined
+                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || undefined,
+                pageCount: bookDetails.pageCount || undefined,
             };
 
             const selectedBookWithForm: BookWithFormData = {

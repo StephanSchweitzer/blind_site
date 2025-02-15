@@ -11,6 +11,7 @@ export interface Book {
     description: string;
     publishedDate: Date | null;
     readingDurationMinutes: number | null;
+    pageCount: number | null;
     isbn: string | null;
     publisher: string | null;
     available: boolean;

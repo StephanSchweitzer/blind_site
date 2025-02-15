@@ -1,4 +1,3 @@
-// BookFormBase.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +8,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X, AlertCircle } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
-import YearCommandSelect from "@/components/ui/year-select";
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,8 +26,10 @@ export interface BookFormData {
     description: string | undefined;
     available: boolean;
     readingDurationMinutes: number | undefined;
+    pageCount: number | undefined;
     [key: string]: string | number | boolean | string[] | undefined;
 }
+
 
 interface BookSearchData {
     title: string;
@@ -38,6 +38,7 @@ interface BookSearchData {
     isbn: string | undefined;
     publishedMonth: string;
     publishedYear: string;
+    pageCount: number | undefined;
 }
 
 interface BookFormBackendBaseProps {
@@ -71,7 +72,12 @@ export function BookFormBackendBase({
         description: '',
         available: true,
         readingDurationMinutes: 0,
+        pageCount: undefined,
     });
+
+    console.log(formData)
+
+
     const [genres, setGenres] = useState<Genre[]>([]);
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -99,7 +105,9 @@ export function BookFormBackendBase({
         const { name, value } = e.target;
         setFormData(prevData => ({
             ...prevData,
-            [name]: value,
+            [name]: name === 'pageCount' || name === 'publishedYear' || name === 'readingDurationMinutes'
+                ? value === '' ? undefined : Number(value)
+                : value,
         }));
     };
 
@@ -240,16 +248,35 @@ export function BookFormBackendBase({
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
+                                <label htmlFor="publishedYear" className="text-sm font-medium text-gray-200">
                                     Année de publication *
                                 </label>
-                                <YearCommandSelect
+                                <Input
+                                    type="number"
+                                    name="publishedYear"
+                                    id="publishedYear"
+                                    required
+                                    min="1800"
+                                    max={new Date().getFullYear()}
                                     value={formData.publishedYear}
-                                    onChange={(value) =>
-                                        setFormData(prev => ({...prev, publishedYear: value}))
-                                    }
-                                    startYear={1900}
-                                    endYear={new Date().getFullYear()}
+                                    onChange={handleChange}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    placeholder="Année de publication"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="pageCount" className="text-sm font-medium text-gray-200">
+                                    Nombre de pages
+                                </label>
+                                <Input
+                                    type="number"
+                                    name="pageCount"
+                                    id="pageCount"
+                                    min="1"
+                                    value={formData.pageCount || ''}
+                                    onChange={handleChange}
+                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    placeholder="Nombre de pages"
                                 />
                             </div>
                         </div>
@@ -448,7 +475,7 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
 
                 toast({
                     variant: "destructive",
-                    // @ts-expect-error is jsx title not supported
+                    // @ts-expect-error same jsx problem
                     title: <span className="text-2xl font-bold">Erreur</span>,
                     description: <span className="text-xl mt-2">{errorMessage}</span>,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
@@ -458,7 +485,7 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
             }
 
             toast({
-                // @ts-expect-error is jsx title not supported
+                // @ts-expect-error same jsx problem
                 title: <span className="text-2xl font-bold">Succès</span>,
                 description: <span className="text-xl mt-2">Le livre a été créé avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
@@ -507,7 +534,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
             });
 
             if (onSuccess) {
-                onSuccess(parseInt(bookId), true); // Added true here for isDeleted
+                onSuccess(parseInt(bookId), true);
             }
         } catch (error) {
             console.error('Delete error:', error);
@@ -532,6 +559,9 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
                 available: formData.available,
                 readingDurationMinutes: formData.readingDurationMinutes
                     ? parseInt(formData.readingDurationMinutes.toString())
+                    : null,
+                pageCount: formData.pageCount
+                    ? parseInt(formData.pageCount.toString())
                     : null
             };
 
@@ -555,7 +585,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
 
                 toast({
                     variant: "destructive",
-                    // @ts-expect-error is jsx title not supported
+                    // @ts-expect-error same jsx problem
                     title: <span className="text-2xl font-bold">Erreur</span>,
                     description: <span className="text-xl mt-2">{errorMessage}</span>,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
@@ -565,7 +595,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
             }
 
             toast({
-                // @ts-expect-error is jsx title not supported
+                // @ts-expect-error same jsx problem
                 title: <span className="text-2xl font-bold">Succès</span>,
                 description: <span className="text-xl mt-2">Le livre a été mis à jour avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"

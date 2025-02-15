@@ -46,6 +46,7 @@ model Book {
   isbn                   String?             @unique
   description            String?
   readingDurationMinutes Int?
+  pageCount              Int?
   publisher              String?
   available              Boolean             @default(true)
   createdAt              DateTime            @default(now())
