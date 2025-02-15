@@ -21,6 +21,7 @@ import {toast} from "@/hooks/use-toast";
 
 interface BookFormData {
     title: string;
+    subtitle: string,
     author: string;
     publisher: string | undefined;
     publishedYear: string;
@@ -36,6 +37,7 @@ interface BookFormData {
 interface Book {
     id: number;
     title: string;
+    subtitle: string | null;
     author: string;
     isbn: string | null;
     readingDurationMinutes: number | null;
@@ -114,6 +116,7 @@ export default function BooksTable({
 
             const formData: BookFormData = {
                 title: bookDetails.title,
+                subtitle: bookDetails.subtitle,
                 author: bookDetails.author,
                 publisher: bookDetails.publisher || undefined,
                 publishedYear: bookDetails.publishedDate ?

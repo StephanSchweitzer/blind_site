@@ -19,6 +19,7 @@ interface Genre {
 export interface BookFormData {
     publisher: string | undefined;
     title: string;
+    subtitle: string | undefined;
     author: string;
     publishedYear: string;
     genres: string[];
@@ -33,6 +34,7 @@ export interface BookFormData {
 
 interface BookSearchData {
     title: string;
+    subtitle: string | undefined;
     author: string;
     description: string;
     isbn: string | undefined;
@@ -64,6 +66,7 @@ export function BookFormBackendBase({
                                     }: BookFormBackendBaseProps) {
     const [formData, setFormData] = useState<BookFormData>(initialData || {
         title: '',
+        subtitle: '',
         author: '',
         publisher: '',
         publishedYear: '',
@@ -212,6 +215,21 @@ export function BookFormBackendBase({
                                 onChange={handleChange}
                                 className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                 placeholder="Indiquer le titre du livre"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="title" className="text-sm font-medium text-gray-200">
+                                Sous-titre
+                            </label>
+                            <Input
+                                type="text"
+                                name="subtitle"
+                                id="subtitle"
+                                value={formData.subtitle || ''}
+                                onChange={handleChange}
+                                className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                placeholder="Indiquer le sous-titre du livre"
                             />
                         </div>
 

@@ -27,6 +27,7 @@ import {toast} from "@/hooks/use-toast";
 interface Book {
     id: number;
     title: string;
+    subtitle: string;
     author: string;
     isbn: string | null;
     createdAt: Date;
@@ -145,6 +146,7 @@ export default function BookSelector({
 
             const formData: BookFormData = {
                 title: bookDetails.title || '',
+                subtitle: bookDetails.subtitle || '',
                 author: bookDetails.author || '',
                 publisher: bookDetails.publisher || '',
                 publishedYear: bookDetails.publishedDate ?

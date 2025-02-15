@@ -7,6 +7,7 @@ export interface Genre {
 export interface Book {
     id: number;
     title: string;
+    subtitle: string | null;
     author: string;
     description: string;
     publishedDate: Date | null;

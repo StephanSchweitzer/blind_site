@@ -9,6 +9,7 @@ import { Search, Loader2 } from "lucide-react";
 interface BookSearchProps {
     onBookSelect: (bookData: {
         title: string;
+        subtitle: string;
         author: string;
         description: string;
         isbn: string;
@@ -24,6 +25,7 @@ interface IndustryIdentifier {
 }
 
 interface VolumeInfo {
+    subtitle: string;
     title: string;
     authors?: string[];
     description?: string;
@@ -42,6 +44,7 @@ interface GoogleBooksResponse {
 
 interface BookResult {
     title: string;
+    subtitle: string;
     author: string;
     description: string;
     isbn: string;
@@ -88,6 +91,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                     const volumeInfo = item.volumeInfo;
                     return {
                         title: volumeInfo.title || 'Unknown Title',
+                        subtitle: volumeInfo.subtitle || '',
                         author: volumeInfo.authors ? volumeInfo.authors[0] : 'Unknown Author',
                         description: volumeInfo.description || '',
                         isbn: volumeInfo.industryIdentifiers ?
@@ -129,6 +133,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
 
         onBookSelect({
             title: book.title,
+            subtitle: book.subtitle,
             author: book.author,
             description: book.description,
             isbn: book.isbn,

@@ -41,6 +41,7 @@ model User {
 model Book {
   id                     Int                 @id @default(autoincrement())
   title                  String
+  subtitle               String?
   author                 String
   publishedDate          DateTime?
   isbn                   String?             @unique
