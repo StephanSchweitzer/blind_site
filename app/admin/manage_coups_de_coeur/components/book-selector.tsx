@@ -154,7 +154,8 @@ export default function BookSelector({
                 isbn: bookDetails.isbn || '',
                 description: bookDetails.description || '',
                 available: Boolean(bookDetails.available),
-                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || ''
+                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || '',
+                pageCount: bookDetails.pageCount
             };
 
             setSelectedBookForEdit({

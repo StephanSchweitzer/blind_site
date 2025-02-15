@@ -39,7 +39,7 @@ interface Book {
     author: string;
     isbn: string | null;
     readingDurationMinutes: number | null;
-    pageCount: number | undefined;
+    pageCount: number | null;
     available: boolean;
     genres: {
         genre: {
