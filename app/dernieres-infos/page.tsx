@@ -180,7 +180,7 @@ export default function DernieresInfoPage() {
                         {newsTypeLabels[post.type]}
                     </span>
                                         </div>
-                                        <p className="text-gray-300">{post.content}</p>
+                                        <p className="text-gray-300 whitespace-pre-wrap">{post.content}</p>
                                         <div className="mt-4 text-sm text-gray-100">
                                             Par {post.author.name} • {new Date(post.publishedAt).toLocaleDateString('fr-FR')}
                                         </div>
