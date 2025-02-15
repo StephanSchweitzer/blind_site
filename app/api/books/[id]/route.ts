@@ -68,6 +68,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const { id } = await params;
     const {
         title,
+        subtitle,
         author,
         publisher,
         publishedDate,
@@ -105,6 +106,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
             where: { id: parseInt(id, 10) },
             data: {
                 title,
+                subtitle,
                 author,
                 publisher,
                 publishedDate: publishedDate ? new Date(publishedDate) : undefined,

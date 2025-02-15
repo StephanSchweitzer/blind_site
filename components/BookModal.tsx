@@ -171,12 +171,15 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                     <DialogTitle className="text-2xl font-bold" role="heading" aria-level={1}>
                         {book.title}
                     </DialogTitle>
+                    <p className="text-lg text-gray-700 mt-1">
+                        {book.subtitle}
+                    </p>
                 </DialogHeader>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
-                        <p className="text-gray-600" aria-label="Auteur">Auteur: {book.author}</p>
+                        <p className="text-gray-700" aria-label="Auteur">Auteur: {book.author}</p>
                         <div className="mt-2">
-                            <p className="text-gray-600 mb-1">Genres:</p>
+                            <p className="text-gray-700 mb-1">Genres:</p>
                             <div className="flex flex-wrap gap-1" role="list" aria-label="Genres du livre">
                                 {book.genres.map(({ genre }) => (
                                     <span
@@ -190,12 +193,12 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                             </div>
                         </div>
                         {book.publishedDate && (
-                            <p className="text-gray-600 mt-2" aria-label="Date de publication">
+                            <p className="text-gray-700 mt-2" aria-label="Date de publication">
                                 Date de publication: {new Date(book.publishedDate).toLocaleDateString('fr-FR')}
                             </p>
                         )}
                         {book.readingDurationMinutes && (
-                            <p className="text-gray-600 mt-2" aria-label="Durée de lecture">
+                            <p className="text-gray-700 mt-2" aria-label="Durée de lecture">
                                 Durée de l&apos;enregistrement: {formatMinutes(book.readingDurationMinutes)}
                             </p>
                         )}
@@ -206,9 +209,8 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                             className={`${isExpanded ? 'max-h-96' : 'max-h-32'} overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 transition-all duration-300`}
                             role="region"
                             aria-label="Description du livre"
-                            //aria-expanded={isExpanded}
                         >
-                            <p className="text-gray-600">
+                            <p className="text-gray-700">
                                 {book.description || 'Aucune description disponible.'}
                             </p>
                         </div>

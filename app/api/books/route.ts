@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Handle genres filter
+        // Handle genres filter (from dropdown - exact match using IDs)
         if (genres.length > 0) {
             whereClause.genres = {
                 some: {
@@ -72,12 +72,17 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // Handle search filter
         if (search) {
             const searchFilter = filter === 'all' ? {
                 OR: [
                     {
                         title: {
+                            mode: 'insensitive' as Prisma.QueryMode,
+                            contains: search
+                        }
+                    },
+                    {
+                        subtitle: {
                             mode: 'insensitive' as Prisma.QueryMode,
                             contains: search
                         }
@@ -106,7 +111,7 @@ export async function GET(request: NextRequest) {
                                 genre: {
                                     name: {
                                         mode: 'insensitive' as Prisma.QueryMode,
-                                        contains: search
+                                        contains: search  // Uses contains for search queries
                                     }
                                 }
                             }
@@ -119,7 +124,7 @@ export async function GET(request: NextRequest) {
                         genre: {
                             name: {
                                 mode: 'insensitive' as Prisma.QueryMode,
-                                contains: search
+                                contains: search  // Uses contains for genre-specific searches
                             }
                         }
                     }
@@ -131,10 +136,20 @@ export async function GET(request: NextRequest) {
                 }
             };
 
-            whereClause = {
-                ...whereClause,
-                ...searchFilter
-            };
+            // If we have both genres filter and search, combine them with AND
+            if (genres.length > 0) {
+                whereClause = {
+                    AND: [
+                        whereClause,
+                        searchFilter
+                    ]
+                };
+            } else {
+                whereClause = {
+                    ...whereClause,
+                    ...searchFilter
+                };
+            }
         }
 
         const [books, total] = await Promise.all([
@@ -239,10 +254,11 @@ export async function POST(req: NextRequest) {
         const newBook = await prisma.book.create({
             data: {
                 title: formData.title,
+                subtitle: formData.subtitle,
                 author: formData.author,
                 publisher: formData.publisher,
                 publishedDate: new Date(formData.publishedDate),
-                isbn: formData.isbn?.trim() || null, // Set to null if empty or undefined
+                isbn: formData.isbn?.trim() || null,
                 description: formData.description,
                 available: formData.available,
                 readingDurationMinutes: formData.readingDurationMinutes ? parseInt(formData.readingDurationMinutes) : null,
