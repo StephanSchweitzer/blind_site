@@ -1,9 +1,8 @@
 // BookModalBackend.tsx
 import React from 'react';
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogHeader,
     DialogTitle,
