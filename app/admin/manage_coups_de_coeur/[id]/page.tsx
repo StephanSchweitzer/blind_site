@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,20 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import BookSelector from '../components/book-selector';
 import AudioRecorder from '@/components/AudioRecorder';
-//import { usePathname } from 'next/navigation';
-
+import {useWarnIfUnsavedChanges} from "@/components/userWarnIfUnsavedChanges";
 
 interface BookWithDetails {
     coupsDeCoeurId: number;
@@ -55,7 +44,6 @@ interface CoupDeCoeur {
 
 export default function EditCoupDeCoeurPage() {
     const router = useRouter();
-    //const pathname = usePathname();
     const params = useParams();
     const { id } = params;
 
@@ -68,39 +56,19 @@ export default function EditCoupDeCoeurPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isBookSelectorOpen, setIsBookSelectorOpen] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-    const [showExitDialog, setShowExitDialog] = useState(false);
-    const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
-    const [exitWarningTitle, setExitWarningTitle] = useState("Modifications non sauvegardées");
-    const [exitWarningMessage, setExitWarningMessage] = useState(
-        "Vous avez des modifications non sauvegardées. Voulez-vous vraiment quitter cette page ?"
-    );
 
-    useEffect(() => {
-        if (hasUnsavedChanges) {
-            const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-                const message = "Vous avez des modifications non sauvegardées. Voulez-vous vraiment quitter cette page ?";
-                e.preventDefault();
-                e.returnValue = message;
-                return message;
-            };
+    const { NavigationWarningDialog } = useWarnIfUnsavedChanges({
+        unsaved: hasUnsavedChanges
+    });
 
-            const handleNavigation = () => {
-                setPendingNavigation(window.location.pathname);
-                setExitWarningTitle("Modifications non sauvegardées");
-                setExitWarningMessage("Vous avez des modifications non sauvegardées. Voulez-vous vraiment quitter cette page ?");
-                setShowExitDialog(true);
-                return false;
-            };
-
-            window.addEventListener('beforeunload', handleBeforeUnload);
-            window.onpopstate = handleNavigation;
-
-            return () => {
-                window.removeEventListener('beforeunload', handleBeforeUnload);
-                window.onpopstate = null;
-            };
-        }
-    }, [hasUnsavedChanges]);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prevData => ({
+            ...prevData!,
+            [name]: value,
+        }));
+        setHasUnsavedChanges(true);
+    };
 
     useEffect(() => {
         if (!formData || !originalData) return;
@@ -115,51 +83,6 @@ export default function EditCoupDeCoeurPage() {
 
         setHasUnsavedChanges(hasChanged);
     }, [formData, originalData, tempAudioBlob]);
-
-    const preventNavigation = useCallback(
-        async (callback?: () => void) => {
-            if (hasUnsavedChanges) {
-                setShowExitDialog(true);
-                if (callback) {
-                    //setPendingNavigation(() => callback);
-                }
-                return false;
-            }
-            if (callback) {
-                callback();
-            }
-            return true;
-        },
-        [hasUnsavedChanges]
-    );
-
-    useEffect(() => {
-        if (hasUnsavedChanges) {
-            const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-                e.preventDefault();
-                e.returnValue = '';
-                return '';
-            };
-
-            const handlePopState = (e: PopStateEvent) => {
-                e.preventDefault();
-                preventNavigation(() => window.history.go(-1));
-            };
-
-            window.addEventListener('beforeunload', handleBeforeUnload);
-            window.addEventListener('popstate', handlePopState);
-
-            return () => {
-                window.removeEventListener('beforeunload', handleBeforeUnload);
-                window.removeEventListener('popstate', handlePopState);
-            };
-        }
-    }, [hasUnsavedChanges, preventNavigation]);
-
-
-    const handleNavigation = useCallback((path: string) => {
-        preventNavigation(() => router.push(path));
-    }, [preventNavigation, router]);
 
     useEffect(() => {
         async function fetchCoupDeCoeur() {
@@ -189,14 +112,6 @@ export default function EditCoupDeCoeurPage() {
         }
     }, [id, router]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prevData => ({
-            ...prevData!,
-            [name]: value,
-        }));
-        setHasUnsavedChanges(true);
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -236,6 +151,8 @@ export default function EditCoupDeCoeurPage() {
 
             if (res.ok) {
                 setHasUnsavedChanges(false);
+                await new Promise(resolve => requestAnimationFrame(resolve));
+
                 router.push('/admin/manage_coups_de_coeur');
                 router.refresh();
             } else {
@@ -277,44 +194,6 @@ export default function EditCoupDeCoeurPage() {
 
     return (
         <div className="space-y-4">
-            <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-                <AlertDialogContent className="bg-gray-900 border-gray-700">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-gray-100">{exitWarningTitle}</AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-300">
-                            {exitWarningMessage}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className="bg-gray-800 text-gray-100 border-gray-700 hover:bg-gray-700"
-                            onClick={() => {
-                                setShowExitDialog(false);
-                                setPendingNavigation(null);
-                            }}
-                        >
-                            Rester sur la page
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-red-900 hover:bg-red-800 text-gray-100"
-                            onClick={() => {
-                                if (pendingNavigation) {
-                                    setHasUnsavedChanges(false);
-                                    if (pendingNavigation.startsWith(window.location.origin)) {
-                                        const path = pendingNavigation.replace(window.location.origin, '');
-                                        router.push(path);
-                                    } else {
-                                        window.location.href = pendingNavigation;
-                                    }
-                                }
-                            }}
-                        >
-                            Quitter sans sauvegarder
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
             <Card className="bg-gray-900 border-gray-800">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-gray-700">
                     <CardTitle className="text-gray-100">Modifier le Coup de Cœur</CardTitle>
@@ -458,7 +337,14 @@ export default function EditCoupDeCoeurPage() {
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => handleNavigation('/admin/manage_coups_de_coeur')}
+                                onClick={async () => {
+                                    await new Promise(resolve => {
+                                        setHasUnsavedChanges(false);
+                                        setTimeout(resolve, 0);
+                                    });
+                                    router.push('/admin/manage_coups_de_coeur');
+                                    router.refresh();
+                                }}
                                 className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
                             >
                                 Annuler
@@ -472,6 +358,7 @@ export default function EditCoupDeCoeurPage() {
                             </Button>
                         </div>
                     </form>
+                    <NavigationWarningDialog />
                 </CardContent>
             </Card>
         </div>

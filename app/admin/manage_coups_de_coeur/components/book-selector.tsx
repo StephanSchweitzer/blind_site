@@ -225,41 +225,6 @@ export default function BookSelector({
             }
         }
 
-        // Only sync with backend for additions
-        if (!isRemoving && coupDeCoeurId) {
-            // Check if book is already associated and add if needed
-            fetch(`/api/coups-de-coeur/${coupDeCoeurId}/books/${bookId}`)
-                .then(response => {
-                    if (response.status === 404) {
-                        // Book isn't associated yet, so add it
-                        return updateCoupDeCoeurBook(coupDeCoeurId, bookId, false);
-                    } else if (!response.ok) {
-                        throw new Error('Failed to check book association');
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
-                    // Revert UI state on error
-                    onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
-                    toast({
-                        title: "Erreur",
-                        description: "Échec de l'ajout du livre",
-                        variant: "destructive"
-                    });
-                });
-        }
-    };
-
-    const updateCoupDeCoeurBook = async (coupDeCoeurId: number, bookId: number, isRemoving: boolean) => {
-
-        return;
-        const response = await fetch(`/api/coups-de-coeur/${coupDeCoeurId}/books/${bookId}`, {
-            method: isRemoving ? 'DELETE' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bookId })
-        });
-
-        if (!response.ok) throw new Error();
     };
 
     const handleRowClick = async (book: Book) => {
