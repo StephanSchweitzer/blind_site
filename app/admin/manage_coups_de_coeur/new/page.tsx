@@ -152,10 +152,23 @@ export default function AddCoupDeCoeur() {
                                         <label className="text-sm font-medium text-gray-200">
                                             Enregistrement audio
                                         </label>
-                                            <AudioRecorder
-                                                onConfirm={setTempAudioBlob}
-                                                onClear={() => setTempAudioBlob(null)}
-                                            />
+                                        <AudioRecorder
+                                            onConfirm={setTempAudioBlob}
+                                            onClear={() => setTempAudioBlob(null)}
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="active"
+                                            checked={formData.active}
+                                            onChange={(checked) =>
+                                                setFormData(prev => ({...prev, active: checked}))
+                                            }
+                                        />
+                                        <label htmlFor="active" className="text-sm font-medium text-gray-200">
+                                            Ce coup de cœur est-il visible par le public ?
+                                        </label>
                                     </div>
 
                                     <div className="space-y-2">
@@ -171,26 +184,13 @@ export default function AddCoupDeCoeur() {
                                             <BookSelector
                                                 selectedBooks={formData.bookIds}
                                                 onSelectedBooksChange={(bookIds) =>
-                                                    setFormData(prev => ({ ...prev, bookIds }))
+                                                    setFormData(prev => ({...prev, bookIds}))
                                                 }
                                                 mode="create"
                                                 onDialogOpenChange={setIsBookSelectorOpen}
                                                 isOpen={isBookSelectorOpen}
                                             />
                                         </div>
-                                    </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="active"
-                                            checked={formData.active}
-                                            onChange={(checked) =>
-                                                setFormData(prev => ({...prev, active: checked}))
-                                            }
-                                        />
-                                        <label htmlFor="active" className="text-sm font-medium text-gray-200">
-                                            Actif
-                                        </label>
                                     </div>
                                 </div>
 

@@ -46,3 +46,23 @@ A form that lets you request books from the book page
 A character limit for the descriptions of books in coup de coeur so there isn't so much text in a page
 
 When there is an error, the modal for the book closes, and all information is lost, which is very annoying for the user
+
+"The pattern must match exactly the regex something" in coups de coeur new.
+
+Coup de coeurs add automatically when books are added !! Problem !!! This is in "New Coup de Coeur" This logic should only exist for MODIFY COUP DE COEUR
+
+Try to add publisher from the google books API -> Maybe show that on the book selection thing?
+
+If you add an existing book from the page
+
+Ajouter un livre existant in coup de coeur has to use a debounce of at least half a second
+
+If someone adds a book from the google book API and it exists already, maybe show a dialogue warning them "Un livre avec cet ISBN existe deja dans la catalogue. Voulez vous continuer ?"
+
+Maybe for new coup de coeur I have to check since last modified date, and not last published date
+
+Add all new books in coup de coeur to the top of the list so that the user can see them
+
+error 504
+coups_de_coeur/15
+

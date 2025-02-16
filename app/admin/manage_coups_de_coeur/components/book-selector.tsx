@@ -212,8 +212,48 @@ export default function BookSelector({
         }
     };
 
+    const toggleBookSelection = (bookId: number, forceAdd: boolean = false) => {
+        const isRemoving = selectedBooks.includes(bookId) && !forceAdd;
+
+        // Optimistically update UI first
+        if (isRemoving) {
+            onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
+        } else {
+            onSelectedBooksChange([...selectedBooks, bookId]);
+            if (!displayedBookIds.includes(bookId)) {
+                setDisplayedBookIds(prev => [...prev, bookId]);
+            }
+        }
+
+        // Only sync with backend for additions
+        if (!isRemoving && coupDeCoeurId) {
+            // Check if book is already associated and add if needed
+            fetch(`/api/coups-de-coeur/${coupDeCoeurId}/books/${bookId}`)
+                .then(response => {
+                    if (response.status === 404) {
+                        // Book isn't associated yet, so add it
+                        return updateCoupDeCoeurBook(coupDeCoeurId, bookId, false);
+                    } else if (!response.ok) {
+                        throw new Error('Failed to check book association');
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    // Revert UI state on error
+                    onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
+                    toast({
+                        title: "Erreur",
+                        description: "Échec de l'ajout du livre",
+                        variant: "destructive"
+                    });
+                });
+        }
+    };
+
     const updateCoupDeCoeurBook = async (coupDeCoeurId: number, bookId: number, isRemoving: boolean) => {
-        const response = await fetch(`/api/coups-de-coeur/${coupDeCoeurId}/books`, {
+
+        return;
+        const response = await fetch(`/api/coups-de-coeur/${coupDeCoeurId}/books/${bookId}`, {
             method: isRemoving ? 'DELETE' : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bookId })
@@ -266,40 +306,6 @@ export default function BookSelector({
         } finally {
             setIsLoading(false);
             document.body.style.cursor = 'default';
-        }
-    };
-
-    const toggleBookSelection = (bookId: number, forceAdd: boolean = false) => {
-        const isRemoving = selectedBooks.includes(bookId) && !forceAdd;
-
-        if (isRemoving) {
-            onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
-        } else {
-            onSelectedBooksChange([...selectedBooks, bookId]);
-            if (!displayedBookIds.includes(bookId)) {
-                setDisplayedBookIds(prev => [...prev, bookId]);
-            }
-        }
-
-        if (selectedBooks.includes(bookId)) {
-
-        }
-
-        if (coupDeCoeurId) {
-            updateCoupDeCoeurBook(coupDeCoeurId, bookId, isRemoving).catch(error => {
-                console.error(error);
-                toast({
-                    title: "Erreur",
-                    description: `Échec de ${isRemoving ? "la suppression" : "l'ajout"} du livre`,
-                    variant: "destructive"
-                });
-
-                if (isRemoving) {
-                    onSelectedBooksChange([...selectedBooks, bookId]);
-                } else {
-                    onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
-                }
-            });
         }
     };
 
