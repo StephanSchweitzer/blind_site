@@ -63,6 +63,4 @@ Maybe for new coup de coeur I have to check since last modified date, and not la
 
 Add all new books in coup de coeur to the top of the list so that the user can see them
 
-error 504
-coups_de_coeur/15
-
+For the book modal, make it automatically the big version, and people can diminish the size if they want to

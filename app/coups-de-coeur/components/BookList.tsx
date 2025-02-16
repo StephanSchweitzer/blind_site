@@ -43,7 +43,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 <div className="font-bold text-gray-100">{book.title}</div>
                                 <div className="italic text-gray-200">{book.author}</div>
                                 {book.description && (
-                                    <p className="mt-2 text-white">{book.description}</p>
+                                    <p className="mt-2 text-white whitespace-pre-wrap">{book.description}</p>
                                 )}
                             </div>
                         ))}

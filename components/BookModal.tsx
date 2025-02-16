@@ -210,7 +210,7 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                             role="region"
                             aria-label="Description du livre"
                         >
-                            <p className="text-gray-800">
+                            <p className="text-gray-800 whitespace-pre-wrap">
                                 {book.description || 'Aucune description disponible.'}
                             </p>
                         </div>
