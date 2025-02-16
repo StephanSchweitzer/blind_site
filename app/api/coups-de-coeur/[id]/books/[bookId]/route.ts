@@ -1,4 +1,3 @@
-// api/coups-de-coeur/[id]/books/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
@@ -6,13 +5,36 @@ import { NextRequest } from 'next/server';
 interface Params {
     params: Promise<{
         id: string;
+        bookId: string;
     }>;
 }
 
+export async function GET(req: NextRequest, { params }: Params) {
+    const { id, bookId } = await params;
+
+    try {
+        const relation = await prisma.coupsDeCoeurBooks.findUnique({
+            where: {
+                coupsDeCoeurId_bookId: {
+                    coupsDeCoeurId: parseInt(id, 10),
+                    bookId: parseInt(bookId, 10)
+                }
+            }
+        });
+
+        if (!relation) {
+            return NextResponse.json({ error: 'Relation not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true, data: relation });
+    } catch (error) {
+        console.error('Failed to check book in coup de coeur:', error);
+        return NextResponse.json({ error: 'Failed to check book' }, { status: 500 });
+    }
+}
 
 export async function POST(req: NextRequest, { params }: Params) {
-    const { id } = await params;
-    const { bookId } = await req.json();
+    const { id, bookId } = await params;
 
     try {
         const newRelation = await prisma.coupsDeCoeurBooks.create({
@@ -30,8 +52,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
-    const { id } = await params;
-    const { bookId } = await req.json();
+    const { id, bookId } = await params;
 
     try {
         await prisma.coupsDeCoeurBooks.delete({
