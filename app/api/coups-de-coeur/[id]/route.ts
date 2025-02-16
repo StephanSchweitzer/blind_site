@@ -38,7 +38,6 @@ export async function GET(req: NextRequest, { params }: Params) {
 // PUT: Update a specific coup de coeur by ID
 export async function PUT(req: NextRequest, { params }: Params) {
     const { id } = await params;
-    console.time('total-operation');
 
     try {
         const { title, description, audioPath, bookIds, active } = await req.json();
@@ -50,32 +49,35 @@ export async function PUT(req: NextRequest, { params }: Params) {
             );
         }
 
-        console.time('database-operations');
         const updatedCoupDeCoeur = await prisma.$transaction(async (tx) => {
-            console.time('delete-operation');
-            // Delete existing relationships
-            await tx.coupsDeCoeurBooks.deleteMany({
-                where: { coupsDeCoeurId: parseInt(id, 10) }
-            });
-            console.timeEnd('delete-operation');
-
-            console.time('update-operation');
-            // Update the record and create new relationships
-            const result = await tx.coupsDeCoeur.update({
+            // Update the main record first
+            const updated = await tx.coupsDeCoeur.update({
                 where: { id: parseInt(id, 10) },
                 data: {
                     title,
                     description,
                     audioPath,
                     active: active ?? true,
-                    books: {
-                        create: bookIds.map(bookId => ({
-                            book: {
-                                connect: { id: parseInt(bookId, 10) }
-                            }
-                        }))
-                    }
-                },
+                }
+            });
+
+            console.log(updated);
+
+            // Delete and recreate relationships in bulk
+            await tx.coupsDeCoeurBooks.deleteMany({
+                where: { coupsDeCoeurId: parseInt(id, 10) }
+            });
+
+            await tx.coupsDeCoeurBooks.createMany({
+                data: bookIds.map(bookId => ({
+                    coupsDeCoeurId: parseInt(id, 10),
+                    bookId: parseInt(bookId, 10)
+                }))
+            });
+
+            // Fetch the final result
+            return tx.coupsDeCoeur.findUnique({
+                where: { id: parseInt(id, 10) },
                 include: {
                     books: {
                         include: {
@@ -84,12 +86,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
                     }
                 }
             });
-            console.timeEnd('update-operation');
-            return result;
+        }, {
+            timeout: 10000 // Increase timeout to 10 seconds just to be safe
         });
-        console.timeEnd('database-operations');
 
-        console.timeEnd('total-operation');
         return NextResponse.json({
             message: 'Coup de coeur updated successfully',
             coupDeCoeur: updatedCoupDeCoeur,
