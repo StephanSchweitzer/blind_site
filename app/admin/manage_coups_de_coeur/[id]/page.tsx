@@ -58,7 +58,10 @@ export default function EditCoupDeCoeurPage() {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     const { NavigationWarningDialog } = useWarnIfUnsavedChanges({
-        unsaved: hasUnsavedChanges
+        unsaved: hasUnsavedChanges,
+        message: "Si vous souhaitez enregistrer ces modifications, cliquez sur le bouton " +
+            "\n\n « Mettre à jour le Coup de Cœur » \n\n " +
+            "en bas à droite, sinon quittez la page."
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

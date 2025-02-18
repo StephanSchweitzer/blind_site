@@ -52,9 +52,9 @@ export default function BookSelector({
     const [bookDetailsMap, setBookDetailsMap] = useState<Map<number, Book>>(new Map());
     const [displayedBookIds, setDisplayedBookIds] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm] = useDebounce(searchTerm, 700);
     const [searchResults, setSearchResults] = useState<Book[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [debouncedSearchTerm] = useDebounce(searchTerm, 300);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [selectedBookForEdit, setSelectedBookForEdit] = useState<(Book & { formData: BookFormData }) | null>(null);
