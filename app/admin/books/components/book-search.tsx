@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect  } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -16,6 +16,8 @@ interface BookSearchProps {
         publishedMonth: string;
         publishedYear: string;
         pageCount: number;
+        publisher: string;
+        estimatedReadingTime?: string;
     }) => void;
 }
 
@@ -32,6 +34,7 @@ interface VolumeInfo {
     publishedDate?: string;
     industryIdentifiers?: IndustryIdentifier[];
     pageCount: number;
+    publisher?: string;
 }
 
 interface BookItem {
@@ -50,6 +53,8 @@ interface BookResult {
     isbn: string;
     publishedDate: Date | null;
     pageCount: number;
+    publisher: string; // Changed from allowing undefined
+    estimatedReadingTime: string | null;
 }
 
 const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
@@ -67,6 +72,25 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
         }
     }, [open]);
 
+
+    // Function to estimate reading time based on page count
+    const estimateReadingTime = (pageCount: number): string | null => {
+        if (!pageCount || pageCount <= 0) return null;
+
+        // Conservative estimate: 30 pages per hour
+        const hoursToRead = pageCount / 30;
+
+        // Format the time
+        if (hoursToRead < 1) {
+            return `${Math.ceil(hoursToRead * 60)} min`;
+        } else if (Number.isInteger(hoursToRead)) {
+            return `${hoursToRead} h`;
+        } else {
+            const hours = Math.floor(hoursToRead);
+            const minutes = Math.ceil((hoursToRead - hours) * 60);
+            return `${hours} h ${minutes} min`;
+        }
+    };
 
     const searchBooks = async () => {
         if (!searchQuery.trim()) return;
@@ -89,16 +113,22 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             if (data.items) {
                 const formattedResults: BookResult[] = data.items.map(item => {
                     const volumeInfo = item.volumeInfo;
+                    // Join all authors with commas
+                    const authorString = volumeInfo.authors ?
+                        volumeInfo.authors.join(', ') : 'Unknown Author';
+
                     return {
                         title: volumeInfo.title || 'Unknown Title',
                         subtitle: volumeInfo.subtitle || '',
-                        author: volumeInfo.authors ? volumeInfo.authors[0] : 'Unknown Author',
+                        author: authorString,
                         description: volumeInfo.description || '',
                         isbn: volumeInfo.industryIdentifiers ?
                             volumeInfo.industryIdentifiers.find(id => id.type === 'ISBN_13')?.identifier ||
                             volumeInfo.industryIdentifiers[0]?.identifier || '' : '',
                         publishedDate: volumeInfo.publishedDate ? new Date(volumeInfo.publishedDate) : null,
-                        pageCount: volumeInfo.pageCount
+                        pageCount: volumeInfo.pageCount || 0,
+                        publisher: volumeInfo.publisher || 'Unknown Publisher', // Provide default value
+                        estimatedReadingTime: estimateReadingTime(volumeInfo.pageCount || 0)
                     };
                 });
                 setResults(formattedResults);
@@ -139,7 +169,9 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             isbn: book.isbn,
             publishedMonth: month,
             publishedYear: year,
-            pageCount: book.pageCount
+            pageCount: book.pageCount,
+            publisher: book.publisher,
+            estimatedReadingTime: book.estimatedReadingTime || '',
         });
 
         setOpen(false);
@@ -170,6 +202,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={handleKeyDown}
                             className="bg-gray-700 border-gray-400 text-gray-100"
+                            ref={inputRef}
                         />
                         <Button
                             onClick={(e) => {
@@ -215,9 +248,19 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                                 {book.author && (
                                     <p className="text-sm text-gray-300">par {book.author}</p>
                                 )}
+                                {book.publisher && (
+                                    <p className="text-sm text-gray-400">
+                                        Éditeur: {book.publisher}
+                                    </p>
+                                )}
                                 {book.publishedDate && (
                                     <p className="text-sm text-gray-400">
                                         Publié le {book.publishedDate.toLocaleDateString('fr-FR')}
+                                    </p>
+                                )}
+                                {book.pageCount > 0 && (
+                                    <p className="text-sm text-gray-400">
+                                        {book.pageCount} pages
                                     </p>
                                 )}
                                 {book.description && (

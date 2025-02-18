@@ -41,6 +41,8 @@ interface BookSearchData {
     publishedMonth: string;
     publishedYear: string;
     pageCount: number | undefined;
+    publisher: string;
+    estimatedReadingTime?: string;
 }
 
 interface BookFormBackendBaseProps {
@@ -115,9 +117,40 @@ export function BookFormBackendBase({
     };
 
     const handleBookSelect = (bookData: BookSearchData) => {
+        // Convert estimated reading time to minutes if available
+        let readingDurationMinutes = undefined;
+
+        if (bookData.estimatedReadingTime) {
+            // Parse time format like "13 h 30 min" or "45 min"
+            const timeString = bookData.estimatedReadingTime;
+            let minutes = 0;
+
+            // Extract hours if present
+            const hoursMatch = timeString.match(/(\d+)\s*h/);
+            if (hoursMatch) {
+                minutes += parseInt(hoursMatch[1]) * 60;
+            }
+
+            // Extract minutes if present
+            const minutesMatch = timeString.match(/(\d+)\s*min/);
+            if (minutesMatch) {
+                minutes += parseInt(minutesMatch[1]);
+            }
+
+            readingDurationMinutes = minutes;
+        }
+
         setFormData(prev => ({
             ...prev,
-            ...bookData
+            title: bookData.title,
+            subtitle: bookData.subtitle,
+            author: bookData.author,
+            description: bookData.description,
+            isbn: bookData.isbn,
+            publishedYear: bookData.publishedYear,
+            pageCount: bookData.pageCount,
+            publisher: bookData.publisher,
+            readingDurationMinutes: readingDurationMinutes
         }));
     };
 

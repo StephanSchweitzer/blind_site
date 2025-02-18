@@ -61,7 +61,7 @@ export default function EditCoupDeCoeurPage() {
         unsaved: hasUnsavedChanges,
         message: "Si vous souhaitez enregistrer ces modifications, cliquez sur le bouton " +
             "\n\n « Mettre à jour le Coup de Cœur » \n\n " +
-            "en bas à droite, sinon quittez la page."
+            "En bas à droite, sinon quittez la page."
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
