@@ -4,10 +4,22 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { User, Edit, Save, X } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { User, Edit, Save, X, UserPlus, LogOut, Lock } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { toast } from "@/hooks/use-toast";
+import { signOut } from 'next-auth/react';
+import ChangePasswordDialog from '@/components/ChangePasswordDialog';
 
 type UserData = {
     id: number;
@@ -33,11 +45,22 @@ export default function ProfilePage() {
     });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+
+    // User invitation states
+    const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+    const [inviteFormData, setInviteFormData] = useState({
+        email: '',
+        name: '',
+        role: 'user',
+    });
+    const [isInviting, setIsInviting] = useState(false);
 
     useEffect(() => {
         // Rediriger si non authentifié
         if (status === 'unauthenticated') {
-            router.push('/signin');
+            router.push('/api/auth/signin');
         }
 
         // Récupérer les données utilisateur si authentifié
@@ -78,6 +101,13 @@ export default function ProfilePage() {
         });
     };
 
+    const handleInviteChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setInviteFormData({
+            ...inviteFormData,
+            [e.target.name]: e.target.value,
+        });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -108,6 +138,53 @@ export default function ProfilePage() {
         }
     };
 
+    const handleInviteSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setIsInviting(true);
+            const response = await fetch('/api/user/invite', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(inviteFormData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Échec de l\'invitation');
+            }
+
+            const data = await response.json();
+
+            // Fermer le dialogue et réinitialiser le formulaire
+            setIsInviteDialogOpen(false);
+            setInviteFormData({
+                email: '',
+                name: '',
+                role: 'user',
+            });
+
+            // Afficher un message de succès
+            toast({
+                title: "Invitation envoyée",
+                description: `L'utilisateur ${inviteFormData.email} a été invité avec succès. Mot de passe temporaire: ${data.temporaryPassword}`,
+            });
+        } catch (err) {
+            const errorMessage = err instanceof Error
+                ? err.message
+                : 'Échec de l\'invitation de l\'utilisateur';
+            setError(errorMessage);
+            toast({
+                title: "Erreur",
+                description: errorMessage,
+                variant: "destructive",
+            });
+        } finally {
+            setIsInviting(false);
+        }
+    };
+
     if (status === 'loading' || isLoading) {
         return (
             <div className="flex justify-center items-center min-h-screen bg-gray-950">
@@ -121,27 +198,38 @@ export default function ProfilePage() {
             <Card className="bg-gray-900 border-gray-800 shadow-xl">
                 {/* En-tête du profil */}
                 <CardHeader className="bg-gradient-to-r from-gray-800 to-gray-900 p-8 border-b border-gray-700">
-                    <div className="flex flex-col sm:flex-row items-center">
-                        <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-gray-700 mb-4 sm:mb-0 sm:mr-8 bg-gray-800 flex items-center justify-center">
-                            {userData?.name || userData?.email ? (
-                                <span className="text-3xl sm:text-4xl font-bold text-gray-200">
-                  {(userData.name?.charAt(0) || userData.email?.charAt(0) || '?').toUpperCase()}
-                </span>
-                            ) : (
-                                <User size={48} className="text-gray-400" />
-                            )}
+                    <div className="flex flex-col sm:flex-row items-center justify-between w-full">
+                        <div className="flex flex-col sm:flex-row items-center">
+                            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-gray-700 mb-4 sm:mb-0 sm:mr-8 bg-gray-800 flex items-center justify-center">
+                                {userData?.name || userData?.email ? (
+                                    <span className="text-3xl sm:text-4xl font-bold text-gray-200">
+                                        {(userData.name?.charAt(0) || userData.email?.charAt(0) || '?').toUpperCase()}
+                                    </span>
+                                ) : (
+                                    <User size={48} className="text-gray-400" />
+                                )}
+                            </div>
+                            <div className="text-center sm:text-left">
+                                <h1 className="text-2xl sm:text-3xl font-bold text-gray-100 mb-2">
+                                    {userData?.name || 'Utilisateur'}
+                                </h1>
+                                <p className="text-gray-400 mb-1">
+                                    Membre depuis {userData?.createdAt && new Date(userData.createdAt).toLocaleDateString('fr-FR')}
+                                </p>
+                                <p className="text-gray-400">
+                                    Rôle: <span className="text-blue-400">{userData?.role === 'user' ? 'Utilisateur' : userData?.role}</span>
+                                </p>
+                            </div>
                         </div>
-                        <div className="text-center sm:text-left">
-                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-100 mb-2">
-                                {userData?.name || 'Utilisateur'}
-                            </h1>
-                            <p className="text-gray-400 mb-1">
-                                Membre depuis {userData?.createdAt && new Date(userData.createdAt).toLocaleDateString('fr-FR')}
-                            </p>
-                            <p className="text-gray-400">
-                                Rôle: <span className="text-blue-400">{userData?.role === 'user' ? 'Utilisateur' : userData?.role}</span>
-                            </p>
-                        </div>
+                        {/* Sign Out button moved to header */}
+                        <Button
+                            onClick={() => signOut()}
+                            className="bg-transparent hover:bg-gray-800 text-gray-300 border border-gray-700"
+                            size="sm"
+                        >
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Déconnexion
+                        </Button>
                     </div>
                 </CardHeader>
 
@@ -166,7 +254,7 @@ export default function ProfilePage() {
                             iconColor="text-emerald-400"
                         />
                         <StatCard
-                            title="Articles"
+                            title="Dernières infos"
                             count={userData?._count.News || 0}
                             icon="📰"
                             color="bg-amber-900/30 text-amber-200 border-amber-800"
@@ -183,29 +271,40 @@ export default function ProfilePage() {
 
                     {/* Formulaire de modification du profil */}
                     <Card className="bg-gray-800 border-gray-700">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-700">
+                        <CardHeader
+                            className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-700">
                             <div>
                                 <CardTitle className="text-gray-100">Informations du profil</CardTitle>
                                 <CardDescription className="text-gray-400">
                                     Gérer et modifier vos informations personnelles
                                 </CardDescription>
                             </div>
-                            <Button
-                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                onClick={() => setIsEditing(!isEditing)}
-                            >
-                                {isEditing ? (
-                                    <>
-                                        <X className="mr-2 h-4 w-4" />
-                                        Annuler
-                                    </>
-                                ) : (
-                                    <>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Modifier
-                                    </>
-                                )}
-                            </Button>
+                            <div className="flex space-x-2">
+                                {/* Change Password button moved here next to Edit */}
+                                <Button
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    onClick={() => setIsChangePasswordOpen(true)}
+                                >
+                                    <Lock className="mr-2 h-4 w-4" />
+                                    Mot de passe
+                                </Button>
+                                <Button
+                                    className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                    onClick={() => setIsEditing(!isEditing)}
+                                >
+                                    {isEditing ? (
+                                        <>
+                                            <X className="mr-2 h-4 w-4"/>
+                                            Annuler
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Edit className="mr-2 h-4 w-4"/>
+                                            Modifier
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
                         </CardHeader>
 
                         <CardContent className="pt-6">
@@ -214,7 +313,8 @@ export default function ProfilePage() {
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div className="md:col-span-2">
-                                                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
+                                                <label htmlFor="name"
+                                                       className="block text-sm font-medium text-gray-300 mb-1">
                                                     Nom
                                                 </label>
                                                 <Input
@@ -227,7 +327,8 @@ export default function ProfilePage() {
                                                 />
                                             </div>
                                             <div className="md:col-span-2">
-                                                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+                                                <label htmlFor="email"
+                                                       className="block text-sm font-medium text-gray-300 mb-1">
                                                     Email
                                                 </label>
                                                 <Input
@@ -248,12 +349,13 @@ export default function ProfilePage() {
                                             >
                                                 {isLoading ? (
                                                     <>
-                                                        <div className="animate-spin mr-2 h-4 w-4 border-2 border-b-0 border-white rounded-full"></div>
+                                                        <div
+                                                            className="animate-spin mr-2 h-4 w-4 border-2 border-b-0 border-white rounded-full"></div>
                                                         Mise à jour...
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Save className="mr-2 h-4 w-4" />
+                                                        <Save className="mr-2 h-4 w-4"/>
                                                         Enregistrer les modifications
                                                     </>
                                                 )}
@@ -273,7 +375,8 @@ export default function ProfilePage() {
                                             <p className="font-medium text-gray-200">{userData?.name || 'Non défini'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium text-gray-400 mb-1">Date d&apos;inscription</p>
+                                            <p className="text-sm font-medium text-gray-400 mb-1">Date
+                                                d&apos;inscription</p>
                                             <p className="font-medium text-gray-200">
                                                 {userData?.createdAt && new Date(userData.createdAt).toLocaleDateString('fr-FR', {
                                                     year: 'numeric',
@@ -290,9 +393,114 @@ export default function ProfilePage() {
                                 </div>
                             )}
                         </CardContent>
+
+                        {/* Section admin visible uniquement pour les super_admin */}
+                        {userData?.role === 'super_admin' && (
+                            <CardFooter className="border-t border-gray-700 pt-6">
+                                <div className="w-full">
+                                    <CardTitle className="text-gray-100 mb-4">Options d&apos;administration</CardTitle>
+                                    <Button
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                        onClick={() => setIsInviteDialogOpen(true)}
+                                    >
+                                        <UserPlus className="mr-2 h-4 w-4"/>
+                                        Inviter un nouvel utilisateur
+                                    </Button>
+                                </div>
+                            </CardFooter>
+                        )}
                     </Card>
                 </CardContent>
             </Card>
+
+            {/* Modal d'invitation d'utilisateur */}
+            <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+                <DialogContent className="bg-gray-800 text-gray-100 border-gray-700">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-100">Inviter un nouvel utilisateur</DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            L&apos;utilisateur recevra un email avec un mot de passe temporaire pour se connecter.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleInviteSubmit}>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="invite-email" className="text-gray-300">
+                                    Email
+                                </Label>
+                                <Input
+                                    id="invite-email"
+                                    name="email"
+                                    type="email"
+                                    required
+                                    value={inviteFormData.email}
+                                    onChange={handleInviteChange}
+                                    className="bg-gray-700 border-gray-600 text-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="invite-name" className="text-gray-300">
+                                    Nom (optionnel)
+                                </Label>
+                                <Input
+                                    id="invite-name"
+                                    name="name"
+                                    type="text"
+                                    value={inviteFormData.name}
+                                    onChange={handleInviteChange}
+                                    className="bg-gray-700 border-gray-600 text-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="invite-role" className="text-gray-300">
+                                    Rôle
+                                </Label>
+                                <select
+                                    id="invite-role"
+                                    name="role"
+                                    value={inviteFormData.role}
+                                    onChange={handleInviteChange}
+                                    className="w-full rounded-md bg-gray-700 border-gray-600 text-gray-200 p-2"
+                                >
+                                    <option value="user">Utilisateur</option>
+                                    <option value="admin">Administrateur</option>
+                                    <option value="super_admin">Super Administrateur</option>
+                                </select>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsInviteDialogOpen(false)}
+                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                            >
+                                Annuler
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isInviting}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                {isInviting ? (
+                                    <>
+                                        <div className="animate-spin mr-2 h-4 w-4 border-2 border-b-0 border-white rounded-full"></div>
+                                        Invitation en cours...
+                                    </>
+                                ) : (
+                                    'Envoyer l\'invitation'
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <ChangePasswordDialog
+                open={isChangePasswordOpen}
+                onOpenChange={setIsChangePasswordOpen}
+            />
+
         </div>
     );
 }

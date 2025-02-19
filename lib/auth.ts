@@ -8,8 +8,9 @@ type CustomUser = {
     email: string | null;
     name: string | null;
     randomKey: string;
+    role?: string;
+    passwordNeedsChange?: boolean;
 };
-
 
 export const authOptions: NextAuthOptions = {
     session: {
@@ -55,6 +56,8 @@ export const authOptions: NextAuthOptions = {
                     email: user.email,
                     name: user.name,
                     randomKey: 'Hey cool',
+                    role: user.role,
+                    passwordNeedsChange: user.passwordNeedsChange,
                 };
             },
         }),
@@ -67,6 +70,8 @@ export const authOptions: NextAuthOptions = {
                     ...session.user,
                     id: token.id,
                     randomKey: token.randomKey,
+                    role: token.role,
+                    passwordNeedsChange: token.passwordNeedsChange,
                 },
             };
         },
@@ -77,6 +82,8 @@ export const authOptions: NextAuthOptions = {
                     ...token,
                     id: u.id,
                     randomKey: u.randomKey,
+                    role: u.role,
+                    passwordNeedsChange: u.passwordNeedsChange,
                 };
             }
             return token;

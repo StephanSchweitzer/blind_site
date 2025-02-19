@@ -1,6 +1,4 @@
 BACKEND:
-Add add users section
-Add profile section "qui suis je" (maybe, this is extra)
 
 have the search bar remember what you searched or the filter / page you're on when you edit a book?
 
