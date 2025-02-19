@@ -156,6 +156,9 @@ export default function BookSelector({
                 return newMap;
             });
 
+            // Place the new book at the top of the list
+            setDisplayedBookIds(prev => [newBookId, ...prev.filter(id => id !== newBookId)]);
+
             toggleBookSelection(newBookId, true);
 
         } catch (error) {
@@ -212,6 +215,7 @@ export default function BookSelector({
         }
     };
 
+
     const toggleBookSelection = (bookId: number, forceAdd: boolean = false) => {
         const isRemoving = selectedBooks.includes(bookId) && !forceAdd;
 
@@ -221,10 +225,13 @@ export default function BookSelector({
         } else {
             onSelectedBooksChange([...selectedBooks, bookId]);
             if (!displayedBookIds.includes(bookId)) {
-                setDisplayedBookIds(prev => [...prev, bookId]);
+                // Place the newly added book at the top of the displayed list
+                setDisplayedBookIds(prev => [bookId, ...prev]);
+            } else if (forceAdd) {
+                // If the book already exists but we want to highlight it, move it to the top
+                setDisplayedBookIds(prev => [bookId, ...prev.filter(id => id !== bookId)]);
             }
         }
-
     };
 
     const handleRowClick = async (book: Book) => {
@@ -288,8 +295,9 @@ export default function BookSelector({
         return books.length > 0 && books.every(book => selectedBooks.includes(book.id));
     };
 
-    const displayedBookDetails = Array.from(bookDetailsMap.values())
-        .filter(book => displayedBookIds.includes(book.id));
+    const displayedBookDetails = displayedBookIds
+        .map(id => bookDetailsMap.get(id))
+        .filter(book => book !== undefined) as Book[];
 
     const BookTable = ({ books, isSearchResults = false }: { books: Book[], isSearchResults?: boolean }) => (
         <Table>
