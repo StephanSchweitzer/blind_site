@@ -7,6 +7,20 @@ interface BookListProps {
     onBookClick: (book: Book) => void;
 }
 
+// Simple truncated description
+const TruncatedDescription: React.FC<{ description: string, characterLimit?: number }> = ({
+                                                                                              description,
+                                                                                              characterLimit = 200
+                                                                                          }) => {
+    if (description.length <= characterLimit) {
+        return <>{description}</>;
+    }
+
+    return (
+        <>{description.substring(0, characterLimit)}... <span className="text-blue-400">Cliquer pour tout afficher</span></>
+    );
+};
+
 export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
     const groupBooksByGenre = (books: { book: Book }[]) => {
         const booksWithGenres = books.map(({ book }) => {
@@ -43,7 +57,9 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 <div className="font-bold text-gray-100">{book.title}</div>
                                 <div className="italic text-gray-200">{book.author}</div>
                                 {book.description && (
-                                    <p className="mt-2 text-white whitespace-pre-wrap">{book.description}</p>
+                                    <p className="mt-2 text-white whitespace-pre-wrap">
+                                        <TruncatedDescription description={book.description} />
+                                    </p>
                                 )}
                             </div>
                         ))}

@@ -23,9 +23,10 @@ Add colors to the genre tags like the type of derniere info tags
 SATURDAY MEETING
 
 The categories in the page search have to be in french
+
 Contact formulaire
+
 Add publisher to the little google site description and also add it automatically to the new book form
-Readd number of pages for the books
 
 Rename coups de coeur Nouveau livrs or sortie du mois or something else. To be seen
 
@@ -40,8 +41,6 @@ Mobile version expand description takes the whole screen and you can't close it 
 Adapt the pdf and add pagination
 
 A form that lets you request books from the book page
-
-A character limit for the descriptions of books in coup de coeur so there isn't so much text in a page
 
 "The pattern must match exactly the regex something" in coups de coeur new.
 
