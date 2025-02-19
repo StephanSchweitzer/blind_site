@@ -14,23 +14,13 @@ There has to be a version of each coup de coeur that is able to be generated for
 
 FRONTEND:
 Contact section
-make the navbar use links and not hrefs to make it faster
-Add the white center box for dernieres information and make the boxes a little lighter
 
 
-Add colors to the genre tags like the type of derniere info tags
-
-SATURDAY MEETING
+## POTENTIALLY UNIMPORTANT ## Add colors to the genre tags like the type of derniere info tags
 
 Contact formulaire
 
-Add publisher to the little google site description and also add it automatically to the new book form
-
-Rename coups de coeur Nouveau livrs or sortie du mois or something else. To be seen
-
-For editing books you need to make sure that empty is ok, which right now
-
-Add a year is a click dropdown now ? Needs to change
+## WAITING FURTHER INSTRUCTION ## Rename coups de coeur Nouveau livrs or sortie du mois or something else. To be seen
 
 inscription / adhesion
 
@@ -40,14 +30,10 @@ Adapt the pdf and add pagination
 
 A form that lets you request books from the book page
 
-"The pattern must match exactly the regex something" in coups de coeur new.
+"The pattern must match exactly the regex something" in coups de coeur new, If you add an existing book from the page
 
-If you add an existing book from the page
+## MAYBE UNNECESSARY ## If someone adds a book from the google book API and it exists already, maybe show a dialogue warning them "Un livre avec cet ISBN existe deja dans la catalogue. Voulez vous continuer ?"
 
-If someone adds a book from the google book API and it exists already, maybe show a dialogue warning them "Un livre avec cet ISBN existe deja dans la catalogue. Voulez vous continuer ?"
-
-Maybe for new coup de coeur I have to check since last modified date, and not last published date
+## UNSURE ## Maybe for new coup de coeur I have to check since last modified date, and not last published date
 
 Add all new books in coup de coeur to the top of the list so that the user can see them
-
-For the book modal, make it automatically the big version, and people can diminish the size if they want to

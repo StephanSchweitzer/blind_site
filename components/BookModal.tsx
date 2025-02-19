@@ -34,7 +34,7 @@ interface BookModalProps {
 }
 
 export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
@@ -218,7 +218,7 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                             {book.description && book.description.length > 200 ? (
                                 <button
                                     onClick={() => setIsExpanded(!isExpanded)}
-                                    className="flex items-center text-blue-600 hover:text-blue-800"
+                                    className="flex items-center text-blue-600 hover:text-blue-800 focus:outline-none"
                                     aria-label={isExpanded ? "Voir moins" : "Voir plus"}
                                 >
                                     {isExpanded ? (
