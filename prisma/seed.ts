@@ -1,17 +1,17 @@
-import { hash } from 'bcrypt'
+//import { hash } from 'bcrypt'
 import { prisma } from '@/lib/prisma';
 
 async function main() {
-    const password = await hash('test', 12)
-    const __user = await prisma.user.upsert({
-        where: { email: 'test@test.com' },
-        update: {},
-        create: {
-            email: 'test@test.com',
-            name: 'Test User',
-            password
-        }
-    })
+    //const password = await hash('test', 12)
+    // const __user = await prisma.user.upsert({
+    //     where: { email: 'test@test.com' },
+    //     update: {},
+    //     create: {
+    //         email: 'test@test.com',
+    //         name: 'Test User',
+    //         password
+    //     }
+    // })
 
     await prisma.genre.createMany({
         data: [
@@ -57,7 +57,7 @@ async function main() {
             { name: 'Histoire, Romans étrangers', description: 'Romans historiques d\'auteurs étrangers' },
             { name: 'Biographies, Témoignages', description: 'Récits biographiques et témoignages personnels' }
         ],
-        skipDuplicates: true, // This will skip any duplicates based on the unique constraint
+        skipDuplicates: true,
     })
 }
 main()
