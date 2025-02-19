@@ -22,8 +22,6 @@ Add colors to the genre tags like the type of derniere info tags
 
 SATURDAY MEETING
 
-The categories in the page search have to be in french
-
 Contact formulaire
 
 Add publisher to the little google site description and also add it automatically to the new book form

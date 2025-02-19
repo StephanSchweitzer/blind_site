@@ -86,7 +86,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         <PopoverContent className="w-[250px] p-0">
                             <div className="p-2">
                                 <Input
-                                    placeholder="Search genres..."
+                                    placeholder="Recherche de genres..."
                                     value={genreSearchQuery}
                                     onChange={(e) => setGenreSearchQuery(e.target.value)}
                                     className="mb-2"
