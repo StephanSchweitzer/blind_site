@@ -63,7 +63,37 @@ export const authOptions: NextAuthOptions = {
         }),
     ],
     callbacks: {
-        session: ({ session, token }) => {
+        async session({ session, token }) {
+            // Enhanced session callback
+            if (session?.user?.email) {
+                try {
+                    // Get fresh user data on each session request
+                    const freshUser = await prisma.user.findUnique({
+                        where: { email: session.user.email },
+                        select: {
+                            id: true,
+                            email: true,
+                            name: true,
+                            role: true,
+                            passwordNeedsChange: true
+                        }
+                    });
+
+                    if (freshUser) {
+                        // Update token with fresh data if user exists
+                        token.id = String(freshUser.id);
+                        token.role = freshUser.role;
+                        token.email = freshUser.email;
+                        token.name = freshUser.name;
+                        token.passwordNeedsChange = freshUser.passwordNeedsChange;
+                    }
+                } catch (error) {
+                    console.error("Error refreshing session data:", error);
+                    // Continue with existing token data if refresh fails
+                }
+            }
+
+            // Return session with token data (either fresh or existing)
             return {
                 ...session,
                 user: {

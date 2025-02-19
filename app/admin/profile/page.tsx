@@ -125,14 +125,41 @@ export default function ProfilePage() {
                 throw new Error(errorData.message || 'Échec de la mise à jour');
             }
 
-            // Rafraîchir les données utilisateur
-            await fetchUserData();
-            setIsEditing(false);
+            // Check if email was changed
+            const emailChanged = userData?.email !== formData.email;
+
+            if (emailChanged) {
+                // Show success message before redirecting
+                toast({
+                    title: "Profil mis à jour",
+                    description: "Votre email a été modifié. Vous allez être redirigé vers la page de connexion.",
+                });
+
+                // Short delay before signing out to let the toast appear
+                setTimeout(() => {
+                    // Sign out and redirect to sign in page if email was changed
+                    signOut({ callbackUrl: '/admin/profile' });
+                }, 2000);
+            } else {
+                // Just refresh the data if only the name was changed
+                await fetchUserData();
+                setIsEditing(false);
+
+                toast({
+                    title: "Profil mis à jour",
+                    description: "Vos informations ont été mises à jour avec succès.",
+                });
+            }
         } catch (err) {
             const errorMessage = err instanceof Error
                 ? err.message
                 : 'Échec de la mise à jour du profil';
             setError(errorMessage);
+            toast({
+                title: "Erreur",
+                description: errorMessage,
+                variant: "destructive",
+            });
         } finally {
             setIsLoading(false);
         }
