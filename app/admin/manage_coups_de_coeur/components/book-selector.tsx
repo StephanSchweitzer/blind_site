@@ -156,10 +156,13 @@ export default function BookSelector({
                 return newMap;
             });
 
-            // Place the new book at the top of the list
+            // Place the new book at the top of the list (without duplicates)
             setDisplayedBookIds(prev => [newBookId, ...prev.filter(id => id !== newBookId)]);
 
-            toggleBookSelection(newBookId, true);
+            // Only handle selection status, not displayedBookIds
+            if (!selectedBooks.includes(newBookId)) {
+                onSelectedBooksChange([...selectedBooks, newBookId]);
+            }
 
         } catch (error) {
             console.error('Error refreshing book data after addition:', error);
@@ -219,18 +222,20 @@ export default function BookSelector({
     const toggleBookSelection = (bookId: number, forceAdd: boolean = false) => {
         const isRemoving = selectedBooks.includes(bookId) && !forceAdd;
 
-        // Optimistically update UI first
+        // Handle selection status
         if (isRemoving) {
             onSelectedBooksChange(selectedBooks.filter(id => id !== bookId));
-        } else {
+        } else if (!selectedBooks.includes(bookId)) {
             onSelectedBooksChange([...selectedBooks, bookId]);
-            if (!displayedBookIds.includes(bookId)) {
-                // Place the newly added book at the top of the displayed list
-                setDisplayedBookIds(prev => [bookId, ...prev]);
-            } else if (forceAdd) {
-                // If the book already exists but we want to highlight it, move it to the top
-                setDisplayedBookIds(prev => [bookId, ...prev.filter(id => id !== bookId)]);
-            }
+        }
+
+        // Handle display order for search results (not for handleBookAdded)
+        if (!isRemoving && !displayedBookIds.includes(bookId)) {
+            // For completely new books from search, add to the displayed list
+            setDisplayedBookIds(prev => [bookId, ...prev]);
+        } else if (forceAdd && displayedBookIds.includes(bookId)) {
+            // For existing books, move to top when explicitly requested
+            setDisplayedBookIds(prev => [bookId, ...prev.filter(id => id !== bookId)]);
         }
     };
 

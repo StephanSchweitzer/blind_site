@@ -309,7 +309,7 @@ export function BookFormBackendBase({
                                     required
                                     min="1800"
                                     max={new Date().getFullYear()}
-                                    value={formData.publishedYear}
+                                    value={formData.publishedYear || ''}
                                     onChange={handleChange}
                                     className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
                                     placeholder="Année de publication"

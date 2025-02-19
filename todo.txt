@@ -35,5 +35,3 @@ A form that lets you request books from the book page
 ## MAYBE UNNECESSARY ## If someone adds a book from the google book API and it exists already, maybe show a dialogue warning them "Un livre avec cet ISBN existe deja dans la catalogue. Voulez vous continuer ?"
 
 ## UNSURE ## Maybe for new coup de coeur I have to check since last modified date, and not last published date
-
-Add all new books in coup de coeur to the top of the list so that the user can see them
