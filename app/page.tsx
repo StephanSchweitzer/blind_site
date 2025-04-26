@@ -1,5 +1,4 @@
 import FrontendNavbar from "@/components/Frontend-Navbar";
-import { LoginButton, LogoutButton } from "@/app/auth";
 
 export default async function Home() {
     return (
@@ -52,9 +51,6 @@ export default async function Home() {
                         <p className="text-gray-300">ECA compte aujourd&apos;hui 263 auditeurs déficients visuels et 108 lecteurs bénévoles. D&apos;autre part, un certain nombre de bienfaiteurs, par leurs dons ou cotisations de soutien, permettent à ECA de poursuivre sa mission.</p>
                         <p className="text-sm italic text-gray-400">Note: ECA est depuis Septembre 2018 une délégation des Auxiliaires des Aveugles, association-loi de 1901, à vocation nationale. (Mise à jour décembre 2023)</p>
                     </section>
-
-                    <LoginButton/>
-                    <LogoutButton/>
                 </div>
             </div>
         </main>

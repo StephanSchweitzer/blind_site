@@ -5,6 +5,12 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { generatePassword } from '@/lib/utils';
+import { Resend } from 'resend';
+import InvitationEmail from '@/components/emails/InvitationEmail';
+import { render } from '@react-email/render';
+
+// Initialize Resend with your API key
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
     try {
@@ -69,15 +75,38 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        // Here you would typically send an email with the temporary password
-        // For now, we'll just return it in the response
-        // Note: In production, you should use a secure email service
+        // Send email with the temporary password using Resend and the React Email template
+        try {
+            // Fix for the TypeScript error - use renderAsync and await the result
+            const emailHtml = await render(
+                InvitationEmail({
+                    name: name || '',
+                    email,
+                    role: role || 'user',
+                    temporaryPassword,
+                    appName: process.env.APP_NAME || 'Your Application',
+                    loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : undefined
+                })
+            );
+
+            await resend.emails.send({
+                from: process.env.RESEND_FROM_EMAIL || '<noreply@eca-aveugles.com>',
+                to: email,
+                subject: `Invitation to join ${process.env.APP_NAME || 'Your Application'}`,
+                html: emailHtml, // Now emailHtml is properly awaited string
+            });
+
+            console.log(`Invitation email sent to ${email}`);
+        } catch (emailError) {
+            console.error('Error sending invitation email:', emailError);
+            // Note: We continue even if email fails, but log the error
+        }
 
         return NextResponse.json(
             {
                 message: 'Utilisateur invité avec succès',
                 userId: newUser.id,
-                temporaryPassword: temporaryPassword // Only for development
+                // No longer returning the temporary password in the response
             },
             { status: 201 }
         );

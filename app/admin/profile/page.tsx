@@ -182,8 +182,6 @@ export default function ProfilePage() {
                 throw new Error(errorData.message || 'Échec de l\'invitation');
             }
 
-            const data = await response.json();
-
             // Fermer le dialogue et réinitialiser le formulaire
             setIsInviteDialogOpen(false);
             setInviteFormData({
@@ -195,7 +193,7 @@ export default function ProfilePage() {
             // Afficher un message de succès
             toast({
                 title: "Invitation envoyée",
-                description: `L'utilisateur ${inviteFormData.email} a été invité avec succès. Mot de passe temporaire: ${data.temporaryPassword}`,
+                description: `L'utilisateur ${inviteFormData.email} a été invité avec succès.`,
             });
         } catch (err) {
             const errorMessage = err instanceof Error
