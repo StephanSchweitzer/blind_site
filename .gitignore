@@ -48,3 +48,5 @@ public/coup_descriptions/
 *.sql
 passStuff.txt
 data_to_convert_and_upload/wc-product-export-15-11-2024-1731676285314.csv*
+
+/backup
