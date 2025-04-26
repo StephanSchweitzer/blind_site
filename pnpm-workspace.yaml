@@ -1,8 +1,2 @@
-onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - bcrypt
-  - bufferutil
-  - core-js
-  - prisma
-  - sharp
+packages:
+  - '.'
