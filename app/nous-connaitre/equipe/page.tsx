@@ -120,8 +120,8 @@ export default async function EquipePage() {
                         <p className="text-gray-100 mb-6">
                             Vous souhaitez contribuer à notre mission et devenir lecteur bénévole ? Nous sommes toujours à la recherche de nouvelles voix !
                         </p>
-                        <a href="/contact" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors">
-                            Contactez-nous
+                        <a href="/nous-rejoindre" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors">
+                            Nous rejoindre
                         </a>
                     </section>
                 </div>
