@@ -84,7 +84,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         setShowResults(true);
                     }
                 }}
-                placeholder="Rechercher les coups de coeur..."
+                placeholder="Rechercher les listes de livres..."
             />
             <div className={showResults && searchTerm.trim() ? "block" : "hidden"}>
                 <CommandList>

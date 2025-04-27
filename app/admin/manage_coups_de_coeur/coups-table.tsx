@@ -96,21 +96,21 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
         <Card className="bg-gray-900 border-gray-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-700">
                 <div>
-                    <CardTitle className="text-gray-100">Gestion des Coups de Cœur</CardTitle>
+                    <CardTitle className="text-gray-100">Gestion des listes de livres</CardTitle>
                     <CardDescription className="text-gray-400">
-                        Gérez et modifiez les Coups de Cœur
+                        Gérez et modifiez les listes de livres
                     </CardDescription>
                 </div>
                 <Link href="/admin/manage_coups_de_coeur/new">
                     <Button className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500">
-                        Nouveau Coup de Cœur
+                        Nouveau listes de livres
                     </Button>
                 </Link>
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="flex items-center space-x-2 mb-4">
                     <Input
-                        placeholder="Rechercher des coups de cœur..."
+                        placeholder="Rechercher des listes de livres..."
                         value={search}
                         onChange={(e) => handleSearch(e.target.value)}
                         className="max-w-sm bg-white text-gray-900 placeholder:text-gray-500"

@@ -41,10 +41,10 @@ export default async function Dashboard() {
                 />
 
                 <AdminDashboardCard
-                    title="Coups de Cœur"
+                    title="Listes de livres"
                     count={coupsDeCoeurCount}
                     href="/admin/manage_coups_de_coeur"
-                    buttonText="Gestion des Coups de Cœurs"
+                    buttonText="Gestion des listes de livres"
                     accentColor="pink"
                 />
             </div>

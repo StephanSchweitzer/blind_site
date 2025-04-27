@@ -88,15 +88,15 @@ export default function AddCoupDeCoeur() {
 
             if (!res.ok) {
                 const errorData = await res.json();
-                throw new Error(`Failed to create coup de coeur: ${errorData.message || res.statusText}`);
+                throw new Error(`Failed to create la liste de livres: ${errorData.message || res.statusText}`);
             }
 
-            console.log('Coup de coeur created successfully');
+            console.log('Liste de livres created successfully');
             router.push('/admin/manage_coups_de_coeur');
             router.refresh();
         } catch (err) {
             console.error('Error submitting form:', err);
-            setError(err instanceof Error ? err.message : 'Failed to create coup de coeur');
+            setError(err instanceof Error ? err.message : 'Failed to create la liste de livres');
         } finally {
             setIsLoading(false);
         }
@@ -106,7 +106,7 @@ export default function AddCoupDeCoeur() {
                 <div className="space-y-4">
                     <Card className="bg-gray-900 border-gray-800">
                         <CardHeader className="border-b border-gray-700">
-                            <CardTitle className="text-gray-100">Ajouter un nouveau coup de coeur</CardTitle>
+                            <CardTitle className="text-gray-100">Ajouter une nouvelle liste de livres</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6">
                             <form onSubmit={handleSubmit} className="space-y-6">
@@ -129,7 +129,7 @@ export default function AddCoupDeCoeur() {
                                             value={formData.title}
                                             onChange={handleChange}
                                             className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
-                                            placeholder="Le titre principal de ce coup de cœur"
+                                            placeholder="Le titre principal de cette liste de livres"
 
                                         />
                                     </div>
@@ -144,7 +144,7 @@ export default function AddCoupDeCoeur() {
                                             value={formData.description}
                                             onChange={handleChange}
                                             className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[150px]"
-                                            placeholder="Informations générales ajoutées en haut du coup de coeur"
+                                            placeholder="Informations générales ajoutées en haut de la liste de livres"
                                         />
                                     </div>
 
@@ -167,7 +167,7 @@ export default function AddCoupDeCoeur() {
                                             }
                                         />
                                         <label htmlFor="active" className="text-sm font-medium text-gray-200">
-                                            Ce coup de cœur est-il visible par le public ?
+                                            Cette liste de livres est-elle visible par le public ?
                                         </label>
                                     </div>
 
@@ -199,7 +199,7 @@ export default function AddCoupDeCoeur() {
                                     disabled={isLoading || formData.bookIds.length === 0}
                                     className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100"
                                 >
-                                    {isLoading ? 'En ajoutant...' : 'Ajouter le coup de coeur'}
+                                    {isLoading ? 'En ajoutant...' : 'Ajouter la liste de livres'}
                                 </Button>
                             </form>
                         </CardContent>

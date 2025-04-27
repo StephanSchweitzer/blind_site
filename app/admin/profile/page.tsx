@@ -286,7 +286,7 @@ export default function ProfilePage() {
                             iconColor="text-amber-400"
                         />
                         <StatCard
-                            title="Coups de Cœur"
+                            title="Listes de livres"
                             count={userData?._count.CoupsDeCoeur || 0}
                             icon="💖"
                             color="bg-rose-900/30 text-rose-200 border-rose-800"

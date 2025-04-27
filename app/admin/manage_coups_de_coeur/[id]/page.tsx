@@ -60,7 +60,7 @@ export default function EditCoupDeCoeurPage() {
     const { NavigationWarningDialog } = useWarnIfUnsavedChanges({
         unsaved: hasUnsavedChanges,
         message: "Si vous souhaitez enregistrer ces modifications, cliquez sur le bouton " +
-            "\n\n « Mettre à jour le Coup de Cœur » \n\n " +
+            "\n\n « Mettre à jour la liste de livres » \n\n " +
             "En bas à droite, sinon quittez la page."
     });
 
@@ -101,11 +101,11 @@ export default function EditCoupDeCoeurPage() {
                     }, {});
                     setBookMap(initialBookMap);
                 } else {
-                    setError('Échec du chargement du coup de cœur');
+                    setError('Échec du chargement de la liste de livres');
                     router.push('/admin/manage_coups_de_coeur');
                 }
             } catch (error) {
-                setError('Erreur lors du chargement du coup de cœur ' + error);
+                setError('Erreur lors du chargement de la liste de livres' + error);
                 router.push('/admin/manage_coups_de_coeur');
             }
         }
@@ -159,17 +159,17 @@ export default function EditCoupDeCoeurPage() {
                 router.push('/admin/manage_coups_de_coeur');
                 router.refresh();
             } else {
-                throw new Error('Échec de la mise à jour du coup de cœur');
+                throw new Error('Échec de la mise à jour de la liste de livres');
             }
         } catch (error) {
-            setError(error instanceof Error ? error.message : 'Échec de la mise à jour du coup de cœur');
+            setError(error instanceof Error ? error.message : 'Échec de la mise à jour de la liste de livres');
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleDelete = async () => {
-        if (window.confirm('Êtes-vous sûr de vouloir supprimer ce coup de cœur ?')) {
+        if (window.confirm('Êtes-vous sûr de vouloir supprimer cette liste de livres ?')) {
             try {
                 const res = await fetch(`/api/coups-de-coeur/${id}`, {
                     method: 'DELETE',
@@ -180,7 +180,7 @@ export default function EditCoupDeCoeurPage() {
                     router.push('/admin/manage_coups_de_coeur');
                     router.refresh();
                 } else {
-                    setError('Échec de la suppression du coup de cœur');
+                    setError('Échec de la suppression de la liste de livres');
                 }
             } catch (error) {
                 console.error('Erreur lors de la suppression:', error);
@@ -199,7 +199,7 @@ export default function EditCoupDeCoeurPage() {
         <div className="space-y-4">
             <Card className="bg-gray-900 border-gray-800">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-gray-700">
-                    <CardTitle className="text-gray-100">Modifier le Coup de Cœur</CardTitle>
+                    <CardTitle className="text-gray-100">Modifier la liste de livres</CardTitle>
                     <Button
                         variant="destructive"
                         onClick={handleDelete}
@@ -287,7 +287,7 @@ export default function EditCoupDeCoeurPage() {
                                     className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-400"
                                 />
                                 <label htmlFor="active" className="text-sm font-medium text-gray-200">
-                                    Ce coup de cœur est-il visible par le public ?
+                                    Cette liste de livres est-elle visible par le public ?
                                 </label>
                             </div>
 
@@ -357,7 +357,7 @@ export default function EditCoupDeCoeurPage() {
                                 disabled={isLoading || formData.books.length === 0}
                                 className="bg-gray-700 hover:bg-gray-600 text-gray-100"
                             >
-                                {isLoading ? 'Mise à jour...' : 'Mettre à jour le Coup de Cœur'}
+                                {isLoading ? 'Mise à jour...' : 'Mettre à jour la liste de livres '}
                             </Button>
                         </div>
                     </form>

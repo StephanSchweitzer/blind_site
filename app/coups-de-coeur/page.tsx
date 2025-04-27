@@ -38,7 +38,7 @@ export default function CoupsDeCoeurPage() {
             const data: CoupsDeCoeurResponse = await response.json();
             return data;
         } catch (error) {
-            console.error('Error fetching coups de coeur:', error);
+            console.error('Error fetching listes de livres:', error);
             return null;
         }
     }, []);
@@ -128,7 +128,7 @@ export default function CoupsDeCoeurPage() {
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-gray-800">
                     <section className="text-center space-y-4 transform transition-all duration-300 hover:scale-[1.02]">
                         <h1 className="text-3xl font-bold text-gray-100 transition-colors duration-300 hover:text-blue-400">
-                            Coups de coeur
+                            Listes de livres
                         </h1>
                         <p className="text-lg text-gray-300 transition-colors duration-300 hover:text-gray-100">
                             A commander au{' '}
@@ -154,7 +154,7 @@ export default function CoupsDeCoeurPage() {
                         {!initialLoadComplete ? (
                             <div className="text-center py-8 transform transition-opacity duration-300">
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
-                                <p className="mt-4 text-gray-300">Chargement des Coups des Cœurs ...</p>
+                                <p className="mt-4 text-gray-300">Chargement des listes de livres ...</p>
                             </div>
                         ) : coupsDeCoeur.length === 0 ? (
                             <div className="text-center py-8 bg-gray-700 rounded-lg transform transition-all duration-300 hover:scale-[1.02]">
