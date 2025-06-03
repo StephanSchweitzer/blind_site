@@ -25,8 +25,8 @@ export const InvitationEmail = ({
                                     email,
                                     role,
                                     temporaryPassword,
-                                    appName = 'Votre Application',
-                                    loginUrl = 'https://votredomaine.com/login'
+                                    appName = 'ECA-Aveugles',
+                                    loginUrl = 'https://votredomaine.com/admin'
                                 }: InvitationEmailProps) => {
     const displayName = name || 'cher utilisateur';
 
