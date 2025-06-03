@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
                     role: role || 'user',
                     temporaryPassword,
                     appName: process.env.APP_NAME || 'ECA Aveugles',
-                    loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : undefined
+                    loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/admin` : undefined
                 })
             );
 
