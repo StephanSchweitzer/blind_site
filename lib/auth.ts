@@ -32,9 +32,12 @@ export const authOptions: NextAuthOptions = {
                     return null;
                 }
 
-                const user = await prisma.user.findUnique({
+                const user = await prisma.user.findFirst({
                     where: {
-                        email: credentials.email,
+                        email: {
+                            mode: 'insensitive',
+                            equals: credentials.email.trim(),
+                        },
                     },
                 });
 
@@ -67,9 +70,14 @@ export const authOptions: NextAuthOptions = {
             // Enhanced session callback
             if (session?.user?.email) {
                 try {
-                    // Get fresh user data on each session request
-                    const freshUser = await prisma.user.findUnique({
-                        where: { email: session.user.email },
+                    // Get fresh user data using case-insensitive lookup
+                    const freshUser = await prisma.user.findFirst({
+                        where: {
+                            email: {
+                                mode: 'insensitive',
+                                equals: session.user.email.trim(),
+                            }
+                        },
                         select: {
                             id: true,
                             email: true,
