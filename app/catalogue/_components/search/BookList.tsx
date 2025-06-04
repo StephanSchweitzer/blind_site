@@ -1,14 +1,5 @@
 import React from 'react';
-import { Book as BookType } from '@prisma/client';
-
-interface BookWithGenres extends BookType {
-    genres: {
-        genre: {
-            id: number;
-            name: string;
-        };
-    }[];
-}
+import { BookWithGenres } from '@/types/book'; // Import the shared type
 
 interface BookListProps {
     books: BookWithGenres[];

@@ -8,62 +8,64 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum NewsType {
-  GENERAL // Informations générales
-  EVENEMENT // Événement
-  ANNONCE // Annonce
-  ACTUALITE // Actualité
-  PROGRAMMATION // Programmation
-}
-
 model News {
   id          Int      @id @default(autoincrement())
   title       String
   content     String
-  type        String   @default("GENERAL")
   publishedAt DateTime @default(now())
   authorId    Int
-  author      User     @relation(fields: [authorId], references: [id], name: "UserNews")
+  type        String   @default("GENERAL")
+  author      User     @relation("UserNews", fields: [authorId], references: [id])
 }
 
 model User {
   id                  Int            @id @default(autoincrement())
   email               String         @unique
   password            String
-  passwordNeedsChange Boolean        @default(true)
   name                String?
   role                String         @default("user")
   createdAt           DateTime       @default(now())
+  passwordNeedsChange Boolean        @default(true)
   books               Book[]
-  News                News[]         @relation(name: "UserNews")
   CoupsDeCoeur        CoupsDeCoeur[]
+  News                News[]         @relation("UserNews")
 }
 
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Book {
   id                     Int                 @id @default(autoincrement())
   title                  String
-  subtitle               String?
   author                 String
   publishedDate          DateTime?
   isbn                   String?             @unique
   description            String?
-  readingDurationMinutes Int?
-  pageCount              Int?
-  publisher              String?
   available              Boolean             @default(true)
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
   addedById              Int
+  readingDurationMinutes Int?
+  publisher              String?
+  pageCount              Int?
+  subtitle               String?
   addedBy                User                @relation(fields: [addedById], references: [id])
   genres                 BookGenre[]
   CoupsDeCoeurBooks      CoupsDeCoeurBooks[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([title])
+  @@index([author])
+  @@index([isbn])
+  @@index([available])
 }
 
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Genre {
   id          Int         @id @default(autoincrement())
   name        String      @unique
   description String?
   books       BookGenre[]
+
+  @@index([name])
 }
 
 model CoupsDeCoeur {
@@ -71,28 +73,38 @@ model CoupsDeCoeur {
   title       String
   description String?
   audioPath   String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   active      Boolean             @default(true)
   addedById   Int
   addedBy     User                @relation(fields: [addedById], references: [id])
   books       CoupsDeCoeurBooks[]
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
 }
 
 model CoupsDeCoeurBooks {
-  coupsDeCoeur   CoupsDeCoeur @relation(fields: [coupsDeCoeurId], references: [id])
   coupsDeCoeurId Int
-  book           Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
   bookId         Int
+  book           Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  coupsDeCoeur   CoupsDeCoeur @relation(fields: [coupsDeCoeurId], references: [id])
 
   @@id([coupsDeCoeurId, bookId])
 }
 
 model BookGenre {
-  book    Book  @relation(fields: [bookId], references: [id], onDelete: Cascade)
   bookId  Int
-  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
   genreId Int
+  book    Book  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
 
   @@id([bookId, genreId])
+  @@index([bookId])
+  @@index([genreId])
+}
+
+enum NewsType {
+  GENERAL
+  EVENEMENT
+  ANNONCE
+  ACTUALITE
+  PROGRAMMATION
 }

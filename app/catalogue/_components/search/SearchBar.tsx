@@ -1,5 +1,6 @@
+// catalogue/search/SearchBar.tsx
 import React, { useState } from 'react';
-import { Search, X, ChevronsUpDown, Check } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,8 @@ interface SearchBarProps {
     onFilterChange: (filter: string) => void;
     selectedGenres: number[];
     onGenreChange: (genres: number[]) => void;
-    availableGenres: { id: number; name: string; }[];
+    availableGenres: { id: number; name: string; description?: string | null; }[];
+    isSearching?: boolean;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -21,7 +23,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                                         onFilterChange,
                                                         selectedGenres,
                                                         onGenreChange,
-                                                        availableGenres
+                                                        availableGenres,
+                                                        isSearching = false
                                                     }) => {
     const [open, setOpen] = useState(false);
     const [genreSearchQuery, setGenreSearchQuery] = useState('');
@@ -48,9 +51,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         value={searchTerm}
                         onChange={(e) => onSearchChange(e.target.value)}
                         placeholder="Recherche de livres..."
-                        className="w-full px-4 py-2 pl-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 pl-10 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                    {isSearching && (
+                        <Loader2 className="absolute right-3 top-2.5 text-gray-400 animate-spin" size={20} />
+                    )}
                 </div>
 
                 {/* Filter select - 20% */}
@@ -66,7 +72,6 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     <option value="genre">Genre</option>
                 </select>
 
-                {/* Rest of the component remains the same */}
                 {/* Genre selector - 30% */}
                 <div className="w-[30%]">
                     <Popover open={open} onOpenChange={setOpen}>
