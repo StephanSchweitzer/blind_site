@@ -44,14 +44,12 @@ export default async function Contact() {
                             </div>
 
                             <div className="space-y-2 mt-6">
-                                <p className="font-bold">Permanences : Mardis de 9 h 30 h à 17 h, Jeudis de 9 h 30 à 13
-                                    h</p>
+                                <p className="font-bold">Permanences : Mardi de 9 h à 17 h, Jeudi de 9 h à 14 h</p>
                             </div>
 
                             <div className="space-y-2 mt-6">
                                 <p><span className="font-semibold">Métro :</span> Duroc (ligne 10 ou 13), Ségur (ligne
-                                    10),</p>
-                                <p className="ml-14">Sèvres-Lecourbe (ligne 6)</p>
+                                    10), Sèvres-Lecourbe (ligne 6)</p>
                                 <p><span className="font-semibold">Autobus :</span> 92, 82, 89, 28, 70</p>
                             </div>
                         </div>
