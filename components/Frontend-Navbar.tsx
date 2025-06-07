@@ -23,7 +23,7 @@ const FrontendNavbar = () => {
             label: 'Nous connaître',
             dropdown: [
                 { href: '/nous-connaitre/historique', label: 'Historique' },
-                { href: '/nous-connaitre/organisation', label: 'Organisation' },
+                { href: '/nous-connaitre/informations-pratiques', label: 'Informations Pratiques' },
                 { href: '/nous-connaitre/equipe', label: 'Equipe' }
             ]
         },

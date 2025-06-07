@@ -103,7 +103,7 @@ export default async function NousRejoindre() {
                                         <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-amber-300">18€</span>
                                     </p>
                                     <ul className="list-disc list-inside text-gray-300 mt-2 space-y-1">
-                                        <li>Même conditions que pour les lecteurs</li>
+                                        <li>Mêmes conditions que pour les lecteurs</li>
                                         <li>Permet d&apos;être assuré pendant vos activités</li>
                                     </ul>
                                 </div>
@@ -118,7 +118,7 @@ export default async function NousRejoindre() {
                             <div className="p-6 flex flex-col justify-between h-full space-y-4">
                                 <div>
                                     <p className="text-gray-100 text-lg">
-                                        Grâce à votre don, vous permettez à ECA de poursuivre sa mission.
+                                        Nous ne bénéficions d&apos;aucune subvention. Grâce à votre don, vous permettez à ECA de poursuivre sa mission.
                                     </p>
                                     <p className="text-gray-300 mt-4">
                                         Vos dons nous permettent d&apos;acquérir du matériel d&apos;enregistrement,

@@ -55,7 +55,7 @@ export default async function HistoriquePage() {
         {
             year: "2014",
             title: "Création des «Coups de Cœur»",
-            description: "Création des «Coups de Cœur», palmarès mensuel des enregistrements recommandés par les permanentes de l'association.",
+            description: "Création des «\u00A0Coups de Cœur\u00A0», palmarès mensuel des enregistrements recommandés par les lecteurs et les permanentes de l'association.",
             icon: <Heart className="h-6 w-6" />
         },
         {
