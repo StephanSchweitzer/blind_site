@@ -4,6 +4,8 @@ import { BooksClient } from './BooksClient';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { prisma } from '@/lib/prisma';
 
+export const revalidate = 300;
+
 // This runs on the server
 async function getInitialData() {
     try {
@@ -25,6 +27,8 @@ async function getInitialData() {
             // Get total count
             prisma.book.count()
         ]);
+
+        console.log(prisma.book.count())
 
         return {
             initialBooks: books,
