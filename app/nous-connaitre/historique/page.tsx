@@ -43,7 +43,7 @@ export default async function HistoriquePage() {
         {
             year: "2009",
             title: "Intégration à la BDEA",
-            description: "Les enregistrements figurant dans le catalogue « Lu Pour Vous ! » entrent dans la Banque de Données de l'Edition Adaptée (BDEA) de l'Institut National des Jeunes Aveugles.",
+            description: "Les enregistrements figurant dans le catalogue «\u00A0Lu Pour Vous\u00A0!\u00A0» entrent dans la Banque de Données de l'Edition Adaptée (BDEA) de l'Institut National des Jeunes Aveugles.",
             icon: <Archive className="h-6 w-6" />
         },
         {
@@ -93,7 +93,7 @@ export default async function HistoriquePage() {
                         <div className="w-24 h-1 bg-blue-500 mx-auto mb-6"></div>
                         <p className="text-lg text-gray-100 max-w-2xl mx-auto">
                             Depuis 40 ans, ECA s&apos;engage pour rendre la lecture accessible
-                            aux personnes déficientes visuelles. Découvrez les moments clés de notre parcours.
+                            aux personnes déficientes visuelles. Découvrez les moments clés de son parcours.
                         </p>
                     </section>
 
