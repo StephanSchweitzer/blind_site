@@ -247,7 +247,7 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                                 ) : (
                                     <>
                                         <Volume2 className="w-4 h-4 mr-2" />
-                                        {isSpeaking ? 'Arrêter la lecture' : 'Lire en français'}
+                                        {isSpeaking ? 'Arrêter la lecture' : 'Brève description'}
                                     </>
                                 )}
                             </button>
