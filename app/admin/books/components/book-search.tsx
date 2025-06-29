@@ -128,7 +128,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                         publishedDate: volumeInfo.publishedDate ? new Date(volumeInfo.publishedDate) : null,
                         pageCount: volumeInfo.pageCount || 0,
                         publisher: volumeInfo.publisher || 'Unknown Publisher', // Provide default value
-                        estimatedReadingTime: estimateReadingTime(volumeInfo.pageCount || 0)
+                        estimatedReadingTime: estimateReadingTime(0)
                     };
                 });
                 setResults(formattedResults);

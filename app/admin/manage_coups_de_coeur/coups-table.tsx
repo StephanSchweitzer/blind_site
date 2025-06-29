@@ -103,7 +103,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                 </div>
                 <Link href="/admin/manage_coups_de_coeur/new">
                     <Button className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500">
-                        Nouveau listes de livres
+                        Nouvelle listes de livres
                     </Button>
                 </Link>
             </CardHeader>
