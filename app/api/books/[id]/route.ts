@@ -80,7 +80,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
         pageCount
     } = await req.json();
 
-
     if (isbn?.trim()) {
         const existingBook = await prisma.book.findFirst({
             where: {
@@ -99,7 +98,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
             );
         }
     }
-
 
     try {
         const updatedBook = await prisma.book.update({
@@ -120,11 +118,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
                 genres: {
                     // Delete existing genre relationships
                     deleteMany: {},
-                    // Create new genre relationships
-                    create: genres?.map((genreId: number) => ({
+                    // Create new genre relationships - FIXED: Convert string IDs to numbers
+                    create: genres?.map((genreId: string) => ({
                         genre: {
                             connect: {
-                                id: genreId
+                                id: parseInt(genreId, 10)  // Convert string to number
                             }
                         }
                     }))
