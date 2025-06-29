@@ -1,4 +1,3 @@
-// components/ArticlesTable.tsx
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,8 +14,9 @@ import {
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from 'use-debounce';
-import { useEffect, useState } from 'react';
-import { NewsType, newsTypeLabels } from '@/types/news';  // Update this import
+import { useEffect, useState, useCallback } from 'react';
+import { NewsType, newsTypeLabels } from '@/types/news';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type Article = {
     id: number;
@@ -37,6 +37,7 @@ interface ArticlesTableProps {
 
 export function ArticlesTable({
                                   initialArticles,
+                                  initialPage = 1,
                                   initialSearch = '',
                                   totalPages = 1
                               }: ArticlesTableProps) {
@@ -45,20 +46,19 @@ export function ArticlesTable({
     const [search, setSearch] = useState(initialSearch);
     const [debouncedSearch] = useDebounce(search, 300);
 
-    // Get current page from URL, defaulting to 1 if invalid
-    const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    // Get current page from URL, defaulting to initialPage if invalid
+    const currentPage = Math.max(1, parseInt(searchParams.get('page') || initialPage.toString()));
 
-    // Update search when URL changes
+    // Handle search input changes with improved logic
     useEffect(() => {
         const searchFromUrl = searchParams.get('search') || '';
-        if (searchFromUrl !== search) {
-            setSearch(searchFromUrl);
-        }
-    }, [searchParams, search]);
+        setSearch(searchFromUrl);
+    }, [searchParams]);
 
-    // Handle search input changes
+    // Handle debounced search with navigation
     useEffect(() => {
-        if (debouncedSearch !== searchParams.get('search')) {
+        const currentSearch = searchParams.get('search') || '';
+        if (debouncedSearch !== currentSearch) {
             const params = new URLSearchParams(searchParams);
             if (debouncedSearch.trim()) {
                 params.set('search', debouncedSearch);
@@ -66,16 +66,135 @@ export function ArticlesTable({
                 params.delete('search');
             }
             params.set('page', '1'); // Reset to first page on search
-            router.push(`?${params.toString()}`);
+            router.push(`?${params.toString()}`, { scroll: false });
         }
     }, [debouncedSearch, router, searchParams]);
 
-    const handlePageChange = (newPage: number) => {
-        if (newPage < 1 || newPage > totalPages) return;
+    // Improved page change handler
+    const handlePageChange = useCallback((newPage: number) => {
+        if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
 
         const params = new URLSearchParams(searchParams);
         params.set('page', newPage.toString());
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
+    }, [currentPage, totalPages, searchParams, router]);
+
+    // Navigate to article edit page
+    const navigateToArticle = useCallback((articleId: number) => {
+        router.push(`/admin/news/${articleId}`);
+    }, [router]);
+
+    // Handle article row click
+    const handleRowClick = useCallback((articleId: number) => {
+        navigateToArticle(articleId);
+    }, [navigateToArticle]);
+
+    // Handle edit button click with event propagation stop
+    const handleEditClick = useCallback((e: React.MouseEvent, articleId: number) => {
+        e.stopPropagation();
+        navigateToArticle(articleId);
+    }, [navigateToArticle]);
+
+    // Generate pagination buttons with improved UX
+    const generatePaginationButtons = () => {
+        const buttons = [];
+        const maxVisiblePages = 5;
+
+        // Previous button
+        buttons.push(
+            <Button
+                key="prev"
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700 disabled:opacity-50"
+                onClick={() => handlePageChange(currentPage - 1)}
+            >
+                <ChevronLeft className="h-4 w-4" />
+            </Button>
+        );
+
+        // Page number buttons
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        // Adjust start if we're near the end
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        // First page and ellipsis
+        if (startPage > 1) {
+            buttons.push(
+                <Button
+                    key={1}
+                    variant="outline"
+                    size="sm"
+                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                    onClick={() => handlePageChange(1)}
+                >
+                    1
+                </Button>
+            );
+            if (startPage > 2) {
+                buttons.push(
+                    <span key="ellipsis1" className="text-gray-400 px-2">...</span>
+                );
+            }
+        }
+
+        // Main page buttons
+        for (let i = startPage; i <= endPage; i++) {
+            buttons.push(
+                <Button
+                    key={i}
+                    variant={currentPage === i ? "default" : "outline"}
+                    size="sm"
+                    className={currentPage === i
+                        ? "bg-white text-gray-900 hover:bg-gray-100"
+                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                    onClick={() => handlePageChange(i)}
+                >
+                    {i}
+                </Button>
+            );
+        }
+
+        // Last page and ellipsis
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                buttons.push(
+                    <span key="ellipsis2" className="text-gray-400 px-2">...</span>
+                );
+            }
+            buttons.push(
+                <Button
+                    key={totalPages}
+                    variant="outline"
+                    size="sm"
+                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                    onClick={() => handlePageChange(totalPages)}
+                >
+                    {totalPages}
+                </Button>
+            );
+        }
+
+        // Next button
+        buttons.push(
+            <Button
+                key="next"
+                variant="outline"
+                size="sm"
+                disabled={currentPage === totalPages}
+                className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700 disabled:opacity-50"
+                onClick={() => handlePageChange(currentPage + 1)}
+            >
+                <ChevronRight className="h-4 w-4" />
+            </Button>
+        );
+
+        return buttons;
     };
 
     return (
@@ -101,6 +220,16 @@ export function ArticlesTable({
                         onChange={(e) => setSearch(e.target.value)}
                         className="max-w-sm bg-white text-gray-900 placeholder:text-gray-500"
                     />
+                    {search && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSearch('')}
+                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                        >
+                            Effacer
+                        </Button>
+                    )}
                 </div>
 
                 <div className="rounded-md border border-gray-700 bg-gray-800">
@@ -118,36 +247,40 @@ export function ArticlesTable({
                             {initialArticles.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center text-gray-400 py-8">
-                                        Aucun article trouvé
+                                        {search ? 'Aucun article trouvé pour cette recherche' : 'Aucun article trouvé'}
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 initialArticles.map((article) => (
                                     <TableRow
                                         key={article.id}
-                                        className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
-                                        onClick={() => window.location.href = `/admin/news/${article.id}`}
+                                        className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer transition-colors"
+                                        onClick={() => handleRowClick(article.id)}
                                     >
-                                        <TableCell className="text-gray-200">{article.title}</TableCell>
-                                        <TableCell>
-                                <span
-                                    className={`px-2 py-1 rounded-full text-sm font-medium text-white`}>
-                                    {newsTypeLabels[article.type]}
-                                </span>
+                                        <TableCell className="text-gray-200 font-medium">
+                                            {article.title}
                                         </TableCell>
-                                        <TableCell className="text-gray-200">{article.author?.name || 'Inconnu'}</TableCell>
+                                        <TableCell>
+                                            <span className="px-2 py-1 rounded-full text-sm font-medium text-white bg-gray-600">
+                                                {newsTypeLabels[article.type]}
+                                            </span>
+                                        </TableCell>
                                         <TableCell className="text-gray-200">
-                                            {new Date(article.publishedAt).toLocaleDateString('fr-FR')}
+                                            {article.author?.name || 'Inconnu'}
+                                        </TableCell>
+                                        <TableCell className="text-gray-200">
+                                            {new Date(article.publishedAt).toLocaleDateString('fr-FR', {
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric'
+                                            })}
                                         </TableCell>
                                         <TableCell>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                                onClick={(e) => {
-                                                    e.stopPropagation(); // Prevent row click when clicking the button
-                                                    window.location.href = `/admin/news/${article.id}`;
-                                                }}
+                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 transition-colors"
+                                                onClick={(e) => handleEditClick(e, article.id)}
                                             >
                                                 Modifier
                                             </Button>
@@ -160,26 +293,14 @@ export function ArticlesTable({
                 </div>
 
                 {totalPages > 1 && (
-                    <>
-                        <div className="flex justify-center items-center gap-2 mt-6">
-                            {Array.from({ length: totalPages }, (_, index) => (
-                                <Button
-                                    key={index + 1}
-                                    variant={currentPage === index + 1 ? "default" : "outline"}
-                                    size="sm"
-                                    className={currentPage === index + 1
-                                        ? "bg-white text-gray-900 hover:bg-gray-100"
-                                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
-                                    onClick={() => handlePageChange(index + 1)}
-                                >
-                                    {index + 1}
-                                </Button>
-                            ))}
+                    <div className="mt-6">
+                        <div className="flex justify-center items-center gap-1">
+                            {generatePaginationButtons()}
                         </div>
                         <p className="text-center text-sm text-gray-400 mt-2">
-                            Page {currentPage} sur {totalPages}
+                            Page {currentPage} sur {totalPages} ({initialArticles.length} article{initialArticles.length !== 1 ? 's' : ''})
                         </p>
-                    </>
+                    </div>
                 )}
             </CardContent>
         </Card>
