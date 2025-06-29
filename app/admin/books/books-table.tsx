@@ -128,6 +128,9 @@ export default function BooksTable({
         totalPages: initialTotalPages
     });
 
+    // Track if we need to invalidate cache after mutations
+    const cacheInvalidatedRef = useRef(false);
+
     // Track if initial load had any filters
     const initialHadFilters = useRef(
         initialSearch ||
@@ -158,7 +161,8 @@ export default function BooksTable({
         term: string,
         filter: string,
         genreIds: number[],
-        page: number
+        page: number,
+        forceRefresh = false
     ) => {
         // Cancel any pending search
         if (searchTimeoutRef.current) {
@@ -171,8 +175,19 @@ export default function BooksTable({
         // Update URL
         updateURL(term, filter, genreIds, page);
 
-        // Only use cached data if initial load was clean (no filters) and we're going back to clean state
-        if (!term && genreIds.length === 0 && page === 1 && filter === 'all' && !initialHadFilters.current) {
+        // Only use cached data if:
+        // 1. Not forcing a refresh
+        // 2. Cache hasn't been invalidated by mutations
+        // 3. Initial load was clean (no filters) and we're going back to clean state
+        const shouldUseCache = !forceRefresh &&
+            !cacheInvalidatedRef.current &&
+            !term &&
+            genreIds.length === 0 &&
+            page === 1 &&
+            filter === 'all' &&
+            !initialHadFilters.current;
+
+        if (shouldUseCache) {
             setSearchResults({
                 books: initialDataRef.current.books,
                 total: initialDataRef.current.total,
@@ -201,10 +216,17 @@ export default function BooksTable({
 
             genreIds.forEach(id => params.append('genres', id.toString()));
 
+            // Add timestamp to prevent caching when we need fresh data
+            if (forceRefresh || cacheInvalidatedRef.current) {
+                params.set('_t', Date.now().toString());
+            }
+
             const response = await fetch(`/api/books?${params}`, {
                 signal: abortController.signal,
                 headers: {
-                    'Cache-Control': 'no-store',
+                    'Cache-Control': 'no-store, no-cache, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
                 },
             });
 
@@ -214,6 +236,17 @@ export default function BooksTable({
 
             const data = await response.json();
             setSearchResults(data);
+
+            // Update cached data if we're in the default state and it was a forced refresh
+            if (forceRefresh && !term && genreIds.length === 0 && page === 1 && filter === 'all') {
+                initialDataRef.current = {
+                    books: data.books,
+                    total: data.total,
+                    totalPages: data.totalPages
+                };
+                // Reset cache invalidation flag since we just updated the cache
+                cacheInvalidatedRef.current = false;
+            }
         } catch (err) {
             if (err instanceof Error && err.name !== 'AbortError') {
                 setError('Une erreur s\'est produite lors de la recherche');
@@ -296,7 +329,11 @@ export default function BooksTable({
         setIsSearching(true);
 
         try {
-            const response = await fetch(`/api/books/${book.id}`);
+            const response = await fetch(`/api/books/${book.id}`, {
+                headers: {
+                    'Cache-Control': 'no-store, no-cache, must-revalidate',
+                },
+            });
             if (!response.ok) {
                 throw new Error('Failed to fetch book details');
             }
@@ -340,7 +377,11 @@ export default function BooksTable({
     };
 
     const handleBookEdited = async (bookId: number, isDeleted = false) => {
+        // Mark cache as invalidated
+        cacheInvalidatedRef.current = true;
+
         if (isDeleted) {
+            // Optimistically update the UI by removing the book
             setSearchResults(prev => ({
                 ...prev,
                 books: prev.books.filter(book => book.id !== bookId),
@@ -348,19 +389,30 @@ export default function BooksTable({
             }));
             setIsEditModalOpen(false);
             setSelectedBook(null);
+
+            // Then refresh to ensure consistency
+            setTimeout(() => {
+                performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
+            }, 100);
             return;
         }
 
-        // Refresh current search to get updated data
-        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage);
+        // For edits, force a refresh to get the updated data
         setIsEditModalOpen(false);
         setSelectedBook(null);
+
+        // Force refresh with the current search parameters
+        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
     };
 
     const handleBookAdded = async () => {
-        // Refresh current search to include new book
-        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage);
+        // Mark cache as invalidated
+        cacheInvalidatedRef.current = true;
+
         setIsAddModalOpen(false);
+
+        // Force refresh to include the new book
+        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
     };
 
     const getVisiblePages = (current: number, total: number) => {
