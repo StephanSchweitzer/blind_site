@@ -27,7 +27,7 @@ export default async function InformationsPratique() {
                             <h2 className="text-2xl font-semibold mb-4 text-white">Comment ça marche ?</h2>
                             <div className="space-y-4 text-gray-100">
                                 <p>
-                                    Membre des ECA (vous avez acquitté votre adhésion annuelle de 40 €), vous postez le(s) livre(s) - l’envoi postal est gratuit grâce au cécogramme, franchise postale réservée aux aveugles – ou vous le(s) déposez à l’adresse des ECA - 71 avenue de Breteuil 75015 Paris - en indiquant éventuellement vos consignes de lecture.                                </p>
+                                    Membre des ECA (vous avez acquitté votre adhésion annuelle de 50 €), vous postez le(s) livre(s) - l’envoi postal est gratuit grâce au cécogramme, franchise postale réservée aux aveugles – ou vous le(s) déposez à l’adresse des ECA - 71 avenue de Breteuil 75015 Paris - en indiquant éventuellement vos consignes de lecture.                                </p>
                                 <p>
                                     Ensuite le document est adressé pour enregistrement à un lecteur bénévole. Une fois la lecture terminée, les ECA vous adressent en retour votre livre et l&apos;enregistrement audio au format mp3 (CD, clef USB, plateforme WeTransfer…).
                                 </p>

@@ -16,7 +16,7 @@ export default async function EquipePage() {
     ];
 
     const boardMembers: TeamMember[] = [
-        { name: "Michèle NARJOZ", role: "Membre du conseil d'administration des AA" },
+        { name: "Frédéric LaBarthe", role: "Membre du conseil d'administration des AA" },
     ];
 
     const members: TeamMember[] = [
@@ -28,6 +28,7 @@ export default async function EquipePage() {
         { name: "Marie-Line LUSSON", role: "Membre" },
         { name: "Odile MORTIER-WALDSCHMIDT", role: "Membre" },
         { name: "Anne Marie SUDRES", role: "Membre" },
+        { name: "Michèle NARJOZ", role: "Membre" },
     ];
 
     return (
