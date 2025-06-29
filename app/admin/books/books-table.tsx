@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X, ChevronsUpDown, Check, Plus, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -110,11 +110,6 @@ export default function BooksTable({
     const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isDeleting, setIsDeleting] = useState<number | null>(null);
-
-    // Delete dialog state
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
 
     // Results state - initialize with server data
     const [searchResults, setSearchResults] = useState<SearchResult>(() => ({
@@ -342,58 +337,6 @@ export default function BooksTable({
         } finally {
             setIsSearching(false);
         }
-    };
-
-    const handleDeleteClick = (book: Book, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setBookToDelete(book);
-        setIsDeleteDialogOpen(true);
-    };
-
-    const confirmDelete = async () => {
-        if (!bookToDelete) return;
-
-        setIsDeleting(bookToDelete.id);
-        try {
-            const response = await fetch(`/api/books/${bookToDelete.id}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete book');
-            }
-
-            // Update search results by removing the deleted book
-            setSearchResults(prev => ({
-                ...prev,
-                books: prev.books.filter(book => book.id !== bookToDelete.id),
-                total: prev.total - 1
-            }));
-
-            toast({
-                title: "Succès",
-                description: "Livre supprimé avec succès.",
-            });
-
-            // Close dialog and reset state
-            setIsDeleteDialogOpen(false);
-            setBookToDelete(null);
-        } catch (err) {
-            setError('Erreur lors de la suppression du livre');
-            console.error('Delete error:', err);
-            toast({
-                title: "Erreur",
-                description: "Échec de la suppression du livre.",
-                variant: "destructive"
-            });
-        } finally {
-            setIsDeleting(null);
-        }
-    };
-
-    const cancelDelete = () => {
-        setIsDeleteDialogOpen(false);
-        setBookToDelete(null);
     };
 
     const handleBookEdited = async (bookId: number, isDeleted = false) => {
@@ -651,29 +594,14 @@ export default function BooksTable({
                                                     </span>
                                                 </TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                                            onClick={(e) => openBookEditModal(book, e)}
-                                                        >
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="bg-red-700 text-red-200 border-red-600 hover:bg-red-600"
-                                                            onClick={(e) => handleDeleteClick(book, e)}
-                                                            disabled={isDeleting === book.id}
-                                                        >
-                                                            {isDeleting === book.id ? (
-                                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                            ) : (
-                                                                <Trash2 className="w-4 h-4" />
-                                                            )}
-                                                        </Button>
-                                                    </div>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                                        onClick={(e) => openBookEditModal(book, e)}
+                                                    >
+                                                        Modifier
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -775,59 +703,6 @@ export default function BooksTable({
                     </DialogContent>
                 </Dialog>
             )}
-
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <DialogContent className="max-w-md bg-gray-900 border-gray-700">
-                    <DialogHeader>
-                        <DialogTitle className="text-gray-100 flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-red-400" />
-                            Confirmer la suppression
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div className="text-gray-300">
-                            <p className="mb-2">Êtes-vous sûr de vouloir supprimer ce livre ?</p>
-                            {bookToDelete && (
-                                <div className="bg-gray-800 p-3 rounded border border-gray-700">
-                                    <p className="font-medium text-gray-200">{bookToDelete.title}</p>
-                                    <p className="text-sm text-gray-400">par {bookToDelete.author}</p>
-                                </div>
-                            )}
-                            <p className="text-sm text-gray-400 mt-2">
-                                Cette action est irréversible.
-                            </p>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                            <Button
-                                variant="outline"
-                                onClick={cancelDelete}
-                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                disabled={isDeleting !== null}
-                            >
-                                Annuler
-                            </Button>
-                            <Button
-                                onClick={confirmDelete}
-                                className="bg-red-600 text-white hover:bg-red-700"
-                                disabled={isDeleting !== null}
-                            >
-                                {isDeleting !== null ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Suppression...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Supprimer
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
         </Card>
     );
 }
