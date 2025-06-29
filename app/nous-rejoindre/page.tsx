@@ -45,7 +45,7 @@ export default async function NousRejoindre() {
                                 </p>
                                 <div className="bg-gray-800 p-4 rounded-lg">
                                     <p className="text-gray-100">
-                                        <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-blue-300">40€</span>
+                                        <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-blue-300">50€</span>
                                     </p>
                                     <ul className="list-disc list-inside text-gray-300 mt-2 space-y-1">
                                         <li>Obligatoire mais non déductible des impôts, au titre de l&apos;accession à un service</li>
@@ -71,7 +71,7 @@ export default async function NousRejoindre() {
                                 </p>
                                 <div className="bg-gray-800 p-4 rounded-lg">
                                     <p className="text-gray-100">
-                                        <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-green-300">18€</span>
+                                        <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-green-300">20€</span>
                                     </p>
                                     <ul className="list-disc list-inside text-gray-300 mt-2 space-y-1">
                                         <li>Obligatoire et déductible des impôts</li>
@@ -100,7 +100,7 @@ export default async function NousRejoindre() {
                                 </p>
                                 <div className="bg-gray-800 p-4 rounded-lg">
                                     <p className="text-gray-100">
-                                        <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-amber-300">18€</span>
+                                        <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-amber-300">20€</span>
                                     </p>
                                     <ul className="list-disc list-inside text-gray-300 mt-2 space-y-1">
                                         <li>Mêmes conditions que pour les lecteurs</li>
