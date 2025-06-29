@@ -16,7 +16,7 @@ export default async function EquipePage() {
     ];
 
     const boardMembers: TeamMember[] = [
-        { name: "Frédéric LaBarthe", role: "Membre du conseil d'administration des AA" },
+        { name: "Frédéric Labarthe", role: "Membre du conseil d'administration des AA" },
     ];
 
     const members: TeamMember[] = [
