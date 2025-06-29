@@ -98,20 +98,23 @@ async function getBooks(page: number, searchTerm: string, filter: string = 'all'
 
     // Add genre filter if genreIds are provided
     if (genreIds.length > 0) {
-        whereClause = {
-            ...whereClause,
-            AND: [
-                {
-                    genres: {
-                        some: {
-                            genreId: {
-                                in: genreIds
-                            }
-                        }
+        const genreFilter = {
+            genres: {
+                some: {
+                    genreId: {
+                        in: genreIds
                     }
                 }
-            ]
+            }
         };
+
+        if (Object.keys(whereClause).length > 0) {
+            whereClause = {
+                AND: [whereClause, genreFilter]
+            };
+        } else {
+            whereClause = genreFilter;
+        }
     }
 
     try {
@@ -132,6 +135,7 @@ async function getBooks(page: number, searchTerm: string, filter: string = 'all'
                         select: {
                             genre: {
                                 select: {
+                                    id: true,
                                     name: true,
                                 },
                             },
@@ -163,7 +167,7 @@ async function getBooks(page: number, searchTerm: string, filter: string = 'all'
     }
 }
 
-export default async function Books({ searchParams }: PageProps) {
+export default async function AdminBooksPage({ searchParams }: PageProps) {
     try {
         const params = await searchParams;
 
@@ -178,21 +182,22 @@ export default async function Books({ searchParams }: PageProps) {
             .map(Number)
             .filter(id => !isNaN(id));
 
-        const { books, totalPages, availableGenres } = await getBooks(page, searchTerm, filter, genreIds);
+        const { books, totalBooks, totalPages, availableGenres } = await getBooks(page, searchTerm, filter, genreIds);
 
         return (
-            <div className="space-y-4">
+            <div className="container mx-auto py-6">
                 <BooksTable
                     initialBooks={books}
                     initialPage={page}
                     initialSearch={searchTerm}
                     totalPages={totalPages}
                     availableGenres={availableGenres}
+                    initialTotalBooks={totalBooks}
                 />
             </div>
         );
     } catch (error) {
-        console.error('Error in Books page:', error);
+        console.error('Error in Admin Books page:', error);
         notFound();
     }
 }

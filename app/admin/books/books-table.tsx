@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X, ChevronsUpDown, Check, Plus } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Plus, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -17,7 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
-import {toast} from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
+
+const ITEMS_PER_PAGE = 10;
+const DEBOUNCE_DELAY = 300;
 
 interface BookFormData {
     title: string;
@@ -45,7 +48,7 @@ interface Book {
     available: boolean;
     genres: {
         genre: {
-            id?: string;
+            id: number;
             name: string;
         };
     }[];
@@ -57,10 +60,18 @@ interface Book {
     description: string | null;
     addedById: number;
     publisher: string | null;
+    createdAt: Date | null;
 }
 
 interface BookWithFormData extends Book {
     formData: BookFormData;
+}
+
+interface SearchResult {
+    books: Book[];
+    total: number;
+    totalPages: number;
+    page: number;
 }
 
 interface BooksTableProps {
@@ -69,41 +80,225 @@ interface BooksTableProps {
     initialSearch: string;
     totalPages: number;
     availableGenres?: { id: number; name: string; }[];
+    initialTotalBooks: number;
 }
 
 export default function BooksTable({
                                        initialBooks = [],
                                        initialSearch = '',
-                                       totalPages = 1,
-                                       availableGenres = []
+                                       totalPages: initialTotalPages = 1,
+                                       availableGenres = [],
+                                       initialTotalBooks = 0
                                    }: BooksTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [books, setBooks] = useState<Book[]>(initialBooks);
-    const [search, setSearch] = useState(initialSearch);
-    const [selectedFilter, setSelectedFilter] = useState('all');
-    const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
+
+    // Search state
+    const [searchTerm, setSearchTerm] = useState(initialSearch);
+    const [selectedFilter, setSelectedFilter] = useState(searchParams?.get('filter') || 'all');
+    const [currentPage, setCurrentPage] = useState(parseInt(searchParams?.get('page') || '1'));
+    const [selectedGenres, setSelectedGenres] = useState<number[]>(() => {
+        const genresParam = searchParams?.get('genres');
+        return genresParam ? genresParam.split(',').map(Number).filter(id => !isNaN(id)) : [];
+    });
+
+    // UI state
     const [genreSearchQuery, setGenreSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const currentPage = parseInt(searchParams?.get('page') || '1');
+    const [isSearching, setIsSearching] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
-    useEffect(() => {
-        if (Array.isArray(initialBooks)) {
-            setBooks(initialBooks);
+    // Delete dialog state
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
+
+    // Results state - initialize with server data
+    const [searchResults, setSearchResults] = useState<SearchResult>(() => ({
+        books: initialBooks,
+        total: initialTotalBooks,
+        page: parseInt(searchParams?.get('page') || '1'),
+        totalPages: initialTotalPages
+    }));
+
+    // Refs for debouncing, request cancellation, and caching
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const initialDataRef = useRef({
+        books: initialBooks,
+        total: initialTotalBooks,
+        totalPages: initialTotalPages
+    });
+
+    // Track if initial load had any filters
+    const initialHadFilters = useRef(
+        initialSearch ||
+        (searchParams?.get('filter') && searchParams?.get('filter') !== 'all') ||
+        (searchParams?.get('genres')?.length || 0) > 0
+    );
+
+    // Update URL without page reload
+    const updateURL = useCallback((
+        search: string,
+        filter: string,
+        genres: number[],
+        page: number
+    ) => {
+        const params = new URLSearchParams();
+
+        if (search) params.set('search', search);
+        if (filter !== 'all') params.set('filter', filter);
+        if (genres.length > 0) params.set('genres', genres.join(','));
+        if (page > 1) params.set('page', page.toString());
+
+        const url = `/admin/books${params.toString() ? `?${params.toString()}` : ''}`;
+        router.replace(url, { scroll: false });
+    }, [router]);
+
+    // Perform search with debouncing and caching
+    const performSearch = useCallback(async (
+        term: string,
+        filter: string,
+        genreIds: number[],
+        page: number
+    ) => {
+        // Cancel any pending search
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
         }
-    }, [initialBooks]);
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        // Update URL
+        updateURL(term, filter, genreIds, page);
+
+        // Only use cached data if initial load was clean (no filters) and we're going back to clean state
+        if (!term && genreIds.length === 0 && page === 1 && filter === 'all' && !initialHadFilters.current) {
+            setSearchResults({
+                books: initialDataRef.current.books,
+                total: initialDataRef.current.total,
+                page: 1,
+                totalPages: initialDataRef.current.totalPages
+            });
+            setIsSearching(false);
+            return;
+        }
+
+        // Set loading state
+        setIsSearching(true);
+        setError(null);
+
+        // Create new abort controller
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
+        try {
+            const params = new URLSearchParams({
+                search: term,
+                filter,
+                page: page.toString(),
+                limit: ITEMS_PER_PAGE.toString(),
+            });
+
+            genreIds.forEach(id => params.append('genres', id.toString()));
+
+            const response = await fetch(`/api/books?${params}`, {
+                signal: abortController.signal,
+                headers: {
+                    'Cache-Control': 'no-store',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+
+            const data = await response.json();
+            setSearchResults(data);
+        } catch (err) {
+            if (err instanceof Error && err.name !== 'AbortError') {
+                setError('Une erreur s\'est produite lors de la recherche');
+                console.error('Search error:', err);
+            }
+        } finally {
+            setIsSearching(false);
+        }
+    }, [updateURL]);
+
+    // Debounced search effect
+    useEffect(() => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        searchTimeoutRef.current = setTimeout(() => {
+            performSearch(searchTerm, selectedFilter, selectedGenres, currentPage);
+        }, searchTerm ? DEBOUNCE_DELAY : 0);
+
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, [searchTerm, selectedFilter, selectedGenres, currentPage, performSearch]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // Event handlers with proper reset logic
+    const handleSearchChange = useCallback((value: string) => {
+        setSearchTerm(value);
+        if (currentPage !== 1) {
+            setCurrentPage(1);
+        }
+    }, [currentPage]);
+
+    const handleFilterChange = useCallback((filter: string) => {
+        setSelectedFilter(filter);
+        setCurrentPage(1);
+    }, []);
+
+    const handleGenreChange = useCallback((genres: number[]) => {
+        setSelectedGenres(genres);
+        setCurrentPage(1);
+    }, []);
+
+    const handlePageChange = useCallback((page: number) => {
+        setCurrentPage(page);
+    }, []);
+
+    const removeGenre = (genreId: number) => {
+        const newGenres = selectedGenres.filter(id => id !== genreId);
+        handleGenreChange(newGenres);
+    };
+
+    const handleGenreSelect = (genreId: number) => {
+        if (selectedGenres.includes(genreId)) {
+            removeGenre(genreId);
+        } else {
+            handleGenreChange([...selectedGenres, genreId]);
+        }
+    };
 
     const openBookEditModal = async (book: Book, e?: React.MouseEvent) => {
         if (e) {
             e.stopPropagation();
         }
 
-        setIsLoading(true);
-        document.body.style.cursor = 'wait';
+        setIsSearching(true);
 
         try {
             const response = await fetch(`/api/books/${book.id}`);
@@ -112,7 +307,7 @@ export default function BooksTable({
             }
             const bookDetails = await response.json();
 
-            const genreIds = bookDetails.genres.map((g: { genre: { id: string } }) => g.genre.id);
+            const genreIds = bookDetails.genres.map((g: { genre: { id: number } }) => g.genre.id);
 
             const formData: BookFormData = {
                 title: bookDetails.title,
@@ -122,11 +317,11 @@ export default function BooksTable({
                 publishedYear: bookDetails.publishedDate ?
                     new Date(bookDetails.publishedDate).getFullYear().toString() :
                     new Date().getFullYear().toString(),
-                genres: genreIds,
+                genres: genreIds.map(String),
                 isbn: bookDetails.isbn || undefined,
                 description: bookDetails.description || undefined,
                 available: Boolean(bookDetails.available),
-                readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || undefined,
+                readingDurationMinutes: bookDetails.readingDurationMinutes || undefined,
                 pageCount: bookDetails.pageCount || undefined,
             };
 
@@ -145,115 +340,84 @@ export default function BooksTable({
                 variant: "destructive"
             });
         } finally {
-            setIsLoading(false);
-            document.body.style.cursor = 'default';
+            setIsSearching(false);
         }
+    };
+
+    const handleDeleteClick = (book: Book, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setBookToDelete(book);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!bookToDelete) return;
+
+        setIsDeleting(bookToDelete.id);
+        try {
+            const response = await fetch(`/api/books/${bookToDelete.id}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete book');
+            }
+
+            // Update search results by removing the deleted book
+            setSearchResults(prev => ({
+                ...prev,
+                books: prev.books.filter(book => book.id !== bookToDelete.id),
+                total: prev.total - 1
+            }));
+
+            toast({
+                title: "Succès",
+                description: "Livre supprimé avec succès.",
+            });
+
+            // Close dialog and reset state
+            setIsDeleteDialogOpen(false);
+            setBookToDelete(null);
+        } catch (err) {
+            setError('Erreur lors de la suppression du livre');
+            console.error('Delete error:', err);
+            toast({
+                title: "Erreur",
+                description: "Échec de la suppression du livre.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsDeleting(null);
+        }
+    };
+
+    const cancelDelete = () => {
+        setIsDeleteDialogOpen(false);
+        setBookToDelete(null);
     };
 
     const handleBookEdited = async (bookId: number, isDeleted = false) => {
         if (isDeleted) {
-            setBooks(prevBooks => prevBooks.filter(book => book.id !== bookId));
+            setSearchResults(prev => ({
+                ...prev,
+                books: prev.books.filter(book => book.id !== bookId),
+                total: prev.total - 1
+            }));
             setIsEditModalOpen(false);
             setSelectedBook(null);
             return;
         }
 
-        try {
-            const response = await fetch(`/api/books/${bookId}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch updated book');
-            }
-            const updatedBook = await response.json();
-
-            setBooks(prevBooks =>
-                prevBooks.map(book =>
-                    book.id === bookId ? { ...updatedBook } : book
-                )
-            );
-
-            setIsEditModalOpen(false);
-            setSelectedBook(null);
-        } catch (error) {
-            console.error('Error updating book data:', error);
-        }
+        // Refresh current search to get updated data
+        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage);
+        setIsEditModalOpen(false);
+        setSelectedBook(null);
     };
 
     const handleBookAdded = async () => {
-        try {
-            const response = await fetch('/api/books');
-            if (!response.ok) {
-                throw new Error('Failed to fetch books');
-            }
-            const data = await response.json();
-            const allBooks = data.books || data;
-
-            if (!Array.isArray(allBooks)) {
-                throw new Error('Books data is not in the expected format');
-            }
-
-            setBooks(allBooks);
-            setIsAddModalOpen(false);
-        } catch (error) {
-            console.error('Error fetching books data:', error);
-        }
-    };
-
-    useEffect(() => {
-        if (!searchParams) return;
-
-        const searchFromUrl = searchParams.get('search') || '';
-        setSearch(searchFromUrl);
-
-        const filterFromUrl = searchParams.get('filter') || 'all';
-        setSelectedFilter(filterFromUrl);
-
-        const genresFromUrl = searchParams.get('genres')?.split(',').map(Number) || [];
-        setSelectedGenres(genresFromUrl.filter(g => !isNaN(g)));
-    }, [searchParams]);
-
-    const handleSearch = (value: string) => {
-        setSearch(value);
-        updateSearchParams(value, selectedFilter, selectedGenres);
-    };
-
-    const handleFilterChange = (filter: string) => {
-        setSelectedFilter(filter);
-        updateSearchParams(search, filter, selectedGenres);
-    };
-
-    const handleGenreChange = (genres: number[]) => {
-        setSelectedGenres(genres);
-        updateSearchParams(search, selectedFilter, genres);
-    };
-
-    const updateSearchParams = (searchValue: string, filter: string, genres: number[]) => {
-        if (!searchParams) return;
-
-        const params = new URLSearchParams(searchParams.toString());
-        if (searchValue) params.set('search', searchValue);
-        else params.delete('search');
-
-        if (filter !== 'all') params.set('filter', filter);
-        else params.delete('filter');
-
-        if (genres.length > 0) params.set('genres', genres.join(','));
-        else params.delete('genres');
-
-        params.set('page', '1');
-        router.push(`?${params.toString()}`);
-    };
-
-    const handlePageChange = (newPage: number) => {
-        if (!searchParams) return;
-
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('page', newPage.toString());
-        router.push(`?${params.toString()}`);
-    };
-
-    const removeGenre = (genreId: number) => {
-        const newGenres = selectedGenres.filter(id => id !== genreId);
-        handleGenreChange(newGenres);
+        // Refresh current search to include new book
+        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage);
+        setIsAddModalOpen(false);
     };
 
     const getVisiblePages = (current: number, total: number) => {
@@ -269,7 +433,7 @@ export default function BooksTable({
         return range;
     };
 
-    const visiblePages = getVisiblePages(currentPage, totalPages);
+    const visiblePages = getVisiblePages(currentPage, searchResults.totalPages);
 
     const getGenreName = (genreId: number) => {
         return availableGenres?.find(g => g.id === genreId)?.name || '';
@@ -281,29 +445,32 @@ export default function BooksTable({
                 <div>
                     <CardTitle className="text-gray-100">Gestion des livres</CardTitle>
                     <CardDescription className="text-gray-400">
-                        Gérer et modifiez les livres
+                        {searchResults.total} livre{searchResults.total !== 1 ? 's' : ''} au total
                     </CardDescription>
                 </div>
                 <Button
-                    className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500"
+                    className="bg-blue-600 hover:bg-blue-700"
                     onClick={() => setIsAddModalOpen(true)}
                 >
                     <Plus className="mr-2 h-4 w-4" />
-                    Ajouter un nouveau livre
+                    Ajouter un livre
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
-                {/* Search and filters */}
+                {/* Enhanced Search and filters with loading feedback */}
                 <div className="space-y-4">
                     <div className="flex gap-2 w-full items-center">
                         <div className="relative w-[45%]">
                             <Input
-                                value={search}
-                                onChange={(e) => handleSearch(e.target.value)}
+                                value={searchTerm}
+                                onChange={(e) => handleSearchChange(e.target.value)}
                                 placeholder="Recherche de livres..."
-                                className="pl-10 bg-gray-800 text-gray-200 border-gray-700 placeholder:text-gray-500"
+                                className="pl-10 pr-10 bg-gray-800 text-gray-200 border-gray-700 placeholder:text-gray-500"
                             />
                             <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                            {isSearching && searchTerm.length > 0 && (
+                                <Loader2 className="absolute right-3 top-2.5 text-gray-400 animate-spin" size={20} />
+                            )}
                         </div>
 
                         <select
@@ -352,10 +519,7 @@ export default function BooksTable({
                                                             key={genre.id}
                                                             className="flex items-center w-full px-2 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded-sm cursor-pointer"
                                                             onClick={() => {
-                                                                const newGenres = selectedGenres.includes(genre.id)
-                                                                    ? selectedGenres.filter(id => id !== genre.id)
-                                                                    : [...selectedGenres, genre.id];
-                                                                handleGenreChange(newGenres);
+                                                                handleGenreSelect(genre.id);
                                                                 setGenreSearchQuery('');
                                                             }}
                                                         >
@@ -377,7 +541,7 @@ export default function BooksTable({
                         )}
                     </div>
 
-                    {/* Selected genres */}
+                    {/* Selected genres tags */}
                     {selectedGenres.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {selectedGenres.map(genreId => {
@@ -385,13 +549,13 @@ export default function BooksTable({
                                 return genreName ? (
                                     <div
                                         key={genreId}
-                                        className="bg-gray-700 text-gray-200 rounded-full px-3 py-1 text-sm flex items-center"
+                                        className="bg-blue-100 text-blue-800 rounded-full px-3 py-1 text-sm flex items-center"
                                     >
                                         {genreName}
                                         <button
                                             type="button"
                                             onClick={() => removeGenre(genreId)}
-                                            className="ml-2 hover:text-gray-400"
+                                            className="ml-2 hover:text-blue-600"
                                         >
                                             <X className="h-3 w-3"/>
                                         </button>
@@ -402,124 +566,184 @@ export default function BooksTable({
                     )}
                 </div>
 
-                {/* Books table */}
-                <div className="rounded-md border border-gray-700 bg-gray-800 mt-4">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="border-b border-gray-700 bg-gray-800">
-                                <TableHead className="text-gray-200 font-medium">Titre</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Genres</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Durée de lecture</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Disponible</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {books && books.map((book) => (
-                                <TableRow
-                                    key={book.id}
-                                    className={`
-                                    border-b border-gray-700 
-                                    hover:bg-gray-750 
-                                    ${isLoading ? '[&]:hover:cursor-wait' : 'cursor-pointer'}
-                                `}
-                                    onClick={() => openBookEditModal(book)}
-                                >
-                                    <TableCell className="text-gray-200">
-                                        <div>
-                                            <div>{book.title}</div>
-                                            {book.isbn && (
-                                                <div className="text-sm text-gray-400">
-                                                    ISBN: {book.isbn}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-gray-200">{book.author}</TableCell>
-                                    <TableCell className="text-gray-200">
-                                        {book.genres?.map(g => g.genre.name).join(', ') || 'N/A'}
-                                    </TableCell>
-                                    <TableCell className="text-gray-200">
-                                        {book.readingDurationMinutes
-                                            ? `${Math.floor(book.readingDurationMinutes / 60)}h ${book.readingDurationMinutes % 60}min`
-                                            : 'N/D'
-                                        }
-                                    </TableCell>
-                                    <TableCell className="text-gray-200">
-                                        {book.available ? 'Oui' : 'Non'}
-                                    </TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                            onClick={(e) => openBookEditModal(book, e)}
-                                        >
-                                            Editer
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                {/* Error message */}
+                {error && (
+                    <div className="text-center py-4 bg-red-900/50 text-red-200 rounded-lg border border-red-800 mt-4">
+                        {error}
+                    </div>
+                )}
+
+                {/* Enhanced table with loading states and visual feedback */}
+                <div className="relative mt-4">
+                    {isSearching && searchResults.books.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 bg-gray-800 rounded-lg">
+                            <Loader2 className="animate-spin h-12 w-12 text-blue-400" />
+                            <p className="mt-4 text-gray-300">Recherche en cours...</p>
+                        </div>
+                    ) : searchResults.books.length === 0 ? (
+                        <div className="text-center py-12 bg-gray-800 rounded-lg">
+                            <p className="text-gray-300">
+                                {searchTerm || selectedGenres.length > 0
+                                    ? 'Aucun résultat trouvé pour votre recherche'
+                                    : 'Aucun livre disponible'}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
+                            <div className="rounded-md border border-gray-700 bg-gray-800">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-b border-gray-700 bg-gray-800">
+                                            <TableHead className="text-gray-200 font-medium">Titre</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Genres</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Durée de lecture</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Disponible</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {searchResults.books.map((book) => (
+                                            <TableRow
+                                                key={book.id}
+                                                className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                                onClick={() => openBookEditModal(book)}
+                                            >
+                                                <TableCell className="text-gray-200">
+                                                    <div>
+                                                        <div className="font-medium">{book.title}</div>
+                                                        {book.subtitle && (
+                                                            <div className="text-sm text-gray-400">{book.subtitle}</div>
+                                                        )}
+                                                        {book.isbn && (
+                                                            <div className="text-sm text-gray-500">
+                                                                ISBN: {book.isbn}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-gray-200">{book.author}</TableCell>
+                                                <TableCell className="text-gray-200">
+                                                    <div className="flex flex-wrap gap-1 max-w-xs">
+                                                        {book.genres?.slice(0, 2).map((g, idx) => (
+                                                            <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 whitespace-nowrap">
+                                                                {g.genre.name}
+                                                            </span>
+                                                        ))}
+                                                        {book.genres?.length > 2 && (
+                                                            <span className="text-xs text-gray-400 whitespace-nowrap">+{book.genres.length - 2} plus</span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-gray-200">
+                                                    {book.readingDurationMinutes
+                                                        ? `${Math.floor(book.readingDurationMinutes / 60)}h ${book.readingDurationMinutes % 60}min`
+                                                        : 'N/D'
+                                                    }
+                                                </TableCell>
+                                                <TableCell className="text-gray-200">
+                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                                                        book.available
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                        {book.available ? 'Disponible' : 'Indisponible'}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                                            onClick={(e) => openBookEditModal(book, e)}
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="bg-red-700 text-red-200 border-red-600 hover:bg-red-600"
+                                                            onClick={(e) => handleDeleteClick(book, e)}
+                                                            disabled={isDeleting === book.id}
+                                                        >
+                                                            {isDeleting === book.id ? (
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="w-4 h-4" />
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Pagination */}
-                <div className="flex justify-center items-center gap-2 mt-6">
-                    <Button
-                        size="sm"
-                        className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                        onClick={() => handlePageChange(1)}
-                        disabled={currentPage === 1}
-                    >
-                        {'<<'}
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                    >
-                        {'<'}
-                    </Button>
-                    {visiblePages.map((page, index) => (
-                        typeof page === 'number' ? (
-                            <Button
-                                key={index}
-                                variant={currentPage === page ? "default" : "outline"}
-                                size="sm"
-                                className={currentPage === page
-                                    ? "bg-white text-gray-900 hover:bg-gray-100"
-                                    : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
-                                onClick={() => handlePageChange(page)}
-                            >
-                                {page}
-                            </Button>
-                        ) : (
-                            <span key={index} className="text-gray-400">{page}</span>
-                        )
-                    ))}
-                    <Button
-                        size="sm"
-                        className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                    >
-                        {'>'}
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                        onClick={() => handlePageChange(totalPages)}
-                        disabled={currentPage === totalPages}
-                    >
-                        {'>>'}
-                    </Button>
-                </div>
-                <p className="text-center text-sm text-gray-400 mt-2">
-                    Page {currentPage} sur {totalPages}
-                </p>
+                {/* Enhanced Pagination */}
+                {searchResults.totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-6">
+                        <Button
+                            size="sm"
+                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            onClick={() => handlePageChange(1)}
+                            disabled={currentPage === 1}
+                        >
+                            {'<<'}
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                        >
+                            {'<'}
+                        </Button>
+                        {visiblePages.map((page, index) => (
+                            typeof page === 'number' ? (
+                                <Button
+                                    key={index}
+                                    variant={currentPage === page ? "default" : "outline"}
+                                    size="sm"
+                                    className={currentPage === page
+                                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                    onClick={() => handlePageChange(page)}
+                                >
+                                    {page}
+                                </Button>
+                            ) : (
+                                <span key={index} className="text-gray-400 px-2">{page}</span>
+                            )
+                        ))}
+                        <Button
+                            size="sm"
+                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === searchResults.totalPages}
+                        >
+                            {'>'}
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            onClick={() => handlePageChange(searchResults.totalPages)}
+                            disabled={currentPage === searchResults.totalPages}
+                        >
+                            {'>>'}
+                        </Button>
+                    </div>
+                )}
+
+                {searchResults.totalPages > 1 && (
+                    <p className="text-center text-sm text-gray-400 mt-2">
+                        Page {currentPage} sur {searchResults.totalPages}
+                    </p>
+                )}
             </CardContent>
 
             {/* Add Book Modal */}
@@ -551,6 +775,59 @@ export default function BooksTable({
                     </DialogContent>
                 </Dialog>
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="max-w-md bg-gray-900 border-gray-700">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-100 flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-red-400" />
+                            Confirmer la suppression
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="text-gray-300">
+                            <p className="mb-2">Êtes-vous sûr de vouloir supprimer ce livre ?</p>
+                            {bookToDelete && (
+                                <div className="bg-gray-800 p-3 rounded border border-gray-700">
+                                    <p className="font-medium text-gray-200">{bookToDelete.title}</p>
+                                    <p className="text-sm text-gray-400">par {bookToDelete.author}</p>
+                                </div>
+                            )}
+                            <p className="text-sm text-gray-400 mt-2">
+                                Cette action est irréversible.
+                            </p>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                            <Button
+                                variant="outline"
+                                onClick={cancelDelete}
+                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                disabled={isDeleting !== null}
+                            >
+                                Annuler
+                            </Button>
+                            <Button
+                                onClick={confirmDelete}
+                                className="bg-red-600 text-white hover:bg-red-700"
+                                disabled={isDeleting !== null}
+                            >
+                                {isDeleting !== null ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Suppression...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Supprimer
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }
