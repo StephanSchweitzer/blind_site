@@ -7,6 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -15,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import {NewsType, newsTypeLabels} from '@/types/news';
 import type { NewsPost } from '@/types/news';
+import { Trash2 } from 'lucide-react';
 
 export default function EditArticle() {
     const router = useRouter();
@@ -23,6 +35,7 @@ export default function EditArticle() {
 
     const [formData, setFormData] = useState<NewsPost | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -67,7 +80,7 @@ export default function EditArticle() {
         }));
     };
 
-    const handleTypeChange = (value: NewsType) => {  // Assuming NewsType is your enum/type
+    const handleTypeChange = (value: NewsType) => {
         setFormData((prevData) => {
             if (!prevData) return null;
             return {
@@ -97,15 +110,73 @@ export default function EditArticle() {
         }
     };
 
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/news/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || 'Une erreur est survenue lors de la suppression');
+            }
+
+            router.push('/admin/news');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de la suppression');
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-950">
             <div className="container mx-auto py-8">
                 <Card className="bg-gray-900 border-gray-800">
                     <CardHeader className="border-b border-gray-700">
-                        <CardTitle className="text-gray-100">Modifier la dernière info</CardTitle>
-                        <CardDescription className="text-gray-400">
-                            Modifier l&apos;information de la dernière info
-                        </CardDescription>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <CardTitle className="text-gray-100">Modifier la dernière info</CardTitle>
+                                <CardDescription className="text-gray-400">
+                                    Modifier l&apos;information de la dernière info
+                                </CardDescription>
+                            </div>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="bg-red-900/20 text-red-400 border-red-800 hover:bg-red-900/40 hover:text-red-300"
+                                        disabled={isDeleting}
+                                    >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Supprimer
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-gray-900 border-gray-700">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="text-gray-100">
+                                            Êtes-vous sûr de vouloir supprimer cet article ?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription className="text-gray-400">
+                                            Cette action est irréversible. L&apos;article &quot;{formData.title}&quot; sera définitivement supprimé de la base de données.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600">
+                                            Annuler
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleDelete}
+                                            disabled={isDeleting}
+                                            className="bg-red-600 text-white hover:bg-red-700"
+                                        >
+                                            {isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <form onSubmit={handleSubmit} className="space-y-4">
