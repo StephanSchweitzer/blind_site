@@ -84,7 +84,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                             >
                                 {selectedGenres.length > 0
                                     ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} selected`
-                                    : "Sélectionner les genres..."}
+                                    : "Genres..."}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
                             </Button>
                         </PopoverTrigger>

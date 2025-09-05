@@ -57,7 +57,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                         <span className={`px-2 py-1 rounded-full text-sm ${
                             book.available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
-                            {book.available ? 'Disponible' : 'Indisponible'}
+                            {book.available ? 'Disponible' : 'En attente de lecture'}
                         </span>
                     </div>
                 </div>

@@ -642,7 +642,7 @@ export default function BooksTable({
                                                             ? 'bg-green-100 text-green-800'
                                                             : 'bg-red-100 text-red-800'
                                                     }`}>
-                                                        {book.available ? 'Disponible' : 'Indisponible'}
+                                                        {book.available ? 'Disponible' : 'En attente'}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
