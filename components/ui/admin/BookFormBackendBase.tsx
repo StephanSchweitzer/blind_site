@@ -516,6 +516,7 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
                 body: JSON.stringify({
                     ...formData,
                     publishedDate: formattedDate,
+                    genres: formData.genres?.map(genre => parseInt(genre, 10)),
                 }),
             });
 

@@ -48,7 +48,7 @@ export default async function NousRejoindre() {
                                         <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-blue-300">50€</span>
                                     </p>
                                     <ul className="list-disc list-inside text-gray-300 mt-2 space-y-1">
-                                        <li>Obligatoire mais non déductible des impôts, au titre de l&apos;accession à un service</li>
+                                        <li>Non déductible des impôts, au titre de l&apos;accession à un service</li>
                                         <li>Permet de voter à l&apos;assemblée générale des Auxiliaires des Aveugles</li>
                                     </ul>
                                 </div>
@@ -74,7 +74,7 @@ export default async function NousRejoindre() {
                                         <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-green-300">20€</span>
                                     </p>
                                     <ul className="list-disc list-inside text-gray-300 mt-2 space-y-1">
-                                        <li>Obligatoire et déductible des impôts</li>
+                                        <li>Déductible des impôts</li>
                                         <li>Permet d&apos;être assuré et de voter à l&apos;assemblée générale des Auxiliaires des Aveugles</li>
                                     </ul>
                                 </div>
