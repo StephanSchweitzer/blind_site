@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDown, ChevronUp, Volume2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Volume2, Filter } from 'lucide-react';
 
 // Initialize AWS Polly
 const pollyClient = new PollyClient({
@@ -31,12 +31,21 @@ interface BookModalProps {
     book: BookWithGenres | null;
     isOpen: boolean;
     onClose: () => void;
+    onGenreClick?: (genreId: number) => void;
+    selectedGenres?: number[];
 }
 
-export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) => {
+export const BookModal: React.FC<BookModalProps> = ({
+                                                        book,
+                                                        isOpen,
+                                                        onClose,
+                                                        onGenreClick,
+                                                        selectedGenres = []
+                                                    }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     // Rest of the utility functions remain the same
     const formatMinutes = (minutes: number): string => {
@@ -160,7 +169,11 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
         setAudioElement(null);
     }, [audioElement]);
 
-    const [isLoading, setIsLoading] = useState(false);
+    const handleGenreClick = useCallback((genreId: number) => {
+        if (onGenreClick) {
+            onGenreClick(genreId);
+        }
+    }, [onGenreClick]);
 
     if (!book) return null;
 
@@ -181,20 +194,38 @@ export const BookModal: React.FC<BookModalProps> = ({ book, isOpen, onClose }) =
                         <div className="mt-2">
                             <p className="text-gray-800 mb-1">Genres:</p>
                             <div className="flex flex-wrap gap-1" role="list" aria-label="Genres du livre">
-                                {book.genres.map(({ genre }) => (
-                                    <span
-                                        key={genre.id}
-                                        className="bg-blue-100 text-blue-800 text-sm px-2 py-0.5 rounded-full"
-                                        role="listitem"
-                                    >
-                                        {genre.name}
-                                    </span>
-                                ))}
+                                {book.genres.map(({ genre }) => {
+                                    const isSelected = selectedGenres.includes(genre.id);
+                                    return (
+                                        <button
+                                            key={genre.id}
+                                            onClick={() => handleGenreClick(genre.id)}
+                                            disabled={isSelected}
+                                            className={`${
+                                                isSelected
+                                                    ? 'bg-green-100 text-green-800 cursor-not-allowed'
+                                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer'
+                                            } text-sm px-2 py-0.5 rounded-full transition-colors duration-200 inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1`}
+                                            role="listitem"
+                                            aria-label={isSelected ? `Genre ${genre.name} déjà sélectionné` : `Cliquer pour filtrer par ${genre.name}`}
+                                            title={isSelected ? 'Déjà dans les filtres' : 'Cliquer pour ajouter aux filtres'}
+                                            tabIndex={-1}
+                                        >
+                                            {genre.name}
+                                            {isSelected && <Filter className="w-3 h-3" />}
+                                        </button>
+                                    );
+                                })}
                             </div>
+                            {onGenreClick && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                    💡 Cliquez sur un genre pour l'ajouter aux filtres de recherche
+                                </p>
+                            )}
                         </div>
                         {book.publishedDate && (
                             <p className="text-gray-800 mt-2" aria-label="Date de publication">
-                                Date de publication: {new Date(book.publishedDate).toLocaleDateString('fr-FR')}
+                                Date de publication : {new Date(book.publishedDate).toLocaleDateString('fr-FR')}
                             </p>
                         )}
                         {book.readingDurationMinutes && (

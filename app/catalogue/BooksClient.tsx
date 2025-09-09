@@ -165,6 +165,17 @@ export function BooksClient({
         setIsModalOpen(true);
     }, []);
 
+    // New handler for genre click from modal
+    const handleGenreClickFromModal = useCallback((genreId: number) => {
+        // Add genre to selection if not already selected
+        if (!selectedGenres.includes(genreId)) {
+            setSelectedGenres(prev => [...prev, genreId]);
+            setCurrentPage(1);
+        }
+        // Close modal
+        setIsModalOpen(false);
+    }, [selectedGenres]);
+
     return (
         <div className="space-y-8">
             <SearchBar
@@ -217,6 +228,8 @@ export function BooksClient({
                 book={selectedBook}
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
+                onGenreClick={handleGenreClickFromModal}
+                selectedGenres={selectedGenres}
             />
         </div>
     );

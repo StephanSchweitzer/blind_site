@@ -1,4 +1,3 @@
-// app/books/page.tsx
 import { Suspense } from 'react';
 import { BooksClient } from './BooksClient';
 import FrontendNavbar from "@/components/Frontend-Navbar";
@@ -6,11 +5,9 @@ import { prisma } from '@/lib/prisma';
 
 export const revalidate = 300;
 
-// This runs on the server
 async function getInitialData() {
     try {
         const [books, genres, totalBooks] = await Promise.all([
-            // Get first page of books
             prisma.book.findMany({
                 include: {
                     genres: {
@@ -20,11 +17,9 @@ async function getInitialData() {
                 take: 9,
                 orderBy: { createdAt: 'desc' }
             }),
-            // Get all genres
             prisma.genre.findMany({
                 orderBy: { name: 'asc' }
             }),
-            // Get total count
             prisma.book.count()
         ]);
 
