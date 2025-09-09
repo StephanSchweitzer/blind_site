@@ -64,7 +64,7 @@ const FrontendNavbar = () => {
                 <div className="w-full px-4 sm:px-6">
                     <div className="flex justify-center items-center">
                         {/* Desktop menu */}
-                        <div className="hidden md:flex md:flex-nowrap space-x-8 text-lg justify-between">
+                        <div className="hidden lg:flex lg:flex-nowrap space-x-8 text-lg justify-between">
                             {navLinks.map((link, index) => (
                                 <div key={`${link.href}-${index}`} className="relative group whitespace-nowrap">
                                     {link.dropdown ? (
@@ -104,7 +104,7 @@ const FrontendNavbar = () => {
 
                         {/* Mobile menu button */}
                         <button
-                            className="md:hidden"
+                            className="lg:hidden"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                         >
                             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -113,7 +113,7 @@ const FrontendNavbar = () => {
 
                     {/* Mobile menu */}
                     {isMenuOpen && (
-                        <div className="md:hidden mt-4 space-y-4">
+                        <div className="lg:hidden mt-4 space-y-4">
                             {navLinks.map((link, index) => (
                                 <div key={`mobile-${link.href}-${index}`}>
                                     {link.dropdown ? (
