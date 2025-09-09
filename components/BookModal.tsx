@@ -179,109 +179,121 @@ export const BookModal: React.FC<BookModalProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold" role="heading" aria-level={1}>
+            <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col rounded-lg">
+                <DialogHeader className="flex-shrink-0">
+                    <DialogTitle className="text-xl sm:text-2xl font-bold" role="heading" aria-level={1}>
                         {book.title}
                     </DialogTitle>
-                    <p className="text-lg text-gray-800 mt-1">
+                    <p className="text-base sm:text-lg text-gray-800 mt-1">
                         {book.subtitle}
                     </p>
                 </DialogHeader>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
-                        <p className="text-gray-800" aria-label="Auteur">Auteur: {book.author}</p>
-                        <div className="mt-2">
-                            <p className="text-gray-800 mb-1">Genres:</p>
-                            <div className="flex flex-wrap gap-1" role="list" aria-label="Genres du livre">
-                                {book.genres.map(({ genre }) => {
-                                    const isSelected = selectedGenres.includes(genre.id);
-                                    return (
-                                        <button
-                                            key={genre.id}
-                                            onClick={() => handleGenreClick(genre.id)}
-                                            disabled={isSelected}
-                                            className={`${
-                                                isSelected
-                                                    ? 'bg-green-100 text-green-800 cursor-not-allowed'
-                                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer'
-                                            } text-sm px-2 py-0.5 rounded-full transition-colors duration-200 inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1`}
-                                            role="listitem"
-                                            aria-label={isSelected ? `Genre ${genre.name} déjà sélectionné` : `Cliquer pour filtrer par ${genre.name}`}
-                                            title={isSelected ? 'Déjà dans les filtres' : 'Cliquer pour ajouter aux filtres'}
-                                            tabIndex={-1}
-                                        >
-                                            {genre.name}
-                                            {isSelected && <Filter className="w-3 h-3" />}
-                                        </button>
-                                    );
-                                })}
+
+                <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                        <div className="space-y-3">
+                            <p className="text-gray-800" aria-label="Auteur">Auteur: {book.author}</p>
+
+                            <div>
+                                <p className="text-gray-800 mb-2 font-medium">Genres:</p>
+                                <div className="flex flex-wrap gap-1" role="list" aria-label="Genres du livre">
+                                    {book.genres.map(({ genre }) => {
+                                        const isSelected = selectedGenres.includes(genre.id);
+                                        return (
+                                            <button
+                                                key={genre.id}
+                                                onClick={() => handleGenreClick(genre.id)}
+                                                disabled={isSelected}
+                                                className={`${
+                                                    isSelected
+                                                        ? 'bg-green-100 text-green-800 cursor-not-allowed'
+                                                        : 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer'
+                                                } text-sm px-2 py-0.5 rounded-full transition-colors duration-200 inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1`}
+                                                role="listitem"
+                                                aria-label={isSelected ? `Genre ${genre.name} déjà sélectionné` : `Cliquer pour filtrer par ${genre.name}`}
+                                                title={isSelected ? 'Déjà dans les filtres' : 'Cliquer pour ajouter aux filtres'}
+                                                tabIndex={-1}
+                                            >
+                                                {genre.name}
+                                                {isSelected && <Filter className="w-3 h-3" />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {onGenreClick && (
+                                    <p className="text-xs text-gray-600 mt-2">
+                                        💡 Cliquez sur un genre pour l&apos;ajouter aux filtres de recherche
+                                    </p>
+                                )}
                             </div>
-                            {onGenreClick && (
-                                <p className="text-xs text-gray-600 mt-1">
-                                    💡 Cliquez sur un genre pour l&apos;ajouter aux filtres de recherche
+
+                            {book.publishedDate && (
+                                <p className="text-gray-800" aria-label="Date de publication">
+                                    Date de publication : {new Date(book.publishedDate).toLocaleDateString('fr-FR')}
+                                </p>
+                            )}
+
+                            {book.readingDurationMinutes && (
+                                <p className="text-gray-800" aria-label="Durée de lecture">
+                                    Durée de l&apos;enregistrement: {formatMinutes(book.readingDurationMinutes)}
                                 </p>
                             )}
                         </div>
-                        {book.publishedDate && (
-                            <p className="text-gray-800 mt-2" aria-label="Date de publication">
-                                Date de publication : {new Date(book.publishedDate).toLocaleDateString('fr-FR')}
-                            </p>
-                        )}
-                        {book.readingDurationMinutes && (
-                            <p className="text-gray-800 mt-2" aria-label="Durée de lecture">
-                                Durée de l&apos;enregistrement: {formatMinutes(book.readingDurationMinutes)}
-                            </p>
-                        )}
-                    </div>
-                    <div>
-                        <h3 className="font-semibold mb-2">Description</h3>
-                        <div
-                            className={`${isExpanded ? 'max-h-96' : 'max-h-32'} overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 transition-all duration-300`}
-                            role="region"
-                            aria-label="Description du livre"
-                        >
-                            <p className="text-gray-800 whitespace-pre-wrap">
-                                {book.description || 'Aucune description disponible.'}
-                            </p>
-                        </div>
-                        <div className="flex flex-col gap-2 mt-2">
-                            {book.description && book.description.length > 200 ? (
+
+                        <div className="flex flex-col">
+                            <h3 className="font-semibold mb-2">Description</h3>
+                            <div
+                                className={`${
+                                    isExpanded ? 'max-h-48 sm:max-h-64 lg:max-h-80' : 'max-h-24 sm:max-h-32'
+                                } overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 transition-all duration-300 flex-1 mb-3`}
+                                role="region"
+                                aria-label="Description du livre"
+                            >
+                                <p className="text-gray-800 whitespace-pre-wrap text-sm sm:text-base">
+                                    {book.description || 'Aucune description disponible.'}
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col gap-2 mt-auto">
+                                {book.description && book.description.length > 200 && (
+                                    <button
+                                        onClick={() => setIsExpanded(!isExpanded)}
+                                        className="flex items-center text-blue-600 hover:text-blue-800 focus:outline-none self-start"
+                                        aria-label={isExpanded ? "Voir moins" : "Voir plus"}
+                                    >
+                                        {isExpanded ? (
+                                            <>
+                                                <ChevronUp className="w-4 h-4 mr-1" />
+                                                Voir moins
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ChevronDown className="w-4 h-4 mr-1" />
+                                                Voir plus
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+
                                 <button
-                                    onClick={() => setIsExpanded(!isExpanded)}
-                                    className="flex items-center text-blue-600 hover:text-blue-800 focus:outline-none"
-                                    aria-label={isExpanded ? "Voir moins" : "Voir plus"}
+                                    onClick={() => isSpeaking ? stopSpeaking() : speak(generateFrenchText())}
+                                    className={`flex items-center justify-center px-4 py-2 text-sm sm:text-base ${
+                                        isSpeaking && !isLoading ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+                                    } text-white rounded-lg w-full sm:w-48 h-10`}
+                                    disabled={isLoading}
+                                    tabIndex={-1}
+                                    aria-label={isSpeaking ? "Arrêter la lecture" : "Lire les informations en français"}
                                 >
-                                    {isExpanded ? (
-                                        <>
-                                            <ChevronUp className="w-4 h-4 mr-1" />
-                                            Voir moins
-                                        </>
+                                    {isLoading ? (
+                                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white" />
                                     ) : (
                                         <>
-                                            <ChevronDown className="w-4 h-4 mr-1" />
-                                            Voir plus
+                                            <Volume2 className="w-4 h-4 mr-2" />
+                                            {isSpeaking ? 'Arrêter la lecture' : 'Brève description'}
                                         </>
                                     )}
                                 </button>
-                            ) : null}
-                            <button
-                                onClick={() => isSpeaking ? stopSpeaking() : speak(generateFrenchText())}
-                                className={`flex items-center justify-center px-4 py-2 ${
-                                    isSpeaking && !isLoading ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
-                                } text-white rounded-lg relative w-48 h-10`}
-                                disabled={isLoading}
-                                aria-label={isSpeaking ? "Arrêter la lecture" : "Lire les informations en français"}
-                            >
-                                {isLoading ? (
-                                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white" />
-                                ) : (
-                                    <>
-                                        <Volume2 className="w-4 h-4 mr-2" />
-                                        {isSpeaking ? 'Arrêter la lecture' : 'Brève description'}
-                                    </>
-                                )}
-                            </button>
+                            </div>
                         </div>
                     </div>
                 </div>
