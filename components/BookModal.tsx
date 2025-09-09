@@ -219,7 +219,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                             </div>
                             {onGenreClick && (
                                 <p className="text-xs text-gray-600 mt-1">
-                                    💡 Cliquez sur un genre pour l'ajouter aux filtres de recherche
+                                    💡 Cliquez sur un genre pour l&apos;ajouter aux filtres de recherche
                                 </p>
                             )}
                         </div>
