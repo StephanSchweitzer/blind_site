@@ -16,6 +16,8 @@ model News {
   authorId    Int
   type        String   @default("GENERAL")
   author      User     @relation("UserNews", fields: [authorId], references: [id])
+
+  @@index([authorId, publishedAt])
 }
 
 model User {
@@ -56,6 +58,7 @@ model Book {
   @@index([author])
   @@index([isbn])
   @@index([available])
+  @@index([addedById, createdAt])
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -79,6 +82,8 @@ model CoupsDeCoeur {
   addedById   Int
   addedBy     User                @relation(fields: [addedById], references: [id])
   books       CoupsDeCoeurBooks[]
+
+  @@index([addedById, createdAt])
 }
 
 model CoupsDeCoeurBooks {

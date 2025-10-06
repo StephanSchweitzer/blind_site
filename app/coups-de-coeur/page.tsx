@@ -10,7 +10,7 @@ import type { Book, CoupDeCoeur, CoupsDeCoeurResponse } from '@/types/coups-de-c
 //import { PDFButton } from "components/PDFButton";
 import {PDFButton} from "@/coups-de-coeur/PDFButton";
 import { PDFContent } from '@/coups-de-coeur/PDFContent';
-import generatePDF from 'react-to-pdf';
+import generatePDF, {Margin} from 'react-to-pdf';
 
 export default function CoupsDeCoeurPage() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -91,9 +91,10 @@ export default function CoupsDeCoeurPage() {
         setIsExporting(true);
         try {
             await generatePDF(pdfContentRef, {
+                method: "save",
                 filename: `${coupsDeCoeur[0].title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
                 page: {
-                    margin: 20,
+                    margin: Margin.MEDIUM,
                     format: 'a4'
                 }
             });
