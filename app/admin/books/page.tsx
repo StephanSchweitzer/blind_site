@@ -185,7 +185,7 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
         const { books, totalBooks, totalPages, availableGenres } = await getBooks(page, searchTerm, filter, genreIds);
 
         return (
-            <div className="container mx-auto py-6">
+            <div className="space-y-4">
                 <BooksTable
                     initialBooks={books}
                     initialPage={page}

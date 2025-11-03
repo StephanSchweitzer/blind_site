@@ -2,13 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
+import { BookOpen, Theater, Newspaper, List, ShoppingCart, UserCheck, Users, LucideIcon } from 'lucide-react';
 
 interface AdminDashboardCardProps {
     title: string;
     count: number;
     href: string;
     buttonText: string;
-    accentColor: 'blue' | 'purple' | 'green' | 'pink';
+    accentColor: 'blue' | 'purple' | 'green' | 'pink' | 'yellow' | 'cyan' | 'orange';
 }
 
 const colorMap = {
@@ -17,6 +18,12 @@ const colorMap = {
         hoverBg: 'hover:bg-blue-900/50',
         text: 'text-blue-400',
         border: 'border-blue-900',
+    },
+    yellow: {
+        bg: 'bg-yellow-950/50',
+        hoverBg: 'hover:bg-yellow-900/50',
+        text: 'text-yellow-400',
+        border: 'border-yellow-900',
     },
     purple: {
         bg: 'bg-purple-950/50',
@@ -35,7 +42,29 @@ const colorMap = {
         hoverBg: 'hover:bg-pink-900/50',
         text: 'text-pink-400',
         border: 'border-pink-900',
+    },
+    cyan: {
+        bg: 'bg-cyan-950/50',
+        hoverBg: 'hover:bg-cyan-900/50',
+        text: 'text-cyan-400',
+        border: 'border-cyan-900',
+    },
+    orange: {
+        bg: 'bg-orange-950/50',
+        hoverBg: 'hover:bg-orange-900/50',
+        text: 'text-orange-400',
+        border: 'border-orange-900',
     }
+};
+
+const iconMap: Record<string, LucideIcon> = {
+    'Catalogue': BookOpen,
+    'Genres': Theater,
+    'Dernières infos': Newspaper,
+    'Listes de livres': List,
+    'Commandes': ShoppingCart,
+    'Affectations': UserCheck,
+    'Utilisateurs': Users,
 };
 
 export function AdminDashboardCard({
@@ -48,6 +77,7 @@ export function AdminDashboardCard({
     const router = useRouter();
     const pathname = usePathname();
     const colors = colorMap[accentColor];
+    const Icon = iconMap[title];
 
     const handleNavigation = () => {
         window.history.pushState({ from: pathname }, '', href);
@@ -59,7 +89,12 @@ export function AdminDashboardCard({
             onClick={handleNavigation}
             className={`p-6 rounded-lg border cursor-pointer ${colors.border} ${colors.bg} ${colors.hoverBg} transition-all duration-200`}
         >
-            <h2 className={`text-2xl font-bold mb-2 ${colors.text}`}>{title}</h2>
+            <div className="flex items-start justify-between mb-2">
+                <h2 className={`text-2xl font-bold ${colors.text}`}>{title}</h2>
+                {Icon && (
+                    <Icon className={`w-7 h-7 ${colors.text} opacity-70`} />
+                )}
+            </div>
             <p className="text-4xl font-extrabold text-gray-100">{count}</p>
             <div className={`mt-4 text-sm font-medium ${colors.text}`}>
                 {buttonText} →

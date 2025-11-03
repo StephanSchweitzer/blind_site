@@ -19,16 +19,21 @@ model News {
 }
 
 model User {
-  id                  Int            @id @default(autoincrement())
-  email               String         @unique
-  password            String
-  name                String?
-  role                String         @default("user")
-  createdAt           DateTime       @default(now())
-  passwordNeedsChange Boolean        @default(true)
-  books               Book[]
-  CoupsDeCoeur        CoupsDeCoeur[]
-  News                News[]         @relation("UserNews")
+  id                     Int            @id @default(autoincrement())
+  email                  String         @unique
+  password               String
+  name                   String?
+  role                   String         @default("user")
+  createdAt              DateTime       @default(now())
+  passwordNeedsChange    Boolean        @default(true)
+  books                  Book[]
+  CoupsDeCoeur           CoupsDeCoeur[]
+  News                   News[]         @relation("UserNews")
+  ordersAsAveugle        Orders[]       @relation("OrdersAsAveugle")
+  ordersProcessedBy      Orders[]       @relation("OrdersProcessedBy")
+  assignmentsAsReader    Assignment[]   @relation("AssignmentsAsReader")
+  assignmentsProcessedBy Assignment[]   @relation("AssignmentsProcessedBy")
+  bills                  Bill[]
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -50,6 +55,8 @@ model Book {
   addedBy                User                @relation(fields: [addedById], references: [id])
   genres                 BookGenre[]
   CoupsDeCoeurBooks      CoupsDeCoeurBooks[]
+  orders                 Orders[]
+  assignments            Assignment[]
 
   @@index([createdAt(sort: Desc)])
   @@index([title])
@@ -99,6 +106,122 @@ model BookGenre {
   @@id([bookId, genreId])
   @@index([bookId])
   @@index([genreId])
+}
+
+model Status {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  description String?
+  sortOrder   Int?
+  orders      Orders[]
+  assignments Assignment[]
+  Bill        Bill[]
+
+  @@index([name])
+}
+
+model MediaFormat {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(80)
+  description String?  @db.VarChar(200)
+  orders      Orders[]
+
+  @@index([name])
+}
+
+model Bill {
+  id            Int       @id @default(autoincrement())
+  clientId      Int
+  stateId       Int
+  creationDate  DateTime
+  issueDate     DateTime?
+  paymentDate   DateTime?
+  invoiceAmount Decimal   @db.Decimal(10, 2)
+
+  // Relations
+  client User     @relation(fields: [clientId], references: [id])
+  state  Status   @relation(fields: [stateId], references: [id])
+  orders Orders[]
+
+  @@index([clientId])
+  @@index([stateId])
+  @@index([creationDate])
+}
+
+model Orders {
+  id                  Int            @id @default(autoincrement())
+  aveugleId           Int
+  catalogueId         Int
+  requestReceivedDate DateTime
+  statusId            Int
+  isDuplication       Boolean
+  mediaFormatId       Int
+  deliveryMethod      DeliveryMethod
+  processedByStaffId  Int?
+  createdDate         DateTime?
+  closureDate         DateTime?
+  updatedAt           DateTime?
+  cost                Decimal?       @db.Decimal(10, 2)
+  billingStatus       BillingStatus  @default(UNBILLED)
+  billId              Int?
+  lentPhysicalBook    Boolean
+  notes               String?        @db.Text
+
+  // Relations
+  aveugle          User         @relation("OrdersAsAveugle", fields: [aveugleId], references: [id])
+  catalogue        Book         @relation(fields: [catalogueId], references: [id])
+  status           Status       @relation(fields: [statusId], references: [id])
+  mediaFormat      MediaFormat  @relation(fields: [mediaFormatId], references: [id])
+  processedByStaff User?        @relation("OrdersProcessedBy", fields: [processedByStaffId], references: [id])
+  bill             Bill?        @relation(fields: [billId], references: [id])
+  assignments      Assignment[]
+
+  // Note: needsReturn should be computed in your application logic as:
+  // needsReturn = lentPhysicalBook === true && closureDate === null
+
+  @@index([aveugleId])
+  @@index([catalogueId])
+  @@index([statusId])
+  @@index([billingStatus])
+  @@index([mediaFormatId])
+  @@index([billId])
+}
+
+model Assignment {
+  id                 Int       @id @default(autoincrement())
+  readerId           Int
+  catalogueId        Int
+  orderId            Int?
+  receptionDate      DateTime?
+  sentToReaderDate   DateTime?
+  returnedToECADate  DateTime?
+  statusId           Int
+  notes              String?   @db.Text
+  processedByStaffId Int?
+
+  // Relations
+  reader           User    @relation("AssignmentsAsReader", fields: [readerId], references: [id])
+  catalogue        Book    @relation(fields: [catalogueId], references: [id])
+  order            Orders? @relation(fields: [orderId], references: [id])
+  status           Status  @relation(fields: [statusId], references: [id])
+  processedByStaff User?   @relation("AssignmentsProcessedBy", fields: [processedByStaffId], references: [id])
+
+  @@index([readerId])
+  @@index([catalogueId])
+  @@index([orderId])
+  @@index([statusId])
+}
+
+enum DeliveryMethod {
+  RETRAIT
+  ENVOI
+  NON_APPLICABLE
+}
+
+enum BillingStatus {
+  UNBILLED
+  BILLED
+  PAID
 }
 
 enum NewsType {
