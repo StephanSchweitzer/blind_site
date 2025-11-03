@@ -126,15 +126,6 @@ export default function OrdersTable({
         return labels[status] || status;
     };
 
-    const getDeliveryMethodLabel = (method: string) => {
-        const labels: Record<string, string> = {
-            RETRAIT: 'Retrait',
-            ENVOI: 'Envoi',
-            NON_APPLICABLE: 'Non applicable',
-        };
-        return labels[method] || method;
-    };
-
     const getStatusDisplayName = (statusName: string) => {
         const displayMap: Record<string, string> = {
             'Attente envoi vers lecteur': 'À envoyer',
