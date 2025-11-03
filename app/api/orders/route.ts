@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
         const ordersPerPage = 10;
 
-        let whereClause: Prisma.OrdersWhereInput = {};
+        const whereClause: Prisma.OrdersWhereInput = {};
 
         // Search filter
         if (search) {
@@ -60,16 +60,25 @@ export async function GET(request: NextRequest) {
 
         // Special filters
         if (filter === 'needsReturn') {
+            const existingConditions = whereClause.AND
+                ? (Array.isArray(whereClause.AND) ? whereClause.AND : [whereClause.AND])
+                : [];
+
             whereClause.AND = [
-                ...(whereClause.AND || []),
+                ...existingConditions,
                 { lentPhysicalBook: true },
                 { closureDate: null },
             ];
         } else if (filter === 'late') {
+            const existingConditions = whereClause.AND
+                ? (Array.isArray(whereClause.AND) ? whereClause.AND : [whereClause.AND])
+                : [];
+
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
             whereClause.AND = [
-                ...(whereClause.AND || []),
+                ...existingConditions,
                 { requestReceivedDate: { lt: thirtyDaysAgo } },
                 { closureDate: null },
             ];
@@ -80,11 +89,10 @@ export async function GET(request: NextRequest) {
             whereClause.statusId = parseInt(statusId);
         }
 
-        // Billing status filter
         if (billingStatus && billingStatus !== 'all') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             whereClause.billingStatus = billingStatus as any;
         }
-
         const [orders, totalOrders] = await Promise.all([
             prisma.orders.findMany({
                 where: whereClause,
