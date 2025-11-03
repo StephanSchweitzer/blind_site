@@ -12,6 +12,12 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
     Table,
     TableBody,
     TableCell,
@@ -20,7 +26,8 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X } from 'lucide-react';
+import { Search, X, Plus } from 'lucide-react';
+import { AddOrderForm } from './components/AddOrderForm';
 
 type OrderWithRelations = {
     id: number;
@@ -61,12 +68,12 @@ export default function OrdersTable({
                                         initialSearch,
                                         totalPages,
                                         availableStatuses,
-                                        initialTotalOrders,
                                     }: OrdersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const currentPage = initialPage;
     const currentFilter = searchParams.get('filter') || 'all';
     const currentBillingStatus = searchParams.get('billingStatus') || 'all';
@@ -110,6 +117,11 @@ export default function OrdersTable({
     const handlePageChange = (page: number) => {
         const queryString = createQueryString({ page: page.toString() });
         router.push(`?${queryString}`);
+    };
+
+    const handleOrderAdded = () => {
+        setIsAddModalOpen(false);
+        router.refresh();
     };
 
     const formatDate = (dateString: string | null) => {
@@ -171,41 +183,41 @@ export default function OrdersTable({
 
     return (
         <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="border-b border-gray-800 pb-6">
-                <div className="flex items-center justify-between">
+            <CardHeader className="pb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <CardTitle className="text-gray-100 text-2xl">Commandes</CardTitle>
+                        <CardTitle className="text-2xl text-gray-100">Commandes</CardTitle>
                         <CardDescription className="text-gray-400 mt-1">
-                            Gérer et suivre toutes les commandes
+                            Gérer toutes les commandes de livres
                         </CardDescription>
                     </div>
-                    <p className="text-sm text-gray-400">
-                        {initialTotalOrders} commande{initialTotalOrders !== 1 ? 's' : ''} au total
-                    </p>
+                    <Button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nouvelle commande
+                    </Button>
                 </div>
             </CardHeader>
 
-            <CardContent className="pt-6">
+            <CardContent className="space-y-6">
                 {/* Search and Filters */}
-                <div className="space-y-4 mb-6">
-                    {/* Search Bar */}
+                <div className="space-y-4">
                     <div className="flex gap-2">
                         <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
-                                placeholder="Rechercher par client ou livre..."
+                                placeholder="Rechercher par client, livre..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleSearch();
-                                    }
-                                }}
-                                className="pr-8 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
                             />
                             {searchTerm && (
                                 <button
                                     onClick={handleClearSearch}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
                                 >
                                     <X className="h-4 w-4" />
                                 </button>
@@ -215,22 +227,20 @@ export default function OrdersTable({
                             onClick={handleSearch}
                             className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
-                            <Search className="h-4 w-4 mr-2" />
                             Rechercher
                         </Button>
                     </div>
 
-                    {/* Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex gap-2 overflow-x-auto">
                         <Select
                             value={currentFilter}
                             onValueChange={(value) => handleFilterChange('filter', value)}
                         >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
-                                <SelectValue placeholder="Filtres spéciaux" />
+                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[180px] flex-shrink-0">
+                                <SelectValue placeholder="Filtre spécial" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value="all" className="text-gray-200">Toutes les commandes</SelectItem>
+                                <SelectItem value="all" className="text-gray-200">Toutes</SelectItem>
                                 <SelectItem value="needsReturn" className="text-gray-200">À retourner</SelectItem>
                                 <SelectItem value="late" className="text-gray-200">En retard</SelectItem>
                             </SelectContent>
@@ -240,7 +250,7 @@ export default function OrdersTable({
                             value={currentStatusId}
                             onValueChange={(value) => handleFilterChange('statusId', value)}
                         >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[180px] flex-shrink-0">
                                 <SelectValue placeholder="Statut" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700">
@@ -257,7 +267,7 @@ export default function OrdersTable({
                             value={currentBillingStatus}
                             onValueChange={(value) => handleFilterChange('billingStatus', value)}
                         >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
                                 <SelectValue placeholder="État de facturation" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700">
@@ -408,6 +418,18 @@ export default function OrdersTable({
                     </p>
                 )}
             </CardContent>
+
+            {/* Add Order Dialog */}
+            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-100">Ajouter une nouvelle commande</DialogTitle>
+                    </DialogHeader>
+                    <div className="overflow-y-auto px-1">
+                        <AddOrderForm onSuccess={handleOrderAdded} />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }
