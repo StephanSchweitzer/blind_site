@@ -135,6 +135,17 @@ export default function OrdersTable({
         return labels[method] || method;
     };
 
+    const getStatusDisplayName = (statusName: string) => {
+        const displayMap: Record<string, string> = {
+            'Attente envoi vers lecteur': 'À envoyer',
+            'En cours de traitement': 'En cours',
+            'Commande terminée': 'Terminée',
+            'En attente de validation': 'À valider',
+            'Commande annulée': 'Annulée',
+        };
+        return displayMap[statusName] || statusName;
+    };
+
     // Calculate visible pages (similar to books table)
     const getVisiblePages = () => {
         const pages: (number | string)[] = [];
@@ -285,8 +296,6 @@ export default function OrdersTable({
                                         <TableHead className="text-gray-200 font-medium">Date demande</TableHead>
                                         <TableHead className="text-gray-200 font-medium">Statut</TableHead>
                                         <TableHead className="text-gray-200 font-medium">Facturation</TableHead>
-                                        <TableHead className="text-gray-200 font-medium">Livraison</TableHead>
-                                        <TableHead className="text-gray-200 font-medium">Coût</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -323,7 +332,7 @@ export default function OrdersTable({
                                             </TableCell>
                                             <TableCell>
                                                 <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {order.status.name}
+                                                    {getStatusDisplayName(order.status.name)}
                                                 </span>
                                             </TableCell>
                                             <TableCell>
@@ -338,12 +347,6 @@ export default function OrdersTable({
                                                 >
                                                     {getBillingStatusLabel(order.billingStatus)}
                                                 </span>
-                                            </TableCell>
-                                            <TableCell className="text-gray-200">
-                                                {getDeliveryMethodLabel(order.deliveryMethod)}
-                                            </TableCell>
-                                            <TableCell className="text-gray-200">
-                                                {order.cost ? `${order.cost.toFixed(2)} €` : '-'}
                                             </TableCell>
                                         </TableRow>
                                     ))}
