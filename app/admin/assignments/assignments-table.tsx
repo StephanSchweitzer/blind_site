@@ -41,7 +41,7 @@ interface Assignment {
     statusId: number;
     reader: {
         name: string | null;
-        email: string;
+        email: string | null;
     };
     catalogue: {
         title: string;
