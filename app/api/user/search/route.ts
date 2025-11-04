@@ -1,13 +1,28 @@
-// app/api/users/search/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+        return new NextResponse(JSON.stringify({ error: "unauthorized" }), {
+            status: 401,
+        });
+    }
+
+    if (session?.user.role !== 'admin' && session?.user.role !== 'super_admin') {
+        return new NextResponse(JSON.stringify({ error: "insufficient authorization" }), {
+            status: 403,
+        });
+    }
+
     try {
         const searchParams = request.nextUrl.searchParams;
         const query = searchParams.get('q') || '';
-        const role = searchParams.get('role'); // Optional: 'AVEUGLE', 'STAFF', 'ADMIN', 'user'
+        const role = searchParams.get('role');
 
         if (query.length < 2) {
             return NextResponse.json([]);
@@ -16,7 +31,13 @@ export async function GET(request: NextRequest) {
         const whereClause: Prisma.UserWhereInput = {
             OR: [
                 {
-                    name: {
+                    firstName: {
+                        contains: query,
+                        mode: Prisma.QueryMode.insensitive,
+                    },
+                },
+                {
+                    lastName: {
                         contains: query,
                         mode: Prisma.QueryMode.insensitive,
                     },
@@ -30,8 +51,6 @@ export async function GET(request: NextRequest) {
             ],
         };
 
-        // Filter by role if specified
-        // role is a String field in the User model (not an enum)
         if (role) {
             whereClause.role = role;
         }
@@ -41,13 +60,17 @@ export async function GET(request: NextRequest) {
             select: {
                 id: true,
                 email: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 role: true,
             },
-            take: 20, // Limit results
+            take: 20,
             orderBy: [
                 {
-                    name: 'asc',
+                    firstName: 'asc',
+                },
+                {
+                    lastName: 'asc',
                 },
                 {
                     email: 'asc',

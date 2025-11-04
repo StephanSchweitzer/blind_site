@@ -19,21 +19,59 @@ model News {
 }
 
 model User {
-  id                     Int            @id @default(autoincrement())
-  email                  String         @unique
-  password               String
-  name                   String?
-  role                   String         @default("user")
-  createdAt              DateTime       @default(now())
-  passwordNeedsChange    Boolean        @default(true)
-  books                  Book[]
-  CoupsDeCoeur           CoupsDeCoeur[]
-  News                   News[]         @relation("UserNews")
-  ordersAsAveugle        Orders[]       @relation("OrdersAsAveugle")
-  ordersProcessedBy      Orders[]       @relation("OrdersProcessedBy")
-  assignmentsAsReader    Assignment[]   @relation("AssignmentsAsReader")
-  assignmentsProcessedBy Assignment[]   @relation("AssignmentsProcessedBy")
-  bills                  Bill[]
+  id                          Int            @id @default(autoincrement())
+  email                       String?        @unique
+  password                    String?
+  name                        String?
+  role                        String         @default("user")
+  createdAt                   DateTime       @default(now())
+  passwordNeedsChange         Boolean        @default(true)
+  firstName                   String?
+  lastName                    String?
+  homePhone                   String?
+  cellPhone                   String?
+  gestconteNotes              String?
+  gestconteId                 Int?
+  nonProfitAffiliation        String?
+  isActive                    Boolean?       @default(true)
+  terminationDate             DateTime?
+  terminationReason           String?
+  lastUpdated                 DateTime?      @updatedAt
+  preferredDeliveryMethod     String?
+  paymentThreshold            Decimal?       @default(21.00) @db.Decimal(10, 2)
+  currentBalance              Decimal?       @default(0.00) @db.Decimal(10, 2)
+  preferredDistributionMethod String?
+  isAvailable                 Boolean?       @default(true)
+  availabilityNotes           String?
+  specialization              String?
+  maxConcurrentAssignments    Int?           @default(3)
+  notes                       String?
+  addresses                   Address[]
+  assignmentsProcessedBy      Assignment[]   @relation("AssignmentsProcessedBy")
+  assignmentsAsReader         Assignment[]   @relation("AssignmentsAsReader")
+  bills                       Bill[]
+  books                       Book[]
+  CoupsDeCoeur                CoupsDeCoeur[]
+  News                        News[]         @relation("UserNews")
+  ordersAsAveugle             Orders[]       @relation("OrdersAsAveugle")
+  ordersProcessedBy           Orders[]       @relation("OrdersProcessedBy")
+}
+
+model Address {
+  id                Int      @id @default(autoincrement())
+  addressLine1      String?
+  addressSupplement String?
+  city              String?
+  postalCode        String?
+  stateProvince     String?
+  country           String   @default("France")
+  isDefault         Boolean  @default(false)
+  userId            Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now()) @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId])
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -52,11 +90,11 @@ model Book {
   publisher              String?
   pageCount              Int?
   subtitle               String?
+  assignments            Assignment[]
   addedBy                User                @relation(fields: [addedById], references: [id])
   genres                 BookGenre[]
   CoupsDeCoeurBooks      CoupsDeCoeurBooks[]
   orders                 Orders[]
-  assignments            Assignment[]
 
   @@index([createdAt(sort: Desc)])
   @@index([title])
@@ -113,9 +151,9 @@ model Status {
   name        String       @unique
   description String?
   sortOrder   Int?
-  orders      Orders[]
   assignments Assignment[]
   Bill        Bill[]
+  orders      Orders[]
 
   @@index([name])
 }
@@ -137,11 +175,9 @@ model Bill {
   issueDate     DateTime?
   paymentDate   DateTime?
   invoiceAmount Decimal   @db.Decimal(10, 2)
-
-  // Relations
-  client User     @relation(fields: [clientId], references: [id])
-  state  Status   @relation(fields: [stateId], references: [id])
-  orders Orders[]
+  client        User      @relation(fields: [clientId], references: [id])
+  state         Status    @relation(fields: [stateId], references: [id])
+  orders        Orders[]
 
   @@index([clientId])
   @@index([stateId])
@@ -160,24 +196,19 @@ model Orders {
   processedByStaffId  Int?
   createdDate         DateTime?
   closureDate         DateTime?
-  updatedAt           DateTime?
   cost                Decimal?       @db.Decimal(10, 2)
   billingStatus       BillingStatus  @default(UNBILLED)
   billId              Int?
   lentPhysicalBook    Boolean
-  notes               String?        @db.Text
-
-  // Relations
-  aveugle          User         @relation("OrdersAsAveugle", fields: [aveugleId], references: [id])
-  catalogue        Book         @relation(fields: [catalogueId], references: [id])
-  status           Status       @relation(fields: [statusId], references: [id])
-  mediaFormat      MediaFormat  @relation(fields: [mediaFormatId], references: [id])
-  processedByStaff User?        @relation("OrdersProcessedBy", fields: [processedByStaffId], references: [id])
-  bill             Bill?        @relation(fields: [billId], references: [id])
-  assignments      Assignment[]
-
-  // Note: needsReturn should be computed in your application logic as:
-  // needsReturn = lentPhysicalBook === true && closureDate === null
+  notes               String?
+  updatedAt           DateTime?
+  assignments         Assignment[]
+  aveugle             User           @relation("OrdersAsAveugle", fields: [aveugleId], references: [id])
+  bill                Bill?          @relation(fields: [billId], references: [id])
+  catalogue           Book           @relation(fields: [catalogueId], references: [id])
+  mediaFormat         MediaFormat    @relation(fields: [mediaFormatId], references: [id])
+  processedByStaff    User?          @relation("OrdersProcessedBy", fields: [processedByStaffId], references: [id])
+  status              Status         @relation(fields: [statusId], references: [id])
 
   @@index([aveugleId])
   @@index([catalogueId])
@@ -196,15 +227,13 @@ model Assignment {
   sentToReaderDate   DateTime?
   returnedToECADate  DateTime?
   statusId           Int
-  notes              String?   @db.Text
+  notes              String?
   processedByStaffId Int?
-
-  // Relations
-  reader           User    @relation("AssignmentsAsReader", fields: [readerId], references: [id])
-  catalogue        Book    @relation(fields: [catalogueId], references: [id])
-  order            Orders? @relation(fields: [orderId], references: [id])
-  status           Status  @relation(fields: [statusId], references: [id])
-  processedByStaff User?   @relation("AssignmentsProcessedBy", fields: [processedByStaffId], references: [id])
+  catalogue          Book      @relation(fields: [catalogueId], references: [id])
+  order              Orders?   @relation(fields: [orderId], references: [id])
+  processedByStaff   User?     @relation("AssignmentsProcessedBy", fields: [processedByStaffId], references: [id])
+  reader             User      @relation("AssignmentsAsReader", fields: [readerId], references: [id])
+  status             Status    @relation(fields: [statusId], references: [id])
 
   @@index([readerId])
   @@index([catalogueId])
