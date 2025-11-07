@@ -52,6 +52,14 @@ export async function GET(request: NextRequest) {
         const filter = searchParams.get('filter') || 'all';
         const statusId = searchParams.get('statusId');
         const billingStatus = searchParams.get('billingStatus');
+        const isDuplication = searchParams.get('isDuplication');
+
+        // DEBUG: Log what we received
+        console.log('=== FILTER DEBUG ===');
+        console.log('isDuplication param:', isDuplication);
+        console.log('isDuplication type:', typeof isDuplication);
+        console.log('isDuplication === "true":', isDuplication === 'true');
+        console.log('isDuplication === "false":', isDuplication === 'false');
 
         const ordersPerPage = 10;
 
@@ -130,10 +138,25 @@ export async function GET(request: NextRequest) {
             whereClause.statusId = parseInt(statusId);
         }
 
+        // Billing status filter
         if (billingStatus && billingStatus !== 'all') {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             whereClause.billingStatus = billingStatus as any;
         }
+
+        // Duplication filter - FIXED VERSION
+        if (isDuplication === 'true') {
+            whereClause.isDuplication = true;
+            console.log('Set isDuplication filter to TRUE');
+        } else if (isDuplication === 'false') {
+            whereClause.isDuplication = false;
+            console.log('Set isDuplication filter to FALSE');
+        }
+
+        // DEBUG: Log the final where clause
+        console.log('Final whereClause:', JSON.stringify(whereClause, null, 2));
+        console.log('===================');
+
         const [orders, totalOrders] = await Promise.all([
             prisma.orders.findMany({
                 where: whereClause,
@@ -167,6 +190,17 @@ export async function GET(request: NextRequest) {
             }),
             prisma.orders.count({ where: whereClause }),
         ]);
+
+        // DEBUG: Log results
+        console.log('Found orders:', orders.length);
+        console.log('Total orders:', totalOrders);
+        if (orders.length > 0) {
+            console.log('Sample isDuplication values:', orders.slice(0, 3).map(o => ({
+                id: o.id,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                isDuplication: (o as any).isDuplication
+            })));
+        }
 
         return NextResponse.json({
             orders,

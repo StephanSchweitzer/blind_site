@@ -45,7 +45,7 @@ export default async function Dashboard() {
                         title="Genres"
                         count={genreCount}
                         href="/admin/genres"
-                        buttonText="Gestion des genres"
+                        buttonText="Gestion des genres possibles associés aux livres"
                         accentColor="purple"
                     />
 
@@ -53,7 +53,8 @@ export default async function Dashboard() {
                         title="Listes de livres"
                         count={coupsDeCoeurCount}
                         href="/admin/manage_coups_de_coeur"
-                        buttonText="Gestion des listes de livres"
+                        buttonText="Gestion des listes de livres (anciennement appelés
+                        « coups de cœur »)"
                         accentColor="pink"
                     />
 
@@ -61,7 +62,7 @@ export default async function Dashboard() {
                         title="Dernières infos"
                         count={newsCount}
                         href="/admin/news"
-                        buttonText="Gestion des dernières infos"
+                        buttonText="Gestion des informations importantes et actuelles"
                         accentColor="green"
                     />
                 </div>
@@ -72,10 +73,10 @@ export default async function Dashboard() {
                 <h2 className="text-lg font-semibold text-gray-300 mb-4 px-1">Gestion</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     <AdminDashboardCard
-                        title="Commandes"
+                        title="Demandes"
                         count={orderCount}
                         href="/admin/orders"
-                        buttonText="Gestion des commandes"
+                        buttonText="Gestion des demandes d'enregistrements audio"
                         accentColor="yellow"
                     />
 
@@ -83,7 +84,7 @@ export default async function Dashboard() {
                         title="Affectations"
                         count={assignmentCount}
                         href="/admin/assignments"
-                        buttonText="Gestion des affectations"
+                        buttonText="Gestion des affectations confiées aux lecteurs"
                         accentColor="cyan"
                     />
 

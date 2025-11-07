@@ -76,9 +76,9 @@ export default function OrdersTable({
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const currentPage = initialPage;
-    const currentFilter = searchParams.get('filter') || 'all';
     const currentBillingStatus = searchParams.get('billingStatus') || 'all';
     const currentStatusId = searchParams.get('statusId') || 'all';
+    const currentIsDuplication = searchParams.get('isDuplication') || 'all';
 
     const createQueryString = useCallback(
         (updates: Record<string, string>) => {
@@ -196,9 +196,9 @@ export default function OrdersTable({
             <CardHeader className="border-b border-gray-800">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-2xl text-gray-100">Commandes</CardTitle>
+                        <CardTitle className="text-2xl text-gray-100">Demandes</CardTitle>
                         <CardDescription className="text-gray-400 mt-1">
-                            Gérer et suivre toutes les commandes
+                            Gérer et suivre toutes les demandes
                         </CardDescription>
                     </div>
                     <Button
@@ -206,7 +206,7 @@ export default function OrdersTable({
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         <Plus className="h-4 w-4 mr-2" />
-                        Nouvelle commande
+                        Nouvelle demande
                     </Button>
                 </div>
             </CardHeader>
@@ -254,62 +254,92 @@ export default function OrdersTable({
                     </div>
 
                     <div className="flex flex-wrap gap-3">
-                        <Select
-                            value={currentFilter}
-                            onValueChange={(value) => handleFilterChange('filter', value)}
-                            disabled={isPending}
-                        >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
-                                <SelectValue placeholder="Filtrer par" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value="all" className="text-gray-200">Toutes</SelectItem>
-                                <SelectItem value="needsReturn" className="text-gray-200">
-                                    À retourner
-                                </SelectItem>
-                                <SelectItem value="late" className="text-gray-200">
-                                    En retard
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {/*<div className="flex flex-col gap-1">*/}
+                        {/*    <label className="text-xs text-gray-400 px-1">Urgency or something</label>*/}
+                        {/*    <Select*/}
+                        {/*        value={currentFilter}*/}
+                        {/*        onValueChange={(value) => handleFilterChange('filter', value)}*/}
+                        {/*        disabled={isPending}*/}
+                        {/*    >*/}
+                        {/*        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">*/}
+                        {/*            <SelectValue placeholder="Filtrer par" />*/}
+                        {/*        </SelectTrigger>*/}
+                        {/*        <SelectContent className="bg-gray-800 border-gray-700">*/}
+                        {/*            <SelectItem value="all" className="text-gray-200">Toutes</SelectItem>*/}
+                        {/*            <SelectItem value="needsReturn" className="text-gray-200">*/}
+                        {/*                À retourner*/}
+                        {/*            </SelectItem>*/}
+                        {/*            <SelectItem value="late" className="text-gray-200">*/}
+                        {/*                En retard*/}
+                        {/*            </SelectItem>*/}
+                        {/*        </SelectContent>*/}
+                        {/*    </Select>*/}
+                        {/*</div>*/}
 
-                        <Select
-                            value={currentStatusId}
-                            onValueChange={(value) => handleFilterChange('statusId', value)}
-                            disabled={isPending}
-                        >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
-                                <SelectValue placeholder="Statut" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value="all" className="text-gray-200">Tous les statuts</SelectItem>
-                                {availableStatuses.map((status) => (
-                                    <SelectItem
-                                        key={status.id}
-                                        value={status.id.toString()}
-                                        className="text-gray-200"
-                                    >
-                                        {getStatusDisplayName(status.name)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        {/* Type de demande */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs text-gray-400 px-1">Type de demande</label>
+                            <Select
+                                value={currentIsDuplication}
+                                onValueChange={(value) => handleFilterChange('isDuplication', value)}
+                                disabled={isPending}
+                            >
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
+                                    <SelectValue placeholder="Type de demande" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="all" className="text-gray-200">Tous les types</SelectItem>
+                                    <SelectItem value="true" className="text-gray-200">Duplications</SelectItem>
+                                    <SelectItem value="false" className="text-gray-200">Livres à sauvegarder</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                        <Select
-                            value={currentBillingStatus}
-                            onValueChange={(value) => handleFilterChange('billingStatus', value)}
-                            disabled={isPending}
-                        >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
-                                <SelectValue placeholder="État de facturation" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
-                                <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
-                                <SelectItem value="BILLED" className="text-gray-200">Facturé</SelectItem>
-                                <SelectItem value="PAID" className="text-gray-200">Payé</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {/* Statut de la demande */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs text-gray-400 px-1">Statut de la demande</label>
+                            <Select
+                                value={currentStatusId}
+                                onValueChange={(value) => handleFilterChange('statusId', value)}
+                                disabled={isPending}
+                            >
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
+                                    <SelectValue placeholder="Statut" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="all" className="text-gray-200">Tous les statuts</SelectItem>
+                                    {availableStatuses.map((status) => (
+                                        <SelectItem
+                                            key={status.id}
+                                            value={status.id.toString()}
+                                            className="text-gray-200"
+                                        >
+                                            {getStatusDisplayName(status.name)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* État de facturation */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs text-gray-400 px-1">État de facturation</label>
+                            <Select
+                                value={currentBillingStatus}
+                                onValueChange={(value) => handleFilterChange('billingStatus', value)}
+                                disabled={isPending}
+                            >
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
+                                    <SelectValue placeholder="État de facturation" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
+                                    <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
+                                    <SelectItem value="BILLED" className="text-gray-200">Facturé</SelectItem>
+                                    <SelectItem value="PAID" className="text-gray-200">Payé</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
 
@@ -443,7 +473,7 @@ export default function OrdersTable({
                         ))}
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-gray-800 text-gray-700 hover:bg-gray-700"
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages || isPending}
                         >
@@ -471,7 +501,7 @@ export default function OrdersTable({
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-100">Ajouter une nouvelle commande</DialogTitle>
+                        <DialogTitle className="text-gray-100">Ajouter une nouvelle demande</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
                         <AddOrderForm onSuccess={handleOrderAdded} />

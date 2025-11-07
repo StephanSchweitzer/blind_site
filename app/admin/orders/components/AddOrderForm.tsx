@@ -170,14 +170,10 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
 
             setIsSearchingBooks(true);
             try {
-                // Use existing books API with search parameter
-                const response = await fetch(
-                    `/api/books?search=${encodeURIComponent(bookSearch)}&limit=20&page=1`
-                );
+                const response = await fetch(`/api/catalogue/search?q=${encodeURIComponent(bookSearch)}`);
                 if (response.ok) {
                     const data = await response.json();
-                    // Extract books array from the response
-                    setBooks(data.books || []);
+                    setBooks(data);
                 }
             } catch (err) {
                 console.error('Error searching books:', err);
@@ -190,42 +186,101 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
         return () => clearTimeout(debounce);
     }, [bookSearch]);
 
+    // Handle user selection
+    const handleUserSelect = (user: User) => {
+        setSelectedUser(user);
+        setFormData({ ...formData, aveugleId: user.id });
+        setUserPopoverOpen(false);
+        setUserSearch('');
+    };
+
+    // Handle book selection
+    const handleBookSelect = (book: Book) => {
+        setSelectedBook(book);
+        setFormData({ ...formData, catalogueId: book.id });
+        setBookPopoverOpen(false);
+        setBookSearch('');
+    };
+
+    // Helper function to find status by name
+    const findStatusByName = (name: string): number | null => {
+        const status = statuses.find(s => s.name.toLowerCase() === name.toLowerCase());
+        return status ? status.id : null;
+    };
+
+    // Handle duplication checkbox - mutually exclusive with recording
+    const handleDuplicationChange = (checked: boolean) => {
+        if (checked) {
+            const enCoursStatusId = findStatusByName('en cours');
+            setFormData({
+                ...formData,
+                isDuplication: true,
+                lentPhysicalBook: false,
+                statusId: enCoursStatusId
+            });
+        } else {
+            setFormData({
+                ...formData,
+                isDuplication: false,
+                statusId: null
+            });
+        }
+    };
+
+    // Handle recording checkbox - mutually exclusive with duplication
+    const handleRecordingChange = (checked: boolean) => {
+        if (checked) {
+            const attenteEnvoiStatusId = findStatusByName("Attente envoi vers lecteur");
+            setFormData({
+                ...formData,
+                lentPhysicalBook: true,
+                isDuplication: false,
+                statusId: attenteEnvoiStatusId
+            });
+        } else {
+            setFormData({
+                ...formData,
+                lentPhysicalBook: false,
+                statusId: null
+            });
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
         setError(null);
         setDetailedError(null);
 
         // Validation
         if (!formData.aveugleId) {
-            setError('Veuillez sélectionner un client');
-            setIsLoading(false);
+            setError('Veuillez sélectionner un aveugle');
             return;
         }
         if (!formData.catalogueId) {
             setError('Veuillez sélectionner un livre');
-            setIsLoading(false);
             return;
         }
         if (!formData.statusId) {
-            setError('Veuillez sélectionner un statut');
-            setIsLoading(false);
+            setError('Veuillez sélectionner un statut ou cocher un type de demande');
             return;
         }
         if (!formData.mediaFormatId) {
             setError('Veuillez sélectionner un format média');
-            setIsLoading(false);
             return;
         }
         if (!formData.deliveryMethod) {
             setError('Veuillez sélectionner une méthode de livraison');
-            setIsLoading(false);
+            return;
+        }
+        if (!formData.isDuplication && !formData.lentPhysicalBook) {
+            setError('Veuillez sélectionner un type de demande (duplication ou enregistrement)');
             return;
         }
 
+        setIsLoading(true);
+
         try {
-            // Prepare the data with proper formatting
-            const submitData = {
+            const payload = {
                 aveugleId: formData.aveugleId,
                 catalogueId: formData.catalogueId,
                 requestReceivedDate: formData.requestReceivedDate.toISOString(),
@@ -233,53 +288,35 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
                 isDuplication: formData.isDuplication,
                 mediaFormatId: formData.mediaFormatId,
                 deliveryMethod: formData.deliveryMethod,
-                createdDate: formData.createdDate ? formData.createdDate.toISOString() : new Date().toISOString(),
-                closureDate: formData.closureDate ? formData.closureDate.toISOString() : null,
-                cost: formData.cost && formData.cost !== '' ? parseFloat(formData.cost) : null,
+                createdDate: formData.createdDate?.toISOString() || new Date().toISOString(),
+                closureDate: formData.closureDate?.toISOString() || null,
+                cost: parseFloat(formData.cost),
                 billingStatus: formData.billingStatus,
                 lentPhysicalBook: formData.lentPhysicalBook,
-                notes: formData.notes || null,
+                notes: formData.notes,
             };
-
-            console.log('Submitting order data:', submitData);
 
             const response = await fetch('/api/orders', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(submitData),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                console.error('API Error Response:', data);
-
-                // Build a detailed error message
-                let errorMessage = data.message || 'Échec de la création de la commande';
-
-                if (data.field) {
-                    errorMessage += ` (Champ: ${data.field})`;
-                }
-
+                setError(data.error || 'Échec de la création de la demande');
                 if (data.details) {
-                    setDetailedError(typeof data.details === 'string'
-                        ? data.details
-                        : JSON.stringify(data.details, null, 2)
-                    );
+                    setDetailedError(JSON.stringify(data.details, null, 2));
                 }
-
-                if (data.code) {
-                    errorMessage += ` [Code: ${data.code}]`;
-                }
-
-                throw new Error(errorMessage);
+                return;
             }
 
             toast({
-                // @ts-expect-error jsx in title
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">La commande a été créée avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                title: "Succès",
+                description: "La demande a été créée avec succès",
             });
 
             // Reset form
@@ -300,118 +337,92 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
             });
             setSelectedUser(null);
             setSelectedBook(null);
-            setUserSearch('');
-            setBookSearch('');
 
             if (onSuccess) {
                 onSuccess();
             }
         } catch (err) {
             console.error('Error creating order:', err);
-            setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de la création de la commande');
-
-            toast({
-                // @ts-expect-error jsx in title
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{err instanceof Error ? err.message : 'Une erreur est survenue'}</span>,
-                className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6",
-                variant: "destructive"
-            });
+            setError('Une erreur est survenue lors de la création de la demande');
+            setDetailedError(err instanceof Error ? err.message : String(err));
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <Card className="bg-gray-900 border-gray-800">
-            <CardHeader>
-                <CardTitle className="text-2xl text-gray-100">Créer une nouvelle commande</CardTitle>
+        <Card className="w-full max-w-4xl mx-auto bg-gray-900 border-gray-800 text-gray-100">
+            <CardHeader className="border-b border-gray-800">
+                <CardTitle className="text-2xl text-gray-100">Créer une nouvelle demande</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
                 {error && (
-                    <Alert variant="destructive" className="mb-6 bg-red-900/50 border-red-500 text-red-100">
-                        <AlertCircle className="h-5 w-5" />
-                        <AlertDescription className="text-base">
-                            <div className="font-semibold mb-1">{error}</div>
+                    <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-900/50">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                            {error}
                             {detailedError && (
-                                <details className="mt-2 text-sm">
-                                    <summary className="cursor-pointer hover:underline">Détails techniques</summary>
-                                    <pre className="mt-2 p-2 bg-black/30 rounded overflow-x-auto text-xs">
-                                        {detailedError}
-                                    </pre>
-                                </details>
+                                <pre className="mt-2 text-xs overflow-auto">{detailedError}</pre>
                             )}
                         </AlertDescription>
                     </Alert>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Client (Aveugle) Search */}
+                    {/* User (Aveugle) Selection */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
-                            Client <span className="text-red-500">*</span>
+                            Utilisateur <span className="text-red-500">*</span>
                         </label>
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    role="combobox"
-                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                    className="w-full justify-start bg-gray-800 border-gray-700 text-gray-200"
                                 >
                                     {selectedUser ? (
-                                        <div className="flex flex-col items-start overflow-hidden">
-                                            <span className="font-medium truncate max-w-full">{selectedUser.name || selectedUser.email}</span>
-                                            {selectedUser.name && (
-                                                <span className="text-xs text-gray-400 truncate max-w-full">{selectedUser.email}</span>
-                                            )}
-                                        </div>
+                                        <span>{selectedUser.name || selectedUser.email}</span>
                                     ) : (
-                                        "Rechercher un client..."
+                                        <span className="text-gray-400">Rechercher un utilisateur...</span>
                                     )}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                            <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700" align="start">
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher par nom ou email..."
                                         value={userSearch}
                                         onChange={(e) => setUserSearch(e.target.value)}
                                         className="bg-gray-900 border-gray-700 text-gray-200"
+                                        autoFocus
                                     />
                                 </div>
-                                <div className="max-h-[300px] overflow-y-auto">
-                                    {isSearchingUsers ? (
-                                        <div className="p-4 text-center text-gray-400">Recherche en cours...</div>
-                                    ) : userSearch.length < 2 ? (
-                                        <div className="p-4 text-center text-gray-400">Tapez au moins 2 caractères</div>
-                                    ) : users.length === 0 ? (
-                                        <div className="p-4 text-center text-gray-400">Aucun client trouvé</div>
-                                    ) : (
-                                        users.map((user) => (
-                                            <Button
-                                                key={user.id}
-                                                onClick={() => {
-                                                    setFormData({ ...formData, aveugleId: user.id });
-                                                    setSelectedUser(user);
-                                                    setUserPopoverOpen(false);
-                                                    setUserSearch('');
-                                                }}
-                                                variant="ghost"
-                                                className="w-full justify-start text-left hover:bg-gray-700 p-3"
-                                            >
-                                                <div className="flex flex-col overflow-hidden w-full">
-                                                    <div className="font-medium text-gray-200 truncate">{user.name || 'Sans nom'}</div>
-                                                    <div className="text-sm text-gray-400 truncate">{user.email}</div>
-                                                </div>
-                                            </Button>
-                                        ))
+                                <div className="max-h-[200px] overflow-y-auto">
+                                    {isSearchingUsers && (
+                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
                                     )}
+                                    {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
+                                        <div className="p-4 text-center text-gray-400">Aucun utilisateur trouvé</div>
+                                    )}
+                                    {!isSearchingUsers && userSearch.length < 2 && (
+                                        <div className="p-4 text-center text-gray-400">Saisir au moins 2 caractères</div>
+                                    )}
+                                    {users.map((user) => (
+                                        <div
+                                            key={user.id}
+                                            onClick={() => handleUserSelect(user)}
+                                            className="p-3 hover:bg-gray-700 cursor-pointer text-gray-200 border-b border-gray-700 last:border-b-0"
+                                        >
+                                            <div className="font-medium">{user.name || 'Sans nom'}</div>
+                                            <div className="text-sm text-gray-400">{user.email}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </PopoverContent>
                         </Popover>
                     </div>
 
-                    {/* Book (Catalogue) Search */}
+                    {/* Book Selection */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
                             Livre <span className="text-red-500">*</span>
@@ -420,55 +431,45 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    role="combobox"
-                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                    className="w-full justify-start bg-gray-800 border-gray-700 text-gray-200"
                                 >
                                     {selectedBook ? (
-                                        <div className="flex flex-col items-start overflow-hidden">
-                                            <span className="font-medium truncate max-w-full">{selectedBook.title}</span>
-                                            <span className="text-xs text-gray-400 truncate max-w-full">{selectedBook.author}</span>
-                                        </div>
+                                        <span>{selectedBook.title} - {selectedBook.author}</span>
                                     ) : (
-                                        "Rechercher un livre..."
+                                        <span className="text-gray-400">Rechercher un livre...</span>
                                     )}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                            <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700" align="start">
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher par titre ou auteur..."
                                         value={bookSearch}
                                         onChange={(e) => setBookSearch(e.target.value)}
                                         className="bg-gray-900 border-gray-700 text-gray-200"
+                                        autoFocus
                                     />
                                 </div>
-                                <div className="max-h-[300px] overflow-y-auto">
-                                    {isSearchingBooks ? (
-                                        <div className="p-4 text-center text-gray-400">Recherche en cours...</div>
-                                    ) : bookSearch.length < 2 ? (
-                                        <div className="p-4 text-center text-gray-400">Tapez au moins 2 caractères</div>
-                                    ) : books.length === 0 ? (
-                                        <div className="p-4 text-center text-gray-400">Aucun livre trouvé</div>
-                                    ) : (
-                                        books.map((book) => (
-                                            <Button
-                                                key={book.id}
-                                                onClick={() => {
-                                                    setFormData({ ...formData, catalogueId: book.id });
-                                                    setSelectedBook(book);
-                                                    setBookPopoverOpen(false);
-                                                    setBookSearch('');
-                                                }}
-                                                variant="ghost"
-                                                className="w-full justify-start text-left hover:bg-gray-700 p-3"
-                                            >
-                                                <div className="flex flex-col overflow-hidden w-full">
-                                                    <div className="font-medium text-gray-200 truncate">{book.title}</div>
-                                                    <div className="text-sm text-gray-400 truncate">{book.author}</div>
-                                                </div>
-                                            </Button>
-                                        ))
+                                <div className="max-h-[200px] overflow-y-auto">
+                                    {isSearchingBooks && (
+                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
                                     )}
+                                    {!isSearchingBooks && books.length === 0 && bookSearch.length >= 2 && (
+                                        <div className="p-4 text-center text-gray-400">Aucun livre trouvé</div>
+                                    )}
+                                    {!isSearchingBooks && bookSearch.length < 2 && (
+                                        <div className="p-4 text-center text-gray-400">Saisir au moins 2 caractères</div>
+                                    )}
+                                    {books.map((book) => (
+                                        <div
+                                            key={book.id}
+                                            onClick={() => handleBookSelect(book)}
+                                            className="p-3 hover:bg-gray-700 cursor-pointer text-gray-200 border-b border-gray-700 last:border-b-0"
+                                        >
+                                            <div className="font-medium">{book.title}</div>
+                                            <div className="text-sm text-gray-400">{book.author}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </PopoverContent>
                         </Popover>
@@ -501,21 +502,75 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
                         </Popover>
                     </div>
 
-                    {/* Status */}
+                    {/* Type de demande - Mutually Exclusive Checkboxes */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-200">
+                            Type de demande <span className="text-red-500">*</span>
+                        </label>
+
+                        <div className="grid grid-cols-2 gap-4 p-4 bg-gray-800/80 rounded-lg border border-gray-600 shadow-md">
+                            <div
+                                className={`flex items-center space-x-3 p-3 rounded-md transition-all border ${
+                                    formData.isDuplication
+                                        ? 'bg-green-900/30 border-green-600 shadow-lg shadow-green-900/20'
+                                        : 'bg-gray-900/50 border-gray-700/50 hover:bg-gray-900/70'
+                                }`}
+                            >
+                                <Checkbox
+                                    id="isDuplication"
+                                    checked={formData.isDuplication}
+                                    onCheckedChange={handleDuplicationChange}
+                                    className="border-2 border-gray-500 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 w-6 h-6"
+                                />
+                                <label htmlFor="isDuplication" className="text-base font-bold text-gray-100 cursor-pointer leading-tight flex-1">
+                                    Est une duplication
+                                </label>
+                            </div>
+
+                            <div
+                                className={`flex items-center space-x-3 p-3 rounded-md transition-all border ${
+                                    formData.lentPhysicalBook
+                                        ? 'bg-blue-900/30 border-blue-600 shadow-lg shadow-blue-900/20'
+                                        : 'bg-gray-900/50 border-gray-700/50 hover:bg-gray-900/70'
+                                }`}
+                            >
+                                <Checkbox
+                                    id="lentPhysicalBook"
+                                    checked={formData.lentPhysicalBook}
+                                    onCheckedChange={handleRecordingChange}
+                                    className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                />
+                                <label htmlFor="lentPhysicalBook" className="text-base font-bold text-gray-100 cursor-pointer leading-tight flex-1">
+                                    Enregistrement nécessaire
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Status - Auto-filled based on checkbox selection */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
                             Statut <span className="text-red-500">*</span>
                         </label>
-                        <Select value={formData.statusId?.toString() || ''} onValueChange={(value) => setFormData({ ...formData, statusId: parseInt(value) })}>
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                        <Select
+                            value={formData.statusId?.toString() || ''}
+                            onValueChange={(value) => setFormData({ ...formData, statusId: parseInt(value) })}
+                        >
+                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
-                                {statuses.map((status) => (
-                                    <SelectItem key={status.id} value={status.id.toString()} className="text-gray-200">
-                                        {status.name}
-                                    </SelectItem>
-                                ))}
+                            <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
+                                <div className="py-1">
+                                    {statuses.map((status) => (
+                                        <SelectItem
+                                            key={status.id}
+                                            value={status.id.toString()}
+                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 last:border-b-0 transition-colors"
+                                        >
+                                            <span className="font-medium">{status.name}</span>
+                                        </SelectItem>
+                                    ))}
+                                </div>
                             </SelectContent>
                         </Select>
                     </div>
@@ -526,15 +581,21 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
                             Format média <span className="text-red-500">*</span>
                         </label>
                         <Select value={formData.mediaFormatId?.toString() || ''} onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}>
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                 <SelectValue placeholder="Sélectionner un format" />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
-                                {mediaFormats.map((format) => (
-                                    <SelectItem key={format.id} value={format.id.toString()} className="text-gray-200">
-                                        {format.name}
-                                    </SelectItem>
-                                ))}
+                            <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
+                                <div className="py-1">
+                                    {mediaFormats.map((format) => (
+                                        <SelectItem
+                                            key={format.id}
+                                            value={format.id.toString()}
+                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 last:border-b-0 transition-colors"
+                                        >
+                                            <span className="font-medium">{format.name}</span>
+                                        </SelectItem>
+                                    ))}
+                                </div>
                             </SelectContent>
                         </Select>
                     </div>
@@ -545,13 +606,30 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
                             Méthode de livraison <span className="text-red-500">*</span>
                         </label>
                         <Select value={formData.deliveryMethod || ''} onValueChange={(value) => setFormData({ ...formData, deliveryMethod: value as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE'})}>
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                 <SelectValue placeholder="Sélectionner une méthode" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value="RETRAIT" className="text-gray-200">Retrait</SelectItem>
-                                <SelectItem value="ENVOI" className="text-gray-200">Envoie</SelectItem>
-                                <SelectItem value="NON_APPLICABLE" className="text-gray-200">Non applicable</SelectItem>
+                                <div className="py-1">
+                                    <SelectItem
+                                        value="RETRAIT"
+                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
+                                    >
+                                        <span className="font-medium">Retrait</span>
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="ENVOI"
+                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
+                                    >
+                                        <span className="font-medium">Envoi</span>
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="NON_APPLICABLE"
+                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                    >
+                                        <span className="font-medium">Non applicable</span>
+                                    </SelectItem>
+                                </div>
                             </SelectContent>
                         </Select>
 
@@ -565,9 +643,26 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
-                                <SelectItem value="BILLED" className="text-gray-200">Facturé</SelectItem>
-                                <SelectItem value="PAID" className="text-gray-200">Payé</SelectItem>
+                                <div className="py-1">
+                                    <SelectItem
+                                        value="UNBILLED"
+                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
+                                    >
+                                        <span className="font-medium">Non facturé</span>
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="BILLED"
+                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
+                                    >
+                                        <span className="font-medium">Facturé</span>
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="PAID"
+                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                    >
+                                        <span className="font-medium">Payé</span>
+                                    </SelectItem>
+                                </div>
                             </SelectContent>
                         </Select>
                     </div>
@@ -583,33 +678,6 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
                             className="bg-gray-800 border-gray-700 text-gray-200"
                             placeholder="0.00"
                         />
-                    </div>
-
-                    {/* Critical Selection Fields */}
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-800/80 rounded-lg border border-gray-600 shadow-md">
-                        <div className="flex items-center space-x-3 p-3 bg-gray-900/50 rounded-md hover:bg-gray-900/70 transition-colors border border-gray-700/50">
-                            <Checkbox
-                                id="isDuplication"
-                                checked={formData.isDuplication}
-                                onCheckedChange={(checked) => setFormData({ ...formData, isDuplication: !!checked })}
-                                className="border-2 border-gray-500 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 w-6 h-6"
-                            />
-                            <label htmlFor="isDuplication" className="text-base font-bold text-gray-100 cursor-pointer leading-tight">
-                                Est une duplication <span className="text-red-400">*</span>
-                            </label>
-                        </div>
-
-                        <div className="flex items-center space-x-3 p-3 bg-gray-900/50 rounded-md hover:bg-gray-900/70 transition-colors border border-gray-700/50">
-                            <Checkbox
-                                id="lentPhysicalBook"
-                                checked={formData.lentPhysicalBook}
-                                onCheckedChange={(checked) => setFormData({ ...formData, lentPhysicalBook: !!checked })}
-                                className="border-2 border-gray-500 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 w-6 h-6"
-                            />
-                            <label htmlFor="lentPhysicalBook" className="text-base font-bold text-gray-100 cursor-pointer leading-tight">
-                                Livre physique prêté <span className="text-red-400">*</span>
-                            </label>
-                        </div>
                     </div>
 
                     {/* Notes */}
@@ -629,7 +697,7 @@ export function AddOrderForm({ onSuccess }: AddOrderFormProps) {
                         disabled={isLoading}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                        {isLoading ? 'Création en cours...' : 'Créer la commande'}
+                        {isLoading ? 'Création en cours...' : 'Créer la demande'}
                     </Button>
                 </form>
             </CardContent>

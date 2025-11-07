@@ -18,7 +18,8 @@ async function getOrders(
     searchTerm: string,
     filter: string = 'all',
     statusId?: number,
-    billingStatus?: string
+    billingStatus?: string,
+    isDuplication?: string  // ✅ ADDED THIS
 ) {
     const ordersPerPage = 10;
 
@@ -92,6 +93,13 @@ async function getOrders(
     // Billing status filter
     if (billingStatus && billingStatus !== 'all') {
         whereClause.billingStatus = billingStatus as never;
+    }
+
+    // ✅ ADDED: isDuplication filter
+    if (isDuplication === 'true') {
+        whereClause.isDuplication = true;
+    } else if (isDuplication === 'false') {
+        whereClause.isDuplication = false;
     }
 
     try {
@@ -168,13 +176,19 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
         const billingStatus = Array.isArray(params.billingStatus)
             ? params.billingStatus[0]
             : params.billingStatus;
+        // ✅ ADDED: Extract isDuplication from search params
+        const isDuplication = Array.isArray(params.isDuplication)
+            ? params.isDuplication[0]
+            : params.isDuplication;
 
+        // ✅ ADDED: Pass isDuplication to getOrders
         const { orders, totalOrders, totalPages, availableStatuses } = await getOrders(
             page,
             searchTerm,
             filter,
             statusId,
-            billingStatus
+            billingStatus,
+            isDuplication  // ✅ ADDED THIS
         );
 
         // Serialize orders to convert Decimal to number and Date to string
