@@ -289,8 +289,8 @@ export default function OrdersTable({
                                 </SelectTrigger>
                                 <SelectContent className="bg-gray-800 border-gray-700">
                                     <SelectItem value="all" className="text-gray-200">Tous les types</SelectItem>
-                                    <SelectItem value="true" className="text-gray-200">Duplications</SelectItem>
-                                    <SelectItem value="false" className="text-gray-200">Livres à sauvegarder</SelectItem>
+                                    <SelectItem value="true" className="text-gray-200">Duplication</SelectItem>
+                                    <SelectItem value="false" className="text-gray-200">Livres à enregistrer</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
