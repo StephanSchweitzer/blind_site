@@ -39,7 +39,7 @@ type OrderWithRelations = {
     lentPhysicalBook: boolean;
     aveugle: {
         name: string | null;
-        email: string;
+        email: string | null;
     };
     catalogue: {
         title: string;

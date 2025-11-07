@@ -54,7 +54,7 @@ interface Book {
     }[];
     addedBy: {
         name: string | null;
-        email: string;
+        email: string | null;
     };
     publishedDate: Date | null;
     description: string | null;
