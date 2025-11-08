@@ -43,9 +43,9 @@ const FrontendNavbar = () => {
     return (
         <nav className="sticky top-0 z-50 backdrop-blur-lg bg-white/95 dark:bg-gray-900/90 border-b-2 border-blue-200 dark:border-purple-500/30 text-gray-900 dark:text-white shadow-lg transition-all duration-300">
             <div className="w-full px-4 sm:px-6">
-                <div className="flex justify-between items-center py-3">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center py-3 w-full">
                     {/* Small logo on left - visible on desktop */}
-                    <div className="hidden lg:block">
+                    <div className="hidden lg:flex justify-start">
                         <Link href="/" className="block">
                             <Image
                                 src="/eca_logo.png"
@@ -58,8 +58,8 @@ const FrontendNavbar = () => {
                         </Link>
                     </div>
 
-                    {/* Desktop menu - centered with better spacing */}
-                    <div className="hidden lg:flex lg:flex-nowrap space-x-6 text-base flex-1 justify-center">
+                    {/* Desktop menu - truly centered on page */}
+                    <div className="hidden lg:flex lg:flex-nowrap space-x-6 text-base justify-center">
                         {navLinks.map((link, index) => (
                             <div key={`${link.href}-${index}`} className="relative group whitespace-nowrap">
                                 {link.dropdown ? (
@@ -96,12 +96,12 @@ const FrontendNavbar = () => {
                     </div>
 
                     {/* Theme toggle - Desktop (right side) */}
-                    <div className="hidden lg:block">
+                    <div className="hidden lg:flex justify-end">
                         <ThemeToggle />
                     </div>
 
                     {/* Mobile: Logo + Theme toggle + Menu button */}
-                    <div className="lg:hidden flex items-center justify-between w-full">
+                    <div className="lg:hidden flex items-center justify-between w-full col-span-3">
                         {/* Small logo on mobile */}
                         <Link href="/" className="block">
                             <Image

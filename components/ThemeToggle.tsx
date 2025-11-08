@@ -10,13 +10,21 @@ export function ThemeToggle() {
 
     useEffect(() => {
         setMounted(true);
-    }, []);
 
+        // Fix first-click issue: initialize theme if not set
+        const storedTheme = localStorage.getItem('theme');
+        if (!storedTheme) {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(prefersDark ? 'dark' : 'light');
+        }
+    }, [setTheme]);
+
+    // Show animated skeleton during hydration (no dark: class to work during SSR)
     if (!mounted) {
         return (
-            <button className="p-2 rounded-lg bg-white/10 dark:bg-white/10 w-10 h-10" aria-label="Toggle theme">
-                <div className="w-5 h-5" />
-            </button>
+            <div className="p-2 rounded-lg bg-gray-200 w-10 h-10 flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-gray-300 animate-pulse" />
+            </div>
         );
     }
 
