@@ -70,7 +70,7 @@ const FrontendNavbar = () => {
                                         </span>
                                         {/* Desktop dropdown menu */}
                                         <div className="absolute hidden group-hover:block top-full left-0 z-50 pt-2">
-                                            <div className="backdrop-blur-lg bg-white/98 dark:bg-gray-900/95 border-2 border-blue-200 dark:border-purple-500/30 rounded-xl min-w-[240px] py-2 shadow-2xl">
+                                            <div className="bg-white dark:bg-gray-900 border-2 border-blue-200 dark:border-purple-500/30 rounded-xl min-w-[240px] py-2 shadow-2xl">
                                                 {link.dropdown.map((dropdownItem) => (
                                                     <Link
                                                         key={dropdownItem.href}
