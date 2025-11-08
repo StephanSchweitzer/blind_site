@@ -1,4 +1,3 @@
-// catalogue/search/SearchBar.tsx
 import React, { useState } from 'react';
 import { Search, X, ChevronsUpDown, Check, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -51,11 +50,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         value={searchTerm}
                         onChange={(e) => onSearchChange(e.target.value)}
                         placeholder="Recherche de livres..."
-                        className="w-full px-4 py-2 pl-10 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 pl-10 pr-10 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                    <Search className="absolute left-3 top-2.5 text-gray-400 dark:text-gray-500" size={20} />
                     {isSearching && (
-                        <Loader2 className="absolute right-3 top-2.5 text-gray-400 animate-spin" size={20} />
+                        <Loader2 className="absolute right-3 top-2.5 text-gray-400 dark:text-gray-500 animate-spin" size={20} />
                     )}
                 </div>
 
@@ -63,7 +62,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 <select
                     value={selectedFilter}
                     onChange={(e) => onFilterChange(e.target.value)}
-                    className="w-[20%] px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-[20%] px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                     <option value="all">Tous</option>
                     <option value="title">Titre</option>
@@ -80,21 +79,21 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={open}
-                                className="w-full justify-between"
+                                className="w-full justify-between bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600"
                             >
                                 {selectedGenres.length > 0
-                                    ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} selected`
+                                    ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} sélectionné${selectedGenres.length > 1 ? 's' : ''}`
                                     : "Genres..."}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[250px] p-0">
+                        <PopoverContent className="w-[250px] p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                             <div className="p-2">
                                 <Input
                                     placeholder="Recherche de genres..."
                                     value={genreSearchQuery}
                                     onChange={(e) => setGenreSearchQuery(e.target.value)}
-                                    className="mb-2"
+                                    className="mb-2 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
                                 />
                                 <div className="max-h-60 overflow-y-auto">
                                     {availableGenres
@@ -104,7 +103,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                         .map((genre) => (
                                             <div
                                                 key={genre.id}
-                                                className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-blue-50 rounded-sm cursor-pointer"
+                                                className="flex items-center w-full px-2 py-1.5 text-sm text-gray-900 dark:text-gray-100 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-sm cursor-pointer"
                                                 onClick={() => {
                                                     handleGenreSelect(genre.id);
                                                     setGenreSearchQuery('');
@@ -135,13 +134,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         return genre ? (
                             <div
                                 key={genre.id}
-                                className="bg-blue-100 text-blue-800 rounded-full px-3 py-1 text-sm flex items-center"
+                                className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full px-3 py-1 text-sm flex items-center"
                             >
                                 {genre.name}
                                 <button
                                     type="button"
                                     onClick={() => removeGenre(genre.id)}
-                                    className="ml-2 hover:text-blue-600"
+                                    className="ml-2 hover:text-blue-600 dark:hover:text-blue-400"
                                 >
                                     <X className="h-3 w-3"/>
                                 </button>

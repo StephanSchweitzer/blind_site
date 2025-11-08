@@ -23,8 +23,6 @@ async function getInitialData() {
             prisma.book.count()
         ]);
 
-        console.log(prisma.book.count())
-
         return {
             initialBooks: books,
             genres,
@@ -42,68 +40,53 @@ async function getInitialData() {
     }
 }
 
-// Loading component
 function BooksLoading() {
     return (
         <div className="flex flex-col items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
-            <p className="mt-4 text-gray-300">Chargement des livres...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+            <p className="mt-4 text-gray-700 dark:text-gray-300">Chargement des livres...</p>
         </div>
     );
 }
 
-// Server Component
 export default async function BooksPage() {
     const { initialBooks, genres, totalBooks, totalPages } = await getInitialData();
 
     return (
-        <main className="min-h-screen relative bg-gray-900">
-            <div className="hidden lg:block fixed inset-y-0 w-full">
-                <div className="h-full max-w-6xl mx-auto">
-                    <div className="h-full flex">
-                        <div className="w-16 h-full bg-gradient-to-r from-transparent to-gray-800"></div>
-                        <div className="flex-1"></div>
-                        <div className="w-16 h-full bg-gradient-to-l from-transparent to-gray-800"></div>
-                    </div>
-                </div>
-            </div>
+        <main className="min-h-screen relative">
+            <FrontendNavbar />
 
-            <div className="relative">
-                <FrontendNavbar />
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-8">
+                <section className="text-center glass-card-lg p-12">
+                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Catalogue des livres</h1>
+                    <p className="text-lg text-gray-700 dark:text-gray-100">
+                        <span className="font-semibold">
+                            {totalBooks} titres au catalogue !
+                        </span>
+                        <br />
+                        Consultez-nous si vous avez une recherche particulière,
+                        et commandez au <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
+                        <br />
+                        ou par courriel à {' '}
+                        <a href="mailto:ecapermanence@gmail.com" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline">
+                            ecapermanence@gmail.com
+                        </a>
+                    </p>
+                </section>
 
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-gray-800">
-                    <section className="text-center space-y-4">
-                        <h1 className="text-3xl font-bold text-gray-100">Catalogue des livres</h1>
-                        <p className="text-lg text-gray-300">
-                            <span className="font-semibold">
-                                {totalBooks} titres au catalogue !
-                            </span>
-                            <br />
-                            Consultez-nous si vous avez une recherche particulière,
-                            et commandez au <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
-                            <br />
-                            ou par courriel à{' '}
-                            <a href="mailto:ecapermanence@gmail.com" className="text-blue-400 hover:text-blue-300">
-                                ecapermanence@gmail.com
-                            </a>{' '}
-                        </p>
-                    </section>
-
-                    <Suspense fallback={<BooksLoading />}>
-                        <BooksClient
-                            initialBooks={initialBooks}
-                            genres={genres}
-                            totalBooks={totalBooks}
-                            totalPages={totalPages}
-                        />
-                    </Suspense>
-                </div>
+                <Suspense fallback={<BooksLoading />}>
+                    <BooksClient
+                        initialBooks={initialBooks}
+                        genres={genres}
+                        totalBooks={totalBooks}
+                        totalPages={totalPages}
+                    />
+                </Suspense>
             </div>
         </main>
     );
 }
 
-// Optional: Add metadata for SEO
 export const metadata = {
     title: 'Catalogue des livres',
     description: 'Consultez notre catalogue de livres disponibles',

@@ -1,4 +1,3 @@
-// app/books/BooksClient.tsx
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -24,19 +23,15 @@ export function BooksClient({
                                 totalBooks: initialTotalBooks,
                                 totalPages: initialTotalPages
                             }: BooksClientProps) {
-    // Search state
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
-
-    // UI state
     const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Results state
     const [searchResults, setSearchResults] = useState<SearchResult>({
         books: initialBooks,
         total: initialTotalBooks,
@@ -44,18 +39,15 @@ export function BooksClient({
         totalPages: initialTotalPages
     });
 
-    // Refs for debouncing and request cancellation
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    // Perform search
     const performSearch = useCallback(async (
         term: string,
         filter: string,
         genreIds: number[],
         page: number
     ) => {
-        // Cancel any pending search
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current);
         }
@@ -63,7 +55,6 @@ export function BooksClient({
             abortControllerRef.current.abort();
         }
 
-        // If no search criteria, return to initial data
         if (!term && genreIds.length === 0 && page === 1) {
             setSearchResults({
                 books: initialBooks,
@@ -75,11 +66,9 @@ export function BooksClient({
             return;
         }
 
-        // Set loading state
         setIsSearching(true);
         setError(null);
 
-        // Create new abort controller
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
 
@@ -113,7 +102,6 @@ export function BooksClient({
         }
     }, [initialBooks, initialTotalBooks, initialTotalPages]);
 
-    // Debounced search effect
     useEffect(() => {
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current);
@@ -130,7 +118,6 @@ export function BooksClient({
         };
     }, [searchTerm, selectedFilter, selectedGenres, currentPage, performSearch]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (abortControllerRef.current) {
@@ -142,7 +129,6 @@ export function BooksClient({
         };
     }, []);
 
-    // Event handlers
     const handleSearchChange = useCallback((value: string) => {
         setSearchTerm(value);
         if (currentPage !== 1) {
@@ -165,14 +151,11 @@ export function BooksClient({
         setIsModalOpen(true);
     }, []);
 
-    // New handler for genre click from modal
     const handleGenreClickFromModal = useCallback((genreId: number) => {
-        // Add genre to selection if not already selected
         if (!selectedGenres.includes(genreId)) {
             setSelectedGenres(prev => [...prev, genreId]);
             setCurrentPage(1);
         }
-        // Close modal
         setIsModalOpen(false);
     }, [selectedGenres]);
 
@@ -190,7 +173,7 @@ export function BooksClient({
             />
 
             {error && (
-                <div className="text-center py-4 bg-red-900/50 text-red-200 rounded-lg">
+                <div className="text-center py-4 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-200 rounded-lg">
                     {error}
                 </div>
             )}
@@ -198,12 +181,12 @@ export function BooksClient({
             <div className="relative min-h-[200px]">
                 {isSearching && searchResults.books.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
-                        <p className="mt-4 text-gray-300">Recherche en cours...</p>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                        <p className="mt-4 text-gray-700 dark:text-gray-300">Recherche en cours...</p>
                     </div>
                 ) : searchResults.books.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-700 rounded-lg">
-                        <p className="text-gray-300">
+                    <div className="text-center py-8 glass-card">
+                        <p className="text-gray-700 dark:text-gray-300">
                             {searchTerm || selectedGenres.length > 0
                                 ? 'Aucun résultat trouvé pour votre recherche'
                                 : 'Aucun livre disponible'}

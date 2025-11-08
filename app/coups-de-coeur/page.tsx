@@ -7,8 +7,7 @@ import { BookModal } from '@/components/BookModal';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import type { Book, CoupDeCoeur, CoupsDeCoeurResponse } from '@/types/coups-de-coeur';
-//import { PDFButton } from "components/PDFButton";
-import {PDFButton} from "@/coups-de-coeur/PDFButton";
+import { PDFButton } from "@/coups-de-coeur/PDFButton";
 import { PDFContent } from '@/coups-de-coeur/PDFContent';
 import generatePDF from 'react-to-pdf';
 
@@ -27,7 +26,6 @@ export default function CoupsDeCoeurPage() {
     const isFirstRender = useRef(true);
 
     const fetchCoupsDeCoeur = useCallback(async (page: number) => {
-        console.log('Fetching page:', page);
         try {
             const queryParams = new URLSearchParams({
                 page: page.toString(),
@@ -43,10 +41,8 @@ export default function CoupsDeCoeurPage() {
         }
     }, []);
 
-
     useEffect(() => {
         const loadPage = async () => {
-            console.log('Loading page:', currentPage, 'isFirstRender:', isFirstRender.current);
             setIsTransitioning(true);
             const data = await fetchCoupsDeCoeur(currentPage);
             if (data) {
@@ -68,7 +64,6 @@ export default function CoupsDeCoeurPage() {
 
         loadPage();
     }, [currentPage, fetchCoupsDeCoeur]);
-
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
@@ -104,88 +99,75 @@ export default function CoupsDeCoeurPage() {
         }
     };
 
-
     const handleBookClick = (book: Book) => {
         setSelectedBook(book);
         setIsModalOpen(true);
     };
 
     return (
-        <main className="min-h-screen relative bg-gray-900">
-            <div className="hidden lg:block fixed inset-y-0 w-full">
-                <div className="h-full max-w-6xl mx-auto">
-                    <div className="h-full flex">
-                        <div className="w-16 h-full bg-gradient-to-r from-transparent to-gray-800"></div>
-                        <div className="flex-1"></div>
-                        <div className="w-16 h-full bg-gradient-to-l from-transparent to-gray-800"></div>
-                    </div>
-                </div>
-            </div>
+        <main className="min-h-screen relative">
+            <FrontendNavbar />
 
-            <div className="relative">
-                <FrontendNavbar />
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-8">
+                <section className="text-center glass-card-lg p-12 group hover:scale-[1.02] transition-transform duration-300">
+                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                        Listes de livres
+                    </h1>
+                    <p className="text-lg text-gray-700 dark:text-gray-100">
+                        A commander au{' '}
+                        <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
+                        <br />
+                        ou par courriel à {' '}
+                        <a href="mailto:ecapermanence@gmail.com"
+                           className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline">
+                            ecapermanence@gmail.com
+                        </a>
+                    </p>
+                </section>
 
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-gray-800">
-                    <section className="text-center space-y-4 transform transition-all duration-300 hover:scale-[1.02]">
-                        <h1 className="text-3xl font-bold text-gray-100 transition-colors duration-300 hover:text-blue-400">
-                            Listes de livres
-                        </h1>
-                        <p className="text-lg text-gray-300 transition-colors duration-300 hover:text-gray-100">
-                            A commander au{' '}
-                            <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
-                            <br />
-                            ou par courriel à{' '}
-                            <a href="mailto:ecapermanence@gmail.com"
-                               className="text-blue-400 hover:text-blue-300 transition-colors duration-300">
-                                ecapermanence@gmail.com
-                            </a>
-                        </p>
-                    </section>
-
-                    <div className="space-y-8">
-                        <div className="mb-8 transform transition-all duration-300 hover:scale-[1.02]">
-                            <SearchBar
-                                searchTerm={searchTerm}
-                                onSearchChange={handleSearchChange}
-                                onResultSelect={handleResultSelect}
-                            />
-                        </div>
-
-                        {!initialLoadComplete ? (
-                            <div className="text-center py-8 transform transition-opacity duration-300">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
-                                <p className="mt-4 text-gray-300">Chargement des listes de livres ...</p>
-                            </div>
-                        ) : coupsDeCoeur.length === 0 ? (
-                            <div className="text-center py-8 bg-gray-700 rounded-lg transform transition-all duration-300 hover:scale-[1.02]">
-                                <p className="text-gray-300">Aucun résultat trouvé</p>
-                            </div>
-                        ) : (
-                            <div ref={contentRef}>
-                                <CoupDeCoeurList
-                                    content={coupsDeCoeur}
-                                    onBookClick={handleBookClick}
-                                    isTransitioning={isTransitioning}
-                                />
-                            </div>
-                        )}
-
-                        {totalPages > 1 && (
-                            <div className="transform transition-all duration-300 hover:scale-[1.02]">
-                                <CustomPagination
-                                    currentPage={currentPage}
-                                    totalPages={totalPages}
-                                    onPageChange={setCurrentPage}
-                                />
-                            </div>
-                        )}
-
-                        <BookModal
-                            book={selectedBook}
-                            isOpen={isModalOpen}
-                            onClose={() => setIsModalOpen(false)}
+                <div className="space-y-8">
+                    <div className="mb-8">
+                        <SearchBar
+                            searchTerm={searchTerm}
+                            onSearchChange={handleSearchChange}
+                            onResultSelect={handleResultSelect}
                         />
                     </div>
+
+                    {!initialLoadComplete ? (
+                        <div className="text-center py-8">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+                            <p className="mt-4 text-gray-700 dark:text-gray-300">Chargement des listes de livres...</p>
+                        </div>
+                    ) : coupsDeCoeur.length === 0 ? (
+                        <div className="text-center py-8 glass-card">
+                            <p className="text-gray-700 dark:text-gray-300">Aucun résultat trouvé</p>
+                        </div>
+                    ) : (
+                        <div ref={contentRef}>
+                            <CoupDeCoeurList
+                                content={coupsDeCoeur}
+                                onBookClick={handleBookClick}
+                                isTransitioning={isTransitioning}
+                            />
+                        </div>
+                    )}
+
+                    {totalPages > 1 && (
+                        <div className="hover:scale-[1.02] transition-transform duration-300">
+                            <CustomPagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                            />
+                        </div>
+                    )}
+
+                    <BookModal
+                        book={selectedBook}
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                    />
                 </div>
             </div>
 
@@ -201,7 +183,6 @@ export default function CoupsDeCoeurPage() {
                     />
                 </>
             )}
-
         </main>
     );
 }

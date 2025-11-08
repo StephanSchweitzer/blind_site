@@ -47,7 +47,6 @@ export const BookModal: React.FC<BookModalProps> = ({
     const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Rest of the utility functions remain the same
     const formatMinutes = (minutes: number): string => {
         if (!minutes) return '';
         const hours = Math.floor(minutes / 60);
@@ -80,7 +79,6 @@ export const BookModal: React.FC<BookModalProps> = ({
         try {
             setIsLoading(true);
             setIsSpeaking(true);
-            // Split by sentences to create more natural chunks
             const sentences = text.split(/[.!?]+/);
             let currentChunk = '';
             const chunks = [];
@@ -120,7 +118,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                 if (currentIndex < audioUrls.length) {
                     const audio = new Audio(audioUrls[currentIndex]);
                     setAudioElement(audio);
-                    setIsLoading(false);  // Stop loading when first audio starts
+                    setIsLoading(false);
 
                     audio.onended = () => {
                         URL.revokeObjectURL(audioUrls[currentIndex]);
@@ -179,23 +177,23 @@ export const BookModal: React.FC<BookModalProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col rounded-lg">
+            <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col rounded-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <DialogHeader className="flex-shrink-0">
-                    <DialogTitle className="text-xl sm:text-2xl font-bold" role="heading" aria-level={1}>
+                    <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white" role="heading" aria-level={1}>
                         {book.title}
                     </DialogTitle>
-                    <p className="text-base sm:text-lg text-gray-800 mt-1">
+                    <p className="text-base sm:text-lg text-gray-700 dark:text-gray-200 mt-1">
                         {book.subtitle}
                     </p>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
                         <div className="space-y-3">
-                            <p className="text-gray-800" aria-label="Auteur">Auteur: {book.author}</p>
+                            <p className="text-gray-800 dark:text-gray-200" aria-label="Auteur">Auteur: {book.author}</p>
 
                             <div>
-                                <p className="text-gray-800 mb-2 font-medium">Genres:</p>
+                                <p className="text-gray-800 dark:text-gray-200 mb-2 font-medium">Genres:</p>
                                 <div className="flex flex-wrap gap-1" role="list" aria-label="Genres du livre">
                                     {book.genres.map(({ genre }) => {
                                         const isSelected = selectedGenres.includes(genre.id);
@@ -206,8 +204,8 @@ export const BookModal: React.FC<BookModalProps> = ({
                                                 disabled={isSelected}
                                                 className={`${
                                                     isSelected
-                                                        ? 'bg-green-100 text-green-800 cursor-not-allowed'
-                                                        : 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer'
+                                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 cursor-not-allowed'
+                                                        : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/30 cursor-pointer'
                                                 } text-sm px-2 py-0.5 rounded-full transition-colors duration-200 inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1`}
                                                 role="listitem"
                                                 aria-label={isSelected ? `Genre ${genre.name} déjà sélectionné` : `Cliquer pour filtrer par ${genre.name}`}
@@ -220,35 +218,31 @@ export const BookModal: React.FC<BookModalProps> = ({
                                         );
                                     })}
                                 </div>
-                                {onGenreClick && (
-                                    <p className="text-xs text-gray-600 mt-2">
-                                    </p>
-                                )}
                             </div>
 
                             {book.publishedDate && (
-                                <p className="text-gray-800" aria-label="Date de publication">
+                                <p className="text-gray-800 dark:text-gray-200" aria-label="Date de publication">
                                     Date de publication : {new Date(book.publishedDate).toLocaleDateString('fr-FR')}
                                 </p>
                             )}
 
                             {book.readingDurationMinutes && (
-                                <p className="text-gray-800" aria-label="Durée de lecture">
+                                <p className="text-gray-800 dark:text-gray-200" aria-label="Durée de lecture">
                                     Durée de l&apos;enregistrement: {formatMinutes(book.readingDurationMinutes)}
                                 </p>
                             )}
                         </div>
 
                         <div className="flex flex-col">
-                            <h3 className="font-semibold mb-2">Description</h3>
+                            <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Description</h3>
                             <div
                                 className={`${
                                     isExpanded ? 'max-h-48 sm:max-h-64 lg:max-h-80' : 'max-h-24 sm:max-h-32'
-                                } overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 transition-all duration-300 flex-1 mb-3`}
+                                } overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800 transition-all duration-300 flex-1 mb-3`}
                                 role="region"
                                 aria-label="Description du livre"
                             >
-                                <p className="text-gray-800 whitespace-pre-wrap text-sm sm:text-base">
+                                <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap text-sm sm:text-base">
                                     {book.description || 'Aucune description disponible.'}
                                 </p>
                             </div>
@@ -257,7 +251,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                                 {book.description && book.description.length > 200 && (
                                     <button
                                         onClick={() => setIsExpanded(!isExpanded)}
-                                        className="flex items-center text-blue-600 hover:text-blue-800 focus:outline-none self-start"
+                                        className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 focus:outline-none self-start"
                                         aria-label={isExpanded ? "Voir moins" : "Voir plus"}
                                     >
                                         {isExpanded ? (

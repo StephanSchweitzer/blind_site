@@ -86,118 +86,105 @@ export default function DernieresInfoPage() {
     };
 
     return (
-        <main className="min-h-screen relative bg-gray-900">
-            <div className="hidden lg:block fixed inset-y-0 w-full">
-                <div className="h-full max-w-6xl mx-auto">
-                    <div className="h-full flex">
-                        <div className="w-16 h-full bg-gradient-to-r from-transparent to-gray-800"></div>
-                        <div className="flex-1"></div>
-                        <div className="w-16 h-full bg-gradient-to-l from-transparent to-gray-800"></div>
-                    </div>
-                </div>
-            </div>
+        <main className="min-h-screen relative">
+            <FrontendNavbar />
 
-            <div className="relative">
-                <FrontendNavbar />
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-8">
+                <section className="text-center glass-card-lg p-12">
+                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                        Dernières Informations
+                    </h1>
+                    <p className="text-lg text-gray-700 dark:text-gray-100">
+                        Restez informé des actualités et des événements
+                    </p>
+                </section>
 
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-gray-800">
-                    <section className="text-center space-y-4">
-                        <h1 className="text-3xl font-bold text-gray-100">
-                            Dernières Informations
-                        </h1>
-                        <p className="text-lg text-gray-300">
-                            Restez informé des actualités et des événements
-                        </p>
-                    </section>
-
-                    <div className="space-y-8">
-                        <div className="flex flex-col sm:flex-row gap-4 items-center">
-                            <div className="flex-1 w-full">
-                                <SearchBar
-                                    searchTerm={searchTerm}
-                                    onSearchChange={handleSearchChange}
-                                    placeholder="Rechercher..."
-                                />
-                            </div>
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className="flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300 text-gray-800"
-                            >
-                                <Filter className="w-4 h-4 mr-2 text-gray-600" />
-                                Filtres
-                            </button>
+                <div className="space-y-8">
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="flex-1 w-full">
+                            <SearchBar
+                                searchTerm={searchTerm}
+                                onSearchChange={handleSearchChange}
+                                placeholder="Rechercher..."
+                            />
                         </div>
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="flex items-center px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-300 text-gray-800 dark:text-gray-100"
+                        >
+                            <Filter className="w-4 h-4 mr-2" />
+                            Filtres
+                        </button>
+                    </div>
 
-                        {showFilters && (
-                            <div className="bg-gray-700 border-gray-200 rounded-lg p-4 flex flex-wrap gap-4 shadow-lg">
+                    {showFilters && (
+                        <div className="glass-card p-4 flex flex-wrap gap-4 shadow-lg">
+                            <button
+                                onClick={() => handleTypeChange('all')}
+                                className={`px-4 py-2 rounded-full transition-colors duration-300 ${
+                                    selectedType === 'all'
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                }`}
+                            >
+                                Tous
+                            </button>
+                            {Object.entries(newsTypeLabels).map(([type, label]) => (
                                 <button
-                                    onClick={() => handleTypeChange('all')}
+                                    key={type}
+                                    onClick={() => handleTypeChange(type)}
                                     className={`px-4 py-2 rounded-full transition-colors duration-300 ${
-                                        selectedType === 'all'
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-gray-50 text-gray-800 hover:bg-gray-100'
+                                        selectedType === type
+                                            ? newsTypeColors[type] + ' text-white'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'
                                     }`}
                                 >
-                                    Tous
+                                    <Tag className="w-4 h-4 inline mr-2" />
+                                    {label}
                                 </button>
-                                {Object.entries(newsTypeLabels).map(([type, label]) => (
-                                    <button
-                                        key={type}
-                                        onClick={() => handleTypeChange(type)}
-                                        className={`px-4 py-2 rounded-full transition-colors duration-300 ${
-                                            selectedType === type
-                                                ? newsTypeColors[type] + ' text-white'
-                                                : 'bg-white text-gray-800 hover:bg-gray-100'
-                                        }`}
-                                    >
-                                        <Tag className="w-4 h-4 inline mr-2" />
-                                        {label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                            ))}
+                        </div>
+                    )}
 
-                        {isLoading ? (
-                            <div className="text-center py-8">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
-                                <p className="mt-4 text-gray-300">Chargement des actualités...</p>
-                            </div>
-                        ) : error ? (
-                            <div className="text-center py-8 bg-red-900/20 rounded-lg">
-                                <p className="text-red-400">{error}</p>
-                            </div>
-                        ) : newsPosts.length === 0 ? (
-                            <div className="text-center py-8 bg-gray-700 rounded-lg">
-                                <p className="text-gray-300">Aucune actualité trouvée</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                {newsPosts.map((post) => (
-                                    <article key={post.id} className="bg-gray-900 rounded-lg p-6 shadow-lg">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <h2 className="text-xl font-bold text-white">{post.title}</h2>
-                                            <span className={`px-3 py-1 rounded-full text-sm ${newsTypeColors[post.type]} ${post.type === 'ANNONCE' ? 'text-gray-900' : 'text-white'}`}>
-                        {newsTypeLabels[post.type]}
-                    </span>
-                                        </div>
-                                        <p className="text-gray-300 whitespace-pre-wrap">{post.content}</p>
-                                        <div className="mt-4 text-sm text-gray-100">
-                                            Par {post.author.name} • {new Date(post.publishedAt).toLocaleDateString('fr-FR')}
-                                        </div>
-                                    </article>
-                                ))}
-                            </div>
-                        )}
+                    {isLoading ? (
+                        <div className="text-center py-8">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+                            <p className="mt-4 text-gray-700 dark:text-gray-300">Chargement des actualités...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-8 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                            <p className="text-red-700 dark:text-red-400">{error}</p>
+                        </div>
+                    ) : newsPosts.length === 0 ? (
+                        <div className="text-center py-8 glass-card">
+                            <p className="text-gray-700 dark:text-gray-300">Aucune actualité trouvée</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {newsPosts.map((post) => (
+                                <article key={post.id} className="glass-card p-6">
+                                    <div className="flex items-center gap-4 mb-4 flex-wrap">
+                                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{post.title}</h2>
+                                        <span className={`px-3 py-1 rounded-full text-sm ${newsTypeColors[post.type]} ${post.type === 'ANNONCE' ? 'text-gray-900' : 'text-white'}`}>
+                                            {newsTypeLabels[post.type]}
+                                        </span>
+                                    </div>
+                                    <p className="text-gray-700 dark:text-gray-100 whitespace-pre-wrap">{post.content}</p>
+                                    <div className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+                                        Par {post.author.name} • {new Date(post.publishedAt).toLocaleDateString('fr-FR')}
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    )}
 
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                            <CustomPagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={setCurrentPage}
-                            />
-                        )}
-                    </div>
+                    {totalPages > 1 && (
+                        <CustomPagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                        />
+                    )}
                 </div>
             </div>
         </main>
