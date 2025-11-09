@@ -86,16 +86,20 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 </div>
 
                                 <div className="relative z-10">
-                                    <div className="font-bold text-lg text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-purple-400 transition-colors duration-300">
-                                        {book.title}
-                                    </div>
-                                    <div className="italic text-gray-700 dark:text-gray-300 mb-2 text-sm">
-                                        {book.author}
+                                    <div className="mb-3">
+                                        <div className="font-bold text-lg text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-purple-400 transition-colors duration-300">
+                                            {book.title}
+                                        </div>
+                                        <div className="italic text-gray-700 dark:text-gray-300 text-sm">
+                                            {book.author}
+                                        </div>
                                     </div>
                                     {book.description && (
-                                        <p className="mt-3 text-gray-800 dark:text-gray-200 whitespace-pre-wrap text-sm leading-relaxed">
-                                            <TruncatedDescription description={book.description} />
-                                        </p>
+                                        <div className="p-3 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30 shadow-sm">
+                                            <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap text-sm leading-relaxed">
+                                                <TruncatedDescription description={book.description} />
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
