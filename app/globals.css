@@ -71,15 +71,40 @@
         @apply border-border;
     }
     body {
-        @apply bg-background text-foreground transition-colors duration-300;
+        @apply text-foreground transition-colors duration-300;
+    }
+
+    /* Premium animated gradient backgrounds */
+    body:not(.dark) {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 30%, #dbeafe 60%, #f0f9ff 100%);
+        background-size: 400% 400%;
+        animation: gradient-shift 15s ease infinite;
+        background-attachment: fixed;
+    }
+
+    .dark body {
+        background: linear-gradient(135deg, #0a0e1a 0%, #1a1640 30%, #152238 60%, #0f1325 100%);
+        background-size: 400% 400%;
+        animation: gradient-shift 15s ease infinite;
+        background-attachment: fixed;
     }
 }
 
-/* Modern animations and effects */
+/* Premium animations and effects */
 @layer utilities {
-    /* Animated blob effect for background */
+    /* Animated gradient background */
+    @keyframes gradient-shift {
+        0%, 100% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+    }
+
+    /* Animated blob effect for decorative elements */
     @keyframes blob {
-        0% {
+        0%, 100% {
             transform: translate(0px, 0px) scale(1);
         }
         33% {
@@ -87,9 +112,6 @@
         }
         66% {
             transform: translate(-20px, 20px) scale(0.9);
-        }
-        100% {
-            transform: translate(0px, 0px) scale(1);
         }
     }
 
@@ -105,35 +127,136 @@
         animation-delay: 4s;
     }
 
+    /* Fade in up animation for cards */
+    @keyframes fade-in-up {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in-up {
+        animation: fade-in-up 0.6s ease-out forwards;
+        animation-fill-mode: both;
+    }
+
+    /* Fade in animation */
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .animate-fade-in {
+        animation: fade-in 0.5s ease-out;
+    }
+
+    /* Scale in animation for tags */
+    @keyframes scale-in {
+        from {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .animate-scale-in {
+        animation: scale-in 0.3s ease-out;
+    }
+
+    /* Subtle pulse for "En attente" badges */
+    @keyframes pulse-subtle {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+    }
+
+    .animate-pulse-subtle {
+        animation: pulse-subtle 2s ease-in-out infinite;
+    }
+
     /* Smooth scrolling */
     html {
         scroll-behavior: smooth;
     }
 
-    /* Custom backdrop blur support */
-    @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
-        .backdrop-blur-custom {
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
+    /* Custom scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
     }
 
-    /* Enhanced glass card styles - WHITE cards that POP against colored background */
+    .custom-scrollbar::-webkit-scrollbar-track {
+        @apply bg-gray-100 dark:bg-gray-800 rounded-lg;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        @apply bg-gray-300 dark:bg-gray-600 rounded-lg;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        @apply bg-gray-400 dark:bg-gray-500;
+    }
+
+    /* Enhanced glass card styles with premium effects */
     .glass-card {
-        @apply backdrop-blur-sm bg-white dark:bg-gray-800/70
-        border-2 border-blue-100 dark:border-white/10
-        rounded-2xl shadow-lg
-        hover:shadow-xl hover:shadow-blue-200/50 dark:hover:shadow-purple-500/20
-        hover:border-blue-200 dark:hover:border-purple-500/30
+        @apply backdrop-blur-xl backdrop-saturate-150
+        bg-white/90 dark:bg-gray-800/80
+        border-2 border-gray-200/50 dark:border-gray-700/50
+        rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
+        hover:shadow-[0_20px_60px_rgb(59,130,246,0.15)] dark:hover:shadow-[0_20px_60px_rgb(147,51,234,0.25)]
+        hover:border-blue-200/50 dark:hover:border-purple-500/30
         hover:-translate-y-1
-        transition-all duration-300;
+        transition-all duration-500;
     }
 
     .glass-card-lg {
-        @apply backdrop-blur-sm bg-white dark:bg-gray-800/60
-        border-2 border-blue-200 dark:border-purple-500/20
-        rounded-3xl shadow-2xl
-        hover:shadow-2xl hover:shadow-blue-300/30 dark:hover:shadow-purple-500/20
-        transition-all duration-300;
+        @apply backdrop-blur-xl backdrop-saturate-150
+        bg-white/90 dark:bg-gray-800/80
+        border-2 border-gray-200/50 dark:border-gray-700/50
+        rounded-3xl shadow-[0_20px_60px_rgb(0,0,0,0.12)] dark:shadow-[0_20px_60px_rgb(0,0,0,0.4)]
+        hover:shadow-[0_30px_80px_rgb(59,130,246,0.2)] dark:hover:shadow-[0_30px_80px_rgb(147,51,234,0.3)]
+        transition-all duration-500;
+    }
+
+    /* Text gradient effects */
+    .text-gradient {
+        @apply bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent;
+    }
+
+    /* Line clamp utilities */
+    .line-clamp-1 {
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 }

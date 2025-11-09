@@ -109,24 +109,38 @@ export default function CoupsDeCoeurPage() {
             <FrontendNavbar />
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-8">
-                <section className="text-center glass-card-lg p-12 group hover:scale-[1.02] transition-transform duration-300">
-                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                        Listes de livres
-                    </h1>
-                    <p className="text-lg text-gray-700 dark:text-gray-100">
-                        A commander au{' '}
-                        <span className="whitespace-nowrap">01 88 32 31 47</span> ou 48
-                        <br />
-                        ou par courriel à {' '}
-                        <a href="mailto:ecapermanence@gmail.com"
-                           className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline">
-                            ecapermanence@gmail.com
-                        </a>
-                    </p>
+                <section className="text-center glass-card-lg p-12 animate-fade-in relative overflow-hidden group">
+                    {/* Decorative gradient orbs */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/20 dark:bg-purple-500/20 rounded-full blur-3xl animate-blob"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 dark:bg-blue-500/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
+
+                    <div className="relative z-10">
+                        <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
+                            Listes de livres
+                        </h1>
+                        <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mx-auto mb-6"></div>
+                        <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed max-w-2xl mx-auto">
+                            <span className="text-base">
+                                A commander au{' '}
+                                <span className="font-semibold whitespace-nowrap">01 88 32 31 47</span> ou 48
+                            </span>
+                            <br />
+                            <span className="text-base">
+                                ou par courriel à {' '}
+                                <a
+                                    href="mailto:ecapermanence@gmail.com"
+                                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline font-medium
+                                        hover:scale-105 inline-block transition-all duration-300"
+                                >
+                                    ecapermanence@gmail.com
+                                </a>
+                            </span>
+                        </p>
+                    </div>
                 </section>
 
                 <div className="space-y-8">
-                    <div className="mb-8">
+                    <div className="mb-8 animate-fade-in" style={{ animationDelay: '100ms' }}>
                         <SearchBar
                             searchTerm={searchTerm}
                             onSearchChange={handleSearchChange}
@@ -135,13 +149,25 @@ export default function CoupsDeCoeurPage() {
                     </div>
 
                     {!initialLoadComplete ? (
-                        <div className="text-center py-8">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
-                            <p className="mt-4 text-gray-700 dark:text-gray-300">Chargement des listes de livres...</p>
+                        <div className="flex flex-col items-center justify-center py-16">
+                            <div className="relative">
+                                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 dark:border-purple-900"></div>
+                                <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-4 border-transparent border-t-blue-600 dark:border-t-purple-400"></div>
+                            </div>
+                            <p className="mt-6 text-gray-700 dark:text-gray-300 font-medium animate-pulse">
+                                Chargement des listes de livres...
+                            </p>
                         </div>
                     ) : coupsDeCoeur.length === 0 ? (
-                        <div className="text-center py-8 glass-card">
-                            <p className="text-gray-700 dark:text-gray-300">Aucun résultat trouvé</p>
+                        <div className="text-center py-12 glass-card animate-fade-in">
+                            <div className="max-w-md mx-auto">
+                                <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <p className="text-gray-700 dark:text-gray-300 font-medium">Aucun résultat trouvé</p>
+                            </div>
                         </div>
                     ) : (
                         <div ref={contentRef}>
@@ -154,7 +180,7 @@ export default function CoupsDeCoeurPage() {
                     )}
 
                     {totalPages > 1 && (
-                        <div className="hover:scale-[1.02] transition-transform duration-300">
+                        <div className="animate-fade-in">
                             <CustomPagination
                                 currentPage={currentPage}
                                 totalPages={totalPages}
