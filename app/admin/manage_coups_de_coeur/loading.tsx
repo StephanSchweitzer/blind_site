@@ -1,5 +1,5 @@
 import { LoadingSkeleton } from '@/components/loading-skeleton';
 
 export default function Loading() {
-    return <LoadingSkeleton message="Chargement des coups des coeurs..." />;
+    return <LoadingSkeleton message="Chargement des listes de livres..." variant="admin" />;
 }

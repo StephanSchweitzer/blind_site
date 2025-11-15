@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDown, ChevronUp, Volume2, Filter, Clock, Calendar, User } from 'lucide-react';
+import { ChevronDown, ChevronUp, Volume2, Filter, Clock, Calendar, User, X } from 'lucide-react';
 
 // Initialize AWS Polly
 const pollyClient = new PollyClient({
@@ -183,13 +183,38 @@ export const BookModal: React.FC<BookModalProps> = ({
                 backdrop-blur-xl backdrop-saturate-150
                 border-2 border-gray-200/50 dark:border-gray-600/60
                 shadow-[0_20px_70px_rgb(0,0,0,0.15)] dark:shadow-[0_25px_80px_rgb(0,0,0,0.6)]
-                animate-fade-in">
+                animate-fade-in
+                [&>[data-dialog-close]]:hidden">
+
+                {/* Custom mobile-friendly close button */}
+                <button
+                    onClick={onClose}
+                    type="button"
+                    className="absolute top-2 right-2 z-50
+                        w-12 h-12 sm:w-10 sm:h-10
+                        flex items-center justify-center
+                        rounded-full
+                        bg-white dark:bg-gray-700
+                        hover:bg-gray-100 dark:hover:bg-gray-600
+                        text-gray-700 dark:text-gray-300
+                        hover:text-gray-900 dark:hover:text-white
+                        border-2 border-gray-300 dark:border-gray-600
+                        shadow-lg hover:shadow-xl
+                        transition-all duration-200
+                        hover:scale-110
+                        active:scale-95
+                        focus:outline-none focus-visible:ring-0"
+                    aria-label="Fermer"
+                    tabIndex={-1}
+                >
+                    <X className="w-6 h-6 sm:w-5 sm:h-5 stroke-[2.5]" />
+                </button>
 
                 {/* Decorative gradient orbs */}
                 <div className="absolute top-0 right-0 w-48 h-48 bg-blue-400/10 dark:bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/10 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-                <DialogHeader className="flex-shrink-0 pb-4 border-b border-gray-200/50 dark:border-gray-700/50 relative z-10">
+                <DialogHeader className="text-center flex-shrink-0 pb-4 pt-2 pr-14 sm:pr-12 border-b border-gray-200/50 dark:border-gray-700/50 relative z-10">
                     <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight" role="heading" aria-level={1}>
                         {book.title}
                     </DialogTitle>

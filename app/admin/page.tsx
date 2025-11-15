@@ -53,8 +53,7 @@ export default async function Dashboard() {
                         title="Listes de livres"
                         count={coupsDeCoeurCount}
                         href="/admin/manage_coups_de_coeur"
-                        buttonText="Gestion des listes de livres (anciennement appelés
-                        « coups de cœur »)"
+                        buttonText="Gestion des listes de livres (anciennement appelés « coups de cœur »)"
                         accentColor="pink"
                     />
 

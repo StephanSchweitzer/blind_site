@@ -8,7 +8,8 @@ export default function AdminLayout({
     children: React.ReactNode
 }) {
     return (
-        <div className="min-h-screen bg-gray-950">
+        // This wrapper isolates the admin section from root layout's decorative effects
+        <div className="fixed inset-0 bg-gray-950 z-10 overflow-auto">
             <BackendNavbar />
             <div className="container mx-auto py-8">
                 <div className="relative">
