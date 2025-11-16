@@ -27,16 +27,39 @@ import {
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Search, X, Plus, Loader2 } from 'lucide-react';
-import { AddOrderForm } from './components/AddOrderForm';
+import { AddOrderFormBackend } from '@/admin/OrderFormBackendBase';
+import { EditOrderModal } from '@/admin/EditOrderModal';
+import { OrderFormData } from '@/admin/OrderFormBackendBase';
+import { useToast } from '@/hooks/use-toast';
+
+interface User {
+    id: number;
+    name: string | null;
+    email: string;
+}
+
+interface Book {
+    id: number;
+    title: string;
+    author: string;
+}
 
 type OrderWithRelations = {
     id: number;
     requestReceivedDate: string;
+    createdDate: Date | null;
     closureDate: string | null;
     cost: number | null;
     billingStatus: string;
     deliveryMethod: string;
     lentPhysicalBook: boolean;
+    isDuplication: boolean;
+    notes: string | null;
+    statusId: number;
+    mediaFormatId: number;
+    processedByStaffId: number | null;
+    aveugleId: number;
+    catalogueId: number;
     aveugle: {
         name: string | null;
         email: string | null;
@@ -72,9 +95,20 @@ export default function OrdersTable({
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isLoadingOrder, setIsLoadingOrder] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<{
+        id: string;
+        data: OrderFormData;
+        selectedUser: User;
+        selectedBook: Book;
+        selectedStaff: User | null;
+    } | null>(null);
+
     const currentPage = initialPage;
     const currentBillingStatus = searchParams.get('billingStatus') || 'all';
     const currentStatusId = searchParams.get('statusId') || 'all';
@@ -133,6 +167,93 @@ export default function OrdersTable({
         router.refresh();
     };
 
+    const handleOrderEdited = (orderId: number) => {
+        console.log('Order edited:', orderId);
+        setIsEditModalOpen(false);
+        setSelectedOrder(null);
+        router.refresh();
+    };
+
+    const handleOrderDeleted = (orderId: number) => {
+        console.log('Order deleted:', orderId);
+        setIsEditModalOpen(false);
+        setSelectedOrder(null);
+        router.refresh();
+    };
+
+    const handleRowClick = async (order: OrderWithRelations) => {
+        setIsLoadingOrder(true);
+
+        try {
+            // Pre-fetch all required data
+            const [userResponse, bookResponse, staffResponse] = await Promise.all([
+                fetch(`/api/user/${order.aveugleId}`),
+                fetch(`/api/books/${order.catalogueId}`),
+                order.processedByStaffId
+                    ? fetch(`/api/user/${order.processedByStaffId}`)
+                    : Promise.resolve(null),
+            ]);
+
+            // Check if requests were successful
+            if (!userResponse.ok || !bookResponse.ok) {
+                throw new Error('Échec du chargement des données');
+            }
+
+            // Parse the JSON responses
+            const userData = await userResponse.json();
+            const bookData = await bookResponse.json();
+            const staffData = staffResponse ? await staffResponse.json() : null;
+
+            // Validate that we actually received the data
+            if (!userData || !bookData) {
+                throw new Error('Données incomplètes reçues');
+            }
+
+            // Validate staff data if needed
+            if (order.processedByStaffId && staffResponse && !staffResponse.ok) {
+                console.warn('Failed to load staff data, but continuing anyway');
+            }
+
+            // Transform the order data to OrderFormData format
+            const formData: OrderFormData = {
+                aveugleId: order.aveugleId,
+                catalogueId: order.catalogueId,
+                requestReceivedDate: new Date(order.requestReceivedDate),
+                statusId: order.statusId,
+                isDuplication: order.isDuplication,
+                mediaFormatId: order.mediaFormatId,
+                deliveryMethod: order.deliveryMethod as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE',
+                processedByStaffId: order.processedByStaffId,
+                createdDate: order.createdDate ? new Date(order.createdDate) : null,
+                closureDate: order.closureDate ? new Date(order.closureDate) : null,
+                cost: order.cost?.toString() || '0.00',
+                billingStatus: order.billingStatus as 'UNBILLED' | 'BILLED' | 'PAID',
+                lentPhysicalBook: order.lentPhysicalBook,
+                notes: order.notes || '',
+            };
+
+            setSelectedOrder({
+                id: order.id.toString(),
+                data: formData,
+                selectedUser: userData,
+                selectedBook: bookData,
+                selectedStaff: staffData,
+            });
+
+            // Open modal only after all data is ready and validated
+            setIsEditModalOpen(true);
+        } catch (error) {
+            console.error('Error loading order:', error);
+            toast({
+                variant: "destructive",
+                title: "Erreur",
+                description: "Erreur lors du chargement de la demande. Veuillez réessayer.",
+            });
+        } finally {
+            setIsLoadingOrder(false);
+        }
+    };
+
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
         return new Date(dateString).toLocaleDateString('fr-FR');
@@ -151,9 +272,9 @@ export default function OrdersTable({
         const displayMap: Record<string, string> = {
             'Attente envoi vers lecteur': 'À envoyer',
             'En cours de traitement': 'En cours',
-            'Commande terminée': 'Terminée',
+            'Demande terminée': 'Terminée',
             'En attente de validation': 'À valider',
-            'Commande annulée': 'Annulée',
+            'Demande annulée': 'Annulée',
         };
         return displayMap[statusName] || statusName;
     };
@@ -173,18 +294,27 @@ export default function OrdersTable({
         let end = Math.min(totalPages - 1, currentPage + 1);
 
         if (currentPage <= 3) {
-            end = maxVisible - 1;
-        } else if (currentPage >= totalPages - 2) {
-            start = totalPages - maxVisible + 2;
+            end = Math.min(maxVisible, totalPages - 1);
+        }
+        if (currentPage >= totalPages - 2) {
+            start = Math.max(2, totalPages - maxVisible + 1);
         }
 
-        if (start > 2) pages.push('...');
+        if (start > 2) {
+            pages.push('...');
+        }
+
         for (let i = start; i <= end; i++) {
             pages.push(i);
         }
-        if (end < totalPages - 1) pages.push('...');
 
-        pages.push(totalPages);
+        if (end < totalPages - 1) {
+            pages.push('...');
+        }
+
+        if (totalPages > 1) {
+            pages.push(totalPages);
+        }
 
         return pages;
     };
@@ -193,11 +323,11 @@ export default function OrdersTable({
 
     return (
         <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="border-b border-gray-800">
+            <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="text-2xl text-gray-100">Demandes</CardTitle>
-                        <CardDescription className="text-gray-400 mt-1">
+                        <CardDescription className="text-gray-400">
                             Gérer et suivre toutes les demandes
                         </CardDescription>
                     </div>
@@ -211,100 +341,50 @@ export default function OrdersTable({
                 </div>
             </CardHeader>
 
-            <CardContent className="p-6">
+            <CardContent className="space-y-6">
                 {/* Search and Filters */}
-                <div className="mb-6 space-y-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
+                <div className="space-y-4">
+                    {/* Search Bar */}
+                    <div className="flex gap-2">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
-                                type="text"
-                                placeholder="Rechercher par client, livre..."
+                                placeholder="Rechercher par client, livre, ou email..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
+                                className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400"
                             />
-                            {searchTerm && (
-                                <button
-                                    onClick={handleClearSearch}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
                         </div>
+                        {searchTerm && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleClearSearch}
+                                className="text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
                         <Button
                             onClick={handleSearch}
-                            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                             disabled={isPending}
                         >
-                            {isPending ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Recherche...
-                                </>
-                            ) : (
-                                <>
-                                    <Search className="h-4 w-4 mr-2" />
-                                    Rechercher
-                                </>
-                            )}
+                            Rechercher
                         </Button>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
-                        {/*<div className="flex flex-col gap-1">*/}
-                        {/*    <label className="text-xs text-gray-400 px-1">Urgency or something</label>*/}
-                        {/*    <Select*/}
-                        {/*        value={currentFilter}*/}
-                        {/*        onValueChange={(value) => handleFilterChange('filter', value)}*/}
-                        {/*        disabled={isPending}*/}
-                        {/*    >*/}
-                        {/*        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">*/}
-                        {/*            <SelectValue placeholder="Filtrer par" />*/}
-                        {/*        </SelectTrigger>*/}
-                        {/*        <SelectContent className="bg-gray-800 border-gray-700">*/}
-                        {/*            <SelectItem value="all" className="text-gray-200">Toutes</SelectItem>*/}
-                        {/*            <SelectItem value="needsReturn" className="text-gray-200">*/}
-                        {/*                À retourner*/}
-                        {/*            </SelectItem>*/}
-                        {/*            <SelectItem value="late" className="text-gray-200">*/}
-                        {/*                En retard*/}
-                        {/*            </SelectItem>*/}
-                        {/*        </SelectContent>*/}
-                        {/*    </Select>*/}
-                        {/*</div>*/}
-
-                        {/* Type de demande */}
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs text-gray-400 px-1">Type de demande</label>
-                            <Select
-                                value={currentIsDuplication}
-                                onValueChange={(value) => handleFilterChange('isDuplication', value)}
-                                disabled={isPending}
-                            >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
-                                    <SelectValue placeholder="Type de demande" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="all" className="text-gray-200">Tous les types</SelectItem>
-                                    <SelectItem value="true" className="text-gray-200">Duplication</SelectItem>
-                                    <SelectItem value="false" className="text-gray-200">Livres à enregistrer</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Statut de la demande */}
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs text-gray-400 px-1">Statut de la demande</label>
+                    {/* Filters */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-sm text-gray-400 mb-1.5 block">Statut de la demande</label>
                             <Select
                                 value={currentStatusId}
                                 onValueChange={(value) => handleFilterChange('statusId', value)}
-                                disabled={isPending}
                             >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
-                                    <SelectValue placeholder="Statut" />
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-gray-800 border-gray-700">
                                     <SelectItem value="all" className="text-gray-200">Tous les statuts</SelectItem>
@@ -314,29 +394,44 @@ export default function OrdersTable({
                                             value={status.id.toString()}
                                             className="text-gray-200"
                                         >
-                                            {getStatusDisplayName(status.name)}
+                                            {status.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* État de facturation */}
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs text-gray-400 px-1">État de facturation</label>
+                        <div>
+                            <label className="text-sm text-gray-400 mb-1.5 block">Facturation</label>
                             <Select
                                 value={currentBillingStatus}
                                 onValueChange={(value) => handleFilterChange('billingStatus', value)}
-                                disabled={isPending}
                             >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 w-[200px] flex-shrink-0">
-                                    <SelectValue placeholder="État de facturation" />
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-gray-800 border-gray-700">
                                     <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
                                     <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
                                     <SelectItem value="BILLED" className="text-gray-200">Facturé</SelectItem>
                                     <SelectItem value="PAID" className="text-gray-200">Payé</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <label className="text-sm text-gray-400 mb-1.5 block">Type</label>
+                            <Select
+                                value={currentIsDuplication}
+                                onValueChange={(value) => handleFilterChange('isDuplication', value)}
+                            >
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
+                                    <SelectItem value="true" className="text-gray-200">Duplication</SelectItem>
+                                    <SelectItem value="false" className="text-gray-200">Enregistrement</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -359,7 +454,7 @@ export default function OrdersTable({
                 <div className="relative">
                     {initialOrders.length === 0 ? (
                         <div className="text-center py-12">
-                            <p className="text-gray-400 text-lg">Aucune commande trouvée</p>
+                            <p className="text-gray-400 text-lg">Aucune demande trouvée</p>
                         </div>
                     ) : (
                         <div className={`border border-gray-800 rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
@@ -379,7 +474,8 @@ export default function OrdersTable({
                                         {initialOrders.map((order) => (
                                             <TableRow
                                                 key={order.id}
-                                                className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                                onClick={() => handleRowClick(order)}
+                                                className="border-b border-gray-700 hover:bg-gray-800 cursor-pointer transition-colors"
                                             >
                                                 <TableCell className="font-medium text-gray-200">
                                                     #{order.id}
@@ -432,6 +528,18 @@ export default function OrdersTable({
                             </div>
                         </div>
                     )}
+
+                    {/* Loading Overlay for Order Data */}
+                    {isLoadingOrder && (
+                        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
+                                <div className="flex flex-col items-center gap-4">
+                                    <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+                                    <p className="text-lg font-medium text-gray-200">Chargement de la demande...</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Enhanced Pagination */}
@@ -473,7 +581,7 @@ export default function OrdersTable({
                         ))}
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-700 hover:bg-gray-700"
+                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages || isPending}
                         >
@@ -504,10 +612,25 @@ export default function OrdersTable({
                         <DialogTitle className="text-gray-100">Ajouter une nouvelle demande</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        <AddOrderForm onSuccess={handleOrderAdded} />
+                        <AddOrderFormBackend onSuccess={handleOrderAdded} />
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Edit Order Modal */}
+            {selectedOrder && (
+                <EditOrderModal
+                    isOpen={isEditModalOpen}
+                    onOpenChange={setIsEditModalOpen}
+                    orderId={selectedOrder.id}
+                    initialData={selectedOrder.data}
+                    onOrderEdited={handleOrderEdited}
+                    onOrderDeleted={handleOrderDeleted}
+                    initialSelectedUser={selectedOrder.selectedUser}
+                    initialSelectedBook={selectedOrder.selectedBook}
+                    initialSelectedStaff={selectedOrder.selectedStaff}
+                />
+            )}
         </Card>
     );
 }

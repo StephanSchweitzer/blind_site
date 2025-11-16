@@ -19,7 +19,7 @@ async function getOrders(
     filter: string = 'all',
     statusId?: number,
     billingStatus?: string,
-    isDuplication?: string  // ✅ ADDED THIS
+    isDuplication?: string
 ) {
     const ordersPerPage = 10;
 
@@ -176,12 +176,10 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
         const billingStatus = Array.isArray(params.billingStatus)
             ? params.billingStatus[0]
             : params.billingStatus;
-        // ✅ ADDED: Extract isDuplication from search params
         const isDuplication = Array.isArray(params.isDuplication)
             ? params.isDuplication[0]
             : params.isDuplication;
 
-        // ✅ ADDED: Pass isDuplication to getOrders
         const { orders, totalOrders, totalPages, availableStatuses } = await getOrders(
             page,
             searchTerm,
