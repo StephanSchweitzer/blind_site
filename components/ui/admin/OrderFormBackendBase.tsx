@@ -249,15 +249,40 @@ export function OrderFormBackendBase({
     };
 
 
+    const handleDuplicationChange = (checked: boolean) => {
+        setFormData(prev => {
+            // Check if current status is "Terminé"
+            const currentStatus = statuses.find(s => s.id === prev.statusId);
+            const isTerminated = currentStatus?.name.toLowerCase().includes('terminé');
+
+            return {
+                ...prev,
+                isDuplication: checked,
+                lentPhysicalBook: checked ? false : prev.lentPhysicalBook,
+                // Set status to "en cours" when duplication is selected, but only if not already "Terminé"
+                statusId: (checked && !isTerminated)
+                    ? statuses.find(s => s.name.toLowerCase().includes('en cours'))?.id || prev.statusId
+                    : prev.statusId
+            };
+        });
+    };
+
     const handleRecordingChange = (checked: boolean) => {
-        setFormData(prev => ({
-            ...prev,
-            lentPhysicalBook: checked,
-            // Auto-select appropriate status based on recording requirement
-            statusId: checked
-                ? statuses.find(s => s.name.toLowerCase().includes('enregistrement'))?.id || prev.statusId
-                : statuses.find(s => s.name.toLowerCase().includes('duplication'))?.id || prev.statusId
-        }));
+        setFormData(prev => {
+            // Check if current status is "Terminé"
+            const currentStatus = statuses.find(s => s.id === prev.statusId);
+            const isTerminated = currentStatus?.name.toLowerCase().includes('terminé');
+
+            return {
+                ...prev,
+                lentPhysicalBook: checked,
+                isDuplication: checked ? false : prev.isDuplication,
+                // Set status to "attente d'envoie vers lecteur" when recording is selected, but only if not already "Terminé"
+                statusId: (checked && !isTerminated)
+                    ? statuses.find(s => s.name.toLowerCase().includes('attente') && s.name.toLowerCase().includes('lecteur'))?.id || prev.statusId
+                    : prev.statusId
+            };
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -537,33 +562,38 @@ export function OrderFormBackendBase({
                         </Popover>
                     </div>
 
-                    {/* Duplication and Recording Checkboxes */}
-                    <div className="space-y-4">
-                        <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                            <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="isDuplication"
-                                    checked={formData.isDuplication}
-                                    onCheckedChange={(checked) => setFormData({ ...formData, isDuplication: checked as boolean })}
-                                    className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
-                                />
-                                <label htmlFor="isDuplication" className="text-base font-bold text-gray-100 cursor-pointer leading-tight flex-1">
-                                    Duplication
-                                </label>
+                    {/* Type de la demande */}
+                    <div className="space-y-2 pt-4 border-t border-gray-700">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+                            Type de la demande
+                        </h3>
+                        <div className="space-y-4">
+                            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                                <div className="flex items-center space-x-3">
+                                    <Checkbox
+                                        id="isDuplication"
+                                        checked={formData.isDuplication}
+                                        onCheckedChange={handleDuplicationChange}
+                                        className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                    />
+                                    <label htmlFor="isDuplication" className="text-base font-bold text-gray-100 cursor-pointer leading-tight flex-1">
+                                        Duplication
+                                    </label>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                            <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="lentPhysicalBook"
-                                    checked={formData.lentPhysicalBook}
-                                    onCheckedChange={handleRecordingChange}
-                                    className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
-                                />
-                                <label htmlFor="lentPhysicalBook" className="text-base font-bold text-gray-100 cursor-pointer leading-tight flex-1">
-                                    Enregistrement nécessaire
-                                </label>
+                            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                                <div className="flex items-center space-x-3">
+                                    <Checkbox
+                                        id="lentPhysicalBook"
+                                        checked={formData.lentPhysicalBook}
+                                        onCheckedChange={handleRecordingChange}
+                                        className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                    />
+                                    <label htmlFor="lentPhysicalBook" className="text-base font-bold text-gray-100 cursor-pointer leading-tight flex-1">
+                                        Enregistrement nécessaire
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
