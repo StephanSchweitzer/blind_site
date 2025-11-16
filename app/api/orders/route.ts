@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
         const statusId = searchParams.get('statusId');
         const billingStatus = searchParams.get('billingStatus');
         const isDuplication = searchParams.get('isDuplication');
+        const retard = searchParams.get('retard');
 
         // DEBUG: Log what we received
         console.log('=== FILTER DEBUG ===');
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
         console.log('isDuplication type:', typeof isDuplication);
         console.log('isDuplication === "true":', isDuplication === 'true');
         console.log('isDuplication === "false":', isDuplication === 'false');
+        console.log('retard param:', retard);
 
         const ordersPerPage = 10;
 
@@ -153,6 +155,44 @@ export async function GET(request: NextRequest) {
             console.log('Set isDuplication filter to FALSE');
         }
 
+        // Retard filter (orders >3 months old and statusId is not 3)
+        if (retard === 'true') {
+            const existingConditions = whereClause.AND
+                ? (Array.isArray(whereClause.AND) ? whereClause.AND : [whereClause.AND])
+                : [];
+
+            const threeMonthsAgo = new Date();
+            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+            whereClause.AND = [
+                ...existingConditions,
+                { requestReceivedDate: { lt: threeMonthsAgo } },
+                {
+                    statusId: { not: 3 }
+                },
+            ];
+            console.log('Set retard filter to TRUE (>3 months and statusId not 3)');
+        } else if (retard === 'false') {
+            const existingConditions = whereClause.AND
+                ? (Array.isArray(whereClause.AND) ? whereClause.AND : [whereClause.AND])
+                : [];
+
+            const threeMonthsAgo = new Date();
+            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+            // Not overdue: either recent (<3 months) OR statusId is 3
+            whereClause.AND = [
+                ...existingConditions,
+                {
+                    OR: [
+                        { requestReceivedDate: { gte: threeMonthsAgo } },
+                        { statusId: 3 },
+                    ]
+                }
+            ];
+            console.log('Set retard filter to FALSE (up to date)');
+        }
+
         // DEBUG: Log the final where clause
         console.log('Final whereClause:', JSON.stringify(whereClause, null, 2));
         console.log('===================');
@@ -223,11 +263,11 @@ export async function POST(request: NextRequest) {
             return authCheck.response;
         }
 
-        // Now we have access to the authenticated session
         const session = authCheck.session;
-
         const body = await request.json();
-        console.log('Received order data:', JSON.stringify(body, null, 2));
+
+        console.log('=== CREATE ORDER REQUEST ===');
+        console.log('Request body:', JSON.stringify(body, null, 2));
 
         const {
             aveugleId,
@@ -242,83 +282,31 @@ export async function POST(request: NextRequest) {
             cost,
             billingStatus,
             lentPhysicalBook,
-            notes,
+            notes
         } = body;
 
         // Validation des champs requis
-        if (!aveugleId) {
-            console.error('Missing aveugleId');
+        if (!aveugleId || !catalogueId || !requestReceivedDate || !statusId || !mediaFormatId || !deliveryMethod) {
+            console.error('Missing required fields:', {
+                aveugleId,
+                catalogueId,
+                requestReceivedDate,
+                statusId,
+                mediaFormatId,
+                deliveryMethod
+            });
+
             return NextResponse.json(
                 {
-                    error: 'Missing required field',
-                    message: 'Le client est requis',
-                    field: 'aveugleId'
+                    error: 'Missing required fields',
+                    message: 'Tous les champs obligatoires doivent être remplis',
+                    required: ['aveugleId', 'catalogueId', 'requestReceivedDate', 'statusId', 'mediaFormatId', 'deliveryMethod']
                 },
                 { status: 400 }
             );
         }
 
-        if (!catalogueId) {
-            console.error('Missing catalogueId');
-            return NextResponse.json(
-                {
-                    error: 'Missing required field',
-                    message: 'Le livre est requis',
-                    field: 'catalogueId'
-                },
-                { status: 400 }
-            );
-        }
-
-        if (!statusId) {
-            console.error('Missing statusId');
-            return NextResponse.json(
-                {
-                    error: 'Missing required field',
-                    message: 'Le statut est requis',
-                    field: 'statusId'
-                },
-                { status: 400 }
-            );
-        }
-
-        if (!requestReceivedDate) {
-            console.error('Missing requestReceivedDate');
-            return NextResponse.json(
-                {
-                    error: 'Missing required field',
-                    message: 'La date de réception de la demande est requise',
-                    field: 'requestReceivedDate'
-                },
-                { status: 400 }
-            );
-        }
-
-        if (!mediaFormatId) {
-            console.error('Missing mediaFormatId');
-            return NextResponse.json(
-                {
-                    error: 'Missing required field',
-                    message: 'Le format média est requis',
-                    field: 'mediaFormatId'
-                },
-                { status: 400 }
-            );
-        }
-
-        if (!deliveryMethod) {
-            console.error('Missing deliveryMethod');
-            return NextResponse.json(
-                {
-                    error: 'Missing required field',
-                    message: 'La méthode de livraison est requise',
-                    field: 'deliveryMethod'
-                },
-                { status: 400 }
-            );
-        }
-
-        // Validation et parsing des dates
+        // Validation et parsing de la date de demande
         let parsedRequestReceivedDate: Date;
         try {
             parsedRequestReceivedDate = new Date(requestReceivedDate);
@@ -330,7 +318,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 {
                     error: 'Invalid date format',
-                    message: 'La date de réception de la demande est invalide',
+                    message: 'La date de demande est invalide',
                     field: 'requestReceivedDate',
                     received: requestReceivedDate
                 },

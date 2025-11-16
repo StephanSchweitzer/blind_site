@@ -113,6 +113,7 @@ export default function OrdersTable({
     const currentBillingStatus = searchParams.get('billingStatus') || 'all';
     const currentStatusId = searchParams.get('statusId') || 'all';
     const currentIsDuplication = searchParams.get('isDuplication') || 'all';
+    const currentRetard = searchParams.get('retard') || 'all';
 
     const createQueryString = useCallback(
         (updates: Record<string, string>) => {
@@ -279,6 +280,20 @@ export default function OrdersTable({
         return displayMap[statusName] || statusName;
     };
 
+    // Check if an order is overdue (>3 months old and statusId is not 3)
+    const isOrderOverdue = (order: OrderWithRelations) => {
+        // statusId 3 means completed - never overdue
+        if (order.statusId === 3) {
+            return false;
+        }
+
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+        const orderDate = new Date(order.requestReceivedDate);
+        return orderDate < threeMonthsAgo;
+    };
+
     // Calculate visible pages (similar to books table)
     const getVisiblePages = () => {
         const pages: (number | string)[] = [];
@@ -376,7 +391,7 @@ export default function OrdersTable({
                     </div>
 
                     {/* Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="text-sm text-gray-400 mb-1.5 block">Statut de la demande</label>
                             <Select
@@ -435,6 +450,23 @@ export default function OrdersTable({
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        <div>
+                            <label className="text-sm text-gray-400 mb-1.5 block">Retard</label>
+                            <Select
+                                value={currentRetard}
+                                onValueChange={(value) => handleFilterChange('retard', value)}
+                            >
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
+                                    <SelectItem value="true" className="text-gray-200">En retard</SelectItem>
+                                    <SelectItem value="false" className="text-gray-200">À jour</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
 
@@ -471,58 +503,67 @@ export default function OrdersTable({
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {initialOrders.map((order) => (
-                                            <TableRow
-                                                key={order.id}
-                                                onClick={() => handleRowClick(order)}
-                                                className="border-b border-gray-700 hover:bg-gray-800 cursor-pointer transition-colors"
-                                            >
-                                                <TableCell className="font-medium text-gray-200">
-                                                    #{order.id}
-                                                </TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    <div>
-                                                        <div className="font-medium">
-                                                            {order.aveugle.name || order.aveugle.email}
-                                                        </div>
-                                                        {order.aveugle.name && (
-                                                            <div className="text-sm text-gray-400">
-                                                                {order.aveugle.email}
+                                        {initialOrders.map((order) => {
+                                            const isOverdue = isOrderOverdue(order);
+                                            return (
+                                                <TableRow
+                                                    key={order.id}
+                                                    onClick={() => handleRowClick(order)}
+                                                    className={`border-b border-gray-700 hover:bg-gray-800 cursor-pointer transition-colors ${
+                                                        isOverdue ? 'bg-red-950/30 hover:bg-red-950/40' : ''
+                                                    }`}
+                                                >
+                                                    <TableCell className={`font-medium ${isOverdue ? 'text-red-300' : 'text-gray-200'}`}>
+                                                        #{order.id}
+                                                    </TableCell>
+                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-gray-200'}>
+                                                        <div>
+                                                            <div className="font-medium">
+                                                                {order.aveugle.name || order.aveugle.email}
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    <div>
-                                                        <div className="font-medium">{order.catalogue.title}</div>
-                                                        <div className="text-sm text-gray-400">
-                                                            {order.catalogue.author}
+                                                            {order.aveugle.name && (
+                                                                <div className={`text-sm ${isOverdue ? 'text-red-300' : 'text-gray-400'}`}>
+                                                                    {order.aveugle.email}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    {formatDate(order.requestReceivedDate)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800">
-                                                        {getStatusDisplayName(order.status.name)}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span
-                                                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                                            order.billingStatus === 'PAID'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : order.billingStatus === 'BILLED'
-                                                                    ? 'bg-yellow-100 text-yellow-800'
-                                                                    : 'bg-gray-100 text-gray-800'
-                                                        }`}
-                                                    >
-                                                        {getBillingStatusLabel(order.billingStatus)}
-                                                    </span>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                                    </TableCell>
+                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-gray-200'}>
+                                                        <div>
+                                                            <div className="font-medium">{order.catalogue.title}</div>
+                                                            <div className={`text-sm ${isOverdue ? 'text-red-300' : 'text-gray-400'}`}>
+                                                                {order.catalogue.author}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-gray-200'}>
+                                                        {formatDate(order.requestReceivedDate)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                                            isOverdue
+                                                                ? 'bg-red-200 text-red-900'
+                                                                : 'bg-blue-100 text-blue-800'
+                                                        }`}>
+                                                            {getStatusDisplayName(order.status.name)}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span
+                                                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                                                order.billingStatus === 'PAID'
+                                                                    ? 'bg-green-100 text-green-800'
+                                                                    : order.billingStatus === 'BILLED'
+                                                                        ? 'bg-yellow-100 text-yellow-800'
+                                                                        : 'bg-gray-100 text-gray-800'
+                                                            }`}
+                                                        >
+                                                            {getBillingStatusLabel(order.billingStatus)}
+                                                        </span>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>

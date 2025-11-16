@@ -19,7 +19,8 @@ async function getOrders(
     filter: string = 'all',
     statusId?: number,
     billingStatus?: string,
-    isDuplication?: string
+    isDuplication?: string,
+    retard?: string
 ) {
     const ordersPerPage = 10;
 
@@ -95,11 +96,49 @@ async function getOrders(
         whereClause.billingStatus = billingStatus as never;
     }
 
-    // ✅ ADDED: isDuplication filter
+    // isDuplication filter
     if (isDuplication === 'true') {
         whereClause.isDuplication = true;
     } else if (isDuplication === 'false') {
         whereClause.isDuplication = false;
+    }
+
+    // Retard filter (orders >3 months old and statusId is not 3)
+    if (retard === 'true') {
+        const existingConditions = Array.isArray(whereClause.AND)
+            ? whereClause.AND
+            : whereClause.AND
+                ? [whereClause.AND]
+                : [];
+
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+        whereClause.AND = [
+            ...existingConditions,
+            { requestReceivedDate: { lt: threeMonthsAgo } },
+            { statusId: { not: 3 } },
+        ];
+    } else if (retard === 'false') {
+        const existingConditions = Array.isArray(whereClause.AND)
+            ? whereClause.AND
+            : whereClause.AND
+                ? [whereClause.AND]
+                : [];
+
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+        // Not overdue: either recent (<3 months) OR statusId is 3
+        whereClause.AND = [
+            ...existingConditions,
+            {
+                OR: [
+                    { requestReceivedDate: { gte: threeMonthsAgo } },
+                    { statusId: 3 },
+                ]
+            }
+        ];
     }
 
     try {
@@ -179,6 +218,9 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
         const isDuplication = Array.isArray(params.isDuplication)
             ? params.isDuplication[0]
             : params.isDuplication;
+        const retard = Array.isArray(params.retard)
+            ? params.retard[0]
+            : params.retard;
 
         const { orders, totalOrders, totalPages, availableStatuses } = await getOrders(
             page,
@@ -186,7 +228,8 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
             filter,
             statusId,
             billingStatus,
-            isDuplication  // ✅ ADDED THIS
+            isDuplication,
+            retard
         );
 
         // Serialize orders to convert Decimal to number and Date to string
