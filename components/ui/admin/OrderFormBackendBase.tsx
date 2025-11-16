@@ -12,7 +12,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Search, X } from 'lucide-react';
+import { AlertCircle, Calendar, Search } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -112,21 +112,16 @@ export function OrderFormBackendBase({
     const [books, setBooks] = useState<Book[]>([]);
     const [statuses, setStatuses] = useState<Status[]>([]);
     const [mediaFormats, setMediaFormats] = useState<MediaFormat[]>([]);
-    const [staffUsers, setStaffUsers] = useState<User[]>([]);
 
     // Search states
     const [userSearch, setUserSearch] = useState('');
     const [bookSearch, setBookSearch] = useState('');
-    const [staffSearch, setStaffSearch] = useState('');
     const [isSearchingUsers, setIsSearchingUsers] = useState(false);
     const [isSearchingBooks, setIsSearchingBooks] = useState(false);
-    const [isSearchingStaff, setIsSearchingStaff] = useState(false);
 
     // Popover open states
     const [userPopoverOpen, setUserPopoverOpen] = useState(false);
     const [bookPopoverOpen, setBookPopoverOpen] = useState(false);
-    const [staffPopoverOpen, setStaffPopoverOpen] = useState(false);
-
     // Selected display values
     const [selectedUser, setSelectedUser] = useState<User | null>(initialSelectedUser || null);
     const [selectedBook, setSelectedBook] = useState<Book | null>(initialSelectedBook || null);
@@ -238,31 +233,6 @@ export function OrderFormBackendBase({
         return () => clearTimeout(debounce);
     }, [bookSearch]);
 
-    // Search staff users
-    useEffect(() => {
-        const searchStaff = async () => {
-            if (staffSearch.length < 2) {
-                setStaffUsers([]);
-                return;
-            }
-
-            setIsSearchingStaff(true);
-            try {
-                const response = await fetch(`/api/user/search?q=${encodeURIComponent(staffSearch)}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setStaffUsers(data);
-                }
-            } catch (err) {
-                console.error('Error searching staff:', err);
-            } finally {
-                setIsSearchingStaff(false);
-            }
-        };
-
-        const debounce = setTimeout(searchStaff, 300);
-        return () => clearTimeout(debounce);
-    }, [staffSearch]);
 
     const handleUserSelect = (user: User) => {
         setSelectedUser(user);
@@ -278,17 +248,6 @@ export function OrderFormBackendBase({
         setBookSearch('');
     };
 
-    const handleStaffSelect = (user: User) => {
-        setSelectedStaff(user);
-        setFormData({ ...formData, processedByStaffId: user.id });
-        setStaffPopoverOpen(false);
-        setStaffSearch('');
-    };
-
-    const clearStaffSelection = () => {
-        setSelectedStaff(null);
-        setFormData({ ...formData, processedByStaffId: null });
-    };
 
     const handleRecordingChange = (checked: boolean) => {
         setFormData(prev => ({
@@ -308,7 +267,7 @@ export function OrderFormBackendBase({
 
         // Validation
         if (!formData.aveugleId) {
-            setError('Veuillez sélectionner un utilisateur aveugle');
+            setError('Veuillez sélectionner un auditeur');
             setIsLoading(false);
             return;
         }
@@ -386,7 +345,7 @@ export function OrderFormBackendBase({
                     {/* User Search (Aveugle) */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
-                            Utilisateur aveugle <span className="text-red-500">*</span>
+                            Auditeur <span className="text-red-500">*</span>
                         </label>
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                             <PopoverTrigger asChild>
@@ -400,7 +359,7 @@ export function OrderFormBackendBase({
                                             {selectedUser.name || selectedUser.email}
                                         </span>
                                     ) : (
-                                        <span className="text-gray-400">Rechercher un utilisateur...</span>
+                                        <span className="text-gray-400">Rechercher un auditeur ...</span>
                                     )}
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
@@ -453,7 +412,7 @@ export function OrderFormBackendBase({
                                             {selectedBook.title} - {selectedBook.author}
                                         </span>
                                     ) : (
-                                        <span className="text-gray-400">Rechercher un livre...</span>
+                                        <span className="text-gray-400">Rechercher un livre ...</span>
                                     )}
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
@@ -702,69 +661,6 @@ export function OrderFormBackendBase({
                         </Select>
                     </div>
 
-                    {/* Processed By Staff (Optional) */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
-                            Traité par (Personnel)
-                        </label>
-                        {selectedStaff ? (
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-200">
-                                    {selectedStaff.name || selectedStaff.email}
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={clearStaffSelection}
-                                    className="bg-gray-800 border-gray-700 hover:bg-gray-700"
-                                >
-                                    <X className="h-4 w-4 text-gray-400" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <Popover open={staffPopoverOpen} onOpenChange={setStaffPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors"
-                                    >
-                                        <span className="text-gray-400">Rechercher un membre du personnel...</span>
-                                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
-                                    <div className="p-2">
-                                        <Input
-                                            placeholder="Rechercher par nom ou email..."
-                                            value={staffSearch}
-                                            onChange={(e) => setStaffSearch(e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
-                                        />
-                                    </div>
-                                    <div className="max-h-[200px] overflow-y-auto">
-                                        {isSearchingStaff && (
-                                            <div className="p-4 text-center text-gray-400">Recherche...</div>
-                                        )}
-                                        {!isSearchingStaff && staffUsers.length === 0 && staffSearch.length >= 2 && (
-                                            <div className="p-4 text-center text-gray-400">Aucun personnel trouvé</div>
-                                        )}
-                                        {staffUsers.map((user) => (
-                                            <button
-                                                key={user.id}
-                                                onClick={() => handleStaffSelect(user)}
-                                                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors"
-                                            >
-                                                <div className="font-medium">{user.name || 'Sans nom'}</div>
-                                                <div className="text-sm text-gray-400">{user.email}</div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        )}
-                    </div>
 
                     {/* Billing Status */}
                     <div className="space-y-2">
@@ -824,6 +720,25 @@ export function OrderFormBackendBase({
                             placeholder="Ajouter des notes supplémentaires..."
                         />
                     </div>
+
+                    {/* System Information - Read Only */}
+                    {selectedStaff && (
+                        <div className="space-y-2 pt-4 border-t border-gray-700">
+                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+                                Informations système
+                            </h3>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-400">
+                                    Traité par
+                                </label>
+                                <div className="px-3 py-2 bg-gray-850 border border-gray-700 rounded-md text-gray-400 cursor-not-allowed opacity-75">
+                                    {selectedStaff.name || selectedStaff.email}
+                                </div>
+                                <p className="text-xs text-gray-500 italic">
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Submit Button */}
                     <div className="space-y-4">
