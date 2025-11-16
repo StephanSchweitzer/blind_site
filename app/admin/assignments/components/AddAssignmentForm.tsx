@@ -607,7 +607,7 @@ export function AddAssignmentForm({ onSuccess }: AddAssignmentFormProps) {
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
-                            Date de retour à l&apos;ECA
+                            Date de retour aux ECA
                         </label>
                         <Popover>
                             <PopoverTrigger asChild>

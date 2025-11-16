@@ -281,7 +281,7 @@ export default function AssignmentsTable({
                                             <TableHead className="text-gray-200 font-medium">Livre</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Date de réception</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Envoyé au lecteur</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Retourné à l&apos;ECA</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Retourné aux ECA</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Statut</TableHead>
                                         </TableRow>
                                     </TableHeader>
