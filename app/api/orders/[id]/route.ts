@@ -16,18 +16,7 @@ import {
 } from '@/types/api/order.types';
 import { Prisma } from '@prisma/client';
 
-/**
- * GET /api/orders/[id] - Get a single order by ID
- *
- * Query Parameters:
- * - mode: 'basic' | 'detailed' | 'full' (default: 'detailed')
- * - include: Comma-separated relations to include (e.g., 'aveugle,catalogue,assignments')
- *
- * Examples:
- * - /api/orders/1 - Detailed info with basic relations
- * - /api/orders/1?mode=basic - Minimal info
- * - /api/orders/1?mode=full&include=all - Everything
- */
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }

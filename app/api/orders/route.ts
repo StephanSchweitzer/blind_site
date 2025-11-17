@@ -55,14 +55,6 @@ export async function GET(request: NextRequest) {
         const isDuplication = searchParams.get('isDuplication');
         const retard = searchParams.get('retard');
 
-        // DEBUG: Log what we received
-        console.log('=== FILTER DEBUG ===');
-        console.log('isDuplication param:', isDuplication);
-        console.log('isDuplication type:', typeof isDuplication);
-        console.log('isDuplication === "true":', isDuplication === 'true');
-        console.log('isDuplication === "false":', isDuplication === 'false');
-        console.log('retard param:', retard);
-
         const ordersPerPage = 10;
 
         const whereClause: Prisma.OrdersWhereInput = {};
@@ -193,10 +185,6 @@ export async function GET(request: NextRequest) {
             console.log('Set retard filter to FALSE (up to date)');
         }
 
-        // DEBUG: Log the final where clause
-        console.log('Final whereClause:', JSON.stringify(whereClause, null, 2));
-        console.log('===================');
-
         const [orders, totalOrders] = await Promise.all([
             prisma.orders.findMany({
                 where: whereClause,
@@ -231,9 +219,6 @@ export async function GET(request: NextRequest) {
             prisma.orders.count({ where: whereClause }),
         ]);
 
-        // DEBUG: Log results
-        console.log('Found orders:', orders.length);
-        console.log('Total orders:', totalOrders);
         if (orders.length > 0) {
             console.log('Sample isDuplication values:', orders.slice(0, 3).map(o => ({
                 id: o.id,

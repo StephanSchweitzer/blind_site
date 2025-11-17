@@ -28,7 +28,26 @@ import {
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Search, X, Plus, Loader2 } from 'lucide-react';
-import { AddAssignmentForm } from './components/AddAssignmentForm';
+import { AddAssignmentFormBackend } from '@/admin/AssignmentFormBackendBase';
+import { EditAssignmentModal } from '@/admin/EditAssignmentModal';
+import { AssignmentFormData } from '@/admin/AssignmentFormBackendBase';
+import { useToast } from '@/hooks/use-toast';
+
+interface User {
+    id: number;
+    name: string | null;
+    email: string;
+}
+
+interface Book {
+    id: number;
+    title: string;
+    author: string;
+}
+
+interface Order {
+    id: number;
+}
 
 interface Assignment {
     id: number;
@@ -39,6 +58,7 @@ interface Assignment {
     sentToReaderDate: string | null;
     returnedToECADate: string | null;
     statusId: number;
+    notes: string | null;
     reader: {
         name: string | null;
         email: string | null;
@@ -80,9 +100,20 @@ export default function AssignmentsTable({
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isLoadingAssignment, setIsLoadingAssignment] = useState(false);
+    const [selectedAssignment, setSelectedAssignment] = useState<{
+        id: string;
+        data: AssignmentFormData;
+        selectedReader: User;
+        selectedBook: Book;
+        selectedOrder: Order | null;
+    } | null>(null);
+
     const currentPage = initialPage;
     const currentStatusId = searchParams.get('statusId') || 'all';
 
@@ -125,6 +156,93 @@ export default function AssignmentsTable({
     const handleAssignmentAdded = () => {
         setIsAddModalOpen(false);
         router.refresh();
+    };
+
+    const handleAssignmentEdited = (assignmentId: number) => {
+        console.log('Assignment edited:', assignmentId);
+        setIsEditModalOpen(false);
+        setSelectedAssignment(null);
+        router.refresh();
+    };
+
+    const handleAssignmentDeleted = (assignmentId: number) => {
+        console.log('Assignment deleted:', assignmentId);
+        setIsEditModalOpen(false);
+        setSelectedAssignment(null);
+        router.refresh();
+
+        toast({
+            // @ts-expect-error jsx in toast
+            title: <span className="text-2xl font-bold">Succès</span>,
+            description: <span className="text-xl mt-2">L&apos;affectation a été supprimée</span>,
+            className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+        });
+    };
+
+    const handleRowClick = async (assignment: Assignment) => {
+        setIsLoadingAssignment(true);
+        console.log('Fetching assignment details for ID:', assignment.id);
+
+        try {
+            const response = await fetch(`/api/assignments/${assignment.id}`);
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch assignment details');
+            }
+
+            const assignmentData = await response.json();
+            console.log('Fetched assignment data:', assignmentData);
+
+            // Convert the assignment data to the form format
+            const formData: AssignmentFormData = {
+                readerId: assignmentData.readerId,
+                catalogueId: assignmentData.catalogueId,
+                orderId: assignmentData.orderId,
+                receptionDate: assignmentData.receptionDate ? new Date(assignmentData.receptionDate) : null,
+                sentToReaderDate: assignmentData.sentToReaderDate ? new Date(assignmentData.sentToReaderDate) : null,
+                returnedToECADate: assignmentData.returnedToECADate ? new Date(assignmentData.returnedToECADate) : null,
+                statusId: assignmentData.statusId,
+                notes: assignmentData.notes || '',
+            };
+
+            const selectedReader: User = {
+                id: assignmentData.reader.id,
+                name: assignmentData.reader.name,
+                email: assignmentData.reader.email,
+            };
+
+            const selectedBook: Book = {
+                id: assignmentData.catalogue.id,
+                title: assignmentData.catalogue.title,
+                author: assignmentData.catalogue.author,
+            };
+
+            const selectedOrder: Order | null = assignmentData.order ? {
+                id: assignmentData.order.id,
+            } : null;
+
+            setSelectedAssignment({
+                id: assignment.id.toString(),
+                data: formData,
+                selectedReader,
+                selectedBook,
+                selectedOrder,
+            });
+
+            console.log('Opening edit modal');
+            setIsEditModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching assignment details:', error);
+            toast({
+                variant: "destructive",
+                // @ts-expect-error jsx in toast
+                title: <span className="text-2xl font-bold">Erreur</span>,
+                description: <span className="text-xl mt-2">Impossible de charger les détails de l&apos;affectation</span>,
+                className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
+            });
+        } finally {
+            setIsLoadingAssignment(false);
+        }
     };
 
     const formatDate = (dateString: string | null) => {
@@ -177,62 +295,64 @@ export default function AssignmentsTable({
         if (end < totalPages - 1) pages.push('...');
 
         pages.push(totalPages);
+
         return pages;
     };
 
     const visiblePages = getVisiblePages();
 
     return (
-        <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="border-b border-gray-800">
-                <div className="flex items-center justify-between">
+        <Card className="bg-gray-900 border-gray-700">
+            <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <CardTitle className="text-2xl text-gray-100">Affectations</CardTitle>
-                        <CardDescription className="text-gray-400 mt-1">
-                            Affichage de {initialAssignments.length} sur {initialTotalAssignments} affectations
+                        <CardTitle className="text-gray-100">Affectations</CardTitle>
+                        <CardDescription className="text-gray-400">
+                            Gérer les affectations de livres aux lecteurs ({initialTotalAssignments} total)
                         </CardDescription>
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
+                        disabled={isPending}
                     >
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="mr-2 h-4 w-4" />
                         Nouvelle affectation
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="pt-6">
-                {/* Search and Filters */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <div className="flex-1 relative">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <Input
-                                placeholder="Rechercher par lecteur, titre du livre ou auteur..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
-                            />
-                            {searchTerm && (
-                                <button
-                                    onClick={handleClearSearch}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
 
-                    <Button
-                        onClick={handleSearch}
-                        disabled={isPending}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                        <Search className="h-4 w-4 mr-2" />
-                        Rechercher
-                    </Button>
+            <CardContent className="space-y-4">
+                {/* Search and Filters */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1 flex gap-2">
+                        <Input
+                            placeholder="Rechercher par lecteur, livre..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            className="bg-gray-800 border-gray-700 text-gray-200"
+                            disabled={isPending}
+                        />
+                        <Button
+                            onClick={handleSearch}
+                            variant="outline"
+                            className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                            disabled={isPending}
+                        >
+                            <Search className="h-4 w-4" />
+                        </Button>
+                        {searchTerm && (
+                            <Button
+                                onClick={handleClearSearch}
+                                variant="outline"
+                                className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                disabled={isPending}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
 
                     <Select
                         value={currentStatusId}
@@ -289,7 +409,8 @@ export default function AssignmentsTable({
                                         {initialAssignments.map((assignment) => (
                                             <TableRow
                                                 key={assignment.id}
-                                                className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                                onClick={() => handleRowClick(assignment)}
+                                                className="border-b border-gray-700 hover:bg-gray-800 cursor-pointer transition-colors"
                                             >
                                                 <TableCell className="font-medium text-gray-200">
                                                     #{assignment.id}
@@ -328,6 +449,18 @@ export default function AssignmentsTable({
                                         ))}
                                     </TableBody>
                                 </Table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Loading Overlay for Assignment Data */}
+                    {isLoadingAssignment && (
+                        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
+                                <div className="flex flex-col items-center gap-4">
+                                    <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+                                    <p className="text-lg font-medium text-gray-200">Chargement de l&apos;affectation...</p>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -403,10 +536,25 @@ export default function AssignmentsTable({
                         <DialogTitle className="text-gray-100">Ajouter une nouvelle affectation</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        <AddAssignmentForm onSuccess={handleAssignmentAdded} />
+                        <AddAssignmentFormBackend onSuccess={handleAssignmentAdded} />
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Edit Assignment Modal */}
+            {selectedAssignment && (
+                <EditAssignmentModal
+                    isOpen={isEditModalOpen}
+                    onOpenChange={setIsEditModalOpen}
+                    assignmentId={selectedAssignment.id}
+                    initialData={selectedAssignment.data}
+                    onAssignmentEdited={handleAssignmentEdited}
+                    onAssignmentDeleted={handleAssignmentDeleted}
+                    initialSelectedReader={selectedAssignment.selectedReader}
+                    initialSelectedBook={selectedAssignment.selectedBook}
+                    initialSelectedOrder={selectedAssignment.selectedOrder}
+                />
+            )}
         </Card>
     );
 }
