@@ -21,25 +21,29 @@ async function getAssignments(
 
     const whereClause: Prisma.AssignmentWhereInput = {};
 
-    // Search filter
+    // Search filter - now searches through readerHistory
     if (searchTerm) {
         whereClause.OR = [
             {
-                reader: {
-                    OR: [
-                        {
-                            name: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive,
-                            },
+                readerHistory: {
+                    some: {
+                        reader: {
+                            OR: [
+                                {
+                                    name: {
+                                        contains: searchTerm,
+                                        mode: Prisma.QueryMode.insensitive,
+                                    },
+                                },
+                                {
+                                    email: {
+                                        contains: searchTerm,
+                                        mode: Prisma.QueryMode.insensitive,
+                                    },
+                                },
+                            ],
                         },
-                        {
-                            email: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive,
-                            },
-                        },
-                    ],
+                    },
                 },
             },
             {
@@ -76,14 +80,24 @@ async function getAssignments(
                 skip: Math.max(0, (page - 1) * assignmentsPerPage),
                 take: assignmentsPerPage,
                 include: {
-                    reader: {
-                        select: {
-                            name: true,
-                            email: true,
+                    readerHistory: {
+                        orderBy: {
+                            assignedDate: 'desc',
+                        },
+                        take: 1, // Only get the most recent reader
+                        include: {
+                            reader: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                },
+                            },
                         },
                     },
                     catalogue: {
                         select: {
+                            id: true,
                             title: true,
                             author: true,
                         },
@@ -95,6 +109,7 @@ async function getAssignments(
                     },
                     status: {
                         select: {
+                            id: true,
                             name: true,
                         },
                     },
@@ -145,13 +160,31 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
             statusId
         );
 
-        // Serialize assignments
-        const serializedAssignments = assignments.map(assignment => ({
-            ...assignment,
-            receptionDate: assignment.receptionDate ? assignment.receptionDate.toISOString() : null,
-            sentToReaderDate: assignment.sentToReaderDate ? assignment.sentToReaderDate.toISOString() : null,
-            returnedToECADate: assignment.returnedToECADate ? assignment.returnedToECADate.toISOString() : null,
-        }));
+        // Serialize assignments and transform readerHistory to current reader format
+        const serializedAssignments = assignments.map(assignment => {
+            const currentReader = assignment.readerHistory[0]?.reader || null;
+
+            return {
+                id: assignment.id,
+                catalogueId: assignment.catalogueId,
+                orderId: assignment.orderId,
+                receptionDate: assignment.receptionDate ? assignment.receptionDate.toISOString(): null,
+                sentToReaderDate: assignment.sentToReaderDate ? assignment.sentToReaderDate.toISOString() : null,
+                returnedToECADate: assignment.returnedToECADate ? assignment.returnedToECADate.toISOString() : null,
+                statusId: assignment.statusId,
+                notes: assignment.notes,
+                // Current reader from readerHistory
+                currentReader: currentReader ? {
+                    id: currentReader.id,
+                    name: currentReader.name,
+                    email: currentReader.email,
+                } : null,
+                catalogue: assignment.catalogue,
+                order: assignment.order,
+                status: assignment.status,
+                processedByStaffId: assignment.processedByStaffId,
+            };
+        });
 
         return (
             <div className="space-y-4">

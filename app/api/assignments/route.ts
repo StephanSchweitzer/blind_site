@@ -11,10 +11,25 @@ export async function GET(request: NextRequest) {
             const assignment = await prisma.assignment.findUnique({
                 where: { id: parseInt(id) },
                 include: {
-                    reader: true,
                     catalogue: true,
                     order: true,
                     status: true,
+                    readerHistory: {
+                        orderBy: {
+                            assignedDate: 'desc',
+                        },
+                        include: {
+                            reader: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    firstName: true,
+                                    lastName: true,
+                                },
+                            },
+                        },
+                    },
                 },
             });
 
@@ -30,10 +45,26 @@ export async function GET(request: NextRequest) {
 
         const assignments = await prisma.assignment.findMany({
             include: {
-                reader: true,
                 catalogue: true,
                 order: true,
                 status: true,
+                readerHistory: {
+                    orderBy: {
+                        assignedDate: 'desc',
+                    },
+                    take: 1, // Just get the current reader
+                    include: {
+                        reader: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                firstName: true,
+                                lastName: true,
+                            },
+                        },
+                    },
+                },
             },
             orderBy: { id: 'desc' },
         });
@@ -62,13 +93,7 @@ export async function POST(request: NextRequest) {
             notes,
         } = body;
 
-        if (!readerId) {
-            return NextResponse.json(
-                { error: 'Le lecteur est requis' },
-                { status: 400 }
-            );
-        }
-
+        // Validate required fields
         if (!catalogueId) {
             return NextResponse.json(
                 { error: 'Le livre du catalogue est requis' },
@@ -83,47 +108,75 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const assignment = await prisma.assignment.create({
-            data: {
-                readerId: parseInt(readerId),
-                catalogueId: parseInt(catalogueId),
-                orderId: orderId ? parseInt(orderId) : null,
-                receptionDate: receptionDate ? new Date(receptionDate) : null,
-                sentToReaderDate: sentToReaderDate ? new Date(sentToReaderDate) : null,
-                returnedToECADate: returnedToECADate ? new Date(returnedToECADate) : null,
-                statusId: parseInt(statusId),
-                notes: notes || null,
-            },
-            include: {
-                reader: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
+        // Create assignment and optionally the first reader assignment in a transaction
+        const result = await prisma.$transaction(async (tx) => {
+            // Create the assignment
+            const assignment = await tx.assignment.create({
+                data: {
+                    catalogueId: parseInt(catalogueId),
+                    orderId: orderId ? parseInt(orderId) : null,
+                    receptionDate: receptionDate ? new Date(receptionDate) : null,
+                    sentToReaderDate: sentToReaderDate ? new Date(sentToReaderDate) : null,
+                    returnedToECADate: returnedToECADate ? new Date(returnedToECADate) : null,
+                    statusId: parseInt(statusId),
+                    notes: notes || null,
+                },
+            });
+
+            // If a reader is provided, create the initial reader assignment
+            if (readerId) {
+                await tx.assignmentReader.create({
+                    data: {
+                        assignmentId: assignment.id,
+                        readerId: parseInt(readerId),
+                        assignedDate: new Date(),
+                        notes: 'Affectation initiale',
+                    },
+                });
+            }
+
+            // Fetch the complete assignment with relations
+            const completeAssignment = await tx.assignment.findUnique({
+                where: { id: assignment.id },
+                include: {
+                    catalogue: {
+                        select: {
+                            id: true,
+                            title: true,
+                            author: true,
+                        },
+                    },
+                    order: {
+                        select: {
+                            id: true,
+                        },
+                    },
+                    status: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                    readerHistory: {
+                        include: {
+                            reader: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    firstName: true,
+                                    lastName: true,
+                                },
+                            },
+                        },
                     },
                 },
-                catalogue: {
-                    select: {
-                        id: true,
-                        title: true,
-                        author: true,
-                    },
-                },
-                order: {
-                    select: {
-                        id: true,
-                    },
-                },
-                status: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-            },
+            });
+
+            return completeAssignment;
         });
 
-        return NextResponse.json(assignment, { status: 201 });
+        return NextResponse.json({ assignment: result }, { status: 201 });
     } catch (error) {
         console.error('Error creating assignment:', error);
         return NextResponse.json(

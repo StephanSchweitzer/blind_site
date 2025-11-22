@@ -19,13 +19,13 @@ model News {
 }
 
 model User {
-  id                          Int            @id @default(autoincrement())
-  email                       String?        @unique
+  id                          Int                @id @default(autoincrement())
+  email                       String?            @unique
   password                    String?
   name                        String?
-  role                        String         @default("user")
-  createdAt                   DateTime       @default(now())
-  passwordNeedsChange         Boolean        @default(true)
+  role                        String             @default("user")
+  createdAt                   DateTime           @default(now())
+  passwordNeedsChange         Boolean            @default(true)
   firstName                   String?
   lastName                    String?
   homePhone                   String?
@@ -33,28 +33,28 @@ model User {
   gestconteNotes              String?
   gestconteId                 Int?
   nonProfitAffiliation        String?
-  isActive                    Boolean?       @default(true)
+  isActive                    Boolean?           @default(true)
   terminationDate             DateTime?
   terminationReason           String?
-  lastUpdated                 DateTime?      @updatedAt
+  lastUpdated                 DateTime?          @updatedAt
   preferredDeliveryMethod     String?
-  paymentThreshold            Decimal?       @default(21.00) @db.Decimal(10, 2)
-  currentBalance              Decimal?       @default(0.00) @db.Decimal(10, 2)
+  paymentThreshold            Decimal?           @default(21.00) @db.Decimal(10, 2)
+  currentBalance              Decimal?           @default(0.00) @db.Decimal(10, 2)
   preferredDistributionMethod String?
-  isAvailable                 Boolean?       @default(true)
+  isAvailable                 Boolean?           @default(true)
   availabilityNotes           String?
   specialization              String?
-  maxConcurrentAssignments    Int?           @default(3)
+  maxConcurrentAssignments    Int?               @default(3)
   notes                       String?
   addresses                   Address[]
-  assignmentsProcessedBy      Assignment[]   @relation("AssignmentsProcessedBy")
-  assignmentsAsReader         Assignment[]   @relation("AssignmentsAsReader")
+  assignmentsProcessedBy      Assignment[]       @relation("AssignmentsProcessedBy")
+  assignmentReaders           AssignmentReader[]
   bills                       Bill[]
   books                       Book[]
   CoupsDeCoeur                CoupsDeCoeur[]
-  News                        News[]         @relation("UserNews")
-  ordersAsAveugle             Orders[]       @relation("OrdersAsAveugle")
-  ordersProcessedBy           Orders[]       @relation("OrdersProcessedBy")
+  News                        News[]             @relation("UserNews")
+  ordersAsAveugle             Orders[]           @relation("OrdersAsAveugle")
+  ordersProcessedBy           Orders[]           @relation("OrdersProcessedBy")
 }
 
 model Address {
@@ -219,8 +219,7 @@ model Orders {
 }
 
 model Assignment {
-  id                 Int       @id @default(autoincrement())
-  readerId           Int
+  id                 Int                @id @default(autoincrement())
   catalogueId        Int
   orderId            Int?
   receptionDate      DateTime?
@@ -229,16 +228,29 @@ model Assignment {
   statusId           Int
   notes              String?
   processedByStaffId Int?
-  catalogue          Book      @relation(fields: [catalogueId], references: [id])
-  order              Orders?   @relation(fields: [orderId], references: [id])
-  processedByStaff   User?     @relation("AssignmentsProcessedBy", fields: [processedByStaffId], references: [id])
-  reader             User      @relation("AssignmentsAsReader", fields: [readerId], references: [id])
-  status             Status    @relation(fields: [statusId], references: [id])
+  catalogue          Book               @relation(fields: [catalogueId], references: [id])
+  order              Orders?            @relation(fields: [orderId], references: [id])
+  processedByStaff   User?              @relation("AssignmentsProcessedBy", fields: [processedByStaffId], references: [id])
+  status             Status             @relation(fields: [statusId], references: [id])
+  readerHistory      AssignmentReader[]
 
-  @@index([readerId])
   @@index([catalogueId])
   @@index([orderId])
   @@index([statusId])
+}
+
+model AssignmentReader {
+  id           Int        @id @default(autoincrement())
+  assignmentId Int
+  readerId     Int
+  assignedDate DateTime   @default(now())
+  notes        String?
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  reader       User       @relation(fields: [readerId], references: [id])
+
+  @@index([assignmentId])
+  @@index([readerId])
+  @@index([assignedDate])
 }
 
 enum DeliveryMethod {

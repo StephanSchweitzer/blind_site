@@ -219,14 +219,6 @@ export async function GET(request: NextRequest) {
             prisma.orders.count({ where: whereClause }),
         ]);
 
-        if (orders.length > 0) {
-            console.log('Sample isDuplication values:', orders.slice(0, 3).map(o => ({
-                id: o.id,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                isDuplication: (o as any).isDuplication
-            })));
-        }
-
         return NextResponse.json({
             orders,
             totalOrders,

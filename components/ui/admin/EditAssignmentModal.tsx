@@ -6,32 +6,12 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { EditAssignmentFormBackend } from '@/admin/AssignmentFormBackendBase';
-import { AssignmentFormData } from '@/admin/AssignmentFormBackendBase';
-
-interface User {
-    id: number;
-    name: string | null;
-    email: string;
-}
-
-interface Book {
-    id: number;
-    title: string;
-    author: string;
-}
-
-interface Order {
-    id: number;
-    requestReceivedDate?: string;
-    aveugle?: {
-        name: string | null;
-        email: string;
-    };
-    catalogue?: {
-        title: string;
-        author: string;
-    };
-}
+import {
+    AssignmentFormData,
+    BookSummary,
+    OrderSummary,
+    ReaderSummary,
+} from '@/types';
 
 interface EditAssignmentModalProps {
     isOpen: boolean;
@@ -40,10 +20,10 @@ interface EditAssignmentModalProps {
     initialData: AssignmentFormData;
     onAssignmentEdited?: (assignmentId: number) => void;
     onAssignmentDeleted?: (assignmentId: number) => void;
-    // Pre-fetched selections
-    initialSelectedReader?: User | null;
-    initialSelectedBook?: Book | null;
-    initialSelectedOrder?: Order | null;
+
+    initialSelectedReader?: ReaderSummary | null | undefined;
+    initialSelectedBook?: BookSummary | null;
+    initialSelectedOrder?: OrderSummary | null;
 }
 
 export function EditAssignmentModal({

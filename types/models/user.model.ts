@@ -1,29 +1,61 @@
-import { Prisma } from '@prisma/client';
-import { z } from 'zod';
+import { Prisma, User } from '@prisma/client';
 
 // ============================================================================
-// Query Parameter Validators
+// Base User Model Type (from Prisma)
 // ============================================================================
 
-export const UserQueryModeSchema = z.enum(['basic', 'profile', 'full']);
-export type UserQueryMode = z.infer<typeof UserQueryModeSchema>;
-
-export const UserIncludeRelationSchema = z.enum([
-    'addresses',
-    'ordersAsAveugle',
-    'ordersProcessedBy',
-    'assignmentsAsReader',
-    'assignmentsProcessedBy',
-    'bills',
-    'books',
-    'coupsDeCoeur',
-    'news',
-    'summary'
-]);
-export type UserIncludeRelation = z.infer<typeof UserIncludeRelationSchema>;
+export type { User };
 
 // ============================================================================
-// Select Configuration Types (for each mode)
+// User with Relations
+// ============================================================================
+
+export type UserWithAddresses = Prisma.UserGetPayload<{
+    include: { addresses: true };
+}>;
+
+export type UserWithOrdersAsAveugle = Prisma.UserGetPayload<{
+    include: {
+        ordersAsAveugle: {
+            include: {
+                catalogue: true;
+                status: true;
+            };
+        };
+    };
+}>;
+
+export type UserWithAssignmentReaders = Prisma.UserGetPayload<{
+    include: {
+        assignmentReaders: {
+            include: {
+                assignment: {
+                    include: {
+                        catalogue: true;
+                        order: true;
+                    };
+                };
+            };
+        };
+    };
+}>;
+
+export type UserWithAllRelations = Prisma.UserGetPayload<{
+    include: {
+        addresses: true;
+        ordersAsAveugle: true;
+        ordersProcessedBy: true;
+        assignmentReaders: true;
+        assignmentsProcessedBy: true;
+        bills: true;
+        books: true;
+        CoupsDeCoeur: true;
+        News: true;
+    };
+}>;
+
+// ============================================================================
+// User Select Configurations
 // ============================================================================
 
 export const basicUserSelect = {
@@ -63,8 +95,7 @@ export const profileUserSelect = {
     notes: true,
 } as const satisfies Prisma.UserSelect;
 
-// Full user select - EXPLICITLY excludes sensitive fields (password, passwordNeedsChange)
-// SECURITY: Never expose password hashes in any API response
+// SECURITY: Full user select explicitly excludes password fields
 export const fullUserSelect = {
     id: true,
     email: true,
@@ -97,23 +128,9 @@ export const fullUserSelect = {
 } as const satisfies Prisma.UserSelect;
 
 // ============================================================================
-// Include Configuration Builder
+// User Include Configurations
 // ============================================================================
 
-export type UserIncludeConfig = {
-    addresses?: boolean | Prisma.AddressDefaultArgs;
-    ordersAsAveugle?: boolean | Prisma.OrdersFindManyArgs;
-    ordersProcessedBy?: boolean | Prisma.OrdersFindManyArgs;
-    assignmentsAsReader?: boolean | Prisma.AssignmentFindManyArgs;
-    assignmentsProcessedBy?: boolean | Prisma.AssignmentFindManyArgs;
-    bills?: boolean | Prisma.BillFindManyArgs;
-    books?: boolean | Prisma.BookFindManyArgs;
-    CoupsDeCoeur?: boolean | Prisma.CoupsDeCoeurFindManyArgs;
-    News?: boolean | Prisma.NewsFindManyArgs;
-    _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs;
-};
-
-// Pre-configured includes for each relation type
 export const userIncludeConfigs = {
     addresses: true,
 
@@ -163,41 +180,58 @@ export const userIncludeConfigs = {
         take: 50,
     } satisfies Prisma.OrdersFindManyArgs,
 
-    assignmentsAsReader: {
+    assignmentReaders: {
         include: {
-            order: {
+            assignment: {
                 include: {
                     catalogue: {
                         select: {
                             title: true,
                             author: true,
+                        },
+                    },
+                    order: {
+                        select: {
+                            id: true,
+                            requestReceivedDate: true,
                         },
                     },
                 },
             },
         },
         orderBy: {
-            id: 'desc' as const,
+            assignedDate: 'desc' as const,
         },
         take: 50,
-    } satisfies Prisma.AssignmentFindManyArgs,
+    } satisfies Prisma.AssignmentReaderFindManyArgs,
 
     assignmentsProcessedBy: {
         include: {
-            reader: {
+            readerHistory: {
+                orderBy: {
+                    assignedDate: 'desc' as const,
+                },
+                take: 1,
+                include: {
+                    reader: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+                },
+            },
+            catalogue: {
                 select: {
-                    name: true,
-                    email: true,
+                    title: true,
+                    author: true,
                 },
             },
             order: {
-                include: {
-                    catalogue: {
-                        select: {
-                            title: true,
-                            author: true,
-                        },
-                    },
+                select: {
+                    id: true,
+                    requestReceivedDate: true,
                 },
             },
         },
@@ -256,7 +290,7 @@ export const userIncludeConfigs = {
             select: {
                 ordersAsAveugle: true,
                 ordersProcessedBy: true,
-                assignmentsAsReader: true,
+                assignmentReaders: true,
                 assignmentsProcessedBy: true,
                 bills: true,
                 books: true,
@@ -264,105 +298,6 @@ export const userIncludeConfigs = {
         },
     },
 } as const;
-
-// ============================================================================
-// Response Types
-// ============================================================================
-
-// Basic mode response
-export type BasicUserResponse = Prisma.UserGetPayload<{
-    select: typeof basicUserSelect;
-}>;
-
-// Profile mode response
-export type ProfileUserResponse = Prisma.UserGetPayload<{
-    select: typeof profileUserSelect;
-}>;
-
-// Full mode response (still excludes password for security)
-export type FullUserResponse = Prisma.UserGetPayload<{
-    select: typeof fullUserSelect;
-}>;
-
-// Full mode response with optional includes
-export type FullUserWithIncludesResponse = Prisma.UserGetPayload<{
-    select: typeof fullUserSelect;
-    include: UserIncludeConfig;
-}>;
-
-// ============================================================================
-// Update Input Types
-// ============================================================================
-
-export const UserUpdateInputSchema = z.object({
-    name: z.string().optional(),
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
-    email: z.string().email().optional(),
-    role: z.string().optional(),
-    homePhone: z.string().optional(),
-    cellPhone: z.string().optional(),
-    gestconteNotes: z.string().optional(),
-    gestconteId: z.number().optional(),
-    nonProfitAffiliation: z.string().optional(),
-    isActive: z.boolean().optional(),
-    terminationDate: z.string().datetime().optional().nullable(),
-    terminationReason: z.string().optional(),
-    preferredDeliveryMethod: z.string().optional(),
-    preferredDistributionMethod: z.string().optional(),
-    paymentThreshold: z.number().or(z.string()).optional().nullable(),
-    currentBalance: z.number().or(z.string()).optional().nullable(),
-    isAvailable: z.boolean().optional(),
-    availabilityNotes: z.string().optional(),
-    specialization: z.string().optional(),
-    maxConcurrentAssignments: z.number().optional(),
-    notes: z.string().optional(),
-    password: z.string().optional(), // Will be rejected in handler
-});
-
-export type UserUpdateInput = z.infer<typeof UserUpdateInputSchema>;
-
-// Prisma update data type (what actually goes to the database)
-export type UserUpdateData = {
-    name?: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    email?: string | null;
-    role?: string;
-    homePhone?: string | null;
-    cellPhone?: string | null;
-    gestconteNotes?: string | null;
-    gestconteId?: number | null;
-    nonProfitAffiliation?: string | null;
-    isActive?: boolean | null;
-    terminationDate?: Date | null;
-    terminationReason?: string | null;
-    preferredDeliveryMethod?: string | null;
-    preferredDistributionMethod?: string | null;
-    paymentThreshold?: number | null;
-    currentBalance?: number | null;
-    isAvailable?: boolean | null;
-    availabilityNotes?: string | null;
-    specialization?: string | null;
-    maxConcurrentAssignments?: number | null;
-    notes?: string | null;
-};
-
-// ============================================================================
-// Delete Response Types
-// ============================================================================
-
-export type UserDeleteResponse = {
-    message: string;
-    user?: {
-        id: number;
-        name: string | null;
-        email: string | null;
-        isActive: boolean | null;
-    };
-    deletedId?: number;
-    softDelete: boolean;
-};
 
 // ============================================================================
 // Helper Types
@@ -378,7 +313,7 @@ export type UserWithRelationCounts = Prisma.UserGetPayload<{
             select: {
                 ordersAsAveugle: true;
                 ordersProcessedBy: true;
-                assignmentsAsReader: true;
+                assignmentReaders: true;
                 assignmentsProcessedBy: true;
             };
         };

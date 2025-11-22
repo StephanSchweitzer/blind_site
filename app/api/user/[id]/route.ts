@@ -12,7 +12,7 @@ import {
     UserUpdateData,
     UserDeleteResponse,
     UserWithRelationCounts,
-} from '@/types/api/user.types';
+} from '@/types';
 import { Prisma } from '@prisma/client';
 
 /**
@@ -34,6 +34,7 @@ import { Prisma } from '@prisma/client';
  * - /api/user/1 - Basic info
  * - /api/user/1?mode=profile - Full profile
  * - /api/user/1?mode=full&include=addresses,ordersAsAveugle - Full with relations
+ * - /api/user/1?mode=full&include=assignmentReaders - Full with assignment reader history
  */
 export async function GET(
     request: NextRequest,
@@ -112,11 +113,13 @@ export async function GET(
                         include.ordersProcessedBy = userIncludeConfigs.ordersProcessedBy;
                         break;
 
-                    case 'assignmentsAsReader':
-                        include.assignmentsAsReader = userIncludeConfigs.assignmentsAsReader;
+                    case 'assignmentReaders':
+                        // This includes the AssignmentReader join table with assignment details
+                        include.assignmentReaders = userIncludeConfigs.assignmentReaders;
                         break;
 
                     case 'assignmentsProcessedBy':
+                        // Assignments where this user is the staff processor
                         include.assignmentsProcessedBy = userIncludeConfigs.assignmentsProcessedBy;
                         break;
 
@@ -168,7 +171,15 @@ export async function GET(
     }
 }
 
-// PATCH /api/user/[id] - Partial update of user
+/**
+ * PATCH /api/user/[id] - Partial update of user
+ *
+ * SECURITY: Password updates are explicitly rejected.
+ * Use dedicated authentication endpoint for password changes.
+ *
+ * Note: The reader-assignment relationship is now managed through
+ * the AssignmentReader table, not directly on assignments.
+ */
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -277,7 +288,18 @@ export async function PATCH(
     }
 }
 
-// DELETE /api/user/[id] - Soft delete (deactivate) a user
+/**
+ * DELETE /api/user/[id] - Soft delete (deactivate) a user
+ *
+ * This endpoint checks for relationships before deletion:
+ * - ordersAsAveugle: Orders where user is the client (aveugle)
+ * - ordersProcessedBy: Orders where user is the staff processor
+ * - assignmentReaders: AssignmentReader entries (many-to-many with assignments)
+ * - assignmentsProcessedBy: Assignments where user is the staff processor
+ *
+ * If relationships exist, performs soft delete (deactivation).
+ * If no relationships exist, performs hard delete.
+ */
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -305,7 +327,7 @@ export async function DELETE(
                     select: {
                         ordersAsAveugle: true,
                         ordersProcessedBy: true,
-                        assignmentsAsReader: true,
+                        assignmentReaders: true,
                         assignmentsProcessedBy: true,
                     },
                 },
@@ -323,7 +345,7 @@ export async function DELETE(
         const hasActiveRelations =
             existingUser._count.ordersAsAveugle > 0 ||
             existingUser._count.ordersProcessedBy > 0 ||
-            existingUser._count.assignmentsAsReader > 0 ||
+            existingUser._count.assignmentReaders > 0 ||
             existingUser._count.assignmentsProcessedBy > 0;
 
         if (hasActiveRelations) {

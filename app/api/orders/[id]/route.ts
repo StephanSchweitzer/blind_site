@@ -13,7 +13,7 @@ import {
     OrderCreateInput,
     OrderCreateInputSchema,
     OrderCreateData,
-} from '@/types/api/order.types';
+} from '@/types';
 import { Prisma } from '@prisma/client';
 
 

@@ -3,9 +3,15 @@ import { prisma } from '@/lib/prisma';
 import {
     AssignmentUpdateInputSchema,
     AssignmentUpdateData,
-    assignmentIncludeConfigs,
-} from '@/types/api/assignment.types';
+} from '@/types/api';
+import { assignmentIncludeConfigs } from '@/types/models';
 
+/**
+ * GET /api/assignments/[id] - Get a single assignment by ID
+ *
+ * Returns assignment with all relations including reader history.
+ * Reader assignments are tracked through the AssignmentReader table.
+ */
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -43,6 +49,13 @@ export async function GET(
     }
 }
 
+/**
+ * PUT /api/assignments/[id] - Update an assignment
+ *
+ * Note: Reader assignments are managed through the AssignmentReader table.
+ * To assign/reassign a reader, use POST /api/assignments/[id]/readers
+ * This maintains a complete history of all reader assignments.
+ */
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -86,23 +99,32 @@ export async function PUT(
         }
 
         // Build update data with proper type conversion
-        const updateData: AssignmentUpdateData = {
-            ...(validation.data.readerId !== undefined && { readerId: validation.data.readerId }),
-            ...(validation.data.catalogueId !== undefined && { catalogueId: validation.data.catalogueId }),
-            ...(validation.data.statusId !== undefined && { statusId: validation.data.statusId }),
-            ...(validation.data.orderId !== undefined && { orderId: validation.data.orderId }),
-            ...(validation.data.receptionDate !== undefined && {
-                receptionDate: validation.data.receptionDate ? new Date(validation.data.receptionDate) : null
-            }),
-            ...(validation.data.sentToReaderDate !== undefined && {
-                sentToReaderDate: validation.data.sentToReaderDate ? new Date(validation.data.sentToReaderDate) : null
-            }),
-            ...(validation.data.returnedToECADate !== undefined && {
-                returnedToECADate: validation.data.returnedToECADate ? new Date(validation.data.returnedToECADate) : null
-            }),
-            ...(validation.data.notes !== undefined && { notes: validation.data.notes }),
-            ...(validation.data.processedByStaffId !== undefined && { processedByStaffId: validation.data.processedByStaffId }),
-        };
+        const updateData: AssignmentUpdateData = {};
+
+        if (validation.data.catalogueId !== undefined) {
+            updateData.catalogueId = validation.data.catalogueId;
+        }
+        if (validation.data.orderId !== undefined) {
+            updateData.orderId = validation.data.orderId;
+        }
+        if (validation.data.statusId !== undefined) {
+            updateData.statusId = validation.data.statusId;
+        }
+        if (validation.data.receptionDate !== undefined) {
+            updateData.receptionDate = validation.data.receptionDate
+        }
+        if (validation.data.sentToReaderDate !== undefined) {
+            updateData.sentToReaderDate = validation.data.sentToReaderDate
+        }
+        if (validation.data.returnedToECADate !== undefined) {
+            updateData.returnedToECADate = validation.data.returnedToECADate
+        }
+        if (validation.data.notes !== undefined) {
+            updateData.notes = validation.data.notes;
+        }
+        if (validation.data.processedByStaffId !== undefined) {
+            updateData.processedByStaffId = validation.data.processedByStaffId;
+        }
 
         const updatedAssignment = await prisma.assignment.update({
             where: { id: assignmentId },
@@ -123,6 +145,11 @@ export async function PUT(
     }
 }
 
+/**
+ * DELETE /api/assignments/[id] - Delete an assignment
+ *
+ * Cascading delete: All related AssignmentReader records will be automatically deleted.
+ */
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -142,6 +169,11 @@ export async function DELETE(
             where: { id: assignmentId },
             select: {
                 id: true,
+                _count: {
+                    select: {
+                        readerHistory: true,
+                    },
+                },
             },
         });
 
@@ -152,6 +184,7 @@ export async function DELETE(
             );
         }
 
+        // Delete assignment (cascades to AssignmentReader records)
         await prisma.assignment.delete({
             where: { id: assignmentId },
         });
@@ -159,6 +192,7 @@ export async function DELETE(
         return NextResponse.json({
             message: 'Affectation supprimée avec succès',
             deletedId: assignmentId,
+            deletedReaderHistoryCount: existingAssignment._count.readerHistory,
         });
     } catch (error) {
         console.error('Error deleting assignment:', error);

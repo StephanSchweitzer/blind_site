@@ -30,62 +30,22 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Search, X, Plus, Loader2 } from 'lucide-react';
 import { AddAssignmentFormBackend } from '@/admin/AssignmentFormBackendBase';
 import { EditAssignmentModal } from '@/admin/EditAssignmentModal';
-import { AssignmentFormData } from '@/admin/AssignmentFormBackendBase';
 import { useToast } from '@/hooks/use-toast';
-
-interface User {
-    id: number;
-    name: string | null;
-    email: string;
-}
-
-interface Book {
-    id: number;
-    title: string;
-    author: string;
-}
-
-interface Order {
-    id: number;
-}
-
-interface Assignment {
-    id: number;
-    readerId: number;
-    catalogueId: number;
-    orderId: number | null;
-    receptionDate: string | null;
-    sentToReaderDate: string | null;
-    returnedToECADate: string | null;
-    statusId: number;
-    notes: string | null;
-    reader: {
-        name: string | null;
-        email: string | null;
-    };
-    catalogue: {
-        title: string;
-        author: string;
-    };
-    order: {
-        id: number;
-    } | null;
-    status: {
-        name: string;
-    };
-}
-
-interface Status {
-    id: number;
-    name: string;
-}
+import {
+    StatusSummary,
+    AssignmentFormData,
+    ReaderSummary,
+    BookSummary,
+    OrderSummary,
+    AssignmentWithCurrentReader,
+} from '@/types';
 
 interface AssignmentsTableProps {
-    initialAssignments: Assignment[];
+    initialAssignments: AssignmentWithCurrentReader[];
     initialPage: number;
     initialSearch: string;
     totalPages: number;
-    availableStatuses: Status[];
+    availableStatuses: StatusSummary[];
     initialTotalAssignments: number;
 }
 
@@ -109,9 +69,9 @@ export default function AssignmentsTable({
     const [selectedAssignment, setSelectedAssignment] = useState<{
         id: string;
         data: AssignmentFormData;
-        selectedReader: User;
-        selectedBook: Book;
-        selectedOrder: Order | null;
+        selectedReader: ReaderSummary | null;
+        selectedBook: BookSummary;
+        selectedOrder: OrderSummary | null;
     } | null>(null);
 
     const currentPage = initialPage;
@@ -179,7 +139,7 @@ export default function AssignmentsTable({
         });
     };
 
-    const handleRowClick = async (assignment: Assignment) => {
+    const handleRowClick = async (assignment: AssignmentWithCurrentReader) => {
         setIsLoadingAssignment(true);
         console.log('Fetching assignment details for ID:', assignment.id);
 
@@ -193,31 +153,42 @@ export default function AssignmentsTable({
             const assignmentData = await response.json();
             console.log('Fetched assignment data:', assignmentData);
 
-            // Convert the assignment data to the form format
+            // Add this helper function
+            const formatDateForForm = (date: string | Date | null | undefined): string | null => {
+                if (!date) return null;
+                if (typeof date === 'string') {
+                    return date.split('T')[0];
+                }
+                return date.toISOString().split('T')[0];
+            };
+
+            const currentReader = assignmentData.readerHistory?.[0]?.reader || null;
+
             const formData: AssignmentFormData = {
-                readerId: assignmentData.readerId,
                 catalogueId: assignmentData.catalogueId,
                 orderId: assignmentData.orderId,
-                receptionDate: assignmentData.receptionDate ? new Date(assignmentData.receptionDate) : null,
-                sentToReaderDate: assignmentData.sentToReaderDate ? new Date(assignmentData.sentToReaderDate) : null,
-                returnedToECADate: assignmentData.returnedToECADate ? new Date(assignmentData.returnedToECADate) : null,
+                receptionDate: formatDateForForm(assignmentData.receptionDate),
+                sentToReaderDate: formatDateForForm(assignmentData.sentToReaderDate),
+                returnedToECADate: formatDateForForm(assignmentData.returnedToECADate),
                 statusId: assignmentData.statusId,
                 notes: assignmentData.notes || '',
             };
 
-            const selectedReader: User = {
-                id: assignmentData.reader.id,
-                name: assignmentData.reader.name,
-                email: assignmentData.reader.email,
-            };
+            const selectedReader: ReaderSummary | null = currentReader ? {
+                id: currentReader.id,
+                name: currentReader.name,
+                email: currentReader.email,
+                firstName : currentReader.firstName,
+                lastName : currentReader.lastName
+            } : null;
 
-            const selectedBook: Book = {
+            const selectedBook: BookSummary= {
                 id: assignmentData.catalogue.id,
                 title: assignmentData.catalogue.title,
                 author: assignmentData.catalogue.author,
             };
 
-            const selectedOrder: Order | null = assignmentData.order ? {
+            const selectedOrder: OrderSummary | null = assignmentData.order ? {
                 id: assignmentData.order.id,
             } : null;
 
@@ -416,12 +387,16 @@ export default function AssignmentsTable({
                                                     #{assignment.id}
                                                 </TableCell>
                                                 <TableCell className="text-gray-200">
-                                                    <div>
-                                                        <div className="font-medium">{assignment.reader.name}</div>
-                                                        <div className="text-sm text-gray-400">
-                                                            {assignment.reader.email}
+                                                    {assignment.currentReader ? (
+                                                        <div>
+                                                            <div className="font-medium">{assignment.currentReader.name || 'Sans nom'}</div>
+                                                            <div className="text-sm text-gray-400">
+                                                                {assignment.currentReader.email}
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    ) : (
+                                                        <div className="text-gray-400 italic">Aucun lecteur assigné</div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-gray-200">
                                                     <div>
