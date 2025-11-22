@@ -191,7 +191,23 @@ export async function GET(request: NextRequest) {
                 orderBy: { requestReceivedDate: 'desc' },
                 skip: Math.max(0, (page - 1) * ordersPerPage),
                 take: ordersPerPage,
-                include: {
+                select: {
+                    id: true,
+                    aveugleId: true,
+                    catalogueId: true,
+                    requestReceivedDate: true,
+                    statusId: true,
+                    isDuplication: true,
+                    mediaFormatId: true,
+                    deliveryMethod: true,
+                    processedByStaffId: true,
+                    createdDate: true,
+                    closureDate: true,
+                    updatedAt: true,
+                    cost: true,
+                    billingStatus: true,
+                    lentPhysicalBook: true,
+                    notes: true,
                     aveugle: {
                         select: {
                             name: true,
@@ -407,7 +423,23 @@ export async function POST(request: NextRequest) {
         // Création de la commande
         const order = await prisma.orders.create({
             data: orderData,
-            include: {
+            select: {
+                id: true,
+                aveugleId: true,
+                catalogueId: true,
+                requestReceivedDate: true,
+                statusId: true,
+                isDuplication: true,
+                mediaFormatId: true,
+                deliveryMethod: true,
+                processedByStaffId: true,
+                createdDate: true,
+                closureDate: true,
+                updatedAt: true,
+                cost: true,
+                billingStatus: true,
+                lentPhysicalBook: true,
+                notes: true,
                 aveugle: {
                     select: {
                         name: true,

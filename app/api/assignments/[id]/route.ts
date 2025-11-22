@@ -111,13 +111,13 @@ export async function PUT(
             updateData.statusId = validation.data.statusId;
         }
         if (validation.data.receptionDate !== undefined) {
-            updateData.receptionDate = validation.data.receptionDate
+            updateData.receptionDate = validation.data.receptionDate ? new Date(validation.data.receptionDate) : null
         }
         if (validation.data.sentToReaderDate !== undefined) {
-            updateData.sentToReaderDate = validation.data.sentToReaderDate
+            updateData.sentToReaderDate = validation.data.sentToReaderDate ? new Date(validation.data.sentToReaderDate) : null
         }
         if (validation.data.returnedToECADate !== undefined) {
-            updateData.returnedToECADate = validation.data.returnedToECADate
+            updateData.returnedToECADate = validation.data.returnedToECADate ? new Date(validation.data.returnedToECADate) : null
         }
         if (validation.data.notes !== undefined) {
             updateData.notes = validation.data.notes;

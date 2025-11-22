@@ -20,15 +20,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Search, X, Plus, Loader2 } from 'lucide-react';
-import { AddAssignmentFormBackend } from '@/admin/AssignmentFormBackendBase';
+import { AddAssignmentModal } from '@/admin/AddAssignmentModal';
 import { EditAssignmentModal } from '@/admin/EditAssignmentModal';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -188,9 +182,14 @@ export default function AssignmentsTable({
                 author: assignmentData.catalogue.author,
             };
 
+            // Fix: Properly type the OrderSummary with all required fields
             const selectedOrder: OrderSummary | null = assignmentData.order ? {
                 id: assignmentData.order.id,
-            } : null;
+                requestReceivedDate: assignmentData.order.requestReceivedDate,
+                createdDate: assignmentData.order.createdDate,
+                aveugle: assignmentData.order.aveugle,
+                catalogue: assignmentData.order.catalogue,
+            } as OrderSummary : null;
 
             setSelectedAssignment({
                 id: assignment.id.toString(),
@@ -237,136 +236,148 @@ export default function AssignmentsTable({
 
     const getStatusColor = (statusName: string) => {
         const colorMap: Record<string, string> = {
-            'Pending': 'bg-yellow-100 text-yellow-800',
-            'In Progress': 'bg-blue-100 text-blue-800',
-            'Completed': 'bg-green-100 text-green-800',
-            'Cancelled': 'bg-red-100 text-red-800',
+            'Attente envoi vers lecteur': 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+            'En attente de réception': 'bg-orange-100 text-orange-800 border border-orange-300',
+            'Réceptionné': 'bg-blue-100 text-blue-800 border border-blue-300',
+            'Envoyé au lecteur': 'bg-purple-100 text-purple-800 border border-purple-300',
+            'Chez le lecteur': 'bg-indigo-100 text-indigo-800 border border-indigo-300',
+            'Retourné à l\'ECA': 'bg-teal-100 text-teal-800 border border-teal-300',
+            'Assignation terminée': 'bg-green-100 text-green-800 border border-green-300',
+            'Assignation annulée': 'bg-red-100 text-red-800 border border-red-300',
         };
-        return colorMap[statusName] || 'bg-gray-100 text-gray-800';
+        return colorMap[statusName] || 'bg-gray-100 text-gray-800 border border-gray-300';
     };
 
-    // Calculate visible pages
-    const getVisiblePages = () => {
+    const calculatePageNumbers = () => {
         const pages: (number | string)[] = [];
-        const maxVisible = 5;
+        const delta = 2;
 
-        if (totalPages <= maxVisible + 2) {
-            return Array.from({ length: totalPages }, (_, i) => i + 1);
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            if (currentPage <= 4) {
+                for (let i = 1; i <= 5; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = currentPage - delta; i <= currentPage + delta; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            }
         }
-
-        pages.push(1);
-
-        const start = Math.max(2, currentPage - 1);
-        const end = Math.min(totalPages - 1, currentPage + 1);
-
-        if (start > 2) pages.push('...');
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
-        if (end < totalPages - 1) pages.push('...');
-
-        pages.push(totalPages);
 
         return pages;
     };
 
-    const visiblePages = getVisiblePages();
+    const visiblePages = calculatePageNumbers();
 
     return (
-        <Card className="bg-gray-900 border-gray-700">
-            <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <Card className="w-full bg-gray-900 border-gray-800">
+            <CardHeader className="border-b border-gray-800">
+                <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-gray-100">Affectations</CardTitle>
-                        <CardDescription className="text-gray-400">
-                            Gérer les affectations de livres aux lecteurs ({initialTotalAssignments} total)
+                        <CardTitle className="text-3xl font-bold text-gray-100">
+                            Affectations
+                        </CardTitle>
+                        <CardDescription className="text-gray-400 mt-2">
+                            {initialTotalAssignments} affectation{initialTotalAssignments !== 1 ? 's' : ''} au total
                         </CardDescription>
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
-                        disabled={isPending}
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         Nouvelle affectation
                     </Button>
                 </div>
             </CardHeader>
-
-            <CardContent className="space-y-4">
+            <CardContent className="p-6">
                 {/* Search and Filters */}
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="flex-1 flex gap-2">
-                        <Input
-                            placeholder="Rechercher par lecteur, livre..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="bg-gray-800 border-gray-700 text-gray-200"
-                            disabled={isPending}
-                        />
-                        <Button
-                            onClick={handleSearch}
-                            variant="outline"
-                            className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
-                            disabled={isPending}
-                        >
-                            <Search className="h-4 w-4" />
-                        </Button>
-                        {searchTerm && (
+                <div className="mb-6 space-y-4">
+                    <div className="flex gap-4">
+                        <div className="flex-1 flex gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Input
+                                    type="text"
+                                    placeholder="Rechercher par livre, lecteur ou numéro..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    className="pl-10 pr-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
+                                />
+                                {searchTerm && (
+                                    <button
+                                        onClick={handleClearSearch}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
                             <Button
-                                onClick={handleClearSearch}
-                                variant="outline"
-                                className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                onClick={handleSearch}
+                                disabled={isPending}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                Rechercher
+                            </Button>
+                        </div>
+                        <div className="w-64">
+                            <Select
+                                value={currentStatusId}
+                                onValueChange={handleStatusFilter}
                                 disabled={isPending}
                             >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        )}
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectValue placeholder="Filtrer par statut" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="all" className="text-gray-200">
+                                        Tous les statuts
+                                    </SelectItem>
+                                    {availableStatuses.map((status) => (
+                                        <SelectItem
+                                            key={status.id}
+                                            value={status.id.toString()}
+                                            className="text-gray-200"
+                                        >
+                                            {status.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-
-                    <Select
-                        value={currentStatusId}
-                        onValueChange={handleStatusFilter}
-                    >
-                        <SelectTrigger className="w-full sm:w-[200px] bg-gray-800 border-gray-700 text-gray-200">
-                            <SelectValue placeholder="Filtrer par statut" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                            <SelectItem value="all" className="text-gray-200">Tous les statuts</SelectItem>
-                            {availableStatuses.map((status) => (
-                                <SelectItem key={status.id} value={status.id.toString()} className="text-gray-200">
-                                    {status.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                 </div>
 
-                {/* Loading Overlay */}
-                {isPending && (
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center z-10 rounded-lg">
-                            <div className="flex flex-col items-center gap-3">
-                                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                <p className="text-sm text-gray-300">Chargement...</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Assignments Table */}
-                <div className="relative">
+                {/* Table */}
+                <div className={isPending ? 'opacity-50 pointer-events-none' : ''}>
                     {initialAssignments.length === 0 ? (
                         <div className="text-center py-12">
-                            <p className="text-gray-400 text-lg">Aucune assignation trouvée</p>
+                            <p className="text-gray-400 text-lg">
+                                {searchTerm || currentStatusId !== 'all'
+                                    ? "Aucune affectation trouvée avec ces critères"
+                                    : "Aucune affectation"}
+                            </p>
                         </div>
                     ) : (
-                        <div className={`border border-gray-800 rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
-                            <div className="overflow-x-auto">
+                        <div>
+                            <div className="rounded-lg border border-gray-700 overflow-hidden bg-gray-800">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-gray-800 border-b border-gray-700 hover:bg-gray-800">
+                                    <TableHeader className="bg-gray-800 border-b border-gray-700">
+                                        <TableRow className="hover:bg-gray-800 border-b border-gray-700">
                                             <TableHead className="text-gray-200 font-medium">ID</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Lecteur</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Livre</TableHead>
@@ -504,17 +515,12 @@ export default function AssignmentsTable({
                 )}
             </CardContent>
 
-            {/* Add Assignment Dialog */}
-            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
-                    <DialogHeader>
-                        <DialogTitle className="text-gray-100">Ajouter une nouvelle affectation</DialogTitle>
-                    </DialogHeader>
-                    <div className="overflow-y-auto px-1">
-                        <AddAssignmentFormBackend onSuccess={handleAssignmentAdded} />
-                    </div>
-                </DialogContent>
-            </Dialog>
+            {/* Add Assignment Modal - Using the new modal wrapper */}
+            <AddAssignmentModal
+                isOpen={isAddModalOpen}
+                onOpenChange={setIsAddModalOpen}
+                onAssignmentCreated={handleAssignmentAdded}
+            />
 
             {/* Edit Assignment Modal */}
             {selectedAssignment && (

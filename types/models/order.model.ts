@@ -84,6 +84,24 @@ export const detailedOrderSelect = {
 // Order Include Configurations
 // ============================================================================
 
+export const orderSummaryInclude = {
+    aveugle: {
+        select: {
+            id: true,
+            name: true,
+            firstName: true,
+            lastName: true,
+        },
+    },
+    catalogue: {
+        select: {
+            id: true,
+            title: true,
+            author: true,
+        },
+    },
+} as const;
+
 export const orderIncludeConfigs = {
     aveugle: {
         select: {

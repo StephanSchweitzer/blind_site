@@ -4,6 +4,7 @@ import {
     basicOrderSelect,
     detailedOrderSelect,
     orderIncludeConfigs,
+    orderSummaryInclude,
     Orders,
 } from '../models/order.model';
 
@@ -11,7 +12,15 @@ import {
 // Summary Types (for forms and UI components)
 // ============================================================================
 
-export type OrderSummary = Pick<Orders, 'id'>;
+export type OrderSummary = Prisma.OrdersGetPayload<{
+    select: {
+        id: true;
+        requestReceivedDate: true;
+        createdDate: true;
+    };
+    include: typeof orderSummaryInclude;
+}>;
+
 export type OrderBasicInfo = Pick<Orders, 'id' | 'requestReceivedDate' | 'statusId'>;
 
 
@@ -162,4 +171,4 @@ export const OrderFilterSchema = z.object({
 export type OrderFilter = z.infer<typeof OrderFilterSchema>;
 
 // Export the include configs for use in API handlers
-export { orderIncludeConfigs };
+export { orderIncludeConfigs, orderSummaryInclude };

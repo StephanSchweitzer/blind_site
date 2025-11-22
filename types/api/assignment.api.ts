@@ -103,9 +103,9 @@ export type AssignmentUpdateData = {
     catalogueId?: number;
     orderId?: number | null;
     statusId?: number;
-    receptionDate?: string | null;
-    sentToReaderDate?: string | null;
-    returnedToECADate?: string | null;
+    receptionDate?: Date | null;
+    sentToReaderDate?: Date | null;
+    returnedToECADate?: Date | null;
     notes?: string | null;
     processedByStaffId?: number | null;
 };

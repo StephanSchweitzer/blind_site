@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Search, History, User as UserIcon } from 'lucide-react';
+import { AlertCircle, Calendar, Search, History, User as UserIcon, ChevronRight, Package } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -25,6 +25,12 @@ import {
     AssignmentFormData,
     AssignmentReaderHistory,
 } from '@/types';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 export interface AssignmentFormBackendBaseProps {
     initialData?: AssignmentFormData;
@@ -39,6 +45,8 @@ export interface AssignmentFormBackendBaseProps {
     initialSelectedReader?: ReaderSummary | null;
     initialSelectedBook?: BookSummary | null;
     initialSelectedOrder?: OrderSummary | null;
+    onReadersLoaded?: () => void;
+    onOrdersLoaded?: () => void;
 }
 
 export function AssignmentFormBackendBase({
@@ -54,6 +62,8 @@ export function AssignmentFormBackendBase({
                                               initialSelectedReader,
                                               initialSelectedBook,
                                               initialSelectedOrder,
+                                              onReadersLoaded,
+                                              onOrdersLoaded,
                                           }: AssignmentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -82,7 +92,7 @@ export function AssignmentFormBackendBase({
 
     // Reader history
     const [readerHistory, setReaderHistory] = useState<AssignmentReaderHistory[]>([]);
-    const [showHistory, setShowHistory] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     // Search states
     const [userSearch, setUserSearch] = useState('');
@@ -104,6 +114,7 @@ export function AssignmentFormBackendBase({
     // Reader reassignment
     const [isReassigningReader, setIsReassigningReader] = useState(false);
     const [reassignNotes, setReassignNotes] = useState('');
+    const [showReassignSection, setShowReassignSection] = useState(false);
 
     const { toast } = useToast();
 
@@ -128,14 +139,20 @@ export function AssignmentFormBackendBase({
             } catch (err) {
                 console.error('Error fetching initial data:', err);
                 setError('Échec du chargement des options du formulaire');
+            } finally {
+                onOrdersLoaded?.();
             }
         };
 
         fetchInitialData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchReaderHistory = useCallback(async () => {
-        if (!assignmentId) return;
+        if (!assignmentId) {
+            onReadersLoaded?.();
+            return;
+        }
 
         try {
             const res = await fetch(`/api/assignments/${assignmentId}/readers`);
@@ -153,12 +170,15 @@ export function AssignmentFormBackendBase({
             }
         } catch (err) {
             console.error('Error fetching reader history:', err);
+        } finally {
+            onReadersLoaded?.();
         }
-    }, [assignmentId]); // Dependencies of the function itself
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [assignmentId]);
 
     useEffect(() => {
         fetchReaderHistory();
-    }, [fetchReaderHistory]); // Now safe to include
+    }, [fetchReaderHistory]);
 
     // Load initial selections if editing (only if not pre-fetched)
     useEffect(() => {
@@ -217,14 +237,23 @@ export function AssignmentFormBackendBase({
             setIsSearchingBooks(true);
             try {
                 const response = await fetch(
-                    `/api/books/search?q=${encodeURIComponent(bookSearch)}`
+                    `/api/books?search=${encodeURIComponent(bookSearch)}&limit=50`
                 );
-                if (response.ok) {
-                    const data = await response.json();
-                    setBooks(data);
+
+                if (!response.ok) {
+                    console.error('Book search failed:', response.status, response.statusText);
+                    const errorData = await response.json().catch(() => null);
+                    console.error('Error data:', errorData);
+                    setBooks([]);
+                    return;
                 }
+
+                const data = await response.json();
+                console.log('Book search results:', data);
+                setBooks(data.books || []);
             } catch (err) {
                 console.error('Error searching books:', err);
+                setBooks([]);
             } finally {
                 setIsSearchingBooks(false);
             }
@@ -275,11 +304,36 @@ export function AssignmentFormBackendBase({
         setBookSearch('');
     };
 
-    const handleOrderSelect = (order: OrderSummary) => {
+    const handleOrderSelect = async (order: OrderSummary) => {
         setSelectedOrder(order);
-        setFormData({ ...formData, orderId: order.id });
+        setFormData(prev => ({ ...prev, orderId: order.id }));
         setOrderPopoverOpen(false);
         setOrderSearch('');
+
+        // Auto-populate book from order - catalogueId is now always present
+        if (order.catalogue) {
+            const catalogueId = (order as OrderSummary).catalogueId;
+
+            if (catalogueId) {
+                const bookData: BookSummary = {
+                    id: catalogueId,
+                    title: order.catalogue.title,
+                    author: order.catalogue.author,
+                };
+
+                console.log('Setting book from order:', bookData);
+                setSelectedBook(bookData);
+                setFormData(prev => ({ ...prev, catalogueId: catalogueId }));
+            } else {
+                console.error('Order missing catalogueId - this should not happen with updated API');
+            }
+        }
+
+        // Update reception date from order's request received date (convert to ISO string)
+        if (order.requestReceivedDate) {
+            const dateString = new Date(order.requestReceivedDate).toISOString();
+            setFormData(prev => ({ ...prev, receptionDate: dateString }));
+        }
     };
 
     const handleReassignReader = async () => {
@@ -326,6 +380,7 @@ export function AssignmentFormBackendBase({
             // Refresh reader history
             await fetchReaderHistory();
             setReassignNotes('');
+            setShowReassignSection(false);
         } catch (error) {
             console.error('Error reassigning reader:', error);
             toast({
@@ -341,6 +396,18 @@ export function AssignmentFormBackendBase({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        // Validate required fields
+        if (!formData.catalogueId) {
+            setError('Veuillez sélectionner un livre du catalogue');
+            return;
+        }
+
+        if (!formData.statusId) {
+            setError('Veuillez sélectionner un statut');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -449,162 +516,131 @@ export function AssignmentFormBackendBase({
                             Lecteur {!assignmentId && <span className="text-red-400">*</span>}
                         </label>
 
-                        {/* Edit mode: Show current reader + reassignment */}
+                        {/* Edit mode: Compact reader display */}
                         {assignmentId ? (
-                            <div className="space-y-3">
-                                {/* Current reader display */}
+                            <div className="space-y-2">
+                                {/* Current reader compact bar */}
                                 {currentReader && (
-                                    <div className="p-3 bg-blue-900/20 border border-blue-800 rounded-md">
-                                        <div className="flex items-center justify-between">
+                                    <div
+                                        className="flex items-center justify-between p-3 bg-gray-800 border border-gray-700 rounded-md hover:bg-gray-750 cursor-pointer transition-colors"
+                                        onClick={() => setShowReassignSection(!showReassignSection)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <UserIcon className="h-5 w-5 text-blue-400" />
                                             <div>
                                                 <div className="font-medium text-gray-200">
-                                                    Lecteur actuel
-                                                </div>
-                                                <div className="text-lg text-blue-200">
                                                     {getReaderDisplayName(currentReader)}
                                                 </div>
                                                 {currentReader.email && (
                                                     <div className="text-sm text-gray-400">{currentReader.email}</div>
                                                 )}
                                             </div>
-                                            {readerHistory.length > 0 && (
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {readerHistory.length > 1 && (
                                                 <Button
                                                     type="button"
-                                                    variant="outline"
+                                                    variant="ghost"
                                                     size="sm"
-                                                    onClick={() => setShowHistory(!showHistory)}
-                                                    className="bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-600"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setShowHistoryModal(true);
+                                                    }}
+                                                    className="text-gray-400 hover:text-gray-200"
                                                 >
-                                                    <History className="mr-2 h-4 w-4" />
-                                                    Historique ({readerHistory.length})
+                                                    <History className="h-4 w-4 mr-1" />
+                                                    <span className="text-xs">Historique</span>
                                                 </Button>
                                             )}
+                                            <ChevronRight className={`h-5 w-5 text-gray-400 transition-transform ${showReassignSection ? 'rotate-90' : ''}`} />
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Reader history display */}
-                                {showHistory && readerHistory.length > 0 && (
-                                    <div className="p-4 bg-gray-800 border border-gray-700 rounded-md">
-                                        <h4 className="font-medium text-gray-200 mb-3">Historique des lecteurs</h4>
-                                        <div className="space-y-2">
-                                            {readerHistory.map((history, index) => (
-                                                <div
-                                                    key={history.id}
-                                                    className={`p-3 rounded ${
-                                                        index === 0
-                                                            ? 'bg-blue-900/20 border border-blue-800'
-                                                            : 'bg-gray-900'
-                                                    }`}
-                                                >
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <div className="font-medium text-gray-200">
-                                                                {getReaderDisplayName(history.reader)}
-                                                                {index === 0 && (
-                                                                    <span className="ml-2 text-xs bg-blue-700 text-blue-100 px-2 py-1 rounded">
-                                                                        Actuel
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            {history.reader.email && (
-                                                                <div className="text-sm text-gray-400">{history.reader.email}</div>
-                                                            )}
-                                                            {history.notes && (
-                                                                <div className="text-sm text-gray-400 mt-1 italic">
-                                                                    {history.notes}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-sm text-gray-400">
-                                                            {format(new Date(history.assignedDate), 'PPP', { locale: fr })}
-                                                        </div>
+                                {/* Reassignment section - collapsible */}
+                                {showReassignSection && (
+                                    <div className="p-4 bg-gray-800 border border-gray-700 rounded-md space-y-3">
+                                        <h4 className="font-medium text-gray-200">Réaffecter à un autre lecteur</h4>
+
+                                        <div className="flex gap-2">
+                                            <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        className="flex-1 justify-between bg-gray-900 border-gray-700 text-gray-200 hover:bg-gray-800"
+                                                    >
+                                                        {selectedReader && selectedReader.id !== currentReader?.id ? (
+                                                            <span>{getReaderDisplayName(selectedReader)}</span>
+                                                        ) : (
+                                                            <span className="text-gray-400">Sélectionner un nouveau lecteur...</span>
+                                                        )}
+                                                        <Search className="ml-2 h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700">
+                                                    <div className="p-2">
+                                                        <Input
+                                                            placeholder="Rechercher un lecteur..."
+                                                            value={userSearch}
+                                                            onChange={(e) => setUserSearch(e.target.value)}
+                                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                                        />
                                                     </div>
-                                                </div>
-                                            ))}
+                                                    <div
+                                                        className="max-h-[300px] overflow-y-auto"
+                                                        onWheel={(e) => e.stopPropagation()}
+                                                    >
+                                                        {isSearchingUsers ? (
+                                                            <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                                        ) : users.length > 0 ? (
+                                                            users.map((user) => (
+                                                                <div
+                                                                    key={user.id}
+                                                                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
+                                                                    onClick={() => handleReaderSelect(user)}
+                                                                >
+                                                                    <div className="font-medium">
+                                                                        {getReaderDisplayName(user)}
+                                                                    </div>
+                                                                    {user.email && (
+                                                                        <div className="text-sm text-gray-400">{user.email}</div>
+                                                                    )}
+                                                                </div>
+                                                            ))
+                                                        ) : userSearch.length >= 2 ? (
+                                                            <div className="p-4 text-center text-gray-400">
+                                                                Aucun lecteur trouvé
+                                                            </div>
+                                                        ) : (
+                                                            <div className="p-4 text-center text-gray-400">
+                                                                Tapez au moins 2 caractères pour rechercher
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={handleReassignReader}
+                                                disabled={isReassigningReader || !selectedReaderId || selectedReaderId === currentReader?.id}
+                                                className="bg-blue-700 hover:bg-blue-600 text-gray-100 border-blue-500 disabled:opacity-50"
+                                            >
+                                                <UserIcon className="mr-2 h-4 w-4" />
+                                                {isReassigningReader ? 'Réaffectation...' : 'Réaffecter'}
+                                            </Button>
                                         </div>
+
+                                        <Input
+                                            placeholder="Raison de la réaffectation (optionnel)"
+                                            value={reassignNotes}
+                                            onChange={(e) => setReassignNotes(e.target.value)}
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                        />
                                     </div>
                                 )}
-
-                                {/* Reassignment section */}
-                                <div className="p-4 bg-gray-800 border border-gray-700 rounded-md space-y-3">
-                                    <h4 className="font-medium text-gray-200">Réaffecter à un autre lecteur</h4>
-
-                                    <div className="flex gap-2">
-                                        <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    className="flex-1 justify-between bg-gray-900 border-gray-700 text-gray-200 hover:bg-gray-800"
-                                                >
-                                                    {selectedReader && selectedReader.id !== currentReader?.id ? (
-                                                        <span>{getReaderDisplayName(selectedReader)}</span>
-                                                    ) : (
-                                                        <span className="text-gray-400">Sélectionner un nouveau lecteur...</span>
-                                                    )}
-                                                    <Search className="ml-2 h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700">
-                                                <div className="p-2">
-                                                    <Input
-                                                        placeholder="Rechercher un lecteur..."
-                                                        value={userSearch}
-                                                        onChange={(e) => setUserSearch(e.target.value)}
-                                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                                    />
-                                                </div>
-                                                <div className="max-h-[300px] overflow-y-auto">
-                                                    {isSearchingUsers ? (
-                                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
-                                                    ) : users.length > 0 ? (
-                                                        users.map((user) => (
-                                                            <div
-                                                                key={user.id}
-                                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
-                                                                onClick={() => handleReaderSelect(user)}
-                                                            >
-                                                                <div className="font-medium">
-                                                                    {getReaderDisplayName(user)}
-                                                                </div>
-                                                                {user.email && (
-                                                                    <div className="text-sm text-gray-400">{user.email}</div>
-                                                                )}
-                                                            </div>
-                                                        ))
-                                                    ) : userSearch.length >= 2 ? (
-                                                        <div className="p-4 text-center text-gray-400">
-                                                            Aucun lecteur trouvé
-                                                        </div>
-                                                    ) : (
-                                                        <div className="p-4 text-center text-gray-400">
-                                                            Tapez au moins 2 caractères pour rechercher
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
-
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={handleReassignReader}
-                                            disabled={isReassigningReader || !selectedReaderId || selectedReaderId === currentReader?.id}
-                                            className="bg-blue-700 hover:bg-blue-600 text-gray-100 border-blue-500 disabled:opacity-50"
-                                        >
-                                            <UserIcon className="mr-2 h-4 w-4" />
-                                            {isReassigningReader ? 'Réaffectation...' : 'Réaffecter'}
-                                        </Button>
-                                    </div>
-
-                                    <Input
-                                        placeholder="Raison de la réaffectation (optionnel)"
-                                        value={reassignNotes}
-                                        onChange={(e) => setReassignNotes(e.target.value)}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
                             </div>
                         ) : (
                             /* Create mode: Simple reader selection */
@@ -632,7 +668,10 @@ export function AssignmentFormBackendBase({
                                             className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
-                                    <div className="max-h-[300px] overflow-y-auto">
+                                    <div
+                                        className="max-h-[300px] overflow-y-auto"
+                                        onWheel={(e) => e.stopPropagation()}
+                                    >
                                         {isSearchingUsers ? (
                                             <div className="p-4 text-center text-gray-400">Recherche...</div>
                                         ) : users.length > 0 ? (
@@ -665,7 +704,88 @@ export function AssignmentFormBackendBase({
                         )}
                     </div>
 
-                    {/* Book Selection */}
+                    {/* Order Selection - NOW SECOND */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-200">Commande (optionnel)</label>
+                        <Popover open={orderPopoverOpen} onOpenChange={setOrderPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                >
+                                    {selectedOrder ? (
+                                        <div className="flex items-center gap-2">
+                                            <Package className="h-4 w-4" />
+                                            <span>Commande #{selectedOrder.id}</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-400">Sélectionner une commande...</span>
+                                    )}
+                                    <Search className="ml-2 h-4 w-4 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[600px] p-0 bg-gray-800 border-gray-700">
+                                <div className="p-2">
+                                    <Input
+                                        placeholder="Rechercher une commande..."
+                                        value={orderSearch}
+                                        onChange={(e) => setOrderSearch(e.target.value)}
+                                        className="bg-gray-900 border-gray-700 text-gray-200"
+                                    />
+                                </div>
+                                <div
+                                    className="max-h-[400px] overflow-y-auto"
+                                    onWheel={(e) => e.stopPropagation()}
+                                >
+                                    {isSearchingOrders ? (
+                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                    ) : orders.length > 0 ? (
+                                        orders.map((order) => (
+                                            <div
+                                                key={order.id}
+                                                className="px-4 py-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
+                                                onClick={() => handleOrderSelect(order)}
+                                            >
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <Package className="h-4 w-4 text-blue-400" />
+                                                            <span className="font-semibold text-gray-200">
+                                                                Commande #{order.id}
+                                                            </span>
+                                                        </div>
+                                                        {order.aveugle && (
+                                                            <div className="text-sm text-gray-300 mb-1">
+                                                                <span className="text-gray-400">Auditeur:</span> {order.aveugle.name || `${order.aveugle.firstName} ${order.aveugle.lastName}`}
+                                                            </div>
+                                                        )}
+                                                        {order.catalogue && (
+                                                            <div className="text-sm text-gray-300 mb-1">
+                                                                <span className="text-gray-400">Livre:</span> {order.catalogue.title}
+                                                                {order.catalogue.author && <span className="text-gray-500"> - {order.catalogue.author}</span>}
+                                                            </div>
+                                                        )}
+                                                        {(order.requestReceivedDate || order.createdDate) && (
+                                                            <div className="text-xs text-gray-400">
+                                                                Commandé le {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="p-4 text-center text-gray-400">
+                                            Aucune commande trouvée
+                                        </div>
+                                    )}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    {/* Book Selection - NOW THIRD */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
                             Livre <span className="text-red-400">*</span>
@@ -694,7 +814,10 @@ export function AssignmentFormBackendBase({
                                         className="bg-gray-900 border-gray-700 text-gray-200"
                                     />
                                 </div>
-                                <div className="max-h-[300px] overflow-y-auto">
+                                <div
+                                    className="max-h-[300px] overflow-y-auto"
+                                    onWheel={(e) => e.stopPropagation()}
+                                >
                                     {isSearchingBooks ? (
                                         <div className="p-4 text-center text-gray-400">Recherche...</div>
                                     ) : books.length > 0 ? (
@@ -715,56 +838,6 @@ export function AssignmentFormBackendBase({
                                     ) : (
                                         <div className="p-4 text-center text-gray-400">
                                             Tapez au moins 2 caractères pour rechercher
-                                        </div>
-                                    )}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    {/* Order Selection */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Commande (optionnel)</label>
-                        <Popover open={orderPopoverOpen} onOpenChange={setOrderPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
-                                >
-                                    {selectedOrder ? (
-                                        <span>Commande #{selectedOrder.id}</span>
-                                    ) : (
-                                        <span className="text-gray-400">Sélectionner une commande...</span>
-                                    )}
-                                    <Search className="ml-2 h-4 w-4 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700">
-                                <div className="p-2">
-                                    <Input
-                                        placeholder="Rechercher une commande..."
-                                        value={orderSearch}
-                                        onChange={(e) => setOrderSearch(e.target.value)}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div className="max-h-[300px] overflow-y-auto">
-                                    {isSearchingOrders ? (
-                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
-                                    ) : orders.length > 0 ? (
-                                        orders.map((order) => (
-                                            <div
-                                                key={order.id}
-                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
-                                                onClick={() => handleOrderSelect(order)}
-                                            >
-                                                <div className="font-medium">Commande #{order.id}</div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="p-4 text-center text-gray-400">
-                                            Aucune commande trouvée
                                         </div>
                                     )}
                                 </div>
@@ -853,28 +926,87 @@ export function AssignmentFormBackendBase({
                     </div>
                 </form>
             </CardContent>
+
+            {/* Reader History Modal */}
+            <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+                <DialogContent className="max-w-2xl bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-100">Historique des lecteurs</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                        {readerHistory.map((history, index) => (
+                            <div
+                                key={history.id}
+                                className={`p-4 rounded ${
+                                    index === 0
+                                        ? 'bg-blue-900/20 border border-blue-800'
+                                        : 'bg-gray-800 border border-gray-700'
+                                }`}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <UserIcon className="h-4 w-4 text-gray-400" />
+                                            <span className="font-medium text-gray-200">
+                                                {getReaderDisplayName(history.reader)}
+                                            </span>
+                                            {index === 0 && (
+                                                <span className="text-xs bg-blue-700 text-blue-100 px-2 py-1 rounded">
+                                                    Actuel
+                                                </span>
+                                            )}
+                                        </div>
+                                        {history.reader.email && (
+                                            <div className="text-sm text-gray-400 mb-2">{history.reader.email}</div>
+                                        )}
+                                        {history.notes && (
+                                            <div className="text-sm text-gray-300 mt-2 p-2 bg-gray-900 rounded italic border-l-2 border-blue-700">
+                                                {history.notes}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="text-sm text-gray-400 ml-4">
+                                        {format(new Date(history.assignedDate), 'PPP', { locale: fr })}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }
 
 // Add Assignment Form using the base
-export function AddAssignmentFormBackend({ onSuccess }: { onSuccess?: (assignmentId: number) => void }) {
+export function AddAssignmentFormBackend({
+                                             onSuccess,
+                                             onOrdersLoaded,
+                                         }: {
+    onSuccess?: (assignmentId: number) => void;
+    onOrdersLoaded?: () => void;
+}) {
     const { toast } = useToast();
 
     const handleSubmit = async (formData: AssignmentFormData, readerId?: number | null): Promise<number> => {
         try {
+            const payload = {
+                ...formData,
+                readerId, // Include readerId for create
+            };
+
+            console.log('Submitting assignment with data:', payload);
+
             const response = await fetch('/api/assignments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...formData,
-                    readerId, // Include readerId for create
-                }),
+                body: JSON.stringify(payload),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
+                console.error('Assignment creation failed:', data);
                 const errorMessage = data?.message || data?.error || 'Échec de la création de l\'affectation';
 
                 toast({
@@ -909,6 +1041,7 @@ export function AddAssignmentFormBackend({ onSuccess }: { onSuccess?: (assignmen
             loadingText="Création en cours..."
             title="Créer une nouvelle affectation"
             onSuccess={onSuccess}
+            onOrdersLoaded={onOrdersLoaded}
         />
     );
 }
@@ -921,6 +1054,8 @@ export function EditAssignmentFormBackend({
                                               initialSelectedReader,
                                               initialSelectedBook,
                                               initialSelectedOrder,
+                                              onReadersLoaded,
+                                              onOrdersLoaded,
                                           }: {
     assignmentId: string;
     initialData: AssignmentFormData;
@@ -928,6 +1063,8 @@ export function EditAssignmentFormBackend({
     initialSelectedReader?: ReaderSummary | null;
     initialSelectedBook?: BookSummary | null;
     initialSelectedOrder?: OrderSummary | null;
+    onReadersLoaded?: () => void;
+    onOrdersLoaded?: () => void;
 }) {
     const { toast } = useToast();
 
@@ -1011,6 +1148,8 @@ export function EditAssignmentFormBackend({
             initialSelectedReader={initialSelectedReader}
             initialSelectedBook={initialSelectedBook}
             initialSelectedOrder={initialSelectedOrder}
+            onReadersLoaded={onReadersLoaded}
+            onOrdersLoaded={onOrdersLoaded}
         />
     );
 }
