@@ -4,15 +4,15 @@ import {
     basicOrderSelect,
     detailedOrderSelect,
     orderIncludeConfigs,
-    Order,
+    Orders,
 } from '../models/order.model';
 
 // ============================================================================
 // Summary Types (for forms and UI components)
 // ============================================================================
 
-export type OrderSummary = Pick<Order, 'id'>;
-export type OrderBasicInfo = Pick<Order, 'id' | 'requestReceivedDate' | 'statusId'>;
+export type OrderSummary = Pick<Orders, 'id'>;
+export type OrderBasicInfo = Pick<Orders, 'id' | 'requestReceivedDate' | 'statusId'>;
 
 
 // ============================================================================
