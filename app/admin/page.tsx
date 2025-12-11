@@ -96,10 +96,18 @@ export default async function Dashboard() {
                     />
 
                     <AdminDashboardCard
-                        title="Utilisateurs"
+                        title="Lecteurs"
                         count={userCount}
-                        href="/admin/users"
-                        buttonText="Gestion des utilisateurs"
+                        href="/admin/users/lecteurs"
+                        buttonText="Gestion des lecteurs"
+                        accentColor="orange"
+                    />
+
+                    <AdminDashboardCard
+                        title="Auditeurs"
+                        count={userCount}
+                        href="/admin/users/auditeurs"
+                        buttonText="Gestion des auditeurs"
                         accentColor="orange"
                     />
                 </div>

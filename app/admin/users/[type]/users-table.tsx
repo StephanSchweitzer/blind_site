@@ -12,42 +12,33 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Search, X, Loader2 } from 'lucide-react';
 
-interface User {
-    id: number;
-    email: string | null;
-    firstName: string | null;
-    lastName: string | null;
-    role: string;
-    isActive: boolean | null;
-    lastUpdated: string | null;
-}
-
 interface UsersTableProps {
-    initialUsers: User[];
+    type: 'lecteurs' | 'auditeurs';
+    initialUsers: Array<{
+        id: number;
+        email: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        role: string;
+        isActive: boolean | null;
+        lastUpdated: string | null;
+    }>;
     initialPage: number;
     initialSearch: string;
     totalPages: number;
     initialTotalUsers: number;
-    initialRoleFilter?: string;
 }
 
 export default function UsersTable({
+                                       type,
                                        initialUsers,
                                        initialPage,
                                        initialSearch,
                                        totalPages,
                                        initialTotalUsers,
-                                       initialRoleFilter,
                                    }: UsersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -55,7 +46,6 @@ export default function UsersTable({
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const currentPage = initialPage;
-    const currentRoleFilter = initialRoleFilter || 'all';
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -86,13 +76,6 @@ export default function UsersTable({
         updateUrl({ page: newPage.toString() });
     };
 
-    const handleRoleFilter = (role: string) => {
-        updateUrl({
-            role: role === 'all' ? undefined : role,
-            page: '1',
-        });
-    };
-
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
         return new Date(dateString).toLocaleDateString('fr-FR');
@@ -103,6 +86,8 @@ export default function UsersTable({
             'user': 'Utilisateur',
             'admin': 'Administrateur',
             'super_admin': 'Super Admin',
+            'lecteur': 'Lecteur',
+            'auditeur': 'Auditeur',
             'AVEUGLE': 'Aveugle',
             'STAFF': 'Staff',
         };
@@ -114,6 +99,8 @@ export default function UsersTable({
             'user': 'bg-gray-100 text-gray-800',
             'admin': 'bg-blue-100 text-blue-800',
             'super_admin': 'bg-purple-100 text-purple-800',
+            'lecteur': 'bg-green-100 text-green-800',
+            'auditeur': 'bg-orange-100 text-orange-800',
             'AVEUGLE': 'bg-green-100 text-green-800',
             'STAFF': 'bg-yellow-100 text-yellow-800',
         };
@@ -147,32 +134,40 @@ export default function UsersTable({
 
     const visiblePages = getVisiblePages();
 
+    // Get title based on type
+    const title = type === 'lecteurs' ? 'Gestion des Lecteurs' : 'Gestion des Auditeurs';
+
     return (
         <Card className="bg-gray-900 border-gray-800 shadow-xl">
             <CardHeader className="border-b border-gray-800">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <CardTitle className="text-2xl font-bold text-gray-100">
-                            Gestion des Utilisateurs
+                            {title}
                         </CardTitle>
                         <CardDescription className="text-gray-400 mt-1">
-                            {initialTotalUsers} utilisateur{initialTotalUsers > 1 ? 's' : ''} au total
+                            {initialTotalUsers} {type === 'lecteurs' ? 'lecteur' : 'auditeur'}{initialTotalUsers > 1 ? 's' : ''} au total
                         </CardDescription>
                     </div>
                 </div>
             </CardHeader>
 
             <CardContent className="pt-6 space-y-6">
-                {/* Search and Filter Controls */}
+                {/* Search Bar */}
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                         <Input
-                            placeholder="Rechercher par nom ou email..."
+                            type="text"
+                            placeholder="Rechercher par nom, prénom ou email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="pl-10 pr-10 bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleSearch();
+                                }
+                            }}
+                            className="pl-10 pr-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
                         />
                         {searchTerm && (
                             <button
@@ -190,22 +185,6 @@ export default function UsersTable({
                     >
                         Rechercher
                     </Button>
-                    <Select
-                        value={currentRoleFilter}
-                        onValueChange={handleRoleFilter}
-                    >
-                        <SelectTrigger className="w-full sm:w-[200px] bg-gray-800 border-gray-700 text-gray-200">
-                            <SelectValue placeholder="Filtrer par rôle" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                            <SelectItem value="all" className="text-gray-200">Tous les rôles</SelectItem>
-                            <SelectItem value="user" className="text-gray-200">Utilisateur</SelectItem>
-                            <SelectItem value="admin" className="text-gray-200">Administrateur</SelectItem>
-                            <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
-                            <SelectItem value="AVEUGLE" className="text-gray-200">Aveugle</SelectItem>
-                            <SelectItem value="STAFF" className="text-gray-200">Staff</SelectItem>
-                        </SelectContent>
-                    </Select>
                 </div>
 
                 {/* Loading Overlay */}
@@ -224,7 +203,7 @@ export default function UsersTable({
                 <div className="relative">
                     {initialUsers.length === 0 ? (
                         <div className="text-center py-12">
-                            <p className="text-gray-400 text-lg">Aucun utilisateur trouvé</p>
+                            <p className="text-gray-400 text-lg">Aucun {type === 'lecteurs' ? 'lecteur' : 'auditeur'} trouvé</p>
                         </div>
                     ) : (
                         <div className={`border border-gray-800 rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
