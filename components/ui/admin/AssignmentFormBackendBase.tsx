@@ -790,7 +790,7 @@ export function AssignmentFormBackendBase({
                                     {selectedOrder ? (
                                         <div className="flex items-center gap-2">
                                             <Package className="h-4 w-4" />
-                                            <span>Commande #{selectedOrder.id}</span>
+                                            <span>Commande #{selectedOrder.id} par {selectedOrder.aveugle.name}</span>
                                         </div>
                                     ) : (
                                         <span className="text-gray-400">Sélectionner une commande...</span>
