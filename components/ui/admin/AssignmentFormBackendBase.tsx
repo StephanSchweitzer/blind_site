@@ -520,7 +520,7 @@ export function AssignmentFormBackendBase({
                         {assignmentId ? (
                             <div className="space-y-2">
                                 {/* Current reader compact bar */}
-                                {currentReader && (
+                                {currentReader ? (
                                     <div
                                         className="flex items-center justify-between p-3 bg-gray-800 border border-gray-700 rounded-md hover:bg-gray-750 cursor-pointer transition-colors"
                                         onClick={() => setShowReassignSection(!showReassignSection)}
@@ -555,10 +555,83 @@ export function AssignmentFormBackendBase({
                                             <ChevronRight className={`h-5 w-5 text-gray-400 transition-transform ${showReassignSection ? 'rotate-90' : ''}`} />
                                         </div>
                                     </div>
+                                ) : (
+                                    /* No reader assigned yet in edit mode - show simple selection like create mode */
+                                    <div className="space-y-2">
+                                        <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                                >
+                                                    {selectedReader ? (
+                                                        <span>{getReaderDisplayName(selectedReader)}</span>
+                                                    ) : (
+                                                        <span className="text-gray-400">Sélectionner un lecteur...</span>
+                                                    )}
+                                                    <Search className="ml-2 h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700">
+                                                <div className="p-2">
+                                                    <Input
+                                                        placeholder="Rechercher un lecteur..."
+                                                        value={userSearch}
+                                                        onChange={(e) => setUserSearch(e.target.value)}
+                                                        className="bg-gray-900 border-gray-700 text-gray-200"
+                                                    />
+                                                </div>
+                                                <div
+                                                    className="max-h-[300px] overflow-y-auto"
+                                                    onWheel={(e) => e.stopPropagation()}
+                                                >
+                                                    {isSearchingUsers ? (
+                                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                                    ) : users.length > 0 ? (
+                                                        users.map((user) => (
+                                                            <div
+                                                                key={user.id}
+                                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
+                                                                onClick={() => handleReaderSelect(user)}
+                                                            >
+                                                                <div className="font-medium">
+                                                                    {getReaderDisplayName(user)}
+                                                                </div>
+                                                                {user.email && (
+                                                                    <div className="text-sm text-gray-400">{user.email}</div>
+                                                                )}
+                                                            </div>
+                                                        ))
+                                                    ) : userSearch.length >= 2 ? (
+                                                        <div className="p-4 text-center text-gray-400">
+                                                            Aucun lecteur trouvé
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-4 text-center text-gray-400">
+                                                            Tapez au moins 2 caractères pour rechercher
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                        {selectedReader && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={handleReassignReader}
+                                                disabled={isReassigningReader}
+                                                className="w-full bg-blue-700 hover:bg-blue-600 text-gray-100 border-blue-500 disabled:opacity-50"
+                                            >
+                                                <UserIcon className="mr-2 h-4 w-4" />
+                                                {isReassigningReader ? 'Affectation...' : 'Affecter ce lecteur'}
+                                            </Button>
+                                        )}
+                                    </div>
                                 )}
 
-                                {/* Reassignment section - collapsible */}
-                                {showReassignSection && (
+                                {/* Reassignment section - collapsible (only when currentReader exists) */}
+                                {showReassignSection && currentReader && (
                                     <div className="p-4 bg-gray-800 border border-gray-700 rounded-md space-y-3">
                                         <h4 className="font-medium text-gray-200">Réaffecter à un autre lecteur</h4>
 
@@ -706,7 +779,7 @@ export function AssignmentFormBackendBase({
 
                     {/* Order Selection - NOW SECOND */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Commande (optionnel)</label>
+                        <label className="text-sm font-medium text-gray-200">Commande</label>
                         <Popover open={orderPopoverOpen} onOpenChange={setOrderPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
