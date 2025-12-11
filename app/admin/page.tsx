@@ -11,7 +11,8 @@ export default async function Dashboard() {
         newsCount,
         genreCount,
         coupsDeCoeurCount,
-        userCount,
+        lecteursCount,
+        auditeursCount,
         assignmentCount,
         orderCount,
         billCount,
@@ -21,7 +22,18 @@ export default async function Dashboard() {
         prisma.news.count(),
         prisma.genre.count(),
         prisma.coupsDeCoeur.count(),
-        prisma.user.count(),
+        prisma.user.count({
+            where: {
+                role: {
+                    in: ['admin', 'super_admin']
+                }
+            }
+        }),
+        prisma.user.count({
+            where: {
+                role: 'user'
+            }
+        }),
         prisma.assignment.count(),
         prisma.orders.count(),
         prisma.bill.count()
@@ -97,18 +109,18 @@ export default async function Dashboard() {
 
                     <AdminDashboardCard
                         title="Lecteurs"
-                        count={userCount}
+                        count={lecteursCount}
                         href="/admin/users/lecteurs"
                         buttonText="Gestion des lecteurs"
-                        accentColor="orange"
+                        accentColor="indigo"
                     />
 
                     <AdminDashboardCard
                         title="Auditeurs"
-                        count={userCount}
+                        count={auditeursCount}
                         href="/admin/users/auditeurs"
                         buttonText="Gestion des auditeurs"
-                        accentColor="orange"
+                        accentColor="teal"
                     />
                 </div>
             </div>

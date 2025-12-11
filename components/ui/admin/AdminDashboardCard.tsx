@@ -2,14 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
-import { BookOpen, Theater, Newspaper, List, ShoppingCart, UserCheck, Users, LucideIcon } from 'lucide-react';
+import { BookOpen, Theater, Newspaper, List, ShoppingCart, UserCheck, Headphones, FileText, Mic, LucideIcon } from 'lucide-react';
 
 interface AdminDashboardCardProps {
     title: string;
     count: number;
     href: string;
     buttonText: string;
-    accentColor: 'blue' | 'purple' | 'green' | 'pink' | 'yellow' | 'cyan' | 'orange';
+    accentColor: 'blue' | 'purple' | 'green' | 'pink' | 'yellow' | 'cyan' | 'orange' | 'red' | 'indigo' | 'teal';
 }
 
 const colorMap = {
@@ -54,6 +54,24 @@ const colorMap = {
         hoverBg: 'hover:bg-orange-900/50',
         text: 'text-orange-400',
         border: 'border-orange-900',
+    },
+    red: {
+        bg: 'bg-red-950/50',
+        hoverBg: 'hover:bg-red-900/50',
+        text: 'text-red-400',
+        border: 'border-red-900',
+    },
+    indigo: {
+        bg: 'bg-indigo-950/50',
+        hoverBg: 'hover:bg-indigo-900/50',
+        text: 'text-indigo-400',
+        border: 'border-indigo-900',
+    },
+    teal: {
+        bg: 'bg-teal-950/50',
+        hoverBg: 'hover:bg-teal-900/50',
+        text: 'text-teal-400',
+        border: 'border-teal-900',
     }
 };
 
@@ -62,9 +80,11 @@ const iconMap: Record<string, LucideIcon> = {
     'Genres': Theater,
     'Dernières infos': Newspaper,
     'Listes de livres': List,
-    'Commandes': ShoppingCart,
+    'Demandes': ShoppingCart,
     'Affectations': UserCheck,
-    'Utilisateurs': Users,
+    'Factures': FileText,
+    'Lecteurs': Mic,
+    'Auditeurs': Headphones,
 };
 
 export function AdminDashboardCard({
