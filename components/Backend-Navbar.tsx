@@ -8,7 +8,7 @@ const BackendNavbar: React.FC = () => {
                 {/* Brand */}
                 <Link
                     href="/admin"
-                    className="py-5 text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent tracking-wide hover:-translate-y-0.5 hover:brightness-125 transition-all duration-300"
+                    className="py-5 text-xl font-bold bg-gradient-to-r from-blue-50 to-blue-100 bg-clip-text text-transparent tracking-wide hover:-translate-y-0.5 hover:brightness-125 transition-all duration-300"
                 >
                     Administration
                 </Link>
