@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
             isDuplication,
             mediaFormatId,
             deliveryMethod,
-            createdDate,
+            //createdDate,
             closureDate,
             cost,
             billingStatus,
@@ -319,26 +319,26 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        let parsedCreatedDate: Date = new Date();
-        if (createdDate) {
-            try {
-                parsedCreatedDate = new Date(createdDate);
-                if (isNaN(parsedCreatedDate.getTime())) {
-                    throw new Error('Invalid date');
-                }
-            } catch (dateError) {
-                console.error('Invalid createdDate:', createdDate, dateError);
-                return NextResponse.json(
-                    {
-                        error: 'Invalid date format',
-                        message: 'La date de création est invalide',
-                        field: 'createdDate',
-                        received: createdDate
-                    },
-                    { status: 400 }
-                );
-            }
-        }
+        const createdDate: Date = new Date();
+        // if (createdDate) {
+        //     try {
+        //         parsedCreatedDate = new Date(createdDate);
+        //         if (isNaN(parsedCreatedDate.getTime())) {
+        //             throw new Error('Invalid date');
+        //         }
+        //     } catch (dateError) {
+        //         console.error('Invalid createdDate:', createdDate, dateError);
+        //         return NextResponse.json(
+        //             {
+        //                 error: 'Invalid date format',
+        //                 message: 'La date de création est invalide',
+        //                 field: 'createdDate',
+        //                 received: createdDate
+        //             },
+        //             { status: 400 }
+        //         );
+        //     }
+        // }
 
         let parsedClosureDate: Date | null = null;
         if (closureDate) {
@@ -352,7 +352,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json(
                     {
                         error: 'Invalid date format',
-                        message: 'La date de clôture est invalide',
+                        message: 'La date d\'envoie est invalide',
                         field: 'closureDate',
                         received: closureDate
                     },
@@ -409,7 +409,7 @@ export async function POST(request: NextRequest) {
             mediaFormatId: parseInt(mediaFormatId),
             deliveryMethod: deliveryMethod as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE',
             processedByStaffId: session?.user?.id ? parseInt(session.user.id) : null,
-            createdDate: parsedCreatedDate,
+            createdDate: createdDate,
             closureDate: parsedClosureDate,
             updatedAt: new Date(),
             cost: parsedCost,

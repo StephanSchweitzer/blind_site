@@ -47,7 +47,7 @@ interface Book {
 type OrderWithRelations = {
     id: number;
     requestReceivedDate: string;
-    createdDate: Date | null;
+    //createdDate: Date | null;
     closureDate: string | null;
     cost: number | null;
     billingStatus: string;
@@ -225,7 +225,7 @@ export default function OrdersTable({
                 mediaFormatId: order.mediaFormatId,
                 deliveryMethod: order.deliveryMethod as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE',
                 processedByStaffId: order.processedByStaffId,
-                createdDate: order.createdDate ? new Date(order.createdDate) : null,
+                //createdDate: order.createdDate ? new Date(order.createdDate) : null,
                 closureDate: order.closureDate ? new Date(order.closureDate) : null,
                 cost: order.cost?.toString() || '0.00',
                 billingStatus: order.billingStatus as 'UNBILLED' | 'BILLED' | 'PAID',

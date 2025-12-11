@@ -50,7 +50,7 @@ export interface OrderFormData {
     mediaFormatId: number | null;
     deliveryMethod: 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE' | null;
     processedByStaffId: number | null;
-    createdDate: Date | null;
+    // createdDate: Date | null;
     closureDate: Date | null;
     cost: string;
     billingStatus: 'UNBILLED' | 'BILLED' | 'PAID';
@@ -99,7 +99,7 @@ export function OrderFormBackendBase({
         mediaFormatId: null,
         deliveryMethod: null,
         processedByStaffId: null,
-        createdDate: new Date(),
+        //createdDate: new Date(),
         closureDate: null,
         cost: '3.00',
         billingStatus: 'UNBILLED',
@@ -504,38 +504,38 @@ export function OrderFormBackendBase({
                         </Popover>
                     </div>
 
-                    {/* Created Date */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Date de création</label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750"
-                                >
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    {formData.createdDate ? (
-                                        format(formData.createdDate, 'PPP', { locale: fr })
-                                    ) : (
-                                        <span>Sélectionner une date</span>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={formData.createdDate || undefined}
-                                    onSelect={(date) => setFormData({ ...formData, createdDate: date || null })}
-                                    initialFocus
-                                    className="bg-gray-800 text-gray-200"
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
+                    {/*/!* Created Date *!/*/}
+                    {/*<div className="space-y-2">*/}
+                    {/*    <label className="text-sm font-medium text-gray-200">Date de création</label>*/}
+                    {/*    <Popover>*/}
+                    {/*        <PopoverTrigger asChild>*/}
+                    {/*            <Button*/}
+                    {/*                variant="outline"*/}
+                    {/*                className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750"*/}
+                    {/*            >*/}
+                    {/*                <Calendar className="mr-2 h-4 w-4" />*/}
+                    {/*                {formData.createdDate ? (*/}
+                    {/*                    format(formData.createdDate, 'PPP', { locale: fr })*/}
+                    {/*                ) : (*/}
+                    {/*                    <span>Sélectionner une date</span>*/}
+                    {/*                )}*/}
+                    {/*            </Button>*/}
+                    {/*        </PopoverTrigger>*/}
+                    {/*        <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">*/}
+                    {/*            <CalendarComponent*/}
+                    {/*                mode="single"*/}
+                    {/*                selected={formData.createdDate || undefined}*/}
+                    {/*                onSelect={(date) => setFormData({ ...formData, createdDate: date || null })}*/}
+                    {/*                initialFocus*/}
+                    {/*                className="bg-gray-800 text-gray-200"*/}
+                    {/*            />*/}
+                    {/*        </PopoverContent>*/}
+                    {/*    </Popover>*/}
+                    {/*</div>*/}
 
                     {/* Closure Date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Date de clôture</label>
+                        <label className="text-sm font-medium text-gray-200">Date d&apos;`envoie</label>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button

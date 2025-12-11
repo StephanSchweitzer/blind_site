@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -11,7 +15,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
@@ -19,13 +23,33 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@/catalogue/*": ["./app/catalogue/_components/*"],
-      "@/coups-de-coeur/*": ["./app/coups-de-coeur/components/*"],
-      "@/dernieres-infos/*": ["./app/dernieres-infos/components/*"],
-      "@/admin/*": ["./components/ui/admin/*"]
+      "@/*": [
+        "./*"
+      ],
+      "@/catalogue/*": [
+        "./app/catalogue/_components/*"
+      ],
+      "@/coups-de-coeur/*": [
+        "./app/coups-de-coeur/components/*"
+      ],
+      "@/dernieres-infos/*": [
+        "./app/dernieres-infos/components/*"
+      ],
+      "@/admin/*": [
+        "./components/ui/admin/*"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/next-auth.d.ts", "coups-de-coeur.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "types/next-auth.d.ts",
+    "coups-de-coeur.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
