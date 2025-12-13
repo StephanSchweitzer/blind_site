@@ -11,53 +11,56 @@ import {
     Text
 } from '@react-email/components';
 
-interface InvitationEmailProps {
+interface PasswordResetEmailProps {
     name: string;
     email: string;
-    role: string;
     temporaryPassword: string;
     appName?: string;
     loginUrl?: string;
 }
 
-export const InvitationEmail = ({
-                                    name = '',
-                                    email,
-                                    role,
-                                    temporaryPassword,
-                                    appName = 'ECA-Aveugles',
-                                    loginUrl = 'https://eca-aveugles.fr/admin'
-                                }: InvitationEmailProps) => {
+export const PasswordResetEmail = ({
+                                       name = '',
+                                       email,
+                                       temporaryPassword,
+                                       appName = 'ECA-Aveugles',
+                                       loginUrl = 'https://eca-aveugles.fr/admin'
+                                   }: PasswordResetEmailProps) => {
     const displayName = name || 'cher utilisateur';
 
     return (
         <Html>
             <Head />
-            <Preview>Votre invitation pour {appName}</Preview>
+            <Preview>Votre nouveau mot de passe pour {appName}</Preview>
             <Body style={main}>
                 <Container style={container}>
-                    <Heading style={h1}>Bienvenue sur {appName} !</Heading>
+                    <Heading style={h1}>Réinitialisation de mot de passe</Heading>
 
                     <Text style={text}>Bonjour {displayName},</Text>
 
                     <Text style={text}>
-                        Vous avez été invité(e) à rejoindre {appName} en tant que {role}. Un compte a été créé pour vous avec les détails suivants :
+                        Votre mot de passe a été réinitialisé par un administrateur. Voici vos nouvelles informations de connexion :
                     </Text>
 
                     <Section style={detailsSection}>
                         <Text style={detailsItem}><strong>Email :</strong> {email}</Text>
-                        <Text style={detailsItem}><strong>Rôle :</strong> {role}</Text>
-                        <Text style={detailsItem}><strong>Mot de passe temporaire :</strong> {temporaryPassword}</Text>
+                        <Text style={detailsItem}><strong>Nouveau mot de passe temporaire :</strong> {temporaryPassword}</Text>
+                    </Section>
+
+                    <Section style={warningSection}>
+                        <Text style={warningText}>
+                            ⚠️ <strong>Important :</strong> Vous devrez changer ce mot de passe lors de votre prochaine connexion.
+                        </Text>
                     </Section>
 
                     <Text style={text}>
-                        Veuillez <a href={loginUrl} style={link}>vous connecter à votre compte</a> et changer votre mot de passe dès que possible.
+                        Veuillez <a href={loginUrl} style={link}>vous connecter à votre compte</a> avec ce nouveau mot de passe, puis changez-le immédiatement pour un mot de passe de votre choix.
                     </Text>
 
                     <Hr style={hr} />
 
                     <Text style={footer}>
-                        Si vous n&apos;attendiez pas cette invitation, veuillez ignorer cet email ou contacter le support.
+                        Si vous n&apos;avez pas demandé cette réinitialisation, veuillez contacter immédiatement le support.
                     </Text>
                 </Container>
             </Body>
@@ -110,6 +113,21 @@ const detailsItem = {
     margin: '8px 0'
 };
 
+const warningSection = {
+    backgroundColor: '#fff3cd',
+    border: '1px solid #ffc107',
+    borderRadius: '6px',
+    padding: '16px',
+    margin: '24px 0'
+};
+
+const warningText = {
+    color: '#856404',
+    fontSize: '14px',
+    lineHeight: '22px',
+    margin: '0'
+};
+
 const link = {
     color: '#0070f3',
     textDecoration: 'underline'
@@ -126,4 +144,4 @@ const footer = {
     lineHeight: '22px'
 };
 
-export default InvitationEmail;
+export default PasswordResetEmail;

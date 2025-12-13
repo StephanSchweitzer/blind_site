@@ -62,6 +62,13 @@ export async function POST(request: Request) {
 
         const body = await request.json() as UserCreateRequestBody;
 
+        // Only super_admin can create admin, lecteur (admin), or super_admin roles
+        if ((body.role === 'admin' || body.role === 'super_admin') && session.user.role !== 'super_admin') {
+            return NextResponse.json({
+                message: 'Seuls les super administrateurs peuvent créer des lecteurs ou des administrateurs'
+            }, { status: 403 });
+        }
+
         // Email is required for admin and super_admin roles
         if ((body.role === 'admin' || body.role === 'super_admin') && !body.email) {
             return NextResponse.json({ message: 'L\'email est requis pour les lecteurs' }, { status: 400 });

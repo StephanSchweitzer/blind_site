@@ -168,7 +168,7 @@ export default function UsersTable({
             toast({
                 variant: "destructive",
                 title: "Erreur",
-                description: "Erreur lors du chargement de l'individuel. Veuillez réessayer.",
+                description: error instanceof Error ? error.message : "Échec du chargement des données de l'individuel",
             });
         } finally {
             setIsLoadingUser(false);
@@ -176,78 +176,97 @@ export default function UsersTable({
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return '-';
-        return new Date(dateString).toLocaleDateString('fr-FR');
-    };
-
-    const getRoleDisplayName = (role: string) => {
-        const displayMap: Record<string, string> = {
-            'user': 'Auditeur',
-            'admin': 'Lecteur',
-            'super_admin': 'Super Admin',
-            'lecteur': 'Lecteur',
-            'auditeur': 'Auditeur',
-            'AVEUGLE': 'Aveugle',
-            'STAFF': 'Staff',
-        };
-        return displayMap[role] || role;
+        if (!dateString) return 'Non disponible';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
     };
 
     const getRoleColor = (role: string) => {
-        const colorMap: Record<string, string> = {
-            'user': 'bg-gray-100 text-gray-800',
-            'admin': 'bg-blue-100 text-blue-800',
-            'super_admin': 'bg-purple-100 text-purple-800',
-            'lecteur': 'bg-green-100 text-green-800',
-            'auditeur': 'bg-orange-100 text-orange-800',
-            'AVEUGLE': 'bg-green-100 text-green-800',
-            'STAFF': 'bg-yellow-100 text-yellow-800',
-        };
-        return colorMap[role] || 'bg-gray-100 text-gray-800';
+        switch (role) {
+            case 'user':
+                return 'bg-blue-100 text-blue-800';
+            case 'admin':
+                return 'bg-purple-100 text-purple-800';
+            case 'super_admin':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
     };
 
-    const getVisiblePages = () => {
+    const getRoleDisplayName = (role: string): string => {
+        switch (role) {
+            case 'user':
+                return 'Auditeur';
+            case 'admin':
+                return 'Lecteur';
+            case 'super_admin':
+                return 'Super Admin';
+            default:
+                return role;
+        }
+    };
+
+    const visiblePages = (() => {
         const pages: (number | string)[] = [];
-        const maxVisible = 5;
 
-        if (totalPages <= maxVisible + 2) {
-            return Array.from({ length: totalPages }, (_, i) => i + 1);
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            if (currentPage <= 4) {
+                for (let i = 1; i <= 5; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            }
         }
-
-        pages.push(1);
-
-        const start = Math.max(2, currentPage - 1);
-        const end = Math.min(totalPages - 1, currentPage + 1);
-
-        if (start > 2) pages.push('...');
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
-        if (end < totalPages - 1) pages.push('...');
-
-        pages.push(totalPages);
 
         return pages;
-    };
+    })();
 
-    const visiblePages = getVisiblePages();
-    const title = type === 'lecteurs' ? 'Gestion des Lecteurs' : 'Gestion des Auditeurs';
+    const activeCount = initialUsers.filter(user => user.isActive === true).length;
+    const inactiveCount = initialUsers.filter(user => user.isActive === false).length;
 
     return (
-        <Card className="bg-gray-900 border-gray-800 shadow-xl">
-            <CardHeader className="border-b border-gray-800">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <Card className="border-gray-700 bg-gray-900 shadow-xl">
+            <CardHeader className="border-b border-gray-700">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <CardTitle className="text-2xl font-bold text-gray-100">
-                            {title}
+                        <CardTitle className="text-2xl text-gray-100">
+                            {type === 'lecteurs' ? 'Lecteurs' : 'Auditeurs'}
                         </CardTitle>
                         <CardDescription className="text-gray-400 mt-1">
                             {initialTotalUsers} {type === 'lecteurs' ? 'lecteur' : 'auditeur'}{initialTotalUsers > 1 ? 's' : ''} au total
+                            {' • '}
+                            {activeCount} actif{activeCount > 1 ? 's' : ''}
+                            {' • '}
+                            {inactiveCount} inactif{inactiveCount > 1 ? 's' : ''}
                         </CardDescription>
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="bg-green-600 hover:bg-green-700 text-white"
                     >
                         <Plus className="h-4 w-4 mr-2" />
                         Nouveau membre
@@ -255,50 +274,37 @@ export default function UsersTable({
                 </div>
             </CardHeader>
 
-            <CardContent className="pt-6 space-y-6">
-                <div className="flex flex-col sm:flex-row gap-3">
+            <CardContent className="pt-6">
+                <div className="flex gap-2 mb-6">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                            type="text"
-                            placeholder="Rechercher par nom, prénom ou email..."
+                            placeholder={`Rechercher par nom, email...`}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    handleSearch();
-                                }
-                            }}
-                            className="pl-10 pr-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
                         />
-                        {searchTerm && (
-                            <button
-                                onClick={handleClearSearch}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        )}
                     </div>
                     <Button
                         onClick={handleSearch}
                         disabled={isPending}
-                        className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         Rechercher
                     </Button>
+                    {searchTerm && (
+                        <Button
+                            onClick={handleClearSearch}
+                            variant="outline"
+                            size="icon"
+                            disabled={isPending}
+                            className="bg-gray-800 border-gray-700 hover:bg-gray-700"
+                        >
+                            <X className="h-4 w-4 text-gray-200" />
+                        </Button>
+                    )}
                 </div>
-
-                {isPending && (
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center z-10 rounded-lg">
-                            <div className="flex flex-col items-center gap-3">
-                                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                <p className="text-sm text-gray-300">Chargement...</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 <div className="relative">
                     {initialUsers.length === 0 ? (
@@ -446,7 +452,11 @@ export default function UsersTable({
                         <DialogTitle className="text-gray-100">Ajouter une nouvel personne</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        <AddUserFormBackend onSuccess={handleUserAdded} userType={type} />
+                        <AddUserFormBackend
+                            onSuccess={handleUserAdded}
+                            userType={type}
+                            currentUserRole={currentUserRole}
+                        />
                     </div>
                 </DialogContent>
             </Dialog>

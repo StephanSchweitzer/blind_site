@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Plus, Trash2, UserX, UserCheck } from 'lucide-react';
+import { AlertCircle, Plus, Trash2, UserX, UserCheck, Mail } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
     Dialog,
@@ -29,6 +29,7 @@ interface UserFormBackendBaseProps {
     showDelete?: boolean;
     currentUserRole?: string;
     userType: UserType;
+    userId?: string; // For password reset functionality
 }
 
 const emptyAddress: AddressFormData = {
@@ -52,13 +53,16 @@ export function UserFormBackendBase({
                                         showDelete,
                                         currentUserRole,
                                         userType,
+                                        userId,
                                     }: UserFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = useState(false);
     const [isActivationDialogOpen, setIsActivationDialogOpen] = useState(false);
+    const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
     const [deactivationReason, setDeactivationReason] = useState('');
     const [activationReason, setActivationReason] = useState('');
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
     const { toast } = useToast();
 
     const defaultRole = userType === 'auditeurs' ? 'user' : 'admin';
@@ -224,7 +228,7 @@ export function UserFormBackendBase({
             const updatedFormData = {
                 ...formData,
                 isActive: true,
-                terminationReason: activationReason.trim(),
+                terminationReason: `Réactivé: ${activationReason.trim()}`,
             };
 
             const userId = await onSubmit(updatedFormData);
@@ -257,6 +261,52 @@ export function UserFormBackendBase({
             }
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handlePasswordReset = async () => {
+        if (!userId) {
+            toast({
+                variant: "destructive",
+                title: "Erreur",
+                description: "ID utilisateur manquant",
+            });
+            return;
+        }
+
+        setIsResettingPassword(true);
+        try {
+            const response = await fetch(`/api/user/${userId}/reset-password`, {
+                method: 'POST',
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                toast({
+                    variant: "destructive",
+                    title: "Erreur",
+                    description: data?.message || 'Échec de la réinitialisation du mot de passe',
+                });
+                return;
+            }
+
+            toast({
+                title: "Succès",
+                description: data?.message || 'Le mot de passe a été réinitialisé et envoyé par email',
+                className: "bg-green-100 border-green-500 text-green-900"
+            });
+
+            setIsPasswordResetDialogOpen(false);
+        } catch (err) {
+            console.error('Password reset error:', err);
+            toast({
+                variant: "destructive",
+                title: "Erreur",
+                description: "Échec de la réinitialisation du mot de passe",
+            });
+        } finally {
+            setIsResettingPassword(false);
         }
     };
 
@@ -356,9 +406,12 @@ export function UserFormBackendBase({
                                         </SelectTrigger>
                                         <SelectContent className="bg-gray-800 border-gray-700">
                                             <SelectItem value="user" className="text-gray-200">Auditeur</SelectItem>
-                                            <SelectItem value="admin" className="text-gray-200">Lecteur</SelectItem>
+                                            {/* Only super_admin can see and select admin and super_admin roles */}
                                             {currentUserRole === 'super_admin' && (
-                                                <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
+                                                <>
+                                                    <SelectItem value="admin" className="text-gray-200">Lecteur</SelectItem>
+                                                    <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
+                                                </>
                                             )}
                                         </SelectContent>
                                     </Select>
@@ -428,284 +481,181 @@ export function UserFormBackendBase({
                                     </Button>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Adresse</label>
+                                        <label className="text-sm font-medium text-gray-200">Ligne d&apos;adresse 1</label>
                                         <Input
                                             value={address.addressLine1}
                                             onChange={(e) => handleAddressChange(index, 'addressLine1', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-gray-800 border-gray-700 text-gray-200"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Complément</label>
+                                        <label className="text-sm font-medium text-gray-200">Complément d&apos;adresse</label>
                                         <Input
                                             value={address.addressSupplement}
                                             onChange={(e) => handleAddressChange(index, 'addressSupplement', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-gray-800 border-gray-700 text-gray-200"
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Ville</label>
-                                        <Input
-                                            value={address.city}
-                                            onChange={(e) => handleAddressChange(index, 'city', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
-                                        />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-200">Ville</label>
+                                            <Input
+                                                value={address.city}
+                                                onChange={(e) => handleAddressChange(index, 'city', e.target.value)}
+                                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-200">Code postal</label>
+                                            <Input
+                                                value={address.postalCode}
+                                                onChange={(e) => handleAddressChange(index, 'postalCode', e.target.value)}
+                                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Code postal</label>
-                                        <Input
-                                            value={address.postalCode}
-                                            onChange={(e) => handleAddressChange(index, 'postalCode', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
-                                        />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-200">État/Province</label>
+                                            <Input
+                                                value={address.stateProvince}
+                                                onChange={(e) => handleAddressChange(index, 'stateProvince', e.target.value)}
+                                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-200">Pays</label>
+                                            <Input
+                                                value={address.country}
+                                                onChange={(e) => handleAddressChange(index, 'country', e.target.value)}
+                                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">État/Province</label>
-                                        <Input
-                                            value={address.stateProvince}
-                                            onChange={(e) => handleAddressChange(index, 'stateProvince', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Pays</label>
-                                        <Input
-                                            value={address.country}
-                                            onChange={(e) => handleAddressChange(index, 'country', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center space-x-2 md:col-span-2">
+                                    <div className="flex items-center space-x-2">
                                         <Checkbox
+                                            id={`default-address-${index}`}
                                             checked={address.isDefault}
                                             onCheckedChange={(checked) => handleAddressChange(index, 'isDefault', checked as boolean)}
-                                            className="border-gray-500 data-[state=checked]:bg-blue-600"
                                         />
-                                        <label className="text-sm font-medium text-gray-200">Adresse par défaut</label>
+                                        <label
+                                            htmlFor={`default-address-${index}`}
+                                            className="text-sm font-medium text-gray-200 cursor-pointer"
+                                        >
+                                            Adresse par défaut
+                                        </label>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Accounting */}
-                    <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
-                            Comptabilité
-                        </h3>
+                    {/* Additional Information based on user type */}
+                    {userType === 'auditeurs' ? (
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                                Informations d&apos;auditeur
+                            </h3>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Affiliation non-profit</label>
-                                <Input
-                                    value={formData.nonProfitAffiliation}
-                                    onChange={(e) => setFormData({ ...formData, nonProfitAffiliation: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Gestconte ID</label>
+                                    <Input
+                                        type="number"
+                                        value={formData.gestconteId ?? ''}
+                                        onChange={(e) => setFormData({ ...formData, gestconteId: e.target.value ? parseInt(e.target.value) : null })}
+                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Affiliation associative</label>
+                                    <Input
+                                        value={formData.nonProfitAffiliation}
+                                        onChange={(e) => setFormData({ ...formData, nonProfitAffiliation: e.target.value })}
+                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Méthode de livraison préférée</label>
+                                    <Select
+                                        value={formData.preferredDeliveryMethod}
+                                        onValueChange={(value) => setFormData({ ...formData, preferredDeliveryMethod: value })}
+                                    >
+                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                            <SelectValue placeholder="Sélectionner..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-gray-800 border-gray-700">
+                                            <SelectItem value="postal" className="text-gray-200">Postal</SelectItem>
+                                            <SelectItem value="email" className="text-gray-200">Email</SelectItem>
+                                            <SelectItem value="download" className="text-gray-200">Téléchargement</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Seuil de paiement (€)</label>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.paymentThreshold}
+                                        onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
+                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Solde actuel (€)</label>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.currentBalance}
+                                        onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
+                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Méthode de distribution préférée</label>
+                                    <Select
+                                        value={formData.preferredDistributionMethod}
+                                        onValueChange={(value) => setFormData({ ...formData, preferredDistributionMethod: value })}
+                                    >
+                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                            <SelectValue placeholder="Sélectionner..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-gray-800 border-gray-700">
+                                            <SelectItem value="cd" className="text-gray-200">CD</SelectItem>
+                                            <SelectItem value="usb" className="text-gray-200">USB</SelectItem>
+                                            <SelectItem value="download" className="text-gray-200">Téléchargement</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">ID Gestconte</label>
-                                <Input
-                                    type="number"
-                                    value={formData.gestconteId || ''}
-                                    onChange={(e) => setFormData({ ...formData, gestconteId: e.target.value ? parseInt(e.target.value) : null })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
-                            </div>
-
-                            <div className="space-y-2 md:col-span-2">
                                 <label className="text-sm font-medium text-gray-200">Notes Gestconte</label>
                                 <Textarea
                                     value={formData.gestconteNotes}
                                     onChange={(e) => setFormData({ ...formData, gestconteNotes: e.target.value })}
                                     className="bg-gray-800 border-gray-700 text-gray-200"
+                                    rows={3}
                                 />
                             </div>
                         </div>
-                    </div>
-
-                    {/* Status & Availability */}
-                    <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
-                            Statut et disponibilité
-                        </h3>
-
-                        <div className="space-y-4">
-                            {/* Active Status with Activate/Deactivate Buttons */}
-                            <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                                            formData.isActive
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : 'bg-red-500/20 text-red-400'
-                                        }`}>
-                                            {formData.isActive ? (
-                                                <UserCheck className="h-5 w-5" />
-                                            ) : (
-                                                <UserX className="h-5 w-5" />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-200">
-                                                Statut: {formData.isActive ? 'Actif' : 'Inactif'}
-                                            </p>
-                                            <p className="text-xs text-gray-400">
-                                                {formData.isActive
-                                                    ? 'L\'individuel est actif'
-                                                    : 'L\'individuel n\'est pas actif'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {initialData && (
-                                        <div>
-                                            {formData.isActive ? (
-                                                <Button
-                                                    type="button"
-                                                    variant="destructive"
-                                                    onClick={() => setIsDeactivationDialogOpen(true)}
-                                                    className="bg-orange-600 hover:bg-orange-700 text-white"
-                                                >
-                                                    <UserX className="h-4 w-4 mr-2" />
-                                                    Désactiver
-                                                </Button>
-                                            ) : (
-                                                <Button
-                                                    type="button"
-                                                    onClick={() => setIsActivationDialogOpen(true)}
-                                                    className="bg-green-600 hover:bg-green-700 text-white"
-                                                >
-                                                    <UserCheck className="h-4 w-4 mr-2" />
-                                                    Activer
-                                                </Button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {formData.terminationReason && (
-                                    <div className="mt-3 pt-3 border-t border-gray-700">
-                                        <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                                            Raison du changement
-                                        </label>
-                                        <div className="mt-1 px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-md text-sm text-gray-300">
-                                            {formData.terminationReason}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Disponible Checkbox - Only for Lecteurs (admin/super_admin) */}
-                            {(formData.role === 'admin' || formData.role === 'super_admin') && (
-                                <>
-                                    <div className="bg-gradient-to-br from-gray-800/40 to-gray-800/20 p-4 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-all">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="relative">
-                                                    <Checkbox
-                                                        checked={formData.isAvailable}
-                                                        onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
-                                                        className="h-5 w-5 border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md transition-all"
-                                                    />
-                                                    {formData.isAvailable && (
-                                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <label className="text-sm font-medium text-gray-200 cursor-pointer">
-                                                        Disponible pour nouvelles assignations
-                                                    </label>
-                                                    <p className="text-xs text-gray-400 mt-0.5">
-                                                        {formData.isAvailable
-                                                            ? 'Peut recevoir de nouveaux livres'
-                                                            : 'Ne peut pas recevoir de nouveaux livres'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                                formData.isAvailable
-                                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                                    : 'bg-gray-600/20 text-gray-400 border border-gray-600/30'
-                                            }`}>
-                                                {formData.isAvailable ? 'Disponible' : 'Indisponible'}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Notes de disponibilité</label>
-                                        <Textarea
-                                            value={formData.availabilityNotes}
-                                            onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
-                                            placeholder="Ex: En vacances jusqu'au 15 janvier..."
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Preferences & Settings */}
-                    <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
-                            Préférences
-                        </h3>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Méthode de livraison préférée</label>
-                                <Input
-                                    value={formData.preferredDeliveryMethod}
-                                    onChange={(e) => setFormData({ ...formData, preferredDeliveryMethod: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Méthode de distribution préférée</label>
-                                <Input
-                                    value={formData.preferredDistributionMethod}
-                                    onChange={(e) => setFormData({ ...formData, preferredDistributionMethod: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Seuil de paiement</label>
-                                <Input
-                                    value={formData.paymentThreshold}
-                                    onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Solde actuel</label>
-                                <Input
-                                    value={formData.currentBalance}
-                                    onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Reader-specific fields - Only for Lecteurs (admin/super_admin) */}
-                    {(formData.role === 'admin' || formData.role === 'super_admin') && (
+                    ) : (
                         <div className="space-y-4">
                             <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
-                                Paramètres de lecture
+                                Informations de lecteur
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -719,14 +669,38 @@ export function UserFormBackendBase({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Nombre maximum d&apos;affectations simultanées</label>
+                                    <label className="text-sm font-medium text-gray-200">Affectations simultanées maximum</label>
                                     <Input
                                         type="number"
-                                        value={formData.maxConcurrentAssignments || ''}
-                                        onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: e.target.value ? parseInt(e.target.value) : null })}
+                                        value={formData.maxConcurrentAssignments ?? ''}
+                                        onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: parseInt(e.target.value) || 3 })}
                                         className="bg-gray-800 border-gray-700 text-gray-200"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="isAvailable"
+                                    checked={formData.isAvailable}
+                                    onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
+                                />
+                                <label
+                                    htmlFor="isAvailable"
+                                    className="text-sm font-medium text-gray-200 cursor-pointer"
+                                >
+                                    Disponible pour de nouvelles affectations
+                                </label>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Notes de disponibilité</label>
+                                <Textarea
+                                    value={formData.availabilityNotes}
+                                    onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    rows={3}
+                                />
                             </div>
                         </div>
                     )}
@@ -739,32 +713,63 @@ export function UserFormBackendBase({
                         <Textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
-                            placeholder="Notes supplémentaires..."
+                            className="bg-gray-800 border-gray-700 text-gray-200"
+                            rows={4}
                         />
                     </div>
 
-                    {/* Submit Buttons */}
-                    <div className="space-y-4">
+                    {/* Form Actions */}
+                    <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 border-t border-gray-700">
+                        <div className="flex gap-3">
+                            {showDelete && onDelete && (
+                                <Button
+                                    type="button"
+                                    onClick={handleDeleteClick}
+                                    variant="destructive"
+                                    className="bg-red-700 hover:bg-red-600"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Supprimer
+                                </Button>
+                            )}
+                            {initialData && formData.isActive && (
+                                <Button
+                                    type="button"
+                                    onClick={() => setIsDeactivationDialogOpen(true)}
+                                    className="bg-orange-600 hover:bg-orange-700"
+                                >
+                                    <UserX className="h-4 w-4 mr-2" />
+                                    Désactiver
+                                </Button>
+                            )}
+                            {initialData && !formData.isActive && (
+                                <Button
+                                    type="button"
+                                    onClick={() => setIsActivationDialogOpen(true)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                >
+                                    <UserCheck className="h-4 w-4 mr-2" />
+                                    Activer
+                                </Button>
+                            )}
+                            {initialData && userId && (formData.role === 'admin' || formData.role === 'super_admin') && (
+                                <Button
+                                    type="button"
+                                    onClick={() => setIsPasswordResetDialogOpen(true)}
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Réinitialiser mot de passe
+                                </Button>
+                            )}
+                        </div>
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            className="bg-green-600 hover:bg-green-700"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
-
-                        {showDelete && onDelete && (
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                disabled={isLoading}
-                                onClick={handleDeleteClick}
-                                className="w-full bg-red-700 hover:bg-red-600 text-white"
-                            >
-                                Supprimer l&apos;individuel
-                            </Button>
-                        )}
                     </div>
                 </form>
 
@@ -774,30 +779,24 @@ export function UserFormBackendBase({
                         <DialogHeader>
                             <DialogTitle className="text-gray-100">Désactiver l&apos;individuel</DialogTitle>
                             <DialogDescription className="text-gray-400">
-                                Cette action désactivera l&apos;individuel. Veuillez fournir une raison pour cette action.
+                                Veuillez fournir une raison pour la désactivation de cet individuel.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Raison de la désactivation <span className="text-red-500">*</span>
-                                </label>
-                                <Textarea
-                                    value={deactivationReason}
-                                    onChange={(e) => setDeactivationReason(e.target.value)}
-                                    className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
-                                    placeholder="Expliquez pourquoi cet individuel est désactivé..."
-                                />
-                            </div>
+                            <Textarea
+                                placeholder="Raison de la désactivation..."
+                                value={deactivationReason}
+                                onChange={(e) => setDeactivationReason(e.target.value)}
+                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                rows={4}
+                            />
                         </div>
                         <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => {
-                                    setIsDeactivationDialogOpen(false);
-                                    setDeactivationReason('');
-                                }}
+                                onClick={() => setIsDeactivationDialogOpen(false)}
+                                disabled={isLoading}
                                 className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
                             >
                                 Annuler
@@ -820,30 +819,24 @@ export function UserFormBackendBase({
                         <DialogHeader>
                             <DialogTitle className="text-gray-100">Activer l&apos;individuel</DialogTitle>
                             <DialogDescription className="text-gray-400">
-                                Cette action activera l&apos;individuel. Veuillez fournir une raison pour cette action.
+                                Veuillez fournir une raison pour l&apos;activation de cet individuel.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Raison de l&apos;activation <span className="text-red-500">*</span>
-                                </label>
-                                <Textarea
-                                    value={activationReason}
-                                    onChange={(e) => setActivationReason(e.target.value)}
-                                    className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
-                                    placeholder="Expliquez pourquoi cet individuel est activé..."
-                                />
-                            </div>
+                            <Textarea
+                                placeholder="Raison de l'activation..."
+                                value={activationReason}
+                                onChange={(e) => setActivationReason(e.target.value)}
+                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                rows={4}
+                            />
                         </div>
                         <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => {
-                                    setIsActivationDialogOpen(false);
-                                    setActivationReason('');
-                                }}
+                                onClick={() => setIsActivationDialogOpen(false)}
+                                disabled={isLoading}
                                 className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
                             >
                                 Annuler
@@ -859,6 +852,55 @@ export function UserFormBackendBase({
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Password Reset Dialog */}
+                <Dialog open={isPasswordResetDialogOpen} onOpenChange={setIsPasswordResetDialogOpen}>
+                    <DialogContent className="bg-gray-900 border-gray-700">
+                        <DialogHeader>
+                            <DialogTitle className="text-gray-100">Réinitialiser le mot de passe</DialogTitle>
+                            <DialogDescription className="text-gray-400">
+                                Cette action génèrera un nouveau mot de passe temporaire et l&apos;enverra par email à l&apos;utilisateur.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
+                                <div className="flex gap-3">
+                                    <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium text-yellow-200">
+                                            Êtes-vous sûr de vouloir réinitialiser le mot de passe ?
+                                        </p>
+                                        <ul className="text-sm text-yellow-300/90 space-y-1 list-disc list-inside">
+                                            <li>Un nouveau mot de passe temporaire sera généré</li>
+                                            <li>L&apos;ancien mot de passe ne fonctionnera plus</li>
+                                            <li>Un email sera envoyé à : <strong>{formData.email}</strong></li>
+                                            <li>L&apos;utilisateur devra changer son mot de passe à la prochaine connexion</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsPasswordResetDialogOpen(false)}
+                                disabled={isResettingPassword}
+                                className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            >
+                                Annuler
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handlePasswordReset}
+                                disabled={isResettingPassword}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                {isResettingPassword ? 'Envoi en cours...' : 'Confirmer et envoyer'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </CardContent>
         </Card>
     );
@@ -866,10 +908,12 @@ export function UserFormBackendBase({
 
 export function AddUserFormBackend({
                                        onSuccess,
-                                       userType
+                                       userType,
+                                       currentUserRole,
                                    }: {
     onSuccess?: (userId: number) => void;
     userType: UserType;
+    currentUserRole?: string;
 }) {
     const { toast } = useToast();
 
@@ -913,6 +957,7 @@ export function AddUserFormBackend({
             title="Créer un nouvel membre"
             onSuccess={onSuccess}
             userType={userType}
+            currentUserRole={currentUserRole}
         />
     );
 }
@@ -1000,6 +1045,7 @@ export function EditUserFormBackend({
             onSuccess={onSuccess}
             currentUserRole={currentUserRole}
             userType={userType}
+            userId={userId}
         />
     );
 }
