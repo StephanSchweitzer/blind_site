@@ -13,7 +13,17 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Loader2 } from 'lucide-react';
+import { Search, X, Loader2, Plus } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { AddUserFormBackend } from '@/admin/UserFormBackendBase';
+import { EditUserModal } from '@/admin/EditUserModal';
+import { UserFormData } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface UsersTableProps {
     type: 'lecteurs' | 'auditeurs';
@@ -30,6 +40,7 @@ interface UsersTableProps {
     initialSearch: string;
     totalPages: number;
     initialTotalUsers: number;
+    currentUserRole?: string;
 }
 
 export default function UsersTable({
@@ -39,12 +50,22 @@ export default function UsersTable({
                                        initialSearch,
                                        totalPages,
                                        initialTotalUsers,
+                                       currentUserRole,
                                    }: UsersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isLoadingUser, setIsLoadingUser] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<{
+        id: string;
+        data: UserFormData;
+    } | null>(null);
+
     const currentPage = initialPage;
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
@@ -76,6 +97,84 @@ export default function UsersTable({
         updateUrl({ page: newPage.toString() });
     };
 
+    const handleUserAdded = () => {
+        setIsAddModalOpen(false);
+        router.refresh();
+    };
+
+    const handleUserEdited = (userId: number) => {
+        console.log('User edited:', userId);
+        setIsEditModalOpen(false);
+        setSelectedUser(null);
+        router.refresh();
+    };
+
+    const handleUserDeleted = (userId: number) => {
+        console.log('User deleted:', userId);
+        setIsEditModalOpen(false);
+        setSelectedUser(null);
+        router.refresh();
+    };
+
+    const handleRowClick = async (user: typeof initialUsers[0]) => {
+        setIsLoadingUser(true);
+
+        try {
+            const response = await fetch(`/api/user/${user.id}?mode=full&include=addresses`);
+
+            if (!response.ok) {
+                throw new Error('Échec du chargement des données');
+            }
+
+            const userData = await response.json();
+
+            if (!userData) {
+                throw new Error('Données incomplètes reçues');
+            }
+
+            const formData: UserFormData = {
+                email: userData.email || '',
+                name: userData.name || '',
+                role: userData.role || 'user',
+                firstName: userData.firstName || '',
+                lastName: userData.lastName || '',
+                homePhone: userData.homePhone || '',
+                cellPhone: userData.cellPhone || '',
+                gestconteNotes: userData.gestconteNotes || '',
+                gestconteId: userData.gestconteId,
+                nonProfitAffiliation: userData.nonProfitAffiliation || '',
+                isActive: userData.isActive ?? true,
+                terminationReason: userData.terminationReason || '',
+                preferredDeliveryMethod: userData.preferredDeliveryMethod || '',
+                paymentThreshold: userData.paymentThreshold?.toString() || '21.00',
+                currentBalance: userData.currentBalance?.toString() || '0.00',
+                preferredDistributionMethod: userData.preferredDistributionMethod || '',
+                isAvailable: userData.isAvailable ?? true,
+                availabilityNotes: userData.availabilityNotes || '',
+                specialization: userData.specialization || '',
+                maxConcurrentAssignments: userData.maxConcurrentAssignments,
+                notes: userData.notes || '',
+                addresses: userData.addresses || [],
+            };
+
+            setSelectedUser({
+                id: user.id.toString(),
+                data: formData,
+            });
+
+            setIsEditModalOpen(true);
+        } catch (error) {
+            console.error('Error loading user:', error);
+            toast({
+                variant: "destructive",
+                title: "Erreur",
+                description: "Erreur lors du chargement de l'individuel. Veuillez réessayer.",
+            });
+        } finally {
+            setIsLoadingUser(false);
+        }
+    };
+
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
         return new Date(dateString).toLocaleDateString('fr-FR');
@@ -83,8 +182,8 @@ export default function UsersTable({
 
     const getRoleDisplayName = (role: string) => {
         const displayMap: Record<string, string> = {
-            'user': 'Utilisateur',
-            'admin': 'Administrateur',
+            'user': 'Auditeur',
+            'admin': 'Lecteur',
             'super_admin': 'Super Admin',
             'lecteur': 'Lecteur',
             'auditeur': 'Auditeur',
@@ -107,7 +206,6 @@ export default function UsersTable({
         return colorMap[role] || 'bg-gray-100 text-gray-800';
     };
 
-    // Calculate visible pages
     const getVisiblePages = () => {
         const pages: (number | string)[] = [];
         const maxVisible = 5;
@@ -133,8 +231,6 @@ export default function UsersTable({
     };
 
     const visiblePages = getVisiblePages();
-
-    // Get title based on type
     const title = type === 'lecteurs' ? 'Gestion des Lecteurs' : 'Gestion des Auditeurs';
 
     return (
@@ -149,11 +245,17 @@ export default function UsersTable({
                             {initialTotalUsers} {type === 'lecteurs' ? 'lecteur' : 'auditeur'}{initialTotalUsers > 1 ? 's' : ''} au total
                         </CardDescription>
                     </div>
+                    <Button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nouveau membre
+                    </Button>
                 </div>
             </CardHeader>
 
             <CardContent className="pt-6 space-y-6">
-                {/* Search Bar */}
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -187,7 +289,6 @@ export default function UsersTable({
                     </Button>
                 </div>
 
-                {/* Loading Overlay */}
                 {isPending && (
                     <div className="relative">
                         <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center z-10 rounded-lg">
@@ -199,7 +300,6 @@ export default function UsersTable({
                     </div>
                 )}
 
-                {/* Users Table */}
                 <div className="relative">
                     {initialUsers.length === 0 ? (
                         <div className="text-center py-12">
@@ -223,6 +323,7 @@ export default function UsersTable({
                                         {initialUsers.map((user) => (
                                             <TableRow
                                                 key={user.id}
+                                                onClick={() => handleRowClick(user)}
                                                 className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
                                             >
                                                 <TableCell className="font-medium text-gray-200">
@@ -264,9 +365,19 @@ export default function UsersTable({
                             </div>
                         </div>
                     )}
+
+                    {isLoadingUser && (
+                        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
+                                <div className="flex flex-col items-center gap-4">
+                                    <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+                                    <p className="text-lg font-medium text-gray-200">Chargement de l&apos;individuel...</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Enhanced Pagination */}
                 {totalPages > 1 && (
                     <div className={`flex justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Button
@@ -328,6 +439,30 @@ export default function UsersTable({
                     </p>
                 )}
             </CardContent>
+
+            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-100">Ajouter une nouvel personne</DialogTitle>
+                    </DialogHeader>
+                    <div className="overflow-y-auto px-1">
+                        <AddUserFormBackend onSuccess={handleUserAdded} userType={type} />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {selectedUser && (
+                <EditUserModal
+                    isOpen={isEditModalOpen}
+                    onOpenChange={setIsEditModalOpen}
+                    userId={selectedUser.id}
+                    initialData={selectedUser.data}
+                    onUserEdited={handleUserEdited}
+                    onUserDeleted={handleUserDeleted}
+                    currentUserRole={currentUserRole}
+                    userType={type}
+                />
+            )}
         </Card>
     );
 }

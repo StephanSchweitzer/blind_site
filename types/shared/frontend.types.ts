@@ -89,7 +89,30 @@ export interface AssignmentReaderHistoryItem {
     };
 }
 
+// ============================================================================
+// Address Types
+// ============================================================================
+
+export interface AddressFormData {
+    id?: number;
+    addressLine1: string;
+    addressSupplement: string;
+    city: string;
+    postalCode: string;
+    stateProvince: string;
+    country: string;
+    isDefault: boolean;
+}
+
+// ============================================================================
+// User Types
+// ============================================================================
+
+export type UserType = 'lecteurs' | 'auditeurs';
+
+// ============================================================================
 // Form data types for creating/editing
+// ============================================================================
 
 export interface OrderFormData {
     aveugleId: number | null;
@@ -121,18 +144,28 @@ export interface BookFormData {
 }
 
 export interface UserFormData {
+    email: string;
     name: string;
+    role: string;
     firstName: string;
     lastName: string;
-    email: string;
-    role: string;
     homePhone: string;
     cellPhone: string;
+    gestconteNotes: string;
+    gestconteId: number | null;
+    nonProfitAffiliation: string;
     isActive: boolean;
+    terminationReason: string;
+    preferredDeliveryMethod: string;
+    paymentThreshold: string;
+    currentBalance: string;
+    preferredDistributionMethod: string;
     isAvailable: boolean;
+    availabilityNotes: string;
     specialization: string;
     maxConcurrentAssignments: number | null;
     notes: string;
+    addresses: AddressFormData[];
 }
 
 // ============================================================================

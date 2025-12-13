@@ -11,31 +11,11 @@ import {
     UserUpdateInput,
     UserUpdateData,
     UserDeleteResponse,
-    UserWithRelationCounts,
 } from '@/types';
+import { UserWithRelationCounts } from '@/types/models/user.model';
+import { AddressCreateInput } from '@/types/api/common.api';
 import { Prisma } from '@prisma/client';
 
-/**
- * GET /api/user/[id] - Get a single user by ID
- *
- * SECURITY: Password fields are NEVER returned in any mode.
- * Password updates must use a dedicated authentication endpoint.
- *
- * Query Parameters:
- * - mode: 'basic' | 'profile' | 'full' (default: 'basic')
- * - include: Comma-separated relations to include (e.g., 'addresses,bills')
- *
- * Modes:
- * - basic: id, name, email (for dropdowns/searches)
- * - profile: All profile fields but no relations
- * - full: All fields (except password) and specified relations
- *
- * Examples:
- * - /api/user/1 - Basic info
- * - /api/user/1?mode=profile - Full profile
- * - /api/user/1?mode=full&include=addresses,ordersAsAveugle - Full with relations
- * - /api/user/1?mode=full&include=assignmentReaders - Full with assignment reader history
- */
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -55,7 +35,6 @@ export async function GET(
         const modeParam = searchParams.get('mode') || 'basic';
         const includeParam = searchParams.get('include');
 
-        // Validate mode
         const modeValidation = UserQueryModeSchema.safeParse(modeParam);
         if (!modeValidation.success) {
             return NextResponse.json(
@@ -65,40 +44,36 @@ export async function GET(
         }
         const mode = modeValidation.data;
 
-        // Parse include relations
         const includeRelations = includeParam
             ? includeParam.split(',').filter(Boolean).map(r => r.trim())
             : [];
 
-        // Define field selections based on mode
-        // SECURITY: Password field is NEVER included in any mode
-        let select: Prisma.UserSelect;
+        let select: Prisma.UserSelect | undefined;
         const include: UserIncludeConfig = {};
 
         switch (mode) {
             case 'basic':
-                // Minimal info for dropdowns and searches
                 select = basicUserSelect;
                 break;
 
             case 'profile':
-                // Full profile without relations
                 select = profileUserSelect;
                 break;
 
             case 'full':
-                // All fields EXCEPT password (explicitly excluded for security)
                 select = fullUserSelect;
                 break;
         }
 
-        // Build include object for relations
+        let hasIncludes = false;
         if (mode === 'full' && includeRelations.length > 0) {
             for (const relation of includeRelations) {
                 const relationValidation = UserIncludeRelationSchema.safeParse(relation);
                 if (!relationValidation.success) {
-                    continue; // Silently ignore unknown relations
+                    continue;
                 }
+
+                hasIncludes = true;
 
                 switch (relationValidation.data) {
                     case 'addresses':
@@ -114,12 +89,10 @@ export async function GET(
                         break;
 
                     case 'assignmentReaders':
-                        // This includes the AssignmentReader join table with assignment details
                         include.assignmentReaders = userIncludeConfigs.assignmentReaders;
                         break;
 
                     case 'assignmentsProcessedBy':
-                        // Assignments where this user is the staff processor
                         include.assignmentsProcessedBy = userIncludeConfigs.assignmentsProcessedBy;
                         break;
 
@@ -147,12 +120,24 @@ export async function GET(
             }
         }
 
-        // Fetch the user - password is NEVER retrieved
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select,
-            ...(Object.keys(include).length > 0 && { include }),
-        });
+        let user;
+
+        if (hasIncludes) {
+            const userWithPassword = await prisma.user.findUnique({
+                where: { id: userId },
+                include,
+            });
+
+            if (userWithPassword) {
+                const { password: _password, passwordNeedsChange: _passwordNeedsChange, ...userWithoutPassword } = userWithPassword;
+                user = userWithoutPassword;
+            }
+        } else {
+            user = await prisma.user.findUnique({
+                where: { id: userId },
+                select,
+            });
+        }
 
         if (!user) {
             return NextResponse.json(
@@ -171,15 +156,10 @@ export async function GET(
     }
 }
 
-/**
- * PATCH /api/user/[id] - Partial update of user
- *
- * SECURITY: Password updates are explicitly rejected.
- * Use dedicated authentication endpoint for password changes.
- *
- * Note: The reader-assignment relationship is now managed through
- * the AssignmentReader table, not directly on assignments.
- */
+interface UserUpdateRequestBody extends UserUpdateInput {
+    addresses?: Omit<AddressCreateInput, 'userId'>[];
+}
+
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -195,17 +175,15 @@ export async function PATCH(
             );
         }
 
-        const body: UserUpdateInput = await request.json();
+        const body = await request.json() as UserUpdateRequestBody;
 
-        // SECURITY: Reject password update attempts explicitly
-        if ('password' in body) {
+        if ((body as Record<string, unknown>).password || (body as Record<string, unknown>).passwordNeedsChange) {
             return NextResponse.json(
-                { message: 'Les mises à jour de mot de passe doivent utiliser l\'endpoint dédié' },
+                { message: 'Les mots de passe ne peuvent pas être modifiés via cet endpoint' },
                 { status: 400 }
             );
         }
 
-        // Check if user exists (without retrieving password)
         const existingUser = await prisma.user.findUnique({
             where: { id: userId },
             select: { id: true },
@@ -218,7 +196,6 @@ export async function PATCH(
             );
         }
 
-        // Build update data with proper types
         const updateData: UserUpdateData = {};
 
         // Profile fields
@@ -259,7 +236,41 @@ export async function PATCH(
         // Notes
         if (body.notes !== undefined) updateData.notes = body.notes || null;
 
-        // Update the user
+        // Handle addresses separately
+        if (body.addresses !== undefined) {
+            await prisma.address.deleteMany({
+                where: { userId: userId }
+            });
+
+            if (body.addresses.length > 0) {
+                type UpdateDataWithAddresses = UserUpdateData & {
+                    addresses?: {
+                        create: Array<{
+                            addressLine1: string | null;
+                            addressSupplement: string | null;
+                            city: string | null;
+                            postalCode: string | null;
+                            stateProvince: string | null;
+                            country: string;
+                            isDefault: boolean;
+                        }>;
+                    };
+                };
+
+                (updateData as UpdateDataWithAddresses).addresses = {
+                    create: body.addresses.map((addr) => ({
+                        addressLine1: addr.addressLine1 || null,
+                        addressSupplement: addr.addressSupplement || null,
+                        city: addr.city || null,
+                        postalCode: addr.postalCode || null,
+                        stateProvince: addr.stateProvince || null,
+                        country: addr.country || 'France',
+                        isDefault: addr.isDefault || false,
+                    }))
+                };
+            }
+        }
+
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: updateData,
@@ -288,18 +299,6 @@ export async function PATCH(
     }
 }
 
-/**
- * DELETE /api/user/[id] - Soft delete (deactivate) a user
- *
- * This endpoint checks for relationships before deletion:
- * - ordersAsAveugle: Orders where user is the client (aveugle)
- * - ordersProcessedBy: Orders where user is the staff processor
- * - assignmentReaders: AssignmentReader entries (many-to-many with assignments)
- * - assignmentsProcessedBy: Assignments where user is the staff processor
- *
- * If relationships exist, performs soft delete (deactivation).
- * If no relationships exist, performs hard delete.
- */
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -315,7 +314,6 @@ export async function DELETE(
             );
         }
 
-        // Check if user exists and has relationships (password never retrieved)
         const existingUser: UserWithRelationCounts | null = await prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -341,7 +339,6 @@ export async function DELETE(
             );
         }
 
-        // Check for active relationships
         const hasActiveRelations =
             existingUser._count.ordersAsAveugle > 0 ||
             existingUser._count.ordersProcessedBy > 0 ||
@@ -349,7 +346,6 @@ export async function DELETE(
             existingUser._count.assignmentsProcessedBy > 0;
 
         if (hasActiveRelations) {
-            // Soft delete - deactivate the user instead of deleting
             const deactivatedUser = await prisma.user.update({
                 where: { id: userId },
                 data: {
@@ -374,7 +370,6 @@ export async function DELETE(
             return NextResponse.json(response);
         }
 
-        // Hard delete if no relations
         await prisma.user.delete({
             where: { id: userId },
         });

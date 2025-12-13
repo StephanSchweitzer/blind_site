@@ -17,7 +17,6 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Validate and generate static params
 export function generateStaticParams() {
     return [
         { type: 'lecteurs' },
@@ -34,18 +33,14 @@ async function getUsers(
 
     const whereClause: Prisma.UserWhereInput = {};
 
-    // Filter by role based on type
     if (userType === 'auditeurs') {
-        // Auditeurs are users with role 'user'
         whereClause.role = 'user';
     } else {
-        // Lecteurs are users with role 'admin' or 'super_admin'
         whereClause.role = {
             in: ['admin', 'super_admin']
         };
     }
 
-    // Search filter
     if (searchTerm) {
         whereClause.OR = [
             {
@@ -111,11 +106,9 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
         redirect('/');
     }
 
-    // Await params (Next.js 15 requirement)
     const resolvedParams = await params;
     const userType = resolvedParams.type;
 
-    // Validate type parameter
     if (userType !== 'lecteurs' && userType !== 'auditeurs') {
         notFound();
     }
@@ -137,7 +130,6 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
             userType
         );
 
-        // Serialize dates
         const serializedUsers = users.map(user => ({
             ...user,
             lastUpdated: user.lastUpdated ? user.lastUpdated.toISOString() : null,
@@ -154,6 +146,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                     initialSearch={searchTerm}
                     totalPages={totalPages}
                     initialTotalUsers={totalUsers}
+                    currentUserRole={session.user.role}
                 />
             </div>
         );
