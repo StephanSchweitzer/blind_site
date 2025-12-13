@@ -116,8 +116,9 @@ export function UserFormBackendBase({
         setIsLoading(true);
         setError(null);
 
-        if (!formData.email) {
-            setError('L\'email est requis');
+        // Email is required for admin/super_admin roles
+        if ((formData.role === 'admin' || formData.role === 'super_admin') && !formData.email) {
+            setError('L\'email est requis pour les lecteurs');
             setIsLoading(false);
             return;
         }
@@ -259,479 +260,511 @@ export function UserFormBackendBase({
         }
     };
 
+    // Check if role field should be locked
+    const isRoleLocked = initialData && initialData.role === 'super_admin' && currentUserRole !== 'super_admin';
+
+    // Get role display name
+    const getRoleDisplayName = (role: string): string => {
+        switch (role) {
+            case 'user':
+                return 'Auditeur';
+            case 'admin':
+                return 'Lecteur';
+            case 'super_admin':
+                return 'Super Admin';
+            default:
+                return role;
+        }
+    };
+
     return (
-        <Card className="border-gray-800 shadow-xl bg-gray-950 text-gray-100">
+        <Card className="bg-gray-900 border-gray-700">
             <CardHeader>
-                <CardTitle className="text-gray-100 text-2xl">{title}</CardTitle>
+                <CardTitle className="text-gray-100">{title}</CardTitle>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                        <Alert className="bg-red-950 border-red-800 text-red-400">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
+                {error && (
+                    <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-800">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-red-200">{error}</AlertDescription>
+                    </Alert>
+                )}
 
+                <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Basic Information */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-700 pb-2">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
                             Informations de base
                         </h3>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-300 block mb-2">
-                                    Email <span className="text-red-500">*</span>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">
+                                    Email {(formData.role === 'admin' || formData.role === 'super_admin') && <span className="text-red-500">*</span>}
                                 </label>
                                 <Input
                                     type="email"
                                     value={formData.email}
-                                    onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
-                                    required
-                                    className="bg-gray-900 border-gray-700 text-gray-200"
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    required={formData.role === 'admin' || formData.role === 'super_admin'}
+                                    autoFocus={false}
+                                    autoComplete="off"
                                 />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-300 block mb-2">
-                                    Rôle
-                                </label>
-                                <Select
-                                    value={formData.role}
-                                    onValueChange={(value) => setFormData(prev => ({...prev, role: value}))}
-                                >
-                                    <SelectTrigger className="bg-gray-900 border-gray-700 text-gray-200">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-900 border-gray-700">
-                                        <SelectItem value="user" className="text-gray-200 focus:bg-gray-800">Utilisateur</SelectItem>
-                                        <SelectItem value="admin" className="text-gray-200 focus:bg-gray-800">Administrateur</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-300 block mb-2">
-                                    Nom complet
-                                </label>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Nom complet</label>
                                 <Input
-                                    type="text"
                                     value={formData.name}
-                                    onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
-                                    className="bg-gray-900 border-gray-700 text-gray-200"
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
                                 />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-300 block mb-2">
-                                    Prénom
-                                </label>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Prénom</label>
                                 <Input
-                                    type="text"
                                     value={formData.firstName}
-                                    onChange={(e) => setFormData(prev => ({...prev, firstName: e.target.value}))}
-                                    className="bg-gray-900 border-gray-700 text-gray-200"
+                                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
                                 />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-300 block mb-2">
-                                    Nom de famille
-                                </label>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Nom</label>
                                 <Input
-                                    type="text"
                                     value={formData.lastName}
-                                    onChange={(e) => setFormData(prev => ({...prev, lastName: e.target.value}))}
-                                    className="bg-gray-900 border-gray-700 text-gray-200"
+                                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Rôle</label>
+                                {isRoleLocked ? (
+                                    <div className="flex items-center h-10 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-400">
+                                        <span>{getRoleDisplayName(formData.role)} (Verrouillé)</span>
+                                    </div>
+                                ) : (
+                                    <Select
+                                        value={formData.role}
+                                        onValueChange={(value) => setFormData({ ...formData, role: value })}
+                                    >
+                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-gray-800 border-gray-700">
+                                            <SelectItem value="user" className="text-gray-200">Auditeur</SelectItem>
+                                            <SelectItem value="admin" className="text-gray-200">Lecteur</SelectItem>
+                                            {currentUserRole === 'super_admin' && (
+                                                <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                             </div>
                         </div>
                     </div>
 
                     {/* Contact Information */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-700 pb-2">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
                             Coordonnées
                         </h3>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-300 block mb-2">
-                                    Téléphone fixe
-                                </label>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Téléphone fixe</label>
                                 <Input
                                     type="tel"
                                     value={formData.homePhone}
-                                    onChange={(e) => setFormData(prev => ({...prev, homePhone: e.target.value}))}
-                                    className="bg-gray-900 border-gray-700 text-gray-200"
+                                    onChange={(e) => setFormData({ ...formData, homePhone: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
                                 />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-300 block mb-2">
-                                    Téléphone portable
-                                </label>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Téléphone portable</label>
                                 <Input
                                     type="tel"
                                     value={formData.cellPhone}
-                                    onChange={(e) => setFormData(prev => ({...prev, cellPhone: e.target.value}))}
-                                    className="bg-gray-900 border-gray-700 text-gray-200"
+                                    onChange={(e) => setFormData({ ...formData, cellPhone: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Addresses Section */}
+                    {/* Addresses */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-center border-b border-gray-700 pb-2">
-                            <h3 className="text-lg font-semibold text-gray-200">
+                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
                                 Adresses
                             </h3>
                             <Button
                                 type="button"
                                 onClick={handleAddAddress}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
                                 size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
-                                Ajouter une adresse
+                                Ajouter
                             </Button>
                         </div>
 
                         {formData.addresses.map((address, index) => (
-                            <div key={index} className="border border-gray-700 rounded-lg p-4 space-y-4 bg-gray-900">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="text-md font-medium text-gray-300">
-                                        Adresse {index + 1}
-                                    </h4>
+                            <div key={index} className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h4 className="text-sm font-medium text-gray-300">Adresse {index + 1}</h4>
                                     <Button
                                         type="button"
-                                        variant="destructive"
-                                        size="sm"
                                         onClick={() => handleRemoveAddress(index)}
-                                        className="bg-red-600 hover:bg-red-700"
+                                        size="sm"
+                                        variant="destructive"
+                                        className="bg-red-700 hover:bg-red-600"
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2">
-                                        <label className="text-sm font-medium text-gray-300 block mb-2">
-                                            Adresse ligne 1
-                                        </label>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Adresse</label>
                                         <Input
-                                            type="text"
                                             value={address.addressLine1}
                                             onChange={(e) => handleAddressChange(index, 'addressLine1', e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
-                                    <div className="md:col-span-2">
-                                        <label className="text-sm font-medium text-gray-300 block mb-2">
-                                            Complément d&apos;adresse
-                                        </label>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Complément</label>
                                         <Input
-                                            type="text"
                                             value={address.addressSupplement}
                                             onChange={(e) => handleAddressChange(index, 'addressSupplement', e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-300 block mb-2">
-                                            Ville
-                                        </label>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Ville</label>
                                         <Input
-                                            type="text"
                                             value={address.city}
                                             onChange={(e) => handleAddressChange(index, 'city', e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-300 block mb-2">
-                                            Code postal
-                                        </label>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Code postal</label>
                                         <Input
-                                            type="text"
                                             value={address.postalCode}
                                             onChange={(e) => handleAddressChange(index, 'postalCode', e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-300 block mb-2">
-                                            État/Province
-                                        </label>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">État/Province</label>
                                         <Input
-                                            type="text"
                                             value={address.stateProvince}
                                             onChange={(e) => handleAddressChange(index, 'stateProvince', e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-300 block mb-2">
-                                            Pays
-                                        </label>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Pays</label>
                                         <Input
-                                            type="text"
                                             value={address.country}
                                             onChange={(e) => handleAddressChange(index, 'country', e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
-                                    <div className="md:col-span-2 flex items-center space-x-2">
+
+                                    <div className="flex items-center space-x-2 md:col-span-2">
                                         <Checkbox
-                                            id={`default-${index}`}
                                             checked={address.isDefault}
                                             onCheckedChange={(checked) => handleAddressChange(index, 'isDefault', checked as boolean)}
+                                            className="border-gray-500 data-[state=checked]:bg-blue-600"
                                         />
-                                        <label
-                                            htmlFor={`default-${index}`}
-                                            className="text-sm font-medium text-gray-300 cursor-pointer"
-                                        >
-                                            Adresse par défaut
-                                        </label>
+                                        <label className="text-sm font-medium text-gray-200">Adresse par défaut</label>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Additional Information - Only for Auditeurs */}
-                    {userType === 'auditeurs' && (
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-700 pb-2">
-                                Informations supplémentaires
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Notes Gestconte
-                                    </label>
-                                    <Textarea
-                                        value={formData.gestconteNotes}
-                                        onChange={(e) => setFormData(prev => ({...prev, gestconteNotes: e.target.value}))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        ID Gestconte
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        value={formData.gestconteId?.toString() ?? ''}
-                                        onChange={(e) => setFormData(prev => ({
-                                            ...prev,
-                                            gestconteId: e.target.value ? parseInt(e.target.value) : null
-                                        }))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Affiliation à but non lucratif
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        value={formData.nonProfitAffiliation}
-                                        onChange={(e) => setFormData(prev => ({...prev, nonProfitAffiliation: e.target.value}))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Méthode de livraison préférée
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        value={formData.preferredDeliveryMethod}
-                                        onChange={(e) => setFormData(prev => ({...prev, preferredDeliveryMethod: e.target.value}))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Seuil de paiement
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        value={formData.paymentThreshold}
-                                        onChange={(e) => setFormData(prev => ({...prev, paymentThreshold: e.target.value}))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Solde actuel
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        value={formData.currentBalance}
-                                        onChange={(e) => setFormData(prev => ({...prev, currentBalance: e.target.value}))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Méthode de distribution préférée
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        value={formData.preferredDistributionMethod}
-                                        onChange={(e) => setFormData(prev => ({...prev, preferredDistributionMethod: e.target.value}))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Reader-specific fields - Only for Lecteurs */}
-                    {userType === 'lecteurs' && (
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-700 pb-2">
-                                Informations lecteur
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="md:col-span-2 flex items-center space-x-2">
-                                    <Checkbox
-                                        id="isAvailable"
-                                        checked={formData.isAvailable}
-                                        onCheckedChange={(checked) => setFormData(prev => ({...prev, isAvailable: checked as boolean}))}
-                                    />
-                                    <label
-                                        htmlFor="isAvailable"
-                                        className="text-sm font-medium text-gray-300 cursor-pointer"
-                                    >
-                                        Disponible pour les affectations
-                                    </label>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Notes de disponibilité
-                                    </label>
-                                    <Textarea
-                                        value={formData.availabilityNotes}
-                                        onChange={(e) => setFormData(prev => ({...prev, availabilityNotes: e.target.value}))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Spécialisation
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        value={formData.specialization}
-                                        onChange={(e) => setFormData(prev => ({...prev, specialization: e.target.value}))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Affectations simultanées maximales
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        value={formData.maxConcurrentAssignments?.toString() ?? ''}
-                                        onChange={(e) => setFormData(prev => ({
-                                            ...prev,
-                                            maxConcurrentAssignments: e.target.value ? parseInt(e.target.value) : null
-                                        }))}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* General Notes */}
+                    {/* Accounting */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-700 pb-2">
-                            Notes générales
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            Comptabilité
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Affiliation non-profit</label>
+                                <Input
+                                    value={formData.nonProfitAffiliation}
+                                    onChange={(e) => setFormData({ ...formData, nonProfitAffiliation: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">ID Gestconte</label>
+                                <Input
+                                    type="number"
+                                    value={formData.gestconteId || ''}
+                                    onChange={(e) => setFormData({ ...formData, gestconteId: e.target.value ? parseInt(e.target.value) : null })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-medium text-gray-200">Notes Gestconte</label>
+                                <Textarea
+                                    value={formData.gestconteNotes}
+                                    onChange={(e) => setFormData({ ...formData, gestconteNotes: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Status & Availability */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            Statut et disponibilité
+                        </h3>
+
+                        <div className="space-y-4">
+                            {/* Active Status with Activate/Deactivate Buttons */}
+                            <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                                            formData.isActive
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : 'bg-red-500/20 text-red-400'
+                                        }`}>
+                                            {formData.isActive ? (
+                                                <UserCheck className="h-5 w-5" />
+                                            ) : (
+                                                <UserX className="h-5 w-5" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-200">
+                                                Statut: {formData.isActive ? 'Actif' : 'Inactif'}
+                                            </p>
+                                            <p className="text-xs text-gray-400">
+                                                {formData.isActive
+                                                    ? 'L\'individuel est actif'
+                                                    : 'L\'individuel n\'est pas actif'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {initialData && (
+                                        <div>
+                                            {formData.isActive ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    onClick={() => setIsDeactivationDialogOpen(true)}
+                                                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                                                >
+                                                    <UserX className="h-4 w-4 mr-2" />
+                                                    Désactiver
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => setIsActivationDialogOpen(true)}
+                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                >
+                                                    <UserCheck className="h-4 w-4 mr-2" />
+                                                    Activer
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {formData.terminationReason && (
+                                    <div className="mt-3 pt-3 border-t border-gray-700">
+                                        <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                                            Raison du changement
+                                        </label>
+                                        <div className="mt-1 px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-md text-sm text-gray-300">
+                                            {formData.terminationReason}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Disponible Checkbox - Only for Lecteurs (admin/super_admin) */}
+                            {(formData.role === 'admin' || formData.role === 'super_admin') && (
+                                <>
+                                    <div className="bg-gradient-to-br from-gray-800/40 to-gray-800/20 p-4 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-all">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative">
+                                                    <Checkbox
+                                                        checked={formData.isAvailable}
+                                                        onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
+                                                        className="h-5 w-5 border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md transition-all"
+                                                    />
+                                                    {formData.isAvailable && (
+                                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium text-gray-200 cursor-pointer">
+                                                        Disponible pour nouvelles assignations
+                                                    </label>
+                                                    <p className="text-xs text-gray-400 mt-0.5">
+                                                        {formData.isAvailable
+                                                            ? 'Peut recevoir de nouveaux livres'
+                                                            : 'Ne peut pas recevoir de nouveaux livres'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                                formData.isAvailable
+                                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                                    : 'bg-gray-600/20 text-gray-400 border border-gray-600/30'
+                                            }`}>
+                                                {formData.isAvailable ? 'Disponible' : 'Indisponible'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Notes de disponibilité</label>
+                                        <Textarea
+                                            value={formData.availabilityNotes}
+                                            onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
+                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            placeholder="Ex: En vacances jusqu'au 15 janvier..."
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Preferences & Settings */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            Préférences
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Méthode de livraison préférée</label>
+                                <Input
+                                    value={formData.preferredDeliveryMethod}
+                                    onChange={(e) => setFormData({ ...formData, preferredDeliveryMethod: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Méthode de distribution préférée</label>
+                                <Input
+                                    value={formData.preferredDistributionMethod}
+                                    onChange={(e) => setFormData({ ...formData, preferredDistributionMethod: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Seuil de paiement</label>
+                                <Input
+                                    value={formData.paymentThreshold}
+                                    onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Solde actuel</label>
+                                <Input
+                                    value={formData.currentBalance}
+                                    onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Reader-specific fields - Only for Lecteurs (admin/super_admin) */}
+                    {(formData.role === 'admin' || formData.role === 'super_admin') && (
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                                Paramètres de lecture
+                            </h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Spécialisation</label>
+                                    <Input
+                                        value={formData.specialization}
+                                        onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Nombre maximum d&apos;affectations simultanées</label>
+                                    <Input
+                                        type="number"
+                                        value={formData.maxConcurrentAssignments || ''}
+                                        onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: e.target.value ? parseInt(e.target.value) : null })}
+                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Notes */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            Notes
                         </h3>
                         <Textarea
                             value={formData.notes}
-                            onChange={(e) => setFormData(prev => ({...prev, notes: e.target.value}))}
-                            className="bg-gray-900 border-gray-700 text-gray-200 min-h-[100px]"
-                            placeholder="Notes additionnelles..."
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                            placeholder="Notes supplémentaires..."
                         />
                     </div>
 
-                    {/* Status Section - Only show for editing and if user is admin */}
-                    {initialData && currentUserRole === 'admin' && (
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-700 pb-2">
-                                Statut de l&apos;utilisateur
-                            </h3>
-                            <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="isActive"
-                                        checked={formData.isActive}
-                                        disabled
-                                    />
-                                    <label
-                                        htmlFor="isActive"
-                                        className="text-sm font-medium text-gray-300"
-                                    >
-                                        Compte actif
-                                    </label>
-                                </div>
-                                {formData.isActive ? (
-                                    <Button
-                                        type="button"
-                                        onClick={() => setIsDeactivationDialogOpen(true)}
-                                        className="bg-orange-600 hover:bg-orange-700 text-white"
-                                        disabled={isLoading}
-                                    >
-                                        <UserX className="h-4 w-4 mr-2" />
-                                        Désactiver le compte
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        type="button"
-                                        onClick={() => setIsActivationDialogOpen(true)}
-                                        className="bg-green-600 hover:bg-green-700 text-white"
-                                        disabled={isLoading}
-                                    >
-                                        <UserCheck className="h-4 w-4 mr-2" />
-                                        Activer le compte
-                                    </Button>
-                                )}
-                            </div>
-                            {formData.terminationReason && (
-                                <div className="mt-4 p-4 bg-gray-800 border border-gray-700 rounded-lg">
-                                    <label className="text-sm font-medium text-gray-300 block mb-2">
-                                        Raison de désactivation/activation
-                                    </label>
-                                    <p className="text-gray-400">{formData.terminationReason}</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex justify-between pt-6">
-                        <div>
-                            {showDelete && onDelete && (
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={handleDeleteClick}
-                                    disabled={isLoading}
-                                    className="bg-red-600 hover:bg-red-700"
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Supprimer
-                                </Button>
-                            )}
-                        </div>
+                    {/* Submit Buttons */}
+                    <div className="space-y-4">
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
+
+                        {showDelete && onDelete && (
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={isLoading}
+                                onClick={handleDeleteClick}
+                                className="w-full bg-red-700 hover:bg-red-600 text-white"
+                            >
+                                Supprimer l&apos;individuel
+                            </Button>
+                        )}
                     </div>
                 </form>
 

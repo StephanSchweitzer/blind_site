@@ -62,25 +62,36 @@ export async function POST(request: Request) {
 
         const body = await request.json() as UserCreateRequestBody;
 
-        if (!body.email) {
-            return NextResponse.json({ message: 'L\'email est requis' }, { status: 400 });
+        // Email is required for admin and super_admin roles
+        if ((body.role === 'admin' || body.role === 'super_admin') && !body.email) {
+            return NextResponse.json({ message: 'L\'email est requis pour les lecteurs' }, { status: 400 });
         }
 
-        const existingUser = await prisma.user.findUnique({
-            where: { email: body.email },
-        });
+        // Check for existing email only if email is provided
+        if (body.email) {
+            const existingUser = await prisma.user.findUnique({
+                where: { email: body.email },
+            });
 
-        if (existingUser) {
-            return NextResponse.json({ message: 'Cet email est déjà utilisé' }, { status: 400 });
+            if (existingUser) {
+                return NextResponse.json({ message: 'Cet email est déjà utilisé' }, { status: 400 });
+            }
         }
 
-        const hashedPassword = await bcrypt.hash('temporaryPassword123', 10);
+        // Create password only for admin and super_admin roles
+        let hashedPassword: string | null = null;
+        let passwordNeedsChange = false;
+
+        if (body.role === 'admin' || body.role === 'super_admin') {
+            hashedPassword = await bcrypt.hash('temporaryPassword123', 10);
+            passwordNeedsChange = true;
+        }
 
         const newUser = await prisma.user.create({
             data: {
-                email: body.email,
+                email: body.email || null,
                 password: hashedPassword,
-                passwordNeedsChange: true,
+                passwordNeedsChange: passwordNeedsChange,
                 name: body.name || '',
                 role: body.role || 'user',
                 firstName: body.firstName || null,
