@@ -311,7 +311,8 @@ export function UserFormBackendBase({
     };
 
     // Check if role field should be locked
-    const isRoleLocked = initialData && initialData.role === 'super_admin' && currentUserRole !== 'super_admin';
+    // Lock if viewing admin or super_admin role AND current user is not super_admin
+    const isRoleLocked = initialData && (initialData.role === 'admin' || initialData.role === 'super_admin') && currentUserRole !== 'super_admin';
 
     // Get role display name
     const getRoleDisplayName = (role: string): string => {
