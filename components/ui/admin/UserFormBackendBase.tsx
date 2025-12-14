@@ -619,8 +619,8 @@ export function UserFormBackendBase({
                                             </p>
                                             <p className="text-xs text-gray-400">
                                                 {formData.isActive
-                                                    ? 'L\'individuel peut accéder au système'
-                                                    : 'L\'individuel est désactivé'}
+                                                    ? 'L\'individuel est active'
+                                                    : 'L\'individuel n\'est pas active'}
                                             </p>
                                         </div>
                                     </div>
