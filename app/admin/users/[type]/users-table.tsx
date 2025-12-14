@@ -40,6 +40,8 @@ interface UsersTableProps {
     initialSearch: string;
     totalPages: number;
     initialTotalUsers: number;
+    activeCount: number;
+    inactiveCount: number;
     currentUserRole?: string;
 }
 
@@ -50,6 +52,8 @@ export default function UsersTable({
                                        initialSearch,
                                        totalPages,
                                        initialTotalUsers,
+                                       activeCount,
+                                       inactiveCount,
                                        currentUserRole,
                                    }: UsersTableProps) {
     const router = useRouter();
@@ -245,9 +249,6 @@ export default function UsersTable({
         return pages;
     })();
 
-    const activeCount = initialUsers.filter(user => user.isActive === true).length;
-    const inactiveCount = initialUsers.filter(user => user.isActive === false).length;
-
     return (
         <Card className="border-gray-700 bg-gray-900 shadow-xl">
             <CardHeader className="border-b border-gray-700">
@@ -288,27 +289,26 @@ export default function UsersTable({
                     </div>
                     <Button
                         onClick={handleSearch}
-                        disabled={isPending}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        size="icon"
+                        className="bg-gray-800 border-gray-700 hover:bg-gray-700"
                     >
-                        Rechercher
+                        <Search className="h-4 w-4" />
                     </Button>
                     {searchTerm && (
                         <Button
                             onClick={handleClearSearch}
-                            variant="outline"
                             size="icon"
-                            disabled={isPending}
-                            className="bg-gray-800 border-gray-700 hover:bg-gray-700"
+                            variant="ghost"
+                            className="text-gray-400 hover:text-gray-200 hover:bg-gray-800"
                         >
-                            <X className="h-4 w-4 text-gray-200" />
+                            <X className="h-4 w-4" />
                         </Button>
                     )}
                 </div>
 
-                <div className="relative">
+                <div className="space-y-6">
                     {initialUsers.length === 0 ? (
-                        <div className="text-center py-12">
+                        <div className="py-20 flex flex-col items-center justify-center border border-gray-800 rounded-lg bg-gray-800/50">
                             <p className="text-gray-400 text-lg">Aucun {type === 'lecteurs' ? 'lecteur' : 'auditeur'} trouvé</p>
                         </div>
                     ) : (

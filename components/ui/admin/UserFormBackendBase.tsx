@@ -29,7 +29,7 @@ interface UserFormBackendBaseProps {
     showDelete?: boolean;
     currentUserRole?: string;
     userType: UserType;
-    userId?: string; // For password reset functionality
+    userId?: string;
 }
 
 const emptyAddress: AddressFormData = {
@@ -65,7 +65,9 @@ export function UserFormBackendBase({
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const { toast } = useToast();
 
-    const defaultRole = userType === 'auditeurs' ? 'user' : 'admin';
+    const defaultRole = currentUserRole === 'super_admin'
+        ? (userType === 'auditeurs' ? 'user' : 'admin')
+        : 'user';
 
     const [formData, setFormData] = useState<UserFormData>(initialData || {
         email: '',
@@ -120,7 +122,6 @@ export function UserFormBackendBase({
         setIsLoading(true);
         setError(null);
 
-        // Email is required for admin/super_admin roles
         if ((formData.role === 'admin' || formData.role === 'super_admin') && !formData.email) {
             setError('L\'email est requis pour les lecteurs');
             setIsLoading(false);
@@ -228,7 +229,7 @@ export function UserFormBackendBase({
             const updatedFormData = {
                 ...formData,
                 isActive: true,
-                terminationReason: `Réactivé: ${activationReason.trim()}`,
+                terminationReason: activationReason.trim(),
             };
 
             const userId = await onSubmit(updatedFormData);
@@ -269,7 +270,7 @@ export function UserFormBackendBase({
             toast({
                 variant: "destructive",
                 title: "Erreur",
-                description: "ID utilisateur manquant",
+                description: "Impossible de réinitialiser le mot de passe : ID utilisateur manquant",
             });
             return;
         }
@@ -310,11 +311,10 @@ export function UserFormBackendBase({
         }
     };
 
-    // Check if role field should be locked
-    // Lock if viewing admin or super_admin role AND current user is not super_admin
-    const isRoleLocked = initialData && (initialData.role === 'admin' || initialData.role === 'super_admin') && currentUserRole !== 'super_admin';
+    const isRoleLocked =
+        (initialData && initialData.role === 'super_admin' && currentUserRole !== 'super_admin') ||
+        (currentUserRole === 'admin');
 
-    // Get role display name
     const getRoleDisplayName = (role: string): string => {
         switch (role) {
             case 'user':
@@ -326,6 +326,16 @@ export function UserFormBackendBase({
             default:
                 return role;
         }
+    };
+
+    const getLockedReason = (): string => {
+        if (currentUserRole === 'admin') {
+            return 'Seuls les super administrateurs peuvent modifier les rôles';
+        }
+        if (initialData?.role === 'super_admin') {
+            return 'Verrouillé';
+        }
+        return 'Verrouillé';
     };
 
     return (
@@ -365,12 +375,34 @@ export function UserFormBackendBase({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Nom complet</label>
-                                <Input
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
+                                <label className="text-sm font-medium text-gray-200">
+                                    Rôle {isRoleLocked && <span className="text-xs text-gray-400">({getLockedReason()})</span>}
+                                </label>
+                                {isRoleLocked ? (
+                                    <div className="bg-gray-800/50 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200">
+                                        {getRoleDisplayName(formData.role)}
+                                    </div>
+                                ) : (
+                                    <Select
+                                        value={formData.role}
+                                        onValueChange={(value) => setFormData({ ...formData, role: value })}
+                                    >
+                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-gray-800 border-gray-700">
+                                            {currentUserRole === 'super_admin' ? (
+                                                <>
+                                                    <SelectItem value="user" className="text-gray-200">Auditeur</SelectItem>
+                                                    <SelectItem value="admin" className="text-gray-200">Lecteur</SelectItem>
+                                                    <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
+                                                </>
+                                            ) : (
+                                                <SelectItem value="user" className="text-gray-200">Auditeur</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -389,34 +421,6 @@ export function UserFormBackendBase({
                                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                                     className="bg-gray-800 border-gray-700 text-gray-200"
                                 />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Rôle</label>
-                                {isRoleLocked ? (
-                                    <div className="flex items-center h-10 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-400">
-                                        <span>{getRoleDisplayName(formData.role)} (Verrouillé)</span>
-                                    </div>
-                                ) : (
-                                    <Select
-                                        value={formData.role}
-                                        onValueChange={(value) => setFormData({ ...formData, role: value })}
-                                    >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-gray-800 border-gray-700">
-                                            <SelectItem value="user" className="text-gray-200">Auditeur</SelectItem>
-                                            {/* Only super_admin can see and select admin and super_admin roles */}
-                                            {currentUserRole === 'super_admin' && (
-                                                <>
-                                                    <SelectItem value="admin" className="text-gray-200">Lecteur</SelectItem>
-                                                    <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
-                                                </>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -482,181 +486,318 @@ export function UserFormBackendBase({
                                     </Button>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Ligne d&apos;adresse 1</label>
+                                        <label className="text-sm font-medium text-gray-200">Adresse</label>
                                         <Input
                                             value={address.addressLine1}
                                             onChange={(e) => handleAddressChange(index, 'addressLine1', e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Complément d&apos;adresse</label>
+                                        <label className="text-sm font-medium text-gray-200">Complément</label>
                                         <Input
                                             value={address.addressSupplement}
                                             onChange={(e) => handleAddressChange(index, 'addressSupplement', e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-200">Ville</label>
-                                            <Input
-                                                value={address.city}
-                                                onChange={(e) => handleAddressChange(index, 'city', e.target.value)}
-                                                className="bg-gray-800 border-gray-700 text-gray-200"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-200">Code postal</label>
-                                            <Input
-                                                value={address.postalCode}
-                                                onChange={(e) => handleAddressChange(index, 'postalCode', e.target.value)}
-                                                className="bg-gray-800 border-gray-700 text-gray-200"
-                                            />
-                                        </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Ville</label>
+                                        <Input
+                                            value={address.city}
+                                            onChange={(e) => handleAddressChange(index, 'city', e.target.value)}
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                        />
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-200">État/Province</label>
-                                            <Input
-                                                value={address.stateProvince}
-                                                onChange={(e) => handleAddressChange(index, 'stateProvince', e.target.value)}
-                                                className="bg-gray-800 border-gray-700 text-gray-200"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-200">Pays</label>
-                                            <Input
-                                                value={address.country}
-                                                onChange={(e) => handleAddressChange(index, 'country', e.target.value)}
-                                                className="bg-gray-800 border-gray-700 text-gray-200"
-                                            />
-                                        </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Code postal</label>
+                                        <Input
+                                            value={address.postalCode}
+                                            onChange={(e) => handleAddressChange(index, 'postalCode', e.target.value)}
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                        />
                                     </div>
 
-                                    <div className="flex items-center space-x-2">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">État/Province</label>
+                                        <Input
+                                            value={address.stateProvince}
+                                            onChange={(e) => handleAddressChange(index, 'stateProvince', e.target.value)}
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Pays</label>
+                                        <Input
+                                            value={address.country}
+                                            onChange={(e) => handleAddressChange(index, 'country', e.target.value)}
+                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center space-x-2 md:col-span-2">
                                         <Checkbox
-                                            id={`default-address-${index}`}
                                             checked={address.isDefault}
                                             onCheckedChange={(checked) => handleAddressChange(index, 'isDefault', checked as boolean)}
+                                            className="border-gray-500 data-[state=checked]:bg-blue-600"
                                         />
-                                        <label
-                                            htmlFor={`default-address-${index}`}
-                                            className="text-sm font-medium text-gray-200 cursor-pointer"
-                                        >
-                                            Adresse par défaut
-                                        </label>
+                                        <label className="text-sm font-medium text-gray-200">Adresse par défaut</label>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Additional Information based on user type */}
-                    {userType === 'auditeurs' ? (
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
-                                Informations d&apos;auditeur
-                            </h3>
+                    {/* Accounting - Always visible */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            Comptabilité
+                        </h3>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Gestconte ID</label>
-                                    <Input
-                                        type="number"
-                                        value={formData.gestconteId ?? ''}
-                                        onChange={(e) => setFormData({ ...formData, gestconteId: e.target.value ? parseInt(e.target.value) : null })}
-                                        className="bg-gray-800 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Affiliation associative</label>
-                                    <Input
-                                        value={formData.nonProfitAffiliation}
-                                        onChange={(e) => setFormData({ ...formData, nonProfitAffiliation: e.target.value })}
-                                        className="bg-gray-800 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Méthode de livraison préférée</label>
-                                    <Select
-                                        value={formData.preferredDeliveryMethod}
-                                        onValueChange={(value) => setFormData({ ...formData, preferredDeliveryMethod: value })}
-                                    >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
-                                            <SelectValue placeholder="Sélectionner..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-gray-800 border-gray-700">
-                                            <SelectItem value="postal" className="text-gray-200">Postal</SelectItem>
-                                            <SelectItem value="email" className="text-gray-200">Email</SelectItem>
-                                            <SelectItem value="download" className="text-gray-200">Téléchargement</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Seuil de paiement (€)</label>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.paymentThreshold}
-                                        onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
-                                        className="bg-gray-800 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Solde actuel (€)</label>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.currentBalance}
-                                        onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-                                        className="bg-gray-800 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Méthode de distribution préférée</label>
-                                    <Select
-                                        value={formData.preferredDistributionMethod}
-                                        onValueChange={(value) => setFormData({ ...formData, preferredDistributionMethod: value })}
-                                    >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
-                                            <SelectValue placeholder="Sélectionner..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-gray-800 border-gray-700">
-                                            <SelectItem value="cd" className="text-gray-200">CD</SelectItem>
-                                            <SelectItem value="usb" className="text-gray-200">USB</SelectItem>
-                                            <SelectItem value="download" className="text-gray-200">Téléchargement</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Affiliation non-profit</label>
+                                <Input
+                                    value={formData.nonProfitAffiliation}
+                                    onChange={(e) => setFormData({ ...formData, nonProfitAffiliation: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
                             </div>
 
                             <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">ID Gestconte</label>
+                                <Input
+                                    type="number"
+                                    value={formData.gestconteId || ''}
+                                    onChange={(e) => setFormData({ ...formData, gestconteId: e.target.value ? parseInt(e.target.value) : null })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+
+                            <div className="space-y-2 md:col-span-2">
                                 <label className="text-sm font-medium text-gray-200">Notes Gestconte</label>
                                 <Textarea
                                     value={formData.gestconteNotes}
                                     onChange={(e) => setFormData({ ...formData, gestconteNotes: e.target.value })}
                                     className="bg-gray-800 border-gray-700 text-gray-200"
-                                    rows={3}
                                 />
                             </div>
                         </div>
-                    ) : (
+                    </div>
+
+                    {/* Status & Availability - Always visible */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            Statut et disponibilité
+                        </h3>
+
+                        <div className="space-y-4">
+                            {/* Active Status with Activate/Deactivate Buttons */}
+                            <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                                            formData.isActive
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : 'bg-red-500/20 text-red-400'
+                                        }`}>
+                                            {formData.isActive ? (
+                                                <UserCheck className="h-5 w-5" />
+                                            ) : (
+                                                <UserX className="h-5 w-5" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-200">
+                                                Statut: {formData.isActive ? 'Actif' : 'Inactif'}
+                                            </p>
+                                            <p className="text-xs text-gray-400">
+                                                {formData.isActive
+                                                    ? 'L\'individuel peut accéder au système'
+                                                    : 'L\'individuel est désactivé'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {initialData && (
+                                        <div className="flex gap-2">
+                                            {formData.isActive ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    onClick={() => setIsDeactivationDialogOpen(true)}
+                                                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                                                >
+                                                    <UserX className="h-4 w-4 mr-2" />
+                                                    Désactiver
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => setIsActivationDialogOpen(true)}
+                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                >
+                                                    <UserCheck className="h-4 w-4 mr-2" />
+                                                    Activer
+                                                </Button>
+                                            )}
+
+                                            {currentUserRole === 'super_admin' &&
+                                                (formData.role === 'admin' || formData.role === 'super_admin') &&
+                                                formData.email && (
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => setIsPasswordResetDialogOpen(true)}
+                                                        variant="outline"
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
+                                                    >
+                                                        <Mail className="h-4 w-4 mr-2" />
+                                                        Réinitialiser mot de passe
+                                                    </Button>
+                                                )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {formData.terminationReason && (
+                                    <div className="mt-3 pt-3 border-t border-gray-700">
+                                        <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                                            Raison du changement
+                                        </label>
+                                        <div className="mt-1 px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-md text-sm text-gray-300">
+                                            {formData.terminationReason}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Disponible Checkbox - Only for Lecteurs (admin/super_admin) */}
+                            {(formData.role === 'admin' || formData.role === 'super_admin') && (
+                                <>
+                                    <div className="bg-gradient-to-br from-gray-800/40 to-gray-800/20 p-4 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-all">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative">
+                                                    <Checkbox
+                                                        checked={formData.isAvailable}
+                                                        onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
+                                                        className="h-5 w-5 border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md transition-all"
+                                                    />
+                                                    {formData.isAvailable && (
+                                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium text-gray-200 cursor-pointer">
+                                                        Disponible pour nouvelles assignations
+                                                    </label>
+                                                    <p className="text-xs text-gray-400 mt-0.5">
+                                                        {formData.isAvailable
+                                                            ? 'Peut recevoir de nouveaux livres'
+                                                            : 'Ne peut pas recevoir de nouveaux livres'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                                formData.isAvailable
+                                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                                    : 'bg-gray-600/20 text-gray-400 border border-gray-600/30'
+                                            }`}>
+                                                {formData.isAvailable ? 'Disponible' : 'Indisponible'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Notes de disponibilité</label>
+                                        <Textarea
+                                            value={formData.availabilityNotes}
+                                            onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
+                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            placeholder="Ex: En vacances jusqu'au 15 janvier..."
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Preferences & Settings - Always visible */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            Préférences
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Méthode de livraison préférée</label>
+                                <Select
+                                    value={formData.preferredDeliveryMethod}
+                                    onValueChange={(value) => setFormData({ ...formData, preferredDeliveryMethod: value })}
+                                >
+                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                        <SelectValue placeholder="Sélectionner..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-700">
+                                        <SelectItem value="postal" className="text-gray-200">Postal</SelectItem>
+                                        <SelectItem value="email" className="text-gray-200">Email</SelectItem>
+                                        <SelectItem value="download" className="text-gray-200">Téléchargement</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Méthode de distribution préférée</label>
+                                <Select
+                                    value={formData.preferredDistributionMethod}
+                                    onValueChange={(value) => setFormData({ ...formData, preferredDistributionMethod: value })}
+                                >
+                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                        <SelectValue placeholder="Sélectionner..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-700">
+                                        <SelectItem value="cd" className="text-gray-200">CD</SelectItem>
+                                        <SelectItem value="usb" className="text-gray-200">USB</SelectItem>
+                                        <SelectItem value="download" className="text-gray-200">Téléchargement</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Seuil de paiement (€)</label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.paymentThreshold}
+                                    onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Solde actuel (€)</label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.currentBalance}
+                                    onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
+                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Reader-specific fields - Only for Lecteurs (admin/super_admin) */}
+                    {(formData.role === 'admin' || formData.role === 'super_admin') && (
                         <div className="space-y-4">
                             <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
-                                Informations de lecteur
+                                Paramètres de lecture
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -670,43 +811,19 @@ export function UserFormBackendBase({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Affectations simultanées maximum</label>
+                                    <label className="text-sm font-medium text-gray-200">Nombre maximum d&apos;affectations simultanées</label>
                                     <Input
                                         type="number"
-                                        value={formData.maxConcurrentAssignments ?? ''}
-                                        onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: parseInt(e.target.value) || 3 })}
+                                        value={formData.maxConcurrentAssignments || ''}
+                                        onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: e.target.value ? parseInt(e.target.value) : null })}
                                         className="bg-gray-800 border-gray-700 text-gray-200"
                                     />
                                 </div>
                             </div>
-
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="isAvailable"
-                                    checked={formData.isAvailable}
-                                    onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
-                                />
-                                <label
-                                    htmlFor="isAvailable"
-                                    className="text-sm font-medium text-gray-200 cursor-pointer"
-                                >
-                                    Disponible pour de nouvelles affectations
-                                </label>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Notes de disponibilité</label>
-                                <Textarea
-                                    value={formData.availabilityNotes}
-                                    onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                    rows={3}
-                                />
-                            </div>
                         </div>
                     )}
 
-                    {/* Notes */}
+                    {/* Notes - Always visible */}
                     <div className="space-y-4">
                         <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
                             Notes
@@ -714,63 +831,32 @@ export function UserFormBackendBase({
                         <Textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="bg-gray-800 border-gray-700 text-gray-200"
-                            rows={4}
+                            className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                            placeholder="Notes supplémentaires..."
                         />
                     </div>
 
-                    {/* Form Actions */}
-                    <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 border-t border-gray-700">
-                        <div className="flex gap-3">
-                            {showDelete && onDelete && (
-                                <Button
-                                    type="button"
-                                    onClick={handleDeleteClick}
-                                    variant="destructive"
-                                    className="bg-red-700 hover:bg-red-600"
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Supprimer
-                                </Button>
-                            )}
-                            {initialData && formData.isActive && (
-                                <Button
-                                    type="button"
-                                    onClick={() => setIsDeactivationDialogOpen(true)}
-                                    className="bg-orange-600 hover:bg-orange-700"
-                                >
-                                    <UserX className="h-4 w-4 mr-2" />
-                                    Désactiver
-                                </Button>
-                            )}
-                            {initialData && !formData.isActive && (
-                                <Button
-                                    type="button"
-                                    onClick={() => setIsActivationDialogOpen(true)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                >
-                                    <UserCheck className="h-4 w-4 mr-2" />
-                                    Activer
-                                </Button>
-                            )}
-                            {initialData && userId && (formData.role === 'admin' || formData.role === 'super_admin') && (
-                                <Button
-                                    type="button"
-                                    onClick={() => setIsPasswordResetDialogOpen(true)}
-                                    className="bg-blue-600 hover:bg-blue-700"
-                                >
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Réinitialiser mot de passe
-                                </Button>
-                            )}
-                        </div>
+                    {/* Submit Buttons */}
+                    <div className="space-y-4">
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="bg-green-600 hover:bg-green-700"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
+
+                        {showDelete && onDelete && (
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={isLoading}
+                                onClick={handleDeleteClick}
+                                className="w-full bg-red-700 hover:bg-red-600 text-white"
+                            >
+                                Supprimer l&apos;individuel
+                            </Button>
+                        )}
                     </div>
                 </form>
 
@@ -780,24 +866,30 @@ export function UserFormBackendBase({
                         <DialogHeader>
                             <DialogTitle className="text-gray-100">Désactiver l&apos;individuel</DialogTitle>
                             <DialogDescription className="text-gray-400">
-                                Veuillez fournir une raison pour la désactivation de cet individuel.
+                                Cette action désactivera l&apos;individuel. Veuillez fournir une raison pour cette action.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
-                            <Textarea
-                                placeholder="Raison de la désactivation..."
-                                value={deactivationReason}
-                                onChange={(e) => setDeactivationReason(e.target.value)}
-                                className="bg-gray-800 border-gray-700 text-gray-200"
-                                rows={4}
-                            />
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">
+                                    Raison de la désactivation <span className="text-red-500">*</span>
+                                </label>
+                                <Textarea
+                                    value={deactivationReason}
+                                    onChange={(e) => setDeactivationReason(e.target.value)}
+                                    className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                                    placeholder="Expliquez pourquoi cet individuel est désactivé..."
+                                />
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => setIsDeactivationDialogOpen(false)}
-                                disabled={isLoading}
+                                onClick={() => {
+                                    setIsDeactivationDialogOpen(false);
+                                    setDeactivationReason('');
+                                }}
                                 className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
                             >
                                 Annuler
@@ -820,24 +912,30 @@ export function UserFormBackendBase({
                         <DialogHeader>
                             <DialogTitle className="text-gray-100">Activer l&apos;individuel</DialogTitle>
                             <DialogDescription className="text-gray-400">
-                                Veuillez fournir une raison pour l&apos;activation de cet individuel.
+                                Cette action activera l&apos;individuel. Veuillez fournir une raison pour cette action.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
-                            <Textarea
-                                placeholder="Raison de l'activation..."
-                                value={activationReason}
-                                onChange={(e) => setActivationReason(e.target.value)}
-                                className="bg-gray-800 border-gray-700 text-gray-200"
-                                rows={4}
-                            />
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">
+                                    Raison de l&apos;activation <span className="text-red-500">*</span>
+                                </label>
+                                <Textarea
+                                    value={activationReason}
+                                    onChange={(e) => setActivationReason(e.target.value)}
+                                    className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                                    placeholder="Expliquez pourquoi cet individuel est activé..."
+                                />
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => setIsActivationDialogOpen(false)}
-                                disabled={isLoading}
+                                onClick={() => {
+                                    setIsActivationDialogOpen(false);
+                                    setActivationReason('');
+                                }}
                                 className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
                             >
                                 Annuler

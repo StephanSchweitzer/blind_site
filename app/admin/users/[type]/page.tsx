@@ -65,7 +65,7 @@ async function getUsers(
     }
 
     try {
-        const [users, totalUsers] = await Promise.all([
+        const [users, totalUsers, activeCount, inactiveCount] = await Promise.all([
             prisma.user.findMany({
                 where: whereClause,
                 orderBy: { id: 'desc' },
@@ -82,11 +82,15 @@ async function getUsers(
                 },
             }),
             prisma.user.count({ where: whereClause }),
+            prisma.user.count({ where: { ...whereClause, isActive: true } }),
+            prisma.user.count({ where: { ...whereClause, isActive: false } }),
         ]);
 
         return {
             users,
             totalUsers,
+            activeCount,
+            inactiveCount,
             totalPages: Math.ceil(totalUsers / usersPerPage),
         };
     } catch (error) {
@@ -124,7 +128,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
             ? searchParamsResolved.search[0]
             : searchParamsResolved.search || '';
 
-        const { users, totalUsers, totalPages } = await getUsers(
+        const { users, totalUsers, totalPages, activeCount, inactiveCount } = await getUsers(
             page,
             searchTerm,
             userType
@@ -146,6 +150,8 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                     initialSearch={searchTerm}
                     totalPages={totalPages}
                     initialTotalUsers={totalUsers}
+                    activeCount={activeCount}
+                    inactiveCount={inactiveCount}
                     currentUserRole={session.user.role}
                 />
             </div>
