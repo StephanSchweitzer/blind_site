@@ -53,7 +53,7 @@ export interface OrderFormData {
     // createdDate: Date | null;
     closureDate: Date | null;
     cost: string;
-    billingStatus: 'UNBILLED' | 'BILLED' | 'PAID';
+    billingStatus: 'UNBILLED' | 'BILLED' | 'PAID' | 'UNBILLABLE';
     lentPhysicalBook: boolean;
     notes: string;
 }
@@ -697,7 +697,7 @@ export function OrderFormBackendBase({
                         <label className="text-sm font-medium text-gray-200">État de facturation</label>
                         <Select
                             value={formData.billingStatus}
-                            onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'PAID' })}
+                            onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'PAID' | 'UNBILLABLE'})}
                         >
                             <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                 <SelectValue />
@@ -721,6 +721,12 @@ export function OrderFormBackendBase({
                                         className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
                                     >
                                         <span className="font-medium">Payé</span>
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="UNBILLABLE"
+                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                    >
+                                        <span className="font-medium">Non facturable</span>
                                     </SelectItem>
                                 </div>
                             </SelectContent>
