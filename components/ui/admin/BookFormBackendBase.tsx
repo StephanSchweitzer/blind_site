@@ -75,7 +75,7 @@ export function BookFormBackendBase({
         genres: [],
         isbn: '',
         description: '',
-        available: true,
+        available: false,
         readingDurationMinutes: 0,
         pageCount: undefined,
     });
@@ -466,7 +466,7 @@ export function BookFormBackendBase({
                                         available: checked as boolean
                                     }));
                                 }}
-                                className="border-gray-700 data-[state=checked]:bg-gray-700"
+                                className="border-2 border-gray-500 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=unchecked]:bg-transparent transition-colors duration-150"
                             />
                             <label htmlFor="available" className="text-sm font-medium text-gray-200">
                                 Disponible

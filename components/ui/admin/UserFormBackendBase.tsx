@@ -619,8 +619,8 @@ export function UserFormBackendBase({
                                             </p>
                                             <p className="text-xs text-gray-400">
                                                 {formData.isActive
-                                                    ? 'L\'individuel est active'
-                                                    : 'L\'individuel n\'est pas active'}
+                                                    ? 'Participe aux ECA'
+                                                    : 'Ne participe plus aux ECA'}
                                             </p>
                                         </div>
                                     </div>

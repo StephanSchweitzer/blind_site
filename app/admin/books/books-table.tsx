@@ -109,6 +109,7 @@ export default function BooksTable({
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
     const [isSearching, setIsSearching] = useState(false);
+    const [isLoadingBook, setIsLoadingBook] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Results state - initialize with server data
@@ -175,10 +176,6 @@ export default function BooksTable({
         // Update URL
         updateURL(term, filter, genreIds, page);
 
-        // Only use cached data if:
-        // 1. Not forcing a refresh
-        // 2. Cache hasn't been invalidated by mutations
-        // 3. Initial load was clean (no filters) and we're going back to clean state
         const shouldUseCache = !forceRefresh &&
             !cacheInvalidatedRef.current &&
             !term &&
@@ -198,11 +195,9 @@ export default function BooksTable({
             return;
         }
 
-        // Set loading state
         setIsSearching(true);
         setError(null);
 
-        // Create new abort controller
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
 
@@ -216,7 +211,6 @@ export default function BooksTable({
 
             genreIds.forEach(id => params.append('genres', id.toString()));
 
-            // Add timestamp to prevent caching when we need fresh data
             if (forceRefresh || cacheInvalidatedRef.current) {
                 params.set('_t', Date.now().toString());
             }
@@ -237,14 +231,12 @@ export default function BooksTable({
             const data = await response.json();
             setSearchResults(data);
 
-            // Update cached data if we're in the default state and it was a forced refresh
             if (forceRefresh && !term && genreIds.length === 0 && page === 1 && filter === 'all') {
                 initialDataRef.current = {
                     books: data.books,
                     total: data.total,
                     totalPages: data.totalPages
                 };
-                // Reset cache invalidation flag since we just updated the cache
                 cacheInvalidatedRef.current = false;
             }
         } catch (err) {
@@ -286,7 +278,6 @@ export default function BooksTable({
         };
     }, []);
 
-    // Event handlers with proper reset logic
     const handleSearchChange = useCallback((value: string) => {
         setSearchTerm(value);
         if (currentPage !== 1) {
@@ -326,7 +317,7 @@ export default function BooksTable({
             e.stopPropagation();
         }
 
-        setIsSearching(true);
+        setIsLoadingBook(true);
 
         try {
             const response = await fetch(`/api/books/${book.id}`, {
@@ -372,16 +363,14 @@ export default function BooksTable({
                 variant: "destructive"
             });
         } finally {
-            setIsSearching(false);
+            setIsLoadingBook(false);
         }
     };
 
     const handleBookEdited = async (bookId: number, isDeleted = false) => {
-        // Mark cache as invalidated
         cacheInvalidatedRef.current = true;
 
         if (isDeleted) {
-            // Optimistically update the UI by removing the book
             setSearchResults(prev => ({
                 ...prev,
                 books: prev.books.filter(book => book.id !== bookId),
@@ -390,28 +379,20 @@ export default function BooksTable({
             setIsEditModalOpen(false);
             setSelectedBook(null);
 
-            // Then refresh to ensure consistency
             setTimeout(() => {
                 performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
             }, 100);
             return;
         }
 
-        // For edits, force a refresh to get the updated data
         setIsEditModalOpen(false);
         setSelectedBook(null);
-
-        // Force refresh with the current search parameters
         performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
     };
 
     const handleBookAdded = async () => {
-        // Mark cache as invalidated
         cacheInvalidatedRef.current = true;
-
         setIsAddModalOpen(false);
-
-        // Force refresh to include the new book
         performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
     };
 
@@ -452,7 +433,6 @@ export default function BooksTable({
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
-                {/* Enhanced Search and filters with loading feedback */}
                 <div className="space-y-4">
                     <div className="flex gap-2 w-full items-center">
                         <div className="relative w-[45%]">
@@ -536,7 +516,6 @@ export default function BooksTable({
                         )}
                     </div>
 
-                    {/* Selected genres tags */}
                     {selectedGenres.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {selectedGenres.map(genreId => {
@@ -561,14 +540,12 @@ export default function BooksTable({
                     )}
                 </div>
 
-                {/* Error message */}
                 {error && (
                     <div className="text-center py-4 bg-red-900/50 text-red-200 rounded-lg border border-red-800 mt-4">
                         {error}
                     </div>
                 )}
 
-                {/* Enhanced table with loading states and visual feedback */}
                 <div className="relative mt-4">
                     {isSearching && searchResults.books.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 bg-gray-800 rounded-lg">
@@ -664,7 +641,6 @@ export default function BooksTable({
                     )}
                 </div>
 
-                {/* Enhanced Pagination */}
                 {searchResults.totalPages > 1 && (
                     <div className="flex justify-center items-center gap-2 mt-6">
                         <Button
@@ -725,6 +701,14 @@ export default function BooksTable({
                     </p>
                 )}
             </CardContent>
+
+            {/* Book loading overlay */}
+            {isLoadingBook && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 gap-3">
+                    <Loader2 className="h-10 w-10 animate-spin text-white" />
+                    <span className="text-white text-sm">Chargement du livre...</span>
+                </div>
+            )}
 
             {/* Add Book Modal */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
