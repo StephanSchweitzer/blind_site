@@ -109,7 +109,7 @@ export interface AddressFormData {
 // ============================================================================
 
 // Page/section category prop (used to determine which user management page is shown)
-export type UserType = 'lecteurs' | 'auditeurs';
+export type UserType = 'lecteurs' | 'auditeurs' | 'permanents';
 
 // ============================================================================
 // Form data types for creating/editing

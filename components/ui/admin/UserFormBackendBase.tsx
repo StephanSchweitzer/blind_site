@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,33 +42,13 @@ const emptyAddress: AddressFormData = {
     isDefault: false,
 };
 
-export function UserFormBackendBase({
-                                        initialData,
-                                        onSubmit,
-                                        submitButtonText,
-                                        loadingText,
-                                        title,
-                                        onSuccess,
-                                        onDelete,
-                                        showDelete,
-                                        currentUserRole,
-                                        userType,
-                                        userId,
-                                    }: UserFormBackendBaseProps) {
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = useState(false);
-    const [isActivationDialogOpen, setIsActivationDialogOpen] = useState(false);
-    const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
-    const [deactivationReason, setDeactivationReason] = useState('');
-    const [activationReason, setActivationReason] = useState('');
-    const [isResettingPassword, setIsResettingPassword] = useState(false);
-    const { toast } = useToast();
-
-    const defaultMemberType = userType === 'auditeurs' ? 'ecouteur' : 'lecteur';
-    const defaultAccessLevel = userType === 'auditeurs' ? 'member' : 'admin';
-
-    const sanitizeInitialData = (data: UserFormData): UserFormData => ({
+// Moved outside the component so it's stable and safe to call from useEffect
+function sanitizeInitialData(
+    data: UserFormData,
+    defaultMemberType: UserFormData['memberType'],
+    defaultAccessLevel: UserFormData['accessLevel'],
+): UserFormData {
+    return {
         ...data,
         memberType: data.memberType || defaultMemberType,
         accessLevel: data.accessLevel || defaultAccessLevel,
@@ -97,33 +77,72 @@ export function UserFormBackendBase({
             stateProvince: addr.stateProvince || '',
             country: addr.country || 'France',
         })),
-    });
+    };
+}
 
-    const [formData, setFormData] = useState<UserFormData>(initialData ? sanitizeInitialData(initialData) : {
-        email: '',
-        name: '',
-        memberType: defaultMemberType,
-        accessLevel: defaultAccessLevel,
-        firstName: '',
-        lastName: '',
-        homePhone: '',
-        cellPhone: '',
-        gestconteNotes: '',
-        gestconteId: null,
-        nonProfitAffiliation: '',
-        isActive: true,
-        terminationReason: '',
-        preferredDeliveryMethod: '',
-        paymentThreshold: '21.00',
-        currentBalance: '0.00',
-        preferredDistributionMethod: '',
-        isAvailable: true,
-        availabilityNotes: '',
-        specialization: '',
-        maxConcurrentAssignments: 3,
-        notes: '',
-        addresses: [],
-    });
+export function UserFormBackendBase({
+                                        initialData,
+                                        onSubmit,
+                                        submitButtonText,
+                                        loadingText,
+                                        title,
+                                        onSuccess,
+                                        onDelete,
+                                        showDelete,
+                                        currentUserRole,
+                                        userType,
+                                        userId,
+                                    }: UserFormBackendBaseProps) {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = useState(false);
+    const [isActivationDialogOpen, setIsActivationDialogOpen] = useState(false);
+    const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
+    const [deactivationReason, setDeactivationReason] = useState('');
+    const [activationReason, setActivationReason] = useState('');
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const { toast } = useToast();
+
+    const defaultMemberType: UserFormData['memberType'] = userType === 'auditeurs' ? 'ecouteur' : 'lecteur';
+    const defaultAccessLevel: UserFormData['accessLevel'] = userType === 'auditeurs' ? 'member' : 'admin';
+
+    const [formData, setFormData] = useState<UserFormData>(
+        initialData
+            ? sanitizeInitialData(initialData, defaultMemberType, defaultAccessLevel)
+            : {
+                email: '',
+                name: '',
+                memberType: defaultMemberType,
+                accessLevel: defaultAccessLevel,
+                firstName: '',
+                lastName: '',
+                homePhone: '',
+                cellPhone: '',
+                gestconteNotes: '',
+                gestconteId: null,
+                nonProfitAffiliation: '',
+                isActive: true,
+                terminationReason: '',
+                preferredDeliveryMethod: '',
+                paymentThreshold: '21.00',
+                currentBalance: '0.00',
+                preferredDistributionMethod: '',
+                isAvailable: true,
+                availabilityNotes: '',
+                specialization: '',
+                maxConcurrentAssignments: 3,
+                notes: '',
+                addresses: [],
+            }
+    );
+
+    // Resync form state when initialData arrives (e.g. after an async fetch)
+    useEffect(() => {
+        if (initialData) {
+            setFormData(sanitizeInitialData(initialData, defaultMemberType, defaultAccessLevel));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialData]);
 
     const handleAddAddress = () => {
         setFormData(prev => ({
@@ -441,7 +460,7 @@ export function UserFormBackendBase({
                                         <SelectItem value="ecouteur" className="text-gray-200">Écouteur</SelectItem>
                                         <SelectItem value="lecteur" className="text-gray-200">Lecteur</SelectItem>
                                         <SelectItem value="informaticien" className="text-gray-200">Informaticien</SelectItem>
-                                        <SelectItem value="administration" className="text-gray-200">Administration</SelectItem>
+                                        <SelectItem value="administration" className="text-gray-200">Administrateur</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

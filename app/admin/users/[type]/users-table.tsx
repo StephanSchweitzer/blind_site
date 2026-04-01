@@ -140,6 +140,8 @@ export default function UsersTable({
                 email: userData.email || '',
                 name: userData.name || '',
                 role: userData.role || 'user',
+                memberType: userData.memberType || 'ecouteur',
+                accessLevel: userData.accessLevel || 'member',
                 firstName: userData.firstName || '',
                 lastName: userData.lastName || '',
                 homePhone: userData.homePhone || '',
