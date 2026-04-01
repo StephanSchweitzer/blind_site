@@ -37,6 +37,12 @@
       ],
       "@/admin/*": [
         "./components/ui/admin/*"
+      ],
+      "@/generated/prisma/client": [
+        "./app/generated/prisma/client"
+      ],
+      "@prisma/client": [
+        "./lib/prisma-client.ts"
       ]
     }
   },

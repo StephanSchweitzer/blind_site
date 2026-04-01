@@ -1,4 +1,5 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma } from '@/generated/prisma/client';
+import { PrismaPg } from "@prisma/adapter-pg";
 
 declare global {
     // eslint-disable-next-line no-var
@@ -8,17 +9,19 @@ declare global {
 const globalForPrisma = global as { prisma?: PrismaClient };
 
 const getLogConfig = () => {
-    if (process.env.NODE_ENV === 'development' && process.env.PRISMA_QUERY_LOG === 'true') {
-        return ['query', 'error', 'warn'] as Prisma.LogLevel[];
+    if (process.env.NODE_ENV === "development" && process.env.PRISMA_QUERY_LOG === "true") {
+        return ["query", "error", "warn"] as Prisma.LogLevel[];
     }
-    return ['error'] as Prisma.LogLevel[];
+    return ["error"] as Prisma.LogLevel[];
 };
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 
 export const prisma: PrismaClient =
     globalForPrisma.prisma ??
     new PrismaClient({
+        adapter,
         log: getLogConfig(),
-        datasourceUrl: process.env.DATABASE_URL
     });
 
 if (process.env.NODE_ENV !== "production") {

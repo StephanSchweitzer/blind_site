@@ -107,7 +107,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                 const audioData = await response.AudioStream?.transformToByteArray();
 
                 if (audioData) {
-                    const blob = new Blob([audioData], { type: 'audio/mpeg' });
+                    const blob = new Blob([new Uint8Array(audioData)], { type: 'audio/mpeg' });
                     const url = URL.createObjectURL(blob);
                     audioUrls.push(url);
                 }
