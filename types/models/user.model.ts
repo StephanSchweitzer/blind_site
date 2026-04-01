@@ -64,7 +64,9 @@ export const basicUserSelect = {
     firstName: true,
     lastName: true,
     email: true,
-    role: true,
+    role: true, // legacy
+    userType: true,
+    accessLevel: true,
 } as const satisfies Prisma.UserSelect;
 
 export const profileUserSelect = {
@@ -73,7 +75,9 @@ export const profileUserSelect = {
     name: true,
     firstName: true,
     lastName: true,
-    role: true,
+    role: true, // legacy
+    userType: true,
+    accessLevel: true,
     createdAt: true,
     homePhone: true,
     cellPhone: true,
@@ -102,7 +106,9 @@ export const fullUserSelect = {
     name: true,
     firstName: true,
     lastName: true,
-    role: true,
+    role: true, // legacy
+    userType: true,
+    accessLevel: true,
     createdAt: true,
     homePhone: true,
     cellPhone: true,

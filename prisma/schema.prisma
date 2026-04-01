@@ -23,6 +23,8 @@ model User {
   email                       String?            @unique
   password                    String?
   name                        String?
+  userType                    UserType           @default(ecouteur)
+  accessLevel                 AccessLevel        @default(member)
   role                        String             @default("user")
   createdAt                   DateTime           @default(now())
   passwordNeedsChange         Boolean            @default(true)
@@ -264,6 +266,17 @@ enum BillingStatus {
   BILLED
   PAID
   UNBILLABLE
+}
+
+enum UserType {
+  ecouteur
+  lecteur
+}
+
+enum AccessLevel {
+  member
+  admin
+  super_admin
 }
 
 enum NewsType {

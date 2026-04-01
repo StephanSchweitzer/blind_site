@@ -9,6 +9,7 @@ type CustomUser = {
     name: string | null;
     randomKey: string;
     role?: string;
+    userType?: string;
     passwordNeedsChange?: boolean;
 };
 
@@ -63,7 +64,8 @@ export const authOptions: NextAuthOptions = {
                     email: user.email,
                     name: user.name,
                     randomKey: 'Hey cool',
-                    role: user.role,
+                    role: user.accessLevel,
+                    userType: user.userType,
                     passwordNeedsChange: user.passwordNeedsChange,
                 };
             },
@@ -71,10 +73,8 @@ export const authOptions: NextAuthOptions = {
     ],
     callbacks: {
         async session({ session, token }) {
-            // Enhanced session callback
             if (session?.user?.email) {
                 try {
-                    // Get fresh user data using case-insensitive lookup
                     const freshUser = await prisma.user.findFirst({
                         where: {
                             email: {
@@ -86,26 +86,25 @@ export const authOptions: NextAuthOptions = {
                             id: true,
                             email: true,
                             name: true,
-                            role: true,
+                            accessLevel: true,
+                            userType: true,
                             passwordNeedsChange: true
                         }
                     });
 
                     if (freshUser) {
-                        // Update token with fresh data if user exists
                         token.id = String(freshUser.id);
-                        token.role = freshUser.role;
+                        token.role = freshUser.accessLevel;
+                        token.userType = freshUser.userType;
                         token.email = freshUser.email;
                         token.name = freshUser.name;
                         token.passwordNeedsChange = freshUser.passwordNeedsChange;
                     }
                 } catch (error) {
                     console.error("Error refreshing session data:", error);
-                    // Continue with existing token data if refresh fails
                 }
             }
 
-            // Return session with token data (either fresh or existing)
             return {
                 ...session,
                 user: {
@@ -113,6 +112,7 @@ export const authOptions: NextAuthOptions = {
                     id: token.id,
                     randomKey: token.randomKey,
                     role: token.role,
+                    userType: token.userType,
                     passwordNeedsChange: token.passwordNeedsChange,
                 },
             };
@@ -125,6 +125,7 @@ export const authOptions: NextAuthOptions = {
                     id: u.id,
                     randomKey: u.randomKey,
                     role: u.role,
+                    userType: u.userType,
                     passwordNeedsChange: u.passwordNeedsChange,
                 };
             }
