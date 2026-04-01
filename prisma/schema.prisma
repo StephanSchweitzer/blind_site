@@ -271,7 +271,7 @@ enum BillingStatus {
 enum UserType {
   ecouteur
   lecteur
-  permenant
+  permanant
 }
 
 enum AccessLevel {
