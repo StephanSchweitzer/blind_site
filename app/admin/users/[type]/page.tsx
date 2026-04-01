@@ -34,9 +34,9 @@ async function getUsers(
     const whereClause: Prisma.UserWhereInput = {};
 
     if (userType === 'auditeurs') {
-        whereClause.role = 'user';
+        whereClause.accessLevel = 'member';
     } else {
-        whereClause.role = {
+        whereClause.accessLevel = {
             in: ['admin', 'super_admin']
         };
     }
@@ -77,6 +77,8 @@ async function getUsers(
                     firstName: true,
                     lastName: true,
                     role: true,
+                    memberType: true,
+                    accessLevel: true,
                     isActive: true,
                     lastUpdated: true,
                 },

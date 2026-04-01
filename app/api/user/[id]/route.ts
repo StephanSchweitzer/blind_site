@@ -14,7 +14,7 @@ import {
 } from '@/types';
 import { UserWithRelationCounts } from '@/types/models/user.model';
 import { AddressCreateInput } from '@/types/api/common.api';
-import { Prisma } from '@prisma/client';
+import { Prisma, MemberType, AccessLevel } from '@prisma/client';
 
 export async function GET(
     request: NextRequest,
@@ -158,6 +158,8 @@ export async function GET(
 
 interface UserUpdateRequestBody extends UserUpdateInput {
     addresses?: Omit<AddressCreateInput, 'userId'>[];
+    memberType?: MemberType;
+    accessLevel?: AccessLevel;
 }
 
 export async function PATCH(
@@ -196,14 +198,16 @@ export async function PATCH(
             );
         }
 
-        const updateData: UserUpdateData = {};
+        const updateData: UserUpdateData & { memberType?: MemberType; accessLevel?: AccessLevel } = {};
 
         // Profile fields
         if (body.name !== undefined) updateData.name = body.name;
         if (body.firstName !== undefined) updateData.firstName = body.firstName || null;
         if (body.lastName !== undefined) updateData.lastName = body.lastName || null;
         if (body.email !== undefined) updateData.email = body.email || null;
-        if (body.role !== undefined) updateData.role = body.role;
+        if (body.role !== undefined) updateData.role = body.role; // legacy
+        if (body.memberType !== undefined) updateData.memberType = body.memberType;
+        if (body.accessLevel !== undefined) updateData.accessLevel = body.accessLevel;
         if (body.homePhone !== undefined) updateData.homePhone = body.homePhone || null;
         if (body.cellPhone !== undefined) updateData.cellPhone = body.cellPhone || null;
         if (body.gestconteNotes !== undefined) updateData.gestconteNotes = body.gestconteNotes || null;
@@ -243,7 +247,7 @@ export async function PATCH(
             });
 
             if (body.addresses.length > 0) {
-                type UpdateDataWithAddresses = UserUpdateData & {
+                type UpdateDataWithAddresses = typeof updateData & {
                     addresses?: {
                         create: Array<{
                             addressLine1: string | null;
@@ -281,6 +285,8 @@ export async function PATCH(
                 firstName: true,
                 lastName: true,
                 role: true,
+                memberType: true,
+                accessLevel: true,
                 isActive: true,
                 lastUpdated: true,
             },

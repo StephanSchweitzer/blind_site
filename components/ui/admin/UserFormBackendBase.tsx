@@ -65,14 +65,45 @@ export function UserFormBackendBase({
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const { toast } = useToast();
 
-    const defaultRole = currentUserRole === 'super_admin'
-        ? (userType === 'auditeurs' ? 'user' : 'admin')
-        : 'user';
+    const defaultMemberType = userType === 'auditeurs' ? 'ecouteur' : 'lecteur';
+    const defaultAccessLevel = userType === 'auditeurs' ? 'member' : 'admin';
 
-    const [formData, setFormData] = useState<UserFormData>(initialData || {
+    const sanitizeInitialData = (data: UserFormData): UserFormData => ({
+        ...data,
+        memberType: data.memberType || defaultMemberType,
+        accessLevel: data.accessLevel || defaultAccessLevel,
+        email: data.email || '',
+        name: data.name || '',
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        homePhone: data.homePhone || '',
+        cellPhone: data.cellPhone || '',
+        gestconteNotes: data.gestconteNotes || '',
+        nonProfitAffiliation: data.nonProfitAffiliation || '',
+        terminationReason: data.terminationReason || '',
+        preferredDeliveryMethod: data.preferredDeliveryMethod || '',
+        preferredDistributionMethod: data.preferredDistributionMethod || '',
+        paymentThreshold: data.paymentThreshold || '21.00',
+        currentBalance: data.currentBalance || '0.00',
+        availabilityNotes: data.availabilityNotes || '',
+        specialization: data.specialization || '',
+        notes: data.notes || '',
+        addresses: (data.addresses || []).map(addr => ({
+            ...addr,
+            addressLine1: addr.addressLine1 || '',
+            addressSupplement: addr.addressSupplement || '',
+            city: addr.city || '',
+            postalCode: addr.postalCode || '',
+            stateProvince: addr.stateProvince || '',
+            country: addr.country || 'France',
+        })),
+    });
+
+    const [formData, setFormData] = useState<UserFormData>(initialData ? sanitizeInitialData(initialData) : {
         email: '',
         name: '',
-        role: defaultRole,
+        memberType: defaultMemberType,
+        accessLevel: defaultAccessLevel,
         firstName: '',
         lastName: '',
         homePhone: '',
@@ -122,8 +153,8 @@ export function UserFormBackendBase({
         setIsLoading(true);
         setError(null);
 
-        if ((formData.role === 'admin' || formData.role === 'super_admin') && !formData.email) {
-            setError('L\'email est requis pour les lecteurs');
+        if (formData.accessLevel === 'admin' && !formData.email) {
+            setError('L\'email est requis pour les membres permanents');
             setIsLoading(false);
             return;
         }
@@ -311,28 +342,28 @@ export function UserFormBackendBase({
         }
     };
 
-    const isRoleLocked =
-        (initialData && initialData.role === 'super_admin' && currentUserRole !== 'super_admin') ||
+    const isAccessLevelLocked =
+        (initialData && initialData.accessLevel === 'super_admin' && currentUserRole !== 'super_admin') ||
         (currentUserRole === 'admin');
 
-    const getRoleDisplayName = (role: string): string => {
-        switch (role) {
-            case 'user':
-                return 'Auditeur';
+    const getAccessLevelDisplayName = (level: string): string => {
+        switch (level) {
+            case 'member':
+                return 'Membre';
             case 'admin':
-                return 'Lecteur';
+                return 'Permanent';
             case 'super_admin':
                 return 'Super Admin';
             default:
-                return role;
+                return level;
         }
     };
 
     const getLockedReason = (): string => {
         if (currentUserRole === 'admin') {
-            return 'Seuls les super administrateurs peuvent modifier les rôles';
+            return 'Seuls les super administrateurs peuvent modifier les niveaux d\'accès';
         }
-        if (initialData?.role === 'super_admin') {
+        if (initialData?.accessLevel === 'super_admin') {
             return 'Verrouillé';
         }
         return 'Verrouillé';
@@ -358,53 +389,24 @@ export function UserFormBackendBase({
                             Informations de base
                         </h3>
 
+                        {/* Email – full width */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-200">
+                                Email {formData.accessLevel === 'admin' && <span className="text-red-500">*</span>}
+                            </label>
+                            <Input
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                required={formData.accessLevel === 'admin'}
+                                autoFocus={false}
+                                autoComplete="off"
+                            />
+                        </div>
+
+                        {/* Prénom + Nom */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Email {(formData.role === 'admin' || formData.role === 'super_admin') && <span className="text-red-500">*</span>}
-                                </label>
-                                <Input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                    required={formData.role === 'admin' || formData.role === 'super_admin'}
-                                    autoFocus={false}
-                                    autoComplete="off"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Rôle {isRoleLocked && <span className="text-xs text-gray-400">({getLockedReason()})</span>}
-                                </label>
-                                {isRoleLocked ? (
-                                    <div className="bg-gray-800/50 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200">
-                                        {getRoleDisplayName(formData.role)}
-                                    </div>
-                                ) : (
-                                    <Select
-                                        value={formData.role}
-                                        onValueChange={(value) => setFormData({ ...formData, role: value })}
-                                    >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-gray-800 border-gray-700">
-                                            {currentUserRole === 'super_admin' ? (
-                                                <>
-                                                    <SelectItem value="user" className="text-gray-200">Auditeur</SelectItem>
-                                                    <SelectItem value="admin" className="text-gray-200">Lecteur</SelectItem>
-                                                    <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
-                                                </>
-                                            ) : (
-                                                <SelectItem value="user" className="text-gray-200">Auditeur</SelectItem>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            </div>
-
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-200">Prénom</label>
                                 <Input
@@ -421,6 +423,54 @@ export function UserFormBackendBase({
                                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                                     className="bg-gray-800 border-gray-700 text-gray-200"
                                 />
+                            </div>
+                        </div>
+
+                        {/* Type de membre + Niveau d'accès */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Type de membre</label>
+                                <Select
+                                    value={formData.memberType}
+                                    onValueChange={(value) => setFormData({ ...formData, memberType: value as UserFormData['memberType'] })}
+                                >
+                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-700">
+                                        <SelectItem value="ecouteur" className="text-gray-200">Écouteur</SelectItem>
+                                        <SelectItem value="lecteur" className="text-gray-200">Lecteur</SelectItem>
+                                        <SelectItem value="informaticien" className="text-gray-200">Informaticien</SelectItem>
+                                        <SelectItem value="administration" className="text-gray-200">Administration</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">
+                                    Niveau d&apos;accès {isAccessLevelLocked && <span className="text-xs text-gray-400">({getLockedReason()})</span>}
+                                </label>
+                                {isAccessLevelLocked ? (
+                                    <div className="bg-gray-800/50 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200">
+                                        {getAccessLevelDisplayName(formData.accessLevel)}
+                                    </div>
+                                ) : (
+                                    <Select
+                                        value={formData.accessLevel}
+                                        onValueChange={(value) => setFormData({ ...formData, accessLevel: value as UserFormData['accessLevel'] })}
+                                    >
+                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-gray-800 border-gray-700">
+                                            <SelectItem value="member" className="text-gray-200">Membre</SelectItem>
+                                            <SelectItem value="admin" className="text-gray-200">Permanent</SelectItem>
+                                            {currentUserRole === 'super_admin' && (
+                                                <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -649,7 +699,7 @@ export function UserFormBackendBase({
                                             )}
 
                                             {currentUserRole === 'super_admin' &&
-                                                (formData.role === 'admin' || formData.role === 'super_admin') &&
+                                                formData.accessLevel === 'admin' &&
                                                 formData.email && (
                                                     <Button
                                                         type="button"
@@ -677,8 +727,8 @@ export function UserFormBackendBase({
                                 )}
                             </div>
 
-                            {/* Disponible Checkbox - Only for Lecteurs (admin/super_admin) */}
-                            {(formData.role === 'admin' || formData.role === 'super_admin') && (
+                            {/* Disponible Checkbox - Only for Lecteurs */}
+                            {formData.memberType === 'lecteur' && (
                                 <>
                                     <div className="bg-gradient-to-br from-gray-800/40 to-gray-800/20 p-4 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-all">
                                         <div className="flex items-center justify-between">
@@ -793,8 +843,8 @@ export function UserFormBackendBase({
                         </div>
                     </div>
 
-                    {/* Reader-specific fields - Only for Lecteurs (admin/super_admin) */}
-                    {(formData.role === 'admin' || formData.role === 'super_admin') && (
+                    {/* Reader-specific fields - Only for Lecteurs */}
+                    {formData.memberType === 'lecteur' && (
                         <div className="space-y-4">
                             <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
                                 Paramètres de lecture

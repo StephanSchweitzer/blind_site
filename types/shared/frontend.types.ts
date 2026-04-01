@@ -108,6 +108,7 @@ export interface AddressFormData {
 // User Types
 // ============================================================================
 
+// Page/section category prop (used to determine which user management page is shown)
 export type UserType = 'lecteurs' | 'auditeurs';
 
 // ============================================================================
@@ -146,7 +147,9 @@ export interface BookFormData {
 export interface UserFormData {
     email: string;
     name: string;
-    role: string;
+    role?: string; // legacy – kept during role refactor, derived from accessLevel on submit
+    memberType: 'ecouteur' | 'lecteur' | 'informaticien' | 'administration'; // MemberType enum
+    accessLevel: 'member' | 'admin' | 'super_admin';
     firstName: string;
     lastName: string;
     homePhone: string;

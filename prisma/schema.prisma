@@ -23,7 +23,7 @@ model User {
   email                       String?            @unique
   password                    String?
   name                        String?
-  userType                    UserType           @default(ecouteur)
+  memberType                  MemberType         @default(ecouteur) // column renamed
   accessLevel                 AccessLevel        @default(member)
   role                        String             @default("user")
   createdAt                   DateTime           @default(now())
@@ -268,10 +268,11 @@ enum BillingStatus {
   UNBILLABLE
 }
 
-enum UserType {
+enum MemberType {
   ecouteur
   lecteur
-  permanent
+  informaticien
+  administration
 }
 
 enum AccessLevel {

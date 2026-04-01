@@ -9,7 +9,7 @@ type CustomUser = {
     name: string | null;
     randomKey: string;
     role?: string;
-    userType?: string;
+    memberType?: string;
     passwordNeedsChange?: boolean;
 };
 
@@ -65,7 +65,7 @@ export const authOptions: NextAuthOptions = {
                     name: user.name,
                     randomKey: 'Hey cool',
                     role: user.accessLevel,
-                    userType: user.userType,
+                    memberType: user.memberType,
                     passwordNeedsChange: user.passwordNeedsChange,
                 };
             },
@@ -87,7 +87,7 @@ export const authOptions: NextAuthOptions = {
                             email: true,
                             name: true,
                             accessLevel: true,
-                            userType: true,
+                            memberType: true,
                             passwordNeedsChange: true
                         }
                     });
@@ -95,7 +95,7 @@ export const authOptions: NextAuthOptions = {
                     if (freshUser) {
                         token.id = String(freshUser.id);
                         token.role = freshUser.accessLevel;
-                        token.userType = freshUser.userType;
+                        token.memberType = freshUser.memberType;
                         token.email = freshUser.email;
                         token.name = freshUser.name;
                         token.passwordNeedsChange = freshUser.passwordNeedsChange;
@@ -112,7 +112,7 @@ export const authOptions: NextAuthOptions = {
                     id: token.id,
                     randomKey: token.randomKey,
                     role: token.role,
-                    userType: token.userType,
+                    memberType: token.memberType,
                     passwordNeedsChange: token.passwordNeedsChange,
                 },
             };
@@ -125,7 +125,7 @@ export const authOptions: NextAuthOptions = {
                     id: u.id,
                     randomKey: u.randomKey,
                     role: u.role,
-                    userType: u.userType,
+                    memberType: u.memberType,
                     passwordNeedsChange: u.passwordNeedsChange,
                 };
             }

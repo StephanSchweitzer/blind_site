@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { UserCreateInput } from '@/types/api/user.api';
 import { AddressCreateInput } from '@/types/api/common.api';
+import { MemberType, AccessLevel } from '@prisma/client';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -29,6 +30,8 @@ export async function GET() {
                 firstName: true,
                 lastName: true,
                 role: true,
+                memberType: true,
+                accessLevel: true,
                 isActive: true,
                 lastUpdated: true,
             },
@@ -46,6 +49,8 @@ export async function GET() {
 
 interface UserCreateRequestBody extends Omit<UserCreateInput, 'password'> {
     addresses?: Omit<AddressCreateInput, 'userId'>[];
+    memberType?: MemberType;
+    accessLevel?: AccessLevel;
 }
 
 export async function POST(request: Request) {
@@ -62,16 +67,16 @@ export async function POST(request: Request) {
 
         const body = await request.json() as UserCreateRequestBody;
 
-        // Only super_admin can create admin, lecteur (admin), or super_admin roles
-        if ((body.role === 'admin' || body.role === 'super_admin') && session.user.role !== 'super_admin') {
+        // Only super_admin can create admin or super_admin access levels
+        if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && session.user.role !== 'super_admin') {
             return NextResponse.json({
-                message: 'Seuls les super administrateurs peuvent créer des lecteurs ou des administrateurs'
+                message: 'Seuls les super administrateurs peuvent créer des membres permanents ou des administrateurs'
             }, { status: 403 });
         }
 
-        // Email is required for admin and super_admin roles
-        if ((body.role === 'admin' || body.role === 'super_admin') && !body.email) {
-            return NextResponse.json({ message: 'L\'email est requis pour les lecteurs' }, { status: 400 });
+        // Email is required for admin and super_admin access levels
+        if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && !body.email) {
+            return NextResponse.json({ message: 'L\'email est requis pour les membres permanents' }, { status: 400 });
         }
 
         // Check for existing email only if email is provided
@@ -85,14 +90,20 @@ export async function POST(request: Request) {
             }
         }
 
-        // Create password only for admin and super_admin roles
+        // Create password only for admin and super_admin access levels
         let hashedPassword: string | null = null;
         let passwordNeedsChange = false;
 
-        if (body.role === 'admin' || body.role === 'super_admin') {
+        if (body.accessLevel === 'admin' || body.accessLevel === 'super_admin') {
             hashedPassword = await bcrypt.hash('temporaryPassword123', 10);
             passwordNeedsChange = true;
         }
+
+        // Derive legacy role from accessLevel for backward compatibility
+        const derivedRole =
+            body.accessLevel === 'super_admin' ? 'super_admin' :
+                body.accessLevel === 'admin' ? 'admin' :
+                    'user';
 
         const newUser = await prisma.user.create({
             data: {
@@ -100,7 +111,9 @@ export async function POST(request: Request) {
                 password: hashedPassword,
                 passwordNeedsChange: passwordNeedsChange,
                 name: body.name || '',
-                role: body.role || 'user',
+                role: derivedRole, // legacy – kept for backward compatibility
+                memberType: body.memberType ?? MemberType.ecouteur,
+                accessLevel: body.accessLevel ?? AccessLevel.member,
                 firstName: body.firstName || null,
                 lastName: body.lastName || null,
                 homePhone: body.homePhone || null,
@@ -137,6 +150,8 @@ export async function POST(request: Request) {
                 firstName: true,
                 lastName: true,
                 role: true,
+                memberType: true,
+                accessLevel: true,
                 isActive: true,
             },
         });
