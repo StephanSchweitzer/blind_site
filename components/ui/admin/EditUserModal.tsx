@@ -15,7 +15,7 @@ interface EditUserModalProps {
     initialData: UserFormData;
     onUserEdited?: (userId: number) => void;
     onUserDeleted?: (userId: number) => void;
-    currentUserRole?: string;
+    currentUserAccessLevel?: string;
     userType: UserType;
 }
 
@@ -26,7 +26,7 @@ export function EditUserModal({
                                   initialData,
                                   onUserEdited,
                                   onUserDeleted,
-                                  currentUserRole,
+                                  currentUserAccessLevel,
                                   userType,
                               }: EditUserModalProps) {
     const handleSuccess = (userId: number, isDeleted?: boolean) => {
@@ -56,7 +56,7 @@ export function EditUserModal({
                         userId={userId}
                         initialData={initialData}
                         onSuccess={handleSuccess}
-                        currentUserRole={currentUserRole}
+                        currentUserAccessLevel={currentUserAccessLevel}
                         userType={userType}
                     />
                 </div>

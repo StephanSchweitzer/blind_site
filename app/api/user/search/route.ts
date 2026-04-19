@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { MemberType, AccessLevel } from '@prisma/client';
+
 
 export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
         });
     }
 
-    if (session?.user.role !== 'admin' && session?.user.role !== 'super_admin') {
+    if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
         return new NextResponse(JSON.stringify({ error: "insufficient authorization" }), {
             status: 403,
         });
@@ -22,7 +24,8 @@ export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const query = searchParams.get('q') || '';
-        const role = searchParams.get('role');
+        const memberType = searchParams.get('memberType');
+        const accessLevel = searchParams.get('accessLevel');
 
         if (query.length < 2) {
             return NextResponse.json([]);
@@ -30,29 +33,18 @@ export async function GET(request: NextRequest) {
 
         const whereClause: Prisma.UserWhereInput = {
             OR: [
-                {
-                    firstName: {
-                        contains: query,
-                        mode: Prisma.QueryMode.insensitive,
-                    },
-                },
-                {
-                    lastName: {
-                        contains: query,
-                        mode: Prisma.QueryMode.insensitive,
-                    },
-                },
-                {
-                    email: {
-                        contains: query,
-                        mode: Prisma.QueryMode.insensitive,
-                    },
-                },
+                { firstName: { contains: query, mode: Prisma.QueryMode.insensitive } },
+                { lastName:  { contains: query, mode: Prisma.QueryMode.insensitive } },
+                { email:     { contains: query, mode: Prisma.QueryMode.insensitive } },
             ],
         };
 
-        if (role) {
-            whereClause.role = role;
+        if (memberType) {
+            whereClause.memberType = memberType as MemberType;
+        }
+
+        if (accessLevel) {
+            whereClause.accessLevel = accessLevel as AccessLevel;
         }
 
         const users = await prisma.user.findMany({
@@ -62,19 +54,14 @@ export async function GET(request: NextRequest) {
                 email: true,
                 firstName: true,
                 lastName: true,
-                role: true,
+                memberType: true,
+                accessLevel: true,
             },
             take: 20,
             orderBy: [
-                {
-                    firstName: 'asc',
-                },
-                {
-                    lastName: 'asc',
-                },
-                {
-                    email: 'asc',
-                },
+                { firstName: 'asc' },
+                { lastName: 'asc' },
+                { email: 'asc' },
             ],
         });
 

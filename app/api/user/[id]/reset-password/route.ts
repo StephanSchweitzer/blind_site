@@ -35,7 +35,7 @@ export async function POST(
             where: { email: session.user?.email as string },
         });
 
-        if (!currentUser || currentUser.role !== 'super_admin') {
+        if (!currentUser || currentUser.accessLevel !== 'super_admin') {
             console.log(`Authorization failed: User ${session.user?.email} is not a super_admin`);
             return NextResponse.json(
                 { message: 'Permission refusée. Seuls les super administrateurs peuvent réinitialiser les mots de passe.' },
@@ -57,8 +57,8 @@ export async function POST(
         }
 
         // Check that the target user is an admin or super_admin (has email and password)
-        if (targetUser.role !== 'admin' && targetUser.role !== 'super_admin') {
-            console.log(`Cannot reset password for user role: ${targetUser.role}`);
+        if (targetUser.accessLevel !== 'admin' && targetUser.accessLevel !== 'super_admin') {
+            console.log(`Cannot reset password for user accessLevel: ${targetUser.accessLevel}`);
             return NextResponse.json(
                 { message: 'La réinitialisation de mot de passe est uniquement disponible pour les lecteurs et administrateurs' },
                 { status: 400 }
@@ -121,7 +121,7 @@ export async function POST(
             // Password was changed but email failed
             return NextResponse.json(
                 { message: 'Le mot de passe a été réinitialisé mais l\'envoi de l\'email a échoué. Veuillez contacter l\'utilisateur directement.' },
-                { status: 207 } // Multi-Status
+                { status: 207 }
             );
         }
 

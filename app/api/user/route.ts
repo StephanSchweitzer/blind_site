@@ -16,7 +16,7 @@ export async function GET() {
         });
     }
 
-    if (session?.user.role !== 'admin' && session?.user.role !== 'super_admin') {
+    if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
         return new NextResponse(JSON.stringify({ error: "insufficient authorization" }), {
             status: 403,
         });
@@ -29,7 +29,6 @@ export async function GET() {
                 email: true,
                 firstName: true,
                 lastName: true,
-                role: true,
                 memberType: true,
                 accessLevel: true,
                 isActive: true,
@@ -61,14 +60,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Non autorisé' }, { status: 401 });
         }
 
-        if (session?.user.role !== 'admin' && session?.user.role !== 'super_admin') {
+        if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
 
         const body = await request.json() as UserCreateRequestBody;
 
         // Only super_admin can create admin or super_admin access levels
-        if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && session.user.role !== 'super_admin') {
+        if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && session.user.accessLevel !== 'super_admin') {
             return NextResponse.json({
                 message: 'Seuls les super administrateurs peuvent créer des membres permanents ou des administrateurs'
             }, { status: 403 });
@@ -112,7 +111,7 @@ export async function POST(request: Request) {
                 passwordNeedsChange: passwordNeedsChange,
                 name: body.name || '',
                 role: derivedRole, // legacy – kept for backward compatibility
-                memberType: body.memberType ?? MemberType.ecouteur,
+                memberType: body.memberType ?? MemberType.auditeur,
                 accessLevel: body.accessLevel ?? AccessLevel.member,
                 firstName: body.firstName || null,
                 lastName: body.lastName || null,
@@ -149,7 +148,6 @@ export async function POST(request: Request) {
                 name: true,
                 firstName: true,
                 lastName: true,
-                role: true,
                 memberType: true,
                 accessLevel: true,
                 isActive: true,

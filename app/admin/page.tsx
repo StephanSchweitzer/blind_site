@@ -13,30 +13,21 @@ export default async function Dashboard() {
         coupsDeCoeurCount,
         lecteursCount,
         auditeursCount,
+        permanentsCount,
         assignmentCount,
         orderCount,
         billCount,
-
     ] = await Promise.all([
         prisma.book.count(),
         prisma.news.count(),
         prisma.genre.count(),
         prisma.coupsDeCoeur.count(),
-        prisma.user.count({
-            where: {
-                role: {
-                    in: ['admin', 'super_admin']
-                }
-            }
-        }),
-        prisma.user.count({
-            where: {
-                role: 'user'
-            }
-        }),
+        prisma.user.count({ where: { memberType: 'lecteur' } }),
+        prisma.user.count({ where: { memberType: 'auditeur' } }),
+        prisma.user.count({ where: { accessLevel: { in: ['admin', 'super_admin'] } } }),
         prisma.assignment.count(),
         prisma.orders.count(),
-        prisma.bill.count()
+        prisma.bill.count(),
     ]);
 
     return (
@@ -52,7 +43,6 @@ export default async function Dashboard() {
                         buttonText="Gestion du catalogue"
                         accentColor="blue"
                     />
-
                     <AdminDashboardCard
                         title="Genres"
                         count={genreCount}
@@ -60,7 +50,6 @@ export default async function Dashboard() {
                         buttonText="Gestion des genres possibles associés aux livres"
                         accentColor="purple"
                     />
-
                     <AdminDashboardCard
                         title="Listes de livres"
                         count={coupsDeCoeurCount}
@@ -68,7 +57,6 @@ export default async function Dashboard() {
                         buttonText="Gestion des listes de livres (anciennement appelés « coups de cœur »)"
                         accentColor="pink"
                     />
-
                     <AdminDashboardCard
                         title="Dernières infos"
                         count={newsCount}
@@ -90,7 +78,6 @@ export default async function Dashboard() {
                         buttonText="Gestion des demandes d'enregistrements audio"
                         accentColor="yellow"
                     />
-
                     <AdminDashboardCard
                         title="Affectations"
                         count={assignmentCount}
@@ -98,7 +85,6 @@ export default async function Dashboard() {
                         buttonText="Gestion des affectations confiées aux lecteurs"
                         accentColor="cyan"
                     />
-
                     <AdminDashboardCard
                         title="Factures"
                         count={billCount}
@@ -106,7 +92,13 @@ export default async function Dashboard() {
                         buttonText="Gestion des factures"
                         accentColor="orange"
                     />
-
+                    <AdminDashboardCard
+                        title="Auditeurs"
+                        count={auditeursCount}
+                        href="/admin/users/auditeurs"
+                        buttonText="Gestion des auditeurs"
+                        accentColor="teal"
+                    />
                     <AdminDashboardCard
                         title="Lecteurs"
                         count={lecteursCount}
@@ -114,13 +106,12 @@ export default async function Dashboard() {
                         buttonText="Gestion des lecteurs"
                         accentColor="indigo"
                     />
-
                     <AdminDashboardCard
-                        title="Auditeurs"
-                        count={auditeursCount}
-                        href="/admin/users/auditeurs"
-                        buttonText="Gestion des auditeurs"
-                        accentColor="teal"
+                        title="Permanents"
+                        count={permanentsCount}
+                        href="/admin/users/permanents"
+                        buttonText="Gestion des membres permanents"
+                        accentColor="red"
                     />
                 </div>
             </div>

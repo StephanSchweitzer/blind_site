@@ -14,7 +14,8 @@ import {
 interface InvitationEmailProps {
     name: string;
     email: string;
-    role: string;
+    accessLevel: string;
+    memberType?: string;
     temporaryPassword: string;
     appName?: string;
     loginUrl?: string;
@@ -23,7 +24,8 @@ interface InvitationEmailProps {
 export const InvitationEmail = ({
                                     name = '',
                                     email,
-                                    role,
+                                    accessLevel,
+                                    memberType,
                                     temporaryPassword,
                                     appName = 'ECA-Aveugles',
                                     loginUrl = 'https://eca-aveugles.fr/admin'
@@ -41,12 +43,14 @@ export const InvitationEmail = ({
                     <Text style={text}>Bonjour {displayName},</Text>
 
                     <Text style={text}>
-                        Vous avez été invité(e) à rejoindre {appName} en tant que {role}. Un compte a été créé pour vous avec les détails suivants :
+                        Vous avez été invité(e) à rejoindre {appName} en tant que {accessLevel}.
+                        {memberType && ` Type de membre : ${memberType}.`} Un compte a été créé pour vous avec les détails suivants :
                     </Text>
 
                     <Section style={detailsSection}>
                         <Text style={detailsItem}><strong>Email :</strong> {email}</Text>
-                        <Text style={detailsItem}><strong>Rôle :</strong> {role}</Text>
+                        <Text style={detailsItem}><strong>Niveau d&apos;accès :</strong> {accessLevel}</Text>
+                        {memberType && <Text style={detailsItem}><strong>Type de membre :</strong> {memberType}</Text>}
                         <Text style={detailsItem}><strong>Mot de passe temporaire :</strong> {temporaryPassword}</Text>
                     </Section>
 
@@ -65,7 +69,6 @@ export const InvitationEmail = ({
     );
 };
 
-// Styles
 const main = {
     backgroundColor: '#f6f9fc',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',

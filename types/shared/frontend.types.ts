@@ -3,6 +3,10 @@
 // These are commonly used across React components and pages
 // ============================================================================
 
+import type { MemberType, AccessLevel, UserType } from '@/lib/user-enums';
+
+export type { MemberType, AccessLevel, UserType };
+
 // Simple user representation used in dropdowns, lists, etc.
 export interface SimpleUser {
     id: number;
@@ -105,13 +109,6 @@ export interface AddressFormData {
 }
 
 // ============================================================================
-// User Types
-// ============================================================================
-
-// Page/section category prop (used to determine which user management page is shown)
-export type UserType = 'lecteurs' | 'auditeurs' | 'permanents';
-
-// ============================================================================
 // Form data types for creating/editing
 // ============================================================================
 
@@ -147,9 +144,9 @@ export interface BookFormData {
 export interface UserFormData {
     email: string;
     name: string;
-    role?: string; // legacy – kept during role refactor, derived from accessLevel on submit
-    memberType: 'ecouteur' | 'lecteur' | 'informaticien' | 'administration'; // MemberType enum
-    accessLevel: 'member' | 'admin' | 'super_admin';
+    role?: string; // legacy – remove once role column is dropped
+    memberType: MemberType;
+    accessLevel: AccessLevel;
     firstName: string;
     lastName: string;
     homePhone: string;

@@ -22,7 +22,7 @@ model User {
   email                       String?            @unique
   password                    String?
   name                        String?
-  memberType                  MemberType         @default(ecouteur) // column renamed
+  memberType                  MemberType         @default(auditeur)
   accessLevel                 AccessLevel        @default(member)
   role                        String             @default("user")
   createdAt                   DateTime           @default(now())
@@ -268,7 +268,8 @@ enum BillingStatus {
 }
 
 enum MemberType {
-  ecouteur
+  ecouteur // deprecated – remove once all records migrated
+  auditeur
   lecteur
   informaticien
   administration

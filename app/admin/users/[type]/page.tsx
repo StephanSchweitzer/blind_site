@@ -17,50 +17,33 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+type UserType = 'auditeurs' | 'lecteurs' | 'permanents';
+
 export function generateStaticParams() {
     return [
+        { type: 'auditeurs' },
         { type: 'lecteurs' },
-        { type: 'auditeurs' }
+        { type: 'permanents' },
     ];
 }
 
 async function getUsers(
     page: number,
     searchTerm: string,
-    userType: 'lecteurs' | 'auditeurs'
+    userType: UserType
 ) {
     const usersPerPage = 10;
 
-    const whereClause: Prisma.UserWhereInput = {};
-
-    if (userType === 'auditeurs') {
-        whereClause.accessLevel = 'member';
-    } else {
-        whereClause.accessLevel = {
-            in: ['admin', 'super_admin']
-        };
-    }
+    const whereClause: Prisma.UserWhereInput =
+        userType === 'auditeurs'  ? { memberType: 'auditeur' } :
+            userType === 'lecteurs'   ? { memberType: 'lecteur' } :
+                { accessLevel: { in: ['admin', 'super_admin'] } };
 
     if (searchTerm) {
         whereClause.OR = [
-            {
-                firstName: {
-                    contains: searchTerm,
-                    mode: Prisma.QueryMode.insensitive,
-                },
-            },
-            {
-                lastName: {
-                    contains: searchTerm,
-                    mode: Prisma.QueryMode.insensitive,
-                },
-            },
-            {
-                email: {
-                    contains: searchTerm,
-                    mode: Prisma.QueryMode.insensitive,
-                },
-            },
+            { firstName: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
+            { lastName:  { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
+            { email:     { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
         ];
     }
 
@@ -108,14 +91,14 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
         redirect('/login');
     }
 
-    if (session?.user.role !== 'admin' && session?.user.role !== 'super_admin') {
+    if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
         redirect('/');
     }
 
     const resolvedParams = await params;
     const userType = resolvedParams.type;
 
-    if (userType !== 'lecteurs' && userType !== 'auditeurs') {
+    if (userType !== 'auditeurs' && userType !== 'lecteurs' && userType !== 'permanents') {
         notFound();
     }
 
@@ -133,7 +116,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
         const { users, totalUsers, totalPages, activeCount, inactiveCount } = await getUsers(
             page,
             searchTerm,
-            userType
+            userType as UserType
         );
 
         const serializedUsers = users.map(user => ({
@@ -146,7 +129,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                 <UserTypeTabs currentType={userType} />
 
                 <UsersTable
-                    type={userType}
+                    type={userType as UserType}
                     initialUsers={serializedUsers}
                     initialPage={page}
                     initialSearch={searchTerm}
@@ -154,7 +137,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                     initialTotalUsers={totalUsers}
                     activeCount={activeCount}
                     inactiveCount={inactiveCount}
-                    currentUserRole={session.user.role}
+                    currentUserAccessLevel={session.user.accessLevel}
                 />
             </div>
         );

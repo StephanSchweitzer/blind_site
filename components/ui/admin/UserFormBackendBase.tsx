@@ -17,6 +17,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { AddressFormData, UserFormData, UserType } from '@/types';
+import { getAccessLevelLabel } from '@/lib/user-enums';
 
 interface UserFormBackendBaseProps {
     initialData?: UserFormData;
@@ -27,7 +28,7 @@ interface UserFormBackendBaseProps {
     onSuccess?: (userId: number, isDeleted?: boolean) => void;
     onDelete?: () => Promise<void>;
     showDelete?: boolean;
-    currentUserRole?: string;
+    currentUserAccessLevel?: string;
     userType: UserType;
     userId?: string;
 }
@@ -89,7 +90,7 @@ export function UserFormBackendBase({
                                         onSuccess,
                                         onDelete,
                                         showDelete,
-                                        currentUserRole,
+                                        currentUserAccessLevel,
                                         userType,
                                         userId,
                                     }: UserFormBackendBaseProps) {
@@ -362,24 +363,11 @@ export function UserFormBackendBase({
     };
 
     const isAccessLevelLocked =
-        (initialData && initialData.accessLevel === 'super_admin' && currentUserRole !== 'super_admin') ||
-        (currentUserRole === 'admin');
-
-    const getAccessLevelDisplayName = (level: string): string => {
-        switch (level) {
-            case 'member':
-                return 'Membre';
-            case 'admin':
-                return 'Permanent';
-            case 'super_admin':
-                return 'Super Admin';
-            default:
-                return level;
-        }
-    };
+        (initialData && initialData.accessLevel === 'super_admin' && currentUserAccessLevel !== 'super_admin') ||
+        (currentUserAccessLevel === 'admin');
 
     const getLockedReason = (): string => {
-        if (currentUserRole === 'admin') {
+        if (currentUserAccessLevel === 'admin') {
             return 'Seuls les super administrateurs peuvent modifier les niveaux d\'accès';
         }
         if (initialData?.accessLevel === 'super_admin') {
@@ -471,7 +459,7 @@ export function UserFormBackendBase({
                                 </label>
                                 {isAccessLevelLocked ? (
                                     <div className="bg-gray-800/50 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200">
-                                        {getAccessLevelDisplayName(formData.accessLevel)}
+                                        {getAccessLevelLabel(formData.accessLevel)}
                                     </div>
                                 ) : (
                                     <Select
@@ -484,7 +472,7 @@ export function UserFormBackendBase({
                                         <SelectContent className="bg-gray-800 border-gray-700">
                                             <SelectItem value="member" className="text-gray-200">Membre</SelectItem>
                                             <SelectItem value="admin" className="text-gray-200">Permanent</SelectItem>
-                                            {currentUserRole === 'super_admin' && (
+                                            {currentUserAccessLevel === 'super_admin' && (
                                                 <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
                                             )}
                                         </SelectContent>
@@ -494,7 +482,6 @@ export function UserFormBackendBase({
                         </div>
                     </div>
 
-                    {/* Contact Information */}
                     <div className="space-y-4">
                         <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
                             Coordonnées
@@ -717,7 +704,7 @@ export function UserFormBackendBase({
                                                 </Button>
                                             )}
 
-                                            {currentUserRole === 'super_admin' &&
+                                            {currentUserAccessLevel === 'super_admin' &&
                                                 formData.accessLevel === 'admin' &&
                                                 formData.email && (
                                                     <Button
@@ -1077,11 +1064,11 @@ export function UserFormBackendBase({
 export function AddUserFormBackend({
                                        onSuccess,
                                        userType,
-                                       currentUserRole,
+                                       currentUserAccessLevel,
                                    }: {
     onSuccess?: (userId: number) => void;
     userType: UserType;
-    currentUserRole?: string;
+    currentUserAccessLevel?: string;
 }) {
     const { toast } = useToast();
 
@@ -1125,7 +1112,7 @@ export function AddUserFormBackend({
             title="Créer un nouvel membre"
             onSuccess={onSuccess}
             userType={userType}
-            currentUserRole={currentUserRole}
+            currentUserAccessLevel={currentUserAccessLevel}
         />
     );
 }
@@ -1134,13 +1121,13 @@ export function EditUserFormBackend({
                                         userId,
                                         initialData,
                                         onSuccess,
-                                        currentUserRole,
+                                        currentUserAccessLevel,
                                         userType,
                                     }: {
     userId: string;
     initialData: UserFormData;
     onSuccess?: (userId: number, isDeleted?: boolean) => void;
-    currentUserRole?: string;
+    currentUserAccessLevel?: string;
     userType: UserType;
 }) {
     const { toast } = useToast();
@@ -1211,7 +1198,7 @@ export function EditUserFormBackend({
             loadingText="Mise à jour en cours..."
             title="Modifier l'individuel"
             onSuccess={onSuccess}
-            currentUserRole={currentUserRole}
+            currentUserAccessLevel={currentUserAccessLevel}
             userType={userType}
             userId={userId}
         />

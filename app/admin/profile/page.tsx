@@ -25,7 +25,8 @@ type UserData = {
     id: number;
     email: string;
     name: string | null;
-    role: string;
+    accessLevel: string;
+    memberType: string;
     createdAt: string;
     _count: {
         books: number;
@@ -53,7 +54,8 @@ export default function ProfilePage() {
     const [inviteFormData, setInviteFormData] = useState({
         email: '',
         name: '',
-        role: 'user',
+        accessLevel: 'user',
+        memberType: 'auditeur',
     });
     const [isInviting, setIsInviting] = useState(false);
 
@@ -187,7 +189,8 @@ export default function ProfilePage() {
             setInviteFormData({
                 email: '',
                 name: '',
-                role: 'user',
+                accessLevel: 'user',
+                memberType: 'auditeur',
             });
 
             // Afficher un message de succès
@@ -242,7 +245,9 @@ export default function ProfilePage() {
                                     Membre depuis {userData?.createdAt && new Date(userData.createdAt).toLocaleDateString('fr-FR')}
                                 </p>
                                 <p className="text-gray-400">
-                                    Rôle: <span className="text-blue-400">{userData?.role === 'user' ? 'Utilisateur' : userData?.role}</span>
+                                    Accès: <span className="text-blue-400">{userData?.accessLevel}</span>
+                                    {' · '}
+                                    Type: <span className="text-blue-400">{userData?.memberType}</span>
                                 </p>
                             </div>
                         </div>
@@ -414,13 +419,21 @@ export default function ProfilePage() {
                                             <p className="text-sm font-medium text-gray-400 mb-1">Identifiant</p>
                                             <p className="font-medium text-gray-200">#{userData?.id}</p>
                                         </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-400 mb-1">Niveau d&apos;accès</p>
+                                            <p className="font-medium text-gray-200">{userData?.accessLevel}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-400 mb-1">Type de membre</p>
+                                            <p className="font-medium text-gray-200">{userData?.memberType}</p>
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </CardContent>
 
                         {/* Section admin visible uniquement pour les super_admin */}
-                        {userData?.role === 'super_admin' && (
+                        {userData?.accessLevel === 'super_admin' && (
                             <CardFooter className="border-t border-gray-700 pt-6">
                                 <div className="w-full">
                                     <CardTitle className="text-gray-100 mb-4">Options d&apos;administration</CardTitle>
@@ -477,19 +490,34 @@ export default function ProfilePage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="invite-role" className="text-gray-300">
-                                    Rôle
+                                <Label htmlFor="invite-access-level" className="text-gray-300">
+                                    Niveau d&apos;accès
                                 </Label>
                                 <select
-                                    id="invite-role"
-                                    name="role"
-                                    value={inviteFormData.role}
+                                    id="invite-access-level"
+                                    name="accessLevel"
+                                    value={inviteFormData.accessLevel}
                                     onChange={handleInviteChange}
                                     className="w-full rounded-md bg-gray-700 border-gray-600 text-gray-200 p-2"
                                 >
                                     <option value="user">Utilisateur</option>
                                     <option value="admin">Administrateur</option>
                                     <option value="super_admin">Super Administrateur</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="invite-member-type" className="text-gray-300">
+                                    Type de membre
+                                </Label>
+                                <select
+                                    id="invite-member-type"
+                                    name="memberType"
+                                    value={inviteFormData.memberType}
+                                    onChange={handleInviteChange}
+                                    className="w-full rounded-md bg-gray-700 border-gray-600 text-gray-200 p-2"
+                                >
+                                    <option value="auditeur">Auditeur</option>
+                                    <option value="lecteur">Lecteur</option>
                                 </select>
                             </div>
                         </div>

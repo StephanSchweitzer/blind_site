@@ -25,6 +25,8 @@ export async function GET() {
                 email: true,
                 name: true,
                 role: true,
+                accessLevel: true,
+                memberType: true,
                 createdAt: true,
                 _count: {
                     select: {

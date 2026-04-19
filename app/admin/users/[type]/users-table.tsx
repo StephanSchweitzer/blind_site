@@ -22,17 +22,25 @@ import {
 } from '@/components/ui/dialog';
 import { AddUserFormBackend } from '@/admin/UserFormBackendBase';
 import { EditUserModal } from '@/admin/EditUserModal';
-import { UserFormData } from '@/types';
+import { UserFormData, UserType } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import {
+    getMemberTypeLabel,
+    getMemberTypeColor,
+    getAccessLevelLabel,
+    getAccessLevelColor,
+    USER_TYPE_META,
+} from '@/lib/user-enums';
 
 interface UsersTableProps {
-    type: 'lecteurs' | 'auditeurs';
+    type: UserType;
     initialUsers: Array<{
         id: number;
         email: string | null;
         firstName: string | null;
         lastName: string | null;
-        role: string;
+        memberType: string;
+        accessLevel: string;
         isActive: boolean | null;
         lastUpdated: string | null;
     }>;
@@ -42,7 +50,7 @@ interface UsersTableProps {
     initialTotalUsers: number;
     activeCount: number;
     inactiveCount: number;
-    currentUserRole?: string;
+    currentUserAccessLevel?: string;
 }
 
 export default function UsersTable({
@@ -54,7 +62,7 @@ export default function UsersTable({
                                        initialTotalUsers,
                                        activeCount,
                                        inactiveCount,
-                                       currentUserRole,
+                                       currentUserAccessLevel,
                                    }: UsersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -71,10 +79,10 @@ export default function UsersTable({
     } | null>(null);
 
     const currentPage = initialPage;
+    const { plural, singular } = USER_TYPE_META[type];
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
-
         Object.entries(updates).forEach(([key, value]) => {
             if (value) {
                 params.set(key, value);
@@ -82,7 +90,6 @@ export default function UsersTable({
                 params.delete(key);
             }
         });
-
         startTransition(() => {
             router.push(`?${params.toString()}`);
         });
@@ -122,25 +129,17 @@ export default function UsersTable({
 
     const handleRowClick = async (user: typeof initialUsers[0]) => {
         setIsLoadingUser(true);
-
         try {
             const response = await fetch(`/api/user/${user.id}?mode=full&include=addresses`);
-
-            if (!response.ok) {
-                throw new Error('Échec du chargement des données');
-            }
+            if (!response.ok) throw new Error('Échec du chargement des données');
 
             const userData = await response.json();
-
-            if (!userData) {
-                throw new Error('Données incomplètes reçues');
-            }
+            if (!userData) throw new Error('Données incomplètes reçues');
 
             const formData: UserFormData = {
                 email: userData.email || '',
                 name: userData.name || '',
-                role: userData.role || 'user',
-                memberType: userData.memberType || 'ecouteur',
+                memberType: userData.memberType || 'auditeur',
                 accessLevel: userData.accessLevel || 'member',
                 firstName: userData.firstName || '',
                 lastName: userData.lastName || '',
@@ -163,11 +162,7 @@ export default function UsersTable({
                 addresses: userData.addresses || [],
             };
 
-            setSelectedUser({
-                id: user.id.toString(),
-                data: formData,
-            });
-
+            setSelectedUser({ id: user.id.toString(), data: formData });
             setIsEditModalOpen(true);
         } catch (error) {
             console.error('Error loading user:', error);
@@ -183,71 +178,34 @@ export default function UsersTable({
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return 'Non disponible';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', {
+        return new Date(dateString).toLocaleDateString('fr-FR', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
         });
     };
 
-    const getRoleColor = (role: string) => {
-        switch (role) {
-            case 'user':
-                return 'bg-blue-100 text-blue-800';
-            case 'admin':
-                return 'bg-purple-100 text-purple-800';
-            case 'super_admin':
-                return 'bg-red-100 text-red-800';
-            default:
-                return 'bg-gray-100 text-gray-800';
-        }
-    };
-
-    const getRoleDisplayName = (role: string): string => {
-        switch (role) {
-            case 'user':
-                return 'Auditeur';
-            case 'admin':
-                return 'Lecteur';
-            case 'super_admin':
-                return 'Super Admin';
-            default:
-                return role;
-        }
-    };
-
     const visiblePages = (() => {
         const pages: (number | string)[] = [];
-
         if (totalPages <= 7) {
-            for (let i = 1; i <= totalPages; i++) {
-                pages.push(i);
-            }
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
         } else {
             if (currentPage <= 4) {
-                for (let i = 1; i <= 5; i++) {
-                    pages.push(i);
-                }
+                for (let i = 1; i <= 5; i++) pages.push(i);
                 pages.push('...');
                 pages.push(totalPages);
             } else if (currentPage >= totalPages - 3) {
                 pages.push(1);
                 pages.push('...');
-                for (let i = totalPages - 4; i <= totalPages; i++) {
-                    pages.push(i);
-                }
+                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
             } else {
                 pages.push(1);
                 pages.push('...');
-                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-                    pages.push(i);
-                }
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
                 pages.push('...');
                 pages.push(totalPages);
             }
         }
-
         return pages;
     })();
 
@@ -256,11 +214,9 @@ export default function UsersTable({
             <CardHeader className="border-b border-gray-700">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <CardTitle className="text-2xl text-gray-100">
-                            {type === 'lecteurs' ? 'Lecteurs' : 'Auditeurs'}
-                        </CardTitle>
+                        <CardTitle className="text-2xl text-gray-100">{plural}</CardTitle>
                         <CardDescription className="text-gray-400 mt-1">
-                            {initialTotalUsers} {type === 'lecteurs' ? 'lecteur' : 'auditeur'}{initialTotalUsers > 1 ? 's' : ''} au total
+                            {initialTotalUsers} {singular}{initialTotalUsers > 1 ? 's' : ''} au total
                             {' • '}
                             {activeCount} actif{activeCount > 1 ? 's' : ''}
                             {' • '}
@@ -282,27 +238,18 @@ export default function UsersTable({
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                            placeholder={`Rechercher par nom, email...`}
+                            placeholder="Rechercher par nom, email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                             className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
                         />
                     </div>
-                    <Button
-                        onClick={handleSearch}
-                        size="icon"
-                        className="bg-gray-800 border-gray-700 hover:bg-gray-700"
-                    >
+                    <Button onClick={handleSearch} size="icon" className="bg-gray-800 border-gray-700 hover:bg-gray-700">
                         <Search className="h-4 w-4" />
                     </Button>
                     {searchTerm && (
-                        <Button
-                            onClick={handleClearSearch}
-                            size="icon"
-                            variant="ghost"
-                            className="text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-                        >
+                        <Button onClick={handleClearSearch} size="icon" variant="ghost" className="text-gray-400 hover:text-gray-200 hover:bg-gray-800">
                             <X className="h-4 w-4" />
                         </Button>
                     )}
@@ -311,7 +258,7 @@ export default function UsersTable({
                 <div className="space-y-6">
                     {initialUsers.length === 0 ? (
                         <div className="py-20 flex flex-col items-center justify-center border border-gray-800 rounded-lg bg-gray-800/50">
-                            <p className="text-gray-400 text-lg">Aucun {type === 'lecteurs' ? 'lecteur' : 'auditeur'} trouvé</p>
+                            <p className="text-gray-400 text-lg">Aucun {singular} trouvé</p>
                         </div>
                     ) : (
                         <div className={`border border-gray-800 rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
@@ -322,7 +269,9 @@ export default function UsersTable({
                                             <TableHead className="text-gray-200 font-medium">ID</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Email</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Nom complet</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Rôle</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">
+                                                {type === 'permanents' ? "Niveau d'accès" : 'Type de membre'}
+                                            </TableHead>
                                             <TableHead className="text-gray-200 font-medium">Actif</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Dernière mise à jour</TableHead>
                                         </TableRow>
@@ -334,38 +283,34 @@ export default function UsersTable({
                                                 onClick={() => handleRowClick(user)}
                                                 className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
                                             >
-                                                <TableCell className="font-medium text-gray-200">
-                                                    #{user.id}
-                                                </TableCell>
+                                                <TableCell className="font-medium text-gray-200">#{user.id}</TableCell>
                                                 <TableCell className="text-gray-200">
                                                     {user.email || <span className="text-gray-500 italic">Non défini</span>}
                                                 </TableCell>
                                                 <TableCell className="text-gray-200">
-                                                    {(user.firstName || user.lastName) ? (
-                                                        `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                                                    ) : (
-                                                        <span className="text-gray-500 italic">Non défini</span>
-                                                    )}
+                                                    {(user.firstName || user.lastName)
+                                                        ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                                                        : <span className="text-gray-500 italic">Non défini</span>}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getRoleColor(user.role)}`}>
-                                                        {getRoleDisplayName(user.role)}
-                                                    </span>
+                                                    {type === 'permanents' ? (
+                                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getAccessLevelColor(user.accessLevel)}`}>
+                                                            {getAccessLevelLabel(user.accessLevel)}
+                                                        </span>
+                                                    ) : (
+                                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
+                                                            {getMemberTypeLabel(user.memberType)}
+                                                        </span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     {user.isActive ? (
-                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                                                            Actif
-                                                        </span>
+                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">Actif</span>
                                                     ) : (
-                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">
-                                                            Inactif
-                                                        </span>
+                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">Inactif</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    {formatDate(user.lastUpdated)}
-                                                </TableCell>
+                                                <TableCell className="text-gray-200">{formatDate(user.lastUpdated)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -388,31 +333,15 @@ export default function UsersTable({
 
                 {totalPages > 1 && (
                     <div className={`flex justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <Button
-                            size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1 || isPending}
-                        >
-                            {'<<'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1 || isPending}
-                        >
-                            {'<'}
-                        </Button>
+                        <Button size="sm" className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700" onClick={() => handlePageChange(1)} disabled={currentPage === 1 || isPending}>{'<<'}</Button>
+                        <Button size="sm" className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1 || isPending}>{'<'}</Button>
                         {visiblePages.map((page, index) => (
                             typeof page === 'number' ? (
                                 <Button
                                     key={index}
                                     variant={currentPage === page ? "default" : "outline"}
                                     size="sm"
-                                    className={currentPage === page
-                                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                    className={currentPage === page ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}
                                 >
@@ -422,29 +351,13 @@ export default function UsersTable({
                                 <span key={index} className="text-gray-400 px-2">{page}</span>
                             )
                         ))}
-                        <Button
-                            size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages || isPending}
-                        >
-                            {'>'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                            onClick={() => handlePageChange(totalPages)}
-                            disabled={currentPage === totalPages || isPending}
-                        >
-                            {'>>'}
-                        </Button>
+                        <Button size="sm" className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || isPending}>{'>'}</Button>
+                        <Button size="sm" className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages || isPending}>{'>>'}</Button>
                     </div>
                 )}
 
                 {totalPages > 1 && (
-                    <p className="text-center text-sm text-gray-400 mt-2">
-                        Page {currentPage} sur {totalPages}
-                    </p>
+                    <p className="text-center text-sm text-gray-400 mt-2">Page {currentPage} sur {totalPages}</p>
                 )}
             </CardContent>
 
@@ -457,7 +370,7 @@ export default function UsersTable({
                         <AddUserFormBackend
                             onSuccess={handleUserAdded}
                             userType={type}
-                            currentUserRole={currentUserRole}
+                            currentUserAccessLevel={currentUserAccessLevel}
                         />
                     </div>
                 </DialogContent>
@@ -471,7 +384,7 @@ export default function UsersTable({
                     initialData={selectedUser.data}
                     onUserEdited={handleUserEdited}
                     onUserDeleted={handleUserDeleted}
-                    currentUserRole={currentUserRole}
+                    currentUserAccessLevel={currentUserAccessLevel}
                     userType={type}
                 />
             )}

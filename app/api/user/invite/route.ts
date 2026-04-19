@@ -9,10 +9,8 @@ import { Resend } from 'resend';
 import InvitationEmail from '@/components/emails/InvitationEmail';
 import { render } from '@react-email/render';
 
-// Initialize Resend with your API key
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Handle OPTIONS requests for CORS preflight
 export async function OPTIONS() {
     return NextResponse.json({}, {
         status: 200,
@@ -28,7 +26,6 @@ export async function POST(req: NextRequest) {
     try {
         console.log("POST request received to invite user");
 
-        // Verify authentication and authorization
         const session = await getServerSession(authOptions);
         if (!session) {
             console.log("Authentication failed: No session");
@@ -38,12 +35,11 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Get current user and check if they're a super_admin
         const currentUser = await prisma.user.findUnique({
             where: { email: session.user?.email as string },
         });
 
-        if (!currentUser || currentUser.role !== 'super_admin') {
+        if (!currentUser || currentUser.accessLevel !== 'super_admin') {
             console.log(`Authorization failed: User ${session.user?.email} is not a super_admin`);
             return NextResponse.json(
                 { message: 'Permission refusée. Seuls les super administrateurs peuvent inviter des utilisateurs.' },
@@ -51,11 +47,9 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Parse request body
-        const { email, name, role } = await req.json();
-        console.log(`Invite request for: ${email}, role: ${role}`);
+        const { email, name, accessLevel, memberType } = await req.json();
+        console.log(`Invite request for: ${email}, accessLevel: ${accessLevel}, memberType: ${memberType}`);
 
-        // Validate input
         if (!email) {
             return NextResponse.json(
                 { message: 'L\'email est requis' },
@@ -63,7 +57,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Check if user already exists
         const existingUser = await prisma.user.findUnique({
             where: { email },
         });
@@ -76,25 +69,22 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Generate temporary password
         const temporaryPassword = generatePassword();
-
-        // Hash the temporary password
         const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
-        // Create the new user
         const newUser = await prisma.user.create({
             data: {
                 email,
                 name: name || null,
-                role: role || 'user',
+                role: accessLevel || 'user',
+                accessLevel: accessLevel || 'user',
+                memberType: memberType || null,
                 password: hashedPassword,
-                passwordNeedsChange: true, // Flag to force password change on first login
+                passwordNeedsChange: true,
             },
         });
         console.log(`User created with ID: ${newUser.id}`);
 
-        // Send email with the temporary password using Resend and the React Email template
         try {
             console.log("Preparing to send invitation email");
             console.log(`Environment variables check: RESEND_API_KEY exists: ${!!process.env.RESEND_API_KEY}`);
@@ -105,7 +95,8 @@ export async function POST(req: NextRequest) {
                 InvitationEmail({
                     name: name || '',
                     email,
-                    role: role || 'user',
+                    accessLevel: accessLevel || 'user',
+                    memberType: memberType || undefined,
                     temporaryPassword,
                     appName: process.env.APP_NAME || 'ECA Aveugles',
                     loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/admin` : undefined
@@ -122,12 +113,10 @@ export async function POST(req: NextRequest) {
             console.log(`Invitation email sent to ${email}, result:`, emailResult);
         } catch (emailError) {
             console.error('Error sending invitation email:', emailError);
-            // Log more detailed error information
             if (emailError instanceof Error) {
                 console.error('Error message:', emailError.message);
                 console.error('Error stack:', emailError.stack);
             }
-            // Note: We continue even if email fails, but log the error
         }
 
         return NextResponse.json(

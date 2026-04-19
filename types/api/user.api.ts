@@ -7,6 +7,8 @@ import {
     userIncludeConfigs,
     User,
 } from '../models/user.model';
+import { MemberType, AccessLevel } from '@/lib/user-enums';
+
 
 // ============================================================================
 // Summary Types (for forms and UI components)
@@ -81,6 +83,8 @@ export const UserCreateInputSchema = z.object({
     name: z.string(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
+    accessLevel: z.enum(['member', 'admin', 'super_admin']).default('member'),
+    memberType: z.enum(['ecouteur', 'auditeur', 'lecteur', 'informaticien', 'administration']).default('ecouteur'),
     role: z.string().default('user'),
     homePhone: z.string().optional(),
     cellPhone: z.string().optional(),
@@ -98,7 +102,7 @@ export const UserCreateInputSchema = z.object({
     notes: z.string().optional(),
 });
 
-export type UserCreateInput = z.infer<typeof UserCreateInputSchema>;
+export type UserCreateInput = z.input<typeof UserCreateInputSchema>;
 
 // ============================================================================
 // Update Input Types
@@ -110,6 +114,8 @@ export const UserUpdateInputSchema = z.object({
     lastName: z.string().optional(),
     email: z.string().email().optional(),
     role: z.string().optional(),
+    accessLevel: z.enum(['member', 'admin', 'super_admin']).optional(),
+    memberType: z.enum(['ecouteur', 'auditeur', 'lecteur', 'informaticien', 'administration']).optional(),
     homePhone: z.string().optional(),
     cellPhone: z.string().optional(),
     gestconteNotes: z.string().optional(),
@@ -138,6 +144,8 @@ export type UserUpdateData = {
     lastName?: string | null;
     email?: string | null;
     role?: string;
+    accessLevel?: AccessLevel;
+    memberType?: MemberType;
     homePhone?: string | null;
     cellPhone?: string | null;
     gestconteNotes?: string | null;

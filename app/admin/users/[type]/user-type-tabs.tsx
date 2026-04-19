@@ -8,8 +8,9 @@ interface UserTypeTabsProps {
 
 export function UserTypeTabs({ currentType }: UserTypeTabsProps) {
     const tabs = [
+        { key: 'auditeurs', label: 'Auditeurs' },
         { key: 'lecteurs', label: 'Lecteurs' },
-        { key: 'auditeurs', label: 'Auditeurs' }
+        { key: 'permanents', label: 'Permanents' },
     ];
 
     return (

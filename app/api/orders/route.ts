@@ -20,7 +20,7 @@ async function checkAdmin() {
         };
     }
 
-    if (session.user.role !== 'admin' && session.user.role !== 'super_admin') {
+    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
         return {
             authorized: false,
             response: NextResponse.json(

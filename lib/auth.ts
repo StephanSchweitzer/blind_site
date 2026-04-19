@@ -10,6 +10,7 @@ type CustomUser = {
     randomKey: string;
     role?: string;
     memberType?: string;
+    accessLevel: string;
     passwordNeedsChange?: boolean;
 };
 
@@ -64,8 +65,9 @@ export const authOptions: NextAuthOptions = {
                     email: user.email,
                     name: user.name,
                     randomKey: 'Hey cool',
-                    role: user.accessLevel,
+                    role: user.role,
                     memberType: user.memberType,
+                    accessLevel: user.accessLevel,
                     passwordNeedsChange: user.passwordNeedsChange,
                 };
             },
@@ -84,6 +86,7 @@ export const authOptions: NextAuthOptions = {
                         },
                         select: {
                             id: true,
+                            role: true,
                             email: true,
                             name: true,
                             accessLevel: true,
@@ -94,7 +97,8 @@ export const authOptions: NextAuthOptions = {
 
                     if (freshUser) {
                         token.id = String(freshUser.id);
-                        token.role = freshUser.accessLevel;
+                        token.role = freshUser.role;
+                        token.accessLevel = freshUser.accessLevel;
                         token.memberType = freshUser.memberType;
                         token.email = freshUser.email;
                         token.name = freshUser.name;
@@ -112,6 +116,7 @@ export const authOptions: NextAuthOptions = {
                     id: token.id,
                     randomKey: token.randomKey,
                     role: token.role,
+                    accessLevel: token.accessLevel,
                     memberType: token.memberType,
                     passwordNeedsChange: token.passwordNeedsChange,
                 },
@@ -125,6 +130,7 @@ export const authOptions: NextAuthOptions = {
                     id: u.id,
                     randomKey: u.randomKey,
                     role: u.role,
+                    accessLevel: u.accessLevel,
                     memberType: u.memberType,
                     passwordNeedsChange: u.passwordNeedsChange,
                 };
