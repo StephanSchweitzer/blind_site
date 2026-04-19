@@ -266,6 +266,7 @@ export default function OrdersTable({
             BILLED: 'Facturé',
             PAID: 'Payé',
             UNBILLABLE: 'Non facturable',
+            SOLDE: 'Soldé',
         };
         return labels[status] || status;
     };

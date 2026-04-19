@@ -222,7 +222,7 @@ export default function AssignmentsTable({
 
     const getStatusDisplayName = (statusName: string) => {
         const displayMap: Record<string, string> = {
-            'Attente envoi vers lecteur': 'Attente envoie',
+            'Attente envoi vers lecteur': 'Attente envoi',
             'En attente de réception': 'En attente',
             'Réceptionné': 'Réceptionné',
             'Envoyé au lecteur': 'Envoyé',
