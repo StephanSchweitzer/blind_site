@@ -91,6 +91,9 @@ model Book {
   publisher              String?
   pageCount              Int?
   subtitle               String?
+  audio_filepath         String?
+  stock_date             DateTime?
+  last_downloaded_date   DateTime?
   assignments            Assignment[]
   addedBy                User                @relation(fields: [addedById], references: [id])
   genres                 BookGenre[]
