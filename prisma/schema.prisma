@@ -274,6 +274,7 @@ enum MemberType {
   lecteur
   informaticien
   administration
+  bienfaiteur
 }
 
 enum AccessLevel {
