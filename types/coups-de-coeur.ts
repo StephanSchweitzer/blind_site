@@ -22,6 +22,9 @@ export interface Book {
     genres: {
         genre: Genre;
     }[];
+    audio_filepath:         string | null;
+    stock_date:             Date | null;
+    last_downloaded_date :  Date | null;
 }
 
 export interface CoupDeCoeur {

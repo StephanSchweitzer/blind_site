@@ -1,4 +1,4 @@
-export const MEMBER_TYPE_VALUES = ['ecouteur', 'auditeur', 'lecteur', 'informaticien', 'administration'] as const;
+export const MEMBER_TYPE_VALUES = ['ecouteur', 'auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur'] as const;
 export const ACCESS_LEVEL_VALUES = ['member', 'admin', 'super_admin'] as const;
 export const USER_TYPE_VALUES = ['auditeurs', 'lecteurs', 'permanents'] as const;
 
@@ -12,6 +12,7 @@ export const MEMBER_TYPE_LABELS: Record<MemberType, string> = {
     lecteur:       'Lecteur',
     informaticien: 'Informaticien',
     administration: 'Administrateur',
+    bienfaiteur:    'Bienfaiteur'
 };
 
 export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
@@ -26,6 +27,7 @@ export const MEMBER_TYPE_COLORS: Record<MemberType, string> = {
     lecteur:        'bg-emerald-100 text-emerald-800',
     informaticien:  'bg-purple-100 text-purple-800',
     administration: 'bg-orange-100 text-orange-800',
+    bienfaiteur:    'bg-green-100 text-orange-800',
 };
 
 export const ACCESS_LEVEL_COLORS: Record<AccessLevel, string> = {
