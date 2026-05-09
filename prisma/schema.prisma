@@ -99,6 +99,7 @@ model Book {
   genres                 BookGenre[]
   CoupsDeCoeurBooks      CoupsDeCoeurBooks[]
   orders                 Orders[]
+  source_access_id       Int?
 
   @@index([createdAt(sort: Desc)])
   @@index([title])

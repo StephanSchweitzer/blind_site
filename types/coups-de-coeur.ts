@@ -25,6 +25,7 @@ export interface Book {
     audio_filepath:         string | null;
     stock_date:             Date | null;
     last_downloaded_date :  Date | null;
+    source_access_id : number | null;
 }
 
 export interface CoupDeCoeur {
