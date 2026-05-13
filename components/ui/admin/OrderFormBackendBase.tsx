@@ -217,10 +217,10 @@ export function OrderFormBackendBase({
 
             setIsSearchingBooks(true);
             try {
-                const response = await fetch(`/api/books/search?q=${encodeURIComponent(bookSearch)}`);
+                const response = await fetch(`/api/books?search=${encodeURIComponent(bookSearch)}&limit=10`);
                 if (response.ok) {
-                    const data = await response.json();
-                    setBooks(data);
+                    const { books } = await response.json();
+                    setBooks(books);
                 }
             } catch (err) {
                 console.error('Error searching books:', err);
@@ -398,7 +398,7 @@ export function OrderFormBackendBase({
                                         className="bg-gray-900 border-gray-700 text-gray-200"
                                     />
                                 </div>
-                                <div className="max-h-[200px] overflow-y-auto">
+                                <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                     {isSearchingUsers && (
                                         <div className="p-4 text-center text-gray-400">Recherche...</div>
                                     )}
@@ -451,7 +451,7 @@ export function OrderFormBackendBase({
                                         className="bg-gray-900 border-gray-700 text-gray-200"
                                     />
                                 </div>
-                                <div className="max-h-[200px] overflow-y-auto">
+                                <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                     {isSearchingBooks && (
                                         <div className="p-4 text-center text-gray-400">Recherche...</div>
                                     )}
