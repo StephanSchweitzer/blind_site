@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Book as BookType } from '@prisma/client';
-import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import {
     Dialog,
     DialogContent,
@@ -8,15 +7,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Volume2, Filter, Clock, Calendar, User, X } from 'lucide-react';
-
-// Initialize AWS Polly
-const pollyClient = new PollyClient({
-    region: 'us-east-1',
-    credentials: {
-        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!
-    }
-});
 
 interface BookWithGenres extends BookType {
     genres: {
@@ -79,9 +69,10 @@ export const BookModal: React.FC<BookModalProps> = ({
         try {
             setIsLoading(true);
             setIsSpeaking(true);
+
             const sentences = text.split(/[.!?]+/);
             let currentChunk = '';
-            const chunks = [];
+            const chunks: string[] = [];
 
             for (const sentence of sentences) {
                 if ((currentChunk + sentence).length < 2800) {
@@ -92,25 +83,21 @@ export const BookModal: React.FC<BookModalProps> = ({
                 }
             }
             if (currentChunk) chunks.push(currentChunk);
+
             const audioUrls: string[] = [];
 
             for (const chunk of chunks) {
-                const command = new SynthesizeSpeechCommand({
-                    Engine: 'neural',
-                    LanguageCode: 'fr-FR',
-                    Text: chunk,
-                    OutputFormat: 'mp3',
-                    VoiceId: 'Lea'
+                const response = await fetch('/api/polly', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: chunk }),
                 });
 
-                const response = await pollyClient.send(command);
-                const audioData = await response.AudioStream?.transformToByteArray();
+                if (!response.ok) throw new Error('Polly API error');
 
-                if (audioData) {
-                    const blob = new Blob([new Uint8Array(audioData)], { type: 'audio/mpeg' });
-                    const url = URL.createObjectURL(blob);
-                    audioUrls.push(url);
-                }
+                const audioData = await response.arrayBuffer();
+                const blob = new Blob([audioData], { type: 'audio/mpeg' });
+                audioUrls.push(URL.createObjectURL(blob));
             }
 
             let currentIndex = 0;
