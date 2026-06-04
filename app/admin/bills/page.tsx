@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { BillingStatus, Prisma } from '@prisma/client';
 import BillsTable from './bills-table';
 import { notFound } from 'next/navigation';
 
@@ -15,39 +15,33 @@ export const revalidate = 0;
 async function getBills(
     page: number,
     searchTerm: string,
-    stateId?: number
+    status?: BillingStatus,
+    showLate?: boolean,
 ) {
     const billsPerPage = 10;
 
     const whereClause: Prisma.BillWhereInput = {};
 
-    // Search filter
     if (searchTerm) {
         whereClause.client = {
             OR: [
-                {
-                    name: {
-                        contains: searchTerm,
-                        mode: Prisma.QueryMode.insensitive,
-                    },
-                },
-                {
-                    email: {
-                        contains: searchTerm,
-                        mode: Prisma.QueryMode.insensitive,
-                    },
-                },
+                { name: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
+                { email: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
             ],
         };
     }
 
-    // State filter
-    if (stateId) {
-        whereClause.stateId = stateId;
+    if (showLate) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        whereClause.state = BillingStatus.BILLED;
+        whereClause.issueDate = { lt: thirtyDaysAgo };
+    } else if (status) {
+        whereClause.state = status;
     }
 
     try {
-        const [bills, totalBills, states] = await Promise.all([
+        const [bills, totalBills] = await Promise.all([
             prisma.bill.findMany({
                 where: whereClause,
                 orderBy: { creationDate: 'desc' },
@@ -55,35 +49,18 @@ async function getBills(
                 take: billsPerPage,
                 include: {
                     client: {
-                        select: {
-                            name: true,
-                            email: true,
-                        },
-                    },
-                    state: {
-                        select: {
-                            name: true,
-                        },
+                        select: { name: true, email: true },
                     },
                 },
             }),
             prisma.bill.count({ where: whereClause }),
-            prisma.status.findMany({
-                select: {
-                    id: true,
-                    name: true,
-                },
-                orderBy: {
-                    sortOrder: 'asc',
-                },
-            }),
         ]);
 
         return {
             bills,
             totalBills,
             totalPages: Math.ceil(totalBills / billsPerPage),
-            availableStates: states,
+            availableStatuses: Object.values(BillingStatus),
         };
     } catch (error) {
         console.error('Error fetching bills:', error);
@@ -102,22 +79,26 @@ export default async function AdminBillsPage({ searchParams }: PageProps) {
         const searchTerm = Array.isArray(params.search)
             ? params.search[0]
             : params.search || '';
-        const stateId = params.stateId
-            ? parseInt(Array.isArray(params.stateId) ? params.stateId[0] : params.stateId)
+
+        const rawStatus = Array.isArray(params.status) ? params.status[0] : params.status;
+        const status = rawStatus && Object.values(BillingStatus).includes(rawStatus as BillingStatus)
+            ? (rawStatus as BillingStatus)
             : undefined;
 
-        const { bills, totalBills, totalPages, availableStates } = await getBills(
+        const showLate = (Array.isArray(params.late) ? params.late[0] : params.late) === 'true';
+
+        const { bills, totalBills, totalPages, availableStatuses } = await getBills(
             page,
             searchTerm,
-            stateId
+            status,
+            showLate,
         );
 
-        // Serialize bills
         const serializedBills = bills.map(bill => ({
             ...bill,
             creationDate: bill.creationDate.toISOString(),
-            issueDate: bill.issueDate ? bill.issueDate.toISOString() : null,
-            paymentDate: bill.paymentDate ? bill.paymentDate.toISOString() : null,
+            issueDate: bill.issueDate?.toISOString() ?? null,
+            paymentDate: bill.paymentDate?.toISOString() ?? null,
             invoiceAmount: bill.invoiceAmount.toString(),
         }));
 
@@ -128,7 +109,7 @@ export default async function AdminBillsPage({ searchParams }: PageProps) {
                     initialPage={page}
                     initialSearch={searchTerm}
                     totalPages={totalPages}
-                    availableStatuses={availableStates}
+                    availableStatuses={availableStatuses}
                     initialTotalBills={totalBills}
                 />
             </div>

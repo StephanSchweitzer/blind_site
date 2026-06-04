@@ -1,14 +1,16 @@
 // PDFContent.tsx
 import React, { forwardRef } from 'react';
-import type { Book, CoupDeCoeur } from '@/types/coups-de-coeur';
+import type { CoupDeCoeur } from '@/types/coups-de-coeur';
+import type { BookWithGenres } from '@/types/book';
 import { groupBy } from 'lodash';
+
 
 interface PDFContentProps {
     content: CoupDeCoeur[];
 }
 
 export const PDFContent = forwardRef<HTMLDivElement, PDFContentProps>(({ content }, ref) => {
-    const groupBooksByGenre = (books: { book: Book }[]) => {
+    const groupBooksByGenre = (books: { book: BookWithGenres }[]) => {
         const booksWithGenres = books.map(({ book }) => {
             const genreNames = book.genres?.length
                 ? book.genres.map(g => g.genre?.name).filter(Boolean).sort()

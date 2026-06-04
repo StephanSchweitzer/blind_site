@@ -1,10 +1,10 @@
-// app/admin/bills/bills-table.tsx
 'use client';
 
 import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Table,
     TableBody,
@@ -27,12 +27,18 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, Loader2 } from 'lucide-react';
+import { Search, X, Plus, Loader2, Clock } from 'lucide-react';
+import {
+    BillingStatus,
+    BILLING_STATUS_LABELS,
+    getBillingStatusColor,
+    getBillingStatusLabel,
+} from '@/lib/billing-enums';
 
 interface Bill {
     id: number;
     clientId: number;
-    stateId: number;
+    state: BillingStatus;
     creationDate: string;
     issueDate: string | null;
     paymentDate: string | null;
@@ -41,14 +47,6 @@ interface Bill {
         name: string | null;
         email: string | null;
     };
-    state: {
-        name: string;
-    };
-}
-
-interface Status {
-    id: number;
-    name: string;
 }
 
 interface BillsTableProps {
@@ -56,9 +54,18 @@ interface BillsTableProps {
     initialPage: number;
     initialSearch: string;
     totalPages: number;
-    availableStatuses: Status[];
+    availableStatuses: BillingStatus[];
     initialTotalBills: number;
 }
+
+const LATE_THRESHOLD_DAYS = 30;
+
+const isBillLate = (bill: Bill): boolean => {
+    if (bill.state !== BillingStatus.BILLED || !bill.issueDate) return false;
+    const threshold = new Date();
+    threshold.setDate(threshold.getDate() - LATE_THRESHOLD_DAYS);
+    return new Date(bill.issueDate) < threshold;
+};
 
 export default function BillsTable({
                                        initialBills,
@@ -74,12 +81,13 @@ export default function BillsTable({
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
     const currentPage = initialPage;
-    const currentStateId = searchParams.get('stateId') || 'all';
+    const currentStatus = searchParams.get('status') as BillingStatus | null;
+    const showLateOnly = searchParams.get('late') === 'true';
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
-
         Object.entries(updates).forEach(([key, value]) => {
             if (value) {
                 params.set(key, value);
@@ -87,7 +95,6 @@ export default function BillsTable({
                 params.delete(key);
             }
         });
-
         startTransition(() => {
             router.push(`?${params.toString()}`);
         });
@@ -106,17 +113,21 @@ export default function BillsTable({
         updateUrl({ page: newPage.toString() });
     };
 
-    const handleStateFilter = (stateId: string) => {
+    const handleStatusFilter = (value: string) => {
         updateUrl({
-            stateId: stateId === 'all' ? undefined : stateId,
+            status: value === 'all' ? undefined : value,
+            late: undefined,
             page: '1',
         });
     };
 
-    // const handleBillAdded = () => {
-    //     setIsAddModalOpen(false);
-    //     router.refresh();
-    // };
+    const handleLateFilter = (checked: boolean) => {
+        updateUrl({
+            late: checked ? 'true' : undefined,
+            status: undefined,
+            page: '1',
+        });
+    };
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
@@ -130,19 +141,6 @@ export default function BillsTable({
         }).format(parseFloat(amount));
     };
 
-    const getStateColor = (stateName: string) => {
-        const colorMap: Record<string, string> = {
-            'Brouillon': 'bg-gray-100 text-gray-800',
-            'En attente': 'bg-yellow-100 text-yellow-800',
-            'Émise': 'bg-blue-100 text-blue-800',
-            'Payée': 'bg-green-100 text-green-800',
-            'Annulée': 'bg-red-100 text-red-800',
-            'En retard': 'bg-orange-100 text-orange-800',
-        };
-        return colorMap[stateName] || 'bg-gray-100 text-gray-800';
-    };
-
-    // Calculate visible pages
     const getVisiblePages = () => {
         const pages: (number | string)[] = [];
         const maxVisible = 5;
@@ -152,16 +150,11 @@ export default function BillsTable({
         }
 
         pages.push(1);
-
         const start = Math.max(2, currentPage - 1);
         const end = Math.min(totalPages - 1, currentPage + 1);
-
         if (start > 2) pages.push('...');
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
+        for (let i = start; i <= end; i++) pages.push(i);
         if (end < totalPages - 1) pages.push('...');
-
         pages.push(totalPages);
 
         return pages;
@@ -222,22 +215,34 @@ export default function BillsTable({
                         </Button>
                     </div>
 
-                    <Select
-                        value={currentStateId}
-                        onValueChange={handleStateFilter}
-                    >
-                        <SelectTrigger className="w-full sm:w-[200px] bg-gray-800 border-gray-700 text-gray-200">
-                            <SelectValue placeholder="Filtrer par état" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                            <SelectItem value="all" className="text-gray-200">Tous les états</SelectItem>
-                            {availableStatuses.map((status) => (
-                                <SelectItem key={status.id} value={status.id.toString()} className="text-gray-200">
-                                    {status.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Select
+                            value={showLateOnly ? BillingStatus.BILLED : (currentStatus ?? 'all')}
+                            onValueChange={handleStatusFilter}
+                            disabled={showLateOnly}
+                        >
+                            <SelectTrigger className="w-full sm:w-[200px] bg-gray-800 border-gray-700 text-gray-200 disabled:opacity-50">
+                                <SelectValue placeholder="Filtrer par état" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-gray-800 border-gray-700">
+                                <SelectItem value="all" className="text-gray-200">Tous les états</SelectItem>
+                                {availableStatuses.map((status) => (
+                                    <SelectItem key={status} value={status} className="text-gray-200">
+                                        {BILLING_STATUS_LABELS[status]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <label className="flex items-center gap-2 text-gray-300 text-sm cursor-pointer whitespace-nowrap">
+                            <Checkbox
+                                checked={showLateOnly}
+                                onCheckedChange={(checked) => handleLateFilter(!!checked)}
+                                className="border-gray-600"
+                            />
+                            Factures en retard
+                        </label>
+                    </div>
                 </div>
 
                 {/* Loading Overlay */}
@@ -274,41 +279,49 @@ export default function BillsTable({
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {initialBills.map((bill) => (
-                                            <TableRow
-                                                key={bill.id}
-                                                className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
-                                            >
-                                                <TableCell className="font-medium text-gray-200">
-                                                    #{bill.id}
-                                                </TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    <div>
-                                                        <div className="font-medium">{bill.client.name || 'N/A'}</div>
-                                                        <div className="text-sm text-gray-400">
-                                                            {bill.client.email}
+                                        {initialBills.map((bill) => {
+                                            const late = isBillLate(bill);
+                                            return (
+                                                <TableRow
+                                                    key={bill.id}
+                                                    className={`border-b border-gray-700 cursor-pointer ${
+                                                        late
+                                                            ? 'bg-red-950/40 hover:bg-red-950/60'
+                                                            : 'hover:bg-gray-750'
+                                                    }`}
+                                                >
+                                                    <TableCell className="font-medium text-gray-200">
+                                                        #{bill.id}
+                                                    </TableCell>
+                                                    <TableCell className="text-gray-200">
+                                                        <div>
+                                                            <div className="font-medium">{bill.client.name || 'N/A'}</div>
+                                                            <div className="text-sm text-gray-400">{bill.client.email}</div>
                                                         </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    {formatDate(bill.creationDate)}
-                                                </TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    {formatDate(bill.issueDate)}
-                                                </TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    {formatDate(bill.paymentDate)}
-                                                </TableCell>
-                                                <TableCell className="text-gray-200 font-semibold">
-                                                    {formatCurrency(bill.invoiceAmount)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStateColor(bill.state.name)}`}>
-                                                        {bill.state.name}
-                                                    </span>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                                    </TableCell>
+                                                    <TableCell className="text-gray-200">
+                                                        {formatDate(bill.creationDate)}
+                                                    </TableCell>
+                                                    <TableCell className="text-gray-200">
+                                                        {formatDate(bill.issueDate)}
+                                                    </TableCell>
+                                                    <TableCell className="text-gray-200">
+                                                        {formatDate(bill.paymentDate)}
+                                                    </TableCell>
+                                                    <TableCell className="text-gray-200 font-semibold">
+                                                        {formatCurrency(bill.invoiceAmount)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {late && <Clock className="h-3.5 w-3.5 text-red-400 shrink-0" />}
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
+                                                                {getBillingStatusLabel(bill.state)}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>
@@ -316,7 +329,7 @@ export default function BillsTable({
                     )}
                 </div>
 
-                {/* Enhanced Pagination */}
+                {/* Pagination */}
                 {totalPages > 1 && (
                     <div className={`flex justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Button
@@ -335,15 +348,15 @@ export default function BillsTable({
                         >
                             {'<'}
                         </Button>
-                        {visiblePages.map((page, index) => (
+                        {visiblePages.map((page, index) =>
                             typeof page === 'number' ? (
                                 <Button
                                     key={index}
-                                    variant={currentPage === page ? "default" : "outline"}
+                                    variant={currentPage === page ? 'default' : 'outline'}
                                     size="sm"
                                     className={currentPage === page
-                                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                        : 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}
                                 >
@@ -352,7 +365,7 @@ export default function BillsTable({
                             ) : (
                                 <span key={index} className="text-gray-400 px-2">{page}</span>
                             )
-                        ))}
+                        )}
                         <Button
                             size="sm"
                             className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
@@ -386,7 +399,6 @@ export default function BillsTable({
                         <DialogTitle className="text-gray-100">Créer une nouvelle facture</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        {/* Add your AddBillForm component here */}
                         <p className="text-gray-400">Formulaire de création de facture à venir...</p>
                     </div>
                 </DialogContent>

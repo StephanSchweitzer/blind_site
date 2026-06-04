@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Prisma, DeliveryMethod, BillingStatus } from '@prisma/client';
+import {Prisma, DeliveryMethod, OrderBillingStatus} from '@prisma/client';
 import {
     basicOrderSelect,
     detailedOrderSelect,
@@ -85,7 +85,7 @@ export const OrderCreateInputSchema = z.object({
     createdDate: z.string().datetime().nullable().optional(),
     closureDate: z.string().datetime().nullable().optional(),
     cost: z.number().or(z.string()).nullable().optional(),
-    billingStatus: z.nativeEnum(BillingStatus).optional(),
+    billingStatus: z.nativeEnum(OrderBillingStatus).optional(),
     billId: z.number().int().positive().nullable().optional(),
     lentPhysicalBook: z.boolean(),
     notes: z.string().nullable().optional(),
@@ -105,7 +105,7 @@ export type OrderCreateData = {
     createdDate?: Date | null;
     closureDate?: Date | null;
     cost?: number | null;
-    billingStatus?: BillingStatus;
+    billingStatus?: OrderBillingStatus;
     billId?: number | null;
     lentPhysicalBook: boolean;
     notes?: string | null;
@@ -127,7 +127,7 @@ export const OrderUpdateInputSchema = z.object({
     createdDate: z.string().datetime().nullable().optional(),
     closureDate: z.string().datetime().nullable().optional(),
     cost: z.number().or(z.string()).nullable().optional(),
-    billingStatus: z.nativeEnum(BillingStatus).optional(),
+    billingStatus: z.nativeEnum(OrderBillingStatus).optional(),
     billId: z.number().int().positive().nullable().optional(),
     lentPhysicalBook: z.boolean().optional(),
     notes: z.string().nullable().optional(),
@@ -147,7 +147,7 @@ export type OrderUpdateData = {
     createdDate?: Date | null;
     closureDate?: Date | null;
     cost?: number | null;
-    billingStatus?: BillingStatus;
+    billingStatus?: OrderBillingStatus;
     billId?: number | null;
     lentPhysicalBook?: boolean;
     notes?: string | null;
@@ -161,7 +161,7 @@ export const OrderFilterSchema = z.object({
     aveugleId: z.number().optional(),
     catalogueId: z.number().optional(),
     statusId: z.number().optional(),
-    billingStatus: z.nativeEnum(BillingStatus).optional(),
+    billingStatus: z.nativeEnum(OrderBillingStatus).optional(),
     deliveryMethod: z.nativeEnum(DeliveryMethod).optional(),
     dateFrom: z.string().datetime().optional(),
     dateTo: z.string().datetime().optional(),

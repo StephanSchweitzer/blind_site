@@ -1,32 +1,4 @@
-export interface Genre {
-    id: number;
-    name: string;
-}
-
-// This matches exactly what BookModal expects
-export interface Book {
-    id: number;
-    title: string;
-    subtitle: string | null;
-    author: string;
-    description: string;
-    publishedDate: Date | null;
-    readingDurationMinutes: number | null;
-    pageCount: number | null;
-    isbn: string | null;
-    publisher: string | null;
-    available: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    addedById: number;
-    genres: {
-        genre: Genre;
-    }[];
-    audio_filepath:         string | null;
-    stock_date:             Date | null;
-    last_downloaded_date :  Date | null;
-    source_access_id : number | null;
-}
+import { BookWithGenres } from '@/types/book';
 
 export interface CoupDeCoeur {
     id: number;
@@ -34,7 +6,7 @@ export interface CoupDeCoeur {
     description: string;
     audioPath: string;
     books: {
-        book: Book;
+        book: BookWithGenres;
     }[];
 }
 

@@ -1,11 +1,12 @@
 import React from 'react';
 import { AudioPlayer } from '@/coups-de-coeur/AudioPlayer';
 import { BookList } from '@/coups-de-coeur/BookList';
-import type { Book, CoupDeCoeur } from '@/types/coups-de-coeur';
+import type { CoupDeCoeur } from '@/types/coups-de-coeur';
+import type { BookWithGenres } from '@/types/book';
 
 interface CoupDeCoeurListProps {
     content: CoupDeCoeur[];
-    onBookClick: (book: Book) => void;
+    onBookClick: (book: BookWithGenres) => void;
     isTransitioning: boolean;
 }
 

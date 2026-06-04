@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Book as BookType } from '@prisma/client';
+import { BookWithGenres } from '@/types/book';
 import {
     Dialog,
     DialogContent,
@@ -7,15 +7,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Volume2, Filter, Clock, Calendar, User, X } from 'lucide-react';
-
-interface BookWithGenres extends BookType {
-    genres: {
-        genre: {
-            id: number;
-            name: string;
-        };
-    }[];
-}
 
 interface BookModalProps {
     book: BookWithGenres | null;

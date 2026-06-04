@@ -100,6 +100,8 @@ model Book {
   CoupsDeCoeurBooks      CoupsDeCoeurBooks[]
   orders                 Orders[]
   source_access_id       Int?
+  needsReview            Boolean             @default(false)
+  id_arbre               Int?
 
   @@index([createdAt(sort: Desc)])
   @@index([title])
@@ -157,7 +159,6 @@ model Status {
   description String?
   sortOrder   Int?
   assignments Assignment[]
-  Bill        Bill[]
   orders      Orders[]
 
   @@index([name])
@@ -173,24 +174,26 @@ model MediaFormat {
 }
 
 model Bill {
-  id            Int       @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   clientId      Int
-  stateId       Int
+  state         BillingStatus @default(BILLED)
   creationDate  DateTime
   issueDate     DateTime?
   paymentDate   DateTime?
-  invoiceAmount Decimal   @db.Decimal(10, 2)
-  client        User      @relation(fields: [clientId], references: [id])
-  state         Status    @relation(fields: [stateId], references: [id])
+  invoiceAmount Decimal       @db.Decimal(10, 2)
+  isActive      Boolean       @default(true)
+  deletedAt     DateTime?
+  client        User          @relation(fields: [clientId], references: [id])
   orders        Orders[]
 
   @@index([clientId])
-  @@index([stateId])
+  @@index([state])
   @@index([creationDate])
+  @@index([isActive])
 }
 
 model Orders {
-  id                  Int            @id @default(autoincrement())
+  id                  Int                @id @default(autoincrement())
   aveugleId           Int
   catalogueId         Int
   requestReceivedDate DateTime
@@ -201,19 +204,21 @@ model Orders {
   processedByStaffId  Int?
   createdDate         DateTime?
   closureDate         DateTime?
-  cost                Decimal?       @db.Decimal(10, 2)
-  billingStatus       BillingStatus  @default(UNBILLED)
+  cost                Decimal?           @db.Decimal(10, 2)
+  billingStatus       OrderBillingStatus @default(UNBILLED)
   billId              Int?
   lentPhysicalBook    Boolean
   notes               String?
+  isActive            Boolean            @default(true)
+  deletedAt           DateTime?
   updatedAt           DateTime?
   assignments         Assignment[]
-  aveugle             User           @relation("OrdersAsAveugle", fields: [aveugleId], references: [id])
-  bill                Bill?          @relation(fields: [billId], references: [id])
-  catalogue           Book           @relation(fields: [catalogueId], references: [id])
-  mediaFormat         MediaFormat    @relation(fields: [mediaFormatId], references: [id])
-  processedByStaff    User?          @relation("OrdersProcessedBy", fields: [processedByStaffId], references: [id])
-  status              Status         @relation(fields: [statusId], references: [id])
+  aveugle             User               @relation("OrdersAsAveugle", fields: [aveugleId], references: [id])
+  bill                Bill?              @relation(fields: [billId], references: [id])
+  catalogue           Book               @relation(fields: [catalogueId], references: [id])
+  mediaFormat         MediaFormat        @relation(fields: [mediaFormatId], references: [id])
+  processedByStaff    User?              @relation("OrdersProcessedBy", fields: [processedByStaffId], references: [id])
+  status              Status             @relation(fields: [statusId], references: [id])
 
   @@index([aveugleId])
   @@index([catalogueId])
@@ -265,11 +270,16 @@ enum DeliveryMethod {
 }
 
 enum BillingStatus {
-  UNBILLED
+  DRAFT
   BILLED
   PAID
-  UNBILLABLE
   SOLDE
+}
+
+enum OrderBillingStatus {
+  UNBILLED
+  BILLED
+  UNBILLABLE
 }
 
 enum MemberType {

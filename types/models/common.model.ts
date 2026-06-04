@@ -79,12 +79,6 @@ export type BillWithClient = Prisma.BillGetPayload<{
     };
 }>;
 
-export type BillWithState = Prisma.BillGetPayload<{
-    include: {
-        state: true;
-    };
-}>;
-
 export type BillWithOrders = Prisma.BillGetPayload<{
     include: {
         orders: true;

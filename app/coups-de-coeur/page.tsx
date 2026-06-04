@@ -6,17 +6,18 @@ import { CoupDeCoeurList } from '@/coups-de-coeur/CoupDeCoeurList';
 import { BookModal } from '@/components/BookModal';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { CustomPagination } from "@/components/ui/custom-pagination";
-import type { Book, CoupDeCoeur, CoupsDeCoeurResponse } from '@/types/coups-de-coeur';
+import type { CoupDeCoeur, CoupsDeCoeurResponse } from '@/types/coups-de-coeur';
 import { PDFButton } from "@/coups-de-coeur/PDFButton";
 import { PDFContent } from '@/coups-de-coeur/PDFContent';
 import generatePDF from 'react-to-pdf';
+import { BookWithGenres } from '@/types/book';
 
 export default function CoupsDeCoeurPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [coupsDeCoeur, setCoupsDeCoeur] = useState<CoupDeCoeur[]>([]);
     const [totalPages, setTotalPages] = useState(1);
-    const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+    const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false);
@@ -99,7 +100,7 @@ export default function CoupsDeCoeurPage() {
         }
     };
 
-    const handleBookClick = (book: Book) => {
+    const handleBookClick = (book: BookWithGenres) => {
         setSelectedBook(book);
         setIsModalOpen(true);
     };

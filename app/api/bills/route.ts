@@ -1,52 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { BillingStatus, Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
 
-        // Parse query parameters
         const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
         const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10')));
         const searchTerm = searchParams.get('search') || '';
-        const stateId = searchParams.get('stateId') ? parseInt(searchParams.get('stateId')!) : undefined;
         const clientId = searchParams.get('clientId') ? parseInt(searchParams.get('clientId')!) : undefined;
+        const showLate = searchParams.get('late') === 'true';
 
-        // Build where clause
+        const rawStatus = searchParams.get('status');
+        const status = rawStatus && Object.values(BillingStatus).includes(rawStatus as BillingStatus)
+            ? (rawStatus as BillingStatus)
+            : undefined;
+
         const whereClause: Prisma.BillWhereInput = {};
 
-        // Search filter (by client name or email)
         if (searchTerm) {
             whereClause.client = {
                 OR: [
-                    {
-                        name: {
-                            contains: searchTerm,
-                            mode: Prisma.QueryMode.insensitive,
-                        },
-                    },
-                    {
-                        email: {
-                            contains: searchTerm,
-                            mode: Prisma.QueryMode.insensitive,
-                        },
-                    },
+                    { name: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
+                    { email: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
                 ],
             };
         }
 
-        // State filter
-        if (stateId) {
-            whereClause.stateId = stateId;
+        if (showLate) {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            whereClause.state = BillingStatus.BILLED;
+            whereClause.issueDate = { lt: thirtyDaysAgo };
+        } else if (status) {
+            whereClause.state = status;
         }
 
-        // Client filter
         if (clientId) {
             whereClause.clientId = clientId;
         }
 
-        // Fetch bills and total count
         const [bills, totalBills] = await Promise.all([
             prisma.bill.findMany({
                 where: whereClause,
@@ -55,34 +49,21 @@ export async function GET(request: NextRequest) {
                 take: limit,
                 include: {
                     client: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                        },
-                    },
-                    state: {
-                        select: {
-                            id: true,
-                            name: true,
-                        },
+                        select: { id: true, name: true, email: true },
                     },
                     orders: {
-                        select: {
-                            id: true,
-                        },
+                        select: { id: true },
                     },
                 },
             }),
             prisma.bill.count({ where: whereClause }),
         ]);
 
-        // Serialize data
         const serializedBills = bills.map(bill => ({
             ...bill,
             creationDate: bill.creationDate.toISOString(),
-            issueDate: bill.issueDate ? bill.issueDate.toISOString() : null,
-            paymentDate: bill.paymentDate ? bill.paymentDate.toISOString() : null,
+            issueDate: bill.issueDate?.toISOString() ?? null,
+            paymentDate: bill.paymentDate?.toISOString() ?? null,
             invoiceAmount: bill.invoiceAmount.toString(),
         }));
 
@@ -112,30 +93,38 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST endpoint to create a new bill
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
 
-        const { clientId, stateId, creationDate, issueDate, paymentDate, invoiceAmount } = body;
+        const { clientId, state, creationDate, issueDate, paymentDate, invoiceAmount } = body;
 
-        // Validate required fields
-        if (!clientId || !stateId || !creationDate || !invoiceAmount) {
+        if (!clientId || !state || !creationDate || !invoiceAmount) {
             return NextResponse.json(
                 {
                     success: false,
                     error: 'Missing required fields',
-                    message: 'clientId, stateId, creationDate, and invoiceAmount are required',
+                    message: 'clientId, state, creationDate, and invoiceAmount are required',
                 },
                 { status: 400 }
             );
         }
 
-        // Create bill
+        if (!Object.values(BillingStatus).includes(state)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Invalid state',
+                    message: `state must be one of: ${Object.values(BillingStatus).join(', ')}`,
+                },
+                { status: 400 }
+            );
+        }
+
         const bill = await prisma.bill.create({
             data: {
                 clientId: parseInt(clientId),
-                stateId: parseInt(stateId),
+                state: state as BillingStatus,
                 creationDate: new Date(creationDate),
                 issueDate: issueDate ? new Date(issueDate) : null,
                 paymentDate: paymentDate ? new Date(paymentDate) : null,
@@ -143,33 +132,20 @@ export async function POST(request: NextRequest) {
             },
             include: {
                 client: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-                state: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
+                    select: { id: true, name: true, email: true },
                 },
             },
         });
 
-        // Serialize response
-        const serializedBill = {
-            ...bill,
-            creationDate: bill.creationDate.toISOString(),
-            issueDate: bill.issueDate ? bill.issueDate.toISOString() : null,
-            paymentDate: bill.paymentDate ? bill.paymentDate.toISOString() : null,
-            invoiceAmount: bill.invoiceAmount.toString(),
-        };
-
         return NextResponse.json({
             success: true,
-            data: serializedBill,
+            data: {
+                ...bill,
+                creationDate: bill.creationDate.toISOString(),
+                issueDate: bill.issueDate?.toISOString() ?? null,
+                paymentDate: bill.paymentDate?.toISOString() ?? null,
+                invoiceAmount: bill.invoiceAmount.toString(),
+            },
             message: 'Bill created successfully',
         });
     } catch (error) {

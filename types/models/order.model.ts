@@ -150,6 +150,7 @@ export const orderIncludeConfigs = {
     bill: {
         select: {
             id: true,
+            state: true,
             issueDate: true,
             invoiceAmount: true,
         },
@@ -220,7 +221,12 @@ export const orderIncludeConfigs = {
                 name: true,
             },
         },
-        bill: true,
+        select: {
+            id: true,
+            state: true,
+            issueDate: true,
+            invoiceAmount: true,
+        },
         assignments: {
             include: {
                 readerHistory: {
