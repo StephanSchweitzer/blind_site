@@ -56,6 +56,7 @@ model User {
   News                        News[]             @relation("UserNews")
   ordersAsAveugle             Orders[]           @relation("OrdersAsAveugle")
   ordersProcessedBy           Orders[]           @relation("OrdersProcessedBy")
+  payments                    Payment[]
 }
 
 model Address {
@@ -186,10 +187,46 @@ model Bill {
   deletedAt        DateTime?
   client           User          @relation(fields: [clientId], references: [id])
   orders           Orders[]
+  payments         Payment[]
 
   @@index([clientId])
   @@index([state])
   @@index([creationDate])
+  @@index([isActive])
+}
+
+model Payment {
+  id               Int            @id @default(autoincrement())
+  clientId         Int?
+  type             PaymentType
+  amount           Decimal        @db.Decimal(10, 2)
+  paymentMethod    PaymentMethod? // modepaiement_id from Access
+  creationDate     DateTime
+  issueDate        DateTime?
+  paymentDate      DateTime?
+  exportDate       DateTime?
+  importDate       DateTime?
+  receiptNumber    String? // num_recu
+  fiscalite        String? // source type unclear – tighten to Boolean/enum after inspecting data
+  cotisationYear   Int? // Annee_cotisation – only for type COTISATION
+  comptable        String? // source type unclear – tighten after inspecting data
+  isAllocated      Boolean? // Affectee
+  allocationDate   DateTime? // date_affectation
+  observations     String?
+  billId           Int? // only for type ENREGISTREMENT
+  sourceVenteId    Int? // raw idvente preserved for traceability
+  sourceEcritureId Int? // raw idecriture (accounting entry) preserved
+  isActive         Boolean        @default(true)
+  deletedAt        DateTime?
+  deletionReason   String? // Obs_Suppression
+  client           User?          @relation(fields: [clientId], references: [id])
+  bill             Bill?          @relation(fields: [billId], references: [id])
+
+  @@index([clientId])
+  @@index([type])
+  @@index([billId])
+  @@index([creationDate])
+  @@index([cotisationYear])
   @@index([isActive])
 }
 
@@ -282,6 +319,21 @@ enum OrderBillingStatus {
   UNBILLED
   BILLED
   UNBILLABLE
+}
+
+enum PaymentType {
+  COTISATION
+  ENREGISTREMENT
+  DON
+  DIVERS
+}
+
+enum PaymentMethod {
+  CHEQUE // Chèque
+  ESPECE // Espèce
+  CB
+  VIREMENT // Virement
+  COMPTE_AUXI // Compte Auxi
 }
 
 enum MemberType {

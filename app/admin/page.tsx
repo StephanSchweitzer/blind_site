@@ -17,6 +17,7 @@ export default async function Dashboard() {
         assignmentCount,
         orderCount,
         billCount,
+        paymentCount,
     ] = await Promise.all([
         prisma.book.count(),
         prisma.news.count(),
@@ -28,6 +29,7 @@ export default async function Dashboard() {
         prisma.assignment.count(),
         prisma.orders.count(),
         prisma.bill.count(),
+        prisma.payment.count(),
     ]);
 
     return (
@@ -91,6 +93,13 @@ export default async function Dashboard() {
                         href="/admin/bills"
                         buttonText="Gestion des factures"
                         accentColor="orange"
+                    />
+                    <AdminDashboardCard
+                        title="Paiements"
+                        count={paymentCount}
+                        href="/admin/payments"
+                        buttonText="Gestion des paiements (cotisations, dons, enregistrements)"
+                        accentColor="green"
                     />
                     <AdminDashboardCard
                         title="Auditeurs"
