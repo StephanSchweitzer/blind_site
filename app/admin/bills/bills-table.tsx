@@ -35,7 +35,7 @@ import {
     getBillingStatusLabel,
 } from '@/lib/billing-enums';
 import { AddBillFormBackend } from '@/admin/BillFormBackendBase';
-import { BillDetailModal } from '@/admin/BillDetailModal';
+import { EditBillModal } from '@/admin/EditBillModal';
 import { DeleteBillModal } from '@/admin/DeleteBillModal';
 
 interface Bill {
@@ -421,11 +421,12 @@ export default function BillsTable({
             </Dialog>
 
             {/* View Bill Detail Modal */}
-            <BillDetailModal
+            <EditBillModal
                 isOpen={viewBillId !== null}
                 onOpenChange={(open) => { if (!open) setViewBillId(null); }}
                 billId={viewBillId}
                 onRequestDelete={(id) => { setViewBillId(null); setBillToDelete(id); }}
+                onBillUpdated={() => router.refresh()}
             />
 
             {/* Delete Bill Modal */}

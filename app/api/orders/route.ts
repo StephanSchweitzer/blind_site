@@ -114,6 +114,20 @@ export async function GET(request: NextRequest) {
             whereClause.billingStatus = rawBillingStatus as OrderBillingStatus;
         }
 
+        // Unbilled filter — for bill order assignment (no bill, status UNBILLED)
+        const unbilled = searchParams.get('unbilled');
+        if (unbilled === 'true') {
+            whereClause.billId = null;
+            whereClause.billingStatus = OrderBillingStatus.UNBILLED;
+        }
+
+        // aveugleId filter — for scoping order search to a specific client
+        const aveugleIdParam = searchParams.get('aveugleId');
+        if (aveugleIdParam) {
+            const parsedAveugleId = parseInt(aveugleIdParam);
+            if (!isNaN(parsedAveugleId)) whereClause.aveugleId = parsedAveugleId;
+        }
+
         // Duplication filter
         if (isDuplication === 'true') {
             whereClause.isDuplication = true;

@@ -174,17 +174,18 @@ model MediaFormat {
 }
 
 model Bill {
-  id            Int           @id @default(autoincrement())
-  clientId      Int
-  state         BillingStatus @default(BILLED)
-  creationDate  DateTime
-  issueDate     DateTime?
-  paymentDate   DateTime?
-  invoiceAmount Decimal       @db.Decimal(10, 2)
-  isActive      Boolean       @default(true)
-  deletedAt     DateTime?
-  client        User          @relation(fields: [clientId], references: [id])
-  orders        Orders[]
+  id               Int           @id @default(autoincrement())
+  clientId         Int
+  state            BillingStatus @default(BILLED)
+  creationDate     DateTime
+  issueDate        DateTime?
+  paymentDate      DateTime?
+  paymentReference String?
+  invoiceAmount    Decimal       @db.Decimal(10, 2)
+  isActive         Boolean       @default(true)
+  deletedAt        DateTime?
+  client           User          @relation(fields: [clientId], references: [id])
+  orders           Orders[]
 
   @@index([clientId])
   @@index([state])
