@@ -18,6 +18,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import Link from 'next/link';
+import { getBillingStatusLabel } from '@/lib/billing-enums';
+import type { BillingStatus } from '@prisma/client';
 
 interface User {
     id: number;
@@ -53,7 +56,7 @@ export interface OrderFormData {
     // createdDate: Date | null;
     closureDate: Date | null;
     cost: string;
-    billingStatus: 'UNBILLED' | 'BILLED' | 'PAID' | 'UNBILLABLE' | 'SOLDE';
+    billingStatus: 'UNBILLED' | 'BILLED' | 'UNBILLABLE';
     lentPhysicalBook: boolean;
     notes: string;
 }
@@ -71,6 +74,8 @@ interface OrderFormBackendBaseProps {
     initialSelectedUser?: User | null;
     initialSelectedBook?: Book | null;
     initialSelectedStaff?: User | null;
+    // Linked bill (read-only context)
+    initialBill?: { id: number; state: string } | null;
 }
 
 export function OrderFormBackendBase({
@@ -85,6 +90,7 @@ export function OrderFormBackendBase({
                                          initialSelectedUser,
                                          initialSelectedBook,
                                          initialSelectedStaff,
+                                         initialBill,
                                      }: OrderFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -504,35 +510,6 @@ export function OrderFormBackendBase({
                         </Popover>
                     </div>
 
-                    {/*/!* Created Date *!/*/}
-                    {/*<div className="space-y-2">*/}
-                    {/*    <label className="text-sm font-medium text-gray-200">Date de création</label>*/}
-                    {/*    <Popover>*/}
-                    {/*        <PopoverTrigger asChild>*/}
-                    {/*            <Button*/}
-                    {/*                variant="outline"*/}
-                    {/*                className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750"*/}
-                    {/*            >*/}
-                    {/*                <Calendar className="mr-2 h-4 w-4" />*/}
-                    {/*                {formData.createdDate ? (*/}
-                    {/*                    format(formData.createdDate, 'PPP', { locale: fr })*/}
-                    {/*                ) : (*/}
-                    {/*                    <span>Sélectionner une date</span>*/}
-                    {/*                )}*/}
-                    {/*            </Button>*/}
-                    {/*        </PopoverTrigger>*/}
-                    {/*        <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">*/}
-                    {/*            <CalendarComponent*/}
-                    {/*                mode="single"*/}
-                    {/*                selected={formData.createdDate || undefined}*/}
-                    {/*                onSelect={(date) => setFormData({ ...formData, createdDate: date || null })}*/}
-                    {/*                initialFocus*/}
-                    {/*                className="bg-gray-800 text-gray-200"*/}
-                    {/*            />*/}
-                    {/*        </PopoverContent>*/}
-                    {/*    </Popover>*/}
-                    {/*</div>*/}
-
                     {/* Closure Date */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">Date d&apos;`envoie</label>
@@ -697,7 +674,7 @@ export function OrderFormBackendBase({
                         <label className="text-sm font-medium text-gray-200">État de facturation</label>
                         <Select
                             value={formData.billingStatus}
-                            onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'PAID' | 'UNBILLABLE' | 'SOLDE'})}
+                            onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
                         >
                             <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                 <SelectValue />
@@ -717,26 +694,36 @@ export function OrderFormBackendBase({
                                         <span className="font-medium">Facturé</span>
                                     </SelectItem>
                                     <SelectItem
-                                        value="PAID"
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
-                                    >
-                                        <span className="font-medium">Payé</span>
-                                    </SelectItem>
-                                    <SelectItem
                                         value="UNBILLABLE"
                                         className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
                                     >
                                         <span className="font-medium">Non facturable</span>
                                     </SelectItem>
-                                    <SelectItem
-                                        value="SOLDE"
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
-                                    >
-                                        <span className="font-medium">Soldé</span>
-                                    </SelectItem>
                                 </div>
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    {/* Linked Bill — read-only */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-200">Facture associée</label>
+                        {initialBill ? (
+                            <div className="flex items-center justify-between gap-3 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md">
+                                <span className="text-gray-200 text-sm">
+                                    Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
+                                </span>
+                                <Link
+                                    href={`/admin/bills/${initialBill.id}`}
+                                    className="text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
+                                >
+                                    Voir la facture
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-500 text-sm italic">
+                                Aucune facture associée
+                            </div>
+                        )}
                     </div>
 
                     {/* Cost */}
@@ -871,6 +858,7 @@ export function EditOrderFormBackend({
                                          initialSelectedUser,
                                          initialSelectedBook,
                                          initialSelectedStaff,
+                                         initialBill,
                                      }: {
     orderId: string;
     initialData: OrderFormData;
@@ -878,6 +866,7 @@ export function EditOrderFormBackend({
     initialSelectedUser?: User | null;
     initialSelectedBook?: Book | null;
     initialSelectedStaff?: User | null;
+    initialBill?: { id: number; state: string } | null;
 }) {
     const { toast } = useToast();
 
@@ -959,6 +948,7 @@ export function EditOrderFormBackend({
             initialSelectedUser={initialSelectedUser}
             initialSelectedBook={initialSelectedBook}
             initialSelectedStaff={initialSelectedStaff}
+            initialBill={initialBill}
         />
     );
 }

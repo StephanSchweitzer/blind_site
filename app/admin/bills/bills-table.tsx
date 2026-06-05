@@ -34,6 +34,9 @@ import {
     getBillingStatusColor,
     getBillingStatusLabel,
 } from '@/lib/billing-enums';
+import { AddBillFormBackend } from '@/admin/BillFormBackendBase';
+import { BillDetailModal } from '@/admin/BillDetailModal';
+import { DeleteBillModal } from '@/admin/DeleteBillModal';
 
 interface Bill {
     id: number;
@@ -81,6 +84,8 @@ export default function BillsTable({
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [viewBillId, setViewBillId] = useState<number | null>(null);
+    const [billToDelete, setBillToDelete] = useState<number | null>(null);
 
     const currentPage = initialPage;
     const currentStatus = searchParams.get('status') as BillingStatus | null;
@@ -127,6 +132,16 @@ export default function BillsTable({
             status: undefined,
             page: '1',
         });
+    };
+
+    const handleBillAdded = () => {
+        setIsAddModalOpen(false);
+        router.refresh();
+    };
+
+    const handleBillDeleted = () => {
+        setBillToDelete(null);
+        router.refresh();
     };
 
     const formatDate = (dateString: string | null) => {
@@ -284,6 +299,7 @@ export default function BillsTable({
                                             return (
                                                 <TableRow
                                                     key={bill.id}
+                                                    onClick={() => setViewBillId(bill.id)}
                                                     className={`border-b border-gray-700 cursor-pointer ${
                                                         late
                                                             ? 'bg-red-950/40 hover:bg-red-950/60'
@@ -399,10 +415,26 @@ export default function BillsTable({
                         <DialogTitle className="text-gray-100">Créer une nouvelle facture</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        <p className="text-gray-400">Formulaire de création de facture à venir...</p>
+                        <AddBillFormBackend onSuccess={handleBillAdded} />
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* View Bill Detail Modal */}
+            <BillDetailModal
+                isOpen={viewBillId !== null}
+                onOpenChange={(open) => { if (!open) setViewBillId(null); }}
+                billId={viewBillId}
+                onRequestDelete={(id) => { setViewBillId(null); setBillToDelete(id); }}
+            />
+
+            {/* Delete Bill Modal */}
+            <DeleteBillModal
+                isOpen={billToDelete !== null}
+                onOpenChange={(open) => { if (!open) setBillToDelete(null); }}
+                billId={billToDelete}
+                onBillDeleted={handleBillDeleted}
+            />
         </Card>
     );
 }

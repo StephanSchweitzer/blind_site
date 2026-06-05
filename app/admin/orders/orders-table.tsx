@@ -31,53 +31,14 @@ import { AddOrderFormBackend } from '@/admin/OrderFormBackendBase';
 import { EditOrderModal } from '@/admin/EditOrderModal';
 import { OrderFormData } from '@/admin/OrderFormBackendBase';
 import { useToast } from '@/hooks/use-toast';
-
-interface User {
-    id: number;
-    name: string | null;
-    email: string;
-}
-
-interface Book {
-    id: number;
-    title: string;
-    author: string;
-}
-
-type OrderWithRelations = {
-    id: number;
-    requestReceivedDate: string;
-    //createdDate: Date | null;
-    closureDate: string | null;
-    cost: number | null;
-    billingStatus: string;
-    deliveryMethod: string;
-    lentPhysicalBook: boolean;
-    isDuplication: boolean;
-    notes: string | null;
-    statusId: number;
-    mediaFormatId: number;
-    processedByStaffId: number | null;
-    aveugleId: number;
-    catalogueId: number;
-    aveugle: {
-        name: string | null;
-        email: string | null;
-    };
-    catalogue: {
-        title: string;
-        author: string;
-    };
-    status: {
-        name: string;
-    };
-    mediaFormat: {
-        name: string;
-    };
-};
+import type {
+    SerializedOrderTableRow,
+    OrderUserOption,
+    OrderBookOption,
+} from '@/types/models/order.model';
 
 type OrdersTableProps = {
-    initialOrders: OrderWithRelations[];
+    initialOrders: SerializedOrderTableRow[];
     initialPage: number;
     initialSearch: string;
     totalPages: number;
@@ -104,9 +65,10 @@ export default function OrdersTable({
     const [selectedOrder, setSelectedOrder] = useState<{
         id: string;
         data: OrderFormData;
-        selectedUser: User;
-        selectedBook: Book;
-        selectedStaff: User | null;
+        selectedUser: OrderUserOption;
+        selectedBook: OrderBookOption;
+        selectedStaff: OrderUserOption | null;
+        bill: SerializedOrderTableRow['bill'];
     } | null>(null);
 
     const currentPage = initialPage;
@@ -182,7 +144,7 @@ export default function OrdersTable({
         router.refresh();
     };
 
-    const handleRowClick = async (order: OrderWithRelations) => {
+    const handleRowClick = async (order: SerializedOrderTableRow) => {
         setIsLoadingOrder(true);
 
         try {
@@ -223,12 +185,11 @@ export default function OrdersTable({
                 statusId: order.statusId,
                 isDuplication: order.isDuplication,
                 mediaFormatId: order.mediaFormatId,
-                deliveryMethod: order.deliveryMethod as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE',
+                deliveryMethod: order.deliveryMethod,
                 processedByStaffId: order.processedByStaffId,
-                //createdDate: order.createdDate ? new Date(order.createdDate) : null,
                 closureDate: order.closureDate ? new Date(order.closureDate) : null,
                 cost: order.cost?.toString() || '0.00',
-                billingStatus: order.billingStatus as 'UNBILLED' | 'BILLED' | 'PAID',
+                billingStatus: order.billingStatus,
                 lentPhysicalBook: order.lentPhysicalBook,
                 notes: order.notes || '',
             };
@@ -239,6 +200,7 @@ export default function OrdersTable({
                 selectedUser: userData,
                 selectedBook: bookData,
                 selectedStaff: staffData,
+                bill: order.bill,
             });
 
             // Open modal only after all data is ready and validated
@@ -264,9 +226,7 @@ export default function OrdersTable({
         const labels: Record<string, string> = {
             UNBILLED: 'Non facturé',
             BILLED: 'Facturé',
-            PAID: 'Payé',
             UNBILLABLE: 'Non facturable',
-            SOLDE: 'Soldé',
         };
         return labels[status] || status;
     };
@@ -283,7 +243,7 @@ export default function OrdersTable({
     };
 
     // Check if an order is overdue (>3 months old and statusId is not 3)
-    const isOrderOverdue = (order: OrderWithRelations) => {
+    const isOrderOverdue = (order: SerializedOrderTableRow) => {
         // statusId 3 means completed - never overdue
         if (order.statusId === 3) {
             return false;
@@ -431,7 +391,7 @@ export default function OrdersTable({
                                     <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
                                     <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
                                     <SelectItem value="BILLED" className="text-gray-200">Facturé</SelectItem>
-                                    <SelectItem value="PAID" className="text-gray-200">Payé</SelectItem>
+                                    <SelectItem value="UNBILLABLE" className="text-gray-200">Non facturable</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -553,11 +513,9 @@ export default function OrdersTable({
                                                     <TableCell>
                                                         <span
                                                             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                                                order.billingStatus === 'PAID'
-                                                                    ? 'bg-green-100 text-green-800'
-                                                                    : order.billingStatus === 'BILLED'
-                                                                        ? 'bg-yellow-100 text-yellow-800'
-                                                                        : 'bg-gray-100 text-gray-800'
+                                                                order.billingStatus === 'BILLED'
+                                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                                    : 'bg-gray-100 text-gray-800'
                                                             }`}
                                                         >
                                                             {getBillingStatusLabel(order.billingStatus)}
@@ -672,6 +630,7 @@ export default function OrdersTable({
                     initialSelectedUser={selectedOrder.selectedUser}
                     initialSelectedBook={selectedOrder.selectedBook}
                     initialSelectedStaff={selectedOrder.selectedStaff}
+                    initialBill={selectedOrder.bill}
                 />
             )}
         </Card>

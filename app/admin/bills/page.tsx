@@ -20,7 +20,8 @@ async function getBills(
 ) {
     const billsPerPage = 10;
 
-    const whereClause: Prisma.BillWhereInput = {};
+    // Hide soft-deleted bills from the listing.
+    const whereClause: Prisma.BillWhereInput = { isActive: true };
 
     if (searchTerm) {
         whereClause.client = {

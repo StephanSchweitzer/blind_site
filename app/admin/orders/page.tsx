@@ -1,8 +1,8 @@
-// app/admin/orders/page.tsx
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, OrderBillingStatus, BillingStatus } from '@prisma/client';
 import OrdersTable from './orders-table';
 import { notFound } from 'next/navigation';
+import { ordersTableInclude } from '@/types/models/order.model';
 
 interface PageProps {
     searchParams: Promise<{
@@ -92,8 +92,12 @@ async function getOrders(
     }
 
     // Billing status filter
-    if (billingStatus && billingStatus !== 'all') {
-        whereClause.billingStatus = billingStatus as never;
+    if (billingStatus === 'PAID') {
+        // PAID is a property of the bill (Bill.state), not the order
+        whereClause.bill = { is: { state: BillingStatus.PAID } };
+    } else if (billingStatus && billingStatus !== 'all') {
+        // UNBILLED / BILLED / UNBILLABLE are order-level (Orders.billingStatus)
+        whereClause.billingStatus = billingStatus as OrderBillingStatus;
     }
 
     // isDuplication filter
@@ -148,30 +152,7 @@ async function getOrders(
                 orderBy: { requestReceivedDate: 'desc' },
                 skip: Math.max(0, (page - 1) * ordersPerPage),
                 take: ordersPerPage,
-                include: {
-                    aveugle: {
-                        select: {
-                            name: true,
-                            email: true,
-                        },
-                    },
-                    catalogue: {
-                        select: {
-                            title: true,
-                            author: true,
-                        },
-                    },
-                    status: {
-                        select: {
-                            name: true,
-                        },
-                    },
-                    mediaFormat: {
-                        select: {
-                            name: true,
-                        },
-                    },
-                },
+                include: ordersTableInclude,
             }),
             prisma.orders.count({ where: whereClause }),
             prisma.status.findMany({

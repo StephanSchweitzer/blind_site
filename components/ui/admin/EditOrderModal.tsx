@@ -31,6 +31,8 @@ interface EditOrderModalProps {
     initialSelectedUser?: User | null;
     initialSelectedBook?: Book | null;
     initialSelectedStaff?: User | null;
+    // Linked bill (read-only context)
+    initialBill?: { id: number; state: string } | null;
 }
 
 export function EditOrderModal({
@@ -43,17 +45,15 @@ export function EditOrderModal({
                                    initialSelectedUser,
                                    initialSelectedBook,
                                    initialSelectedStaff,
+                                   initialBill,
                                }: EditOrderModalProps) {
     const handleSuccess = (orderId: number, isDeleted?: boolean) => {
-        console.log('Order operation completed successfully, closing modal');
         if (isDeleted) {
             if (onOrderDeleted) {
-                console.log('Calling onOrderDeleted callback with orderId:', orderId);
                 onOrderDeleted(orderId);
             }
         } else {
             if (onOrderEdited) {
-                console.log('Calling onOrderEdited callback with orderId:', orderId);
                 onOrderEdited(orderId);
             }
         }
@@ -74,6 +74,7 @@ export function EditOrderModal({
                         initialSelectedUser={initialSelectedUser}
                         initialSelectedBook={initialSelectedBook}
                         initialSelectedStaff={initialSelectedStaff}
+                        initialBill={initialBill}
                     />
                 </div>
             </DialogContent>

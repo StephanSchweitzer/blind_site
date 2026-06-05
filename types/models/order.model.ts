@@ -254,3 +254,34 @@ export const orderIncludeConfigs = {
         },
     },
 } as const;
+
+// ============================================================================
+// Orders Table (list view) — shared shape for the admin orders page + table
+// ============================================================================
+
+export const ordersTableInclude = {
+    aveugle: { select: { name: true, email: true } },
+    catalogue: { select: { title: true, author: true } },
+    status: { select: { name: true } },
+    mediaFormat: { select: { name: true } },
+    bill: { select: { id: true, state: true } },
+} as const satisfies Prisma.OrdersInclude;
+
+type OrdersTableRowRaw = Prisma.OrdersGetPayload<{ include: typeof ordersTableInclude }>;
+
+// JSON-safe row as sent to client components (Date -> ISO string, Decimal -> number)
+export type SerializedOrderTableRow = Omit<
+    OrdersTableRowRaw,
+    'requestReceivedDate' | 'closureDate' | 'createdDate' | 'updatedAt' | 'deletedAt' | 'cost'
+> & {
+    requestReceivedDate: string;
+    closureDate: string | null;
+    cost: number | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+};
+
+// Lightweight selection shapes consumed by the order modal selectors
+// (match the /api/user/:id and /api/books/:id payloads)
+export type OrderUserOption = { id: number; name: string | null; email: string };
+export type OrderBookOption = { id: number; title: string; author: string };
