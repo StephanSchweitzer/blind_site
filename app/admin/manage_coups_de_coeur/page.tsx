@@ -1,6 +1,7 @@
 // app/admin/manage_coups_de_coeur/page.tsx
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { coupsDeCoeurIncludeConfigs } from '@/types/models/coups-de-coeur.model';
 import { CoupsTable } from './coups-table';
 
 interface PageProps {
@@ -44,14 +45,7 @@ async function getCoupsDeCoeur(page: number, searchTerm: string) {
     const [items, totalItems] = await Promise.all([
         prisma.coupsDeCoeur.findMany({
             where: whereClause,
-            include: {
-                addedBy: true,
-                books: {
-                    include: {
-                        book: true
-                    }
-                }
-            },
+            include: coupsDeCoeurIncludeConfigs,
             orderBy: {
                 createdAt: 'desc'
             },
@@ -86,10 +80,10 @@ export default async function CoupsDeCoeur({ searchParams }: PageProps) {
         <div className="space-y-4">
             <CoupsTable
                 initialItems={items}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                />
-            </div>
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages}
+            />
+        </div>
     );
 }

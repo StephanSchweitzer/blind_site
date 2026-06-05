@@ -14,38 +14,10 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-interface Book {
-    id: number;
-    title: string;
-    description: string | null;
-    addedById: number;
-    createdAt: Date;
-    updatedAt: Date;
-    author: string;
-    publishedDate: Date | null;
-    isbn: string | null;
-    readingDurationMinutes: number | null;
-    available: boolean;
-}
-
-interface CoupDeCoeurBook {
-    book: Book;
-}
-
-type CoupDeCoeur = {
-    id: number;
-    title: string;
-    active: boolean;
-    createdAt: Date;
-    addedBy: {
-        name: string | null;
-    } | null;
-    books: CoupDeCoeurBook[];
-};
+import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
 
 interface CoupsTableProps {
-    initialItems: CoupDeCoeur[];
+    initialItems: CoupDeCoeurWithBooks[];
     initialPage: number;
     initialSearch: string;
     totalPages: number;

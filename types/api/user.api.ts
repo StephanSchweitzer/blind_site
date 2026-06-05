@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, MemberType, AccessLevel, DeliveryMethod } from '@prisma/client';
 import {
     basicUserSelect,
     profileUserSelect,
@@ -7,8 +7,6 @@ import {
     userIncludeConfigs,
     User,
 } from '../models/user.model';
-import { MemberType, AccessLevel } from '@/lib/user-enums';
-
 
 // ============================================================================
 // Summary Types (for forms and UI components)
@@ -83,15 +81,15 @@ export const UserCreateInputSchema = z.object({
     name: z.string(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
-    accessLevel: z.enum(['member', 'admin', 'super_admin']).default('member'),
-    memberType: z.enum(['ecouteur', 'auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur']).default('ecouteur'),
+    accessLevel: z.nativeEnum(AccessLevel).default(AccessLevel.member),
+    memberType: z.nativeEnum(MemberType).default(MemberType.ecouteur),
     role: z.string().default('user'),
     homePhone: z.string().optional(),
     cellPhone: z.string().optional(),
     gestconteNotes: z.string().optional(),
     gestconteId: z.number().optional(),
     nonProfitAffiliation: z.string().optional(),
-    preferredDeliveryMethod: z.string().optional(),
+    preferredDeliveryMethod: z.nativeEnum(DeliveryMethod).optional(),
     preferredDistributionMethod: z.string().optional(),
     paymentThreshold: z.number().or(z.string()).optional().nullable(),
     currentBalance: z.number().or(z.string()).optional().nullable(),
@@ -114,8 +112,8 @@ export const UserUpdateInputSchema = z.object({
     lastName: z.string().optional(),
     email: z.string().email().optional(),
     role: z.string().optional(),
-    accessLevel: z.enum(['member', 'admin', 'super_admin']).optional(),
-    memberType: z.enum(['ecouteur', 'auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur']).optional(),
+    accessLevel: z.nativeEnum(AccessLevel).optional(),
+    memberType: z.nativeEnum(MemberType).optional(),
     homePhone: z.string().optional(),
     cellPhone: z.string().optional(),
     gestconteNotes: z.string().optional(),
@@ -124,7 +122,7 @@ export const UserUpdateInputSchema = z.object({
     isActive: z.boolean().optional(),
     terminationDate: z.string().datetime().optional().nullable(),
     terminationReason: z.string().optional(),
-    preferredDeliveryMethod: z.string().optional(),
+    preferredDeliveryMethod: z.nativeEnum(DeliveryMethod).optional(),
     preferredDistributionMethod: z.string().optional(),
     paymentThreshold: z.number().or(z.string()).optional().nullable(),
     currentBalance: z.number().or(z.string()).optional().nullable(),
@@ -154,7 +152,7 @@ export type UserUpdateData = {
     isActive?: boolean | null;
     terminationDate?: Date | null;
     terminationReason?: string | null;
-    preferredDeliveryMethod?: string | null;
+    preferredDeliveryMethod?: DeliveryMethod | null;
     preferredDistributionMethod?: string | null;
     paymentThreshold?: number | null;
     currentBalance?: number | null;

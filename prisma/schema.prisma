@@ -38,7 +38,7 @@ model User {
   terminationDate             DateTime?
   terminationReason           String?
   lastUpdated                 DateTime?          @updatedAt
-  preferredDeliveryMethod     String?
+  preferredDeliveryMethod     DeliveryMethod?
   paymentThreshold            Decimal?           @default(21.00) @db.Decimal(10, 2)
   currentBalance              Decimal?           @default(0.00) @db.Decimal(10, 2)
   preferredDistributionMethod String?
@@ -84,7 +84,7 @@ model Book {
   isbn                   String?             @unique
   description            String?
   available              Boolean             @default(true)
-  createdAt              DateTime            @default(now())
+  createdAt              DateTime?           @default(now())
   updatedAt              DateTime            @updatedAt
   addedById              Int
   readingDurationMinutes Int?
@@ -226,6 +226,7 @@ model Orders {
   @@index([billingStatus])
   @@index([mediaFormatId])
   @@index([billId])
+  @@index([isActive])
 }
 
 model Assignment {
