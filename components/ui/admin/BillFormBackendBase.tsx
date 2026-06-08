@@ -51,6 +51,7 @@ interface BillFormBackendBaseProps {
     loadingText: string;
     title: string;
     onSuccess?: (billId: number) => void;
+    initialClient?: User | null;
 }
 
 function formatCurrency(amount: number) {
@@ -63,11 +64,12 @@ export function BillFormBackendBase({
                                         loadingText,
                                         title,
                                         onSuccess,
+                                        initialClient,
                                     }: BillFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [selectedClient, setSelectedClient] = useState<User | null>(null);
+    const [selectedClient, setSelectedClient] = useState<User | null>(initialClient ?? null);
     const [state, setState] = useState<BillingStatus>(BillingStatus.BILLED);
     const [creationDate, setCreationDate] = useState<Date>(new Date());
     const [issueDate, setIssueDate] = useState<Date | null>(null);
@@ -398,7 +400,7 @@ export function BillFormBackendBase({
 }
 
 // Add Bill Form using the base
-export function AddBillFormBackend({ onSuccess }: { onSuccess?: (billId: number) => void }) {
+export function AddBillFormBackend({ onSuccess, initialClient }: { onSuccess?: (billId: number) => void; initialClient?: User | null }) {
     const { toast } = useToast();
 
     const handleSubmit = async (formData: BillFormData): Promise<number> => {
@@ -445,6 +447,7 @@ export function AddBillFormBackend({ onSuccess }: { onSuccess?: (billId: number)
             loadingText="Création en cours..."
             title="Créer une nouvelle facture"
             onSuccess={onSuccess}
+            initialClient={initialClient}
         />
     );
 }

@@ -64,6 +64,7 @@ interface PaymentsTableProps {
     availableMethods: PaymentMethod[];
     initialTotalPayments: number;
     hideSearch?: boolean;
+    presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null } | null;
 }
 
 export default function PaymentsTable({
@@ -75,6 +76,7 @@ export default function PaymentsTable({
                                           availableMethods,
                                           initialTotalPayments,
                                           hideSearch = false,
+                                          presetClient = null,
                                       }: PaymentsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -359,7 +361,7 @@ export default function PaymentsTable({
                         <DialogTitle className="text-gray-100">Créer un nouveau paiement</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        <AddPaymentFormBackend onSuccess={handlePaymentAdded} />
+                        <AddPaymentFormBackend onSuccess={handlePaymentAdded} initialClient={presetClient} />
                     </div>
                 </DialogContent>
             </Dialog>

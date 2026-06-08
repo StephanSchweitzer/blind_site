@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus, BillingStatus } from '@prisma/client';
 import { ordersTableInclude } from '@/types/models/order.model';
 
+// ⚠️ ADJUST this import to wherever your orders-table.tsx actually lives.
 import OrdersTable from '@/app/admin/orders/orders-table';
 
 export const dynamic = 'force-dynamic';
@@ -110,6 +111,12 @@ export default async function CommandesTab({ params, searchParams }: PageProps) 
         }),
     ]);
 
+    const client = await prisma.user.findUnique({
+        where: { id: aveugleId },
+        select: { id: true, name: true, email: true },
+    });
+    const presetClient = client ? { ...client, email: client.email ?? '' } : null;
+
     const serializedOrders = orders.map((order) => ({
         ...order,
         cost: order.cost ? Number(order.cost) : null,
@@ -128,6 +135,7 @@ export default async function CommandesTab({ params, searchParams }: PageProps) 
             availableStatuses={statuses}
             initialTotalOrders={totalOrders}
             hideSearch
+            presetClient={presetClient}
         />
     );
 }

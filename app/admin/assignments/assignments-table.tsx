@@ -42,6 +42,8 @@ interface AssignmentsTableProps {
     availableStatuses: StatusSummary[];
     initialTotalAssignments: number;
     hideSearch?: boolean;
+    presetClientId?: number | null;
+    presetReader?: ReaderSummary | null;
 }
 
 export default function AssignmentsTable({
@@ -52,6 +54,8 @@ export default function AssignmentsTable({
                                              availableStatuses,
                                              initialTotalAssignments,
                                              hideSearch = false,
+                                             presetClientId = null,
+                                             presetReader = null,
                                          }: AssignmentsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -524,6 +528,8 @@ export default function AssignmentsTable({
                 isOpen={isAddModalOpen}
                 onOpenChange={setIsAddModalOpen}
                 onAssignmentCreated={handleAssignmentAdded}
+                presetClientId={presetClientId}
+                presetReader={presetReader}
             />
 
             {/* Edit Assignment Modal */}

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 
 export interface AssignmentFormBackendBaseProps {
+    presetClientId?: number | null;
     initialData?: AssignmentFormData;
     onSubmit: (formData: AssignmentFormData, readerId?: number | null) => Promise<number>;
     submitButtonText: string;
@@ -64,6 +65,7 @@ export function AssignmentFormBackendBase({
                                               initialSelectedOrder,
                                               onReadersLoaded,
                                               onOrdersLoaded,
+                                              presetClientId,
                                           }: AssignmentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -80,7 +82,7 @@ export function AssignmentFormBackendBase({
     });
 
     // Reader state (separate from formData)
-    const [selectedReaderId, setSelectedReaderId] = useState<number | null>(null);
+    const [selectedReaderId, setSelectedReaderId] = useState<number | null>(initialSelectedReader?.id ?? null);
     const [selectedReader, setSelectedReader] = useState<ReaderSummary | null>(initialSelectedReader || null);
     const [currentReader, setCurrentReader] = useState<ReaderSummary | null>(null);
 
@@ -124,7 +126,7 @@ export function AssignmentFormBackendBase({
             try {
                 const [statusesRes, ordersRes] = await Promise.all([
                     fetch('/api/statuses'),
-                    fetch('/api/orders?page=1&limit=100'),
+                    fetch(`/api/orders?page=1&limit=100${presetClientId ? `&aveugleId=${presetClientId}` : ''}`),
                 ]);
 
                 if (statusesRes.ok) {
@@ -203,14 +205,15 @@ export function AssignmentFormBackendBase({
     // Search users (readers)
     useEffect(() => {
         const searchUsers = async () => {
-            if (userSearch.length < 2) {
+            const q = userSearch.trim();
+            if (q.length < 2) {
                 setUsers([]);
                 return;
             }
 
             setIsSearchingUsers(true);
             try {
-                const response = await fetch(`/api/user/search?q=${encodeURIComponent(userSearch)}`);
+                const response = await fetch(`/api/user/search?q=${encodeURIComponent(q)}`);
                 if (response.ok) {
                     const data = await response.json();
                     setUsers(data);
@@ -273,7 +276,7 @@ export function AssignmentFormBackendBase({
             setIsSearchingOrders(true);
             try {
                 const response = await fetch(
-                    `/api/orders?page=1&limit=50&search=${encodeURIComponent(orderSearch)}`
+                    `/api/orders?page=1&limit=50&search=${encodeURIComponent(orderSearch)}${presetClientId ? `&aveugleId=${presetClientId}` : ''}`
                 );
                 if (response.ok) {
                     const data = await response.json();
@@ -1055,9 +1058,13 @@ export function AssignmentFormBackendBase({
 export function AddAssignmentFormBackend({
                                              onSuccess,
                                              onOrdersLoaded,
+                                             presetClientId,
+                                             initialReader,
                                          }: {
     onSuccess?: (assignmentId: number) => void;
     onOrdersLoaded?: () => void;
+    presetClientId?: number | null;
+    initialReader?: ReaderSummary | null;
 }) {
     const { toast } = useToast();
 
@@ -1115,6 +1122,8 @@ export function AddAssignmentFormBackend({
             title="Créer une nouvelle affectation"
             onSuccess={onSuccess}
             onOrdersLoaded={onOrdersLoaded}
+            presetClientId={presetClientId}
+            initialSelectedReader={initialReader}
         />
     );
 }

@@ -85,6 +85,7 @@ interface PaymentFormBackendBaseProps {
     title: string;
     onSuccess?: (paymentId: number) => void;
     initialData?: PaymentFormInitialData;
+    initialClient?: User | null;
 }
 
 const NONE = 'NONE';
@@ -106,13 +107,14 @@ export function PaymentFormBackendBase({
                                            title,
                                            onSuccess,
                                            initialData,
+                                           initialClient,
                                        }: PaymentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
 
     const [type, setType] = useState<PaymentType>(initialData?.type ?? PaymentType.COTISATION);
-    const [selectedClient, setSelectedClient] = useState<User | null>(initialData?.client ?? null);
+    const [selectedClient, setSelectedClient] = useState<User | null>(initialData?.client ?? initialClient ?? null);
     const [amount, setAmount] = useState<string>(initialData ? String(initialData.amount) : '');
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>(initialData?.paymentMethod ?? '');
     const [creationDate, setCreationDate] = useState<Date>(
@@ -622,7 +624,7 @@ export function paymentFormDataToApiBody(d: PaymentFormData) {
 
 // ─── Add wrapper (POST) ─────────────────────────────────────────────────────────
 
-export function AddPaymentFormBackend({ onSuccess }: { onSuccess?: (paymentId: number) => void }) {
+export function AddPaymentFormBackend({ onSuccess, initialClient }: { onSuccess?: (paymentId: number) => void; initialClient?: User | null }) {
     const { toast } = useToast();
 
     const handleSubmit = async (formData: PaymentFormData): Promise<number> => {
@@ -663,6 +665,7 @@ export function AddPaymentFormBackend({ onSuccess }: { onSuccess?: (paymentId: n
             loadingText="Création en cours..."
             title="Créer un nouveau paiement"
             onSuccess={onSuccess}
+            initialClient={initialClient}
         />
     );
 }

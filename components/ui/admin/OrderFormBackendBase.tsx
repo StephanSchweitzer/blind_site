@@ -97,7 +97,7 @@ export function OrderFormBackendBase({
 
     // Form data state
     const [formData, setFormData] = useState<OrderFormData>(initialData || {
-        aveugleId: null,
+        aveugleId: initialSelectedUser?.id ?? null,
         catalogueId: null,
         requestReceivedDate: new Date(),
         statusId: null,
@@ -800,7 +800,7 @@ export function OrderFormBackendBase({
 }
 
 // Add Order Form using the base
-export function AddOrderFormBackend({ onSuccess }: { onSuccess?: (orderId: number) => void }) {
+export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: (orderId: number) => void; initialClient?: User | null }) {
     const { toast } = useToast();
 
     const handleSubmit = async (formData: OrderFormData): Promise<number> => {
@@ -848,6 +848,7 @@ export function AddOrderFormBackend({ onSuccess }: { onSuccess?: (orderId: numbe
             loadingText="Création en cours..."
             title="Créer une nouvelle demande"
             onSuccess={onSuccess}
+            initialSelectedUser={initialClient}
         />
     );
 }

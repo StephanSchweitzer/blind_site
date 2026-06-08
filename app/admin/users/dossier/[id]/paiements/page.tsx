@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 
+// ⚠️ ADJUST this import to wherever your payments-table.tsx actually lives.
 import PaymentsTable from '@/app/admin/payments/payments-table';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,11 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
         prisma.payment.count({ where: whereClause }),
     ]);
 
+    const client = await prisma.user.findUnique({
+        where: { id: clientId },
+        select: { id: true, name: true, firstName: true, lastName: true, email: true },
+    });
+
     const serializedPayments = payments.map((payment) => ({
         ...payment,
         amount: payment.amount.toString(),
@@ -66,6 +72,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
             availableMethods={Object.values(PaymentMethod)}
             initialTotalPayments={totalPayments}
             hideSearch
+            presetClient={client}
         />
     );
 }

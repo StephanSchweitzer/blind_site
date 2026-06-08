@@ -45,6 +45,7 @@ type OrdersTableProps = {
     availableStatuses: { id: number; name: string }[];
     initialTotalOrders: number;
     hideSearch?: boolean;
+    presetClient?: { id: number; name: string | null; email: string } | null;
 };
 
 export default function OrdersTable({
@@ -54,6 +55,7 @@ export default function OrdersTable({
                                         totalPages,
                                         availableStatuses,
                                         hideSearch = false,
+                                        presetClient = null,
                                     }: OrdersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -617,7 +619,7 @@ export default function OrdersTable({
                         <DialogTitle className="text-gray-100">Ajouter une nouvelle demande</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        <AddOrderFormBackend onSuccess={handleOrderAdded} />
+                        <AddOrderFormBackend onSuccess={handleOrderAdded} initialClient={presetClient} />
                     </div>
                 </DialogContent>
             </Dialog>

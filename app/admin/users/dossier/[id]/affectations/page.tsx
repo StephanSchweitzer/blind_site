@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
+// ⚠️ ADJUST this import to wherever your assignments-table.tsx actually lives.
 import AssignmentsTable from '@/app/admin/assignments/assignments-table';
 
 export const dynamic = 'force-dynamic';
@@ -26,12 +27,16 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
 
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { memberType: true },
+        select: { memberType: true, name: true, firstName: true, lastName: true, email: true },
     });
 
     // A lecteur's dossier shows assignments they read; everyone else's shows
     // assignments tied to their own orders (as the aveugle).
     const isReader = user?.memberType === 'lecteur';
+    const presetReader =
+        isReader && user
+            ? { id: userId, name: user.name, firstName: user.firstName, lastName: user.lastName, email: user.email ?? '' }
+            : null;
     const whereClause: Prisma.AssignmentWhereInput = isReader
         ? { readerHistory: { some: { readerId: userId } } }
         : { order: { is: { aveugleId: userId } } };
@@ -117,6 +122,8 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
             availableStatuses={statuses}
             initialTotalAssignments={totalAssignments}
             hideSearch
+            presetClientId={isReader ? null : userId}
+            presetReader={presetReader}
         />
     );
 }

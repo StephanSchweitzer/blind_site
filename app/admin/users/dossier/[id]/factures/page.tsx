@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { BillingStatus, Prisma } from '@prisma/client';
 
+// ⚠️ ADJUST this import to wherever your bills-table.tsx actually lives.
+// Your bills page imports it as `./bills-table`; from here it needs a path/alias.
 import BillsTable from '@/app/admin/bills/bills-table';
 
 export const dynamic = 'force-dynamic';
@@ -54,6 +56,12 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
         prisma.bill.count({ where: whereClause }),
     ]);
 
+    const client = await prisma.user.findUnique({
+        where: { id: clientId },
+        select: { id: true, name: true, firstName: true, lastName: true, email: true },
+    });
+    const presetClient = client ? { ...client, email: client.email ?? '' } : null;
+
     const serializedBills = bills.map((bill) => ({
         ...bill,
         creationDate: bill.creationDate.toISOString(),
@@ -71,6 +79,7 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
             availableStatuses={Object.values(BillingStatus)}
             initialTotalBills={totalBills}
             hideSearch
+            presetClient={presetClient}
         />
     );
 }

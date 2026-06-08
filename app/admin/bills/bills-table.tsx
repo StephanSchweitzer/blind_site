@@ -60,6 +60,7 @@ interface BillsTableProps {
     availableStatuses: BillingStatus[];
     initialTotalBills: number;
     hideSearch?: boolean;
+    presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string } | null;
 }
 
 const LATE_THRESHOLD_DAYS = 30;
@@ -79,6 +80,7 @@ export default function BillsTable({
                                        availableStatuses,
                                        initialTotalBills,
                                        hideSearch = false,
+                                       presetClient = null,
                                    }: BillsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -440,7 +442,7 @@ export default function BillsTable({
                         <DialogTitle className="text-gray-100">Créer une nouvelle facture</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        <AddBillFormBackend onSuccess={handleBillAdded} />
+                        <AddBillFormBackend onSuccess={handleBillAdded} initialClient={presetClient} />
                     </div>
                 </DialogContent>
             </Dialog>

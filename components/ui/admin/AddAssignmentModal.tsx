@@ -6,18 +6,23 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { AddAssignmentFormBackend } from '@/admin/AssignmentFormBackendBase';
+import type { ReaderSummary } from '@/types';
 import { Loader2 } from 'lucide-react';
 
 interface AddAssignmentModalProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     onAssignmentCreated?: (assignmentId: number) => void;
+    presetClientId?: number | null;
+    presetReader?: ReaderSummary | null;
 }
 
 export function AddAssignmentModal({
                                        isOpen,
                                        onOpenChange,
                                        onAssignmentCreated,
+                                       presetClientId,
+                                       presetReader,
                                    }: AddAssignmentModalProps) {
     const [isLoadingOrders, setIsLoadingOrders] = useState(true);
 
@@ -59,6 +64,8 @@ export function AddAssignmentModal({
                     <AddAssignmentFormBackend
                         onSuccess={handleSuccess}
                         onOrdersLoaded={handleOrdersLoaded}
+                        presetClientId={presetClientId}
+                        initialReader={presetReader}
                     />
                 </div>
             </DialogContent>
