@@ -291,7 +291,7 @@ export function AssignmentFormBackendBase({
 
         const debounce = setTimeout(searchOrders, 300);
         return () => clearTimeout(debounce);
-    }, [orderSearch]);
+    }, [orderSearch, presetClientId]);
 
     const handleReaderSelect = (user: ReaderSummary) => {
         setSelectedReader(user);
