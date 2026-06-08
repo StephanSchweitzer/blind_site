@@ -44,6 +44,7 @@ type OrdersTableProps = {
     totalPages: number;
     availableStatuses: { id: number; name: string }[];
     initialTotalOrders: number;
+    hideSearch?: boolean;
 };
 
 export default function OrdersTable({
@@ -52,6 +53,7 @@ export default function OrdersTable({
                                         initialSearch,
                                         totalPages,
                                         availableStatuses,
+                                        hideSearch = false,
                                     }: OrdersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -322,35 +324,37 @@ export default function OrdersTable({
                 {/* Search and Filters */}
                 <div className="space-y-4">
                     {/* Search Bar */}
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <Input
-                                placeholder="Rechercher par client, livre, ou email..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400"
-                            />
-                        </div>
-                        {searchTerm && (
+                    {!hideSearch && (
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Input
+                                    placeholder="Rechercher par client, livre, ou email..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400"
+                                />
+                            </div>
+                            {searchTerm && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleClearSearch}
+                                    className="text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
                             <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleClearSearch}
-                                className="text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                                onClick={handleSearch}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                disabled={isPending}
                             >
-                                <X className="h-4 w-4" />
+                                Rechercher
                             </Button>
-                        )}
-                        <Button
-                            onClick={handleSearch}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            disabled={isPending}
-                        >
-                            Rechercher
-                        </Button>
-                    </div>
+                        </div>
+                    )}
 
                     {/* Filters */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

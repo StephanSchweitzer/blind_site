@@ -7,6 +7,9 @@ import {
 } from "@/components/ui/dialog";
 import { EditUserFormBackend } from '@/admin/UserFormBackendBase';
 import { UserFormData, UserType } from '@/types';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { FolderOpen } from 'lucide-react';
 
 interface EditUserModalProps {
     isOpen: boolean;
@@ -49,7 +52,22 @@ export function EditUserModal({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100">Modifier l&apos;utilisateur</DialogTitle>
+                    <div className="flex items-center justify-between gap-4 pr-8">
+                        <DialogTitle className="text-gray-100">Modifier l&apos;utilisateur</DialogTitle>
+                        {userId && (
+                            <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white"
+                            >
+                                <Link href={`/admin/users/dossier/${userId}`}>
+                                    <FolderOpen className="h-4 w-4 mr-2" />
+                                    Voir le dossier
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
                 </DialogHeader>
                 <div className="overflow-y-auto px-1">
                     <EditUserFormBackend

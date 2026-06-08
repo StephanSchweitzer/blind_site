@@ -713,7 +713,9 @@ export function OrderFormBackendBase({
                                     Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
                                 </span>
                                 <Link
-                                    href={`/admin/bills/${initialBill.id}`}
+                                    href={`/admin/bills?bill=${initialBill.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className="text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
                                 >
                                     Voir la facture

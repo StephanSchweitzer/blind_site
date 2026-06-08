@@ -63,6 +63,7 @@ interface PaymentsTableProps {
     availableTypes: PaymentType[];
     availableMethods: PaymentMethod[];
     initialTotalPayments: number;
+    hideSearch?: boolean;
 }
 
 export default function PaymentsTable({
@@ -73,6 +74,7 @@ export default function PaymentsTable({
                                           availableTypes,
                                           availableMethods,
                                           initialTotalPayments,
+                                          hideSearch = false,
                                       }: PaymentsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -159,29 +161,31 @@ export default function PaymentsTable({
             <CardContent className="pt-6">
                 {/* Search and Filter Section */}
                 <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <div className="flex-1 flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <Input
-                                placeholder="Rechercher par client..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
-                            />
-                            {searchTerm && (
-                                <button
-                                    onClick={handleClearSearch}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
+                    {!hideSearch && (
+                        <div className="flex-1 flex gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Input
+                                    placeholder="Rechercher par client..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
+                                />
+                                {searchTerm && (
+                                    <button
+                                        onClick={handleClearSearch}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <Button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isPending}>
+                                Rechercher
+                            </Button>
                         </div>
-                        <Button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isPending}>
-                            Rechercher
-                        </Button>
-                    </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-3">
                         <Select value={currentType ?? 'all'} onValueChange={handleTypeFilter}>

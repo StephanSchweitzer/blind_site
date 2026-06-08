@@ -41,6 +41,7 @@ interface AssignmentsTableProps {
     totalPages: number;
     availableStatuses: StatusSummary[];
     initialTotalAssignments: number;
+    hideSearch?: boolean;
 }
 
 export default function AssignmentsTable({
@@ -50,6 +51,7 @@ export default function AssignmentsTable({
                                              totalPages,
                                              availableStatuses,
                                              initialTotalAssignments,
+                                             hideSearch = false,
                                          }: AssignmentsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -306,34 +308,36 @@ export default function AssignmentsTable({
                 {/* Search and Filters */}
                 <div className="mb-6 space-y-4">
                     <div className="flex gap-4">
-                        <div className="flex-1 flex gap-2">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                                <Input
-                                    type="text"
-                                    placeholder="Rechercher par livre, lecteur ou numéro..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    className="pl-10 pr-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
-                                />
-                                {searchTerm && (
-                                    <button
-                                        onClick={handleClearSearch}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
+                        {!hideSearch && (
+                            <div className="flex-1 flex gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Rechercher par livre, lecteur ou numéro..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                        className="pl-10 pr-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
+                                    />
+                                    {searchTerm && (
+                                        <button
+                                            onClick={handleClearSearch}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                </div>
+                                <Button
+                                    onClick={handleSearch}
+                                    disabled={isPending}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                    Rechercher
+                                </Button>
                             </div>
-                            <Button
-                                onClick={handleSearch}
-                                disabled={isPending}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                                Rechercher
-                            </Button>
-                        </div>
+                        )}
                         <div className="w-64">
                             <Select
                                 value={currentStatusId}

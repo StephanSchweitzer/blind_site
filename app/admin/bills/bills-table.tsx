@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,7 @@ interface BillsTableProps {
     totalPages: number;
     availableStatuses: BillingStatus[];
     initialTotalBills: number;
+    hideSearch?: boolean;
 }
 
 const LATE_THRESHOLD_DAYS = 30;
@@ -77,6 +78,7 @@ export default function BillsTable({
                                        totalPages,
                                        availableStatuses,
                                        initialTotalBills,
+                                       hideSearch = false,
                                    }: BillsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -90,6 +92,17 @@ export default function BillsTable({
     const currentPage = initialPage;
     const currentStatus = searchParams.get('status') as BillingStatus | null;
     const showLateOnly = searchParams.get('late') === 'true';
+    const billParam = searchParams.get('bill');
+
+    // Open the detail modal when arriving via /admin/bills?bill=<id>.
+    // The modal fetches its own data by id, so the bill need not be on the
+    // current page of results.
+    useEffect(() => {
+        if (billParam) {
+            const id = parseInt(billParam, 10);
+            if (!Number.isNaN(id)) setViewBillId(id);
+        }
+    }, [billParam]);
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -103,6 +116,16 @@ export default function BillsTable({
         startTransition(() => {
             router.push(`?${params.toString()}`);
         });
+    };
+
+    // Strip the `bill` param from the URL so closing/reopening behaves cleanly
+    // and the deep-link state doesn't linger after the modal is dismissed.
+    const clearBillParam = () => {
+        if (searchParams.get('bill')) {
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('bill');
+            router.replace(`?${params.toString()}`);
+        }
     };
 
     const handleSearch = () => {
@@ -202,33 +225,35 @@ export default function BillsTable({
             <CardContent className="pt-6">
                 {/* Search and Filter Section */}
                 <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <div className="flex-1 flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <Input
-                                placeholder="Rechercher par client..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
-                            />
-                            {searchTerm && (
-                                <button
-                                    onClick={handleClearSearch}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
+                    {!hideSearch && (
+                        <div className="flex-1 flex gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Input
+                                    placeholder="Rechercher par client..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
+                                />
+                                {searchTerm && (
+                                    <button
+                                        onClick={handleClearSearch}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <Button
+                                onClick={handleSearch}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                disabled={isPending}
+                            >
+                                Rechercher
+                            </Button>
                         </div>
-                        <Button
-                            onClick={handleSearch}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            disabled={isPending}
-                        >
-                            Rechercher
-                        </Button>
-                    </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-3">
                         <Select
@@ -423,9 +448,9 @@ export default function BillsTable({
             {/* View Bill Detail Modal */}
             <EditBillModal
                 isOpen={viewBillId !== null}
-                onOpenChange={(open) => { if (!open) setViewBillId(null); }}
+                onOpenChange={(open) => { if (!open) { setViewBillId(null); clearBillParam(); } }}
                 billId={viewBillId}
-                onRequestDelete={(id) => { setViewBillId(null); setBillToDelete(id); }}
+                onRequestDelete={(id) => { setViewBillId(null); clearBillParam(); setBillToDelete(id); }}
                 onBillUpdated={() => router.refresh()}
             />
 
