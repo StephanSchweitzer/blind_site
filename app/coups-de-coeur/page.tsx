@@ -8,8 +8,6 @@ import FrontendNavbar from "@/components/Frontend-Navbar";
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import type { CoupDeCoeur, CoupsDeCoeurResponse } from '@/types/coups-de-coeur';
 import { PDFButton } from "@/coups-de-coeur/PDFButton";
-import { PDFContent } from '@/coups-de-coeur/PDFContent';
-import generatePDF from 'react-to-pdf';
 import { BookWithGenres } from '@/types/book';
 
 export default function CoupsDeCoeurPage() {
@@ -21,9 +19,6 @@ export default function CoupsDeCoeurPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const [isExporting, setIsExporting] = useState(false);
-    const pdfContentRef = useRef<HTMLDivElement>(null);
     const isFirstRender = useRef(true);
 
     const fetchCoupsDeCoeur = useCallback(async (page: number) => {
@@ -82,24 +77,6 @@ export default function CoupsDeCoeurPage() {
         }
     };
 
-    const handleExport = async () => {
-        if (!pdfContentRef.current) return;
-        setIsExporting(true);
-        try {
-            await generatePDF(pdfContentRef, {
-                filename: `${coupsDeCoeur[0].title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
-                page: {
-                    margin: 20,
-                    format: 'a4'
-                }
-            });
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-        } finally {
-            setIsExporting(false);
-        }
-    };
-
     const handleBookClick = (book: BookWithGenres) => {
         setSelectedBook(book);
         setIsModalOpen(true);
@@ -127,11 +104,10 @@ export default function CoupsDeCoeurPage() {
                             </span>
                             <br />
                             <span className="text-base">
-                                ou par courriel à {' '}
+                                ou par courriel à{' '}
                                 <a
                                     href="mailto:ecapermanence@gmail.com"
-                                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline font-medium
-                                        hover:scale-105 inline-block transition-all duration-300"
+                                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline font-medium hover:scale-105 inline-block transition-all duration-300"
                                 >
                                     ecapermanence@gmail.com
                                 </a>
@@ -171,7 +147,7 @@ export default function CoupsDeCoeurPage() {
                             </div>
                         </div>
                     ) : (
-                        <div ref={contentRef}>
+                        <div>
                             <CoupDeCoeurList
                                 content={coupsDeCoeur}
                                 onBookClick={handleBookClick}
@@ -199,16 +175,7 @@ export default function CoupsDeCoeurPage() {
             </div>
 
             {coupsDeCoeur.length > 0 && (
-                <>
-                    <PDFContent
-                        ref={pdfContentRef}
-                        content={coupsDeCoeur}
-                    />
-                    <PDFButton
-                        onExport={handleExport}
-                        isExporting={isExporting}
-                    />
-                </>
+                <PDFButton content={coupsDeCoeur} />
             )}
         </main>
     );
