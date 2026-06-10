@@ -15,6 +15,7 @@ import {
     getBillingStatusColor,
     getBillingStatusLabel,
 } from '@/lib/billing-enums';
+import { BillPDFButton } from './BillPDFButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -286,9 +287,20 @@ export function EditBillModal({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100">
-                        Facture {billId ? `#${billId}` : ''}
-                    </DialogTitle>
+                    <div className="flex items-center justify-between gap-3 pr-8">
+                        <DialogTitle className="text-gray-100">
+                            Facture {billId ? `#${billId}` : ''}
+                        </DialogTitle>
+                        {bill && !isLoading && (
+                            <BillPDFButton
+                                bill={bill}
+                                onBillUpdated={async () => {
+                                    if (billId !== null) await loadBill(billId);
+                                    onBillUpdated?.();
+                                }}
+                            />
+                        )}
+                    </div>
                 </DialogHeader>
 
                 {isLoading && (
