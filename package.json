@@ -13,6 +13,12 @@
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
+  "pnpm": {
+    "overrides": {
+      "prettier": "$prettier",
+      "baseline-browser-mapping": "$baseline-browser-mapping"
+    }
+  },
   "dependencies": {
     "@ark-ui/react": "^4.4.3",
     "@aws-sdk/client-polly": "^3.721.0",
@@ -39,7 +45,6 @@
     "@react-pdf/renderer": "^4.1.6",
     "@swc/helpers": "^0.5.15",
     "@tanstack/react-query": "^5.62.15",
-    "@types/csv-parse": "^1.2.5",
     "@vercel/blob": "^2.3.2",
     "@vercel/postgres": "^0.10.0",
     "bcrypt": "^6.0.0",
@@ -54,7 +59,7 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.460.0",
     "next": "^16.0.7",
-    "next-auth": "^4.24.10",
+    "next-auth": "^4.24.14",
     "next-themes": "^0.4.6",
     "pg": "^8.20.0",
     "prettier": "^3.8.3",
@@ -75,14 +80,15 @@
     "@types/lodash": "^4.17.15",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "autoprefixer": "^10.4.20",
-    "baseline-browser-mapping": "^2.10.28",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "15.0.3",
+    "baseline-browser-mapping": "^2.10.36",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "16.2.9",
     "husky": "^9.1.7",
     "lint-staged": "^15.4.3",
+    "pino-pretty": "^13.1.3",
     "postcss": "^8.4.49",
     "prisma": "^7.6.0",
     "tailwindcss": "^3.4.15",
