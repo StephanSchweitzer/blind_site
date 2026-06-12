@@ -705,7 +705,7 @@ export function UserFormBackendBase({
                                             )}
 
                                             {currentUserAccessLevel === 'super_admin' &&
-                                                formData.accessLevel === 'admin' &&
+                                                (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
                                                 formData.email && (
                                                     <Button
                                                         type="button"
@@ -801,9 +801,9 @@ export function UserFormBackendBase({
                                         <SelectValue placeholder="Sélectionner..." />
                                     </SelectTrigger>
                                     <SelectContent className="bg-gray-800 border-gray-700">
-                                        <SelectItem value="postal" className="text-gray-200">Postal</SelectItem>
-                                        <SelectItem value="email" className="text-gray-200">Email</SelectItem>
-                                        <SelectItem value="download" className="text-gray-200">Téléchargement</SelectItem>
+                                        <SelectItem value="RETRAIT" className="text-gray-200">Retrait</SelectItem>
+                                        <SelectItem value="ENVOI" className="text-gray-200">Envoi</SelectItem>
+                                        <SelectItem value="NON_APPLICABLE" className="text-gray-200">Non applicable</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

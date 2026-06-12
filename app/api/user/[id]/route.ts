@@ -14,7 +14,7 @@ import {
 } from '@/types';
 import { UserWithRelationCounts } from '@/types/models/user.model';
 import { AddressCreateInput } from '@/types/api/common.api';
-import { Prisma, MemberType, AccessLevel } from '@prisma/client';
+import { Prisma, MemberType, AccessLevel, DeliveryMethod } from '@prisma/client';
 
 export async function GET(
     request: NextRequest,
@@ -222,7 +222,16 @@ export async function PATCH(
         if (body.terminationReason !== undefined) updateData.terminationReason = body.terminationReason || null;
 
         // Delivery and payment preferences
-        if (body.preferredDeliveryMethod !== undefined) updateData.preferredDeliveryMethod = body.preferredDeliveryMethod || null;
+        if (body.preferredDeliveryMethod !== undefined) {
+            const dm = body.preferredDeliveryMethod;
+            if (dm && !Object.values(DeliveryMethod).includes(dm as DeliveryMethod)) {
+                return NextResponse.json(
+                    { message: 'Méthode de livraison invalide' },
+                    { status: 400 }
+                );
+            }
+            updateData.preferredDeliveryMethod = (dm as DeliveryMethod) || null;
+        }
         if (body.preferredDistributionMethod !== undefined) updateData.preferredDistributionMethod = body.preferredDistributionMethod || null;
         if (body.paymentThreshold !== undefined) {
             updateData.paymentThreshold = body.paymentThreshold ? parseFloat(String(body.paymentThreshold)) : null;
