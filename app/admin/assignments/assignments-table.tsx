@@ -392,7 +392,7 @@ export default function AssignmentsTable({
                                             <TableHead className="text-gray-200 font-medium">Date de réception</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Envoyé au lecteur</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Retourné aux ECA</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Statut</TableHead>
+                                            <TableHead className="text-gray-200 font-medium w-[1%] whitespace-nowrap">Statut</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -417,25 +417,25 @@ export default function AssignmentsTable({
                                                         <div className="text-gray-400 italic">Aucun lecteur assigné</div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-gray-200 max-w-xs">
                                                     <div>
-                                                        <div className="font-medium">{assignment.catalogue.title}</div>
+                                                        <div className="font-medium break-words">{assignment.catalogue.title}</div>
                                                         <div className="text-sm text-gray-400">
                                                             {assignment.catalogue.author}
                                                         </div>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-gray-200 whitespace-nowrap">
                                                     {formatDate(assignment.receptionDate)}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-gray-200 whitespace-nowrap">
                                                     {formatDate(assignment.sentToReaderDate)}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-gray-200 whitespace-nowrap">
                                                     {formatDate(assignment.returnedToECADate)}
                                                 </TableCell>
-                                                <TableCell>
-                                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(assignment.status.name)}`}>
+                                                <TableCell className="w-[1%]">
+                                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(assignment.status.name)}`}>
                                                         {getStatusDisplayName(assignment.status.name)}
                                                     </span>
                                                 </TableCell>
