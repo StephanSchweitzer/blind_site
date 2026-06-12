@@ -14,6 +14,11 @@ import {
     OrderCreateData,
 } from '@/types';
 import { Prisma } from '@prisma/client';
+import {
+    STATUS,
+    guardCanSettleOrder,
+    syncAssignmentToStatus,
+} from '@/lib/statusSync';
 
 export async function GET(
     request: NextRequest,
@@ -207,7 +212,12 @@ export async function PUT(
 
         const existingOrder = await prisma.orders.findUnique({
             where: { id: orderId },
-            select: { id: true },
+            select: {
+                id: true,
+                statusId: true,
+                isDuplication: true,
+                assignments: { select: { id: true, statusId: true }, take: 1 },
+            },
         });
 
         if (!existingOrder) {
@@ -218,6 +228,18 @@ export async function PUT(
         }
 
         const data = validation.data;
+        const assignment = existingOrder.assignments[0] ?? null;
+
+        // Settle-guard: cannot mark the order SOLDE while its assignment is unfinished.
+        if (data.statusId === STATUS.SOLDE && assignment) {
+            const guard = guardCanSettleOrder(assignment.statusId);
+            if (!guard.ok) {
+                return NextResponse.json(
+                    { message: guard.message },
+                    { status: guard.httpStatus }
+                );
+            }
+        }
 
         const updateData: Prisma.OrdersUncheckedUpdateInput = {
             aveugleId: data.aveugleId,
@@ -237,16 +259,30 @@ export async function PUT(
             notes: data.notes || null,
         };
 
-        const updatedOrder = await prisma.orders.update({
-            where: { id: orderId },
-            data: updateData,
-            include: {
-                aveugle: orderIncludeConfigs.aveugle,
-                catalogue: orderIncludeConfigs.catalogue,
-                status: orderIncludeConfigs.status,
-                mediaFormat: orderIncludeConfigs.mediaFormat,
-                processedByStaff: orderIncludeConfigs.processedByStaff,
-            },
+        const updatedOrder = await prisma.$transaction(async (tx) => {
+            const order = await tx.orders.update({
+                where: { id: orderId },
+                data: updateData,
+                include: {
+                    aveugle: orderIncludeConfigs.aveugle,
+                    catalogue: orderIncludeConfigs.catalogue,
+                    status: orderIncludeConfigs.status,
+                    mediaFormat: orderIncludeConfigs.mediaFormat,
+                    processedByStaff: orderIncludeConfigs.processedByStaff,
+                },
+            });
+
+            // Propagate 1–3 down to the assignment; SOLDE stays order-only.
+            if (
+                assignment &&
+                typeof data.statusId === 'number' &&
+                data.statusId !== STATUS.SOLDE &&
+                data.statusId !== assignment.statusId
+            ) {
+                await syncAssignmentToStatus(tx, assignment.id, data.statusId);
+            }
+
+            return order;
         });
 
         return NextResponse.json({
@@ -281,7 +317,12 @@ export async function PATCH(
 
         const existingOrder = await prisma.orders.findUnique({
             where: { id: orderId },
-            select: { id: true },
+            select: {
+                id: true,
+                statusId: true,
+                isDuplication: true,
+                assignments: { select: { id: true, statusId: true }, take: 1 },
+            },
         });
 
         if (!existingOrder) {
@@ -289,6 +330,19 @@ export async function PATCH(
                 { message: 'Commande non trouvée' },
                 { status: 404 }
             );
+        }
+
+        const assignment = existingOrder.assignments[0] ?? null;
+
+        // Settle-guard only when the status is actually being changed to SOLDE.
+        if (body.statusId === STATUS.SOLDE && assignment) {
+            const guard = guardCanSettleOrder(assignment.statusId);
+            if (!guard.ok) {
+                return NextResponse.json(
+                    { message: guard.message },
+                    { status: guard.httpStatus }
+                );
+            }
         }
 
         const updateData: Prisma.OrdersUncheckedUpdateInput = {};
@@ -309,16 +363,29 @@ export async function PATCH(
         if (body.lentPhysicalBook !== undefined) updateData.lentPhysicalBook = body.lentPhysicalBook;
         if (body.notes !== undefined) updateData.notes = body.notes || null;
 
-        const updatedOrder = await prisma.orders.update({
-            where: { id: orderId },
-            data: updateData,
-            include: {
-                aveugle: orderIncludeConfigs.aveugle,
-                catalogue: orderIncludeConfigs.catalogue,
-                status: orderIncludeConfigs.status,
-                mediaFormat: orderIncludeConfigs.mediaFormat,
-                processedByStaff: orderIncludeConfigs.processedByStaff,
-            },
+        const updatedOrder = await prisma.$transaction(async (tx) => {
+            const order = await tx.orders.update({
+                where: { id: orderId },
+                data: updateData,
+                include: {
+                    aveugle: orderIncludeConfigs.aveugle,
+                    catalogue: orderIncludeConfigs.catalogue,
+                    status: orderIncludeConfigs.status,
+                    mediaFormat: orderIncludeConfigs.mediaFormat,
+                    processedByStaff: orderIncludeConfigs.processedByStaff,
+                },
+            });
+
+            if (
+                assignment &&
+                typeof body.statusId === 'number' &&
+                body.statusId !== STATUS.SOLDE &&
+                body.statusId !== assignment.statusId
+            ) {
+                await syncAssignmentToStatus(tx, assignment.id, body.statusId);
+            }
+
+            return order;
         });
 
         return NextResponse.json({
@@ -367,7 +434,7 @@ export async function DELETE(
         if (existingOrder._count.assignments > 0) {
             return NextResponse.json(
                 {
-                    message: 'Impossible de supprimer la commande car elle a des affectations associées. Veuillez d\'abord supprimer les affectations.',
+                    message: "Impossible de supprimer la commande car une affectation y est associée. Veuillez d'abord supprimer l'affectation.",
                     hasAssignments: true,
                     assignmentCount: existingOrder._count.assignments,
                 },

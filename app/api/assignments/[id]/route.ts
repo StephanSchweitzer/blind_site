@@ -5,12 +5,14 @@ import {
     AssignmentUpdateData,
 } from '@/types/api';
 import { assignmentIncludeConfigs } from '@/types/models';
+import {
+    guardAssignmentStatus,
+    guardOrderNotSettled,
+    syncOrderToStatus,
+} from '@/lib/statusSync';
 
 /**
  * GET /api/assignments/[id] - Get a single assignment by ID
- *
- * Returns assignment with all relations including reader history.
- * Reader assignments are tracked through the AssignmentReader table.
  */
 export async function GET(
     request: NextRequest,
@@ -50,11 +52,9 @@ export async function GET(
 }
 
 /**
- * PUT /api/assignments/[id] - Update an assignment
- *
- * Note: Reader assignments are managed through the AssignmentReader table.
- * To assign/reassign a reader, use POST /api/assignments/[id]/readers
- * This maintains a complete history of all reader assignments.
+ * PUT /api/assignments/[id] - Update an assignment.
+ * A status change (1–3) propagates up to the linked order.
+ * Reader assignments are managed via POST /api/assignments/[id]/readers.
  */
 export async function PUT(
     request: NextRequest,
@@ -73,7 +73,6 @@ export async function PUT(
 
         const body = await request.json();
 
-        // Validate input with Zod
         const validation = AssignmentUpdateInputSchema.safeParse(body);
 
         if (!validation.success) {
@@ -88,7 +87,12 @@ export async function PUT(
 
         const existingAssignment = await prisma.assignment.findUnique({
             where: { id: assignmentId },
-            select: { id: true },
+            select: {
+                id: true,
+                statusId: true,
+                orderId: true,
+                order: { select: { statusId: true } },
+            },
         });
 
         if (!existingAssignment) {
@@ -98,7 +102,30 @@ export async function PUT(
             );
         }
 
-        // Build update data with proper type conversion
+        // A settled order locks its assignment entirely.
+        const settledGuard = guardOrderNotSettled(
+            existingAssignment.order?.statusId ?? null
+        );
+        if (!settledGuard.ok) {
+            return NextResponse.json(
+                { message: settledGuard.message },
+                { status: settledGuard.httpStatus }
+            );
+        }
+
+        const newStatusId = validation.data.statusId;
+
+        // An assignment can never hold the SOLDE status.
+        if (newStatusId !== undefined) {
+            const statusGuard = guardAssignmentStatus(newStatusId);
+            if (!statusGuard.ok) {
+                return NextResponse.json(
+                    { message: statusGuard.message },
+                    { status: statusGuard.httpStatus }
+                );
+            }
+        }
+
         const updateData: AssignmentUpdateData = {};
 
         if (validation.data.catalogueId !== undefined) {
@@ -111,13 +138,13 @@ export async function PUT(
             updateData.statusId = validation.data.statusId;
         }
         if (validation.data.receptionDate !== undefined) {
-            updateData.receptionDate = validation.data.receptionDate ? new Date(validation.data.receptionDate) : null
+            updateData.receptionDate = validation.data.receptionDate ? new Date(validation.data.receptionDate) : null;
         }
         if (validation.data.sentToReaderDate !== undefined) {
-            updateData.sentToReaderDate = validation.data.sentToReaderDate ? new Date(validation.data.sentToReaderDate) : null
+            updateData.sentToReaderDate = validation.data.sentToReaderDate ? new Date(validation.data.sentToReaderDate) : null;
         }
         if (validation.data.returnedToECADate !== undefined) {
-            updateData.returnedToECADate = validation.data.returnedToECADate ? new Date(validation.data.returnedToECADate) : null
+            updateData.returnedToECADate = validation.data.returnedToECADate ? new Date(validation.data.returnedToECADate) : null;
         }
         if (validation.data.notes !== undefined) {
             updateData.notes = validation.data.notes;
@@ -126,10 +153,23 @@ export async function PUT(
             updateData.processedByStaffId = validation.data.processedByStaffId;
         }
 
-        const updatedAssignment = await prisma.assignment.update({
-            where: { id: assignmentId },
-            data: updateData,
-            include: assignmentIncludeConfigs.all,
+        const updatedAssignment = await prisma.$transaction(async (tx) => {
+            const assignment = await tx.assignment.update({
+                where: { id: assignmentId },
+                data: updateData,
+                include: assignmentIncludeConfigs.all,
+            });
+
+            // Propagate the new status (1–3) up to the linked order.
+            if (
+                newStatusId !== undefined &&
+                existingAssignment.orderId &&
+                newStatusId !== existingAssignment.statusId
+            ) {
+                await syncOrderToStatus(tx, existingAssignment.orderId, newStatusId);
+            }
+
+            return assignment;
         });
 
         return NextResponse.json({
@@ -146,9 +186,9 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/assignments/[id] - Delete an assignment
- *
- * Cascading delete: All related AssignmentReader records will be automatically deleted.
+ * DELETE /api/assignments/[id] - Delete an assignment.
+ * Cascading delete removes related AssignmentReader records.
+ * The linked order keeps its current status and becomes freely editable again.
  */
 export async function DELETE(
     request: NextRequest,
@@ -184,7 +224,6 @@ export async function DELETE(
             );
         }
 
-        // Delete assignment (cascades to AssignmentReader records)
         await prisma.assignment.delete({
             where: { id: assignmentId },
         });

@@ -1,6 +1,12 @@
 // app/api/assignments/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import {
+    guardAssignmentStatus,
+    guardNotDuplication,
+    guardOrderHasNoAssignment,
+    syncOrderToStatus,
+} from '@/lib/statusSync';
 
 export async function GET(request: NextRequest) {
     try {
@@ -93,7 +99,6 @@ export async function POST(request: NextRequest) {
             notes,
         } = body;
 
-        // Validate required fields
         if (!catalogueId) {
             return NextResponse.json(
                 { error: 'Le livre du catalogue est requis' },
@@ -108,22 +113,72 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create assignment and optionally the first reader assignment in a transaction
+        const parsedStatusId = parseInt(statusId);
+
+        // An assignment can never be created with the SOLDE status.
+        const statusGuard = guardAssignmentStatus(parsedStatusId);
+        if (!statusGuard.ok) {
+            return NextResponse.json(
+                { error: statusGuard.message },
+                { status: statusGuard.httpStatus }
+            );
+        }
+
+        const parsedOrderId = orderId ? parseInt(orderId) : null;
+
+        // Order-linked checks: order exists, not a duplication, and has no assignment yet.
+        if (parsedOrderId) {
+            const order = await prisma.orders.findUnique({
+                where: { id: parsedOrderId },
+                select: {
+                    id: true,
+                    isDuplication: true,
+                    _count: { select: { assignments: true } },
+                },
+            });
+
+            if (!order) {
+                return NextResponse.json(
+                    { error: 'Commande non trouvée' },
+                    { status: 404 }
+                );
+            }
+
+            const dupGuard = guardNotDuplication(order.isDuplication);
+            if (!dupGuard.ok) {
+                return NextResponse.json(
+                    { error: dupGuard.message },
+                    { status: dupGuard.httpStatus }
+                );
+            }
+
+            const oneToOneGuard = guardOrderHasNoAssignment(order._count.assignments);
+            if (!oneToOneGuard.ok) {
+                return NextResponse.json(
+                    { error: oneToOneGuard.message },
+                    { status: oneToOneGuard.httpStatus }
+                );
+            }
+        }
+
         const result = await prisma.$transaction(async (tx) => {
-            // Create the assignment
             const assignment = await tx.assignment.create({
                 data: {
                     catalogueId: parseInt(catalogueId),
-                    orderId: orderId ? parseInt(orderId) : null,
+                    orderId: parsedOrderId,
                     receptionDate: receptionDate ? new Date(receptionDate) : null,
                     sentToReaderDate: sentToReaderDate ? new Date(sentToReaderDate) : null,
                     returnedToECADate: returnedToECADate ? new Date(returnedToECADate) : null,
-                    statusId: parseInt(statusId),
+                    statusId: parsedStatusId,
                     notes: notes || null,
                 },
             });
 
-            // If a reader is provided, create the initial reader assignment
+            // Align the linked order to the new assignment's status.
+            if (parsedOrderId) {
+                await syncOrderToStatus(tx, parsedOrderId, parsedStatusId);
+            }
+
             if (readerId) {
                 await tx.assignmentReader.create({
                     data: {
@@ -135,7 +190,6 @@ export async function POST(request: NextRequest) {
                 });
             }
 
-            // Fetch the complete assignment with relations
             const completeAssignment = await tx.assignment.findUnique({
                 where: { id: assignment.id },
                 include: {

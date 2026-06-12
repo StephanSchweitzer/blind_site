@@ -20,7 +20,6 @@ export async function GET(
             );
         }
 
-        // Check if assignment exists
         const assignment = await prisma.assignment.findUnique({
             where: { id: assignmentId },
             select: { id: true },
@@ -33,7 +32,6 @@ export async function GET(
             );
         }
 
-        // Fetch reader history ordered by most recent first
         const readerHistory = await prisma.assignmentReader.findMany({
             where: { assignmentId },
             include: {
@@ -64,7 +62,8 @@ export async function GET(
 
 /**
  * POST /api/assignments/[id]/readers - Assign or reassign a reader to an assignment
- * Creates a new AssignmentReader entry, maintaining history of all assignments
+ * Creates a new AssignmentReader entry, maintaining history of all assignments.
+ * Does not change any workflow status (status is managed on the assignment itself).
  */
 export async function POST(
     request: NextRequest,
@@ -91,7 +90,6 @@ export async function POST(
             );
         }
 
-        // Check if assignment exists
         const assignment = await prisma.assignment.findUnique({
             where: { id: assignmentId },
             select: { id: true },
@@ -104,7 +102,6 @@ export async function POST(
             );
         }
 
-        // Check if reader exists
         const reader = await prisma.user.findUnique({
             where: { id: parseInt(readerId) },
             select: { id: true },
@@ -117,7 +114,6 @@ export async function POST(
             );
         }
 
-        // Create the new reader assignment
         const assignmentReader = await prisma.assignmentReader.create({
             data: {
                 assignmentId,
