@@ -12,7 +12,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Search } from 'lucide-react';
+import { AlertCircle, Calendar, Search, Plus, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -21,6 +21,8 @@ import { fr } from "date-fns/locale";
 import Link from 'next/link';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
 import type { BillingStatus } from '@prisma/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AddBookFormBackend } from '@/admin/BookFormBackendBase';
 
 interface User {
     id: number;
@@ -799,57 +801,472 @@ export function OrderFormBackendBase({
     );
 }
 
-// Add Order Form using the base
+// ---------------------------------------------------------------------------
+// Multi-book order creation (fan-out: one order is created per book)
+// ---------------------------------------------------------------------------
+
+type OrderLineType = 'DUPLICATION' | 'ENREGISTREMENT';
+
+interface OrderBookLine {
+    key: string;
+    book: Book | null;
+    type: OrderLineType;
+    cost: string;
+    mediaFormatId: number | null; // null => use the header default
+}
+
+let lineKeySeq = 0;
+const makeLine = (cost: string): OrderBookLine => ({
+    key: `line-${++lineKeySeq}-${Date.now()}`,
+    book: null,
+    type: 'DUPLICATION',
+    cost,
+    mediaFormatId: null,
+});
+
+// Cap a displayed string so long titles don't blow out the layout
+const clip = (s: string, n = 40) => (s.length > n ? s.slice(0, n).trimEnd() + '…' : s);
+
+// Search-an-existing-book picker for a single line
+function BookLinePicker({ selected, onSelect }: { selected: Book | null; onSelect: (book: Book) => void }) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const [results, setResults] = useState<Book[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const t = setTimeout(async () => {
+            if (search.length < 2) { setResults([]); setLoading(false); return; }
+            setLoading(true);
+            try {
+                const res = await fetch(`/api/books?search=${encodeURIComponent(search)}&limit=10`);
+                if (res.ok) { const { books } = await res.json(); setResults(books); }
+            } catch (err) { console.error('Book search error:', err); }
+            finally { setLoading(false); }
+        }, 300);
+        return () => clearTimeout(t);
+    }, [search]);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button type="button" variant="outline" role="combobox"
+                        className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
+                    {selected
+                        ? <span className="truncate">{clip(`${selected.title} — ${selected.author}`)}</span>
+                        : <span className="text-gray-400">Rechercher un livre existant ...</span>}
+                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                <div className="p-2">
+                    <Input placeholder="Rechercher par titre ou auteur..." value={search}
+                           onChange={(e) => setSearch(e.target.value)}
+                           className="bg-gray-900 border-gray-700 text-gray-200" />
+                </div>
+                <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
+                    {loading && <div className="p-4 text-center text-gray-400">Recherche...</div>}
+                    {!loading && results.length === 0 && search.length >= 2 && (
+                        <div className="p-4 text-center text-gray-400">Aucun livre trouvé</div>
+                    )}
+                    {results.map((book) => (
+                        <button key={book.id} type="button"
+                                onClick={() => { onSelect(book); setOpen(false); setSearch(''); }}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors">
+                            <div className="font-medium">{book.title}</div>
+                            <div className="text-sm text-gray-400">{book.author}</div>
+                        </button>
+                    ))}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+// Create-a-new-book modal that returns the created book to the calling line
+function CreateBookDialog({ onCreated }: { onCreated: (book: Book) => void }) {
+    const [open, setOpen] = useState(false);
+
+    const handleSuccess = async (bookId: number) => {
+        try {
+            const res = await fetch(`/api/books/${bookId}`);
+            if (res.ok) {
+                const book = await res.json();
+                onCreated({ id: book.id, title: book.title, author: book.author });
+            } else {
+                onCreated({ id: bookId, title: 'Nouveau livre', author: '' });
+            }
+        } catch {
+            onCreated({ id: bookId, title: 'Nouveau livre', author: '' });
+        }
+        setOpen(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button type="button" variant="outline"
+                        className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700 whitespace-nowrap">
+                    <Plus className="h-4 w-4 mr-2" /> Nouveau livre
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                <DialogHeader>
+                    <DialogTitle className="text-gray-100">Créer un nouveau livre</DialogTitle>
+                </DialogHeader>
+                <AddBookFormBackend onSuccess={handleSuccess} />
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// Add Order Form — multiple books, one order created per book
 export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: (orderId: number) => void; initialClient?: User | null }) {
     const { toast } = useToast();
 
-    const handleSubmit = async (formData: OrderFormData): Promise<number> => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Options
+    const [statuses, setStatuses] = useState<Status[]>([]);
+    const [mediaFormats, setMediaFormats] = useState<MediaFormat[]>([]);
+
+    // Header (shared across every book)
+    const [aveugleId, setAveugleId] = useState<number | null>(initialClient?.id ?? null);
+    const [selectedUser, setSelectedUser] = useState<User | null>(initialClient ?? null);
+    const [requestReceivedDate, setRequestReceivedDate] = useState<Date>(new Date());
+    const [deliveryMethod, setDeliveryMethod] = useState<'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE' | null>(null);
+    const [mediaFormatId, setMediaFormatId] = useState<number | null>(null);
+    const [billingStatus, setBillingStatus] = useState<'UNBILLED' | 'BILLED' | 'UNBILLABLE'>('UNBILLED');
+    const [defaultCost, setDefaultCost] = useState('3.00');
+    const [notes, setNotes] = useState('');
+
+    // Book lines
+    const [lines, setLines] = useState<OrderBookLine[]>([makeLine('3.00')]);
+
+    // Auditeur search
+    const [userSearch, setUserSearch] = useState('');
+    const [users, setUsers] = useState<User[]>([]);
+    const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+    const [userPopoverOpen, setUserPopoverOpen] = useState(false);
+
+    useEffect(() => {
+        const fetchOptions = async () => {
+            try {
+                const [statusesRes, formatsRes] = await Promise.all([
+                    fetch('/api/statuses'),
+                    fetch('/api/media-formats'),
+                ]);
+                if (statusesRes.ok) setStatuses(await statusesRes.json());
+                if (formatsRes.ok) setMediaFormats(await formatsRes.json());
+            } catch (err) {
+                console.error('Error fetching options:', err);
+                setError('Échec du chargement des options du formulaire');
+            }
+        };
+        fetchOptions();
+    }, []);
+
+    useEffect(() => {
+        const t = setTimeout(async () => {
+            if (userSearch.length < 2) { setUsers([]); setIsSearchingUsers(false); return; }
+            setIsSearchingUsers(true);
+            try {
+                const res = await fetch(`/api/user/search?q=${encodeURIComponent(userSearch)}`);
+                if (res.ok) setUsers(await res.json());
+            } catch (err) { console.error('Error searching users:', err); }
+            finally { setIsSearchingUsers(false); }
+        }, 300);
+        return () => clearTimeout(t);
+    }, [userSearch]);
+
+    // Derive a line's status from its type (same rule as the single-order form)
+    const statusForType = (type: OrderLineType): number | null => {
+        const find = (pred: (s: Status) => boolean) => statuses.find(pred)?.id ?? null;
+        return type === 'DUPLICATION'
+            ? find(s => s.name.toLowerCase().includes('en cours'))
+            : find(s => s.name.toLowerCase().includes('attente') && s.name.toLowerCase().includes('lecteur'));
+    };
+
+    const updateLine = (key: string, patch: Partial<OrderBookLine>) =>
+        setLines(prev => prev.map(l => (l.key === key ? { ...l, ...patch } : l)));
+    const removeLine = (key: string) =>
+        setLines(prev => (prev.length > 1 ? prev.filter(l => l.key !== key) : prev));
+    const addLine = () => setLines(prev => [...prev, makeLine(defaultCost)]);
+    const handleDefaultCostChange = (value: string) => {
+        setDefaultCost(value);
+        setLines(prev => prev.map(l => ({ ...l, cost: value })));
+    };
+
+    const dupCount = lines.filter(l => l.type === 'DUPLICATION').length;
+    const recCount = lines.length - dupCount;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+
+        if (!aveugleId) { setError('Veuillez sélectionner un auditeur'); setIsLoading(false); return; }
+        if (!deliveryMethod) { setError('Veuillez sélectionner une méthode de livraison'); setIsLoading(false); return; }
+        if (!mediaFormatId) { setError('Veuillez sélectionner un format média par défaut'); setIsLoading(false); return; }
+        if (lines.length === 0) { setError('Ajoutez au moins un ouvrage'); setIsLoading(false); return; }
+        if (lines.some(l => !l.book)) { setError('Chaque ligne doit comporter un livre'); setIsLoading(false); return; }
+
+        const books = lines.map(l => ({
+            catalogueId: l.book!.id,
+            isDuplication: l.type === 'DUPLICATION',
+            lentPhysicalBook: l.type === 'ENREGISTREMENT',
+            statusId: statusForType(l.type),
+            mediaFormatId: l.mediaFormatId ?? mediaFormatId,
+            cost: l.cost || defaultCost,
+        }));
+
+        if (books.some(b => !b.statusId)) {
+            setError("Statut introuvable pour un type d'ouvrage. Vérifiez la table des statuts.");
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            const response = await fetch('/api/orders', {
+            const res = await fetch('/api/orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ aveugleId, requestReceivedDate, deliveryMethod, billingStatus, notes, books }),
             });
+            const data = await res.json();
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                const errorMessage = data?.message || 'Échec de la création de la demande';
-
+            if (!res.ok) {
+                const msg = data?.message || 'Échec de la création des commandes';
                 toast({
                     variant: "destructive",
                     // @ts-expect-error jsx in toast
                     title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <span className="text-xl mt-2">{errorMessage}</span>,
+                    description: <span className="text-xl mt-2">{msg}</span>,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
                 });
-
-                return Promise.reject();
+                setError(msg);
+                return;
             }
 
+            const ids: number[] = data.orderIds || [];
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">La demande a été créée avec succès</span>,
+                description: <span className="text-xl mt-2">{ids.length} commande(s) créée(s){ids.length ? ` : #${ids.join(', #')}` : ''}</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
-
-            return data.order.id;
-        } catch (error) {
-            console.error('Submit error:', error);
-            return Promise.reject();
+            if (onSuccess && ids.length) onSuccess(ids[0]);
+        } catch (err) {
+            console.error('Batch submit error:', err);
+            setError('Échec de la création des commandes');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <OrderFormBackendBase
-            onSubmit={handleSubmit}
-            submitButtonText="Créer la demande"
-            loadingText="Création en cours..."
-            title="Créer une nouvelle demande"
-            onSuccess={onSuccess}
-            initialSelectedUser={initialClient}
-        />
+        <Card className="bg-gray-900 border-gray-700">
+            <CardHeader>
+                <CardTitle className="text-gray-100">Créer une ou plusieurs demandes</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {error && (
+                    <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-800">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-red-200">{error}</AlertDescription>
+                    </Alert>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Auditeur */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-200">
+                            Auditeur <span className="text-red-500">*</span>
+                        </label>
+                        <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button type="button" variant="outline" role="combobox"
+                                        className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                                    {selectedUser
+                                        ? <span className="truncate">{clip(selectedUser.name || selectedUser.email)}</span>
+                                        : <span className="text-gray-400">Rechercher un auditeur ...</span>}
+                                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                                <div className="p-2">
+                                    <Input placeholder="Rechercher par nom ou email..." value={userSearch}
+                                           onChange={(e) => setUserSearch(e.target.value)}
+                                           className="bg-gray-900 border-gray-700 text-gray-200" />
+                                </div>
+                                <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
+                                    {isSearchingUsers && <div className="p-4 text-center text-gray-400">Recherche...</div>}
+                                    {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
+                                        <div className="p-4 text-center text-gray-400">Aucun utilisateur trouvé</div>
+                                    )}
+                                    {users.map((user) => (
+                                        <button key={user.id} type="button"
+                                                onClick={() => { setSelectedUser(user); setAveugleId(user.id); setUserPopoverOpen(false); setUserSearch(''); }}
+                                                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors">
+                                            <div className="font-medium">{user.name || 'Sans nom'}</div>
+                                            <div className="text-sm text-gray-400">{user.email}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    {/* Shared header fields */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-200">Date de réception <span className="text-red-500">*</span></label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button type="button" variant="outline"
+                                            className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
+                                        <Calendar className="mr-2 h-4 w-4" />
+                                        {format(requestReceivedDate, 'PPP', { locale: fr })}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                                    <CalendarComponent mode="single" selected={requestReceivedDate}
+                                                       onSelect={(d) => d && setRequestReceivedDate(d)} initialFocus className="bg-gray-800 text-gray-200" />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-200">Méthode de livraison <span className="text-red-500">*</span></label>
+                            <Select value={deliveryMethod || ''} onValueChange={(v) => setDeliveryMethod(v as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE')}>
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="RETRAIT" className="text-gray-200">Retrait</SelectItem>
+                                    <SelectItem value="ENVOI" className="text-gray-200">Envoi</SelectItem>
+                                    <SelectItem value="NON_APPLICABLE" className="text-gray-200">Non applicable</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-200">Format média par défaut <span className="text-red-500">*</span></label>
+                            <Select value={mediaFormatId?.toString() || ''} onValueChange={(v) => setMediaFormatId(parseInt(v))}>
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
+                                    {mediaFormats.map((f) => (
+                                        <SelectItem key={f.id} value={f.id.toString()} className="text-gray-200">{f.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-200">État de facturation</label>
+                            <Select value={billingStatus} onValueChange={(v) => setBillingStatus(v as 'UNBILLED' | 'BILLED' | 'UNBILLABLE')}>
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
+                                    <SelectItem value="BILLED" className="text-gray-200">Facturé</SelectItem>
+                                    <SelectItem value="UNBILLABLE" className="text-gray-200">Non facturable</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* Default cost */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-200">Coût par défaut (€)</label>
+                        <Input type="number" step="0.01" value={defaultCost}
+                               onChange={(e) => handleDefaultCostChange(e.target.value)}
+                               className="bg-gray-800 border-gray-700 text-gray-200" placeholder="0.00" />
+                    </div>
+
+                    {/* Book lines */}
+                    <div className="space-y-3 pt-4 border-t border-gray-700">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">Ouvrages ({lines.length})</h3>
+                            <span className="text-xs text-gray-500">{dupCount} duplication(s) · {recCount} enregistrement(s)</span>
+                        </div>
+
+                        {lines.map((line, idx) => (
+                            <div key={line.key} className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-300">Ouvrage {idx + 1}</span>
+                                    {lines.length > 1 && (
+                                        <button type="button" onClick={() => removeLine(line.key)}
+                                                className="text-gray-500 hover:text-red-400 transition-colors" aria-label="Retirer l'ouvrage">
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                    <div className="flex-1 min-w-0">
+                                        <BookLinePicker selected={line.book} onSelect={(b) => updateLine(line.key, { book: b })} />
+                                    </div>
+                                    <CreateBookDialog onCreated={(b) => updateLine(line.key, { book: b })} />
+                                </div>
+
+                                {/* Type — per book */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION' })}
+                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-700/30 border-green-600 text-green-200' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}>
+                                        Duplication
+                                    </button>
+                                    <button type="button" onClick={() => updateLine(line.key, { type: 'ENREGISTREMENT' })}
+                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-700/30 border-amber-600 text-amber-200' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}>
+                                        Enregistrement nécessaire
+                                    </button>
+                                </div>
+
+                                {/* Per-line overrides */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-gray-400">Format (sinon défaut)</label>
+                                        <Select value={line.mediaFormatId?.toString() || ''}
+                                                onValueChange={(v) => updateLine(line.key, { mediaFormatId: v ? parseInt(v) : null })}>
+                                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 h-9"><SelectValue placeholder="Format par défaut" /></SelectTrigger>
+                                            <SelectContent className="bg-gray-800 border-gray-700 max-h-[240px] overflow-y-auto">
+                                                {mediaFormats.map((f) => (
+                                                    <SelectItem key={f.id} value={f.id.toString()} className="text-gray-200">{f.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-gray-400">Coût (€)</label>
+                                        <Input type="number" step="0.01" value={line.cost}
+                                               onChange={(e) => updateLine(line.key, { cost: e.target.value })}
+                                               className="bg-gray-800 border-gray-700 text-gray-200 h-9" placeholder={defaultCost} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        <Button type="button" variant="outline" onClick={addLine}
+                                className="w-full bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700">
+                            <Plus className="h-4 w-4 mr-2" /> Ajouter un ouvrage
+                        </Button>
+                    </div>
+
+                    {/* Shared notes */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-200">Notes (communes)</label>
+                        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+                                  className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                                  placeholder="Ajouter des notes supplémentaires..." />
+                    </div>
+
+                    <div className="rounded-md bg-gray-800/50 border border-gray-700 p-3 text-sm text-gray-300">
+                        {lines.length === 1
+                            ? '1 ouvrage → 1 commande sera créée. Le numéro sera attribué lors de la soumission.'
+                            : `${lines.length} ouvrages → ${lines.length} commandes seront créées. Les numéros seront attribués lors de la soumission.`}
+                    </div>
+
+                    <Button type="submit" disabled={isLoading}
+                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100">
+                        {isLoading ? 'Création en cours...' : `Créer ${lines.length} ${lines.length === 1 ? 'commande' : 'commandes'}`}
+                    </Button>
+                </form>
+            </CardContent>
+        </Card>
     );
 }
 

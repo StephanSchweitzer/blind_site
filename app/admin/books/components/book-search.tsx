@@ -101,9 +101,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
         setResults([]);
 
         try {
-            const url = `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(searchQuery)}&maxResults=5&langRestrict=fr&country=FR`;
-
-            const response = await fetch(url);
+            const response = await fetch(`/api/google-books?q=${encodeURIComponent(searchQuery)}`);
             if (!response.ok) {
                 throw new Error(`API request failed with status ${response.status}`);
             }

@@ -152,9 +152,59 @@ async function performAccentInsensitiveSearch(
 
         return { books: booksWithGenres, total };
     } catch (error) {
-        console.error('Search error:', error);
-        return { books: [], total: 0 };
+        // The accent-insensitive path relies on the immutable_unaccent SQL function.
+        // If it isn't present in this database it throws here — fall back to a
+        // standard Prisma contains search instead of silently returning nothing.
+        console.error('Accent-insensitive search failed, falling back to standard search:', error);
+        return fallbackSearch(search, filter, genres, skip, limit);
     }
+}
+
+// Standard (accent-sensitive) search used when the raw SQL path is unavailable
+async function fallbackSearch(
+    search: string,
+    filter: string,
+    genres: number[],
+    skip: number,
+    limit: number
+): Promise<{ books: BookWithGenres[]; total: number }> {
+    const mode = Prisma.QueryMode.insensitive;
+
+    let orConditions: Prisma.BookWhereInput[];
+    if (filter === 'genre') {
+        orConditions = [{ genres: { some: { genre: { name: { contains: search, mode } } } } }];
+    } else if (filter === 'all') {
+        orConditions = [
+            { title: { contains: search, mode } },
+            { subtitle: { contains: search, mode } },
+            { author: { contains: search, mode } },
+            { publisher: { contains: search, mode } },
+            { description: { contains: search, mode } },
+            { genres: { some: { genre: { name: { contains: search, mode } } } } },
+        ];
+    } else {
+        const allowed = ['title', 'author', 'description', 'subtitle', 'publisher'] as const;
+        const column = (allowed as readonly string[]).includes(filter) ? filter : 'title';
+        orConditions = [{ [column]: { contains: search, mode } } as Prisma.BookWhereInput];
+    }
+
+    const where: Prisma.BookWhereInput = { OR: orConditions };
+    if (genres.length > 0) {
+        where.AND = [{ genres: { some: { genreId: { in: genres } } } }];
+    }
+
+    const [books, total] = await Promise.all([
+        prisma.book.findMany({
+            where,
+            include: { genres: { include: { genre: true } } },
+            skip,
+            take: limit,
+            orderBy: { createdAt: 'desc' },
+        }),
+        prisma.book.count({ where }),
+    ]);
+
+    return { books, total };
 }
 
 // Type for the API response

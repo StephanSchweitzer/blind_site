@@ -228,6 +228,126 @@ export async function POST(request: NextRequest) {
         const session = authCheck.session;
         const body = await request.json();
 
+        // ---- Batch creation: one order per book (fan-out) ----
+        if (Array.isArray(body.books)) {
+            const { aveugleId, requestReceivedDate, deliveryMethod, billingStatus, notes, books } = body;
+
+            if (!aveugleId || !requestReceivedDate || !deliveryMethod) {
+                return NextResponse.json(
+                    { error: 'Missing required fields', message: 'Auditeur, date de réception et méthode de livraison sont obligatoires' },
+                    { status: 400 }
+                );
+            }
+            if (books.length === 0) {
+                return NextResponse.json(
+                    { error: 'No books', message: 'Ajoutez au moins un ouvrage' },
+                    { status: 400 }
+                );
+            }
+
+            // Parse the shared request date once
+            let batchReceivedDate: Date;
+            try {
+                batchReceivedDate = new Date(requestReceivedDate);
+                if (isNaN(batchReceivedDate.getTime())) throw new Error('Invalid date');
+            } catch (dateError) {
+                console.error('Invalid requestReceivedDate:', requestReceivedDate, dateError);
+                return NextResponse.json(
+                    { error: 'Invalid date format', message: 'La date de demande est invalide', field: 'requestReceivedDate' },
+                    { status: 400 }
+                );
+            }
+
+            // Validate shared billing status
+            const batchBillingStatus: OrderBillingStatus = billingStatus || OrderBillingStatus.UNBILLED;
+            if (!Object.values(OrderBillingStatus).includes(batchBillingStatus)) {
+                return NextResponse.json(
+                    {
+                        error: 'Invalid billing status',
+                        message: `Le statut de facturation est invalide. Valeurs acceptées: ${Object.values(OrderBillingStatus).join(', ')}`,
+                        field: 'billingStatus',
+                    },
+                    { status: 400 }
+                );
+            }
+
+            // Validate + prepare each line (returns 400 on any bad line)
+            const preparedLines: {
+                catalogueId: number;
+                statusId: number;
+                mediaFormatId: number;
+                isDuplication: boolean;
+                lentPhysicalBook: boolean;
+                cost: Prisma.Decimal | null;
+            }[] = [];
+
+            for (const b of books) {
+                if (!b.catalogueId || !b.statusId || !b.mediaFormatId) {
+                    return NextResponse.json(
+                        { error: 'Missing fields in book line', message: 'Chaque ouvrage doit comporter un livre, un statut et un format média' },
+                        { status: 400 }
+                    );
+                }
+
+                let lineCost: Prisma.Decimal | null = null;
+                if (b.cost !== null && b.cost !== undefined && b.cost !== '') {
+                    try {
+                        const d = new Prisma.Decimal(b.cost);
+                        if (d.isNaN()) throw new Error('Invalid cost');
+                        lineCost = d;
+                    } catch (costError) {
+                        console.error('Invalid cost in batch line:', b.cost, costError);
+                        return NextResponse.json(
+                            { error: 'Invalid cost format', message: 'Le coût d\'un ouvrage est invalide', field: 'cost' },
+                            { status: 400 }
+                        );
+                    }
+                }
+
+                preparedLines.push({
+                    catalogueId: parseInt(String(b.catalogueId)),
+                    statusId: parseInt(String(b.statusId)),
+                    mediaFormatId: parseInt(String(b.mediaFormatId)),
+                    isDuplication: !!b.isDuplication,
+                    lentPhysicalBook: !!b.lentPhysicalBook,
+                    cost: lineCost,
+                });
+            }
+
+            const batchNow = new Date();
+            const batchStaffId = session?.user?.id ? parseInt(session.user.id) : null;
+            const batchAveugleId = parseInt(String(aveugleId));
+
+            const created = await prisma.$transaction(
+                preparedLines.map((l) =>
+                    prisma.orders.create({
+                        data: {
+                            aveugleId: batchAveugleId,
+                            catalogueId: l.catalogueId,
+                            requestReceivedDate: batchReceivedDate,
+                            statusId: l.statusId,
+                            isDuplication: l.isDuplication,
+                            mediaFormatId: l.mediaFormatId,
+                            deliveryMethod: deliveryMethod as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE',
+                            processedByStaffId: batchStaffId,
+                            createdDate: batchNow,
+                            updatedAt: batchNow,
+                            cost: l.cost,
+                            billingStatus: batchBillingStatus,
+                            lentPhysicalBook: l.lentPhysicalBook,
+                            notes: notes || null,
+                        },
+                        select: { id: true },
+                    })
+                )
+            );
+
+            return NextResponse.json(
+                { orderIds: created.map((o) => o.id), message: `${created.length} commande(s) créée(s) avec succès` },
+                { status: 201 }
+            );
+        }
+
         const {
             aveugleId,
             catalogueId,
