@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { guardReaderEligible } from '@/lib/statusSync';
 
 /**
  * GET /api/assignments/[id]/readers - Get reader history for an assignment
@@ -104,13 +105,21 @@ export async function POST(
 
         const reader = await prisma.user.findUnique({
             where: { id: parseInt(readerId) },
-            select: { id: true },
+            select: { id: true, memberType: true },
         });
 
         if (!reader) {
             return NextResponse.json(
                 { message: 'Lecteur non trouvé' },
                 { status: 404 }
+            );
+        }
+
+        const readerGuard = guardReaderEligible(reader.memberType as string | null);
+        if (!readerGuard.ok) {
+            return NextResponse.json(
+                { message: readerGuard.message },
+                { status: readerGuard.httpStatus }
             );
         }
 

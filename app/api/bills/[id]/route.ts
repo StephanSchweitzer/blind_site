@@ -4,6 +4,10 @@ import { Prisma } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
+// An order is BILLED once its bill is issued (anything past DRAFT); a draft (brouillon) leaves it UNBILLED.
+const orderBillingForBillState = (state: string): 'BILLED' | 'UNBILLED' =>
+    state === 'DRAFT' ? 'UNBILLED' : 'BILLED';
+
 async function checkAdmin() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -121,7 +125,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                 updateData.paymentReference = paymentReference.trim(); // Add paymentReference String? to your Bill model
             }
 
-            await prisma.bill.update({ where: { id: billId }, data: updateData });
+            await prisma.$transaction(async (tx) => {
+                await tx.bill.update({ where: { id: billId }, data: updateData });
+                // Keep attached orders' billingStatus in sync with the bill's state.
+                await tx.orders.updateMany({
+                    where: { billId },
+                    data: { billingStatus: orderBillingForBillState(state) },
+                });
+            });
             return NextResponse.json({ message: 'Statut mis à jour avec succès' });
         }
 
@@ -149,7 +160,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
                 await tx.orders.update({
                     where: { id: parseInt(orderId) },
-                    data: { billId, billingStatus: 'BILLED' },
+                    data: { billId, billingStatus: orderBillingForBillState(bill.state) },
                 });
 
                 const linked = await tx.orders.findMany({ where: { billId }, select: { cost: true } });
@@ -194,12 +205,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             if (!bill) return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
 
             const autoPay = trimmed && bill.state === 'DRAFT';
-            await prisma.bill.update({
-                where: { id: billId },
-                data: {
-                    paymentReference: trimmed,
-                    ...(autoPay ? { state: 'PAID', issueDate: new Date(), paymentDate: new Date() } : {}),
-                },
+            await prisma.$transaction(async (tx) => {
+                await tx.bill.update({
+                    where: { id: billId },
+                    data: {
+                        paymentReference: trimmed,
+                        ...(autoPay ? { state: 'PAID', issueDate: new Date(), paymentDate: new Date() } : {}),
+                    },
+                });
+                // Auto-pay issues the bill, so its orders become BILLED.
+                if (autoPay) {
+                    await tx.orders.updateMany({ where: { billId }, data: { billingStatus: 'BILLED' } });
+                }
             });
             return NextResponse.json({
                 message: autoPay

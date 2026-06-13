@@ -674,36 +674,36 @@ export function OrderFormBackendBase({
                     {/* Billing Status */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">État de facturation</label>
-                        <Select
-                            value={formData.billingStatus}
-                            onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
-                        >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
-                                <div className="py-1">
-                                    <SelectItem
-                                        value="UNBILLED"
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
-                                    >
-                                        <span className="font-medium">Non facturé</span>
-                                    </SelectItem>
-                                    <SelectItem
-                                        value="BILLED"
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
-                                    >
-                                        <span className="font-medium">Facturé</span>
-                                    </SelectItem>
-                                    <SelectItem
-                                        value="UNBILLABLE"
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
-                                    >
-                                        <span className="font-medium">Non facturable</span>
-                                    </SelectItem>
-                                </div>
-                            </SelectContent>
-                        </Select>
+                        {formData.billingStatus === 'BILLED' ? (
+                            <div className="bg-gray-800 border border-gray-700 rounded-md px-3 py-2.5 text-gray-300">
+                                Facturé <span className="text-xs text-gray-500">(géré par la facture liée)</span>
+                            </div>
+                        ) : (
+                            <Select
+                                value={formData.billingStatus}
+                                onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
+                            >
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                    <div className="py-1">
+                                        <SelectItem
+                                            value="UNBILLED"
+                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
+                                        >
+                                            <span className="font-medium">Non facturé</span>
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="UNBILLABLE"
+                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                        >
+                                            <span className="font-medium">Non facturable</span>
+                                        </SelectItem>
+                                    </div>
+                                </SelectContent>
+                            </Select>
+                        )}
                     </div>
 
                     {/* Linked Bill — read-only */}
@@ -1055,6 +1055,14 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                 description: <span className="text-xl mt-2">{ids.length} commande(s) créée(s){ids.length ? ` : #${ids.join(', #')}` : ''}</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
+            if (data.autoBill) {
+                toast({
+                    // @ts-expect-error jsx in toast
+                    title: <span className="text-2xl font-bold">Facture en brouillon créée</span>,
+                    description: <span className="text-xl mt-2">Le seuil de paiement du client est atteint : une facture en brouillon (#{data.autoBill.billId}) regroupant {data.autoBill.orderCount} commande(s) a été créée.</span>,
+                    className: "bg-blue-100 border-2 border-blue-500 text-blue-900 shadow-lg p-6"
+                });
+            }
             if (onSuccess && ids.length) onSuccess(ids[0]);
         } catch (err) {
             console.error('Batch submit error:', err);
@@ -1163,7 +1171,6 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-gray-800 border-gray-700">
                                     <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
-                                    <SelectItem value="BILLED" className="text-gray-200">Facturé</SelectItem>
                                     <SelectItem value="UNBILLABLE" className="text-gray-200">Non facturable</SelectItem>
                                 </SelectContent>
                             </Select>

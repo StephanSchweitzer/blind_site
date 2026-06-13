@@ -16,7 +16,8 @@ import {
 import { Prisma } from '@prisma/client';
 import {
     STATUS,
-    guardCanSettleOrder,
+    guardOrderCompletion,
+    guardDuplicationFlip,
     syncAssignmentToStatus,
 } from '@/lib/statusSync';
 
@@ -216,6 +217,7 @@ export async function PUT(
                 id: true,
                 statusId: true,
                 isDuplication: true,
+                billId: true,
                 assignments: { select: { id: true, statusId: true }, take: 1 },
             },
         });
@@ -230,13 +232,36 @@ export async function PUT(
         const data = validation.data;
         const assignment = existingOrder.assignments[0] ?? null;
 
-        // Settle-guard: cannot mark the order SOLDE while its assignment is unfinished.
-        if (data.statusId === STATUS.SOLDE && assignment) {
-            const guard = guardCanSettleOrder(assignment.statusId);
-            if (!guard.ok) {
+        // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
+        if (data.billingStatus === 'BILLED' && existingOrder.billId == null) {
+            return NextResponse.json(
+                { message: "Une commande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture." },
+                { status: 400 }
+            );
+        }
+
+        // A non-duplication order can't reach Terminé/Soldé without a finished assignment.
+        if (data.statusId !== undefined) {
+            const completionGuard = guardOrderCompletion({
+                statusId: data.statusId,
+                isDuplication: data.isDuplication ?? existingOrder.isDuplication,
+                assignmentStatusId: assignment?.statusId ?? null,
+            });
+            if (!completionGuard.ok) {
                 return NextResponse.json(
-                    { message: guard.message },
-                    { status: guard.httpStatus }
+                    { message: completionGuard.message },
+                    { status: completionGuard.httpStatus }
+                );
+            }
+        }
+
+        // Can't flip an order to a duplication once it has an assignment.
+        if (data.isDuplication !== undefined) {
+            const flipGuard = guardDuplicationFlip(data.isDuplication, assignment !== null);
+            if (!flipGuard.ok) {
+                return NextResponse.json(
+                    { message: flipGuard.message },
+                    { status: flipGuard.httpStatus }
                 );
             }
         }
@@ -321,6 +346,7 @@ export async function PATCH(
                 id: true,
                 statusId: true,
                 isDuplication: true,
+                billId: true,
                 assignments: { select: { id: true, statusId: true }, take: 1 },
             },
         });
@@ -334,13 +360,36 @@ export async function PATCH(
 
         const assignment = existingOrder.assignments[0] ?? null;
 
-        // Settle-guard only when the status is actually being changed to SOLDE.
-        if (body.statusId === STATUS.SOLDE && assignment) {
-            const guard = guardCanSettleOrder(assignment.statusId);
-            if (!guard.ok) {
+        // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
+        if (body.billingStatus === 'BILLED' && existingOrder.billId == null) {
+            return NextResponse.json(
+                { message: "Une commande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture." },
+                { status: 400 }
+            );
+        }
+
+        // A non-duplication order can't reach Terminé/Soldé without a finished assignment.
+        if (body.statusId !== undefined) {
+            const completionGuard = guardOrderCompletion({
+                statusId: body.statusId,
+                isDuplication: body.isDuplication ?? existingOrder.isDuplication,
+                assignmentStatusId: assignment?.statusId ?? null,
+            });
+            if (!completionGuard.ok) {
                 return NextResponse.json(
-                    { message: guard.message },
-                    { status: guard.httpStatus }
+                    { message: completionGuard.message },
+                    { status: completionGuard.httpStatus }
+                );
+            }
+        }
+
+        // Can't flip an order to a duplication once it has an assignment.
+        if (body.isDuplication !== undefined) {
+            const flipGuard = guardDuplicationFlip(body.isDuplication, assignment !== null);
+            if (!flipGuard.ok) {
+                return NextResponse.json(
+                    { message: flipGuard.message },
+                    { status: flipGuard.httpStatus }
                 );
             }
         }

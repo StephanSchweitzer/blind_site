@@ -5,6 +5,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { BillCreateInputSchema } from '@/types/api/bill.api';
 
+// An order is BILLED once its bill is issued (anything past DRAFT); a draft (brouillon) leaves it UNBILLED.
+const orderBillingForBillState = (state: string): 'BILLED' | 'UNBILLED' =>
+    state === 'DRAFT' ? 'UNBILLED' : 'BILLED';
+
 async function checkAdmin() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -182,7 +186,7 @@ export async function POST(request: NextRequest) {
 
             await tx.orders.updateMany({
                 where: { id: { in: orderIds } },
-                data: { billId: created.id, billingStatus: 'BILLED' },
+                data: { billId: created.id, billingStatus: orderBillingForBillState(created.state) },
             });
 
             return created;

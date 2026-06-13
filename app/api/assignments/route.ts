@@ -3,8 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
     guardAssignmentStatus,
+    guardAssignmentConsistency,
+    guardAssignmentMatchesOrder,
     guardNotDuplication,
     guardOrderHasNoAssignment,
+    guardReaderEligible,
     syncOrderToStatus,
 } from '@/lib/statusSync';
 
@@ -124,15 +127,31 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const parsedOrderId = orderId ? parseInt(orderId) : null;
+        // Reader/date <-> status consistency (a reader is the optional initial readerId).
+        const consistencyGuard = guardAssignmentConsistency({
+            statusId: parsedStatusId,
+            hasReader: !!readerId,
+            sentToReaderDate,
+            returnedToECADate,
+        });
+        if (!consistencyGuard.ok) {
+            return NextResponse.json(
+                { error: consistencyGuard.message },
+                { status: consistencyGuard.httpStatus }
+            );
+        }
 
-        // Order-linked checks: order exists, not a duplication, and has no assignment yet.
+        const parsedOrderId = orderId ? parseInt(orderId) : null;
+        const parsedCatalogueId = parseInt(catalogueId);
+
+        // Order-linked checks: order exists, not a duplication, has no assignment, and is for the same book.
         if (parsedOrderId) {
             const order = await prisma.orders.findUnique({
                 where: { id: parsedOrderId },
                 select: {
                     id: true,
                     isDuplication: true,
+                    catalogueId: true,
                     _count: { select: { assignments: true } },
                 },
             });
@@ -159,12 +178,38 @@ export async function POST(request: NextRequest) {
                     { status: oneToOneGuard.httpStatus }
                 );
             }
+
+            const bookGuard = guardAssignmentMatchesOrder(parsedCatalogueId, order.catalogueId);
+            if (!bookGuard.ok) {
+                return NextResponse.json(
+                    { error: bookGuard.message },
+                    { status: bookGuard.httpStatus }
+                );
+            }
+        }
+
+        // An auditeur can't be the initial reader.
+        if (readerId) {
+            const reader = await prisma.user.findUnique({
+                where: { id: parseInt(readerId) },
+                select: { id: true, memberType: true },
+            });
+            if (!reader) {
+                return NextResponse.json({ error: 'Lecteur non trouvé' }, { status: 404 });
+            }
+            const readerGuard = guardReaderEligible(reader.memberType as string | null);
+            if (!readerGuard.ok) {
+                return NextResponse.json(
+                    { error: readerGuard.message },
+                    { status: readerGuard.httpStatus }
+                );
+            }
         }
 
         const result = await prisma.$transaction(async (tx) => {
             const assignment = await tx.assignment.create({
                 data: {
-                    catalogueId: parseInt(catalogueId),
+                    catalogueId: parsedCatalogueId,
                     orderId: parsedOrderId,
                     receptionDate: receptionDate ? new Date(receptionDate) : null,
                     sentToReaderDate: sentToReaderDate ? new Date(sentToReaderDate) : null,

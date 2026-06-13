@@ -7,6 +7,8 @@ import {
 import { assignmentIncludeConfigs } from '@/types/models';
 import {
     guardAssignmentStatus,
+    guardAssignmentConsistency,
+    guardAssignmentMatchesOrder,
     guardOrderNotSettled,
     syncOrderToStatus,
 } from '@/lib/statusSync';
@@ -90,8 +92,12 @@ export async function PUT(
             select: {
                 id: true,
                 statusId: true,
+                catalogueId: true,
                 orderId: true,
+                sentToReaderDate: true,
+                returnedToECADate: true,
                 order: { select: { statusId: true } },
+                _count: { select: { readerHistory: true } },
             },
         });
 
@@ -123,6 +129,50 @@ export async function PUT(
                     { message: statusGuard.message },
                     { status: statusGuard.httpStatus }
                 );
+            }
+        }
+
+        // Validate the RESULTING assignment (existing values merged with this update)
+        // against the reader/date <-> status rules.
+        const resultingStatusId = newStatusId ?? existingAssignment.statusId;
+        const resultingSentDate = validation.data.sentToReaderDate !== undefined
+            ? validation.data.sentToReaderDate
+            : existingAssignment.sentToReaderDate;
+        const resultingReturnDate = validation.data.returnedToECADate !== undefined
+            ? validation.data.returnedToECADate
+            : existingAssignment.returnedToECADate;
+
+        const consistencyGuard = guardAssignmentConsistency({
+            statusId: resultingStatusId,
+            hasReader: existingAssignment._count.readerHistory > 0,
+            sentToReaderDate: resultingSentDate,
+            returnedToECADate: resultingReturnDate,
+        });
+        if (!consistencyGuard.ok) {
+            return NextResponse.json(
+                { message: consistencyGuard.message },
+                { status: consistencyGuard.httpStatus }
+            );
+        }
+
+        // If still linked to an order, the resulting book must match that order's book.
+        const resultingCatalogueId = validation.data.catalogueId ?? existingAssignment.catalogueId;
+        const resultingOrderId = validation.data.orderId !== undefined
+            ? validation.data.orderId
+            : existingAssignment.orderId;
+        if (resultingOrderId) {
+            const linkedOrder = await prisma.orders.findUnique({
+                where: { id: resultingOrderId },
+                select: { catalogueId: true },
+            });
+            if (linkedOrder) {
+                const bookGuard = guardAssignmentMatchesOrder(resultingCatalogueId, linkedOrder.catalogueId);
+                if (!bookGuard.ok) {
+                    return NextResponse.json(
+                        { message: bookGuard.message },
+                        { status: bookGuard.httpStatus }
+                    );
+                }
             }
         }
 
