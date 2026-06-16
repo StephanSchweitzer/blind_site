@@ -16,19 +16,20 @@ export default async function EquipePage() {
     ];
 
     const boardMembers: TeamMember[] = [
-        { name: "Frédéric Labarthe", role: "Membre du conseil d'administration des AA" },
+        { name: "Frédéric Labarthe", role: "Représentant ECA au Conseil d'Administration des AA" },
     ];
 
-    const members: TeamMember[] = [
-        { name: "Leïla BENOUR", role: "Membre" },
-        { name: "Annie CAZEJUST", role: "Membre" },
-        { name: "Marie-Noëlle DEMARRE", role: "Membre" },
-        { name: "Vincent GRISON", role: "Membre" },
-        { name: "Andrée HORDÉ", role: "Membre" },
-        { name: "Marie-Line LUSSON", role: "Membre" },
-        { name: "Odile MORTIER-WALDSCHMIDT", role: "Membre" },
-        { name: "Anne Marie SUDRES", role: "Membre" },
-        { name: "Michèle NARJOZ", role: "Membre" },
+    const permanenceTeam: TeamMember[] = [
+        { name: "Leïla BENNOUR", role: "" },
+        { name: "Annie CAZEJUST", role: "" },
+        { name: "Marie-Noëlle DEMARRE", role: "" },
+        { name: "Vincent GRISON", role: "" },
+        { name: "Andrée HORDÉ", role: "" },
+        { name: "Marie-Line LUSSON", role: "" },
+        { name: "Odile MORTIER-WALDSCHMIDT", role: "" },
+        { name: "Anne Marie SUDRES", role: "" },
+        { name: "Michèle NARJOZ", role: "" },
+        { name: "Estelle OUDOT", role: "" },
     ];
 
     return (
@@ -86,13 +87,13 @@ export default async function EquipePage() {
 
                 <section className="space-y-8">
                     <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
-                        Membres
+                        Animation des Permanences
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {members.map((member, index) => (
+                        {permanenceTeam.map((member, index) => (
                             <div key={index} className="glass-card p-4 hover:scale-[1.02] transition-transform duration-300">
                                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
-                                <p className="text-gray-700 dark:text-gray-300">{member.role}</p>
+                                {member.role && <p className="text-gray-700 dark:text-gray-300">{member.role}</p>}
                             </div>
                         ))}
                     </div>
@@ -108,7 +109,7 @@ export default async function EquipePage() {
                 <section className="text-center glass-card-lg p-8 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
                     <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Rejoignez-nous</h2>
                     <p className="text-gray-700 dark:text-gray-100 mb-6">
-                        Vous souhaitez contribuer à notre mission et devenir lecteur bénévole ? Nous sommes toujours à la recherche de nouvelles voix !
+                        Vous souhaitez contribuer à notre mission et devenir animateur de permanences ? Nous sommes toujours à la recherche de nouvelles voix !
                     </p>
                     <a href="/nous-rejoindre" className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
                         Nous rejoindre
