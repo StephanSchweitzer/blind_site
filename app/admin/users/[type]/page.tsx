@@ -40,11 +40,20 @@ async function getUsers(
                 { accessLevel: { in: ['admin', 'super_admin'] } };
 
     if (searchTerm) {
-        whereClause.OR = [
-            { firstName: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-            { lastName:  { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-            { email:     { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-        ];
+        // Split on whitespace so "Leila Be" matches firstName="Leila" + lastName="Bennour".
+        // Each token must match at least one field (AND across tokens, OR across fields),
+        // which also makes the order irrelevant ("Bennour Leila" works too).
+        const tokens = searchTerm.trim().split(/\s+/).filter(Boolean);
+
+        if (tokens.length > 0) {
+            whereClause.AND = tokens.map((token) => ({
+                OR: [
+                    { firstName: { contains: token, mode: Prisma.QueryMode.insensitive } },
+                    { lastName:  { contains: token, mode: Prisma.QueryMode.insensitive } },
+                    { email:     { contains: token, mode: Prisma.QueryMode.insensitive } },
+                ],
+            }));
+        }
     }
 
     try {
@@ -102,47 +111,48 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
         notFound();
     }
 
+    const searchParamsResolved = await searchParams;
+
+    const page = Math.max(
+        1,
+        parseInt(Array.isArray(searchParamsResolved.page) ? searchParamsResolved.page[0] : searchParamsResolved.page || '1')
+    );
+    const searchTerm = Array.isArray(searchParamsResolved.search)
+        ? searchParamsResolved.search[0]
+        : searchParamsResolved.search || '';
+
+    // Only the data fetch is guarded. JSX is returned at the top level so render
+    // errors propagate to an error boundary instead of being silently swallowed.
+    let data: Awaited<ReturnType<typeof getUsers>>;
     try {
-        const searchParamsResolved = await searchParams;
-
-        const page = Math.max(
-            1,
-            parseInt(Array.isArray(searchParamsResolved.page) ? searchParamsResolved.page[0] : searchParamsResolved.page || '1')
-        );
-        const searchTerm = Array.isArray(searchParamsResolved.search)
-            ? searchParamsResolved.search[0]
-            : searchParamsResolved.search || '';
-
-        const { users, totalUsers, totalPages, activeCount, inactiveCount } = await getUsers(
-            page,
-            searchTerm,
-            userType as UserType
-        );
-
-        const serializedUsers = users.map(user => ({
-            ...user,
-            lastUpdated: user.lastUpdated ? user.lastUpdated.toISOString() : null,
-        }));
-
-        return (
-            <div className="space-y-6">
-                <UserTypeTabs currentType={userType} />
-
-                <UsersTable
-                    type={userType as UserType}
-                    initialUsers={serializedUsers}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                    initialTotalUsers={totalUsers}
-                    activeCount={activeCount}
-                    inactiveCount={inactiveCount}
-                    currentUserAccessLevel={session.user.accessLevel}
-                />
-            </div>
-        );
+        data = await getUsers(page, searchTerm, userType as UserType);
     } catch (error) {
         console.error('Error in Users page:', error);
         notFound();
     }
+
+    const { users, totalUsers, totalPages, activeCount, inactiveCount } = data;
+
+    const serializedUsers = users.map(user => ({
+        ...user,
+        lastUpdated: user.lastUpdated ? user.lastUpdated.toISOString() : null,
+    }));
+
+    return (
+        <div className="space-y-6">
+            <UserTypeTabs currentType={userType} />
+
+            <UsersTable
+                type={userType as UserType}
+                initialUsers={serializedUsers}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages}
+                initialTotalUsers={totalUsers}
+                activeCount={activeCount}
+                inactiveCount={inactiveCount}
+                currentUserAccessLevel={session.user.accessLevel}
+            />
+        </div>
+    );
 }

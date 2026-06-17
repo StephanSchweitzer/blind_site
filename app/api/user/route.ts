@@ -66,6 +66,10 @@ export async function POST(request: Request) {
 
         const body = await request.json() as UserCreateRequestBody;
 
+        // Normalize the email once, up front: trim + lowercase so casing can never
+        // create a second row that collides with an existing one.
+        const normalizedEmail = body.email ? body.email.trim().toLowerCase() : null;
+
         // Only super_admin can create admin or super_admin access levels
         if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && session.user.accessLevel !== 'super_admin') {
             return NextResponse.json({
@@ -74,14 +78,16 @@ export async function POST(request: Request) {
         }
 
         // Email is required for admin and super_admin access levels
-        if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && !body.email) {
+        if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && !normalizedEmail) {
             return NextResponse.json({ message: 'L\'email est requis pour les membres permanents' }, { status: 400 });
         }
 
-        // Check for existing email only if email is provided
-        if (body.email) {
-            const existingUser = await prisma.user.findUnique({
-                where: { email: body.email },
+        // Case-insensitive duplicate check (catches mixed-case legacy rows too)
+        if (normalizedEmail) {
+            const existingUser = await prisma.user.findFirst({
+                where: {
+                    email: { equals: normalizedEmail, mode: 'insensitive' },
+                },
             });
 
             if (existingUser) {
@@ -106,7 +112,7 @@ export async function POST(request: Request) {
 
         const newUser = await prisma.user.create({
             data: {
-                email: body.email || null,
+                email: normalizedEmail,
                 password: hashedPassword,
                 passwordNeedsChange: passwordNeedsChange,
                 name: body.name || '',

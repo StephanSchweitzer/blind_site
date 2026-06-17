@@ -25,7 +25,7 @@ export default withAuth(
     },
     {
         pages: {
-            signIn: '/api/auth/signin',
+            signIn: '/auth/signin',
         },
         callbacks: {
             authorized: ({ token }) => !!token
