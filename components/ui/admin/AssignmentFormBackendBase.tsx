@@ -50,6 +50,50 @@ export interface AssignmentFormBackendBaseProps {
     onOrdersLoaded?: () => void;
 }
 
+function DatePicker({
+                        value,
+                        onChange,
+                        label,
+                        placeholder,
+                    }: {
+    value: string | null;
+    onChange: (date: string | null) => void;
+    label: string;
+    placeholder: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const date = value ? new Date(value) : undefined;
+
+    return (
+        <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-200">{label}</label>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                    >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {date ? format(date, 'PPP', { locale: fr }) : <span className="text-gray-400">{placeholder}</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                    <CalendarComponent
+                        mode="single"
+                        selected={date}
+                        onSelect={(newDate) => {
+                            onChange(newDate ? newDate.toISOString() : null);
+                            setOpen(false);
+                        }}
+                        initialFocus
+                        locale={fr}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
+    );
+}
+
 export function AssignmentFormBackendBase({
                                               initialData,
                                               onSubmit,
@@ -179,7 +223,10 @@ export function AssignmentFormBackendBase({
     }, [assignmentId]);
 
     useEffect(() => {
-        fetchReaderHistory();
+        const loadReaderHistory = async () => {
+            await fetchReaderHistory();
+        };
+        loadReaderHistory();
     }, [fetchReaderHistory]);
 
     // Load initial selections if editing (only if not pre-fetched)
@@ -446,50 +493,6 @@ export function AssignmentFormBackendBase({
             setError('Échec de la suppression de l\'affectation');
             setIsLoading(false);
         }
-    };
-
-    const DatePicker = ({
-                            value,
-                            onChange,
-                            label,
-                            placeholder
-                        }: {
-        value: string | null;
-        onChange: (date: string | null) => void;
-        label: string;
-        placeholder: string;
-    }) => {
-        const [open, setOpen] = useState(false);
-        const date = value ? new Date(value) : undefined;
-
-        return (
-            <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-200">{label}</label>
-                <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
-                        >
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {date ? format(date, 'PPP', { locale: fr }) : <span className="text-gray-400">{placeholder}</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
-                        <CalendarComponent
-                            mode="single"
-                            selected={date}
-                            onSelect={(newDate) => {
-                                onChange(newDate ? newDate.toISOString() : null);
-                                setOpen(false);
-                            }}
-                            initialFocus
-                            locale={fr}
-                        />
-                    </PopoverContent>
-                </Popover>
-            </div>
-        );
     };
 
     const getReaderDisplayName = (
@@ -792,8 +795,14 @@ export function AssignmentFormBackendBase({
                                 >
                                     {selectedOrder ? (
                                         <div className="flex items-center gap-2">
-                                            <Package className="h-4 w-4" />
-                                            <span>Commande #{selectedOrder.id} par {selectedOrder.aveugle.name}</span>
+                                            <Package className="h-4 w-4 shrink-0" />
+                                            <span className="text-base">
+                                                {selectedOrder.aveugle?.name || 'Auditeur inconnu'}
+                                                {(selectedOrder.requestReceivedDate || selectedOrder.createdDate) && (
+                                                    <> · {format(new Date(selectedOrder.requestReceivedDate || selectedOrder.createdDate!), 'dd/MM/yyyy', { locale: fr })}</>
+                                                )}
+                                                <span className="text-gray-400"> (Cmd&nbsp;#{selectedOrder.id})</span>
+                                            </span>
                                         </div>
                                     ) : (
                                         <span className="text-gray-400">Sélectionner une commande...</span>
@@ -823,31 +832,28 @@ export function AssignmentFormBackendBase({
                                                 className="px-4 py-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
                                                 onClick={() => handleOrderSelect(order)}
                                             >
-                                                <div className="flex items-start justify-between">
+                                                <div className="flex items-start justify-between gap-2">
                                                     <div className="flex-1">
+                                                        {/* Primary: who + when — same hierarchy as the trigger */}
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <Package className="h-4 w-4 text-blue-400" />
-                                                            <span className="font-semibold text-gray-200">
-                                                                Commande #{order.id}
+                                                            <Package className="h-4 w-4 text-blue-400 shrink-0" />
+                                                            <span className="font-semibold text-gray-200 text-base">
+                                                                {order.aveugle?.name || 'Auditeur inconnu'}
                                                             </span>
+                                                            {(order.requestReceivedDate || order.createdDate) && (
+                                                                <span className="text-sm text-gray-400">
+                                                                    · {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}
+                                                                </span>
+                                                            )}
                                                         </div>
-                                                        {order.aveugle && (
-                                                            <div className="text-sm text-gray-300 mb-1">
-                                                                <span className="text-gray-400">Auditeur:</span> {order.aveugle.name || `${order.aveugle.firstName} ${order.aveugle.lastName}`}
-                                                            </div>
-                                                        )}
                                                         {order.catalogue && (
-                                                            <div className="text-sm text-gray-300 mb-1">
-                                                                <span className="text-gray-400">Livre:</span> {order.catalogue.title}
-                                                                {order.catalogue.author && <span className="text-gray-500"> - {order.catalogue.author}</span>}
-                                                            </div>
-                                                        )}
-                                                        {(order.requestReceivedDate || order.createdDate) && (
-                                                            <div className="text-xs text-gray-400">
-                                                                Commandé le {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}
+                                                            <div className="text-sm text-gray-300">
+                                                                {order.catalogue.title}
+                                                                {order.catalogue.author && <span className="text-gray-500"> — {order.catalogue.author}</span>}
                                                             </div>
                                                         )}
                                                     </div>
+                                                    <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">Cmd&nbsp;#{order.id}</span>
                                                 </div>
                                             </div>
                                         ))
