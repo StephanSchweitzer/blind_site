@@ -3,8 +3,8 @@ import { BookWithGenres } from '@/types/book';
 export interface CoupDeCoeur {
     id: number;
     title: string;
-    description: string;
-    audioPath: string;
+    description: string | null;
+    audioPath: string | null;
     books: {
         book: BookWithGenres;
     }[];

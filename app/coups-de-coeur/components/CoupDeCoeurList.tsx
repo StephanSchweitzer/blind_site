@@ -46,19 +46,23 @@ export const CoupDeCoeurList: React.FC<CoupDeCoeurListProps> = ({
                     <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full"></div>
                 </div>
 
-                <div className="mb-8 p-4 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30 shadow-sm">
-                    <AudioPlayer
-                        key={`audio-${content[0].audioPath}`}
-                        src={content[0].audioPath}
-                        title={content[0].title}
-                    />
-                </div>
+                {content[0].audioPath && (
+                    <div className="mb-8 p-4 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30 shadow-sm">
+                        <AudioPlayer
+                            key={`audio-${content[0].audioPath}`}
+                            src={content[0].audioPath}
+                            title={content[0].title}
+                        />
+                    </div>
+                )}
 
-                <div className="mb-8 p-5 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30 shadow-sm">
-                    <p className="text-gray-800 dark:text-gray-200 leading-relaxed text-base">
-                        {content[0].description}
-                    </p>
-                </div>
+                {content[0].description && (
+                    <div className="mb-8 p-5 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30 shadow-sm">
+                        <p className="text-gray-800 dark:text-gray-200 leading-relaxed text-base">
+                            {content[0].description}
+                        </p>
+                    </div>
+                )}
 
                 <BookList
                     books={content[0].books}

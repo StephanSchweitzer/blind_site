@@ -14,11 +14,13 @@ export async function GET(request: NextRequest) {
         const recent = searchParams.get('recent') === 'true';
         const skip = (page - 1) * limit;
 
-        let whereClause: Prisma.CoupsDeCoeurWhereInput = {};
+        let whereClause: Prisma.CoupsDeCoeurWhereInput = {
+            active: true
+        };
 
-        // Search functionality
         if (search) {
             whereClause = {
+                active: true,
                 OR: [
                     {
                         title: {
@@ -58,9 +60,9 @@ export async function GET(request: NextRequest) {
             };
         }
 
-        // Recent books functionality
         if (recent) {
             const lastCoupDeCoeur = await prisma.coupsDeCoeur.findFirst({
+                where: { active: true },
                 orderBy: {
                     createdAt: 'desc'
                 }
@@ -123,17 +125,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        // Authenticate the user
         const session = await getServerSession(authOptions);
         if (!session || !session.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Parse request body
         const body = await req.json();
         const { title, description, audioPath, bookIds, active } = body;
 
-        // Validate required fields
         if (!title || !Array.isArray(bookIds) || bookIds.length === 0) {
             return NextResponse.json(
                 { error: 'Title and at least one book are required' },
@@ -149,14 +148,13 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Create new Coup de Coeur entry
         const newCoupDeCoeur = await prisma.coupsDeCoeur.create({
             data: {
                 title,
                 description: description || null,
                 audioPath: audioPath || null,
                 active: active ?? true,
-                addedById: parsedAuthorId, // Link to the user who created it
+                addedById: parsedAuthorId,
                 books: {
                     create: bookIds.map((bookId: number) => ({
                         book: { connect: { id: bookId } }
