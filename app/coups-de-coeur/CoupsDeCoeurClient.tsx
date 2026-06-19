@@ -94,7 +94,7 @@ export default function CoupsDeCoeurClient({
                 </section>
 
                 <div className="space-y-8">
-                    <div className="mb-8 animate-fade-in" style={{ animationDelay: '100ms' }}>
+                    <div className="mb-8" style={{ animationDelay: '100ms' }}>
                         <SearchBar
                             searchTerm={searchTerm}
                             onSearchChange={setSearchTerm}

@@ -107,7 +107,7 @@ export default function DernieresInfoPage() {
                 </section>
 
                 <div className="space-y-8">
-                    <div className="flex flex-col sm:flex-row gap-4 items-center animate-fade-in" style={{ animationDelay: '100ms' }}>
+                    <div className="flex flex-col sm:flex-row gap-4 items-center" style={{ animationDelay: '100ms' }}>
                         <div className="flex-1 w-full">
                             <SearchBar
                                 searchTerm={searchTerm}
