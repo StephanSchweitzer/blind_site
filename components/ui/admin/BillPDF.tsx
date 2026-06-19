@@ -90,7 +90,7 @@ const s = StyleSheet.create({
 
     cId: { width: 36 },
     cDesc: { flex: 1, paddingRight: 8 },
-    cDate: { width: 60 },
+    cDate: { width: 92 },
     cType: { width: 66 },
     cAmt: { width: 70, textAlign: 'right' },
 
@@ -187,7 +187,7 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                 <View style={s.th} wrap={false}>
                     <Text style={[s.thText, s.cId]}>Réf.</Text>
                     <Text style={[s.thText, s.cDesc]}>Désignation</Text>
-                    <Text style={[s.thText, s.cDate]}>Date d&apos;envoi</Text>
+                    <Text style={[s.thText, s.cDate]}>ENVOI LECTEUR</Text>
                     <Text style={[s.thText, s.cType]}>Type</Text>
                     <Text style={[s.thText, s.cAmt]}>Montant</Text>
                 </View>
