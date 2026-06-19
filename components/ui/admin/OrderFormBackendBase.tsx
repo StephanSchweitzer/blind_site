@@ -514,7 +514,8 @@ export function OrderFormBackendBase({
 
                     {/* Closure Date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Date d&apos;`envoie</label>
+                        <label className="text-sm font-medium text-gray-200">Date de cloture</label>
+                        <p className="text-xs text-gray-400">Date à laquelle la commande terminée est expédiée à l&apos;auditeur (clôture).</p>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
