@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -80,6 +80,19 @@ interface OrderFormBackendBaseProps {
     initialBill?: { id: number; state: string } | null;
 }
 
+// Euro display helpers: keep only digits + one decimal separator while typing,
+// then pad to 2 decimals on blur. The € sign is a visual adornment, never stored.
+const sanitizeDecimal = (v: string): string => {
+    const raw = (v ?? '').replace(/[^0-9.,]/g, '').replace(',', '.');
+    const parts = raw.split('.');
+    return parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : raw;
+};
+const formatEuro2 = (v: string | null | undefined): string => {
+    if (v == null || String(v).trim() === '') return '';
+    const n = parseFloat(String(v).replace(',', '.'));
+    return Number.isNaN(n) ? '' : n.toFixed(2);
+};
+
 export function OrderFormBackendBase({
                                          initialData,
                                          onSubmit,
@@ -97,23 +110,30 @@ export function OrderFormBackendBase({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Cost is locked while the linked bill is finalized (payée/soldée); reopen to edit.
+    const costLocked = initialBill?.state === 'PAID' || initialBill?.state === 'SOLDE';
+
     // Form data state
-    const [formData, setFormData] = useState<OrderFormData>(initialData || {
-        aveugleId: initialSelectedUser?.id ?? null,
-        catalogueId: null,
-        requestReceivedDate: new Date(),
-        statusId: null,
-        isDuplication: false,
-        mediaFormatId: null,
-        deliveryMethod: null,
-        processedByStaffId: null,
-        //createdDate: new Date(),
-        closureDate: null,
-        cost: '3.00',
-        billingStatus: 'UNBILLED',
-        lentPhysicalBook: false,
-        notes: '',
-    });
+    const [formData, setFormData] = useState<OrderFormData>(() =>
+        initialData
+            ? { ...initialData, cost: formatEuro2(initialData.cost) }
+            : {
+                aveugleId: initialSelectedUser?.id ?? null,
+                catalogueId: null,
+                requestReceivedDate: new Date(),
+                statusId: null,
+                isDuplication: false,
+                mediaFormatId: null,
+                deliveryMethod: null,
+                processedByStaffId: null,
+                //createdDate: new Date(),
+                closureDate: null,
+                cost: '3.00',
+                billingStatus: 'UNBILLED',
+                lentPhysicalBook: false,
+                notes: '',
+            }
+    );
 
     // Options data
     const [users, setUsers] = useState<User[]>([]);
@@ -733,15 +753,25 @@ export function OrderFormBackendBase({
 
                     {/* Cost */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Coût (€)</label>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            value={formData.cost}
-                            onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                            className="bg-gray-800 border-gray-700 text-gray-200"
-                            placeholder="0.00"
-                        />
+                        <label className="text-sm font-medium text-gray-200">Coût</label>
+                        <div className="relative">
+                            <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={formData.cost}
+                                onChange={(e) => setFormData({ ...formData, cost: sanitizeDecimal(e.target.value) })}
+                                onBlur={() => setFormData({ ...formData, cost: formatEuro2(formData.cost) })}
+                                disabled={costLocked}
+                                className={`bg-gray-800 border-gray-700 text-gray-200 pr-8 ${costLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                placeholder="0.00"
+                            />
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">€</span>
+                        </div>
+                        {costLocked && (
+                            <p className="text-xs text-amber-400">
+                                Coût verrouillé : la facture #{initialBill?.id} est {initialBill?.state === 'PAID' ? 'payée' : 'soldée'}. Rouvrez-la pour le modifier.
+                            </p>
+                        )}
                     </div>
 
                     {/* Notes */}
@@ -1180,10 +1210,14 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
                     {/* Default cost */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Coût par défaut (€)</label>
-                        <Input type="number" step="0.01" value={defaultCost}
-                               onChange={(e) => handleDefaultCostChange(e.target.value)}
-                               className="bg-gray-800 border-gray-700 text-gray-200" placeholder="0.00" />
+                        <label className="text-sm font-medium text-gray-200">Coût par défaut</label>
+                        <div className="relative">
+                            <Input type="text" inputMode="decimal" value={defaultCost}
+                                   onChange={(e) => handleDefaultCostChange(sanitizeDecimal(e.target.value))}
+                                   onBlur={() => handleDefaultCostChange(formatEuro2(defaultCost))}
+                                   className="bg-gray-800 border-gray-700 text-gray-200 pr-8" placeholder="0.00" />
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">€</span>
+                        </div>
                     </div>
 
                     {/* Book lines */}
@@ -1239,10 +1273,14 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                         </Select>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs text-gray-400">Coût (€)</label>
-                                        <Input type="number" step="0.01" value={line.cost}
-                                               onChange={(e) => updateLine(line.key, { cost: e.target.value })}
-                                               className="bg-gray-800 border-gray-700 text-gray-200 h-9" placeholder={defaultCost} />
+                                        <label className="text-xs text-gray-400">Coût</label>
+                                        <div className="relative">
+                                            <Input type="text" inputMode="decimal" value={line.cost}
+                                                   onChange={(e) => updateLine(line.key, { cost: sanitizeDecimal(e.target.value) })}
+                                                   onBlur={() => updateLine(line.key, { cost: formatEuro2(line.cost) })}
+                                                   className="bg-gray-800 border-gray-700 text-gray-200 h-9 pr-8" placeholder={defaultCost} />
+                                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">€</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1298,26 +1336,31 @@ export function EditOrderFormBackend({
 }) {
     const { toast } = useToast();
 
+    type Notice = { billId: number; billState: string; kind: 'COST' | 'VISIBLE'; newTotal?: string | null };
+    const [notice, setNotice] = useState<Notice | null>(null);
+    const resolveRef = useRef<((id: number) => void) | null>(null);
+
+    const acknowledgeNotice = () => {
+        const resolve = resolveRef.current;
+        resolveRef.current = null;
+        setNotice(null);
+        resolve?.(parseInt(orderId));
+    };
+
     const handleDelete = async (): Promise<void> => {
         try {
-            const response = await fetch(`/api/orders/${orderId}`, {
-                method: 'DELETE',
-            });
-
+            const response = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
             if (!response.ok) {
-                throw new Error('Échec de la suppression de la demande');
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.message || 'Échec de la suppression de la demande');
             }
-
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Succès</span>,
                 description: <span className="text-xl mt-2">La demande a été supprimée avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
-
-            if (onSuccess) {
-                onSuccess(parseInt(orderId), true);
-            }
+            if (onSuccess) onSuccess(parseInt(orderId), true);
         } catch (error) {
             console.error('Delete error:', error);
             throw error;
@@ -1325,58 +1368,100 @@ export function EditOrderFormBackend({
     };
 
     const handleSubmit = async (formData: OrderFormData): Promise<number> => {
-        try {
-            const response = await fetch(`/api/orders/${orderId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
+        const response = await fetch(`/api/orders/${orderId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData),
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                const errorMessage = errorData?.message || 'Échec de la mise à jour de la demande';
-
-                toast({
-                    variant: "destructive",
-                    // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <span className="text-xl mt-2">{errorMessage}</span>,
-                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
-                });
-
-                return Promise.reject();
-            }
-
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            const errorMessage = errorData?.message || 'Échec de la mise à jour de la demande';
             toast({
+                variant: "destructive",
                 // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">La demande a été mise à jour avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                title: <span className="text-2xl font-bold">Erreur</span>,
+                description: <span className="text-xl mt-2">{errorMessage}</span>,
+                className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
             });
-
-            return parseInt(orderId);
-        } catch (error) {
-            console.error('Submit error:', error);
             return Promise.reject();
         }
+
+        const data = await response.json().catch(() => null);
+
+        toast({
+            // @ts-expect-error jsx in toast
+            title: <span className="text-2xl font-bold">Succès</span>,
+            description: <span className="text-xl mt-2">La demande a été mise à jour avec succès</span>,
+            className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+        });
+
+        // Hold the modal open behind the reprint dialogue; resolve on acknowledge.
+        if (data?.billNotice) {
+            setNotice(data.billNotice as Notice);
+            return new Promise<number>((resolve) => { resolveRef.current = resolve; });
+        }
+
+        return parseInt(orderId);
     };
 
     return (
-        <OrderFormBackendBase
-            initialData={initialData}
-            onSubmit={handleSubmit}
-            onDelete={handleDelete}
-            showDelete={true}
-            submitButtonText="Mettre à jour la demande"
-            loadingText="Mise à jour en cours..."
-            title="Modifier la demande"
-            onSuccess={onSuccess}
-            initialSelectedUser={initialSelectedUser}
-            initialSelectedBook={initialSelectedBook}
-            initialSelectedStaff={initialSelectedStaff}
-            initialBill={initialBill}
-        />
+        <>
+            <OrderFormBackendBase
+                initialData={initialData}
+                onSubmit={handleSubmit}
+                onDelete={handleDelete}
+                showDelete={true}
+                submitButtonText="Mettre à jour la demande"
+                loadingText="Mise à jour en cours..."
+                title="Modifier la demande"
+                onSuccess={onSuccess}
+                initialSelectedUser={initialSelectedUser}
+                initialSelectedBook={initialSelectedBook}
+                initialSelectedStaff={initialSelectedStaff}
+                initialBill={initialBill}
+            />
+
+            <Dialog open={!!notice} onOpenChange={(open) => { if (!open) acknowledgeNotice(); }}>
+                <DialogContent className="bg-gray-900 border-gray-700 max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-amber-300">
+                            {notice?.kind === 'COST' ? 'Coût modifié — facture à régénérer' : 'Éléments visibles modifiés'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="text-gray-200 text-sm space-y-3">
+                        {notice?.kind === 'COST' ? (
+                            <p>
+                                Vous avez modifié le coût de cette demande, ce qui a mis à jour le montant total de la
+                                facture #{notice?.billId}{notice?.newTotal ? ` (nouveau total : ${notice.newTotal} €)` : ''}.
+                                Veuillez consulter la facture, la réimprimer et relancer le processus de facturation afin de
+                                conserver des enregistrements corrects.
+                            </p>
+                        ) : (
+                            <p>
+                                Vous avez modifié un élément figurant sur la facture #{notice?.billId} (livre, date ou type).
+                                Le montant total n&apos;a pas changé, mais le document déjà émis n&apos;est plus à jour :
+                                pensez à le réimprimer.
+                            </p>
+                        )}
+                        {notice && (
+                            <Link
+                                href={`/admin/bills?bill=${notice.billId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block text-blue-400 hover:text-blue-300 underline underline-offset-2"
+                            >
+                                Voir la facture #{notice.billId}
+                            </Link>
+                        )}
+                    </div>
+                    <div className="flex justify-end mt-4">
+                        <Button onClick={acknowledgeNotice} className="bg-amber-600 hover:bg-amber-700 text-white">
+                            J&apos;ai compris
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

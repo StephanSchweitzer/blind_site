@@ -9,13 +9,14 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, X, Plus, ChevronLeft, ChevronRight, Pencil, Check } from 'lucide-react';
+import { Loader2, Trash2, X, Plus, ChevronLeft, ChevronRight, Pencil, Check, RotateCcw, History } from 'lucide-react';
 import {
     BillingStatus,
     getBillingStatusColor,
     getBillingStatusLabel,
 } from '@/lib/billing-enums';
 import { BillPDFButton } from './BillPDFButton';
+import { BillHistory, BillEventDTO } from './BillHistory';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ interface BillDetail {
     invoiceAmount: number | string;
     client: { id: number; name: string | null; email: string | null };
     orders: BillOrder[];
+    events: BillEventDTO[];
 }
 
 interface UnbilledOrder {
@@ -84,6 +86,15 @@ function formatCurrency(amount: number | string) {
     );
 }
 
+// Pure fetch (no setState) so it can be called from both the load effect's promise
+// callbacks and from event handlers without tripping react-hooks/set-state-in-effect.
+async function fetchBillData(id: number): Promise<BillDetail> {
+    const res = await fetch(`/api/bills/${id}`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.message || 'Échec du chargement de la facture');
+    return data.bill as BillDetail;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function EditBillModal({
@@ -94,7 +105,6 @@ export function EditBillModal({
                                   onBillUpdated,
                               }: EditBillModalProps) {
     const [bill, setBill] = useState<BillDetail | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Status change
@@ -117,42 +127,50 @@ export function EditBillModal({
     const [addingOrderId, setAddingOrderId] = useState<number | null>(null);
     const [removingOrderId, setRemovingOrderId] = useState<number | null>(null);
     const [showAddPanel, setShowAddPanel] = useState(false);
+    const [isReopening, setIsReopening] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
 
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── Load bill ──────────────────────────────────────────────────────────────
 
     const loadBill = useCallback(async (id: number) => {
-        setIsLoading(true);
-        setError(null);
         try {
-            const res = await fetch(`/api/bills/${id}`);
-            const data = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(data?.message || 'Échec du chargement de la facture');
-            setBill(data.bill);
+            const b = await fetchBillData(id);
+            setBill(b);
+            setError(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
-        } finally {
-            setIsLoading(false);
         }
     }, []);
 
+    const resetLocalState = useCallback(() => {
+        setBill(null);
+        setError(null);
+        setPendingState(null);
+        setPaymentReference('');
+        setStatusError(null);
+        setShowAddPanel(false);
+        setOrderSearch('');
+        setOrderPage(1);
+        setIsEditingPayRef(false);
+        setPayRefDraft('');
+    }, []);
+
     useEffect(() => {
-        if (!isOpen || billId === null) {
-            setBill(null);
-            setError(null);
-            setPendingState(null);
-            setPaymentReference('');
-            setStatusError(null);
-            setShowAddPanel(false);
-            setOrderSearch('');
-            setOrderPage(1);
-            setIsEditingPayRef(false);
-            setPayRefDraft('');
-            return;
-        }
-        loadBill(billId);
-    }, [isOpen, billId, loadBill]);
+        if (!isOpen || billId === null) return;
+        let cancelled = false;
+        fetchBillData(billId)
+            .then((b) => { if (!cancelled) { setBill(b); setError(null); } })
+            .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Erreur inattendue'); });
+        return () => { cancelled = true; };
+    }, [isOpen, billId]);
+
+    // Reset on close in an event handler (not an effect) to avoid synchronous setState in effects.
+    const handleDialogOpenChange = (open: boolean) => {
+        if (!open) resetLocalState();
+        onOpenChange(open);
+    };
 
     // ── Load unbilled orders (debounced) ───────────────────────────────────────
 
@@ -278,13 +296,38 @@ export function EditBillModal({
         }
     };
 
+    const handleReopen = async () => {
+        if (!billId) return;
+        if (!window.confirm("Rouvrir cette facture la repassera à « émise » et effacera ses informations de paiement (archivées dans l'historique). Continuer ?")) return;
+        setIsReopening(true);
+        try {
+            const res = await fetch(`/api/bills/${billId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reopenBill' }),
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(data?.message || 'Erreur lors de la réouverture');
+            await loadBill(billId);
+            onBillUpdated?.();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Erreur inattendue');
+        } finally {
+            setIsReopening(false);
+        }
+    };
+
+    // Derived loading state — true while the modal is open for a bill we haven't
+    // fetched yet. Avoids a setState-in-effect just to toggle a spinner.
+    const isLoading = isOpen && billId !== null && bill === null && error === null;
+
     const isDraft = bill?.state === BillingStatus.DRAFT;
     const nextStates = bill ? (NEXT_STATES[bill.state] ?? []) : [];
 
     // ── Render ─────────────────────────────────────────────────────────────────
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-3 pr-8">
@@ -445,6 +488,25 @@ export function EditBillModal({
                             </div>
                         )}
 
+                        {/* Reopen (finalized bills) */}
+                        {(bill.state === BillingStatus.PAID || bill.state === BillingStatus.SOLDE) && (
+                            <div className="space-y-2 p-3 bg-amber-900/15 border border-amber-800/50 rounded-md">
+                                <div className="text-xs text-amber-300/90 uppercase tracking-wide">Facture finalisée</div>
+                                <p className="text-sm text-gray-300">
+                                    Pour corriger le coût d&apos;une demande de cette facture, rouvrez-la d&apos;abord. Elle repassera
+                                    à « émise » et ses informations de paiement seront archivées dans l&apos;historique.
+                                </p>
+                                <Button
+                                    onClick={handleReopen}
+                                    disabled={isReopening}
+                                    className="bg-amber-700 hover:bg-amber-600 text-gray-100 h-8 text-sm flex items-center gap-1.5"
+                                >
+                                    {isReopening ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                    Rouvrir la facture
+                                </Button>
+                            </div>
+                        )}
+
                         {/* Orders */}
                         <div className="space-y-2">
                             <div className="text-xs text-gray-500 uppercase tracking-wide">
@@ -573,6 +635,23 @@ export function EditBillModal({
                         <div className="flex items-center justify-between pt-3 border-t border-gray-700">
                             <span className="text-sm font-medium text-gray-400 uppercase tracking-wide">Montant total</span>
                             <span className="text-xl font-bold text-gray-100">{formatCurrency(bill.invoiceAmount)}</span>
+                        </div>
+
+                        {/* History */}
+                        <div className="space-y-2 pt-3 border-t border-gray-700">
+                            <button
+                                onClick={() => setShowHistory((v) => !v)}
+                                className="flex items-center gap-1.5 text-sm text-gray-300 hover:text-gray-100 transition-colors"
+                            >
+                                <History className="h-4 w-4" />
+                                {showHistory ? "Masquer l'historique" : "Historique de la facture"}
+                                {bill.events?.length ? ` (${bill.events.length})` : ''}
+                            </button>
+                            {showHistory && (
+                                <div className="border border-gray-700 rounded-md p-3 max-h-[260px] overflow-y-auto">
+                                    <BillHistory events={bill.events ?? []} />
+                                </div>
+                            )}
                         </div>
 
                         {/* Actions */}

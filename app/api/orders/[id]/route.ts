@@ -9,17 +9,41 @@ import {
     orderIncludeConfigs,
     OrderUpdateInput,
     OrderUpdateInputSchema,
-    OrderCreateInput,
-    OrderCreateInputSchema,
-    OrderCreateData,
 } from '@/types';
-import { Prisma } from '@prisma/client';
+import { Prisma, BillingStatus } from '@prisma/client';
 import {
     STATUS,
     guardOrderCompletion,
     guardDuplicationFlip,
     syncAssignmentToStatus,
 } from '@/lib/statusSync';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { recomputeBillTotal, sweepIntoDraftBillIfOverThreshold, logBillEvent } from '@/lib/billing';
+
+async function checkAdmin() {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+        return { authorized: false as const, response: NextResponse.json({ message: 'Non autorisé' }, { status: 401 }) };
+    }
+    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
+        return { authorized: false as const, response: NextResponse.json({ message: 'Non autorisé' }, { status: 403 }) };
+    }
+    return { authorized: true as const, session };
+}
+
+// Reprint notice returned to the client when an invoice-relevant field changes on a
+// non-DRAFT (issued) bill. COST = total recomputed; VISIBLE = printed field changed.
+type BillNotice =
+    | { billId: number; billState: BillingStatus; kind: 'COST'; newTotal: string | null }
+    | { billId: number; billState: BillingStatus; kind: 'VISIBLE' };
+
+// Normalize a cost input to a number or null (treats '' / null / undefined / NaN as null).
+function parseCost(raw: unknown): number | null {
+    if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+    const n = parseFloat(String(raw));
+    return Number.isNaN(n) ? null : n;
+}
 
 export async function GET(
     request: NextRequest,
@@ -130,75 +154,20 @@ export async function GET(
     }
 }
 
-export async function POST(request: NextRequest) {
-    try {
-        const body: OrderCreateInput = await request.json();
-
-        const validation = OrderCreateInputSchema.safeParse(body);
-        if (!validation.success) {
-            return NextResponse.json(
-                { message: 'Données invalides', errors: validation.error.issues },
-                { status: 400 }
-            );
-        }
-
-        const data = validation.data;
-
-        const createData: OrderCreateData = {
-            aveugleId: data.aveugleId,
-            catalogueId: data.catalogueId,
-            requestReceivedDate: new Date(data.requestReceivedDate),
-            statusId: data.statusId,
-            isDuplication: data.isDuplication,
-            mediaFormatId: data.mediaFormatId,
-            deliveryMethod: data.deliveryMethod,
-            lentPhysicalBook: data.lentPhysicalBook,
-            processedByStaffId: data.processedByStaffId || null,
-            createdDate: data.createdDate ? new Date(data.createdDate) : null,
-            closureDate: data.closureDate ? new Date(data.closureDate) : null,
-            cost: data.cost ? parseFloat(String(data.cost)) : null,
-            billingStatus: data.billingStatus,
-            billId: data.billId || null,
-            notes: data.notes || null,
-        };
-
-        const newOrder = await prisma.orders.create({
-            data: createData,
-            include: {
-                aveugle: orderIncludeConfigs.aveugle,
-                catalogue: orderIncludeConfigs.catalogue,
-                status: orderIncludeConfigs.status,
-                mediaFormat: orderIncludeConfigs.mediaFormat,
-                processedByStaff: orderIncludeConfigs.processedByStaff,
-            },
-        });
-
-        return NextResponse.json(
-            { message: 'Commande créée avec succès', order: newOrder },
-            { status: 201 }
-        );
-    } catch (error) {
-        console.error('Error creating order:', error);
-        return NextResponse.json(
-            { message: 'Erreur lors de la création de la commande' },
-            { status: 500 }
-        );
-    }
-}
-
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const auth = await checkAdmin();
+        if (!auth.authorized) return auth.response;
+        const performedById = auth.session.user?.id ? parseInt(auth.session.user.id) : null;
+
         const { id } = await params;
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
-            return NextResponse.json(
-                { message: 'ID de commande invalide' },
-                { status: 400 }
-            );
+            return NextResponse.json({ message: 'ID de commande invalide' }, { status: 400 });
         }
 
         const body: OrderUpdateInput = await request.json();
@@ -218,19 +187,22 @@ export async function PUT(
                 statusId: true,
                 isDuplication: true,
                 billId: true,
+                cost: true,
+                catalogueId: true,
+                requestReceivedDate: true,
                 assignments: { select: { id: true, statusId: true }, take: 1 },
+                bill: { select: { id: true, state: true } },
             },
         });
 
         if (!existingOrder) {
-            return NextResponse.json(
-                { message: 'Commande non trouvée' },
-                { status: 404 }
-            );
+            return NextResponse.json({ message: 'Commande non trouvée' }, { status: 404 });
         }
 
         const data = validation.data;
         const assignment = existingOrder.assignments[0] ?? null;
+        const billState = existingOrder.bill?.state ?? null;
+        const hasBill = existingOrder.billId != null;
 
         // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
         if (data.billingStatus === 'BILLED' && existingOrder.billId == null) {
@@ -248,10 +220,7 @@ export async function PUT(
                 assignmentStatusId: assignment?.statusId ?? null,
             });
             if (!completionGuard.ok) {
-                return NextResponse.json(
-                    { message: completionGuard.message },
-                    { status: completionGuard.httpStatus }
-                );
+                return NextResponse.json({ message: completionGuard.message }, { status: completionGuard.httpStatus });
             }
         }
 
@@ -259,11 +228,32 @@ export async function PUT(
         if (data.isDuplication !== undefined) {
             const flipGuard = guardDuplicationFlip(data.isDuplication, assignment !== null);
             if (!flipGuard.ok) {
-                return NextResponse.json(
-                    { message: flipGuard.message },
-                    { status: flipGuard.httpStatus }
-                );
+                return NextResponse.json({ message: flipGuard.message }, { status: flipGuard.httpStatus });
             }
+        }
+
+        // ── Detect invoice-relevant changes ──────────────────────────────────────
+        const oldCost = existingOrder.cost != null ? Number(existingOrder.cost) : null;
+        const newCost = parseCost(data.cost);
+        const costChanged = data.cost !== undefined && newCost !== oldCost;
+
+        const catalogueChanged = data.catalogueId !== undefined && data.catalogueId !== existingOrder.catalogueId;
+        const dupChanged = data.isDuplication !== undefined && data.isDuplication !== existingOrder.isDuplication;
+        const dateChanged =
+            data.requestReceivedDate !== undefined &&
+            new Date(data.requestReceivedDate).getTime() !== existingOrder.requestReceivedDate.getTime();
+        const visibleChanged = catalogueChanged || dupChanged || dateChanged;
+
+        // ── Cost lock: cannot change cost while the bill is PAID or SOLDE ────────
+        if (costChanged && hasBill && (billState === BillingStatus.PAID || billState === BillingStatus.SOLDE)) {
+            return NextResponse.json(
+                {
+                    message: `Le coût ne peut pas être modifié : la facture #${existingOrder.billId} est ${
+                        billState === BillingStatus.PAID ? 'payée' : 'soldée'
+                    }. Rouvrez la facture pour la rendre modifiable.`,
+                },
+                { status: 409 }
+            );
         }
 
         const updateData: Prisma.OrdersUncheckedUpdateInput = {
@@ -278,13 +268,15 @@ export async function PUT(
             processedByStaffId: data.processedByStaffId || null,
             createdDate: data.createdDate ? new Date(data.createdDate) : null,
             closureDate: data.closureDate ? new Date(data.closureDate) : null,
-            cost: data.cost ? parseFloat(String(data.cost)) : null,
+            cost: data.cost !== undefined ? newCost : undefined,
             billingStatus: data.billingStatus,
-            billId: data.billId || null,
+            // billId is intentionally NOT set here: an order's bill membership is managed
+            // by the bill route (addOrder/removeOrder) and the threshold sweep — never by an
+            // order edit. Writing it here would detach the order on every save.
             notes: data.notes || null,
         };
 
-        const updatedOrder = await prisma.$transaction(async (tx) => {
+        const { order, newTotal } = await prisma.$transaction(async (tx) => {
             const order = await tx.orders.update({
                 where: { id: orderId },
                 data: updateData,
@@ -297,6 +289,24 @@ export async function PUT(
                 },
             });
 
+            let newTotal: Prisma.Decimal | null = null;
+
+            // Cost changed on a billed order → keep the bill total in sync + audit it.
+            if (costChanged && existingOrder.billId != null) {
+                newTotal = await recomputeBillTotal(tx, existingOrder.billId);
+                await logBillEvent(tx, {
+                    billId: existingOrder.billId,
+                    type: 'AMOUNT_CHANGED',
+                    payload: { orderId, previousCost: oldCost, newCost, newTotal: newTotal.toString() },
+                    performedById,
+                });
+            }
+
+            // Cost changed on an unbilled order → it may push the client over threshold.
+            if (costChanged && existingOrder.billId == null) {
+                await sweepIntoDraftBillIfOverThreshold(tx, order.aveugleId);
+            }
+
             // Propagate 1–3 down to the assignment; SOLDE stays order-only.
             if (
                 assignment &&
@@ -307,13 +317,20 @@ export async function PUT(
                 await syncAssignmentToStatus(tx, assignment.id, data.statusId);
             }
 
-            return order;
+            return { order, newTotal };
         });
 
-        return NextResponse.json({
-            message: 'Commande mise à jour avec succès',
-            order: updatedOrder,
-        });
+        // Reprint notice for issued bills (never for DRAFT — nothing has been sent).
+        let billNotice: BillNotice | null = null;
+        if (hasBill && existingOrder.billId != null && billState && billState !== BillingStatus.DRAFT) {
+            if (costChanged) {
+                billNotice = { billId: existingOrder.billId, billState, kind: 'COST', newTotal: newTotal?.toString() ?? null };
+            } else if (visibleChanged) {
+                billNotice = { billId: existingOrder.billId, billState, kind: 'VISIBLE' };
+            }
+        }
+
+        return NextResponse.json({ message: 'Commande mise à jour avec succès', order, billNotice });
     } catch (error) {
         console.error('Error updating order:', error);
         return NextResponse.json(
@@ -328,14 +345,15 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const auth = await checkAdmin();
+        if (!auth.authorized) return auth.response;
+        const performedById = auth.session.user?.id ? parseInt(auth.session.user.id) : null;
+
         const { id } = await params;
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
-            return NextResponse.json(
-                { message: 'ID de commande invalide' },
-                { status: 400 }
-            );
+            return NextResponse.json({ message: 'ID de commande invalide' }, { status: 400 });
         }
 
         const body: OrderUpdateInput = await request.json();
@@ -347,18 +365,21 @@ export async function PATCH(
                 statusId: true,
                 isDuplication: true,
                 billId: true,
+                cost: true,
+                catalogueId: true,
+                requestReceivedDate: true,
                 assignments: { select: { id: true, statusId: true }, take: 1 },
+                bill: { select: { id: true, state: true } },
             },
         });
 
         if (!existingOrder) {
-            return NextResponse.json(
-                { message: 'Commande non trouvée' },
-                { status: 404 }
-            );
+            return NextResponse.json({ message: 'Commande non trouvée' }, { status: 404 });
         }
 
         const assignment = existingOrder.assignments[0] ?? null;
+        const billState = existingOrder.bill?.state ?? null;
+        const hasBill = existingOrder.billId != null;
 
         // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
         if (body.billingStatus === 'BILLED' && existingOrder.billId == null) {
@@ -376,10 +397,7 @@ export async function PATCH(
                 assignmentStatusId: assignment?.statusId ?? null,
             });
             if (!completionGuard.ok) {
-                return NextResponse.json(
-                    { message: completionGuard.message },
-                    { status: completionGuard.httpStatus }
-                );
+                return NextResponse.json({ message: completionGuard.message }, { status: completionGuard.httpStatus });
             }
         }
 
@@ -387,11 +405,32 @@ export async function PATCH(
         if (body.isDuplication !== undefined) {
             const flipGuard = guardDuplicationFlip(body.isDuplication, assignment !== null);
             if (!flipGuard.ok) {
-                return NextResponse.json(
-                    { message: flipGuard.message },
-                    { status: flipGuard.httpStatus }
-                );
+                return NextResponse.json({ message: flipGuard.message }, { status: flipGuard.httpStatus });
             }
+        }
+
+        // ── Detect invoice-relevant changes ──────────────────────────────────────
+        const oldCost = existingOrder.cost != null ? Number(existingOrder.cost) : null;
+        const newCost = parseCost(body.cost);
+        const costChanged = body.cost !== undefined && newCost !== oldCost;
+
+        const catalogueChanged = body.catalogueId !== undefined && body.catalogueId !== existingOrder.catalogueId;
+        const dupChanged = body.isDuplication !== undefined && body.isDuplication !== existingOrder.isDuplication;
+        const dateChanged =
+            body.requestReceivedDate !== undefined &&
+            new Date(body.requestReceivedDate).getTime() !== existingOrder.requestReceivedDate.getTime();
+        const visibleChanged = catalogueChanged || dupChanged || dateChanged;
+
+        // ── Cost lock: cannot change cost while the bill is PAID or SOLDE ────────
+        if (costChanged && hasBill && (billState === BillingStatus.PAID || billState === BillingStatus.SOLDE)) {
+            return NextResponse.json(
+                {
+                    message: `Le coût ne peut pas être modifié : la facture #${existingOrder.billId} est ${
+                        billState === BillingStatus.PAID ? 'payée' : 'soldée'
+                    }. Rouvrez la facture pour la rendre modifiable.`,
+                },
+                { status: 409 }
+            );
         }
 
         const updateData: Prisma.OrdersUncheckedUpdateInput = {};
@@ -406,13 +445,13 @@ export async function PATCH(
         if (body.processedByStaffId !== undefined) updateData.processedByStaffId = body.processedByStaffId || null;
         if (body.createdDate !== undefined) updateData.createdDate = body.createdDate ? new Date(body.createdDate) : null;
         if (body.closureDate !== undefined) updateData.closureDate = body.closureDate ? new Date(body.closureDate) : null;
-        if (body.cost !== undefined) updateData.cost = body.cost ? parseFloat(String(body.cost)) : null;
+        if (body.cost !== undefined) updateData.cost = newCost;
         if (body.billingStatus !== undefined) updateData.billingStatus = body.billingStatus;
-        if (body.billId !== undefined) updateData.billId = body.billId || null;
+        // billId intentionally omitted — bill membership is managed by the bill route, not order edits.
         if (body.lentPhysicalBook !== undefined) updateData.lentPhysicalBook = body.lentPhysicalBook;
         if (body.notes !== undefined) updateData.notes = body.notes || null;
 
-        const updatedOrder = await prisma.$transaction(async (tx) => {
+        const { order, newTotal } = await prisma.$transaction(async (tx) => {
             const order = await tx.orders.update({
                 where: { id: orderId },
                 data: updateData,
@@ -425,6 +464,22 @@ export async function PATCH(
                 },
             });
 
+            let newTotal: Prisma.Decimal | null = null;
+
+            if (costChanged && existingOrder.billId != null) {
+                newTotal = await recomputeBillTotal(tx, existingOrder.billId);
+                await logBillEvent(tx, {
+                    billId: existingOrder.billId,
+                    type: 'AMOUNT_CHANGED',
+                    payload: { orderId, previousCost: oldCost, newCost, newTotal: newTotal.toString() },
+                    performedById,
+                });
+            }
+
+            if (costChanged && existingOrder.billId == null) {
+                await sweepIntoDraftBillIfOverThreshold(tx, order.aveugleId);
+            }
+
             if (
                 assignment &&
                 typeof body.statusId === 'number' &&
@@ -434,13 +489,19 @@ export async function PATCH(
                 await syncAssignmentToStatus(tx, assignment.id, body.statusId);
             }
 
-            return order;
+            return { order, newTotal };
         });
 
-        return NextResponse.json({
-            message: 'Commande mise à jour avec succès',
-            order: updatedOrder,
-        });
+        let billNotice: BillNotice | null = null;
+        if (hasBill && existingOrder.billId != null && billState && billState !== BillingStatus.DRAFT) {
+            if (costChanged) {
+                billNotice = { billId: existingOrder.billId, billState, kind: 'COST', newTotal: newTotal?.toString() ?? null };
+            } else if (visibleChanged) {
+                billNotice = { billId: existingOrder.billId, billState, kind: 'VISIBLE' };
+            }
+        }
+
+        return NextResponse.json({ message: 'Commande mise à jour avec succès', order, billNotice });
     } catch (error) {
         console.error('Error patching order:', error);
         return NextResponse.json(
@@ -455,28 +516,37 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const auth = await checkAdmin();
+        if (!auth.authorized) return auth.response;
+
         const { id } = await params;
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
-            return NextResponse.json(
-                { message: 'ID de commande invalide' },
-                { status: 400 }
-            );
+            return NextResponse.json({ message: 'ID de commande invalide' }, { status: 400 });
         }
 
         const existingOrder = await prisma.orders.findUnique({
             where: { id: orderId },
             select: {
                 id: true,
+                billId: true,
+                bill: { select: { id: true, state: true } },
                 _count: { select: { assignments: true } },
             },
         });
 
         if (!existingOrder) {
+            return NextResponse.json({ message: 'Commande non trouvée' }, { status: 404 });
+        }
+
+        // Can't delete an order off an issued bill — it would silently alter the invoice.
+        if (existingOrder.bill && existingOrder.bill.state !== BillingStatus.DRAFT) {
             return NextResponse.json(
-                { message: 'Commande non trouvée' },
-                { status: 404 }
+                {
+                    message: `Impossible de supprimer cette demande : elle est rattachée à la facture #${existingOrder.bill.id}, déjà émise. Détachez-la de la facture (brouillon) ou rouvrez la facture d'abord.`,
+                },
+                { status: 409 }
             );
         }
 
@@ -491,7 +561,13 @@ export async function DELETE(
             );
         }
 
-        await prisma.orders.delete({ where: { id: orderId } });
+        await prisma.$transaction(async (tx) => {
+            await tx.orders.delete({ where: { id: orderId } });
+            // Deleting a billed order changes its bill's total — keep it in sync.
+            if (existingOrder.billId != null) {
+                await recomputeBillTotal(tx, existingOrder.billId);
+            }
+        });
 
         return NextResponse.json({
             message: 'Commande supprimée avec succès',

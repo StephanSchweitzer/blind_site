@@ -57,6 +57,7 @@ model User {
   ordersAsAveugle             Orders[]           @relation("OrdersAsAveugle")
   ordersProcessedBy           Orders[]           @relation("OrdersProcessedBy")
   payments                    Payment[]
+  billEventsPerformed         BillEvent[]        @relation("BillEventsPerformedBy")
 }
 
 model Address {
@@ -188,6 +189,7 @@ model Bill {
   client           User          @relation(fields: [clientId], references: [id])
   orders           Orders[]
   payments         Payment[]
+  events           BillEvent[]
 
   @@index([clientId])
   @@index([state])
@@ -357,4 +359,31 @@ enum NewsType {
   ANNONCE
   ACTUALITE
   PROGRAMMATION
+}
+
+model BillEvent {
+  id            Int            @id @default(autoincrement())
+  billId        Int
+  type          BillEventType
+  fromState     BillingStatus?
+  toState       BillingStatus?
+  payload       Json?
+  performedById Int?
+  createdAt     DateTime       @default(now())
+  bill          Bill           @relation(fields: [billId], references: [id], onDelete: Cascade)
+  performedBy   User?          @relation("BillEventsPerformedBy", fields: [performedById], references: [id])
+
+  @@index([billId])
+  @@index([createdAt])
+}
+
+enum BillEventType {
+  CREATED
+  ISSUED
+  REOPENED
+  PAID
+  SETTLED
+  AMOUNT_CHANGED
+  ORDER_ATTACHED
+  ORDER_DETACHED
 }

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, BillingStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { recomputeBillTotal, logBillEvent, transitionEventType } from '@/lib/billing';
 
 // An order is BILLED once its bill is issued (anything past DRAFT); a draft (brouillon) leaves it UNBILLED.
 const orderBillingForBillState = (state: string): 'BILLED' | 'UNBILLED' =>
@@ -11,12 +12,12 @@ const orderBillingForBillState = (state: string): 'BILLED' | 'UNBILLED' =>
 async function checkAdmin() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-        return { authorized: false, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 }) };
+        return { authorized: false as const, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 }) };
     }
     if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return { authorized: false, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 }) };
+        return { authorized: false as const, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 }) };
     }
-    return { authorized: true, session };
+    return { authorized: true as const, session };
 }
 
 interface RouteContext {
@@ -50,6 +51,18 @@ export async function GET(_request: NextRequest, context: RouteContext) {
                     },
                     orderBy: { requestReceivedDate: 'desc' },
                 },
+                events: {
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        type: true,
+                        fromState: true,
+                        toState: true,
+                        payload: true,
+                        createdAt: true,
+                        performedBy: { select: { id: true, name: true } },
+                    },
+                },
             },
         });
 
@@ -71,6 +84,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     try {
         const authCheck = await checkAdmin();
         if (!authCheck.authorized) return authCheck.response;
+        const performedById = authCheck.session.user?.id ? parseInt(authCheck.session.user.id) : null;
 
         const { id } = await context.params;
         const billId = parseInt(id);
@@ -122,7 +136,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             if (state === 'DRAFT') updateData.issueDate = null;
             if (state === 'PAID') {
                 updateData.paymentDate = new Date();
-                updateData.paymentReference = paymentReference.trim(); // Add paymentReference String? to your Bill model
+                updateData.paymentReference = paymentReference.trim();
             }
 
             await prisma.$transaction(async (tx) => {
@@ -132,8 +146,61 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                     where: { billId },
                     data: { billingStatus: orderBillingForBillState(state) },
                 });
+                const evType = transitionEventType(bill.state, state);
+                if (evType) {
+                    await logBillEvent(tx, {
+                        billId,
+                        type: evType,
+                        fromState: bill.state as BillingStatus,
+                        toState: state as BillingStatus,
+                        payload: state === 'PAID' ? { paymentReference: paymentReference.trim() } : null,
+                        performedById,
+                    });
+                }
             });
             return NextResponse.json({ message: 'Statut mis à jour avec succès' });
+        }
+
+        // Reopen a finalized bill (PAID or SOLDE) back to BILLED so it can be corrected.
+        // Payment fields are cleared but archived in the audit log so they aren't lost.
+        if (action === 'reopenBill') {
+            const bill = await prisma.bill.findUnique({
+                where: { id: billId, isActive: true },
+                select: { id: true, state: true, paymentReference: true, paymentDate: true },
+            });
+            if (!bill) {
+                return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
+            }
+            if (bill.state !== BillingStatus.PAID && bill.state !== BillingStatus.SOLDE) {
+                return NextResponse.json(
+                    { error: 'Invalid state', message: 'Seules les factures payées ou soldées peuvent être rouvertes.' },
+                    { status: 400 }
+                );
+            }
+
+            await prisma.$transaction(async (tx) => {
+                await tx.bill.update({
+                    where: { id: billId },
+                    data: { state: BillingStatus.BILLED, paymentReference: null, paymentDate: null },
+                });
+                // The bill is still issued (émise), so its orders remain BILLED.
+                await tx.orders.updateMany({ where: { billId }, data: { billingStatus: 'BILLED' } });
+                await logBillEvent(tx, {
+                    billId,
+                    type: 'REOPENED',
+                    fromState: bill.state,
+                    toState: BillingStatus.BILLED,
+                    payload: {
+                        clearedPaymentReference: bill.paymentReference,
+                        clearedPaymentDate: bill.paymentDate ? bill.paymentDate.toISOString() : null,
+                    },
+                    performedById,
+                });
+            });
+
+            return NextResponse.json({
+                message: `Facture rouverte (état précédent : ${bill.state === BillingStatus.PAID ? 'payée' : 'soldée'}). Les informations de paiement ont été archivées dans l'historique.`,
+            });
         }
 
         if (action === 'addOrder') {
@@ -163,9 +230,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                     data: { billId, billingStatus: orderBillingForBillState(bill.state) },
                 });
 
-                const linked = await tx.orders.findMany({ where: { billId }, select: { cost: true } });
-                const total = linked.reduce((sum, o) => sum + (o.cost ? parseFloat(o.cost.toString()) : 0), 0);
-                await tx.bill.update({ where: { id: billId }, data: { invoiceAmount: new Prisma.Decimal(total) } });
+                await recomputeBillTotal(tx, billId);
+                await logBillEvent(tx, {
+                    billId,
+                    type: 'ORDER_ATTACHED',
+                    payload: { orderId: parseInt(orderId) },
+                    performedById,
+                });
             });
 
             return NextResponse.json({ message: 'Demande ajoutée à la facture' });
@@ -190,9 +261,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                     data: { billId: null, billingStatus: 'UNBILLED' },
                 });
 
-                const linked = await tx.orders.findMany({ where: { billId }, select: { cost: true } });
-                const total = linked.reduce((sum, o) => sum + (o.cost ? parseFloat(o.cost.toString()) : 0), 0);
-                await tx.bill.update({ where: { id: billId }, data: { invoiceAmount: new Prisma.Decimal(total) } });
+                await recomputeBillTotal(tx, billId);
+                await logBillEvent(tx, {
+                    billId,
+                    type: 'ORDER_DETACHED',
+                    payload: { orderId: parseInt(orderId) },
+                    performedById,
+                });
             });
 
             return NextResponse.json({ message: 'Demande retirée de la facture' });
@@ -216,6 +291,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                 // Auto-pay issues the bill, so its orders become BILLED.
                 if (autoPay) {
                     await tx.orders.updateMany({ where: { billId }, data: { billingStatus: 'BILLED' } });
+                    await logBillEvent(tx, {
+                        billId,
+                        type: 'PAID',
+                        fromState: BillingStatus.DRAFT,
+                        toState: BillingStatus.PAID,
+                        payload: { paymentReference: trimmed },
+                        performedById,
+                    });
                 }
             });
             return NextResponse.json({

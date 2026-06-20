@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { sweepIntoDraftBillIfOverThreshold } from '@/lib/billing';
 
 async function checkAdmin() {
     const session = await getServerSession(authOptions);
@@ -28,63 +29,6 @@ async function checkAdmin() {
     }
 
     return { authorized: true, session };
-}
-
-/**
- * When a client's unbilled solde reaches their paymentThreshold, sweep all of their
- * unbilled orders into a new DRAFT bill (brouillon) so the tab resets. The orders are
- * attached (billId set) but stay UNBILLED because the bill is a draft.
- * Solde = sum of cost where billId is null, active, and not UNBILLABLE.
- * Returns the created bill info, or null if nothing was created.
- */
-async function sweepIntoDraftBillIfOverThreshold(
-    tx: Prisma.TransactionClient,
-    aveugleId: number
-): Promise<{ billId: number; total: number; orderCount: number } | null> {
-    const user = await tx.user.findUnique({
-        where: { id: aveugleId },
-        select: { paymentThreshold: true },
-    });
-
-    const threshold = user?.paymentThreshold != null ? Number(user.paymentThreshold) : null;
-    if (threshold == null || threshold <= 0) return null;
-
-    const unbilled = await tx.orders.findMany({
-        where: {
-            aveugleId,
-            billId: null,
-            isActive: true,
-            billingStatus: { not: OrderBillingStatus.UNBILLABLE },
-        },
-        select: { id: true, cost: true },
-    });
-    if (unbilled.length === 0) return null;
-
-    const total = unbilled.reduce(
-        (sum, o) => sum.plus(o.cost ?? new Prisma.Decimal(0)),
-        new Prisma.Decimal(0)
-    );
-    if (Number(total) < threshold) return null;
-
-    const bill = await tx.bill.create({
-        data: {
-            clientId: aveugleId,
-            state: 'DRAFT',
-            creationDate: new Date(),
-            issueDate: null,
-            paymentDate: null,
-            invoiceAmount: total,
-            isActive: true,
-        },
-        select: { id: true },
-    });
-
-    await tx.orders.updateMany({
-        where: { id: { in: unbilled.map((o) => o.id) } },
-        data: { billId: bill.id, billingStatus: OrderBillingStatus.UNBILLED },
-    });
-
-    return { billId: bill.id, total: Number(total), orderCount: unbilled.length };
 }
 
 export async function GET(request: NextRequest) {
