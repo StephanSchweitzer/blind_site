@@ -53,6 +53,8 @@ function sanitizeInitialData(
         ...data,
         memberType: data.memberType || defaultMemberType,
         accessLevel: data.accessLevel || defaultAccessLevel,
+        civilityId: data.civilityId ?? null,
+        civilityOther: data.civilityOther || '',
         email: data.email || '',
         name: data.name || '',
         firstName: data.firstName || '',
@@ -104,6 +106,15 @@ export function UserFormBackendBase({
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const { toast } = useToast();
 
+    const [civilities, setCivilities] = useState<{ id: number; name: string }[]>([]);
+
+    useEffect(() => {
+        fetch('/api/civilities')
+            .then((res) => (res.ok ? res.json() : []))
+            .then(setCivilities)
+            .catch(() => setCivilities([]));
+    }, []);
+
     const defaultMemberType: UserFormData['memberType'] = userType === 'auditeurs' ? 'ecouteur' : 'lecteur';
     const defaultAccessLevel: UserFormData['accessLevel'] = userType === 'auditeurs' ? 'member' : 'admin';
 
@@ -115,6 +126,8 @@ export function UserFormBackendBase({
                 name: '',
                 memberType: defaultMemberType,
                 accessLevel: defaultAccessLevel,
+                civilityId: null,
+                civilityOther: '',
                 firstName: '',
                 lastName: '',
                 homePhone: '',
@@ -137,13 +150,15 @@ export function UserFormBackendBase({
             }
     );
 
-    // Resync form state when initialData arrives (e.g. after an async fetch)
-    useEffect(() => {
-        if (initialData) {
-            setFormData(sanitizeInitialData(initialData, defaultMemberType, defaultAccessLevel));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialData]);
+    // Resync form state when a new initialData arrives (e.g. after an async fetch).
+    // Done during render via a tracked previous-prop ref rather than in an effect:
+    // setting state during render is the pattern React recommends for "adjust state
+    // when a prop changes" and avoids the cascading render the effect version caused.
+    const [prevInitialData, setPrevInitialData] = useState(initialData);
+    if (initialData && initialData !== prevInitialData) {
+        setPrevInitialData(initialData);
+        setFormData(sanitizeInitialData(initialData, defaultMemberType, defaultAccessLevel));
+    }
 
     const handleAddAddress = () => {
         setFormData(prev => ({
@@ -366,6 +381,9 @@ export function UserFormBackendBase({
         (initialData && initialData.accessLevel === 'super_admin' && currentUserAccessLevel !== 'super_admin') ||
         (currentUserAccessLevel === 'admin');
 
+    const selectedCivility = civilities.find((c) => c.id === formData.civilityId);
+    const showCivilityOther = selectedCivility?.name === 'Autre';
+
     const getLockedReason = (): string => {
         if (currentUserAccessLevel === 'admin') {
             return 'Seuls les super administrateurs peuvent modifier les niveaux d\'accès';
@@ -431,6 +449,46 @@ export function UserFormBackendBase({
                                     className="bg-gray-800 border-gray-700 text-gray-200"
                                 />
                             </div>
+                        </div>
+
+                        {/* Civilité */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-200">Civilité</label>
+                                <Select
+                                    value={formData.civilityId ? String(formData.civilityId) : 'none'}
+                                    onValueChange={(value) =>
+                                        setFormData({
+                                            ...formData,
+                                            civilityId: value === 'none' ? null : parseInt(value),
+                                            civilityOther: '',
+                                        })
+                                    }
+                                >
+                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                        <SelectValue placeholder="Sélectionner..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 border-gray-700 max-h-72">
+                                        <SelectItem value="none" className="text-gray-200">—</SelectItem>
+                                        {civilities.map((c) => (
+                                            <SelectItem key={c.id} value={String(c.id)} className="text-gray-200">
+                                                {c.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {showCivilityOther && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-200">Civilité (préciser)</label>
+                                    <Input
+                                        value={formData.civilityOther || ''}
+                                        onChange={(e) => setFormData({ ...formData, civilityOther: e.target.value })}
+                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* Type de membre + Niveau d'accès */}

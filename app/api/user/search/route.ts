@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
                 lastName: true,
                 memberType: true,
                 accessLevel: true,
+                civility: { select: { name: true } },
             },
             take: 20,
             orderBy: [

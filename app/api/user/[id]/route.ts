@@ -160,6 +160,8 @@ interface UserUpdateRequestBody extends UserUpdateInput {
     addresses?: Omit<AddressCreateInput, 'userId'>[];
     memberType?: MemberType;
     accessLevel?: AccessLevel;
+    civilityId?: number | null;
+    civilityOther?: string | null;
 }
 
 export async function PATCH(
@@ -198,7 +200,7 @@ export async function PATCH(
             );
         }
 
-        const updateData: UserUpdateData & { memberType?: MemberType; accessLevel?: AccessLevel } = {};
+        const updateData: UserUpdateData & { memberType?: MemberType; accessLevel?: AccessLevel; civilityId?: number | null; civilityOther?: string | null } = {};
 
         // Profile fields
         if (body.name !== undefined) updateData.name = body.name;
@@ -213,6 +215,10 @@ export async function PATCH(
         if (body.gestconteNotes !== undefined) updateData.gestconteNotes = body.gestconteNotes || null;
         if (body.gestconteId !== undefined) updateData.gestconteId = body.gestconteId || null;
         if (body.nonProfitAffiliation !== undefined) updateData.nonProfitAffiliation = body.nonProfitAffiliation || null;
+
+        // Civility
+        if (body.civilityId !== undefined) updateData.civilityId = body.civilityId ?? null;
+        if (body.civilityOther !== undefined) updateData.civilityOther = body.civilityOther || null;
 
         // Status fields
         if (body.isActive !== undefined) updateData.isActive = body.isActive;

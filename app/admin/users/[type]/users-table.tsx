@@ -43,6 +43,7 @@ interface UsersTableProps {
         accessLevel: string;
         isActive: boolean | null;
         lastUpdated: string | null;
+        civility?: { name: string } | null;
     }>;
     initialPage: number;
     initialSearch: string;
@@ -143,6 +144,8 @@ export default function UsersTable({
                 accessLevel: userData.accessLevel || 'member',
                 firstName: userData.firstName || '',
                 lastName: userData.lastName || '',
+                civilityId: userData.civilityId ?? null,
+                civilityOther: userData.civilityOther || '',
                 homePhone: userData.homePhone || '',
                 cellPhone: userData.cellPhone || '',
                 gestconteNotes: userData.gestconteNotes || '',
@@ -288,8 +291,8 @@ export default function UsersTable({
                                                     {user.email || <span className="text-gray-500 italic">Non défini</span>}
                                                 </TableCell>
                                                 <TableCell className="text-gray-200">
-                                                    {(user.firstName || user.lastName)
-                                                        ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                                                    {(user.firstName || user.lastName || user.civility)
+                                                        ? `${user.civility?.name ? user.civility.name + ' ' : ''}${user.firstName || ''} ${user.lastName || ''}`.trim()
                                                         : <span className="text-gray-500 italic">Non défini</span>}
                                                 </TableCell>
                                                 <TableCell>

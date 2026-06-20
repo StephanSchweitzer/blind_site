@@ -33,6 +33,7 @@ export async function GET() {
                 accessLevel: true,
                 isActive: true,
                 lastUpdated: true,
+                civility: { select: { name: true } },
             },
             orderBy: {
                 id: 'desc',
@@ -50,6 +51,8 @@ interface UserCreateRequestBody extends Omit<UserCreateInput, 'password'> {
     addresses?: Omit<AddressCreateInput, 'userId'>[];
     memberType?: MemberType;
     accessLevel?: AccessLevel;
+    civilityId?: number | null;
+    civilityOther?: string | null;
 }
 
 export async function POST(request: Request) {
@@ -119,6 +122,8 @@ export async function POST(request: Request) {
                 role: derivedRole, // legacy – kept for backward compatibility
                 memberType: body.memberType ?? MemberType.auditeur,
                 accessLevel: body.accessLevel ?? AccessLevel.member,
+                civilityId: body.civilityId ?? null,
+                civilityOther: body.civilityOther || null,
                 firstName: body.firstName || null,
                 lastName: body.lastName || null,
                 homePhone: body.homePhone || null,

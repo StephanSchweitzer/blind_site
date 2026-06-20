@@ -73,6 +73,7 @@ async function getUsers(
                     accessLevel: true,
                     isActive: true,
                     lastUpdated: true,
+                    civility: { select: { name: true } },
                 },
             }),
             prisma.user.count({ where: whereClause }),

@@ -47,6 +47,8 @@ model User {
   specialization              String?
   maxConcurrentAssignments    Int?               @default(3)
   notes                       String?
+  civilityId                  Int?
+  civilityOther               String?
   addresses                   Address[]
   assignmentsProcessedBy      Assignment[]       @relation("AssignmentsProcessedBy")
   assignmentReaders           AssignmentReader[]
@@ -58,6 +60,7 @@ model User {
   ordersProcessedBy           Orders[]           @relation("OrdersProcessedBy")
   payments                    Payment[]
   billEventsPerformed         BillEvent[]        @relation("BillEventsPerformedBy")
+  civility                    Civility?          @relation(fields: [civilityId], references: [id])
 }
 
 model Address {
@@ -118,6 +121,16 @@ model Genre {
   name        String      @unique
   description String?
   books       BookGenre[]
+
+  @@index([name])
+}
+
+model Civility {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  sortOrder Int?
+  isActive  Boolean @default(true)
+  users     User[]
 
   @@index([name])
 }
