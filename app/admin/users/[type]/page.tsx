@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { UserTypeTabs } from './user-type-tabs';
+import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -17,14 +18,8 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type UserType = 'auditeurs' | 'lecteurs' | 'permanents';
-
 export function generateStaticParams() {
-    return [
-        { type: 'auditeurs' },
-        { type: 'lecteurs' },
-        { type: 'permanents' },
-    ];
+    return USER_TYPE_VALUES.map((type) => ({ type }));
 }
 
 async function getUsers(
@@ -37,7 +32,8 @@ async function getUsers(
     const whereClause: Prisma.UserWhereInput =
         userType === 'auditeurs'  ? { memberType: 'auditeur' } :
             userType === 'lecteurs'   ? { memberType: 'lecteur' } :
-                { accessLevel: { in: ['admin', 'super_admin'] } };
+                userType === 'bienfaiteurs' ? { memberType: 'bienfaiteur' } :
+                    { accessLevel: { in: ['admin', 'super_admin'] } };
 
     if (searchTerm) {
         // Split on whitespace so "Leila Be" matches firstName="Leila" + lastName="Bennour".
@@ -108,7 +104,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
     const resolvedParams = await params;
     const userType = resolvedParams.type;
 
-    if (userType !== 'auditeurs' && userType !== 'lecteurs' && userType !== 'permanents') {
+    if (!isUserType(userType)) {
         notFound();
     }
 
@@ -126,7 +122,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
     // errors propagate to an error boundary instead of being silently swallowed.
     let data: Awaited<ReturnType<typeof getUsers>>;
     try {
-        data = await getUsers(page, searchTerm, userType as UserType);
+        data = await getUsers(page, searchTerm, userType);
     } catch (error) {
         console.error('Error in Users page:', error);
         notFound();
@@ -144,7 +140,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
             <UserTypeTabs currentType={userType} />
 
             <UsersTable
-                type={userType as UserType}
+                type={userType}
                 initialUsers={serializedUsers}
                 initialPage={page}
                 initialSearch={searchTerm}

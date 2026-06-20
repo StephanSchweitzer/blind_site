@@ -115,8 +115,12 @@ export function UserFormBackendBase({
             .catch(() => setCivilities([]));
     }, []);
 
-    const defaultMemberType: UserFormData['memberType'] = userType === 'auditeurs' ? 'ecouteur' : 'lecteur';
-    const defaultAccessLevel: UserFormData['accessLevel'] = userType === 'auditeurs' ? 'member' : 'admin';
+    const defaultMemberType: UserFormData['memberType'] =
+        userType === 'auditeurs' ? 'ecouteur' :
+            userType === 'bienfaiteurs' ? 'bienfaiteur' :
+                'lecteur';
+    const defaultAccessLevel: UserFormData['accessLevel'] =
+        userType === 'auditeurs' || userType === 'bienfaiteurs' ? 'member' : 'admin';
 
     const [formData, setFormData] = useState<UserFormData>(
         initialData
@@ -507,6 +511,7 @@ export function UserFormBackendBase({
                                         <SelectItem value="lecteur" className="text-gray-200">Lecteur</SelectItem>
                                         <SelectItem value="informaticien" className="text-gray-200">Informaticien</SelectItem>
                                         <SelectItem value="administration" className="text-gray-200">Administrateur</SelectItem>
+                                        <SelectItem value="bienfaiteur" className="text-gray-200">Donateur</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

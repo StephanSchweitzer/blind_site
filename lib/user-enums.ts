@@ -1,10 +1,13 @@
 export const MEMBER_TYPE_VALUES = ['ecouteur', 'auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur'] as const;
 export const ACCESS_LEVEL_VALUES = ['member', 'admin', 'super_admin'] as const;
-export const USER_TYPE_VALUES = ['auditeurs', 'lecteurs', 'permanents'] as const;
+export const USER_TYPE_VALUES = ['auditeurs', 'lecteurs', 'bienfaiteurs', 'permanents'] as const;
 
 export type MemberType = typeof MEMBER_TYPE_VALUES[number];
 export type AccessLevel = typeof ACCESS_LEVEL_VALUES[number];
 export type UserType = typeof USER_TYPE_VALUES[number];
+
+export const isUserType = (value: string): value is UserType =>
+    (USER_TYPE_VALUES as readonly string[]).includes(value);
 
 export const MEMBER_TYPE_LABELS: Record<MemberType, string> = {
     ecouteur:      'Écouteur',
@@ -12,7 +15,7 @@ export const MEMBER_TYPE_LABELS: Record<MemberType, string> = {
     lecteur:       'Lecteur',
     informaticien: 'Informaticien',
     administration: 'Administrateur',
-    bienfaiteur:    'Bienfaiteur'
+    bienfaiteur:    'Donateur'
 };
 
 export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
@@ -27,7 +30,7 @@ export const MEMBER_TYPE_COLORS: Record<MemberType, string> = {
     lecteur:        'bg-emerald-100 text-emerald-800',
     informaticien:  'bg-purple-100 text-purple-800',
     administration: 'bg-orange-100 text-orange-800',
-    bienfaiteur:    'bg-green-100 text-orange-800',
+    bienfaiteur:    'bg-green-100 text-green-800',
 };
 
 export const ACCESS_LEVEL_COLORS: Record<AccessLevel, string> = {
@@ -39,6 +42,7 @@ export const ACCESS_LEVEL_COLORS: Record<AccessLevel, string> = {
 export const USER_TYPE_META: Record<UserType, { plural: string; singular: string }> = {
     auditeurs:  { plural: 'Auditeurs',  singular: 'auditeur' },
     lecteurs:   { plural: 'Lecteurs',   singular: 'lecteur' },
+    bienfaiteurs: { plural: 'Donateurs', singular: 'donateur' },
     permanents: { plural: 'Permanents', singular: 'permanent' },
 };
 

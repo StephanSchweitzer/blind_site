@@ -10,6 +10,7 @@ export function UserTypeTabs({ currentType }: UserTypeTabsProps) {
     const tabs = [
         { key: 'auditeurs', label: 'Auditeurs' },
         { key: 'lecteurs', label: 'Lecteurs' },
+        { key: 'bienfaiteurs', label: 'Donateurs' },
         { key: 'permanents', label: 'Permanents' },
     ];
 
