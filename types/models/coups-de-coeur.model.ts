@@ -28,7 +28,7 @@ export const detailedCoupDeCoeurSelect = {
 
 // Books carry full genres so books[].book === BookWithGenres structurally
 export const coupsDeCoeurIncludeConfigs = {
-    addedBy: true,
+    addedBy: { select: { id: true, name: true } },
     books: {
         include: {
             book: { include: { genres: { include: { genre: true } } } },

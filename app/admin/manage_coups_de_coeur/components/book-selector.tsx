@@ -41,6 +41,105 @@ interface BookSelectorProps {
     isOpen?: boolean;
 }
 
+interface BookTableProps {
+    books: Book[];
+    isSearchResults?: boolean;
+    isLoading: boolean;
+    displayedBookIds: number[];
+    selectedBooks: number[];
+    areAllSelected: (books: Book[]) => boolean;
+    handleSelectAll: (checked: boolean, books: Book[]) => void;
+    toggleBookSelection: (bookId: number, forceAdd?: boolean) => void;
+    handleRowClick: (book: Book) => void;
+}
+
+function BookTable({
+                       books,
+                       isSearchResults = false,
+                       isLoading,
+                       displayedBookIds,
+                       selectedBooks,
+                       areAllSelected,
+                       handleSelectAll,
+                       toggleBookSelection,
+                       handleRowClick,
+                   }: BookTableProps) {
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow className="border-b border-gray-700 bg-gray-800">
+                    <TableHead className="text-gray-200 font-medium">
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`select-all-${isSearchResults ? 'search' : 'main'}`}
+                                checked={areAllSelected(books)}
+                                onChange={(checked) => handleSelectAll(checked, books)}
+                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
+                            />
+                            <label htmlFor={`select-all-${isSearchResults ? 'search' : 'main'}`} className="text-sm font-medium text-gray-200">
+                                Tout sélectionner
+                            </label>
+                        </div>
+                    </TableHead>
+                    <TableHead className="text-gray-200 font-medium">Titre</TableHead>
+                    <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
+                    <TableHead className="text-gray-200 font-medium">ISBN</TableHead>
+                    <TableHead className="text-gray-200 font-medium">Date d&apos;ajout</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {books.map((book) => (
+                    <TableRow
+                        key={book.id}
+                        className={`
+                            border-b border-gray-700 
+                            hover:bg-gray-750 
+                            ${isLoading ? '[&]:hover:cursor-wait' : 'cursor-pointer'}
+                            ${isSearchResults && displayedBookIds.includes(book.id) ? "opacity-50" : ""}
+                        `}
+                        onClick={() => {
+                            if (isSearchResults) {
+                                toggleBookSelection(book.id, true);
+                            } else {
+                                handleRowClick(book);
+                            }
+                        }}
+                    >
+                        <TableCell
+                            className="text-gray-200"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                            }}
+                        >
+                            <Switch
+                                id={`book-${book.id}`}
+                                checked={selectedBooks.includes(book.id)}
+                                onChange={() => toggleBookSelection(book.id)}
+                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
+                            />
+                        </TableCell>
+                        <TableCell className="text-gray-200">
+                            <div className="flex flex-col">
+                                <span>{book.title}</span>
+                                {isSearchResults && displayedBookIds.includes(book.id) && (
+                                    <span className="text-sm text-gray-400">
+                                        Ce livre appartient déjà à la liste
+                                    </span>
+                                )}
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-gray-200">{book.author}</TableCell>
+                        <TableCell className="text-gray-200">{book.isbn || 'N/A'}</TableCell>
+                        <TableCell className="text-gray-200">
+                            {new Date(book.createdAt).toLocaleDateString()}
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
+}
+
 export default function BookSelector({
                                          selectedBooks = [],
                                          onSelectedBooksChange,
@@ -59,6 +158,13 @@ export default function BookSelector({
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [selectedBookForEdit, setSelectedBookForEdit] = useState<(Book & { formData: BookFormData }) | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        document.body.style.cursor = isLoading ? 'wait' : 'default';
+        return () => {
+            document.body.style.cursor = 'default';
+        };
+    }, [isLoading]);
 
     useEffect(() => {
         const fetchInitialBooks = async () => {
@@ -241,7 +347,6 @@ export default function BookSelector({
 
     const handleRowClick = async (book: Book) => {
         setIsLoading(true);
-        document.body.style.cursor = 'wait';
 
         try {
             const response = await fetch(`/api/books/${book.id}`);
@@ -250,7 +355,7 @@ export default function BookSelector({
             }
             const bookDetails = await response.json();
 
-            const genreIds = bookDetails.genres.map((g: { genre: { id: string } }) => g.genre.id);
+            const genreIds = bookDetails.genres.map((g: { genre: { id: number | string } }) => g.genre.id.toString());
 
             const formData: BookFormData = {
                 title: bookDetails.title || '',
@@ -282,7 +387,6 @@ export default function BookSelector({
             });
         } finally {
             setIsLoading(false);
-            document.body.style.cursor = 'default';
         }
     };
 
@@ -303,81 +407,6 @@ export default function BookSelector({
     const displayedBookDetails = displayedBookIds
         .map(id => bookDetailsMap.get(id))
         .filter(book => book !== undefined) as Book[];
-
-    const BookTable = ({ books, isSearchResults = false }: { books: Book[], isSearchResults?: boolean }) => (
-        <Table>
-            <TableHeader>
-                <TableRow className="border-b border-gray-700 bg-gray-800">
-                    <TableHead className="text-gray-200 font-medium">
-                        <div className="flex items-center gap-2">
-                            <Switch
-                                id={`select-all-${isSearchResults ? 'search' : 'main'}`}
-                                checked={areAllSelected(books)}
-                                onChange={(checked) => handleSelectAll(checked, books)}
-                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
-                            />
-                            <label htmlFor={`select-all-${isSearchResults ? 'search' : 'main'}`} className="text-sm font-medium text-gray-200">
-                                Tout sélectionner
-                            </label>
-                        </div>
-                    </TableHead>
-                    <TableHead className="text-gray-200 font-medium">Titre</TableHead>
-                    <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
-                    <TableHead className="text-gray-200 font-medium">ISBN</TableHead>
-                    <TableHead className="text-gray-200 font-medium">Date d&apos;ajout</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {books.map((book) => (
-                    <TableRow
-                        key={book.id}
-                        className={`
-                            border-b border-gray-700 
-                            hover:bg-gray-750 
-                            ${isLoading ? '[&]:hover:cursor-wait' : 'cursor-pointer'}
-                            ${isSearchResults && displayedBookIds.includes(book.id) ? "opacity-50" : ""}
-                        `}
-                        onClick={() => {
-                            if (isSearchResults) {
-                                toggleBookSelection(book.id, true);
-                            } else {
-                                handleRowClick(book);
-                            }
-                        }}
-                    >
-                        <TableCell
-                            className="text-gray-200"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                            }}
-                        >
-                            <Switch
-                                id={`book-${book.id}`}
-                                checked={selectedBooks.includes(book.id)}
-                                onChange={() => toggleBookSelection(book.id)}
-                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
-                            />
-                        </TableCell>
-                        <TableCell className="text-gray-200">
-                            <div className="flex flex-col">
-                                <span>{book.title}</span>
-                                {isSearchResults && displayedBookIds.includes(book.id) && (
-                                    <span className="text-sm text-gray-400">
-                                        Ce livre appartient déjà à la liste
-                                    </span>
-                                )}
-                            </div>
-                        </TableCell>
-                        <TableCell className="text-gray-200">{book.author}</TableCell>
-                        <TableCell className="text-gray-200">{book.isbn || 'N/A'}</TableCell>
-                        <TableCell className="text-gray-200">
-                            {new Date(book.createdAt).toLocaleDateString()}
-                        </TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    );
 
     return (
         <div className="space-y-4">
@@ -414,7 +443,17 @@ export default function BookSelector({
                                 ) : (
                                     <>
                                         {searchResults.length > 0 ? (
-                                            <BookTable books={searchResults} isSearchResults={true} />
+                                            <BookTable
+                                                books={searchResults}
+                                                isSearchResults={true}
+                                                isLoading={isLoading}
+                                                displayedBookIds={displayedBookIds}
+                                                selectedBooks={selectedBooks}
+                                                areAllSelected={areAllSelected}
+                                                handleSelectAll={handleSelectAll}
+                                                toggleBookSelection={toggleBookSelection}
+                                                handleRowClick={handleRowClick}
+                                            />
                                         ) : (
                                             debouncedSearchTerm && (
                                                 <p className="text-center text-gray-400 py-4">
@@ -431,7 +470,16 @@ export default function BookSelector({
             </div>
 
             <div className="border border-gray-700 rounded-lg bg-gray-800">
-                <BookTable books={displayedBookDetails} />
+                <BookTable
+                    books={displayedBookDetails}
+                    isLoading={isLoading}
+                    displayedBookIds={displayedBookIds}
+                    selectedBooks={selectedBooks}
+                    areAllSelected={areAllSelected}
+                    handleSelectAll={handleSelectAll}
+                    toggleBookSelection={toggleBookSelection}
+                    handleRowClick={handleRowClick}
+                />
             </div>
 
             <div className="mt-4">
@@ -452,4 +500,4 @@ export default function BookSelector({
             )}
         </div>
     );
-    }
+}

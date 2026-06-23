@@ -1,4 +1,3 @@
-// app/admin/manage_coups_de_coeur/page.tsx
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { coupsDeCoeurIncludeConfigs } from '@/types/models/coups-de-coeur.model';
@@ -11,6 +10,23 @@ interface PageProps {
 }
 
 export const dynamic = 'force-dynamic';
+
+// Convert Prisma.Decimal -> number recursively so the payload is serializable
+// for the client component. Leaves Dates and other primitives untouched.
+function serializeDecimals<T>(value: T): T {
+    if (value === null || value === undefined) return value;
+    if (value instanceof Prisma.Decimal) return value.toNumber() as unknown as T;
+    if (value instanceof Date) return value;
+    if (Array.isArray(value)) return value.map(serializeDecimals) as unknown as T;
+    if (typeof value === 'object') {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+            out[k] = serializeDecimals(v);
+        }
+        return out as T;
+    }
+    return value;
+}
 
 async function getCoupsDeCoeur(page: number, searchTerm: string) {
     const itemsPerPage = 10;
@@ -79,7 +95,7 @@ export default async function CoupsDeCoeur({ searchParams }: PageProps) {
     return (
         <div className="space-y-4">
             <CoupsTable
-                initialItems={items}
+                initialItems={serializeDecimals(items)}
                 initialPage={page}
                 initialSearch={searchTerm}
                 totalPages={totalPages}
