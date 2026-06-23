@@ -496,10 +496,25 @@ export function AssignmentFormBackendBase({
     };
 
     const getReaderDisplayName = (
-        reader: ReaderSummary| null
+        reader: ReaderSummary | null
     ) => {
         if (!reader) return null;
-        return reader.name || `${reader.firstName || ''} ${reader.lastName || ''}`.trim() || reader.email;
+
+        // civility may come back as { name: "Monsieur" }, a plain string, or null
+        const civilityRaw = (reader as { civility?: { name?: string } | string | null }).civility;
+        const civility =
+            typeof civilityRaw === 'string'
+                ? civilityRaw
+                : civilityRaw?.name ?? '';
+
+        const fullName = [reader.firstName, reader.lastName]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+
+        const composed = [civility, fullName].filter(Boolean).join(' ').trim();
+
+        return composed || reader.name || reader.email || 'Sans nom';
     };
 
     return (

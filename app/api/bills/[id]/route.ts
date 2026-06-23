@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { STATUS } from '@/lib/statusSync';
 import { recomputeBillTotal, logBillEvent, transitionEventType } from '@/lib/billing';
 
 // An order is BILLED once its bill is issued (anything past DRAFT); a draft (brouillon) leaves it UNBILLED.
@@ -256,16 +257,32 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                 if (!bill) throw new Error('BILL_NOT_FOUND');
                 if (bill.state !== 'DRAFT') throw new Error('BILL_NOT_DRAFT');
 
+                // Confirm the order is actually on this bill, and read its workflow status.
+                const order = await tx.orders.findFirst({
+                    where: { id: parseInt(orderId), billId },
+                    select: { statusId: true },
+                });
+                if (!order) throw new Error('ORDER_NOT_FOUND');
+
+                // Detach + free it so it can be re-added elsewhere. Never leave it BILLED
+                // with no billId (the "lost" state). A settled order (SOLDE) is de-settled
+                // back to Terminé; an unfinished order keeps its status — we don't mark
+                // in-progress work as finished just because it left a brouillon.
+                const deSettled = order.statusId === STATUS.SOLDE;
                 await tx.orders.update({
                     where: { id: parseInt(orderId), billId },
-                    data: { billId: null, billingStatus: 'UNBILLED' },
+                    data: {
+                        billId: null,
+                        billingStatus: 'UNBILLED',
+                        ...(deSettled ? { statusId: STATUS.TERMINE } : {}),
+                    },
                 });
 
                 await recomputeBillTotal(tx, billId);
                 await logBillEvent(tx, {
                     billId,
                     type: 'ORDER_DETACHED',
-                    payload: { orderId: parseInt(orderId) },
+                    payload: { orderId: parseInt(orderId), deSettled },
                     performedById,
                 });
             });
@@ -351,7 +368,13 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
                 throw new Prisma.PrismaClientKnownRequestError('Bill not found', { code: 'P2025', clientVersion: 'app' });
             }
 
-            // Detach orders and revert their order-level billing status.
+            // Detach orders and revert their order-level billing status (never leave them
+            // BILLED with no billId). De-settle any SOLDE order back to Terminé so it's clean
+            // to re-add, matching removeOrder's behavior.
+            await tx.orders.updateMany({
+                where: { billId, statusId: STATUS.SOLDE },
+                data: { billId: null, billingStatus: 'UNBILLED', statusId: STATUS.TERMINE },
+            });
             await tx.orders.updateMany({
                 where: { billId },
                 data: { billId: null, billingStatus: 'UNBILLED' },

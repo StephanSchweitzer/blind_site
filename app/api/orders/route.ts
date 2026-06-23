@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { sweepIntoDraftBillIfOverThreshold } from '@/lib/billing';
+import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
 
 async function checkAdmin() {
     const session = await getServerSession(authOptions);
@@ -352,9 +352,12 @@ export async function POST(request: NextRequest) {
                         select: { id: true },
                     });
                     createdOrders.push(o);
+                    // Every new order lands on the client's open brouillon immediately.
+                    await accrueOrderToOpenDraft(tx, o.id, batchStaffId);
                 }
 
-                const auto = await sweepIntoDraftBillIfOverThreshold(tx, batchAveugleId);
+                // Issue the open draft once if the batch pushed it over the seuil.
+                const auto = await issueDraftIfOverThreshold(tx, batchAveugleId, batchStaffId);
                 return { created: createdOrders, autoBill: auto };
             });
 
@@ -463,6 +466,7 @@ export async function POST(request: NextRequest) {
         }
 
         const createdDate: Date = new Date();
+        const staffId = session?.user?.id ? parseInt(session.user.id) : null;
 
         const orderData = {
             aveugleId: parseInt(aveugleId),
@@ -472,7 +476,7 @@ export async function POST(request: NextRequest) {
             isDuplication: isDuplication || false,
             mediaFormatId: parseInt(mediaFormatId),
             deliveryMethod: deliveryMethod as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE',
-            processedByStaffId: session?.user?.id ? parseInt(session.user.id) : null,
+            processedByStaffId: staffId,
             createdDate,
             closureDate: parsedClosureDate,
             updatedAt: new Date(),
@@ -517,7 +521,10 @@ export async function POST(request: NextRequest) {
                 },
             });
 
-            const auto = await sweepIntoDraftBillIfOverThreshold(tx, created.aveugleId);
+            // Every new order lands on the client's open brouillon immediately,
+            // then the draft is issued if this pushed it over the seuil.
+            await accrueOrderToOpenDraft(tx, created.id, staffId);
+            const auto = await issueDraftIfOverThreshold(tx, created.aveugleId, staffId);
             return { order: created, autoBill: auto };
         });
 

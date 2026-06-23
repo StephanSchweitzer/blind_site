@@ -28,6 +28,9 @@ interface User {
     id: number;
     name: string | null;
     email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    civility?: { name: string } | string | null;
 }
 
 interface Book {
@@ -91,6 +94,20 @@ const formatEuro2 = (v: string | null | undefined): string => {
     if (v == null || String(v).trim() === '') return '';
     const n = parseFloat(String(v).replace(',', '.'));
     return Number.isNaN(n) ? '' : n.toFixed(2);
+};
+
+// Compose a user's display name as "Civilité Prénom Nom".
+// /api/user/search returns firstName/lastName/civility but no `name`,
+// so build it here and fall back to name/email when parts are missing.
+const getUserDisplayName = (
+    user: Pick<User, 'name' | 'email' | 'firstName' | 'lastName' | 'civility'> | null
+): string => {
+    if (!user) return '';
+    const civRaw = user.civility;
+    const civ = typeof civRaw === 'string' ? civRaw : civRaw?.name ?? '';
+    const full = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+    const composed = [civ, full].filter(Boolean).join(' ').trim();
+    return composed || user.name || user.email || 'Sans nom';
 };
 
 export function OrderFormBackendBase({
@@ -409,7 +426,7 @@ export function OrderFormBackendBase({
                                 >
                                     {selectedUser ? (
                                         <span className="truncate">
-                                            {selectedUser.name || selectedUser.email}
+                                            {getUserDisplayName(selectedUser)}
                                         </span>
                                     ) : (
                                         <span className="text-gray-400">Rechercher un auditeur ...</span>
@@ -439,7 +456,7 @@ export function OrderFormBackendBase({
                                             onClick={() => handleUserSelect(user)}
                                             className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors"
                                         >
-                                            <div className="font-medium">{user.name || 'Sans nom'}</div>
+                                            <div className="font-medium">{getUserDisplayName(user)}</div>
                                             <div className="text-sm text-gray-400">{user.email}</div>
                                         </button>
                                     ))}
@@ -796,7 +813,7 @@ export function OrderFormBackendBase({
                                     Traité par
                                 </label>
                                 <div className="px-3 py-2 bg-gray-850 border border-gray-700 rounded-md text-gray-400 cursor-not-allowed opacity-75">
-                                    {selectedStaff.name || selectedStaff.email}
+                                    {getUserDisplayName(selectedStaff)}
                                 </div>
                                 <p className="text-xs text-gray-500 italic">
                                 </p>
@@ -1127,7 +1144,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 <Button type="button" variant="outline" role="combobox"
                                         className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                     {selectedUser
-                                        ? <span className="truncate">{clip(selectedUser.name || selectedUser.email)}</span>
+                                        ? <span className="truncate">{clip(getUserDisplayName(selectedUser))}</span>
                                         : <span className="text-gray-400">Rechercher un auditeur ...</span>}
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
@@ -1147,7 +1164,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                         <button key={user.id} type="button"
                                                 onClick={() => { setSelectedUser(user); setAveugleId(user.id); setUserPopoverOpen(false); setUserSearch(''); }}
                                                 className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors">
-                                            <div className="font-medium">{user.name || 'Sans nom'}</div>
+                                            <div className="font-medium">{getUserDisplayName(user)}</div>
                                             <div className="text-sm text-gray-400">{user.email}</div>
                                         </button>
                                     ))}
