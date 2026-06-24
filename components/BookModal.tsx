@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { BookWithGenres } from '@/types/book';
 import {
     Dialog,
@@ -25,8 +25,8 @@ export const BookModal: React.FC<BookModalProps> = ({
                                                     }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
     const formatMinutes = (minutes: number): string => {
         if (!minutes) return '';
@@ -38,112 +38,71 @@ export const BookModal: React.FC<BookModalProps> = ({
         return `${hours} heure${hours > 1 ? 's' : ''} et ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`;
     };
 
-    const generateFrenchText = useCallback(() => {
-        if (!book) return '';
-        const description = book.description;
-        const duration = book.readingDurationMinutes
-            ? `Durée de l'enregistrement: ${formatMinutes(book.readingDurationMinutes)}. `
-            : '';
-        return `${book.title}. écrit par ${book.author}. ${duration}${description ? `Description: ${description}` : 'Aucune description disponible.'}`;
-    }, [book]);
-
     useEffect(() => {
         return () => {
-            if (audioElement) {
-                audioElement.pause();
-                audioElement.remove();
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.src = '';
+                audioRef.current = null;
             }
         };
-    }, [audioElement]);
+    }, []);
 
-    const speak = useCallback(async (text: string) => {
+    const speak = useCallback(async () => {
+        if (!book) return;
         try {
             setIsLoading(true);
             setIsSpeaking(true);
 
-            const sentences = text.split(/[.!?]+/);
-            let currentChunk = '';
-            const chunks: string[] = [];
-
-            for (const sentence of sentences) {
-                if ((currentChunk + sentence).length < 2800) {
-                    currentChunk += sentence + '. ';
-                } else {
-                    chunks.push(currentChunk);
-                    currentChunk = sentence + '. ';
-                }
-            }
-            if (currentChunk) chunks.push(currentChunk);
-
-            const audioUrls: string[] = [];
-
-            for (const chunk of chunks) {
-                const response = await fetch('/api/polly', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: chunk }),
-                });
-
-                if (!response.ok) throw new Error('Polly API error');
-
-                const audioData = await response.arrayBuffer();
-                const blob = new Blob([audioData], { type: 'audio/mpeg' });
-                audioUrls.push(URL.createObjectURL(blob));
+            // Stop any in-flight playback before starting a new one.
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
             }
 
-            let currentIndex = 0;
-            const playNext = async () => {
-                if (currentIndex < audioUrls.length) {
-                    const audio = new Audio(audioUrls[currentIndex]);
-                    setAudioElement(audio);
-                    setIsLoading(false);
+            const response = await fetch('/api/polly', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookId: book.id }),
+            });
 
-                    audio.onended = () => {
-                        URL.revokeObjectURL(audioUrls[currentIndex]);
-                        currentIndex++;
-                        playNext();
-                        setIsLoading(false);
-                    };
+            if (!response.ok) throw new Error('Polly API error');
 
-                    audio.onerror = (error: Event | string) => {
-                        console.error('Audio playback error:', error);
-                        if (typeof error !== 'string' && 'currentTarget' in error) {
-                            console.error('Audio error details:', error.currentTarget);
-                        }
-                        setIsSpeaking(false);
-                    };
+            const { audioUrl } = await response.json();
+            if (!audioUrl) throw new Error('No audio URL returned');
 
-                    try {
-                        await audio.play();
-                        console.log('Playback started for chunk:', currentIndex + 1);
-                    } catch (error) {
-                        console.error('Playback failed:', error);
-                        setIsSpeaking(false);
-                    }
-                } else {
-                    console.log('All chunks completed');
-                    setIsSpeaking(false);
-                    setAudioElement(null);
-                }
+            const audio = new Audio(audioUrl);
+            audioRef.current = audio;
+
+            audio.onended = () => {
+                setIsSpeaking(false);
+                audioRef.current = null;
             };
 
-            playNext();
+            audio.onerror = () => {
+                console.error('Audio playback error');
+                setIsSpeaking(false);
+                audioRef.current = null;
+            };
+
             setIsLoading(false);
+            await audio.play();
         } catch (error) {
             console.error('Speech synthesis error:', error);
             setIsLoading(false);
             setIsSpeaking(false);
+            audioRef.current = null;
         }
-    }, []);
+    }, [book]);
 
     const stopSpeaking = useCallback(() => {
-        if (audioElement) {
-            audioElement.pause();
-            audioElement.currentTime = 0;
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current = null;
         }
         setIsSpeaking(false);
-        setAudioElement(null);
-    }, [audioElement]);
+    }, []);
 
     const handleGenreClick = useCallback((genreId: number) => {
         if (onGenreClick) {
@@ -330,7 +289,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                                 )}
 
                                 <button
-                                    onClick={() => isSpeaking ? stopSpeaking() : speak(generateFrenchText())}
+                                    onClick={() => isSpeaking ? stopSpeaking() : speak()}
                                     className={`
                                         flex items-center justify-center gap-2 px-6 py-3 
                                         text-sm sm:text-base font-semibold
@@ -350,8 +309,8 @@ export const BookModal: React.FC<BookModalProps> = ({
                                 >
                                     {isLoading ? (
                                         <div className="relative">
-                                            <div className="animate-spin rounded-full h-5 w-5 border-3 border-white/30"></div>
-                                            <div className="absolute inset-0 animate-spin rounded-full h-5 w-5 border-3 border-transparent border-t-white"></div>
+                                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30"></div>
+                                            <div className="absolute inset-0 animate-spin rounded-full h-5 w-5 border-2 border-transparent border-t-white"></div>
                                         </div>
                                     ) : (
                                         <>
