@@ -248,7 +248,7 @@ export default function UsersTable({
                             className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
                         />
                     </div>
-                    <Button onClick={handleSearch} size="icon" className="bg-gray-800 border-gray-700 hover:bg-gray-700">
+                    <Button onClick={handleSearch} size="icon" className="bg-gray-800 border border-gray-700 text-gray-200 hover:bg-gray-700 hover:text-white">
                         <Search className="h-4 w-4" />
                     </Button>
                     {searchTerm && (
