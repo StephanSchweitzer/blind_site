@@ -59,9 +59,9 @@ export type AssignmentWithAllIncludesResponse = Prisma.AssignmentGetPayload<{
 export const AssignmentCreateInputSchema = z.object({
     catalogueId: z.number().int().positive(),
     orderId: z.number().int().positive().nullable().optional(),
-    receptionDate: z.string().datetime().nullable().optional(),
-    sentToReaderDate: z.string().datetime().nullable().optional(),
-    returnedToECADate: z.string().datetime().nullable().optional(),
+    receptionDate: z.string().date().nullable().optional(),
+    sentToReaderDate: z.string().date().nullable().optional(),
+    returnedToECADate: z.string().date().nullable().optional(),
     statusId: z.number().int().positive(),
     notes: z.string().max(2000).nullable().optional(),
     processedByStaffId: z.number().int().positive().nullable().optional(),

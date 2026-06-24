@@ -32,6 +32,57 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 
+/**
+ * Maps a server validation response ({ message, errors }) into readable French
+ * lines so the user sees WHICH field failed and why — instead of a bare
+ * "Données invalides" that looks like their fault.
+ */
+const FIELD_LABELS: Record<string, string> = {
+    catalogueId: 'Livre',
+    orderId: 'Commande',
+    statusId: 'Statut',
+    receptionDate: 'Date de réception',
+    sentToReaderDate: 'Date d\'envoi au lecteur',
+    returnedToECADate: 'Date de retour à l\'ECA',
+    notes: 'Notes',
+    processedByStaffId: 'Traité par',
+};
+
+function humanizeMessage(raw: string): string {
+    // Normalize Zod date/datetime messages to something non-technical.
+    if (/Invalid ISO date|Invalid ISO datetime|Invalid datetime|Invalid date/i.test(raw)) {
+        return 'format de date invalide';
+    }
+    return raw;
+}
+
+function getFieldErrorLines(data: unknown): string[] {
+    if (!data || typeof data !== 'object') return [];
+    const errors = (data as { errors?: Record<string, string[]> }).errors;
+    if (!errors || typeof errors !== 'object') return [];
+
+    return Object.entries(errors).flatMap(([field, messages]) => {
+        const label = FIELD_LABELS[field] ?? field;
+        const list = Array.isArray(messages) ? messages : [String(messages)];
+        return list.map((m) => `${label} : ${humanizeMessage(m)}`);
+    });
+}
+
+function ErrorToastBody({ message, lines }: { message: string; lines: string[] }) {
+    return (
+        <div className="text-xl mt-2">
+            <p>{message}</p>
+            {lines.length > 0 && (
+                <ul className="mt-2 list-disc list-inside text-base font-normal">
+                    {lines.map((line, i) => (
+                        <li key={i}>{line}</li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 export interface AssignmentFormBackendBaseProps {
     presetClientId?: number | null;
     initialData?: AssignmentFormData;
@@ -50,6 +101,27 @@ export interface AssignmentFormBackendBaseProps {
     onOrdersLoaded?: () => void;
 }
 
+/**
+ * Calendar-date helpers. These fields (reception / sent / returned) are dates,
+ * not timestamps, so we keep them as "YYYY-MM-DD" and never round-trip through
+ * toISOString() — which would convert local midnight to UTC and shift the day
+ * (e.g. a date picked in Paris, UTC+2, lands on the previous day).
+ */
+function toDateOnly(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+/** Parse a stored value (date-only, or a hydrated ISO datetime) into a LOCAL Date for display. */
+function parseDateOnly(value: string | null): Date | undefined {
+    if (!value) return undefined;
+    const [y, m, d] = value.slice(0, 10).split('-').map(Number);
+    if (!y || !m || !d) return undefined;
+    return new Date(y, m - 1, d); // local midnight, no TZ shift
+}
+
 function DatePicker({
                         value,
                         onChange,
@@ -62,7 +134,7 @@ function DatePicker({
     placeholder: string;
 }) {
     const [open, setOpen] = useState(false);
-    const date = value ? new Date(value) : undefined;
+    const date = parseDateOnly(value);
 
     return (
         <div className="space-y-2">
@@ -82,7 +154,7 @@ function DatePicker({
                         mode="single"
                         selected={date}
                         onSelect={(newDate) => {
-                            onChange(newDate ? newDate.toISOString() : null);
+                            onChange(newDate ? toDateOnly(newDate) : null);
                             setOpen(false);
                         }}
                         initialFocus
@@ -379,9 +451,10 @@ export function AssignmentFormBackendBase({
             }
         }
 
-        // Update reception date from order's request received date (convert to ISO string)
+        // Mirror the order's request-received date onto the assignment as a date-only
+        // value. Slice the ISO string directly so no timezone conversion can shift the day.
         if (order.requestReceivedDate) {
-            const dateString = new Date(order.requestReceivedDate).toISOString();
+            const dateString = String(order.requestReceivedDate).slice(0, 10);
             setFormData(prev => ({ ...prev, receptionDate: dateString }));
         }
     };
@@ -461,8 +534,18 @@ export function AssignmentFormBackendBase({
         setIsLoading(true);
 
         try {
+            // Safety net: force every date field to "YYYY-MM-DD" before it leaves the
+            // form, regardless of how it was hydrated. Keeps the wire format consistent
+            // with the strict z.string().date() validators on the server.
+            const normalizedFormData: AssignmentFormData = {
+                ...formData,
+                receptionDate: formData.receptionDate ? formData.receptionDate.slice(0, 10) : null,
+                sentToReaderDate: formData.sentToReaderDate ? formData.sentToReaderDate.slice(0, 10) : null,
+                returnedToECADate: formData.returnedToECADate ? formData.returnedToECADate.slice(0, 10) : null,
+            };
+
             // Pass readerId separately for create, not in formData
-            const assignmentId = await onSubmit(formData, selectedReaderId);
+            const assignmentId = await onSubmit(normalizedFormData, selectedReaderId);
             if (onSuccess) {
                 onSuccess(assignmentId);
             }
@@ -1109,12 +1192,13 @@ export function AddAssignmentFormBackend({
             if (!response.ok) {
                 console.error('Assignment creation failed:', data);
                 const errorMessage = data?.message || data?.error || 'Échec de la création de l\'affectation';
+                const fieldLines = getFieldErrorLines(data);
 
                 toast({
                     variant: "destructive",
                     // @ts-expect-error jsx in toast
                     title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <span className="text-xl mt-2">{errorMessage}</span>,
+                    description: <ErrorToastBody message={errorMessage} lines={fieldLines} />,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
                 });
 
@@ -1211,12 +1295,13 @@ export function EditAssignmentFormBackend({
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
                 const errorMessage = errorData?.message || 'Échec de la mise à jour de l\'affectation';
+                const fieldLines = getFieldErrorLines(errorData);
 
                 toast({
                     variant: "destructive",
                     // @ts-expect-error jsx in toast
                     title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <span className="text-xl mt-2">{errorMessage}</span>,
+                    description: <ErrorToastBody message={errorMessage} lines={fieldLines} />,
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
                 });
 

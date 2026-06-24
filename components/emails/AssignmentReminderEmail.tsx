@@ -67,10 +67,10 @@ export const AssignmentReminderEmail = ({
 
     const closing =
         variant === 'sent'
-            ? "Prenez le temps qu'il vous faut pour cet enregistrement — nous vous remercions chaleureusement pour votre engagement bénévole."
+            ? "Merci pour votre engagement."
             : variant === 'reassigned_active'
-                ? "Dès réception de l'ouvrage, prenez le temps qu'il vous faut pour cet enregistrement. Nous vous remercions chaleureusement pour votre engagement bénévole."
-                : "Vous n'avez rien à faire pour le moment : nous vous tiendrons informé(e) dès l'envoi de l'ouvrage. Nous vous remercions chaleureusement pour votre engagement bénévole.";
+                ? "L'enregistrement pourra commencer dès réception de l'ouvrage. Merci pour votre engagement."
+                : "Nous vous préviendrons dès l'envoi de l'ouvrage. Merci pour votre engagement.";
 
     const dateLabel =
         variant === 'sent' ? "Date d'envoi"
