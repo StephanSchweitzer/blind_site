@@ -34,6 +34,19 @@ export function guardAssignmentStatus(statusId: number): GuardResult {
     return OK;
 }
 
+/** A finished assignment is locked for reassignment; it must be reopened first. */
+export function guardCanReassignReader(
+    assignmentStatusId: number | null | undefined
+): GuardResult {
+    if (assignmentStatusId === STATUS.TERMINE) {
+        return fail(
+            409,
+            "Impossible d'assigner un nouveau lecteur : cette affectation est terminée. Rouvrez-la (statut « En cours ») avant d'assigner un autre lecteur."
+        );
+    }
+    return OK;
+}
+
 /** Duplication orders never receive an assignment. */
 export function guardNotDuplication(isDuplication: boolean): GuardResult {
     if (isDuplication) {

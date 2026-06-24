@@ -107,6 +107,7 @@ model Book {
   source_access_id       Int?
   needsReview            Boolean             @default(false)
   id_arbre               Int?
+  polly_audio_url        String?
 
   @@index([createdAt(sort: Desc)])
   @@index([title])

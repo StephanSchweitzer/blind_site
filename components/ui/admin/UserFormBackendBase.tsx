@@ -192,7 +192,7 @@ export function UserFormBackendBase({
         setIsLoading(true);
         setError(null);
 
-        if (formData.accessLevel === 'admin' && !formData.email) {
+        if ((formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') && !formData.email) {
             setError('L\'email est requis pour les membres permanents');
             setIsLoading(false);
             return;
@@ -359,6 +359,17 @@ export function UserFormBackendBase({
                     title: "Erreur",
                     description: data?.message || 'Échec de la réinitialisation du mot de passe',
                 });
+                return;
+            }
+
+            if (response.status === 207 || data?.emailSent === false) {
+                toast({
+                    title: "Mot de passe réinitialisé — email non envoyé",
+                    description: data?.message ||
+                        "Le mot de passe a été réinitialisé mais l'email n'a pas pu être envoyé. Contactez l'utilisateur directement.",
+                    className: "bg-amber-100 border-amber-500 text-amber-900",
+                });
+                setIsPasswordResetDialogOpen(false);
                 return;
             }
 
@@ -1154,6 +1165,19 @@ export function AddUserFormBackend({
                 return Promise.reject();
             }
 
+            // 207 = the account was created but the credentials email could not be
+            // sent. The account exists, so let the flow complete (return the id) —
+            // but warn the admin instead of reporting plain success.
+            if (response.status === 207 || data?.emailSent === false) {
+                toast({
+                    title: "Compte créé — email non envoyé",
+                    description: data?.message ||
+                        "Le compte a été créé mais l'email d'identifiants n'a pas pu être envoyé. Utilisez « réinitialiser le mot de passe » pour le renvoyer.",
+                    className: "bg-amber-100 border-amber-500 text-amber-900",
+                });
+                return data.user.id;
+            }
+
             toast({
                 title: "Succès",
                 description: 'L\'individuel a été créé avec succès',
@@ -1228,14 +1252,27 @@ export function EditUserFormBackend({
                 body: JSON.stringify(formData),
             });
 
+            const data = await response.json().catch(() => null);
+
             if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
                 toast({
                     variant: "destructive",
                     title: "Erreur",
-                    description: errorData?.message || 'Échec de la mise à jour de l\'individuel',
+                    description: data?.message || 'Échec de la mise à jour de l\'individuel',
                 });
                 return Promise.reject();
+            }
+
+            // 207 = updated (e.g. promoted to a login account) but the credentials
+            // email could not be sent. The update succeeded — warn, don't celebrate.
+            if (response.status === 207 || data?.emailSent === false) {
+                toast({
+                    title: "Utilisateur mis à jour — email non envoyé",
+                    description: data?.message ||
+                        "Les modifications ont été enregistrées mais l'email d'identifiants n'a pas pu être envoyé. Utilisez « réinitialiser le mot de passe » pour le renvoyer.",
+                    className: "bg-amber-100 border-amber-500 text-amber-900",
+                });
+                return parseInt(userId);
             }
 
             toast({

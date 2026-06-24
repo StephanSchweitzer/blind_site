@@ -4,12 +4,13 @@ import {
     Body,
     Head,
     Heading,
-    Hr,
     Container,
+    Img,
     Preview,
     Section,
     Text
 } from '@react-email/components';
+import EmailFooter from './EmailFooter';
 
 interface PasswordResetEmailProps {
     name: string;
@@ -17,6 +18,7 @@ interface PasswordResetEmailProps {
     temporaryPassword: string;
     appName?: string;
     loginUrl?: string;
+    logoUrl?: string | null;
 }
 
 export const PasswordResetEmail = ({
@@ -24,7 +26,8 @@ export const PasswordResetEmail = ({
                                        email,
                                        temporaryPassword,
                                        appName = 'ECA-Aveugles',
-                                       loginUrl = 'https://eca-aveugles.fr/admin'
+                                       loginUrl = 'https://eca-aveugles.fr/admin',
+                                       logoUrl
                                    }: PasswordResetEmailProps) => {
     const displayName = name || 'cher utilisateur';
 
@@ -34,6 +37,12 @@ export const PasswordResetEmail = ({
             <Preview>Votre nouveau mot de passe pour {appName}</Preview>
             <Body style={main}>
                 <Container style={container}>
+                    {logoUrl ? (
+                        <Section style={logoSection}>
+                            <Img src={logoUrl} alt={appName} width="200" style={logo} />
+                        </Section>
+                    ) : null}
+
                     <Heading style={h1}>Réinitialisation de mot de passe</Heading>
 
                     <Text style={text}>Bonjour {displayName},</Text>
@@ -57,18 +66,13 @@ export const PasswordResetEmail = ({
                         Veuillez <a href={loginUrl} style={link}>vous connecter à votre compte</a> avec ce nouveau mot de passe, puis changez-le immédiatement pour un mot de passe de votre choix.
                     </Text>
 
-                    <Hr style={hr} />
-
-                    <Text style={footer}>
-                        Si vous n&apos;avez pas demandé cette réinitialisation, veuillez contacter immédiatement le support.
-                    </Text>
+                    <EmailFooter note="Si vous n'avez pas demandé cette réinitialisation, veuillez contacter immédiatement l'équipe ECA." />
                 </Container>
             </Body>
         </Html>
     );
 };
 
-// Styles
 const main = {
     backgroundColor: '#f6f9fc',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
@@ -82,6 +86,15 @@ const container = {
     margin: '0 auto',
     padding: '40px',
     maxWidth: '600px'
+};
+
+const logoSection = {
+    textAlign: 'center' as const,
+    margin: '0 0 24px'
+};
+
+const logo = {
+    margin: '0 auto'
 };
 
 const h1 = {
@@ -131,17 +144,6 @@ const warningText = {
 const link = {
     color: '#0070f3',
     textDecoration: 'underline'
-};
-
-const hr = {
-    borderColor: '#e6ebf1',
-    margin: '24px 0'
-};
-
-const footer = {
-    color: '#8898aa',
-    fontSize: '14px',
-    lineHeight: '22px'
 };
 
 export default PasswordResetEmail;

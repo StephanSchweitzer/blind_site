@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { guardReaderEligible } from '@/lib/statusSync';
+import { STATUS, guardReaderEligible, guardCanReassignReader } from '@/lib/statusSync';
+import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
+import type { ReminderVariant } from '@/components/emails/AssignmentReminderEmail';
 
 /**
  * GET /api/assignments/[id]/readers - Get reader history for an assignment
@@ -65,6 +67,13 @@ export async function GET(
  * POST /api/assignments/[id]/readers - Assign or reassign a reader to an assignment
  * Creates a new AssignmentReader entry, maintaining history of all assignments.
  * Does not change any workflow status (status is managed on the assignment itself).
+ *
+ * Notification variant by current state:
+ *  - no prior reader            -> 'assigned'            (pending send)
+ *  - prior reader, ATTENTE      -> 'reassigned_pending'  (pending send)
+ *  - prior reader, EN_COURS     -> 'reassigned_active'   (book mid-reading, forwarded)
+ * The date shown is this reader's AssignmentReader.assignedDate. The 'sent' email
+ * (with sentToReaderDate) is owned by the EN_COURS transition in PUT /api/assignments/[id].
  */
 export async function POST(
     request: NextRequest,
@@ -93,13 +102,27 @@ export async function POST(
 
         const assignment = await prisma.assignment.findUnique({
             where: { id: assignmentId },
-            select: { id: true },
+            select: {
+                id: true,
+                statusId: true,
+                catalogue: { select: { title: true, author: true } },
+                _count: { select: { readerHistory: true } },
+            },
         });
 
         if (!assignment) {
             return NextResponse.json(
                 { message: 'Affectation non trouvée' },
                 { status: 404 }
+            );
+        }
+
+        // A finished assignment is locked: reopen it before assigning a new reader.
+        const reassignGuard = guardCanReassignReader(assignment.statusId);
+        if (!reassignGuard.ok) {
+            return NextResponse.json(
+                { message: reassignGuard.message },
+                { status: reassignGuard.httpStatus }
             );
         }
 
@@ -123,6 +146,13 @@ export async function POST(
             );
         }
 
+        const isReassignment = assignment._count.readerHistory > 0;
+        const variant: ReminderVariant = !isReassignment
+            ? 'assigned'
+            : assignment.statusId === STATUS.EN_COURS
+                ? 'reassigned_active'
+                : 'reassigned_pending';
+
         const assignmentReader = await prisma.assignmentReader.create({
             data: {
                 assignmentId,
@@ -142,6 +172,19 @@ export async function POST(
                 },
             },
         });
+
+        if (assignment.catalogue) {
+            await sendAssignmentReminder({
+                reader: assignmentReader.reader,
+                book: {
+                    title: assignment.catalogue.title,
+                    author: assignment.catalogue.author,
+                },
+                assignmentId,
+                date: assignmentReader.assignedDate,
+                variant,
+            });
+        }
 
         return NextResponse.json({
             message: 'Lecteur assigné avec succès',

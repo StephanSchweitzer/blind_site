@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
+import { generatePassword } from '@/lib/utils';
+import { isSendableEmail } from '@/lib/email/sendEmail';
+import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 import { UserCreateInput } from '@/types/api/user.api';
 import { AddressCreateInput } from '@/types/api/common.api';
 import { MemberType, AccessLevel } from '@prisma/client';
@@ -73,16 +76,24 @@ export async function POST(request: Request) {
         // create a second row that collides with an existing one.
         const normalizedEmail = body.email ? body.email.trim().toLowerCase() : null;
 
+        // admin / super_admin are login-capable accounts; everyone else is a domain
+        // record (auditeur, lecteur, bienfaiteur…) with no credentials.
+        const isLoginAccount =
+            body.accessLevel === 'admin' || body.accessLevel === 'super_admin';
+
         // Only super_admin can create admin or super_admin access levels
-        if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && session.user.accessLevel !== 'super_admin') {
+        if (isLoginAccount && session.user.accessLevel !== 'super_admin') {
             return NextResponse.json({
                 message: 'Seuls les super administrateurs peuvent créer des membres permanents ou des administrateurs'
             }, { status: 403 });
         }
 
-        // Email is required for admin and super_admin access levels
-        if ((body.accessLevel === 'admin' || body.accessLevel === 'super_admin') && !normalizedEmail) {
+        // A login account must have a deliverable email — we have to send credentials.
+        if (isLoginAccount && !normalizedEmail) {
             return NextResponse.json({ message: 'L\'email est requis pour les membres permanents' }, { status: 400 });
+        }
+        if (isLoginAccount && !isSendableEmail(normalizedEmail)) {
+            return NextResponse.json({ message: 'Adresse email invalide pour un compte permanent' }, { status: 400 });
         }
 
         // Case-insensitive duplicate check (catches mixed-case legacy rows too)
@@ -98,12 +109,15 @@ export async function POST(request: Request) {
             }
         }
 
-        // Create password only for admin and super_admin access levels
+        // Generate real, random credentials only for login accounts. No hardcoded
+        // passwords: the temp password exists only here and in the emailed copy.
         let hashedPassword: string | null = null;
         let passwordNeedsChange = false;
+        let temporaryPassword: string | null = null;
 
-        if (body.accessLevel === 'admin' || body.accessLevel === 'super_admin') {
-            hashedPassword = await bcrypt.hash('temporaryPassword123', 10);
+        if (isLoginAccount) {
+            temporaryPassword = generatePassword();
+            hashedPassword = await bcrypt.hash(temporaryPassword, 10);
             passwordNeedsChange = true;
         }
 
@@ -165,9 +179,36 @@ export async function POST(request: Request) {
             },
         });
 
+        // Login accounts get their credentials by email, via the same helper the
+        // invite route uses. A failed send leaves an account nobody can log into, so
+        // report 207 (not success) and point the admin at "reset password" to resend.
+        if (isLoginAccount && temporaryPassword) {
+            const emailResult = await sendInvitationEmail({
+                email: normalizedEmail!,
+                name: body.name,
+                accessLevel: body.accessLevel as string,
+                memberType: body.memberType as string | undefined,
+                temporaryPassword,
+            });
+
+            if (!emailResult.sent) {
+                console.warn(`Invitation email not sent (user ${newUser.id}): ${emailResult.reason}`);
+                return NextResponse.json(
+                    {
+                        message: "Utilisateur créé, mais l'envoi des identifiants a échoué. " +
+                            "Utilisez « réinitialiser le mot de passe » pour les renvoyer.",
+                        user: newUser,
+                        emailSent: false,
+                    },
+                    { status: 207 }
+                );
+            }
+        }
+
         return NextResponse.json({
             message: 'Utilisateur créé avec succès',
             user: newUser,
+            emailSent: isLoginAccount ? true : undefined,
         });
     } catch (error) {
         console.error('Error creating user:', error);

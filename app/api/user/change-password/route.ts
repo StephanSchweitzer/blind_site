@@ -4,10 +4,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
+import { render } from '@react-email/render';
+import PasswordChangedEmail from '@/components/emails/PasswordChangedEmail';
+import { sendEmail } from '@/lib/email/sendEmail';
 
 export async function POST(req: NextRequest) {
     try {
-        // Get the current session
         const session = await getServerSession(authOptions);
 
         if (!session || !session.user?.email) {
@@ -17,7 +19,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Parse request body
         const { currentPassword, newPassword } = await req.json();
 
         if (!currentPassword || !newPassword) {
@@ -27,10 +28,9 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Get user from database with password
         const user = await prisma.user.findUnique({
             where: { email: session.user.email },
-            select: { id: true, password: true }
+            select: { id: true, password: true, email: true, name: true, firstName: true },
         });
 
         if (!user || !user.password) {
@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Verify current password
         const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
         if (!isCurrentPasswordValid) {
             return NextResponse.json(
@@ -49,7 +48,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Basic password strength validation
         if (newPassword.length < 8) {
             return NextResponse.json(
                 { message: 'Le nouveau mot de passe doit contenir au moins 8 caractères' },
@@ -57,22 +55,45 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Hash new password
         const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-        // Update user password and reset the passwordNeedsChange flag
         await prisma.user.update({
             where: { id: user.id },
             data: {
                 password: hashedNewPassword,
-                passwordNeedsChange: false
-            }
+                passwordNeedsChange: false,
+            },
         });
+
+        // Best-effort security notification. The change has already succeeded, so a
+        // failed/undeliverable email must NOT fail the request — log and continue.
+        try {
+            const appName = process.env.APP_NAME || 'ECA Aveugles';
+            const baseUrl = process.env.APP_URL || 'https://eca-aveugles.com';
+            const html = await render(
+                PasswordChangedEmail({
+                    name: user.name || user.firstName || '',
+                    appName,
+                    changedAt: new Date().toLocaleString('fr-FR'),
+                    logoUrl: `${baseUrl}/eca_logo.png`,
+                })
+            );
+            const result = await sendEmail({
+                to: user.email,
+                subject: `Votre mot de passe a été modifié - ${appName}`,
+                html,
+                tag: 'password-changed',
+            });
+            if (!result.sent) {
+                console.warn(`Password-changed confirmation not sent (user ${user.id}): ${result.reason}`);
+            }
+        } catch (emailError) {
+            console.error('Error sending password-changed confirmation:', emailError);
+        }
 
         return NextResponse.json({
-            message: 'Mot de passe changé avec succès'
+            message: 'Mot de passe changé avec succès',
         });
-
     } catch (error) {
         console.error('Erreur lors du changement de mot de passe:', error);
         return NextResponse.json(

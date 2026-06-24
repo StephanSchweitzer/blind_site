@@ -4,12 +4,13 @@ import {
     Body,
     Head,
     Heading,
-    Hr,
     Container,
+    Img,
     Preview,
     Section,
     Text
 } from '@react-email/components';
+import EmailFooter from './EmailFooter';
 
 interface InvitationEmailProps {
     name: string;
@@ -19,6 +20,7 @@ interface InvitationEmailProps {
     temporaryPassword: string;
     appName?: string;
     loginUrl?: string;
+    logoUrl?: string | null;
 }
 
 export const InvitationEmail = ({
@@ -28,7 +30,8 @@ export const InvitationEmail = ({
                                     memberType,
                                     temporaryPassword,
                                     appName = 'ECA-Aveugles',
-                                    loginUrl = 'https://eca-aveugles.fr/admin'
+                                    loginUrl = 'https://eca-aveugles.fr/admin',
+                                    logoUrl
                                 }: InvitationEmailProps) => {
     const displayName = name || 'cher utilisateur';
 
@@ -38,6 +41,12 @@ export const InvitationEmail = ({
             <Preview>Votre invitation pour {appName}</Preview>
             <Body style={main}>
                 <Container style={container}>
+                    {logoUrl ? (
+                        <Section style={logoSection}>
+                            <Img src={logoUrl} alt={appName} width="200" style={logo} />
+                        </Section>
+                    ) : null}
+
                     <Heading style={h1}>Bienvenue sur {appName} !</Heading>
 
                     <Text style={text}>Bonjour {displayName},</Text>
@@ -58,11 +67,7 @@ export const InvitationEmail = ({
                         Veuillez <a href={loginUrl} style={link}>vous connecter à votre compte</a> et changer votre mot de passe dès que possible.
                     </Text>
 
-                    <Hr style={hr} />
-
-                    <Text style={footer}>
-                        Si vous n&apos;attendiez pas cette invitation, veuillez ignorer cet email ou contacter le support.
-                    </Text>
+                    <EmailFooter note="Si vous n'attendiez pas cette invitation, veuillez ignorer cet email ou contacter l'équipe ECA." />
                 </Container>
             </Body>
         </Html>
@@ -82,6 +87,15 @@ const container = {
     margin: '0 auto',
     padding: '40px',
     maxWidth: '600px'
+};
+
+const logoSection = {
+    textAlign: 'center' as const,
+    margin: '0 0 24px'
+};
+
+const logo = {
+    margin: '0 auto'
 };
 
 const h1 = {
@@ -116,17 +130,6 @@ const detailsItem = {
 const link = {
     color: '#0070f3',
     textDecoration: 'underline'
-};
-
-const hr = {
-    borderColor: '#e6ebf1',
-    margin: '24px 0'
-};
-
-const footer = {
-    color: '#8898aa',
-    fontSize: '14px',
-    lineHeight: '22px'
 };
 
 export default InvitationEmail;

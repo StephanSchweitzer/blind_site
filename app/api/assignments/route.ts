@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
+    STATUS,
     guardAssignmentStatus,
     guardAssignmentConsistency,
     guardAssignmentMatchesOrder,
@@ -10,6 +11,7 @@ import {
     guardReaderEligible,
     syncOrderToStatus,
 } from '@/lib/statusSync';
+import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
 
 export async function GET(request: NextRequest) {
     try {
@@ -274,6 +276,39 @@ export async function POST(request: NextRequest) {
 
             return completeAssignment;
         });
+
+        // Notification — fired AFTER the transaction commits (sendAssignmentReminder
+        // never throws). Creation is a single event, distinct from later edits, so
+        // there's no overlap with the readers route or the PUT 'sent' email.
+        //   created EN_COURS              -> 'sent'     (date = sentToReaderDate)
+        //   created ATTENTE with a reader -> 'assigned' (date = AssignmentReader.assignedDate)
+        //   created ATTENTE without reader, or created TERMINE (backfill) -> nothing
+        if (result?.catalogue) {
+            const initialRecord = result.readerHistory[0];
+            const initialReader = initialRecord?.reader;
+            const book = {
+                title: result.catalogue.title,
+                author: result.catalogue.author,
+            };
+
+            if (result.statusId === STATUS.EN_COURS && initialReader) {
+                await sendAssignmentReminder({
+                    reader: initialReader,
+                    book,
+                    assignmentId: result.id,
+                    date: result.sentToReaderDate,
+                    variant: 'sent',
+                });
+            } else if (result.statusId === STATUS.ATTENTE && initialReader) {
+                await sendAssignmentReminder({
+                    reader: initialReader,
+                    book,
+                    assignmentId: result.id,
+                    date: initialRecord?.assignedDate,
+                    variant: 'assigned',
+                });
+            }
+        }
 
         return NextResponse.json({ assignment: result }, { status: 201 });
     } catch (error) {

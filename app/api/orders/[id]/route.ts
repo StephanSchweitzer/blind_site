@@ -19,7 +19,7 @@ import {
 } from '@/lib/statusSync';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { recomputeBillTotal, sweepIntoDraftBillIfOverThreshold, logBillEvent } from '@/lib/billing';
+import { recomputeBillTotal, accrueOrderToOpenDraft, issueDraftIfOverThreshold, logBillEvent } from '@/lib/billing';
 
 async function checkAdmin() {
     const session = await getServerSession(authOptions);
@@ -271,8 +271,7 @@ export async function PUT(
             cost: data.cost !== undefined ? newCost : undefined,
             billingStatus: data.billingStatus,
             // billId is intentionally NOT set here: an order's bill membership is managed
-            // by the bill route (addOrder/removeOrder) and the threshold sweep — never by an
-            // order edit. Writing it here would detach the order on every save.
+            // by the bill route (addOrder/removeOrder) and by accrual — never by an order edit.
             notes: data.notes || null,
         };
 
@@ -302,9 +301,16 @@ export async function PUT(
                 });
             }
 
-            // Cost changed on an unbilled order → it may push the client over threshold.
-            if (costChanged && existingOrder.billId == null) {
-                await sweepIntoDraftBillIfOverThreshold(tx, order.aveugleId);
+            // Invariant: a non-UNBILLABLE order must sit on a brouillon. Heals any orphan
+            // (legacy row, UNBILLABLE→UNBILLED, cost set after creation). No-op otherwise.
+            if (existingOrder.billId == null) {
+                await accrueOrderToOpenDraft(tx, orderId, performedById);
+            }
+
+            // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
+            // Skip issued bills (BILLED/PAID/SOLDE) — those go through the reprint path below.
+            if (existingOrder.billId == null || billState === BillingStatus.DRAFT) {
+                await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
             // Propagate 1–3 down to the assignment; SOLDE stays order-only.
@@ -466,6 +472,7 @@ export async function PATCH(
 
             let newTotal: Prisma.Decimal | null = null;
 
+            // Cost changed on a billed order → keep the bill total in sync + audit it.
             if (costChanged && existingOrder.billId != null) {
                 newTotal = await recomputeBillTotal(tx, existingOrder.billId);
                 await logBillEvent(tx, {
@@ -476,10 +483,19 @@ export async function PATCH(
                 });
             }
 
-            if (costChanged && existingOrder.billId == null) {
-                await sweepIntoDraftBillIfOverThreshold(tx, order.aveugleId);
+            // Invariant: a non-UNBILLABLE order must sit on a brouillon. Heals any orphan
+            // (legacy row, UNBILLABLE→UNBILLED, cost set after creation). No-op otherwise.
+            if (existingOrder.billId == null) {
+                await accrueOrderToOpenDraft(tx, orderId, performedById);
             }
 
+            // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
+            // Skip issued bills (BILLED/PAID/SOLDE) — those go through the reprint path below.
+            if (existingOrder.billId == null || billState === BillingStatus.DRAFT) {
+                await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
+            }
+
+            // Propagate 1–3 down to the assignment; SOLDE stays order-only.
             if (
                 assignment &&
                 typeof body.statusId === 'number' &&

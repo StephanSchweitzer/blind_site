@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcrypt';
+import { generatePassword } from '@/lib/utils';
+import { isSendableEmail } from '@/lib/email/sendEmail';
+import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
+import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import {
     UserQueryModeSchema,
     UserIncludeRelationSchema,
@@ -31,6 +36,17 @@ export async function GET(
             );
         }
 
+        // Auth: must be signed in. Authorize: admins see anyone; a non-admin may
+        // read only their OWN record, and only basic fields.
+        const me = await getCurrentUser();
+        if (!me) {
+            return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
+        }
+        const admin = isAdmin(me.accessLevel);
+        if (!admin && me.id !== userId) {
+            return NextResponse.json({ message: 'Accès refusé' }, { status: 403 });
+        }
+
         const { searchParams } = new URL(request.url);
         const modeParam = searchParams.get('mode') || 'basic';
         const includeParam = searchParams.get('include');
@@ -42,9 +58,11 @@ export async function GET(
                 { status: 400 }
             );
         }
-        const mode = modeValidation.data;
+        // Non-admins are capped at basic regardless of what they request, and never
+        // get relation includes.
+        const mode = admin ? modeValidation.data : 'basic';
 
-        const includeRelations = includeParam
+        const includeRelations = admin && includeParam
             ? includeParam.split(',').filter(Boolean).map(r => r.trim())
             : [];
 
@@ -179,8 +197,19 @@ export async function PATCH(
             );
         }
 
+        // Auth: signed in + admin/super_admin to edit users.
+        const me = await getCurrentUser();
+        if (!me) {
+            return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
+        }
+        if (!isAdmin(me.accessLevel)) {
+            return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
+        }
+        const actorLevel = me.accessLevel;
+
         const body = await request.json() as UserUpdateRequestBody;
 
+        // Clients still can't set passwords directly; provisioning below is server-side only.
         if ((body as Record<string, unknown>).password || (body as Record<string, unknown>).passwordNeedsChange) {
             return NextResponse.json(
                 { message: 'Les mots de passe ne peuvent pas être modifiés via cet endpoint' },
@@ -190,7 +219,14 @@ export async function PATCH(
 
         const existingUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                memberType: true,
+                accessLevel: true,
+                password: true,
+            },
         });
 
         if (!existingUser) {
@@ -200,13 +236,60 @@ export async function PATCH(
             );
         }
 
-        const updateData: UserUpdateData & { memberType?: MemberType; accessLevel?: AccessLevel; civilityId?: number | null; civilityOther?: string | null } = {};
+        // Resulting access level after this update, and whether it's a login account.
+        const resultingAccessLevel = body.accessLevel ?? existingUser.accessLevel;
+        const resultingIsLogin =
+            resultingAccessLevel === 'admin' || resultingAccessLevel === 'super_admin';
+
+        // Elevating someone TO a login level is privileged — super_admin only,
+        // mirroring the create route. Scoped to actual changes so a plain admin can
+        // still edit existing admins without being blocked.
+        const isElevation =
+            body.accessLevel !== undefined &&
+            body.accessLevel !== existingUser.accessLevel &&
+            (body.accessLevel === 'admin' || body.accessLevel === 'super_admin');
+        if (isElevation && actorLevel !== 'super_admin') {
+            return NextResponse.json(
+                { message: 'Seuls les super administrateurs peuvent promouvoir un utilisateur en administrateur ou membre permanent' },
+                { status: 403 }
+            );
+        }
+
+        const updateData: UserUpdateData & {
+            memberType?: MemberType;
+            accessLevel?: AccessLevel;
+            civilityId?: number | null;
+            civilityOther?: string | null;
+            password?: string;
+            passwordNeedsChange?: boolean;
+        } = {};
+
+        // Normalize email like the other routes; track the resulting address for
+        // duplicate checking and (if needed) credential delivery.
+        let resultingEmail = existingUser.email;
+        if (body.email !== undefined) {
+            const normalized = body.email ? body.email.trim().toLowerCase() : null;
+            updateData.email = normalized;
+            resultingEmail = normalized;
+
+            if (normalized) {
+                const clash = await prisma.user.findFirst({
+                    where: {
+                        email: { equals: normalized, mode: 'insensitive' },
+                        id: { not: userId },
+                    },
+                    select: { id: true },
+                });
+                if (clash) {
+                    return NextResponse.json({ message: 'Cet email est déjà utilisé' }, { status: 400 });
+                }
+            }
+        }
 
         // Profile fields
         if (body.name !== undefined) updateData.name = body.name;
         if (body.firstName !== undefined) updateData.firstName = body.firstName || null;
         if (body.lastName !== undefined) updateData.lastName = body.lastName || null;
-        if (body.email !== undefined) updateData.email = body.email || null;
         if (body.role !== undefined) updateData.role = body.role; // legacy
         if (body.memberType !== undefined) updateData.memberType = body.memberType;
         if (body.accessLevel !== undefined) updateData.accessLevel = body.accessLevel;
@@ -254,6 +337,23 @@ export async function PATCH(
 
         // Notes
         if (body.notes !== undefined) updateData.notes = body.notes || null;
+
+        // Provision credentials when the result is a login account that has none yet
+        // (e.g. a member promoted to admin). Existing admins keep their password — we
+        // never regenerate/resend on a routine edit.
+        const needsProvisioning = resultingIsLogin && !existingUser.password;
+        let temporaryPassword: string | null = null;
+        if (needsProvisioning) {
+            if (!isSendableEmail(resultingEmail)) {
+                return NextResponse.json(
+                    { message: 'Un email valide est requis pour un compte administrateur ou permanent' },
+                    { status: 400 }
+                );
+            }
+            temporaryPassword = generatePassword();
+            updateData.password = await bcrypt.hash(temporaryPassword, 10);
+            updateData.passwordNeedsChange = true;
+        }
 
         // Handle addresses separately
         if (body.addresses !== undefined) {
@@ -307,6 +407,37 @@ export async function PATCH(
             },
         });
 
+        // Deliver credentials for a freshly-provisioned login account. A failed send
+        // leaves an account nobody can log into, so report 207 (not success).
+        if (needsProvisioning && temporaryPassword) {
+            const emailResult = await sendInvitationEmail({
+                email: resultingEmail!,
+                name: updatedUser.name,
+                accessLevel: resultingAccessLevel as string,
+                memberType: (updateData.memberType ?? existingUser.memberType) as string | undefined,
+                temporaryPassword,
+            });
+
+            if (!emailResult.sent) {
+                console.warn(`Provisioning email not sent (user ${userId}): ${emailResult.reason}`);
+                return NextResponse.json(
+                    {
+                        message: "Utilisateur mis à jour, mais l'envoi des identifiants a échoué. " +
+                            "Utilisez « réinitialiser le mot de passe » pour les renvoyer.",
+                        user: updatedUser,
+                        emailSent: false,
+                    },
+                    { status: 207 }
+                );
+            }
+
+            return NextResponse.json({
+                message: 'Utilisateur mis à jour avec succès. Les identifiants ont été envoyés par email.',
+                user: updatedUser,
+                emailSent: true,
+            });
+        }
+
         return NextResponse.json({
             message: 'Utilisateur mis à jour avec succès',
             user: updatedUser,
@@ -333,6 +464,15 @@ export async function DELETE(
                 { message: 'ID utilisateur invalide' },
                 { status: 400 }
             );
+        }
+
+        // Auth: signed in + admin/super_admin only.
+        const me = await getCurrentUser();
+        if (!me) {
+            return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
+        }
+        if (!isAdmin(me.accessLevel)) {
+            return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
 
         const existingUser: UserWithRelationCounts | null = await prisma.user.findUnique({
