@@ -66,6 +66,18 @@ export interface OrderFormData {
     notes: string;
 }
 
+// Read-only context for the affectation linked to this order (if any).
+// statusName comes straight from the Status table; reader is the current
+// reader (most recent entry in the assignment's reader history).
+export interface OrderAssignment {
+    id: number;
+    statusId: number;
+    statusName: string;
+    reader?: { id: number; name: string | null } | null;
+    sentToReaderDate?: string | null;
+    returnedToECADate?: string | null;
+}
+
 interface OrderFormBackendBaseProps {
     initialData?: OrderFormData;
     onSubmit: (formData: OrderFormData) => Promise<number>;
@@ -81,6 +93,8 @@ interface OrderFormBackendBaseProps {
     initialSelectedStaff?: User | null;
     // Linked bill (read-only context)
     initialBill?: { id: number; state: string } | null;
+    // Linked affectation (read-only context)
+    initialAssignment?: OrderAssignment | null;
 }
 
 // Euro display helpers: keep only digits + one decimal separator while typing,
@@ -123,6 +137,7 @@ export function OrderFormBackendBase({
                                          initialSelectedBook,
                                          initialSelectedStaff,
                                          initialBill,
+                                         initialAssignment,
                                      }: OrderFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -768,6 +783,40 @@ export function OrderFormBackendBase({
                         )}
                     </div>
 
+                    {/* Affectation liée — read-only */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-200">Affectation</label>
+                        {initialAssignment ? (
+                            <div className="flex items-center justify-between gap-3 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md">
+                                <div className="text-sm text-gray-200 space-y-0.5">
+                                    <div>
+                                        <span className="text-gray-300">{initialAssignment.statusName}</span>
+                                        {initialAssignment.reader && (
+                                            <span> — Lecteur : <span className="text-gray-100">{initialAssignment.reader.name ?? 'Sans nom'}</span></span>
+                                        )}
+                                    </div>
+                                    {initialAssignment.sentToReaderDate && (
+                                        <div className="text-xs text-gray-500">
+                                            Envoyé au lecteur le {format(new Date(initialAssignment.sentToReaderDate), 'dd/MM/yyyy', { locale: fr })}
+                                        </div>
+                                    )}
+                                </div>
+                                <Link
+                                    href={`/admin/assignments?assignment=${initialAssignment.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
+                                >
+                                    Voir l&apos;affectation
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-500 text-sm italic">
+                                Aucune affectation
+                            </div>
+                        )}
+                    </div>
+
                     {/* Cost */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">Coût</label>
@@ -1353,6 +1402,17 @@ export function EditOrderFormBackend({
 }) {
     const { toast } = useToast();
 
+    // Fetch the linked affectation (if any) so the form can show reader/status
+    // context and a deep-link. Self-contained here, so callers (EditOrderModal)
+    // need no changes.
+    const [assignment, setAssignment] = useState<OrderAssignment | null>(null);
+    useEffect(() => {
+        fetch(`/api/orders/${orderId}/assignment`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then(setAssignment)
+            .catch(() => {});
+    }, [orderId]);
+
     type Notice = { billId: number; billState: string; kind: 'COST' | 'VISIBLE'; newTotal?: string | null };
     const [notice, setNotice] = useState<Notice | null>(null);
     const resolveRef = useRef<((id: number) => void) | null>(null);
@@ -1437,6 +1497,7 @@ export function EditOrderFormBackend({
                 initialSelectedBook={initialSelectedBook}
                 initialSelectedStaff={initialSelectedStaff}
                 initialBill={initialBill}
+                initialAssignment={assignment}
             />
 
             <Dialog open={!!notice} onOpenChange={(open) => { if (!open) acknowledgeNotice(); }}>

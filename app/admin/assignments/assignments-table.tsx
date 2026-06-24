@@ -1,7 +1,7 @@
 // app/admin/assignments/assignments-table.tsx
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -122,6 +122,7 @@ export default function AssignmentsTable({
         console.log('Assignment edited:', assignmentId);
         setIsEditModalOpen(false);
         setSelectedAssignment(null);
+        clearAssignmentParam();
         router.refresh();
     };
 
@@ -129,6 +130,7 @@ export default function AssignmentsTable({
         console.log('Assignment deleted:', assignmentId);
         setIsEditModalOpen(false);
         setSelectedAssignment(null);
+        clearAssignmentParam();
         router.refresh();
 
         toast({
@@ -139,12 +141,12 @@ export default function AssignmentsTable({
         });
     };
 
-    const handleRowClick = async (assignment: AssignmentWithCurrentReader) => {
+    const openAssignmentById = async (assignmentId: number | string) => {
         setIsLoadingAssignment(true);
-        console.log('Fetching assignment details for ID:', assignment.id);
+        console.log('Fetching assignment details for ID:', assignmentId);
 
         try {
-            const response = await fetch(`/api/assignments/${assignment.id}`);
+            const response = await fetch(`/api/assignments/${assignmentId}`);
 
             if (!response.ok) {
                 throw new Error('Failed to fetch assignment details');
@@ -198,7 +200,7 @@ export default function AssignmentsTable({
             } as OrderSummary : null;
 
             setSelectedAssignment({
-                id: assignment.id.toString(),
+                id: assignmentData.id.toString(),
                 data: formData,
                 selectedReader,
                 selectedBook,
@@ -219,6 +221,30 @@ export default function AssignmentsTable({
         } finally {
             setIsLoadingAssignment(false);
         }
+    };
+
+    const handleRowClick = (assignment: AssignmentWithCurrentReader) =>
+        openAssignmentById(assignment.id);
+
+    // Deep-link: open the edit modal when arriving with ?assignment=<id>.
+    // openedRef prevents re-firing on router.refresh() / re-render for the same id.
+    const assignmentParam = searchParams.get('assignment');
+    const openedRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (assignmentParam && openedRef.current !== assignmentParam) {
+            openedRef.current = assignmentParam;
+            openAssignmentById(assignmentParam);
+        } else if (!assignmentParam) {
+            openedRef.current = null;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [assignmentParam]);
+
+    const clearAssignmentParam = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('assignment');
+        router.replace(`?${params.toString()}`, { scroll: false });
     };
 
     const formatDate = (dateString: string | null) => {
@@ -536,7 +562,13 @@ export default function AssignmentsTable({
             {selectedAssignment && (
                 <EditAssignmentModal
                     isOpen={isEditModalOpen}
-                    onOpenChange={setIsEditModalOpen}
+                    onOpenChange={(open) => {
+                        setIsEditModalOpen(open);
+                        if (!open) {
+                            setSelectedAssignment(null);
+                            clearAssignmentParam();
+                        }
+                    }}
                     assignmentId={selectedAssignment.id}
                     initialData={selectedAssignment.data}
                     onAssignmentEdited={handleAssignmentEdited}
