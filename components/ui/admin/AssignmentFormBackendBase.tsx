@@ -205,7 +205,6 @@ export function AssignmentFormBackendBase({
 
     // Options data
     const [users, setUsers] = useState<ReaderSummary[]>([]);
-    const [books, setBooks] = useState<BookSummary[]>([]);
     const [orders, setOrders] = useState<OrderSummary[]>([]);
     const [statuses, setStatuses] = useState<Status[]>([]);
 
@@ -215,15 +214,12 @@ export function AssignmentFormBackendBase({
 
     // Search states
     const [userSearch, setUserSearch] = useState('');
-    const [bookSearch, setBookSearch] = useState('');
     const [orderSearch, setOrderSearch] = useState('');
     const [isSearchingUsers, setIsSearchingUsers] = useState(false);
-    const [isSearchingBooks, setIsSearchingBooks] = useState(false);
     const [isSearchingOrders, setIsSearchingOrders] = useState(false);
 
     // Popover open states
     const [userPopoverOpen, setUserPopoverOpen] = useState(false);
-    const [bookPopoverOpen, setBookPopoverOpen] = useState(false);
     const [orderPopoverOpen, setOrderPopoverOpen] = useState(false);
 
     // Selected display values
@@ -349,43 +345,6 @@ export function AssignmentFormBackendBase({
         return () => clearTimeout(debounce);
     }, [userSearch]);
 
-    // Search books
-    useEffect(() => {
-        const searchBooks = async () => {
-            if (bookSearch.length < 2) {
-                setBooks([]);
-                return;
-            }
-
-            setIsSearchingBooks(true);
-            try {
-                const response = await fetch(
-                    `/api/books?search=${encodeURIComponent(bookSearch)}&limit=50`
-                );
-
-                if (!response.ok) {
-                    console.error('Book search failed:', response.status, response.statusText);
-                    const errorData = await response.json().catch(() => null);
-                    console.error('Error data:', errorData);
-                    setBooks([]);
-                    return;
-                }
-
-                const data = await response.json();
-                console.log('Book search results:', data);
-                setBooks(data.books || []);
-            } catch (err) {
-                console.error('Error searching books:', err);
-                setBooks([]);
-            } finally {
-                setIsSearchingBooks(false);
-            }
-        };
-
-        const debounce = setTimeout(searchBooks, 300);
-        return () => clearTimeout(debounce);
-    }, [bookSearch]);
-
     // Search orders
     useEffect(() => {
         const searchOrders = async () => {
@@ -418,13 +377,6 @@ export function AssignmentFormBackendBase({
         setSelectedReaderId(user.id);
         setUserPopoverOpen(false);
         setUserSearch('');
-    };
-
-    const handleBookSelect = (book: BookSummary) => {
-        setSelectedBook(book);
-        setFormData({ ...formData, catalogueId: book.id });
-        setBookPopoverOpen(false);
-        setBookSearch('');
     };
 
     const handleOrderSelect = async (order: OrderSummary) => {
@@ -977,64 +929,25 @@ export function AssignmentFormBackendBase({
                         )}
                     </div>
 
-                    {/* Book Selection - NOW THIRD */}
+                    {/* Book — read-only: derived from the selected order (one book per order) */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
                             Livre <span className="text-red-400">*</span>
                         </label>
-                        <Popover open={bookPopoverOpen} onOpenChange={setBookPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
-                                >
-                                    {selectedBook ? (
-                                        <span>{selectedBook.title} - {selectedBook.author}</span>
-                                    ) : (
-                                        <span className="text-gray-400">Sélectionner un livre...</span>
-                                    )}
-                                    <Search className="ml-2 h-4 w-4 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[500px] p-0 bg-gray-800 border-gray-700">
-                                <div className="p-2">
-                                    <Input
-                                        placeholder="Rechercher un livre..."
-                                        value={bookSearch}
-                                        onChange={(e) => setBookSearch(e.target.value)}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
-                                    />
-                                </div>
-                                <div
-                                    className="max-h-[300px] overflow-y-auto"
-                                    onWheel={(e) => e.stopPropagation()}
-                                >
-                                    {isSearchingBooks ? (
-                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
-                                    ) : books.length > 0 ? (
-                                        books.map((book) => (
-                                            <div
-                                                key={book.id}
-                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
-                                                onClick={() => handleBookSelect(book)}
-                                            >
-                                                <div className="font-medium">{book.title}</div>
-                                                <div className="text-sm text-gray-400">{book.author}</div>
-                                            </div>
-                                        ))
-                                    ) : bookSearch.length >= 2 ? (
-                                        <div className="p-4 text-center text-gray-400">
-                                            Aucun livre trouvé
-                                        </div>
-                                    ) : (
-                                        <div className="p-4 text-center text-gray-400">
-                                            Tapez au moins 2 caractères pour rechercher
-                                        </div>
-                                    )}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        <div
+                            className="flex items-center w-full rounded-md bg-gray-800/60 border border-gray-700 px-3 py-2 text-gray-200 cursor-not-allowed"
+                            aria-readonly="true"
+                            title="Le livre provient de la commande sélectionnée. Pour le changer, sélectionnez une autre commande ci-dessus."
+                        >
+                            {selectedBook ? (
+                                <span>{selectedBook.title} - {selectedBook.author}</span>
+                            ) : (
+                                <span className="text-gray-400">Sélectionnez une commande pour définir le livre</span>
+                            )}
+                        </div>
+                        <p className="text-xs text-gray-400">
+                            Le livre est repris de la commande. Pour le modifier, changez la commande ci-dessus.
+                        </p>
                     </div>
 
                     {/* Date Fields */}

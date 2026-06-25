@@ -17,7 +17,13 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { AddressFormData, UserFormData, UserType } from '@/types';
-import { getAccessLevelLabel } from '@/lib/user-enums';
+import {
+    MEMBER_TYPE_VALUES,
+    MEMBER_TYPE_LABELS,
+    ACCESS_LEVEL_VALUES,
+    ACCESS_LEVEL_LABELS,
+    getAccessLevelLabel,
+} from '@/lib/user-enums';
 
 interface UserFormBackendBaseProps {
     initialData?: UserFormData;
@@ -116,7 +122,7 @@ export function UserFormBackendBase({
     }, []);
 
     const defaultMemberType: UserFormData['memberType'] =
-        userType === 'auditeurs' ? 'ecouteur' :
+        userType === 'auditeurs' ? 'auditeur' :
             userType === 'bienfaiteurs' ? 'bienfaiteur' :
                 'lecteur';
     const defaultAccessLevel: UserFormData['accessLevel'] =
@@ -518,11 +524,11 @@ export function UserFormBackendBase({
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-gray-800 border-gray-700">
-                                        <SelectItem value="ecouteur" className="text-gray-200">Écouteur</SelectItem>
-                                        <SelectItem value="lecteur" className="text-gray-200">Lecteur</SelectItem>
-                                        <SelectItem value="informaticien" className="text-gray-200">Informaticien</SelectItem>
-                                        <SelectItem value="administration" className="text-gray-200">Administrateur</SelectItem>
-                                        <SelectItem value="bienfaiteur" className="text-gray-200">Donateur</SelectItem>
+                                        {MEMBER_TYPE_VALUES.map((type) => (
+                                            <SelectItem key={type} value={type} className="text-gray-200">
+                                                {MEMBER_TYPE_LABELS[type]}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -544,11 +550,13 @@ export function UserFormBackendBase({
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-gray-800 border-gray-700">
-                                            <SelectItem value="member" className="text-gray-200">Membre</SelectItem>
-                                            <SelectItem value="admin" className="text-gray-200">Permanent</SelectItem>
-                                            {currentUserAccessLevel === 'super_admin' && (
-                                                <SelectItem value="super_admin" className="text-gray-200">Super Admin</SelectItem>
-                                            )}
+                                            {ACCESS_LEVEL_VALUES
+                                                .filter((level) => level !== 'super_admin' || currentUserAccessLevel === 'super_admin')
+                                                .map((level) => (
+                                                    <SelectItem key={level} value={level} className="text-gray-200">
+                                                        {ACCESS_LEVEL_LABELS[level]}
+                                                    </SelectItem>
+                                                ))}
                                         </SelectContent>
                                     </Select>
                                 )}

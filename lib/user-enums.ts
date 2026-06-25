@@ -1,4 +1,4 @@
-export const MEMBER_TYPE_VALUES = ['ecouteur', 'auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur'] as const;
+export const MEMBER_TYPE_VALUES = ['auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur'] as const;
 export const ACCESS_LEVEL_VALUES = ['member', 'admin', 'super_admin'] as const;
 export const USER_TYPE_VALUES = ['auditeurs', 'lecteurs', 'bienfaiteurs', 'permanents'] as const;
 
@@ -10,7 +10,6 @@ export const isUserType = (value: string): value is UserType =>
     (USER_TYPE_VALUES as readonly string[]).includes(value);
 
 export const MEMBER_TYPE_LABELS: Record<MemberType, string> = {
-    ecouteur:      'Écouteur',
     auditeur:      'Auditeur',
     lecteur:       'Lecteur',
     informaticien: 'Informaticien',
@@ -25,7 +24,6 @@ export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
 };
 
 export const MEMBER_TYPE_COLORS: Record<MemberType, string> = {
-    ecouteur:       'bg-gray-100 text-gray-800',
     auditeur:       'bg-blue-100 text-blue-800',
     lecteur:        'bg-emerald-100 text-emerald-800',
     informaticien:  'bg-purple-100 text-purple-800',
