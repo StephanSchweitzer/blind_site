@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -37,20 +37,7 @@ import {
 import { AddBillFormBackend } from '@/admin/BillFormBackendBase';
 import { EditBillModal } from '@/admin/EditBillModal';
 import { DeleteBillModal } from '@/admin/DeleteBillModal';
-
-interface Bill {
-    id: number;
-    clientId: number;
-    state: BillingStatus;
-    creationDate: string;
-    issueDate: string | null;
-    paymentDate: string | null;
-    invoiceAmount: string;
-    client: {
-        name: string | null;
-        email: string | null;
-    };
-}
+import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
 
 interface BillsTableProps {
     initialBills: Bill[];
@@ -88,23 +75,16 @@ export default function BillsTable({
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [viewBillId, setViewBillId] = useState<number | null>(null);
+    const [viewBillId, setViewBillId] = useState<number | null>(() => {
+        const param = searchParams.get('bill');
+        const id = param ? parseInt(param, 10) : NaN;
+        return Number.isNaN(id) ? null : id;
+    });
     const [billToDelete, setBillToDelete] = useState<number | null>(null);
 
     const currentPage = initialPage;
     const currentStatus = searchParams.get('status') as BillingStatus | null;
     const showLateOnly = searchParams.get('late') === 'true';
-    const billParam = searchParams.get('bill');
-
-    // Open the detail modal when arriving via /admin/bills?bill=<id>.
-    // The modal fetches its own data by id, so the bill need not be on the
-    // current page of results.
-    useEffect(() => {
-        if (billParam) {
-            const id = parseInt(billParam, 10);
-            if (!Number.isNaN(id)) setViewBillId(id);
-        }
-    }, [billParam]);
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());

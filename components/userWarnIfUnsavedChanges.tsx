@@ -158,6 +158,13 @@ export const useWarnIfUnsavedChanges = ({
         });
     }, [router, temporarilyDisableWarnings]);
 
+    // NOTE: This intercepts programmatic `router.push` calls so the unsaved-changes
+    // dialog also fires for in-page navigations (the anchor-click handler above only
+    // catches <a> clicks). App Router has no supported navigation-blocking API, so we
+    // patch and restore router.push. This mutates the router instance, which the
+    // react-hooks/immutability rule (correctly) flags as fragile — it is intentional
+    // here and is NOT safe under the React Compiler. See the proper-fix note in chat.
+    /* eslint-disable react-hooks/immutability */
     useEffect(() => {
         const originalPush = router.push.bind(router);
 
@@ -179,6 +186,7 @@ export const useWarnIfUnsavedChanges = ({
             router.push = originalPush;
         };
     }, [router, temporarilyDisableWarnings]);
+    /* eslint-enable react-hooks/immutability */
 
     const NavigationWarningDialog = () => (
         <AlertDialog open={showDialog} onOpenChange={(open) => {

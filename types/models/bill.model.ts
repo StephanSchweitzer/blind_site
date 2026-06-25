@@ -128,3 +128,23 @@ export const billIncludeConfigs = {
         },
     },
 } as const;
+// ============================================================================
+// Bills Table (list view) — shared shape for the admin bills page + table
+// ============================================================================
+
+export const billsTableInclude = {
+    client: { select: { name: true, email: true } },
+} as const satisfies Prisma.BillInclude;
+
+type BillsTableRowRaw = Prisma.BillGetPayload<{ include: typeof billsTableInclude }>;
+
+// JSON-safe row as sent to client components (Date -> ISO string, Decimal -> string)
+export type SerializedBillTableRow = Omit<
+    BillsTableRowRaw,
+    'invoiceAmount' | 'creationDate' | 'issueDate' | 'paymentDate'
+> & {
+    invoiceAmount: string;
+    creationDate: string;
+    issueDate: string | null;
+    paymentDate: string | null;
+};

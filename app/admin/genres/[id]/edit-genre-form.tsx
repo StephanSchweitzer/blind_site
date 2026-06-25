@@ -19,12 +19,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-interface Genre {
-    id: number;
-    name: string;
-    description: string | null;
-}
+import type { Genre } from '@/types';
 
 interface EditGenreFormProps {
     genre: Genre;

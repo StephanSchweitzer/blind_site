@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-type Genre = {
-    id: number;
-    name: string;
-    description: string | null;
-};
+import type { Genre } from '@/types';
 
 interface GenresTableProps {
     initialGenres: Genre[];
@@ -31,22 +26,19 @@ interface GenresTableProps {
 export function GenresTable({ initialGenres, initialSearch, totalPages }: GenresTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [genres, setGenres] = useState(initialGenres);
     const [search, setSearch] = useState(initialSearch);
 
     // Get current page from URL
     const currentPage = parseInt(searchParams.get('page') || '1');
 
-    // Update genres when initialGenres changes
-    useEffect(() => {
-        setGenres(initialGenres);
-    }, [initialGenres]);
-
-    // Update search when URL changes
-    useEffect(() => {
-        const searchFromUrl = searchParams.get('search') || '';
-        setSearch(searchFromUrl);
-    }, [searchParams]);
+    // Keep the search box in sync with the URL (back/forward, deep links)
+    // without an effect: adjust state during render when the URL value changes.
+    const urlSearch = searchParams.get('search') ?? '';
+    const [syncedSearch, setSyncedSearch] = useState(urlSearch);
+    if (urlSearch !== syncedSearch) {
+        setSyncedSearch(urlSearch);
+        setSearch(urlSearch);
+    }
 
     const handleSearch = (value: string) => {
         setSearch(value);
@@ -104,7 +96,7 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {genres.map((genre) => (
+                            {initialGenres.map((genre) => (
                                 <TableRow
                                     key={genre.id}
                                     className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"

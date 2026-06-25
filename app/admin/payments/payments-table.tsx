@@ -39,21 +39,7 @@ import {
 import { AddPaymentFormBackend } from '@/admin/PaymentFormBackendBase';
 import { EditPaymentModal } from '@/admin/EditPaymentModal';
 import { DeletePaymentModal } from '@/admin/DeletePaymentModal';
-
-interface Payment {
-    id: number;
-    clientId: number | null;
-    type: PaymentType;
-    amount: string;
-    paymentMethod: PaymentMethod | null;
-    creationDate: string;
-    issueDate: string | null;
-    paymentDate: string | null;
-    client: {
-        name: string | null;
-        email: string | null;
-    } | null;
-}
+import type { SerializedPaymentTableRow as Payment } from '@/types/models/payment.model';
 
 interface PaymentsTableProps {
     initialPayments: Payment[];
