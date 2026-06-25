@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useTransition } from 'react';
+import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -138,6 +138,7 @@ export default function OrdersTable({
         console.log('Order edited:', orderId);
         setIsEditModalOpen(false);
         setSelectedOrder(null);
+        clearOrderParam();
         router.refresh();
     };
 
@@ -145,6 +146,7 @@ export default function OrdersTable({
         console.log('Order deleted:', orderId);
         setIsEditModalOpen(false);
         setSelectedOrder(null);
+        clearOrderParam();
         router.refresh();
     };
 
@@ -219,6 +221,46 @@ export default function OrdersTable({
         } finally {
             setIsLoadingOrder(false);
         }
+    };
+
+    // Deep-link: open an order's edit modal directly from /admin/orders?order=<id>,
+    // even when that order isn't on the current page. Fetches the row-shaped order
+    // then reuses handleRowClick (which hydrates user/book/staff and opens the modal).
+    const openOrderById = async (orderId: number | string) => {
+        setIsLoadingOrder(true);
+        try {
+            const response = await fetch(`/api/orders/${orderId}?mode=full&include=bill`);
+            if (!response.ok) throw new Error('Failed to fetch order');
+            const order: SerializedOrderTableRow = await response.json();
+            await handleRowClick(order);
+        } catch (error) {
+            console.error('Error loading order from deep-link:', error);
+            toast({
+                variant: "destructive",
+                title: "Erreur",
+                description: "Erreur lors du chargement de la demande. Veuillez réessayer.",
+            });
+            setIsLoadingOrder(false);
+        }
+    };
+
+    const assignmentOrderParam = searchParams.get('order');
+    const openedRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (assignmentOrderParam && openedRef.current !== assignmentOrderParam) {
+            openedRef.current = assignmentOrderParam;
+            openOrderById(assignmentOrderParam);
+        } else if (!assignmentOrderParam) {
+            openedRef.current = null;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [assignmentOrderParam]);
+
+    const clearOrderParam = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('order');
+        router.replace(`?${params.toString()}`, { scroll: false });
     };
 
     const formatDate = (dateString: string | null) => {
@@ -628,7 +670,13 @@ export default function OrdersTable({
             {selectedOrder && (
                 <EditOrderModal
                     isOpen={isEditModalOpen}
-                    onOpenChange={setIsEditModalOpen}
+                    onOpenChange={(open) => {
+                        setIsEditModalOpen(open);
+                        if (!open) {
+                            setSelectedOrder(null);
+                            clearOrderParam();
+                        }
+                    }}
                     orderId={selectedOrder.id}
                     initialData={selectedOrder.data}
                     onOrderEdited={handleOrderEdited}

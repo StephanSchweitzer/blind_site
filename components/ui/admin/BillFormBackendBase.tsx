@@ -13,7 +13,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Search, Loader2 } from 'lucide-react';
+import { AlertCircle, Calendar, Search, Loader2, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -110,12 +110,12 @@ export function BillFormBackendBase({
 
     // When client changes, load their eligible (unbilled) orders
     useEffect(() => {
-        if (!selectedClient) {
-            setEligibleOrders([]);
-            setSelectedOrderIds(new Set());
-            return;
-        }
         const loadOrders = async () => {
+            if (!selectedClient) {
+                setEligibleOrders([]);
+                setSelectedOrderIds(new Set());
+                return;
+            }
             setIsLoadingOrders(true);
             try {
                 const res = await fetch(`/api/bills/eligible-orders?clientId=${selectedClient.id}`);
@@ -298,6 +298,16 @@ export function BillFormBackendBase({
                                             <span className="text-gray-200 text-sm font-medium whitespace-nowrap">
                                                 {formatCurrency(o.cost)}
                                             </span>
+                                            <a
+                                                href={`/admin/orders?order=${o.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                title="Ouvrir la commande dans un nouvel onglet"
+                                                className="shrink-0 p-1 rounded text-gray-500 hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                            </a>
                                         </label>
                                     ))}
                                 </div>

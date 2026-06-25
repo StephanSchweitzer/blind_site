@@ -11,7 +11,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Search, History, User as UserIcon, ChevronRight, Package } from 'lucide-react';
+import { AlertCircle, Calendar, Search, History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -963,6 +964,17 @@ export function AssignmentFormBackendBase({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                        {selectedOrder && (
+                            <Link
+                                href={`/admin/orders?order=${selectedOrder.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2"
+                            >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Voir la demande
+                            </Link>
+                        )}
                     </div>
 
                     {/* Book Selection - NOW THIRD */}
