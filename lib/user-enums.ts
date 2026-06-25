@@ -1,10 +1,23 @@
+// Active member types — drive selectable options in forms (MEMBER_TYPE_VALUES).
 export const MEMBER_TYPE_VALUES = ['auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur'] as const;
+
+// LEGACY: retained ONLY so existing database records type-check and render.
+// Deliberately excluded from MEMBER_TYPE_VALUES so it is never offered as a
+// selectable option. Remove `ecouteur` once all records are migrated:
+//   UPDATE "User" SET "memberType" = 'auditeur' WHERE "memberType" = 'ecouteur';
+export const LEGACY_MEMBER_TYPE_VALUES = ['ecouteur'] as const;
+
 export const ACCESS_LEVEL_VALUES = ['member', 'admin', 'super_admin'] as const;
 export const USER_TYPE_VALUES = ['auditeurs', 'lecteurs', 'bienfaiteurs', 'permanents'] as const;
 
-export type MemberType = typeof MEMBER_TYPE_VALUES[number];
+export type ActiveMemberType = typeof MEMBER_TYPE_VALUES[number];
+export type LegacyMemberType = typeof LEGACY_MEMBER_TYPE_VALUES[number];
+export type MemberType = ActiveMemberType | LegacyMemberType;
 export type AccessLevel = typeof ACCESS_LEVEL_VALUES[number];
 export type UserType = typeof USER_TYPE_VALUES[number];
+
+export const isLegacyMemberType = (value: string): value is LegacyMemberType =>
+    (LEGACY_MEMBER_TYPE_VALUES as readonly string[]).includes(value);
 
 export const isUserType = (value: string): value is UserType =>
     (USER_TYPE_VALUES as readonly string[]).includes(value);
@@ -14,7 +27,8 @@ export const MEMBER_TYPE_LABELS: Record<MemberType, string> = {
     lecteur:       'Lecteur',
     informaticien: 'Informaticien',
     administration: 'Administrateur',
-    bienfaiteur:    'Donateur'
+    bienfaiteur:    'Donateur',
+    ecouteur:      'Auditeur', // LEGACY: displays as Auditeur; remove with the `ecouteur` value once migrated.
 };
 
 export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
@@ -29,6 +43,7 @@ export const MEMBER_TYPE_COLORS: Record<MemberType, string> = {
     informaticien:  'bg-purple-100 text-purple-800',
     administration: 'bg-orange-100 text-orange-800',
     bienfaiteur:    'bg-green-100 text-green-800',
+    ecouteur:       'bg-blue-100 text-blue-800', // LEGACY: mirrors auditeur; remove once migrated.
 };
 
 export const ACCESS_LEVEL_COLORS: Record<AccessLevel, string> = {

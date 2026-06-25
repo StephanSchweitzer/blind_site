@@ -82,7 +82,7 @@ export const UserCreateInputSchema = z.object({
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     accessLevel: z.nativeEnum(AccessLevel).default(AccessLevel.member),
-    memberType: z.nativeEnum(MemberType).default(MemberType.ecouteur),
+    memberType: z.nativeEnum(MemberType).default(MemberType.auditeur),
     role: z.string().default('user'),
     homePhone: z.string().optional(),
     cellPhone: z.string().optional(),
