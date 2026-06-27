@@ -75,7 +75,7 @@ export const AssignmentReminderEmail = ({
     const dateLabel =
         variant === 'sent' ? "Date d'envoi"
             : variant === 'assigned' ? "Date d'assignation"
-                : "Date de réaffectation";
+                : "Date de réattribution";
 
     return (
         <Html>
@@ -101,7 +101,7 @@ export const AssignmentReminderEmail = ({
                             <Text style={detailsItem}><strong>Auteur :</strong> {bookAuthor}</Text>
                         ) : null}
                         {assignmentId ? (
-                            <Text style={detailsItem}><strong>Référence d&apos;affectation :</strong> #{assignmentId}</Text>
+                            <Text style={detailsItem}><strong>Référence d&apos;attribution :</strong> #{assignmentId}</Text>
                         ) : null}
                         {displayDate ? (
                             <Text style={detailsItem}><strong>{dateLabel} :</strong> {displayDate}</Text>

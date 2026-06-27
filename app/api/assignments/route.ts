@@ -315,7 +315,7 @@ export async function POST(request: NextRequest) {
         console.error('Error creating assignment:', error);
         return NextResponse.json(
             {
-                error: 'Échec de création de l\'affectation',
+                error: 'Échec de création de l\'attribution',
                 details: error instanceof Error ? error.message : 'Unknown error',
             },
             { status: 500 }

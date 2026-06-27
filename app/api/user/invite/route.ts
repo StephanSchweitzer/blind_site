@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
         if (!currentUser || currentUser.accessLevel !== 'super_admin') {
             return NextResponse.json(
-                { message: 'Permission refusée. Seuls les super administrateurs peuvent inviter des utilisateurs.' },
+                { message: 'Permission refusée. Seuls les super administrateurs peuvent inviter des personnes.' },
                 { status: 403 }
             );
         }
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
         if (existingUser) {
             return NextResponse.json(
-                { message: 'Un utilisateur avec cet email existe déjà' },
+                { message: 'Une personne avec cet email existe déjà' },
                 { status: 409 }
             );
         }
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
             console.warn(`Invitation email not sent (user ${newUser.id}): ${result.reason}`);
             return NextResponse.json(
                 {
-                    message: "L'utilisateur a été créé mais l'envoi de l'invitation a échoué. " +
+                    message: "La personne a été créée mais l'envoi de l'invitation a échoué. " +
                         "Utilisez « réinitialiser le mot de passe » pour renvoyer ses identifiants.",
                     userId: newUser.id,
                     emailSent: false,
@@ -100,13 +100,13 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json(
-            { message: 'Utilisateur invité avec succès', userId: newUser.id, emailSent: true },
+            { message: 'Personne invitée avec succès', userId: newUser.id, emailSent: true },
             { status: 201 }
         );
     } catch (error) {
         console.error('Erreur lors de l\'invitation d\'un utilisateur:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de l\'invitation de l\'utilisateur' },
+            { message: 'Erreur lors de l\'invitation de la personne' },
             { status: 500 }
         );
     }

@@ -259,7 +259,7 @@ export function BillFormBackendBase({
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                     {isSearchingUsers && <div className="p-4 text-center text-gray-400">Recherche...</div>}
                                     {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                        <div className="p-4 text-center text-gray-400">Aucun utilisateur trouvé</div>
+                                        <div className="p-4 text-center text-gray-400">Aucune personne trouvée</div>
                                     )}
                                     {users.map((user) => (
                                         <button
@@ -319,7 +319,7 @@ export function BillFormBackendBase({
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
-                                                title="Ouvrir la commande dans un nouvel onglet"
+                                                title="Ouvrir la demande dans un nouvel onglet"
                                                 className="shrink-0 p-1 rounded text-gray-500 hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
                                             >
                                                 <ExternalLink className="h-3.5 w-3.5" />

@@ -30,7 +30,7 @@ export async function GET(
 
         if (isNaN(userId)) {
             return NextResponse.json(
-                { message: 'ID utilisateur invalide' },
+                { message: 'ID de personne invalide' },
                 { status: 400 }
             );
         }
@@ -158,7 +158,7 @@ export async function GET(
 
         if (!user) {
             return NextResponse.json(
-                { message: 'Personne non trouvé' },
+                { message: 'Personne non trouvée' },
                 { status: 404 }
             );
         }
@@ -167,7 +167,7 @@ export async function GET(
     } catch (error) {
         console.error('Error fetching user:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la récupération de l\'utilisateur' },
+            { message: 'Erreur lors de la récupération de la personne' },
             { status: 500 }
         );
     }
@@ -191,7 +191,7 @@ export async function PATCH(
 
         if (isNaN(userId)) {
             return NextResponse.json(
-                { message: 'ID utilisateur invalide' },
+                { message: 'ID de personne invalide' },
                 { status: 400 }
             );
         }
@@ -230,7 +230,7 @@ export async function PATCH(
 
         if (!existingUser) {
             return NextResponse.json(
-                { message: 'Utilisateur non trouvé' },
+                { message: 'Personne non trouvée' },
                 { status: 404 }
             );
         }
@@ -249,7 +249,7 @@ export async function PATCH(
             (body.accessLevel === 'admin' || body.accessLevel === 'super_admin');
         if (isElevation && actorLevel !== 'super_admin') {
             return NextResponse.json(
-                { message: 'Seuls les super administrateurs peuvent promouvoir un utilisateur en administrateur ou membre permanent' },
+                { message: 'Seuls les super administrateurs peuvent promouvoir une personne en administrateur ou membre permanent' },
                 { status: 403 }
             );
         }
@@ -421,7 +421,7 @@ export async function PATCH(
                 console.warn(`Provisioning email not sent (user ${userId}): ${emailResult.reason}`);
                 return NextResponse.json(
                     {
-                        message: "Utilisateur mis à jour, mais l'envoi des identifiants a échoué. " +
+                        message: "Personne mise à jour, mais l'envoi des identifiants a échoué. " +
                             "Utilisez « réinitialiser le mot de passe » pour les renvoyer.",
                         user: updatedUser,
                         emailSent: false,
@@ -431,20 +431,20 @@ export async function PATCH(
             }
 
             return NextResponse.json({
-                message: 'Utilisateur mis à jour avec succès. Les identifiants ont été envoyés par email.',
+                message: 'Personne mise à jour avec succès. Les identifiants ont été envoyés par email.',
                 user: updatedUser,
                 emailSent: true,
             });
         }
 
         return NextResponse.json({
-            message: 'Utilisateur mis à jour avec succès',
+            message: 'Personne mise à jour avec succès',
             user: updatedUser,
         });
     } catch (error) {
         console.error('Error updating user:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la mise à jour de l\'utilisateur' },
+            { message: 'Erreur lors de la mise à jour de la personne' },
             { status: 500 }
         );
     }
@@ -460,7 +460,7 @@ export async function DELETE(
 
         if (isNaN(userId)) {
             return NextResponse.json(
-                { message: 'ID utilisateur invalide' },
+                { message: 'ID de personne invalide' },
                 { status: 400 }
             );
         }

@@ -195,7 +195,7 @@ export async function POST(request: Request) {
                 console.warn(`Invitation email not sent (user ${newUser.id}): ${emailResult.reason}`);
                 return NextResponse.json(
                     {
-                        message: "Utilisateur créé, mais l'envoi des identifiants a échoué. " +
+                        message: "Personne créée, mais l'envoi des identifiants a échoué. " +
                             "Utilisez « réinitialiser le mot de passe » pour les renvoyer.",
                         user: newUser,
                         emailSent: false,
@@ -206,14 +206,14 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({
-            message: 'Utilisateur créé avec succès',
+            message: 'Personne créée avec succès',
             user: newUser,
             emailSent: isLoginAccount ? true : undefined,
         });
     } catch (error) {
         console.error('Error creating user:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la création de l\'utilisateur' },
+            { message: 'Erreur lors de la création de la personne' },
             { status: 500 }
         );
     }

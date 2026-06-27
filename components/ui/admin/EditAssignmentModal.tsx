@@ -90,7 +90,7 @@ export function EditAssignmentModal({
                                 <span className="ml-3 text-gray-400">
                                     {isLoadingReaders && isLoadingOrders ? 'Chargement...' :
                                         isLoadingReaders ? 'Chargement des lecteurs...' :
-                                            'Chargement des commandes...'}
+                                            'Chargement des demandes...'}
                                 </span>
                             </div>
                         </div>

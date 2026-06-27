@@ -372,7 +372,7 @@ export function PaymentFormBackendBase({
                                     <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                         {isSearchingUsers && <div className="p-4 text-center text-gray-400">Recherche...</div>}
                                         {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                            <div className="p-4 text-center text-gray-400">Aucun utilisateur trouvé</div>
+                                            <div className="p-4 text-center text-gray-400">Aucune personne trouvée</div>
                                         )}
                                         {users.map((user) => (
                                             <button

@@ -18,7 +18,7 @@ export async function GET(
 
         if (isNaN(assignmentId)) {
             return NextResponse.json(
-                { message: 'ID d\'affectation invalide' },
+                { message: 'ID d\'attribution invalide' },
                 { status: 400 }
             );
         }
@@ -85,7 +85,7 @@ export async function POST(
 
         if (isNaN(assignmentId)) {
             return NextResponse.json(
-                { message: 'ID d\'affectation invalide' },
+                { message: 'ID d\'attribution invalide' },
                 { status: 400 }
             );
         }

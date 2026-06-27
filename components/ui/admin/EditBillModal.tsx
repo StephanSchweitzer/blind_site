@@ -548,7 +548,7 @@ export function EditBillModal({
                                                 href={`/admin/orders?order=${o.id}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                title="Ouvrir la commande dans un nouvel onglet"
+                                                title="Ouvrir la demande dans un nouvel onglet"
                                                 className="ml-1 p-1 rounded text-gray-500 hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
                                             >
                                                 <ExternalLink className="h-3.5 w-3.5" />
@@ -618,7 +618,7 @@ export function EditBillModal({
                                                                 href={`/admin/orders?order=${o.id}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                title="Ouvrir la commande dans un nouvel onglet"
+                                                                title="Ouvrir la demande dans un nouvel onglet"
                                                                 className="shrink-0 p-1 rounded text-gray-500 hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
                                                             >
                                                                 <ExternalLink className="h-3.5 w-3.5" />

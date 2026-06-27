@@ -28,7 +28,7 @@ export async function GET(
 
         if (isNaN(assignmentId)) {
             return NextResponse.json(
-                { message: 'ID d\'affectation invalide' },
+                { message: 'ID d\'attribution invalide' },
                 { status: 400 }
             );
         }
@@ -49,7 +49,7 @@ export async function GET(
     } catch (error) {
         console.error('Error fetching assignment:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la récupération de l\'affectation' },
+            { message: 'Erreur lors de la récupération de l\'attribution' },
             { status: 500 }
         );
     }
@@ -70,7 +70,7 @@ export async function PUT(
 
         if (isNaN(assignmentId)) {
             return NextResponse.json(
-                { message: 'ID d\'affectation invalide' },
+                { message: 'ID d\'attribution invalide' },
                 { status: 400 }
             );
         }
@@ -277,7 +277,7 @@ export async function PUT(
     } catch (error) {
         console.error('Error updating assignment:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la mise à jour de l\'affectation' },
+            { message: 'Erreur lors de la mise à jour de l\'attribution' },
             { status: 500 }
         );
     }
@@ -298,7 +298,7 @@ export async function DELETE(
 
         if (isNaN(assignmentId)) {
             return NextResponse.json(
-                { message: 'ID d\'affectation invalide' },
+                { message: 'ID d\'attribution invalide' },
                 { status: 400 }
             );
         }
@@ -334,7 +334,7 @@ export async function DELETE(
     } catch (error) {
         console.error('Error deleting assignment:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la suppression de l\'affectation' },
+            { message: 'Erreur lors de la suppression de l\'attribution' },
             { status: 500 }
         );
     }

@@ -86,7 +86,7 @@ export async function POST(
             select: { activityStatus: true },
         });
         if (!user) {
-            return NextResponse.json({ message: 'Utilisateur introuvable' }, { status: 404 });
+            return NextResponse.json({ message: 'Personne introuvable' }, { status: 404 });
         }
 
         const changedById = session.user.id ? parseInt(session.user.id) : null;

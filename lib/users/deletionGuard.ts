@@ -102,9 +102,9 @@ export function describeBlockers(b: UserDeletionBlockers): string {
     const parts: string[] = [];
     if (b.activeAffectations > 0)
         parts.push(`${b.activeAffectations} attribution(s) active(s)`);
-    if (b.activeOrders > 0) parts.push(`${b.activeOrders} commande(s) active(s)`);
+    if (b.activeOrders > 0) parts.push(`${b.activeOrders} demande(s) active(s)`);
     if (b.activeBills > 0) parts.push(`${b.activeBills} facture(s) non soldée(s)`);
     const list = parts.join(', ');
     return `Suppression impossible : cette personne a ${list}. ` +
-        `Clôturez-les (ou réattribuez les affectations) avant de la supprimer.`;
+        `Clôturez-les (ou réattribuez les attributions) avant de la supprimer.`;
 }

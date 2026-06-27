@@ -58,7 +58,7 @@ export function AddAssignmentModal({
                         <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center">
                             <div className="flex items-center">
                                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                                <span className="ml-3 text-gray-400">Chargement des commandes...</span>
+                                <span className="ml-3 text-gray-400">Chargement des demandes...</span>
                             </div>
                         </div>
                     )}

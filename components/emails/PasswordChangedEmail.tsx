@@ -27,7 +27,7 @@ export const PasswordChangedEmail = ({
                                          changedAt,
                                          logoUrl,
                                      }: PasswordChangedEmailProps) => {
-    const displayName = name || 'cher utilisateur';
+    const displayName = name || 'chère personne';
 
     return (
         <Html>

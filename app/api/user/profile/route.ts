@@ -40,7 +40,7 @@ export async function GET() {
 
         if (!userData) {
             return new NextResponse(
-                JSON.stringify({ error: 'Utilisateur non trouvé' }),
+                JSON.stringify({ error: 'Personne non trouvée' }),
                 { status: 404 }
             );
         }

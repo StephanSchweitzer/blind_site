@@ -1,4 +1,6 @@
-import type { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+
+type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 /**
  * Workflow statuses (shared Status lookup table).
@@ -28,7 +30,7 @@ export function guardAssignmentStatus(statusId: number): GuardResult {
     if (statusId === STATUS.SOLDE) {
         return fail(
             400,
-            'Une affectation ne peut pas avoir le statut « Soldé » : ce statut est réservé aux commandes.'
+            'Une attribution ne peut pas avoir le statut « Soldé » : ce statut est réservé aux demandes.'
         );
     }
     return OK;
@@ -41,7 +43,7 @@ export function guardCanReassignReader(
     if (assignmentStatusId === STATUS.TERMINE) {
         return fail(
             409,
-            "Impossible d'assigner un nouveau lecteur : cette affectation est terminée. Rouvrez-la (statut « En cours ») avant d'assigner un autre lecteur."
+            "Impossible d'assigner un nouveau lecteur : cette attribution est terminée. Rouvrez-la (statut « En cours ») avant d'assigner un autre lecteur."
         );
     }
     return OK;
@@ -52,7 +54,7 @@ export function guardNotDuplication(isDuplication: boolean): GuardResult {
     if (isDuplication) {
         return fail(
             409,
-            "Cette commande est une duplication : son statut se gère directement sur la commande, sans affectation."
+            "Cette demande est une duplication : son statut se gère directement sur la demande, sans attribution."
         );
     }
     return OK;
@@ -63,7 +65,7 @@ export function guardOrderHasNoAssignment(assignmentCount: number): GuardResult 
     if (assignmentCount >= 1) {
         return fail(
             409,
-            "Cette commande possède déjà une affectation. Une commande ne peut en avoir qu'une seule."
+            "Cette demande possède déjà une attribution. Une demande ne peut en avoir qu'une seule."
         );
     }
     return OK;
@@ -76,7 +78,7 @@ export function guardOrderNotSettled(
     if (orderStatusId === STATUS.SOLDE) {
         return fail(
             409,
-            "La commande associée est soldée : l'affectation est verrouillée et ne peut plus être modifiée."
+            "La demande associée est soldée : l'attribution est verrouillée et ne peut plus être modifiée."
         );
     }
     return OK;
@@ -89,14 +91,14 @@ export function guardCanSettleOrder(
     if (assignmentStatusId !== null && assignmentStatusId !== STATUS.TERMINE) {
         return fail(
             409,
-            "Impossible de solder la commande : l'enregistrement n'est pas terminé. L'affectation doit d'abord être au statut « Terminé »."
+            "Impossible de solder la demande : l'enregistrement n'est pas terminé. L'attribution doit d'abord être au statut « Terminé »."
         );
     }
     return OK;
 }
 
 export async function syncOrderToStatus(
-    tx: Prisma.TransactionClient,
+    tx: TransactionClient,
     orderId: number,
     statusId: number
 ): Promise<void> {
@@ -104,7 +106,7 @@ export async function syncOrderToStatus(
 }
 
 export async function syncAssignmentToStatus(
-    tx: Prisma.TransactionClient,
+    tx: TransactionClient,
     assignmentId: number,
     statusId: number
 ): Promise<void> {
@@ -131,7 +133,7 @@ export function guardAssignmentConsistency(args: {
     switch (args.statusId) {
         case STATUS.ATTENTE:
             if (sent || returned) {
-                return fail(400, "En « Attente envoi vers lecteur », l'affectation ne peut pas avoir de date d'envoi ni de date de retour. Passez-la « En cours » si le livre a été envoyé.");
+                return fail(400, "En « Attente envoi vers lecteur », l'attribution ne peut pas avoir de date d'envoi ni de date de retour. Passez-la « En cours » si le livre a été envoyé.");
             }
             return OK;
         case STATUS.EN_COURS:
@@ -142,7 +144,7 @@ export function guardAssignmentConsistency(args: {
                 return fail(400, "Le statut « En cours » nécessite une date d'envoi au lecteur.");
             }
             if (returned) {
-                return fail(400, "Une affectation « En cours » ne peut pas avoir de date de retour. Passez-la « Terminé » si le livre est revenu à l'ECA.");
+                return fail(400, "Une attribution « En cours » ne peut pas avoir de date de retour. Passez-la « Terminé » si le livre est revenu à l'ECA.");
             }
             return OK;
         case STATUS.TERMINE:
@@ -157,7 +159,7 @@ export function guardAssignmentConsistency(args: {
             }
             return OK;
         case STATUS.SOLDE:
-            return fail(400, "Une affectation ne peut pas avoir le statut « Soldé ».");
+            return fail(400, "Une attribution ne peut pas avoir le statut « Soldé ».");
         default:
             return OK;
     }
@@ -171,7 +173,7 @@ export function guardAssignmentMatchesOrder(
     if (assignmentCatalogueId !== orderCatalogueId) {
         return fail(
             409,
-            "Le livre de l'affectation ne correspond pas au livre de la commande liée."
+            "Le livre de l'attribution ne correspond pas au livre de la demande liée."
         );
     }
     return OK;
@@ -182,7 +184,7 @@ export function guardDuplicationFlip(setToDuplication: boolean, hasAssignment: b
     if (setToDuplication && hasAssignment) {
         return fail(
             409,
-            "Impossible de marquer cette commande comme duplication : elle possède déjà une affectation. Supprimez l'affectation d'abord."
+            "Impossible de marquer cette demande comme duplication : elle possède déjà une attribution. Supprimez l'attribution d'abord."
         );
     }
     return OK;
@@ -203,13 +205,13 @@ export function guardOrderCompletion(args: {
     if (args.assignmentStatusId === null) {
         return fail(
             409,
-            "Cette commande nécessite un enregistrement : créez et terminez l'affectation avant de la passer « Terminé » ou « Soldé »."
+            "Cette demande nécessite un enregistrement : créez et terminez l'attribution avant de la passer « Terminé » ou « Soldé »."
         );
     }
     if (args.assignmentStatusId !== STATUS.TERMINE) {
         return fail(
             409,
-            "L'affectation correspondante n'est pas terminée. Elle doit être au statut « Terminé » avant de clôturer la commande."
+            "L'attribution correspondante n'est pas terminée. Elle doit être au statut « Terminé » avant de clôturer la demande."
         );
     }
     return OK;

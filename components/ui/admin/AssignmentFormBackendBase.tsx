@@ -461,12 +461,12 @@ export function AssignmentFormBackendBase({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     readerId: selectedReaderId,
-                    notes: reassignNotes || 'Réaffectation',
+                    notes: reassignNotes || 'Réattribution',
                 }),
             });
 
             if (!response.ok) {
-                throw new Error('Échec de la réaffectation');
+                throw new Error('Échec de la réattribution');
             }
 
             toast({
@@ -484,7 +484,7 @@ export function AssignmentFormBackendBase({
             toast({
                 variant: "destructive",
                 title: "Erreur",
-                description: "Échec de la réaffectation du lecteur",
+                description: "Échec de la réattribution du lecteur",
             });
         } finally {
             setIsReassigningReader(false);
@@ -897,7 +897,7 @@ export function AssignmentFormBackendBase({
                                             </span>
                                         </div>
                                     ) : (
-                                        <span className="text-gray-400">Sélectionner une commande...</span>
+                                        <span className="text-gray-400">Sélectionner une demande...</span>
                                     )}
                                     <Search className="ml-2 h-4 w-4 opacity-50" />
                                 </Button>
@@ -905,7 +905,7 @@ export function AssignmentFormBackendBase({
                             <PopoverContent className="w-[600px] p-0 bg-gray-800 border-gray-700">
                                 <div className="p-2">
                                     <Input
-                                        placeholder="Rechercher une commande..."
+                                        placeholder="Rechercher une demande..."
                                         value={orderSearch}
                                         onChange={(e) => setOrderSearch(e.target.value)}
                                         className="bg-gray-900 border-gray-700 text-gray-200"
@@ -998,12 +998,12 @@ export function AssignmentFormBackendBase({
                             tabIndex={-1}
                             className="flex items-center w-full rounded-md bg-gray-800/60 border border-gray-700 px-3 py-2 text-gray-200 cursor-not-allowed outline-none"
                             aria-readonly="true"
-                            title="Le livre provient de la commande sélectionnée. Pour le changer, sélectionnez une autre commande ci-dessus."
+                            title="Le livre provient de la demande sélectionnée. Pour le changer, sélectionnez une autre demande ci-dessus."
                         >
                             {selectedBook ? (
                                 <span>{selectedBook.title} - {selectedBook.author}</span>
                             ) : (
-                                <span className="text-gray-400">Sélectionnez une commande pour définir le livre</span>
+                                <span className="text-gray-400">Sélectionnez une demande pour définir le livre</span>
                             )}
                         </div>
                         <p className="text-xs text-gray-400">
@@ -1198,7 +1198,7 @@ export function AddAssignmentFormBackend({
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;affectation a été créée avec succès</span>,
+                description: <span className="text-xl mt-2">L&apos;attribution a été créée avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
 
@@ -1212,9 +1212,9 @@ export function AddAssignmentFormBackend({
     return (
         <AssignmentFormBackendBase
             onSubmit={handleSubmit}
-            submitButtonText="Créer l'affectation"
+            submitButtonText="Créer l'attribution"
             loadingText="Création en cours..."
-            title="Créer une nouvelle affectation"
+            title="Créer une nouvelle attribution"
             onSuccess={onSuccess}
             onOrdersLoaded={onOrdersLoaded}
             presetClientId={presetClientId}
@@ -1252,13 +1252,13 @@ export function EditAssignmentFormBackend({
             });
 
             if (!response.ok) {
-                throw new Error('Échec de la suppression de l\'affectation');
+                throw new Error('Échec de la suppression de l\'attribution');
             }
 
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;affectation a été supprimée avec succès</span>,
+                description: <span className="text-xl mt-2">L&apos;attribution a été supprimée avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
 
@@ -1284,7 +1284,7 @@ export function EditAssignmentFormBackend({
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
-                const errorMessage = errorData?.message || 'Échec de la mise à jour de l\'affectation';
+                const errorMessage = errorData?.message || 'Échec de la mise à jour de l\'attribution';
                 const fieldLines = getFieldErrorLines(errorData);
 
                 toast({
@@ -1301,7 +1301,7 @@ export function EditAssignmentFormBackend({
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;affectation a été mise à jour avec succès</span>,
+                description: <span className="text-xl mt-2">L&apos;attribution a été mise à jour avec succès</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
 
@@ -1319,9 +1319,9 @@ export function EditAssignmentFormBackend({
             onSubmit={handleSubmit}
             onDelete={handleDelete}
             showDelete={true}
-            submitButtonText="Mettre à jour l'affectation"
+            submitButtonText="Mettre à jour l'attribution"
             loadingText="Mise à jour en cours..."
-            title="Modifier l'affectation"
+            title="Modifier l'attribution"
             onSuccess={onSuccess}
             initialSelectedReader={initialSelectedReader}
             initialSelectedBook={initialSelectedBook}

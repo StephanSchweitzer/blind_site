@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
         if (!user || !user.password) {
             return NextResponse.json(
-                { message: 'Utilisateur non trouvé ou mot de passe non défini' },
+                { message: 'Personne non trouvée ou mot de passe non défini' },
                 { status: 404 }
             );
         }

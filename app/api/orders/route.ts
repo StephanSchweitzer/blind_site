@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('Error fetching orders:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch orders', message: 'Erreur lors de la récupération des commandes' },
+            { error: 'Failed to fetch orders', message: 'Erreur lors de la récupération des demandes' },
             { status: 500 }
         );
     }
@@ -288,7 +288,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json(
                     {
                         error: 'Cannot set BILLED',
-                        message: "Une commande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture.",
+                        message: "Une demande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture.",
                         field: 'billingStatus',
                     },
                     { status: 400 }
@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 {
                     orderIds: created.map((o) => o.id),
-                    message: `${created.length} commande(s) créée(s) avec succès`,
+                    message: `${created.length} demande(s) créée(s) avec succès`,
                     autoBill,
                 },
                 { status: 201 }
@@ -471,7 +471,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 {
                     error: 'Cannot set BILLED',
-                    message: "Une commande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture.",
+                    message: "Une demande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture.",
                     field: 'billingStatus',
                 },
                 { status: 400 }
@@ -559,7 +559,7 @@ export async function POST(request: NextRequest) {
             }
             if (error.code === 'P2002') {
                 return NextResponse.json(
-                    { error: 'Unique constraint failed', message: 'Une commande avec ces informations existe déjà', details: error.meta, code: error.code },
+                    { error: 'Unique constraint failed', message: 'Une demande avec ces informations existe déjà', details: error.meta, code: error.code },
                     { status: 400 }
                 );
             }

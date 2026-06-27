@@ -33,7 +33,7 @@ export const InvitationEmail = ({
                                     loginUrl = 'https://eca-aveugles.fr/admin',
                                     logoUrl
                                 }: InvitationEmailProps) => {
-    const displayName = name || 'cher utilisateur';
+    const displayName = name || 'chère personne';
 
     return (
         <Html>

@@ -38,7 +38,7 @@ export async function POST(
         });
 
         if (!targetUser) {
-            return NextResponse.json({ message: 'Utilisateur non trouvé' }, { status: 404 });
+            return NextResponse.json({ message: 'Personne non trouvée' }, { status: 404 });
         }
 
         if (targetUser.accessLevel !== 'admin' && targetUser.accessLevel !== 'super_admin') {
@@ -91,13 +91,13 @@ export async function POST(
         if (!result.sent) {
             console.warn(`Password-reset email not sent (user ${userId}): ${result.reason}`);
             return NextResponse.json(
-                { message: 'Le mot de passe a été réinitialisé mais l\'envoi de l\'email a échoué. Veuillez contacter l\'utilisateur directement.' },
+                { message: 'Le mot de passe a été réinitialisé mais l\'envoi de l\'email a échoué. Veuillez contacter la personne directement.' },
                 { status: 207 }
             );
         }
 
         return NextResponse.json(
-            { message: 'Mot de passe réinitialisé avec succès. Un email a été envoyé à l\'utilisateur.' },
+            { message: 'Mot de passe réinitialisé avec succès. Un email a été envoyé à la personne.' },
             { status: 200 }
         );
     } catch (error) {

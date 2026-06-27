@@ -29,7 +29,7 @@ export const PasswordResetEmail = ({
                                        loginUrl = 'https://eca-aveugles.fr/admin',
                                        logoUrl
                                    }: PasswordResetEmailProps) => {
-    const displayName = name || 'cher utilisateur';
+    const displayName = name || 'chère personne';
 
     return (
         <Html>

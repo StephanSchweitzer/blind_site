@@ -55,7 +55,7 @@ export async function GET(
 
         if (isNaN(orderId)) {
             return NextResponse.json(
-                { message: 'ID de commande invalide' },
+                { message: 'ID de demande invalide' },
                 { status: 400 }
             );
         }
@@ -148,7 +148,7 @@ export async function GET(
     } catch (error) {
         console.error('Error fetching order:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la récupération de la commande' },
+            { message: 'Erreur lors de la récupération de la demande' },
             { status: 500 }
         );
     }
@@ -167,7 +167,7 @@ export async function PUT(
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
-            return NextResponse.json({ message: 'ID de commande invalide' }, { status: 400 });
+            return NextResponse.json({ message: 'ID de demande invalide' }, { status: 400 });
         }
 
         const body: OrderUpdateInput = await request.json();
@@ -207,7 +207,7 @@ export async function PUT(
         // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
         if (data.billingStatus === 'BILLED' && existingOrder.billId == null) {
             return NextResponse.json(
-                { message: "Une commande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture." },
+                { message: "Une demande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture." },
                 { status: 400 }
             );
         }
@@ -340,7 +340,7 @@ export async function PUT(
     } catch (error) {
         console.error('Error updating order:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la mise à jour de la commande' },
+            { message: 'Erreur lors de la mise à jour de la demande' },
             { status: 500 }
         );
     }
@@ -359,7 +359,7 @@ export async function PATCH(
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
-            return NextResponse.json({ message: 'ID de commande invalide' }, { status: 400 });
+            return NextResponse.json({ message: 'ID de demande invalide' }, { status: 400 });
         }
 
         const body: OrderUpdateInput = await request.json();
@@ -390,7 +390,7 @@ export async function PATCH(
         // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
         if (body.billingStatus === 'BILLED' && existingOrder.billId == null) {
             return NextResponse.json(
-                { message: "Une commande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture." },
+                { message: "Une demande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture." },
                 { status: 400 }
             );
         }
@@ -521,7 +521,7 @@ export async function PATCH(
     } catch (error) {
         console.error('Error patching order:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la mise à jour de la commande' },
+            { message: 'Erreur lors de la mise à jour de la demande' },
             { status: 500 }
         );
     }
@@ -539,7 +539,7 @@ export async function DELETE(
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
-            return NextResponse.json({ message: 'ID de commande invalide' }, { status: 400 });
+            return NextResponse.json({ message: 'ID de demande invalide' }, { status: 400 });
         }
 
         const existingOrder = await prisma.orders.findUnique({
@@ -569,7 +569,7 @@ export async function DELETE(
         if (existingOrder._count.assignments > 0) {
             return NextResponse.json(
                 {
-                    message: "Impossible de supprimer la demande car une attribution y est associée. Veuillez d'abord supprimer l'affectation.",
+                    message: "Impossible de supprimer la demande car une attribution y est associée. Veuillez d'abord supprimer l'attribution.",
                     hasAssignments: true,
                     assignmentCount: existingOrder._count.assignments,
                 },
@@ -592,7 +592,7 @@ export async function DELETE(
     } catch (error) {
         console.error('Error deleting order:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la suppression de la commande' },
+            { message: 'Erreur lors de la suppression de la demande' },
             { status: 500 }
         );
     }

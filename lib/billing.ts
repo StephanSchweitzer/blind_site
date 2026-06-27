@@ -1,5 +1,8 @@
 // lib/billing.ts
 import { Prisma, OrderBillingStatus, BillingStatus, BillEventType } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+
+type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 /**
  * Recompute a bill's invoiceAmount from the sum of its active linked orders' costs.
@@ -7,7 +10,7 @@ import { Prisma, OrderBillingStatus, BillingStatus, BillEventType } from '@prism
  * whatever changed an order's cost or a bill's order membership.
  */
 export async function recomputeBillTotal(
-    tx: Prisma.TransactionClient,
+    tx: TransactionClient,
     billId: number
 ): Promise<Prisma.Decimal> {
     const linked = await tx.orders.findMany({
@@ -27,7 +30,7 @@ export async function recomputeBillTotal(
  * the event and the state change it describes commit together.
  */
 export async function logBillEvent(
-    tx: Prisma.TransactionClient,
+    tx: TransactionClient,
     params: {
         billId: number;
         type: BillEventType;
@@ -67,7 +70,7 @@ export function transitionEventType(
  * should route through here so a client never ends up with parallel open drafts.
  */
 export async function getOrCreateOpenDraft(
-    tx: Prisma.TransactionClient,
+    tx: TransactionClient,
     clientId: number,
     performedById: number | null = null
 ): Promise<{ id: number }> {
@@ -104,7 +107,7 @@ export async function getOrCreateOpenDraft(
  * create/edit/completion.
  */
 export async function accrueOrderToOpenDraft(
-    tx: Prisma.TransactionClient,
+    tx: TransactionClient,
     orderId: number,
     performedById: number | null = null
 ): Promise<{ billId: number } | null> {
@@ -136,7 +139,7 @@ export async function accrueOrderToOpenDraft(
  * will open a fresh DRAFT via getOrCreateOpenDraft. Returns null if nothing issued.
  */
 export async function issueDraftIfOverThreshold(
-    tx: Prisma.TransactionClient,
+    tx: TransactionClient,
     clientId: number,
     performedById: number | null = null
 ): Promise<{ billId: number; total: number } | null> {

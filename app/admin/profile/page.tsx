@@ -213,7 +213,7 @@ export default function ProfilePage() {
         } catch (err) {
             const errorMessage = err instanceof Error
                 ? err.message
-                : 'Échec de l\'invitation de l\'utilisateur';
+                : 'Échec de l\'invitation de la personne';
             setError(errorMessage);
             toast({
                 title: "Erreur",
@@ -454,7 +454,7 @@ export default function ProfilePage() {
                                         onClick={() => setIsInviteDialogOpen(true)}
                                     >
                                         <UserPlus className="mr-2 h-4 w-4"/>
-                                        Inviter un nouvel utilisateur
+                                        Inviter une nouvelle personne
                                     </Button>
                                 </div>
                             </CardFooter>
@@ -463,11 +463,11 @@ export default function ProfilePage() {
                 </CardContent>
             </Card>
 
-            {/* Modal d'invitation d'utilisateur */}
+            {/* Modal d'invitation de personne */}
             <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
                 <DialogContent className="bg-gray-800 text-gray-100 border-gray-700">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-100">Inviter un nouvel utilisateur</DialogTitle>
+                        <DialogTitle className="text-gray-100">Inviter une nouvelle personne</DialogTitle>
                         <DialogDescription className="text-gray-400">
                             L&apos;utilisateur recevra un email avec un mot de passe temporaire pour se connecter.
                         </DialogDescription>
@@ -512,7 +512,7 @@ export default function ProfilePage() {
                                     onChange={handleInviteChange}
                                     className="w-full rounded-md bg-gray-700 border-gray-600 text-gray-200 p-2"
                                 >
-                                    <option value="user">Utilisateur</option>
+                                    <option value="user">Personne</option>
                                     <option value="admin">Administrateur</option>
                                     <option value="super_admin">Super Administrateur</option>
                                 </select>

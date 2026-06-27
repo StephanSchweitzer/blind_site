@@ -528,7 +528,7 @@ export function OrderFormBackendBase({
                                         <div className="p-4 text-center text-gray-400">Recherche...</div>
                                     )}
                                     {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                        <div className="p-4 text-center text-gray-400">Aucun utilisateur trouvé</div>
+                                        <div className="p-4 text-center text-gray-400">Aucune personne trouvée</div>
                                     )}
                                     {users.map((user) => (
                                         <button
@@ -633,7 +633,7 @@ export function OrderFormBackendBase({
                     {/* Closure Date */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">Date de cloture</label>
-                        <p className="text-xs text-gray-400">Date à laquelle la commande terminée est expédiée à l&apos;auditeur (clôture).</p>
+                        <p className="text-xs text-gray-400">Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).</p>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
@@ -1278,7 +1278,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             const data = await res.json();
 
             if (!res.ok) {
-                const msg = data?.message || 'Échec de la création des commandes';
+                const msg = data?.message || 'Échec de la création des demandes';
                 toast({
                     variant: "destructive",
                     // @ts-expect-error jsx in toast
@@ -1294,21 +1294,21 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">{ids.length} commande(s) créée(s){ids.length ? ` : #${ids.join(', #')}` : ''}</span>,
+                description: <span className="text-xl mt-2">{ids.length} demande(s) créée(s){ids.length ? ` : #${ids.join(', #')}` : ''}</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
             if (data.autoBill) {
                 toast({
                     // @ts-expect-error jsx in toast
                     title: <span className="text-2xl font-bold">Facture en brouillon créée</span>,
-                    description: <span className="text-xl mt-2">Le seuil de paiement du client est atteint : une facture en brouillon (#{data.autoBill.billId}) regroupant {data.autoBill.orderCount} commande(s) a été créée.</span>,
+                    description: <span className="text-xl mt-2">Le seuil de paiement du client est atteint : une facture en brouillon (#{data.autoBill.billId}) regroupant {data.autoBill.orderCount} demande(s) a été créée.</span>,
                     className: "bg-blue-100 border-2 border-blue-500 text-blue-900 shadow-lg p-6"
                 });
             }
             if (onSuccess && ids.length) onSuccess(ids[0]);
         } catch (err) {
             console.error('Batch submit error:', err);
-            const msg = 'Échec de la création des commandes';
+            const msg = 'Échec de la création des demandes';
             setError(msg);
             toastError(msg);
         } finally {
@@ -1354,7 +1354,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                     {isSearchingUsers && <div className="p-4 text-center text-gray-400">Recherche...</div>}
                                     {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                        <div className="p-4 text-center text-gray-400">Aucun utilisateur trouvé</div>
+                                        <div className="p-4 text-center text-gray-400">Aucune personne trouvée</div>
                                     )}
                                     {users.map((user) => (
                                         <button key={user.id} type="button"
@@ -1534,13 +1534,13 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
                     <div className="rounded-md bg-gray-800/50 border border-gray-700 p-3 text-sm text-gray-300">
                         {lines.length === 1
-                            ? '1 ouvrage → 1 commande sera créée. Le numéro sera attribué lors de la soumission.'
-                            : `${lines.length} ouvrages → ${lines.length} commandes seront créées. Les numéros seront attribués lors de la soumission.`}
+                            ? '1 ouvrage → 1 demande sera créée. Le numéro sera attribué lors de la soumission.'
+                            : `${lines.length} ouvrages → ${lines.length} demandes seront créées. Les numéros seront attribués lors de la soumission.`}
                     </div>
 
                     <Button type="submit" disabled={isLoading}
                             className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100">
-                        {isLoading ? 'Création en cours...' : `Créer ${lines.length} ${lines.length === 1 ? 'commande' : 'commandes'}`}
+                        {isLoading ? 'Création en cours...' : `Créer ${lines.length} ${lines.length === 1 ? 'demande' : 'demandes'}`}
                     </Button>
                 </form>
             </CardContent>

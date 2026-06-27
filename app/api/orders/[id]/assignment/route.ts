@@ -58,7 +58,7 @@ export async function GET(
     } catch (error) {
         console.error('Error fetching order assignment:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la récupération de l\'affectation' },
+            { message: 'Erreur lors de la récupération de l\'attribution' },
             { status: 500 }
         );
     }
