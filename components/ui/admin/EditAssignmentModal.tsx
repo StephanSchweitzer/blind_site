@@ -41,13 +41,14 @@ export function EditAssignmentModal({
     const [isLoadingReaders, setIsLoadingReaders] = useState(true);
     const [isLoadingOrders, setIsLoadingOrders] = useState(true);
 
-    // Reset loading states when modal opens
-    useEffect(() => {
-        if (isOpen) {
-            setIsLoadingReaders(true);
-            setIsLoadingOrders(true);
-        }
-    }, [isOpen]);
+    const [wasOpen, setWasOpen] = useState(isOpen);
+    if (isOpen && !wasOpen) {
+        setIsLoadingReaders(true);
+        setIsLoadingOrders(true);
+    }
+    if (isOpen !== wasOpen) {
+        setWasOpen(isOpen);
+    }
 
     const handleSuccess = (assignmentId: number, isDeleted?: boolean) => {
         console.log('Assignment operation completed successfully, closing modal');

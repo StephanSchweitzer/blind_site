@@ -96,7 +96,7 @@ export function BookFormBackendBase({
                 if (response.ok) {
                     const data = await response.json();
                     // Temporary allow any to cast to string because of type inconsistencies. Don't want to refactor right now
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     
                     const genresWithStringIds = data.map((genre: any) => ({
                         ...genre,
                         id: genre.id.toString()

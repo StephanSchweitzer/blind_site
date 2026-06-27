@@ -60,7 +60,9 @@ export default function BooksClient() {
     }, [currentPage, searchTerm]);
 
     useEffect(() => {
-        fetchBooks();
+        let active = true;
+        Promise.resolve().then(() => { if (active) fetchBooks(); });
+        return () => { active = false; };
     }, [fetchBooks]);
 
     const handleSearch = (term: string) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,7 +55,23 @@ export default function EditCoupDeCoeurPage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isBookSelectorOpen, setIsBookSelectorOpen] = useState(false);
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [isLeaving, setIsLeaving] = useState(false);
+
+    // Derived: are there edits relative to the loaded data? No effect needed.
+    const isDirty = useMemo(() => {
+        if (!formData || !originalData) return false;
+        return (
+            formData.title !== originalData.title ||
+            formData.description !== originalData.description ||
+            formData.active !== originalData.active ||
+            tempAudioBlob !== null ||
+            JSON.stringify(formData.books.map(b => b.book.id).sort()) !==
+            JSON.stringify(originalData.books.map(b => b.book.id).sort())
+        );
+    }, [formData, originalData, tempAudioBlob]);
+
+    // isLeaving lets us suppress the warning on intentional exits (save/cancel/delete).
+    const hasUnsavedChanges = isDirty && !isLeaving;
 
     const { NavigationWarningDialog } = useWarnIfUnsavedChanges({
         unsaved: hasUnsavedChanges,
@@ -70,49 +86,43 @@ export default function EditCoupDeCoeurPage() {
             ...prevData!,
             [name]: value,
         }));
-        setHasUnsavedChanges(true);
     };
 
     useEffect(() => {
-        if (!formData || !originalData) return;
+        if (!id) return;
+        let active = true;
 
-        const hasChanged =
-            formData.title !== originalData.title ||
-            formData.description !== originalData.description ||
-            formData.active !== originalData.active ||
-            tempAudioBlob !== null ||
-            JSON.stringify(formData.books.map(b => b.book.id).sort()) !==
-            JSON.stringify(originalData.books.map(b => b.book.id).sort());
-
-        setHasUnsavedChanges(hasChanged);
-    }, [formData, originalData, tempAudioBlob]);
-
-    useEffect(() => {
-        async function fetchCoupDeCoeur() {
-            try {
-                const res = await fetch(`/api/coups-de-coeur/${id}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setFormData(data);
-                    setOriginalData(data);
-                    const initialBookMap = data.books.reduce((acc: Record<number, BookWithDetails['book']>, curr: BookWithDetails) => {
+        fetch(`/api/coups-de-coeur/${id}`)
+            .then(async (res) => {
+                if (!res.ok) throw new Error('LOAD_FAILED');
+                return res.json();
+            })
+            .then((data) => {
+                if (!active) return;
+                setFormData(data);
+                setOriginalData(data);
+                const initialBookMap = data.books.reduce(
+                    (acc: Record<number, BookWithDetails['book']>, curr: BookWithDetails) => {
                         acc[curr.book.id] = curr.book;
                         return acc;
-                    }, {});
-                    setBookMap(initialBookMap);
-                } else {
-                    setError('Échec du chargement de la liste de livres');
-                    router.push('/admin/manage_coups_de_coeur');
-                }
-            } catch (error) {
-                setError('Erreur lors du chargement de la liste de livres' + error);
+                    },
+                    {}
+                );
+                setBookMap(initialBookMap);
+            })
+            .catch((err) => {
+                if (!active) return;
+                setError(
+                    err instanceof Error && err.message === 'LOAD_FAILED'
+                        ? 'Échec du chargement de la liste de livres'
+                        : 'Erreur lors du chargement de la liste de livres' + err
+                );
                 router.push('/admin/manage_coups_de_coeur');
-            }
-        }
+            });
 
-        if (id) {
-            fetchCoupDeCoeur();
-        }
+        return () => {
+            active = false;
+        };
     }, [id, router]);
 
 
@@ -153,7 +163,7 @@ export default function EditCoupDeCoeurPage() {
             });
 
             if (res.ok) {
-                setHasUnsavedChanges(false);
+                setIsLeaving(true);
                 await new Promise(resolve => requestAnimationFrame(resolve));
 
                 router.push('/admin/manage_coups_de_coeur');
@@ -176,7 +186,7 @@ export default function EditCoupDeCoeurPage() {
                 });
 
                 if (res.ok) {
-                    setHasUnsavedChanges(false);
+                    setIsLeaving(true);
                     router.push('/admin/manage_coups_de_coeur');
                     router.refresh();
                 } else {
@@ -282,7 +292,6 @@ export default function EditCoupDeCoeurPage() {
                                     checked={formData.active}
                                     onCheckedChange={(checked: boolean) => {
                                         setFormData(prev => ({ ...prev!, active: checked }));
-                                        setHasUnsavedChanges(true);
                                     }}
                                     className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-400"
                                 />
@@ -326,7 +335,6 @@ export default function EditCoupDeCoeurPage() {
                                                 }))
                                             };
                                         });
-                                        setHasUnsavedChanges(true);
                                     }}
                                     mode="edit"
                                     coupDeCoeurId={parseInt(id as string)}
@@ -342,7 +350,7 @@ export default function EditCoupDeCoeurPage() {
                                 variant="outline"
                                 onClick={async () => {
                                     await new Promise(resolve => {
-                                        setHasUnsavedChanges(false);
+                                        setIsLeaving(true);
                                         setTimeout(resolve, 0);
                                     });
                                     router.push('/admin/manage_coups_de_coeur');

@@ -2,16 +2,18 @@
 
 import { useTheme } from 'next-themes';
 import { Moon, Sun } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
+
+const emptySubscribe = () => () => {};
+function useHydrated() {
+    return useSyncExternalStore(emptySubscribe, () => true, () => false);
+}
 
 export function ThemeToggle() {
-    const [mounted, setMounted] = useState(false);
+    const mounted = useHydrated();
     const { theme, setTheme } = useTheme();
 
     useEffect(() => {
-        setMounted(true);
-
-        // Fix first-click issue: initialize theme if not set
         const storedTheme = localStorage.getItem('theme');
         if (!storedTheme) {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -19,7 +21,6 @@ export function ThemeToggle() {
         }
     }, [setTheme]);
 
-    // Show animated skeleton during hydration (no dark: class to work during SSR)
     if (!mounted) {
         return (
             <div className="p-2 rounded-lg bg-gray-200 w-10 h-10 flex items-center justify-center">

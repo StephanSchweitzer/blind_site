@@ -75,12 +75,19 @@ export function EditPaymentModal({
     }, []);
 
     useEffect(() => {
-        if (!isOpen || paymentId === null) {
-            setPayment(null);
-            setError(null);
-            return;
-        }
-        loadPayment(paymentId);
+        let active = true;
+
+        Promise.resolve().then(() => {
+            if (!active) return;
+            if (!isOpen || paymentId === null) {
+                setPayment(null);
+                setError(null);
+            } else {
+                loadPayment(paymentId);
+            }
+        });
+
+        return () => { active = false; };
     }, [isOpen, paymentId, loadPayment]);
 
     const handleSubmit = async (formData: PaymentFormData): Promise<number> => {

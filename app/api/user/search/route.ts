@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { MemberType, AccessLevel } from '@prisma/client';
+import { MemberType, AccessLevel, UserActivityStatus } from '@prisma/client';
 
 
 export async function GET(request: NextRequest) {
@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
         const query = searchParams.get('q') || '';
         const memberType = searchParams.get('memberType');
         const accessLevel = searchParams.get('accessLevel');
+        // When set, restrict to members who can currently receive assignments.
+        const assignable = searchParams.get('assignable') === 'true';
 
         if (query.length < 2) {
             return NextResponse.json([]);
@@ -45,6 +47,14 @@ export async function GET(request: NextRequest) {
 
         if (accessLevel) {
             whereClause.accessLevel = accessLevel as AccessLevel;
+        }
+
+        if (assignable) {
+            // A reader is assignable only if their membership is ACTIVE and they
+            // haven't been marked unavailable. (isAvailable is nullable; treat
+            // null as available, exclude only explicit false.)
+            whereClause.activityStatus = UserActivityStatus.ACTIVE;
+            whereClause.isAvailable = { not: false };
         }
 
         const users = await prisma.user.findMany({

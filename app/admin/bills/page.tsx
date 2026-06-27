@@ -70,53 +70,53 @@ async function getBills(
 }
 
 export default async function AdminBillsPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+
+    const page = Math.max(
+        1,
+        parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
+    );
+    const searchTerm = Array.isArray(params.search)
+        ? params.search[0]
+        : params.search || '';
+
+    const rawStatus = Array.isArray(params.status) ? params.status[0] : params.status;
+    const status = rawStatus && Object.values(BillingStatus).includes(rawStatus as BillingStatus)
+        ? (rawStatus as BillingStatus)
+        : undefined;
+
+    const showLate = (Array.isArray(params.late) ? params.late[0] : params.late) === 'true';
+
+    // Only the data fetch is guarded; notFound() throws (returns `never`),
+    // so `data` is definitely assigned past this point.
+    let data: Awaited<ReturnType<typeof getBills>>;
     try {
-        const params = await searchParams;
-
-        const page = Math.max(
-            1,
-            parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
-        );
-        const searchTerm = Array.isArray(params.search)
-            ? params.search[0]
-            : params.search || '';
-
-        const rawStatus = Array.isArray(params.status) ? params.status[0] : params.status;
-        const status = rawStatus && Object.values(BillingStatus).includes(rawStatus as BillingStatus)
-            ? (rawStatus as BillingStatus)
-            : undefined;
-
-        const showLate = (Array.isArray(params.late) ? params.late[0] : params.late) === 'true';
-
-        const { bills, totalBills, totalPages, availableStatuses } = await getBills(
-            page,
-            searchTerm,
-            status,
-            showLate,
-        );
-
-        const serializedBills = bills.map(bill => ({
-            ...bill,
-            creationDate: bill.creationDate.toISOString(),
-            issueDate: bill.issueDate?.toISOString() ?? null,
-            paymentDate: bill.paymentDate?.toISOString() ?? null,
-            invoiceAmount: bill.invoiceAmount.toString(),
-        }));
-
-        return (
-            <div className="space-y-4">
-                <BillsTable
-                    initialBills={serializedBills}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                    availableStatuses={availableStatuses}
-                    initialTotalBills={totalBills}
-                />
-            </div>
-        );
+        data = await getBills(page, searchTerm, status, showLate);
     } catch (error) {
         console.error('Error in Admin Bills page:', error);
         notFound();
     }
+
+    const { bills, totalBills, totalPages, availableStatuses } = data;
+
+    const serializedBills = bills.map(bill => ({
+        ...bill,
+        creationDate: bill.creationDate.toISOString(),
+        issueDate: bill.issueDate?.toISOString() ?? null,
+        paymentDate: bill.paymentDate?.toISOString() ?? null,
+        invoiceAmount: bill.invoiceAmount.toString(),
+    }));
+
+    return (
+        <div className="space-y-4">
+            <BillsTable
+                initialBills={serializedBills}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages}
+                availableStatuses={availableStatuses}
+                initialTotalBills={totalBills}
+            />
+        </div>
+    );
 }

@@ -153,7 +153,25 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
         }
     };
 
-    const handleSelect = (book: BookResult) => {
+    const handleSelect = async (book: BookResult) => {
+        // Refuse to import a book whose ISBN is already in the catalogue.
+        if (book.isbn) {
+            try {
+                const res = await fetch(`/api/books/check-isbn?isbn=${encodeURIComponent(book.isbn)}`);
+                if (res.ok) {
+                    const data: { exists: boolean } = await res.json();
+                    if (data.exists) {
+                        setSearchError('Un livre avec cet ISBN existe déjà dans le catalogue.');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking ISBN:', error);
+                // On a check failure, fall through: the book POST still refuses
+                // duplicate ISBNs server-side, so nothing slips through.
+            }
+        }
+
         const month = book.publishedDate ?
             (book.publishedDate.getMonth() + 1).toString().padStart(2, '0') : '';
         const year = book.publishedDate ?

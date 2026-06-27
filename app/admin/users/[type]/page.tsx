@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserActivityStatus } from '@prisma/client';
 import UsersTable from './users-table';
 import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
@@ -7,6 +7,7 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { UserTypeTabs } from './user-type-tabs';
 import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
+import { USER_ACTIVITY_STATUS_VALUES } from '@/lib/user-activity-enums';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -25,11 +26,14 @@ export function generateStaticParams() {
 async function getUsers(
     page: number,
     searchTerm: string,
-    userType: UserType
+    userType: UserType,
+    statusFilter: string
 ) {
     const usersPerPage = 10;
 
-    const whereClause: Prisma.UserWhereInput =
+    // Base filter: member type + free-text search. Status filter is applied
+    // separately so the active/inactive counts always reflect the full set.
+    const baseWhere: Prisma.UserWhereInput =
         userType === 'auditeurs'  ? { memberType: 'auditeur' } :
             userType === 'lecteurs'   ? { memberType: 'lecteur' } :
                 userType === 'bienfaiteurs' ? { memberType: 'bienfaiteur' } :
@@ -42,7 +46,7 @@ async function getUsers(
         const tokens = searchTerm.trim().split(/\s+/).filter(Boolean);
 
         if (tokens.length > 0) {
-            whereClause.AND = tokens.map((token) => ({
+            baseWhere.AND = tokens.map((token) => ({
                 OR: [
                     { firstName: { contains: token, mode: Prisma.QueryMode.insensitive } },
                     { lastName:  { contains: token, mode: Prisma.QueryMode.insensitive } },
@@ -52,10 +56,20 @@ async function getUsers(
         }
     }
 
+    // List filter adds the activity-status filter on top of the base.
+    const listWhere: Prisma.UserWhereInput = { ...baseWhere };
+    if (statusFilter === 'active') {
+        listWhere.activityStatus = UserActivityStatus.ACTIVE;
+    } else if (statusFilter === 'inactive') {
+        listWhere.activityStatus = { not: UserActivityStatus.ACTIVE };
+    } else if ((USER_ACTIVITY_STATUS_VALUES as readonly string[]).includes(statusFilter)) {
+        listWhere.activityStatus = statusFilter as UserActivityStatus;
+    }
+
     try {
         const [users, totalUsers, activeCount, inactiveCount] = await Promise.all([
             prisma.user.findMany({
-                where: whereClause,
+                where: listWhere,
                 orderBy: { id: 'desc' },
                 skip: Math.max(0, (page - 1) * usersPerPage),
                 take: usersPerPage,
@@ -67,14 +81,14 @@ async function getUsers(
                     role: true,
                     memberType: true,
                     accessLevel: true,
-                    isActive: true,
+                    activityStatus: true,
                     lastUpdated: true,
                     civility: { select: { name: true } },
                 },
             }),
-            prisma.user.count({ where: whereClause }),
-            prisma.user.count({ where: { ...whereClause, isActive: true } }),
-            prisma.user.count({ where: { ...whereClause, isActive: false } }),
+            prisma.user.count({ where: listWhere }),
+            prisma.user.count({ where: { ...baseWhere, activityStatus: UserActivityStatus.ACTIVE } }),
+            prisma.user.count({ where: { ...baseWhere, activityStatus: { not: UserActivityStatus.ACTIVE } } }),
         ]);
 
         return {
@@ -117,12 +131,15 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
     const searchTerm = Array.isArray(searchParamsResolved.search)
         ? searchParamsResolved.search[0]
         : searchParamsResolved.search || '';
+    const statusFilter = Array.isArray(searchParamsResolved.status)
+        ? searchParamsResolved.status[0]
+        : searchParamsResolved.status || '';
 
     // Only the data fetch is guarded. JSX is returned at the top level so render
     // errors propagate to an error boundary instead of being silently swallowed.
     let data: Awaited<ReturnType<typeof getUsers>>;
     try {
-        data = await getUsers(page, searchTerm, userType);
+        data = await getUsers(page, searchTerm, userType, statusFilter);
     } catch (error) {
         console.error('Error in Users page:', error);
         notFound();
@@ -144,6 +161,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                 initialUsers={serializedUsers}
                 initialPage={page}
                 initialSearch={searchTerm}
+                initialStatus={statusFilter}
                 totalPages={totalPages}
                 initialTotalUsers={totalUsers}
                 activeCount={activeCount}

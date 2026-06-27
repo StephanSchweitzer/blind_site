@@ -37,6 +37,7 @@ interface Book {
     id: number;
     title: string;
     author: string;
+    audio_filepath?: string | null;
 }
 
 interface Status {
@@ -301,11 +302,30 @@ export function OrderFormBackendBase({
         setUserSearch('');
     };
 
-    const handleBookSelect = (book: Book) => {
-        setSelectedBook(book);
-        setFormData({ ...formData, catalogueId: book.id });
+    const handleBookSelect = async (book: Book) => {
         setBookPopoverOpen(false);
         setBookSearch('');
+
+        // The search results are lightweight; fetch the full book so we know
+        // whether it already has an audio file.
+        let full: Book = book;
+        try {
+            const res = await fetch(`/api/books/${book.id}`);
+            if (res.ok) full = await res.json();
+        } catch (err) {
+            console.error('Error fetching book details:', err);
+        }
+
+        setSelectedBook(full);
+
+        const hasAudio = Boolean(full.audio_filepath);
+        setFormData(prev => ({
+            ...prev,
+            catalogueId: full.id,
+            // Audio already exists -> default this to a duplication (not forced;
+            // the admin can uncheck it, e.g. for a re-recording / re-read).
+            ...(hasAudio ? { isDuplication: true, lentPhysicalBook: false } : {}),
+        }));
     };
 
 
@@ -412,6 +432,8 @@ export function OrderFormBackendBase({
             }
         }
     };
+
+    const audioAlreadyExists = Boolean(selectedBook?.audio_filepath);
 
     return (
         <Card className="bg-gray-900 border-gray-700">
@@ -600,6 +622,13 @@ export function OrderFormBackendBase({
                             Type de la demande
                         </h3>
                         <div className="space-y-4">
+                            {audioAlreadyExists && (
+                                <div className="bg-amber-900/30 border border-amber-700 text-amber-200 p-3 rounded-lg text-sm">
+                                    Un fichier audio existe déjà pour ce livre. La case
+                                    « Duplication » a été cochée automatiquement — décochez-la
+                                    s&apos;il s&apos;agit d&apos;une réécoute / nouvel enregistrement.
+                                </div>
+                            )}
                             <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
                                 <div className="flex items-center space-x-3">
                                     <Checkbox

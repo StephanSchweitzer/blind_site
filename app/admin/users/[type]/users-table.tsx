@@ -20,6 +20,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { AddUserFormBackend } from '@/admin/UserFormBackendBase';
 import { EditUserModal } from '@/admin/EditUserModal';
 import { UserFormData, UserType } from '@/types';
@@ -31,6 +38,11 @@ import {
     getAccessLevelColor,
     USER_TYPE_META,
 } from '@/lib/user-enums';
+import {
+    USER_ACTIVITY_STATUS_VALUES,
+    getUserActivityStatusLabel,
+    getUserActivityStatusColor,
+} from '@/lib/user-activity-enums';
 
 interface UsersTableProps {
     type: UserType;
@@ -41,12 +53,13 @@ interface UsersTableProps {
         lastName: string | null;
         memberType: string;
         accessLevel: string;
-        isActive: boolean | null;
+        activityStatus: string;
         lastUpdated: string | null;
         civility?: { name: string } | null;
     }>;
     initialPage: number;
     initialSearch: string;
+    initialStatus: string;
     totalPages: number;
     initialTotalUsers: number;
     activeCount: number;
@@ -59,6 +72,7 @@ export default function UsersTable({
                                        initialUsers,
                                        initialPage,
                                        initialSearch,
+                                       initialStatus,
                                        totalPages,
                                        initialTotalUsers,
                                        activeCount,
@@ -71,6 +85,7 @@ export default function UsersTable({
     const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
+    const [statusFilter, setStatusFilter] = useState(initialStatus || 'all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isLoadingUser, setIsLoadingUser] = useState(false);
@@ -105,6 +120,11 @@ export default function UsersTable({
         updateUrl({ search: undefined, page: '1' });
     };
 
+    const handleStatusFilter = (value: string) => {
+        setStatusFilter(value);
+        updateUrl({ status: value === 'all' ? undefined : value, page: '1' });
+    };
+
     const handlePageChange = (newPage: number) => {
         updateUrl({ page: newPage.toString() });
     };
@@ -132,10 +152,10 @@ export default function UsersTable({
         setIsLoadingUser(true);
         try {
             const response = await fetch(`/api/user/${user.id}?mode=full&include=addresses`);
-            if (!response.ok) throw new Error('Échec du chargement des données');
+            if (!response.ok) throw new Error('\u00c9chec du chargement des donn\u00e9es');
 
             const userData = await response.json();
-            if (!userData) throw new Error('Données incomplètes reçues');
+            if (!userData) throw new Error('Donn\u00e9es incompl\u00e8tes re\u00e7ues');
 
             const formData: UserFormData = {
                 email: userData.email || '',
@@ -172,7 +192,7 @@ export default function UsersTable({
             toast({
                 variant: "destructive",
                 title: "Erreur",
-                description: error instanceof Error ? error.message : "Échec du chargement des données de l'individuel",
+                description: error instanceof Error ? error.message : "\u00c9chec du chargement des donn\u00e9es de l'individuel",
             });
         } finally {
             setIsLoadingUser(false);
@@ -220,9 +240,9 @@ export default function UsersTable({
                         <CardTitle className="text-2xl text-gray-100">{plural}</CardTitle>
                         <CardDescription className="text-gray-400 mt-1">
                             {initialTotalUsers} {singular}{initialTotalUsers > 1 ? 's' : ''} au total
-                            {' • '}
+                            {' \u2022 '}
                             {activeCount} actif{activeCount > 1 ? 's' : ''}
-                            {' • '}
+                            {' \u2022 '}
                             {inactiveCount} inactif{inactiveCount > 1 ? 's' : ''}
                         </CardDescription>
                     </div>
@@ -237,7 +257,7 @@ export default function UsersTable({
             </CardHeader>
 
             <CardContent className="pt-6">
-                <div className="flex gap-2 mb-6">
+                <div className="flex flex-col sm:flex-row gap-2 mb-6">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -256,12 +276,26 @@ export default function UsersTable({
                             <X className="h-4 w-4" />
                         </Button>
                     )}
+                    <Select value={statusFilter} onValueChange={handleStatusFilter}>
+                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 sm:w-56">
+                            <SelectValue placeholder="Statut" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectItem value="all" className="text-gray-200">Tous les statuts</SelectItem>
+                            <SelectItem value="inactive" className="text-gray-200">Inactifs (tous sauf actifs)</SelectItem>
+                            {USER_ACTIVITY_STATUS_VALUES.map((s) => (
+                                <SelectItem key={s} value={s} className="text-gray-200">
+                                    {getUserActivityStatusLabel(s)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <div className="space-y-6">
                     {initialUsers.length === 0 ? (
                         <div className="py-20 flex flex-col items-center justify-center border border-gray-800 rounded-lg bg-gray-800/50">
-                            <p className="text-gray-400 text-lg">Aucun {singular} trouvé</p>
+                            <p className="text-gray-400 text-lg">Aucun {singular} trouv&#233;</p>
                         </div>
                     ) : (
                         <div className={`border border-gray-800 rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
@@ -273,10 +307,10 @@ export default function UsersTable({
                                             <TableHead className="text-gray-200 font-medium">Email</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Nom complet</TableHead>
                                             <TableHead className="text-gray-200 font-medium">
-                                                {type === 'permanents' ? "Niveau d'accès" : 'Type de membre'}
+                                                {type === 'permanents' ? "Niveau d'acc\u00e8s" : 'Type de membre'}
                                             </TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Actif</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Dernière mise à jour</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Statut</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Derni&#232;re mise &#224; jour</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -288,12 +322,12 @@ export default function UsersTable({
                                             >
                                                 <TableCell className="font-medium text-gray-200">#{user.id}</TableCell>
                                                 <TableCell className="text-gray-200">
-                                                    {user.email || <span className="text-gray-500 italic">Non défini</span>}
+                                                    {user.email || <span className="text-gray-500 italic">Non d&#233;fini</span>}
                                                 </TableCell>
                                                 <TableCell className="text-gray-200">
                                                     {(user.firstName || user.lastName || user.civility)
                                                         ? `${user.civility?.name ? user.civility.name + ' ' : ''}${user.firstName || ''} ${user.lastName || ''}`.trim()
-                                                        : <span className="text-gray-500 italic">Non défini</span>}
+                                                        : <span className="text-gray-500 italic">Non d&#233;fini</span>}
                                                 </TableCell>
                                                 <TableCell>
                                                     {type === 'permanents' ? (
@@ -307,11 +341,9 @@ export default function UsersTable({
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {user.isActive ? (
-                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">Actif</span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">Inactif</span>
-                                                    )}
+                                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getUserActivityStatusColor(user.activityStatus)}`}>
+                                                        {getUserActivityStatusLabel(user.activityStatus)}
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell className="text-gray-200">{formatDate(user.lastUpdated)}</TableCell>
                                             </TableRow>

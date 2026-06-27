@@ -13,7 +13,11 @@ export async function GET(request: NextRequest) {
     }
 
     const url = new URL('https://www.googleapis.com/books/v1/volumes');
-    url.searchParams.set('q', `intitle:${q}`);
+    // Google Books treats `intitle:` as a title-only search, so raw ISBNs never
+    // match. Detect an ISBN-10/13 (ignoring spaces/hyphens) and use `isbn:` instead.
+    const compact = q.replace(/[\s-]/g, '');
+    const isIsbn = /^(?:\d{9}[\dxX]|\d{13})$/.test(compact);
+    url.searchParams.set('q', isIsbn ? `isbn:${compact}` : `intitle:${q}`);
     url.searchParams.set('maxResults', '5');
     url.searchParams.set('langRestrict', 'fr');
     url.searchParams.set('country', 'FR');

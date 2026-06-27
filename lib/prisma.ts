@@ -2,7 +2,7 @@ import { PrismaClient, Prisma } from '@/generated/prisma/client';
 import { PrismaPg } from "@prisma/adapter-pg";
 
 declare global {
-    // eslint-disable-next-line no-var
+     
     var prisma: PrismaClient | undefined;
 }
 

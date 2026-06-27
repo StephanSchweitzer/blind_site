@@ -168,36 +168,41 @@ async function getBooks(page: number, searchTerm: string, filter: string = 'all'
 }
 
 export default async function AdminBooksPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+
+    const page = Math.max(1, parseInt(
+        Array.isArray(params.page) ? params.page[0] : params.page || '1'
+    ));
+    const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
+    const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
+    const genreIds = (Array.isArray(params.genres) ? params.genres[0] : params.genres || '')
+        .split(',')
+        .filter(Boolean)
+        .map(Number)
+        .filter(id => !isNaN(id));
+
+    // Only the data fetch is guarded; notFound() throws (returns `never`),
+    // so `data` is definitely assigned past this point.
+    let data: Awaited<ReturnType<typeof getBooks>>;
     try {
-        const params = await searchParams;
-
-        const page = Math.max(1, parseInt(
-            Array.isArray(params.page) ? params.page[0] : params.page || '1'
-        ));
-        const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
-        const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
-        const genreIds = (Array.isArray(params.genres) ? params.genres[0] : params.genres || '')
-            .split(',')
-            .filter(Boolean)
-            .map(Number)
-            .filter(id => !isNaN(id));
-
-        const { books, totalBooks, totalPages, availableGenres } = await getBooks(page, searchTerm, filter, genreIds);
-
-        return (
-            <div className="space-y-4">
-                <BooksTable
-                    initialBooks={books}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                    availableGenres={availableGenres}
-                    initialTotalBooks={totalBooks}
-                />
-            </div>
-        );
+        data = await getBooks(page, searchTerm, filter, genreIds);
     } catch (error) {
         console.error('Error in Admin Books page:', error);
         notFound();
     }
+
+    const { books, totalBooks, totalPages, availableGenres } = data;
+
+    return (
+        <div className="space-y-4">
+            <BooksTable
+                initialBooks={books}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages}
+                availableGenres={availableGenres}
+                initialTotalBooks={totalBooks}
+            />
+        </div>
+    );
 }

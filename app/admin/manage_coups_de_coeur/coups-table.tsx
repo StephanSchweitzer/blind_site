@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
@@ -26,22 +26,22 @@ interface CoupsTableProps {
 export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [items, setItems] = useState(initialItems);
+    // initialItems is the source of truth (re-passed by the server on navigation),
+    // so render it directly instead of mirroring it into state via an effect.
+    const items = initialItems;
+
+    // search is an editable input that ALSO has to follow the URL (e.g. back/forward),
+    // so resync it during render with a prev-value guard instead of an effect.
+    const urlSearch = searchParams.get('search') || '';
     const [search, setSearch] = useState(initialSearch);
+    const [prevUrlSearch, setPrevUrlSearch] = useState(urlSearch);
+    if (urlSearch !== prevUrlSearch) {
+        setPrevUrlSearch(urlSearch);
+        setSearch(urlSearch);
+    }
 
     // Get current page from URL
     const currentPage = parseInt(searchParams.get('page') || '1');
-
-    // Update items when initialItems changes
-    useEffect(() => {
-        setItems(initialItems);
-    }, [initialItems]);
-
-    // Update search when URL changes
-    useEffect(() => {
-        const searchFromUrl = searchParams.get('search') || '';
-        setSearch(searchFromUrl);
-    }, [searchParams]);
 
     const handleSearch = (value: string) => {
         setSearch(value);

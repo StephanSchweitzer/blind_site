@@ -21,9 +21,8 @@ async function getAssignments(
 
     const whereClause: Prisma.AssignmentWhereInput = {};
 
-    // Search filter - now searches through readerHistory
     if (searchTerm) {
-        whereClause.OR = [
+        const searchOR: Prisma.AssignmentWhereInput[] = [
             {
                 readerHistory: {
                     some: {
@@ -65,9 +64,15 @@ async function getAssignments(
                 },
             },
         ];
+
+        const trimmedSearch = searchTerm.trim();
+        if (/^\d+$/.test(trimmedSearch) && Number.isSafeInteger(Number(trimmedSearch))) {
+            searchOR.push({ id: Number(trimmedSearch) });
+        }
+
+        whereClause.OR = searchOR;
     }
 
-    // Status filter
     if (statusId) {
         whereClause.statusId = statusId;
     }
@@ -84,7 +89,7 @@ async function getAssignments(
                         orderBy: {
                             assignedDate: 'desc',
                         },
-                        take: 1, // Only get the most recent reader
+                        take: 1,
                         include: {
                             reader: {
                                 select: {
@@ -140,66 +145,63 @@ async function getAssignments(
 }
 
 export default async function AdminAssignmentsPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+
+    const page = Math.max(
+        1,
+        parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
+    );
+    const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
+    const statusId = params.statusId
+        ? parseInt(Array.isArray(params.statusId) ? params.statusId[0] : params.statusId)
+        : undefined;
+
+    let assignments, totalAssignments, totalPages, availableStatuses;
     try {
-        const params = await searchParams;
-
-        const page = Math.max(
-            1,
-            parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
-        );
-        const searchTerm = Array.isArray(params.search)
-            ? params.search[0]
-            : params.search || '';
-        const statusId = params.statusId
-            ? parseInt(Array.isArray(params.statusId) ? params.statusId[0] : params.statusId)
-            : undefined;
-
-        const { assignments, totalAssignments, totalPages, availableStatuses } = await getAssignments(
+        ({ assignments, totalAssignments, totalPages, availableStatuses } = await getAssignments(
             page,
             searchTerm,
             statusId
-        );
-
-        // Serialize assignments and transform readerHistory to current reader format
-        const serializedAssignments = assignments.map(assignment => {
-            const currentReader = assignment.readerHistory[0]?.reader || null;
-
-            return {
-                id: assignment.id,
-                catalogueId: assignment.catalogueId,
-                orderId: assignment.orderId,
-                receptionDate: assignment.receptionDate ? assignment.receptionDate.toISOString(): null,
-                sentToReaderDate: assignment.sentToReaderDate ? assignment.sentToReaderDate.toISOString() : null,
-                returnedToECADate: assignment.returnedToECADate ? assignment.returnedToECADate.toISOString() : null,
-                statusId: assignment.statusId,
-                notes: assignment.notes,
-                // Current reader from readerHistory
-                currentReader: currentReader ? {
-                    id: currentReader.id,
-                    name: currentReader.name,
-                    email: currentReader.email,
-                } : null,
-                catalogue: assignment.catalogue,
-                order: assignment.order,
-                status: assignment.status,
-                processedByStaffId: assignment.processedByStaffId,
-            };
-        });
-
-        return (
-            <div className="space-y-4">
-                <AssignmentsTable
-                    initialAssignments={serializedAssignments}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                    availableStatuses={availableStatuses}
-                    initialTotalAssignments={totalAssignments}
-                />
-            </div>
-        );
+        ));
     } catch (error) {
         console.error('Error in Admin Assignments page:', error);
         notFound();
     }
+
+    const serializedAssignments = assignments!.map(assignment => {
+        const currentReader = assignment.readerHistory[0]?.reader || null;
+
+        return {
+            id: assignment.id,
+            catalogueId: assignment.catalogueId,
+            orderId: assignment.orderId,
+            receptionDate: assignment.receptionDate ? assignment.receptionDate.toISOString() : null,
+            sentToReaderDate: assignment.sentToReaderDate ? assignment.sentToReaderDate.toISOString() : null,
+            returnedToECADate: assignment.returnedToECADate ? assignment.returnedToECADate.toISOString() : null,
+            statusId: assignment.statusId,
+            notes: assignment.notes,
+            currentReader: currentReader ? {
+                id: currentReader.id,
+                name: currentReader.name,
+                email: currentReader.email,
+            } : null,
+            catalogue: assignment.catalogue,
+            order: assignment.order,
+            status: assignment.status,
+            processedByStaffId: assignment.processedByStaffId,
+        };
+    });
+
+    return (
+        <div className="space-y-4">
+            <AssignmentsTable
+                initialAssignments={serializedAssignments}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages!}
+                availableStatuses={availableStatuses!}
+                initialTotalAssignments={totalAssignments!}
+            />
+        </div>
+    );
 }

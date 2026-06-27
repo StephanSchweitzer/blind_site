@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Plus, Trash2, UserX, UserCheck, Mail } from 'lucide-react';
+import { AlertCircle, Plus, Trash2, Mail } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
     Dialog,
@@ -37,6 +37,8 @@ interface UserFormBackendBaseProps {
     currentUserAccessLevel?: string;
     userType: UserType;
     userId?: string;
+    /** When true (create flow), warn if an existing user shares first+last name. */
+    warnOnDuplicateName?: boolean;
 }
 
 const emptyAddress: AddressFormData = {
@@ -101,15 +103,16 @@ export function UserFormBackendBase({
                                         currentUserAccessLevel,
                                         userType,
                                         userId,
+                                        warnOnDuplicateName = false,
                                     }: UserFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = useState(false);
-    const [isActivationDialogOpen, setIsActivationDialogOpen] = useState(false);
     const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
-    const [deactivationReason, setDeactivationReason] = useState('');
-    const [activationReason, setActivationReason] = useState('');
     const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [duplicateMatches, setDuplicateMatches] = useState<
+        { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null }[]
+    >([]);
+    const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
     const { toast } = useToast();
 
     const [civilities, setCivilities] = useState<{ id: number; name: string }[]>([]);
@@ -193,17 +196,9 @@ export function UserFormBackendBase({
         }));
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const doSubmit = async () => {
         setIsLoading(true);
         setError(null);
-
-        if ((formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') && !formData.email) {
-            setError('L\'email est requis pour les membres permanents');
-            setIsLoading(false);
-            return;
-        }
-
         try {
             const newUserId = await onSubmit(formData);
             if (onSuccess) {
@@ -218,6 +213,38 @@ export function UserFormBackendBase({
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        if ((formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') && !formData.email) {
+            setError('L\'email est requis pour les membres permanents');
+            return;
+        }
+
+        // Create flow: warn (don't block) if an existing user shares first+last name.
+        if (warnOnDuplicateName && formData.firstName.trim() && formData.lastName.trim()) {
+            try {
+                const res = await fetch(
+                    `/api/user/check-duplicate?firstName=${encodeURIComponent(formData.firstName)}&lastName=${encodeURIComponent(formData.lastName)}`
+                );
+                if (res.ok) {
+                    const { matches } = await res.json();
+                    if (Array.isArray(matches) && matches.length > 0) {
+                        setDuplicateMatches(matches);
+                        setShowDuplicateDialog(true);
+                        return; // wait for the admin to confirm
+                    }
+                }
+            } catch (err) {
+                console.error('Duplicate-name check failed:', err);
+                // Non-blocking: fall through and let the submit proceed.
+            }
+        }
+
+        await doSubmit();
     };
 
     const handleDeleteClick = async () => {
@@ -236,108 +263,6 @@ export function UserFormBackendBase({
             } finally {
                 setIsLoading(false);
             }
-        }
-    };
-
-    const handleDeactivate = async () => {
-        if (!deactivationReason.trim()) {
-            toast({
-                variant: "destructive",
-                title: "Erreur",
-                description: "Veuillez fournir une raison pour la désactivation",
-            });
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const updatedFormData = {
-                ...formData,
-                isActive: false,
-                terminationReason: deactivationReason.trim(),
-            };
-
-            const userId = await onSubmit(updatedFormData);
-
-            toast({
-                title: "Succès",
-                description: "L'individuel a été désactivé avec succès",
-                className: "bg-green-100 border-green-500 text-green-900"
-            });
-
-            setIsDeactivationDialogOpen(false);
-            setDeactivationReason('');
-
-            if (onSuccess) {
-                onSuccess(userId);
-            }
-        } catch (err) {
-            if (err instanceof Error) {
-                toast({
-                    variant: "destructive",
-                    title: "Erreur",
-                    description: err.message,
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Erreur",
-                    description: "Échec de la désactivation de l'individuel",
-                });
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleActivate = async () => {
-        if (!activationReason.trim()) {
-            toast({
-                variant: "destructive",
-                title: "Erreur",
-                description: "Veuillez fournir une raison pour l'activation",
-            });
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const updatedFormData = {
-                ...formData,
-                isActive: true,
-                terminationReason: activationReason.trim(),
-            };
-
-            const userId = await onSubmit(updatedFormData);
-
-            toast({
-                title: "Succès",
-                description: "L'individuel a été activé avec succès",
-                className: "bg-green-100 border-green-500 text-green-900"
-            });
-
-            setIsActivationDialogOpen(false);
-            setActivationReason('');
-
-            if (onSuccess) {
-                onSuccess(userId);
-            }
-        } catch (err) {
-            if (err instanceof Error) {
-                toast({
-                    variant: "destructive",
-                    title: "Erreur",
-                    description: err.message,
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Erreur",
-                    description: "Échec de l'activation de l'individuel",
-                });
-            }
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -732,88 +657,29 @@ export function UserFormBackendBase({
                     {/* Status & Availability - Always visible */}
                     <div className="space-y-4">
                         <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
-                            Statut et disponibilité
+                            Disponibilit&#233; (affectations)
                         </h3>
 
                         <div className="space-y-4">
-                            {/* Active Status with Activate/Deactivate Buttons */}
-                            <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                                            formData.isActive
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : 'bg-red-500/20 text-red-400'
-                                        }`}>
-                                            {formData.isActive ? (
-                                                <UserCheck className="h-5 w-5" />
-                                            ) : (
-                                                <UserX className="h-5 w-5" />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-200">
-                                                Statut: {formData.isActive ? 'Actif' : 'Inactif'}
-                                            </p>
-                                            <p className="text-xs text-gray-400">
-                                                {formData.isActive
-                                                    ? 'Participe aux ECA'
-                                                    : 'Ne participe plus aux ECA'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {initialData && (
-                                        <div className="flex gap-2">
-                                            {formData.isActive ? (
-                                                <Button
-                                                    type="button"
-                                                    variant="destructive"
-                                                    onClick={() => setIsDeactivationDialogOpen(true)}
-                                                    className="bg-orange-600 hover:bg-orange-700 text-white"
-                                                >
-                                                    <UserX className="h-4 w-4 mr-2" />
-                                                    Désactiver
-                                                </Button>
-                                            ) : (
-                                                <Button
-                                                    type="button"
-                                                    onClick={() => setIsActivationDialogOpen(true)}
-                                                    className="bg-green-600 hover:bg-green-700 text-white"
-                                                >
-                                                    <UserCheck className="h-4 w-4 mr-2" />
-                                                    Activer
-                                                </Button>
-                                            )}
-
-                                            {currentUserAccessLevel === 'super_admin' &&
-                                                (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
-                                                formData.email && (
-                                                    <Button
-                                                        type="button"
-                                                        onClick={() => setIsPasswordResetDialogOpen(true)}
-                                                        variant="outline"
-                                                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
-                                                    >
-                                                        <Mail className="h-4 w-4 mr-2" />
-                                                        Réinitialiser mot de passe
-                                                    </Button>
-                                                )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {formData.terminationReason && (
-                                    <div className="mt-3 pt-3 border-t border-gray-700">
-                                        <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                                            Raison du changement
-                                        </label>
-                                        <div className="mt-1 px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-md text-sm text-gray-300">
-                                            {formData.terminationReason}
-                                        </div>
+                            {/* Member activity is managed in the status history
+                                section of the edit modal. Only the password-reset
+                                action remains here. */}
+                            {initialData &&
+                                currentUserAccessLevel === 'super_admin' &&
+                                (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
+                                formData.email && (
+                                    <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700 flex justify-end">
+                                        <Button
+                                            type="button"
+                                            onClick={() => setIsPasswordResetDialogOpen(true)}
+                                            variant="outline"
+                                            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
+                                        >
+                                            <Mail className="h-4 w-4 mr-2" />
+                                            R&#233;initialiser mot de passe
+                                        </Button>
                                     </div>
                                 )}
-                            </div>
 
                             {/* Disponible Checkbox - Only for Lecteurs */}
                             {formData.memberType === 'lecteur' && (
@@ -999,98 +865,6 @@ export function UserFormBackendBase({
                 </form>
 
                 {/* Deactivation Dialog */}
-                <Dialog open={isDeactivationDialogOpen} onOpenChange={setIsDeactivationDialogOpen}>
-                    <DialogContent className="bg-gray-900 border-gray-700">
-                        <DialogHeader>
-                            <DialogTitle className="text-gray-100">Désactiver l&apos;individuel</DialogTitle>
-                            <DialogDescription className="text-gray-400">
-                                Cette action désactivera l&apos;individuel. Veuillez fournir une raison pour cette action.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Raison de la désactivation <span className="text-red-500">*</span>
-                                </label>
-                                <Textarea
-                                    value={deactivationReason}
-                                    onChange={(e) => setDeactivationReason(e.target.value)}
-                                    className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
-                                    placeholder="Expliquez pourquoi cet individuel est désactivé..."
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                    setIsDeactivationDialogOpen(false);
-                                    setDeactivationReason('');
-                                }}
-                                className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                            >
-                                Annuler
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={handleDeactivate}
-                                disabled={isLoading || !deactivationReason.trim()}
-                                className="bg-orange-600 hover:bg-orange-700 text-white"
-                            >
-                                {isLoading ? 'Désactivation...' : 'Confirmer la désactivation'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Activation Dialog */}
-                <Dialog open={isActivationDialogOpen} onOpenChange={setIsActivationDialogOpen}>
-                    <DialogContent className="bg-gray-900 border-gray-700">
-                        <DialogHeader>
-                            <DialogTitle className="text-gray-100">Activer l&apos;individuel</DialogTitle>
-                            <DialogDescription className="text-gray-400">
-                                Cette action activera l&apos;individuel. Veuillez fournir une raison pour cette action.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Raison de l&apos;activation <span className="text-red-500">*</span>
-                                </label>
-                                <Textarea
-                                    value={activationReason}
-                                    onChange={(e) => setActivationReason(e.target.value)}
-                                    className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
-                                    placeholder="Expliquez pourquoi cet individuel est activé..."
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                    setIsActivationDialogOpen(false);
-                                    setActivationReason('');
-                                }}
-                                className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                            >
-                                Annuler
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={handleActivate}
-                                disabled={isLoading || !activationReason.trim()}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                                {isLoading ? 'Activation...' : 'Confirmer l\'activation'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Password Reset Dialog */}
                 <Dialog open={isPasswordResetDialogOpen} onOpenChange={setIsPasswordResetDialogOpen}>
                     <DialogContent className="bg-gray-900 border-gray-700">
                         <DialogHeader>
@@ -1134,6 +908,46 @@ export function UserFormBackendBase({
                                 className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
                                 {isResettingPassword ? 'Envoi en cours...' : 'Confirmer et envoyer'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+                    <DialogContent className="bg-gray-900 border-gray-700">
+                        <DialogHeader>
+                            <DialogTitle className="text-gray-100">Doublon possible</DialogTitle>
+                            <DialogDescription className="text-gray-400">
+                                Un ou plusieurs membres portent déjà ce nom. Vérifiez qu&apos;il
+                                ne s&apos;agit pas de la même personne avant de continuer.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="max-h-60 overflow-y-auto space-y-2 py-2">
+                            {duplicateMatches.map((m) => (
+                                <div key={m.id} className="rounded border border-gray-700 bg-gray-800 p-2 text-sm text-gray-200">
+                                    <div className="font-medium">
+                                        {[m.firstName, m.lastName].filter(Boolean).join(' ') || m.name || `#${m.id}`}
+                                    </div>
+                                    {m.email && <div className="text-gray-400">{m.email}</div>}
+                                </div>
+                            ))}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowDuplicateDialog(false)}
+                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                            >
+                                Annuler
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    setShowDuplicateDialog(false);
+                                    void doSubmit();
+                                }}
+                                className="bg-blue-600 hover:bg-blue-500 text-white"
+                            >
+                                Créer quand même
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -1208,6 +1022,7 @@ export function AddUserFormBackend({
             onSuccess={onSuccess}
             userType={userType}
             currentUserAccessLevel={currentUserAccessLevel}
+            warnOnDuplicateName
         />
     );
 }

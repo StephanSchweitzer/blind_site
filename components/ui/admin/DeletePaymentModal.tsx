@@ -29,9 +29,13 @@ export function DeletePaymentModal({
     const [isDeleting, setIsDeleting] = useState(false);
     const [reason, setReason] = useState('');
 
-    useEffect(() => {
-        if (!isOpen) setReason('');
-    }, [isOpen]);
+    const [wasOpen, setWasOpen] = useState(isOpen);
+    if (wasOpen && !isOpen) {
+        setReason('');
+    }
+    if (isOpen !== wasOpen) {
+        setWasOpen(isOpen);
+    }
 
     const handleDelete = async () => {
         if (paymentId === null) return;

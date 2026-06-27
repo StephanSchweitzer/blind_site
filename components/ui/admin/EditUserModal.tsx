@@ -6,6 +6,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { EditUserFormBackend } from '@/admin/UserFormBackendBase';
+import { UserActivityHistory } from '@/components/ui/admin/UserActivityHistory';
 import { UserFormData, UserType } from '@/types';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -77,6 +78,7 @@ export function EditUserModal({
                         currentUserAccessLevel={currentUserAccessLevel}
                         userType={userType}
                     />
+                    {userId && <UserActivityHistory userId={userId} />}
                 </div>
             </DialogContent>
         </Dialog>

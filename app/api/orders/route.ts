@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
         // Search filter
         if (search) {
-            whereClause.OR = [
+            const searchOR: Prisma.OrdersWhereInput[] = [
                 {
                     aveugle: {
                         OR: [
@@ -71,6 +71,14 @@ export async function GET(request: NextRequest) {
                     },
                 },
             ];
+
+            // Allow searching an order by its numeric id.
+            const trimmedSearch = search.trim();
+            if (/^\d+$/.test(trimmedSearch) && Number.isSafeInteger(Number(trimmedSearch))) {
+                searchOR.push({ id: Number(trimmedSearch) });
+            }
+
+            whereClause.OR = searchOR;
         }
 
         // Special filters

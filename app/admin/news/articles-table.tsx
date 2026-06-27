@@ -44,16 +44,18 @@ export function ArticlesTable({
     const router = useRouter();
     const searchParams = useSearchParams();
     const [search, setSearch] = useState(initialSearch);
+    const [prevUrlSearch, setPrevUrlSearch] = useState(initialSearch);
     const [debouncedSearch] = useDebounce(search, 300);
+
+// Sync from URL during render instead of in an effect
+    const urlSearch = searchParams.get('search') || '';
+    if (urlSearch !== prevUrlSearch) {
+        setPrevUrlSearch(urlSearch);
+        setSearch(urlSearch);
+    }
 
     // Get current page from URL, defaulting to initialPage if invalid
     const currentPage = Math.max(1, parseInt(searchParams.get('page') || initialPage.toString()));
-
-    // Handle search input changes with improved logic
-    useEffect(() => {
-        const searchFromUrl = searchParams.get('search') || '';
-        setSearch(searchFromUrl);
-    }, [searchParams]);
 
     // Handle debounced search with navigation
     useEffect(() => {

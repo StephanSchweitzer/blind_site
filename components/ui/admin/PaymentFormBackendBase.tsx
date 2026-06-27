@@ -170,30 +170,29 @@ export function PaymentFormBackendBase({
         return () => clearTimeout(debounce);
     }, [userSearch]);
 
-    // ── Load the client's bills when needed (ENREGISTREMENT) ────────────────────
     useEffect(() => {
-        if (type !== PaymentType.ENREGISTREMENT || !selectedClient) {
-            setClientBills([]);
-            return;
-        }
+        let active = true;
+        const shouldFetch = type === PaymentType.ENREGISTREMENT && !!selectedClient;
+
         const loadBills = async () => {
-            setIsLoadingBills(true);
-            try {
-                const res = await fetch(`/api/bills?clientId=${selectedClient.id}&limit=100`);
-                if (res.ok) {
-                    const json = await res.json();
-                    setClientBills(json?.data?.bills ?? []);
-                } else {
-                    setClientBills([]);
-                }
-            } catch (err) {
-                console.error('Error loading client bills:', err);
-                setClientBills([]);
-            } finally {
-                setIsLoadingBills(false);
-            }
+            if (type !== PaymentType.ENREGISTREMENT || !selectedClient) return [];
+            const res = await fetch(`/api/bills?clientId=${selectedClient.id}&limit=100`);
+            if (!res.ok) return [];
+            const json = await res.json();
+            return json?.data?.bills ?? [];
         };
-        loadBills();
+
+        Promise.resolve()
+            .then(() => { if (active && shouldFetch) setIsLoadingBills(true); })
+            .then(() => loadBills())
+            .then((bills) => { if (active) setClientBills(bills); })
+            .catch((err) => {
+                console.error('Error loading client bills:', err);
+                if (active) setClientBills([]);
+            })
+            .finally(() => { if (active) setIsLoadingBills(false); });
+
+        return () => { active = false; };
     }, [type, selectedClient]);
 
     const handleClientSelect = (user: User) => {

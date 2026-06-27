@@ -26,9 +26,8 @@ async function getOrders(
 
     const whereClause: Prisma.OrdersWhereInput = {};
 
-    // Search filter
     if (searchTerm) {
-        whereClause.OR = [
+        const searchOR: Prisma.OrdersWhereInput[] = [
             {
                 aveugle: {
                     OR: [
@@ -66,9 +65,15 @@ async function getOrders(
                 },
             },
         ];
+
+        const trimmedSearch = searchTerm.trim();
+        if (/^\d+$/.test(trimmedSearch) && Number.isSafeInteger(Number(trimmedSearch))) {
+            searchOR.push({ id: Number(trimmedSearch) });
+        }
+
+        whereClause.OR = searchOR;
     }
 
-    // Special filters
     if (filter === 'needsReturn') {
         whereClause.AND = [
             ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
@@ -76,7 +81,6 @@ async function getOrders(
             { closureDate: null },
         ];
     } else if (filter === 'late') {
-        // Orders older than 30 days without closure date
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         whereClause.AND = [
@@ -86,28 +90,22 @@ async function getOrders(
         ];
     }
 
-    // Status filter
     if (statusId) {
         whereClause.statusId = statusId;
     }
 
-    // Billing status filter
     if (billingStatus === 'PAID') {
-        // PAID is a property of the bill (Bill.state), not the order
         whereClause.bill = { is: { state: BillingStatus.PAID } };
     } else if (billingStatus && billingStatus !== 'all') {
-        // UNBILLED / BILLED / UNBILLABLE are order-level (Orders.billingStatus)
         whereClause.billingStatus = billingStatus as OrderBillingStatus;
     }
 
-    // isDuplication filter
     if (isDuplication === 'true') {
         whereClause.isDuplication = true;
     } else if (isDuplication === 'false') {
         whereClause.isDuplication = false;
     }
 
-    // Retard filter (orders >3 months old and statusId is not 3)
     if (retard === 'true') {
         const existingConditions = Array.isArray(whereClause.AND)
             ? whereClause.AND
@@ -133,7 +131,6 @@ async function getOrders(
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-        // Not overdue: either recent (<3 months) OR statusId is 3
         whereClause.AND = [
             ...existingConditions,
             {
@@ -179,31 +176,28 @@ async function getOrders(
 }
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+
+    const page = Math.max(
+        1,
+        parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
+    );
+    const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
+    const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
+    const statusId = params.statusId
+        ? parseInt(Array.isArray(params.statusId) ? params.statusId[0] : params.statusId)
+        : undefined;
+    const billingStatus = Array.isArray(params.billingStatus)
+        ? params.billingStatus[0]
+        : params.billingStatus;
+    const isDuplication = Array.isArray(params.isDuplication)
+        ? params.isDuplication[0]
+        : params.isDuplication;
+    const retard = Array.isArray(params.retard) ? params.retard[0] : params.retard;
+
+    let orders, totalOrders, totalPages, availableStatuses;
     try {
-        const params = await searchParams;
-
-        const page = Math.max(
-            1,
-            parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
-        );
-        const searchTerm = Array.isArray(params.search)
-            ? params.search[0]
-            : params.search || '';
-        const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
-        const statusId = params.statusId
-            ? parseInt(Array.isArray(params.statusId) ? params.statusId[0] : params.statusId)
-            : undefined;
-        const billingStatus = Array.isArray(params.billingStatus)
-            ? params.billingStatus[0]
-            : params.billingStatus;
-        const isDuplication = Array.isArray(params.isDuplication)
-            ? params.isDuplication[0]
-            : params.isDuplication;
-        const retard = Array.isArray(params.retard)
-            ? params.retard[0]
-            : params.retard;
-
-        const { orders, totalOrders, totalPages, availableStatuses } = await getOrders(
+        ({ orders, totalOrders, totalPages, availableStatuses } = await getOrders(
             page,
             searchTerm,
             filter,
@@ -211,32 +205,31 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
             billingStatus,
             isDuplication,
             retard
-        );
-
-        // Serialize orders to convert Decimal to number and Date to string
-        const serializedOrders = orders.map(order => ({
-            ...order,
-            cost: order.cost ? Number(order.cost) : null,
-            requestReceivedDate: order.requestReceivedDate.toISOString(),
-            closureDate: order.closureDate ? order.closureDate.toISOString() : null,
-            createdAt: order.createdDate ? order.createdDate.toISOString() : null,
-            updatedAt: order.updatedAt ? order.updatedAt.toISOString() : null,
-        }));
-
-        return (
-            <div className="space-y-4">
-                <OrdersTable
-                    initialOrders={serializedOrders}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                    availableStatuses={availableStatuses}
-                    initialTotalOrders={totalOrders}
-                />
-            </div>
-        );
+        ));
     } catch (error) {
         console.error('Error in Admin Orders page:', error);
         notFound();
     }
+
+    const serializedOrders = orders!.map(order => ({
+        ...order,
+        cost: order.cost ? Number(order.cost) : null,
+        requestReceivedDate: order.requestReceivedDate.toISOString(),
+        closureDate: order.closureDate ? order.closureDate.toISOString() : null,
+        createdAt: order.createdDate ? order.createdDate.toISOString() : null,
+        updatedAt: order.updatedAt ? order.updatedAt.toISOString() : null,
+    }));
+
+    return (
+        <div className="space-y-4">
+            <OrdersTable
+                initialOrders={serializedOrders}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages!}
+                availableStatuses={availableStatuses!}
+                initialTotalOrders={totalOrders!}
+            />
+        </div>
+    );
 }

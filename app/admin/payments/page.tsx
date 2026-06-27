@@ -63,57 +63,57 @@ async function getPayments(
 }
 
 export default async function AdminPaymentsPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+
+    const page = Math.max(
+        1,
+        parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
+    );
+    const searchTerm = Array.isArray(params.search)
+        ? params.search[0]
+        : params.search || '';
+
+    const rawType = Array.isArray(params.type) ? params.type[0] : params.type;
+    const type = rawType && Object.values(PaymentType).includes(rawType as PaymentType)
+        ? (rawType as PaymentType)
+        : undefined;
+
+    const rawMethod = Array.isArray(params.paymentMethod) ? params.paymentMethod[0] : params.paymentMethod;
+    const paymentMethod = rawMethod && Object.values(PaymentMethod).includes(rawMethod as PaymentMethod)
+        ? (rawMethod as PaymentMethod)
+        : undefined;
+
+    // Only the data fetch is guarded; notFound() throws (returns `never`),
+    // so `data` is definitely assigned past this point.
+    let data: Awaited<ReturnType<typeof getPayments>>;
     try {
-        const params = await searchParams;
-
-        const page = Math.max(
-            1,
-            parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
-        );
-        const searchTerm = Array.isArray(params.search)
-            ? params.search[0]
-            : params.search || '';
-
-        const rawType = Array.isArray(params.type) ? params.type[0] : params.type;
-        const type = rawType && Object.values(PaymentType).includes(rawType as PaymentType)
-            ? (rawType as PaymentType)
-            : undefined;
-
-        const rawMethod = Array.isArray(params.paymentMethod) ? params.paymentMethod[0] : params.paymentMethod;
-        const paymentMethod = rawMethod && Object.values(PaymentMethod).includes(rawMethod as PaymentMethod)
-            ? (rawMethod as PaymentMethod)
-            : undefined;
-
-        const { payments, totalPayments, totalPages, availableTypes, availableMethods } = await getPayments(
-            page,
-            searchTerm,
-            type,
-            paymentMethod,
-        );
-
-        const serializedPayments = payments.map(payment => ({
-            ...payment,
-            amount: payment.amount.toString(),
-            creationDate: payment.creationDate.toISOString(),
-            issueDate: payment.issueDate?.toISOString() ?? null,
-            paymentDate: payment.paymentDate?.toISOString() ?? null,
-        }));
-
-        return (
-            <div className="space-y-4">
-                <PaymentsTable
-                    initialPayments={serializedPayments}
-                    initialPage={page}
-                    initialSearch={searchTerm}
-                    totalPages={totalPages}
-                    availableTypes={availableTypes}
-                    availableMethods={availableMethods}
-                    initialTotalPayments={totalPayments}
-                />
-            </div>
-        );
+        data = await getPayments(page, searchTerm, type, paymentMethod);
     } catch (error) {
         console.error('Error in Admin Payments page:', error);
         notFound();
     }
+
+    const { payments, totalPayments, totalPages, availableTypes, availableMethods } = data;
+
+    const serializedPayments = payments.map(payment => ({
+        ...payment,
+        amount: payment.amount.toString(),
+        creationDate: payment.creationDate.toISOString(),
+        issueDate: payment.issueDate?.toISOString() ?? null,
+        paymentDate: payment.paymentDate?.toISOString() ?? null,
+    }));
+
+    return (
+        <div className="space-y-4">
+            <PaymentsTable
+                initialPayments={serializedPayments}
+                initialPage={page}
+                initialSearch={searchTerm}
+                totalPages={totalPages}
+                availableTypes={availableTypes}
+                availableMethods={availableMethods}
+                initialTotalPayments={totalPayments}
+            />
+        </div>
+    );
 }

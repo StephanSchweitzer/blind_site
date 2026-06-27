@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -25,13 +25,14 @@ export function AddAssignmentModal({
                                        presetReader,
                                    }: AddAssignmentModalProps) {
     const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+    const [wasOpen, setWasOpen] = useState(isOpen);
 
-    // Reset loading state when modal opens
-    useEffect(() => {
-        if (isOpen) {
-            setIsLoadingOrders(true);
-        }
-    }, [isOpen]);
+    if (isOpen && !wasOpen) {
+        setIsLoadingOrders(true);
+    }
+    if (isOpen !== wasOpen) {
+        setWasOpen(isOpen);
+    }
 
     const handleSuccess = (assignmentId: number) => {
         console.log('Assignment created successfully, closing modal');

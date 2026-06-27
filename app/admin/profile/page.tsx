@@ -59,42 +59,54 @@ export default function ProfilePage() {
     });
     const [isInviting, setIsInviting] = useState(false);
 
+    // Pure fetcher: talks to the server, returns data, never touches React state.
+    const loadProfile = async (): Promise<UserData> => {
+        const response = await fetch('/api/user/profile');
+        if (!response.ok) {
+            throw new Error('Échec de récupération des données utilisateur');
+        }
+        return response.json();
+    };
+
+    const applyUserData = (data: UserData) => {
+        setUserData(data);
+        setFormData({
+            name: data.name || '',
+            email: data.email,
+        });
+    };
+
     useEffect(() => {
         // Rediriger si non authentifié
         if (status === 'unauthenticated') {
             router.push('/api/auth/signin');
+            return;
         }
 
-        // Récupérer les données utilisateur si authentifié
-        if (status === 'authenticated' && session?.user?.email) {
-            fetchUserData();
+        if (status !== 'authenticated' || !session?.user?.email) {
+            return;
         }
-    }, [status, session, router]);
 
-    const fetchUserData = async () => {
-        try {
-            setIsLoading(true);
-            const response = await fetch('/api/user/profile');
-            if (!response.ok) {
-                throw new Error('Échec de récupération des données utilisateur');
-            }
-            const data = await response.json();
-            setUserData(data);
-            setFormData({
-                name: data.name || '',
-                email: data.email,
+        // Récupérer les données utilisateur. setState lives inside the promise
+        // callbacks (then/catch/finally), not in the synchronous effect body.
+        let active = true;
+        loadProfile()
+            .then((data) => {
+                if (active) applyUserData(data);
+            })
+            .catch((err) => {
+                if (!active) return;
+                setError('Erreur lors du chargement des données du profil');
+                console.error(err instanceof Error ? err.message : 'Une erreur inconnue est survenue');
+            })
+            .finally(() => {
+                if (active) setIsLoading(false);
             });
-        } catch (err) {
-            setError('Erreur lors du chargement des données du profil');
-            if (err instanceof Error) {
-                console.error(err.message);
-            } else {
-                console.error('Une erreur inconnue est survenue');
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
+
+        return () => {
+            active = false;
+        };
+    }, [status, session, router]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({
@@ -144,7 +156,7 @@ export default function ProfilePage() {
                 }, 2000);
             } else {
                 // Just refresh the data if only the name was changed
-                await fetchUserData();
+                applyUserData(await loadProfile());
                 setIsEditing(false);
 
                 toast({
