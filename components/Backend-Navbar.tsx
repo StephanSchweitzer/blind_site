@@ -127,18 +127,18 @@ const BackendNavbar: React.FC = () => {
                                 Lecteurs
                             </Link>
                             <Link
-                                href="/admin/users/permanents"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">🔑</span>
-                                Permanents
-                            </Link>
-                            <Link
                                 href="/admin/users/bienfaiteurs"
                                 className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
                             >
                                 <span className="text-lg transition-transform duration-200 group-hover:scale-110">💝</span>
                                 Donateurs
+                            </Link>
+                            <Link
+                                href="/admin/users/permanents"
+                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
+                            >
+                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">🔑</span>
+                                Permanents
                             </Link>
                         </div>
                     </div>
