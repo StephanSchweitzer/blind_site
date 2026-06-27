@@ -25,6 +25,11 @@ import {
     getPaymentTypeLabel,
     getPaymentMethodLabel,
 } from '@/lib/payment-enums';
+import { useFormToast } from '@/hooks/useFormToast';
+import { useInvalidField } from '@/hooks/useInvalidField';
+
+// N3 — required fields, visual top→bottom (client picker, linked bill, amount).
+const FIELD_ORDER = ['client', 'bill', 'amount'];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,6 +116,8 @@ export function PaymentFormBackendBase({
                                        }: PaymentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { toastError } = useFormToast();
+    const { registerField, focusFirstInvalid } = useInvalidField();
     const [showAdvanced, setShowAdvanced] = useState(false);
 
     const [type, setType] = useState<PaymentType>(initialData?.type ?? PaymentType.COTISATION);
@@ -207,16 +214,26 @@ export function PaymentFormBackendBase({
         setError(null);
 
         const amt = parseFloat(amount.replace(',', '.'));
-        if (!Number.isFinite(amt) || amt <= 0) {
-            setError('Veuillez saisir un montant positif');
-            return;
-        }
-        if ((type === PaymentType.COTISATION || type === PaymentType.ENREGISTREMENT) && !selectedClient) {
-            setError('Un client est requis pour ce type de paiement');
-            return;
-        }
-        if (type === PaymentType.ENREGISTREMENT && !selectedBillId) {
-            setError('Veuillez sélectionner la facture liée à cet enregistrement');
+
+        // N3 — collect failing fields in visual order, then toast + focus the first.
+        const invalid: string[] = [];
+        const clientRequired = type === PaymentType.COTISATION || type === PaymentType.ENREGISTREMENT;
+        if (clientRequired && !selectedClient) invalid.push('client');
+        if (type === PaymentType.ENREGISTREMENT && selectedClient && !selectedBillId) invalid.push('bill');
+        if (!Number.isFinite(amt) || amt <= 0) invalid.push('amount');
+
+        if (invalid.length) {
+            const messages: Record<string, string> = {
+                client: 'Un auditeur est requis pour ce type de paiement',
+                bill: 'Veuillez sélectionner la facture liée à cet enregistrement',
+                amount: 'Veuillez saisir un montant positif',
+            };
+            // First in FIELD_ORDER among the invalid set → topmost message.
+            const firstName = FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
+            const msg = messages[firstName];
+            setError(msg);
+            toastError(msg);
+            focusFirstInvalid(FIELD_ORDER, new Set(invalid));
             return;
         }
 
@@ -242,7 +259,8 @@ export function PaymentFormBackendBase({
             });
             if (onSuccess) onSuccess(paymentId);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Échec de l’enregistrement du paiement');
+            const msg = err instanceof Error ? err.message : 'Échec de l’enregistrement du paiement';
+            setError(msg);
         } finally {
             setIsLoading(false);
         }
@@ -316,7 +334,7 @@ export function PaymentFormBackendBase({
                     {/* Client */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
-                            Client
+                            Auditeur
                             {(type === PaymentType.COTISATION || type === PaymentType.ENREGISTREMENT) && (
                                 <span className="text-red-500"> *</span>
                             )}
@@ -328,6 +346,7 @@ export function PaymentFormBackendBase({
                             <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
+                                        ref={registerField('client')}
                                         type="button"
                                         variant="outline"
                                         role="combobox"
@@ -336,7 +355,7 @@ export function PaymentFormBackendBase({
                                         {selectedClient ? (
                                             <span className="truncate">{getDisplayName(selectedClient)}</span>
                                         ) : (
-                                            <span className="text-gray-400">Rechercher un client ...</span>
+                                            <span className="text-gray-400">Rechercher un auditeur ...</span>
                                         )}
                                         <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
@@ -402,7 +421,7 @@ export function PaymentFormBackendBase({
                                     value={selectedBillId ? String(selectedBillId) : undefined}
                                     onValueChange={(v) => setSelectedBillId(parseInt(v))}
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
+                                    <SelectTrigger ref={registerField('bill')} className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
                                         <SelectValue placeholder="Sélectionner une facture" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-gray-800 border-gray-700">
@@ -428,6 +447,7 @@ export function PaymentFormBackendBase({
                         </label>
                         <div className="relative">
                             <Input
+                                ref={registerField('amount')}
                                 inputMode="decimal"
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
@@ -577,7 +597,7 @@ export function PaymentFormBackendBase({
                                     </label>
                                     {isAllocated && (
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-200">Date d&apos;affectation</label>
+                                            <label className="text-sm font-medium text-gray-200">Date d&apos;attribution</label>
                                             {datePicker(allocationDate, setAllocationDate)}
                                         </div>
                                     )}

@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Plus, Trash2, Mail } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { useFormToast } from "@/hooks/useFormToast";
+import { useInvalidField } from "@/hooks/useInvalidField";
 import {
     Dialog,
     DialogContent,
@@ -114,6 +116,8 @@ export function UserFormBackendBase({
     >([]);
     const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
     const { toast } = useToast();
+    const { toastError } = useFormToast();
+    const { registerField, focusFirstInvalid } = useInvalidField();
 
     const [civilities, setCivilities] = useState<{ id: number; name: string }[]>([]);
 
@@ -205,11 +209,8 @@ export function UserFormBackendBase({
                 onSuccess(newUserId);
             }
         } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError('Échec du traitement de l\'individuel');
-            }
+            const msg = err instanceof Error ? err.message : 'Échec du traitement de la personne';
+            setError(msg);
         } finally {
             setIsLoading(false);
         }
@@ -220,7 +221,10 @@ export function UserFormBackendBase({
         setError(null);
 
         if ((formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') && !formData.email) {
-            setError('L\'email est requis pour les membres permanents');
+            const msg = 'L\'email est requis pour les membres permanents';
+            setError(msg);
+            toastError(msg);
+            focusFirstInvalid(['email'], new Set(['email']));
             return;
         }
 
@@ -250,16 +254,14 @@ export function UserFormBackendBase({
     const handleDeleteClick = async () => {
         if (!onDelete) return;
 
-        if (window.confirm('Êtes-vous sûr de vouloir supprimer cet individuel ?')) {
+        if (window.confirm('Êtes-vous sûr de vouloir supprimer cette personne ?')) {
             setIsLoading(true);
             try {
                 await onDelete();
             } catch (err) {
-                if (err instanceof Error) {
-                    setError(err.message);
-                } else {
-                    setError('Échec de la suppression de l\'individuel');
-                }
+                const msg = err instanceof Error ? err.message : 'Échec de la suppression de la personne';
+                setError(msg);
+                toastError(msg);
             } finally {
                 setIsLoading(false);
             }
@@ -271,7 +273,7 @@ export function UserFormBackendBase({
             toast({
                 variant: "destructive",
                 title: "Erreur",
-                description: "Impossible de réinitialiser le mot de passe : ID utilisateur manquant",
+                description: "Impossible de réinitialiser le mot de passe : ID de la personne manquant",
             });
             return;
         }
@@ -297,7 +299,7 @@ export function UserFormBackendBase({
                 toast({
                     title: "Mot de passe réinitialisé — email non envoyé",
                     description: data?.message ||
-                        "Le mot de passe a été réinitialisé mais l'email n'a pas pu être envoyé. Contactez l'utilisateur directement.",
+                        "Le mot de passe a été réinitialisé mais l'email n'a pas pu être envoyé. Contactez la personne directement.",
                     className: "bg-amber-100 border-amber-500 text-amber-900",
                 });
                 setIsPasswordResetDialogOpen(false);
@@ -366,6 +368,7 @@ export function UserFormBackendBase({
                                 Email {formData.accessLevel === 'admin' && <span className="text-red-500">*</span>}
                             </label>
                             <Input
+                                ref={registerField('email')}
                                 type="email"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -654,33 +657,14 @@ export function UserFormBackendBase({
                         </div>
                     </div>
 
-                    {/* Status & Availability - Always visible */}
+                    {/* Disponibilité (attributions) — lecteur only (#18b). */}
+                    {formData.memberType === 'lecteur' && (
                     <div className="space-y-4">
                         <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
-                            Disponibilit&#233; (affectations)
+                            Disponibilit&#233; (attributions)
                         </h3>
 
                         <div className="space-y-4">
-                            {/* Member activity is managed in the status history
-                                section of the edit modal. Only the password-reset
-                                action remains here. */}
-                            {initialData &&
-                                currentUserAccessLevel === 'super_admin' &&
-                                (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
-                                formData.email && (
-                                    <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700 flex justify-end">
-                                        <Button
-                                            type="button"
-                                            onClick={() => setIsPasswordResetDialogOpen(true)}
-                                            variant="outline"
-                                            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
-                                        >
-                                            <Mail className="h-4 w-4 mr-2" />
-                                            R&#233;initialiser mot de passe
-                                        </Button>
-                                    </div>
-                                )}
-
                             {/* Disponible Checkbox - Only for Lecteurs */}
                             {formData.memberType === 'lecteur' && (
                                 <>
@@ -724,15 +708,47 @@ export function UserFormBackendBase({
                                             value={formData.availabilityNotes}
                                             onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
                                             className="bg-gray-800 border-gray-700 text-gray-200"
-                                            placeholder="Ex: En vacances jusqu'au 15 janvier..."
+                                            placeholder="Ex: Parfois exigeant quant à la qualité des livres..."
                                         />
                                     </div>
                                 </>
                             )}
                         </div>
                     </div>
+                    )}
 
-                    {/* Preferences & Settings - Always visible */}
+                    {/* Gestion du compte — password reset, permanent members (super_admin only). */}
+                    {initialData &&
+                        currentUserAccessLevel === 'super_admin' &&
+                        (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
+                        formData.email && (
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                                Gestion du compte
+                            </h3>
+                            <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700 flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-200">Mot de passe</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                        G&#233;n&#232;re un nouveau mot de passe temporaire et l&apos;envoie par email
+                                        &#224; la personne. L&apos;ancien mot de passe cessera de fonctionner.
+                                    </p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    onClick={() => setIsPasswordResetDialogOpen(true)}
+                                    variant="outline"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shrink-0"
+                                >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    R&#233;initialiser mot de passe
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Preferences & Settings — #14: only for auditeur or lecteur */}
+                    {(formData.memberType === 'auditeur' || formData.memberType === 'lecteur') && (
                     <div className="space-y-4">
                         <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
                             Préférences
@@ -751,7 +767,6 @@ export function UserFormBackendBase({
                                     <SelectContent className="bg-gray-800 border-gray-700">
                                         <SelectItem value="RETRAIT" className="text-gray-200">Retrait</SelectItem>
                                         <SelectItem value="ENVOI" className="text-gray-200">Envoi</SelectItem>
-                                        <SelectItem value="NON_APPLICABLE" className="text-gray-200">Non applicable</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -773,29 +788,35 @@ export function UserFormBackendBase({
                                 </Select>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Seuil de paiement (€)</label>
-                                <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.paymentThreshold}
-                                    onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
-                            </div>
+                            {/* #16: payment threshold + balance only for auditeur */}
+                            {formData.memberType === 'auditeur' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Seuil de paiement (€)</label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.paymentThreshold}
+                                            onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
+                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                        />
+                                    </div>
 
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Solde actuel (€)</label>
-                                <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.currentBalance}
-                                    onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
-                                />
-                            </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-200">Solde actuel (€)</label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.currentBalance}
+                                            onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
+                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
+                    )}
 
                     {/* Reader-specific fields - Only for Lecteurs */}
                     {formData.memberType === 'lecteur' && (
@@ -815,7 +836,7 @@ export function UserFormBackendBase({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Nombre maximum d&apos;affectations simultanées</label>
+                                    <label className="text-sm font-medium text-gray-200">Nombre maximum d&apos;attributions simultanées</label>
                                     <Input
                                         type="number"
                                         value={formData.maxConcurrentAssignments || ''}
@@ -858,7 +879,7 @@ export function UserFormBackendBase({
                                 onClick={handleDeleteClick}
                                 className="w-full bg-red-700 hover:bg-red-600 text-white"
                             >
-                                Supprimer l&apos;individuel
+                                Supprimer la personne
                             </Button>
                         )}
                     </div>
@@ -870,7 +891,7 @@ export function UserFormBackendBase({
                         <DialogHeader>
                             <DialogTitle className="text-gray-100">Réinitialiser le mot de passe</DialogTitle>
                             <DialogDescription className="text-gray-400">
-                                Cette action génèrera un nouveau mot de passe temporaire et l&apos;enverra par email à l&apos;utilisateur.
+                                Cette action génèrera un nouveau mot de passe temporaire et l&apos;enverra par email à la personne.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
@@ -885,7 +906,7 @@ export function UserFormBackendBase({
                                             <li>Un nouveau mot de passe temporaire sera généré</li>
                                             <li>L&apos;ancien mot de passe ne fonctionnera plus</li>
                                             <li>Un email sera envoyé à : <strong>{formData.email}</strong></li>
-                                            <li>L&apos;utilisateur devra changer son mot de passe à la prochaine connexion</li>
+                                            <li>La personne devra changer son mot de passe à la prochaine connexion</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -982,7 +1003,7 @@ export function AddUserFormBackend({
                 toast({
                     variant: "destructive",
                     title: "Erreur",
-                    description: data?.message || 'Échec de la création de l\'individuel',
+                    description: data?.message || 'Échec de la création de la personne',
                 });
                 return Promise.reject();
             }
@@ -1002,7 +1023,7 @@ export function AddUserFormBackend({
 
             toast({
                 title: "Succès",
-                description: 'L\'individuel a été créé avec succès',
+                description: 'La personne a été créée avec succès',
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
@@ -1016,7 +1037,7 @@ export function AddUserFormBackend({
     return (
         <UserFormBackendBase
             onSubmit={handleSubmit}
-            submitButtonText="Créer l'individuel"
+            submitButtonText="Créer la personne"
             loadingText="Création en cours..."
             title="Créer un nouvel membre"
             onSuccess={onSuccess}
@@ -1048,13 +1069,24 @@ export function EditUserFormBackend({
                 method: 'DELETE',
             });
 
+            let data: { message?: string } = {};
+            try { data = await response.json(); } catch { /* no body */ }
+
             if (!response.ok) {
-                throw new Error('Échec de la suppression de l\'individuel');
+                // Surface the API's specific reason (e.g. active attributions /
+                // bills) as a clear toast rather than a generic message.
+                const msg = data.message || 'Échec de la suppression de la personne';
+                toast({
+                    title: "Suppression impossible",
+                    description: msg,
+                    className: "bg-red-100 border-red-500 text-red-900",
+                });
+                throw new Error(msg);
             }
 
             toast({
                 title: "Succès",
-                description: 'L\'individuel a été supprimé avec succès',
+                description: data.message || 'La personne a été supprimée avec succès',
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
@@ -1081,7 +1113,7 @@ export function EditUserFormBackend({
                 toast({
                     variant: "destructive",
                     title: "Erreur",
-                    description: data?.message || 'Échec de la mise à jour de l\'individuel',
+                    description: data?.message || 'Échec de la mise à jour de la personne',
                 });
                 return Promise.reject();
             }
@@ -1090,7 +1122,7 @@ export function EditUserFormBackend({
             // email could not be sent. The update succeeded — warn, don't celebrate.
             if (response.status === 207 || data?.emailSent === false) {
                 toast({
-                    title: "Utilisateur mis à jour — email non envoyé",
+                    title: "Personne mise à jour — email non envoyé",
                     description: data?.message ||
                         "Les modifications ont été enregistrées mais l'email d'identifiants n'a pas pu être envoyé. Utilisez « réinitialiser le mot de passe » pour le renvoyer.",
                     className: "bg-amber-100 border-amber-500 text-amber-900",
@@ -1100,7 +1132,7 @@ export function EditUserFormBackend({
 
             toast({
                 title: "Succès",
-                description: 'L\'individuel a été mis à jour avec succès',
+                description: 'La personne a été mise à jour avec succès',
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
@@ -1117,9 +1149,9 @@ export function EditUserFormBackend({
             onSubmit={handleSubmit}
             onDelete={handleDelete}
             showDelete={true}
-            submitButtonText="Mettre à jour l'individuel"
+            submitButtonText="Mettre à jour la personne"
             loadingText="Mise à jour en cours..."
-            title="Modifier l'individuel"
+            title="Modifier la personne"
             onSuccess={onSuccess}
             currentUserAccessLevel={currentUserAccessLevel}
             userType={userType}

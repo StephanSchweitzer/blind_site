@@ -456,6 +456,7 @@ export default function BooksTable({
                             <option value="all">Tous</option>
                             <option value="title">Titre</option>
                             <option value="author">Auteur</option>
+                            <option value="isbn">ISBN</option>
                             <option value="description">Description</option>
                             <option value="genre">Genre</option>
                         </select>

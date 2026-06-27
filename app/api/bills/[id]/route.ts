@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus } from '@prisma/client';
+import { userAddressLines } from '@/lib/users/formatAddress';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { STATUS } from '@/lib/statusSync';
@@ -41,7 +42,28 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         const bill = await prisma.bill.findUnique({
             where: { id: billId },
             include: {
-                client: { select: { id: true, name: true, email: true } },
+                client: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true,
+                        civility: { select: { name: true } },
+                        // #12 — postal address for the factures modal + PDF.
+                        addresses: {
+                            select: {
+                                addressLine1: true,
+                                addressSupplement: true,
+                                city: true,
+                                postalCode: true,
+                                stateProvince: true,
+                                country: true,
+                                isDefault: true,
+                            },
+                        },
+                    },
+                },
                 orders: {
                     select: {
                         id: true,
@@ -71,7 +93,19 @@ export async function GET(_request: NextRequest, context: RouteContext) {
             return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
         }
 
-        return NextResponse.json({ bill });
+        // #12 — flatten the client into the shape the PDF/modal consume:
+        // civility as a plain string and the default address as display lines.
+        const { addresses, civility, ...clientRest } = bill.client;
+        const shapedBill = {
+            ...bill,
+            client: {
+                ...clientRest,
+                civility: civility?.name ?? null,
+                address: userAddressLines(addresses),
+            },
+        };
+
+        return NextResponse.json({ bill: shapedBill });
     } catch (error) {
         console.error('Error fetching bill:', error);
         return NextResponse.json(

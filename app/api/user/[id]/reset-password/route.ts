@@ -52,7 +52,7 @@ export async function POST(
         // deliver to an invalid/missing address.
         if (!isSendableEmail(targetUser.email)) {
             return NextResponse.json(
-                { message: 'Cet utilisateur n\'a pas d\'adresse email valide' },
+                { message: 'Cette personne n\'a pas d\'adresse email valide' },
                 { status: 400 }
             );
         }

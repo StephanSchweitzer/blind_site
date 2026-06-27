@@ -32,6 +32,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { STATUS } from '@/lib/statusSync';
+import { useFormToast } from '@/hooks/useFormToast';
+import { useInvalidField } from '@/hooks/useInvalidField';
+
+// N3 — required fields, visual top→bottom (book derives from the order picker).
+const ASSIGN_FIELD_ORDER = ['catalogueId', 'statusId'];
 
 /**
  * Maps a server validation response ({ message, errors }) into readable French
@@ -205,7 +211,7 @@ export function AssignmentFormBackendBase({
 
     // Options data
     const [users, setUsers] = useState<ReaderSummary[]>([]);
-    const [orders, setOrders] = useState<OrderSummary[]>([]);
+    const [orders, setOrders] = useState<(OrderSummary & { _count?: { assignments: number } })[]>([]);
     const [statuses, setStatuses] = useState<Status[]>([]);
 
     // Reader history
@@ -232,6 +238,8 @@ export function AssignmentFormBackendBase({
     const [showReassignSection, setShowReassignSection] = useState(false);
 
     const { toast } = useToast();
+    const { toastError } = useFormToast();
+    const { registerField, focusFirstInvalid } = useInvalidField();
 
     // Fetch initial data
     useEffect(() => {
@@ -329,7 +337,7 @@ export function AssignmentFormBackendBase({
 
             setIsSearchingUsers(true);
             try {
-                const response = await fetch(`/api/user/search?q=${encodeURIComponent(q)}`);
+                const response = await fetch(`/api/user/search?q=${encodeURIComponent(q)}&assignable=true`);
                 if (response.ok) {
                     const data = await response.json();
                     setUsers(data);
@@ -373,6 +381,20 @@ export function AssignmentFormBackendBase({
     }, [orderSearch, presetClientId]);
 
     const handleReaderSelect = (user: ReaderSummary) => {
+        // #3 — warn when the reader has already reached their max concurrent
+        // attributions. The count + max come from /api/user/search?assignable=true.
+        const active = user.activeAssignmentCount ?? 0;
+        const max = user.maxConcurrentAssignments ?? 3;
+        if (active >= max) {
+            const name = getReaderDisplayName(user) ?? 'Ce lecteur';
+            const confirmed = window.confirm(
+                `${name} a déjà atteint son nombre maximum d'attributions. ` +
+                `Voulez-vous quand même lui en attribuer une autre ?`
+            );
+            if (!confirmed) {
+                return;
+            }
+        }
         setSelectedReader(user);
         setSelectedReaderId(user.id);
         setUserPopoverOpen(false);
@@ -427,7 +449,7 @@ export function AssignmentFormBackendBase({
             toast({
                 variant: "destructive",
                 title: "Information",
-                description: "Ce lecteur est déjà assigné à cette affectation",
+                description: "Ce lecteur est déjà assigné à cette attribution",
             });
             return;
         }
@@ -473,14 +495,21 @@ export function AssignmentFormBackendBase({
         e.preventDefault();
         setError(null);
 
-        // Validate required fields
-        if (!formData.catalogueId) {
-            setError('Veuillez sélectionner un livre du catalogue');
-            return;
-        }
+        // N3 — collect failing required fields in visual order.
+        const invalid: string[] = [];
+        if (!formData.catalogueId) invalid.push('catalogueId');
+        if (!formData.statusId) invalid.push('statusId');
 
-        if (!formData.statusId) {
-            setError('Veuillez sélectionner un statut');
+        if (invalid.length) {
+            const messages: Record<string, string> = {
+                catalogueId: 'Veuillez sélectionner un livre du catalogue',
+                statusId: 'Veuillez sélectionner un statut',
+            };
+            const firstName = ASSIGN_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
+            const msg = messages[firstName];
+            setError(msg);
+            toastError(msg);
+            focusFirstInvalid(ASSIGN_FIELD_ORDER, new Set(invalid));
             return;
         }
 
@@ -504,7 +533,14 @@ export function AssignmentFormBackendBase({
             }
         } catch (err) {
             console.error('Submit error:', err);
-            setError('Une erreur est survenue lors de la soumission du formulaire');
+            // The onSubmit wrapper already shows a detailed error toast (server
+            // message + per-field lines). Keep only a quiet inline fallback here so
+            // we never mask that toast (the toaster shows one at a time).
+            setError(
+                err instanceof Error && err.message
+                    ? err.message
+                    : 'Une erreur est survenue lors de la soumission du formulaire'
+            );
         } finally {
             setIsLoading(false);
         }
@@ -514,7 +550,7 @@ export function AssignmentFormBackendBase({
         if (!onDelete) return;
 
         const confirmed = window.confirm(
-            'Êtes-vous sûr de vouloir supprimer cette affectation ? Cette action est irréversible.'
+            'Êtes-vous sûr de vouloir supprimer cette attribution ? Cette action est irréversible.'
         );
 
         if (!confirmed) return;
@@ -526,7 +562,9 @@ export function AssignmentFormBackendBase({
             await onDelete();
         } catch (err) {
             console.error('Delete error:', err);
-            setError('Échec de la suppression de l\'affectation');
+            const msg = 'Échec de la suppression de l\'attribution';
+            setError(msg);
+            toastError(msg);
             setIsLoading(false);
         }
     };
@@ -591,6 +629,9 @@ export function AssignmentFormBackendBase({
                                                 {currentReader.email && (
                                                     <div className="text-sm text-gray-400">{currentReader.email}</div>
                                                 )}
+                                                <div className="text-xs text-gray-500 italic mt-0.5">
+                                                    Cliquez pour réattribuer cette attribution.
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -681,7 +722,7 @@ export function AssignmentFormBackendBase({
                                                 className="w-full bg-blue-700 hover:bg-blue-600 text-gray-100 border-blue-500 disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
-                                                {isReassigningReader ? 'Affectation...' : 'Affecter ce lecteur'}
+                                                {isReassigningReader ? 'Attribution...' : 'Attribuer ce lecteur'}
                                             </Button>
                                         )}
                                     </div>
@@ -759,12 +800,12 @@ export function AssignmentFormBackendBase({
                                                 className="bg-blue-700 hover:bg-blue-600 text-gray-100 border-blue-500 disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
-                                                {isReassigningReader ? 'Réaffectation...' : 'Réaffecter'}
+                                                {isReassigningReader ? 'Réattribution...' : 'Réattribuer'}
                                             </Button>
                                         </div>
 
                                         <Input
-                                            placeholder="Raison de la réaffectation (optionnel)"
+                                            placeholder="Raison de la réattribution (optionnel)"
                                             value={reassignNotes}
                                             onChange={(e) => setReassignNotes(e.target.value)}
                                             className="bg-gray-900 border-gray-700 text-gray-200"
@@ -877,11 +918,23 @@ export function AssignmentFormBackendBase({
                                     {isSearchingOrders ? (
                                         <div className="p-4 text-center text-gray-400">Recherche...</div>
                                     ) : orders.length > 0 ? (
-                                        orders.map((order) => (
+                                        orders.map((order) => {
+                                            // One assignment per order (enforced server-side). Grey out and
+                                            // disable orders that already have one — except the order this
+                                            // assignment is currently attached to (edit mode).
+                                            const hasAttribution =
+                                                (order._count?.assignments ?? 0) >= 1 &&
+                                                order.id !== selectedOrder?.id;
+                                            return (
                                             <div
                                                 key={order.id}
-                                                className="px-4 py-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
-                                                onClick={() => handleOrderSelect(order)}
+                                                aria-disabled={hasAttribution}
+                                                className={
+                                                    hasAttribution
+                                                        ? "px-4 py-3 border-b border-gray-700 last:border-b-0 opacity-50 cursor-not-allowed"
+                                                        : "px-4 py-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
+                                                }
+                                                onClick={hasAttribution ? undefined : () => handleOrderSelect(order)}
                                             >
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="flex-1">
@@ -903,11 +956,17 @@ export function AssignmentFormBackendBase({
                                                                 {order.catalogue.author && <span className="text-gray-500"> — {order.catalogue.author}</span>}
                                                             </div>
                                                         )}
+                                                        {hasAttribution && (
+                                                            <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-400">
+                                                                Une attribution existe déjà
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">Cmd&nbsp;#{order.id}</span>
                                                 </div>
                                             </div>
-                                        ))
+                                            );
+                                        })
                                     ) : (
                                         <div className="p-4 text-center text-gray-400">
                                             Aucune commande trouvée
@@ -935,7 +994,9 @@ export function AssignmentFormBackendBase({
                             Livre <span className="text-red-400">*</span>
                         </label>
                         <div
-                            className="flex items-center w-full rounded-md bg-gray-800/60 border border-gray-700 px-3 py-2 text-gray-200 cursor-not-allowed"
+                            ref={registerField('catalogueId')}
+                            tabIndex={-1}
+                            className="flex items-center w-full rounded-md bg-gray-800/60 border border-gray-700 px-3 py-2 text-gray-200 cursor-not-allowed outline-none"
                             aria-readonly="true"
                             title="Le livre provient de la commande sélectionnée. Pour le changer, sélectionnez une autre commande ci-dessus."
                         >
@@ -983,15 +1044,19 @@ export function AssignmentFormBackendBase({
                                 setFormData({ ...formData, statusId: parseInt(value) })
                             }
                         >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                            <SelectTrigger ref={registerField('statusId')} className="bg-gray-800 border-gray-700 text-gray-200">
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700">
-                                {statuses.map((status) => (
-                                    <SelectItem key={status.id} value={status.id.toString()} className="text-gray-200">
-                                        {status.name}
-                                    </SelectItem>
-                                ))}
+                                {/* #7a — an assignment can never hold "Soldé" (order-only status);
+                                    filter it out so it isn't offered. Uses STATUS.SOLDE, not a literal. */}
+                                {statuses
+                                    .filter((status) => status.id !== STATUS.SOLDE)
+                                    .map((status) => (
+                                        <SelectItem key={status.id} value={status.id.toString()} className="text-gray-200">
+                                            {status.name}
+                                        </SelectItem>
+                                    ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -1025,7 +1090,7 @@ export function AssignmentFormBackendBase({
                                 onClick={handleDeleteClick}
                                 className="w-full bg-red-700 hover:bg-red-600 text-gray-100 border-red-500"
                             >
-                                Supprimer l&apos;affectation
+                                Supprimer l&apos;attribution
                             </Button>
                         )}
                     </div>
@@ -1116,7 +1181,7 @@ export function AddAssignmentFormBackend({
 
             if (!response.ok) {
                 console.error('Assignment creation failed:', data);
-                const errorMessage = data?.message || data?.error || 'Échec de la création de l\'affectation';
+                const errorMessage = data?.message || data?.error || 'Échec de la création de l\'attribution';
                 const fieldLines = getFieldErrorLines(data);
 
                 toast({

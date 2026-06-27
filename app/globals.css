@@ -3,6 +3,19 @@
 @tailwind utilities;
 
 @layer base {
+    /* #9 — Text selection highlight. Themed to the primary tokens so it adapts
+       to light/dark. */
+    ::selection {
+        background-color: hsl(var(--primary));
+        color: hsl(var(--primary-foreground));
+    }
+    ::-moz-selection {
+        background-color: hsl(var(--primary));
+        color: hsl(var(--primary-foreground));
+    }
+}
+
+@layer base {
     :root {
         --background: 0 0% 100%;
         --foreground: 222.2 84% 4.9%;

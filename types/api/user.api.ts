@@ -12,7 +12,11 @@ import {
 // Summary Types (for forms and UI components)
 // ============================================================================
 
-export type ReaderSummary = Pick<User, 'id' | 'name' | 'email' | 'firstName' | 'lastName'>;
+export type ReaderSummary = Pick<User, 'id' | 'name' | 'email' | 'firstName' | 'lastName'> & {
+    // Present only when the reader list is fetched with assignable=true (#3).
+    activeAssignmentCount?: number;
+    maxConcurrentAssignments?: number | null;
+};
 export type UserSummary = Pick<User, 'id' | 'name' | 'email' | 'firstName' | 'lastName'>;
 export type UserMinimal = Pick<User, 'id' | 'name'>;
 

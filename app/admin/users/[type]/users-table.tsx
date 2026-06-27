@@ -192,7 +192,7 @@ export default function UsersTable({
             toast({
                 variant: "destructive",
                 title: "Erreur",
-                description: error instanceof Error ? error.message : "\u00c9chec du chargement des donn\u00e9es de l'individuel",
+                description: error instanceof Error ? error.message : "\u00c9chec du chargement des donn\u00e9es de la personne",
             });
         } finally {
             setIsLoadingUser(false);
@@ -359,7 +359,7 @@ export default function UsersTable({
                             <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
                                 <div className="flex flex-col items-center gap-4">
                                     <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                    <p className="text-lg font-medium text-gray-200">Chargement de l&apos;individuel...</p>
+                                    <p className="text-lg font-medium text-gray-200">Chargement de la personne...</p>
                                 </div>
                             </div>
                         </div>

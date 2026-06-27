@@ -325,7 +325,7 @@ export default function AddBook() {
                                     value={formData.description}
                                     onChange={handleChange}
                                     className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[150px]"
-                                    placeholder="Décrire le livre pour aider les utilisateurs à comprendre de quoi il s'agit."
+                                    placeholder="Décrire le livre pour aider les gens à comprendre de quoi il s'agit."
                                 />
                             </div>
 

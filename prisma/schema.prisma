@@ -44,6 +44,10 @@ model User {
   /// LEGACY: superseded by UserActivityEvent.reason; no longer written. Refactor out.
   terminationReason           String?
   lastUpdated                 DateTime?           @updatedAt
+  /// Soft-delete marker. When set, the user is treated as deleted everywhere:
+  /// a global Prisma query extension (lib/prisma.ts) excludes rows with a
+  /// non-null deletedAt from all user list/search reads.
+  deletedAt                   DateTime?
   preferredDeliveryMethod     DeliveryMethod?
   paymentThreshold            Decimal?            @default(21.00) @db.Decimal(10, 2)
   currentBalance              Decimal?            @default(0.00) @db.Decimal(10, 2)
@@ -69,6 +73,8 @@ model User {
   activityEvents              UserActivityEvent[] @relation("UserActivityEvents")
   activityEventsPerformed     UserActivityEvent[] @relation("UserActivityEventsBy")
   civility                    Civility?           @relation(fields: [civilityId], references: [id])
+
+  @@index([deletedAt])
 }
 
 model Address {

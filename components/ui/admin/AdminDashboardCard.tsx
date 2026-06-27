@@ -81,7 +81,7 @@ const iconMap: Record<string, LucideIcon> = {
     'Dernières infos': Newspaper,
     'Listes de livres': List,
     'Demandes': ShoppingCart,
-    'Affectations': UserCheck,
+    'Attributions': UserCheck,
     'Factures': FileText,
     'Lecteurs': Mic,
     'Auditeurs': Headphones,

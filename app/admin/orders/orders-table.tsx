@@ -373,7 +373,7 @@ export default function OrdersTable({
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                                 <Input
-                                    placeholder="Rechercher par client, livre, ou email..."
+                                    placeholder="Rechercher par auditeur, livre, ou email..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -505,7 +505,7 @@ export default function OrdersTable({
                                     <TableHeader>
                                         <TableRow className="bg-gray-800 border-b border-gray-700 hover:bg-gray-800">
                                             <TableHead className="text-gray-200 font-medium">ID</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Client</TableHead>
+                                            <TableHead className="text-gray-200 font-medium">Auditeur</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Livre</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Date demande</TableHead>
                                             <TableHead className="text-gray-200 font-medium">Statut</TableHead>

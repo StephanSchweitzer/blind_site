@@ -58,6 +58,7 @@ async function performAccentInsensitiveSearch(
             LOWER(immutable_unaccent(COALESCE(b.subtitle, ''))) LIKE LOWER(immutable_unaccent($1)) OR
             LOWER(immutable_unaccent(b.author)) LIKE LOWER(immutable_unaccent($1)) OR
             LOWER(immutable_unaccent(COALESCE(b.publisher, ''))) LIKE LOWER(immutable_unaccent($1)) OR
+            (b.isbn IS NOT NULL AND LOWER(b.isbn) LIKE LOWER($1)) OR
             (b.description IS NOT NULL AND LOWER(b.description) LIKE LOWER($1)) OR
             EXISTS (
                 SELECT 1 FROM "BookGenre" bg
@@ -79,13 +80,17 @@ async function performAccentInsensitiveSearch(
             'author': 'b.author',
             'description': 'b.description',
             'subtitle': 'b.subtitle',
-            'publisher': 'b.publisher'
+            'publisher': 'b.publisher',
+            'isbn': 'b.isbn'
         };
         const column = columnMap[filter] || 'b.title';
 
         // Special handling for description due to size
         if (filter === 'description') {
             whereConditions.push(`LOWER(b.description) LIKE LOWER($1)`);
+        } else if (filter === 'isbn') {
+            // ISBN carries no accents; a plain LIKE is enough (and matches with/without hyphens).
+            whereConditions.push(`(b.isbn IS NOT NULL AND LOWER(b.isbn) LIKE LOWER($1))`);
         } else {
             whereConditions.push(`LOWER(immutable_unaccent(COALESCE(${column}, ''))) LIKE LOWER(immutable_unaccent($1))`);
         }
@@ -179,11 +184,12 @@ async function fallbackSearch(
             { subtitle: { contains: search, mode } },
             { author: { contains: search, mode } },
             { publisher: { contains: search, mode } },
+            { isbn: { contains: search, mode } },
             { description: { contains: search, mode } },
             { genres: { some: { genre: { name: { contains: search, mode } } } } },
         ];
     } else {
-        const allowed = ['title', 'author', 'description', 'subtitle', 'publisher'] as const;
+        const allowed = ['title', 'author', 'description', 'subtitle', 'publisher', 'isbn'] as const;
         const column = (allowed as readonly string[]).includes(filter) ? filter : 'title';
         orConditions = [{ [column]: { contains: search, mode } } as Prisma.BookWhereInput];
     }

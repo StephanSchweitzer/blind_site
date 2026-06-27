@@ -10,6 +10,7 @@ import { Check, X, AlertCircle } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
+import { useFormToast } from "@/hooks/useFormToast";
 
 interface Genre {
     id: string;
@@ -88,6 +89,7 @@ export function BookFormBackendBase({
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { toastError } = useFormToast();
 
     useEffect(() => {
         const fetchGenres = async () => {
@@ -105,7 +107,7 @@ export function BookFormBackendBase({
                 }
             } catch (error) {
                 console.error('Error fetching genres:', error);
-                setError('Failed to fetch genres');
+                setError('Échec du chargement des genres'); toastError('Échec du chargement des genres');
             }
         };
 
@@ -191,11 +193,9 @@ export function BookFormBackendBase({
                 onSuccess(newBookId);
             }
         } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError('Failed to process book');
-            }
+            // Wrapper (Add/Edit) already toasts the detailed error; inline only here.
+            const msg = err instanceof Error ? err.message : 'Échec du traitement du livre';
+            setError(msg);
             return;
         } finally {
             setIsLoading(false);
@@ -210,11 +210,9 @@ export function BookFormBackendBase({
             try {
                 await onDelete();
             } catch (err) {
-                if (err instanceof Error) {
-                    setError(err.message);
-                } else {
-                    setError('Failed to delete book');
-                }
+                const msg = err instanceof Error ? err.message : 'Échec de la suppression du livre';
+                setError(msg);
+                toastError(msg);
             } finally {
                 setIsLoading(false);
             }

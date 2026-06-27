@@ -36,7 +36,15 @@ interface BillDetail {
     paymentDate: string | null;
     paymentReference: string | null;
     invoiceAmount: number | string;
-    client: { id: number; name: string | null; email: string | null };
+    client: {
+        id: number;
+        name: string | null;
+        email: string | null;
+        civility?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        address?: string[] | null;
+    };
     orders: BillOrder[];
     events: BillEventDTO[];
 }
@@ -363,9 +371,16 @@ export function EditBillModal({
                         {/* Summary */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <div className="text-xs text-gray-500 uppercase tracking-wide">Client</div>
+                                <div className="text-xs text-gray-500 uppercase tracking-wide">Auditeur</div>
                                 <div className="text-gray-200 font-medium">{bill.client.name || 'N/A'}</div>
                                 <div className="text-gray-400 text-sm">{bill.client.email}</div>
+                                {bill.client.address && bill.client.address.filter(Boolean).length > 0 && (
+                                    <div className="text-gray-400 text-sm mt-1 leading-snug">
+                                        {bill.client.address.filter(Boolean).map((line, i) => (
+                                            <div key={i}>{line}</div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <div className="text-right">
                                 <div className="text-xs text-gray-500 uppercase tracking-wide">État actuel</div>

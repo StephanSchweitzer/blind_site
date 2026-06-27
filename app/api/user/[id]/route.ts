@@ -5,6 +5,7 @@ import { generatePassword } from '@/lib/utils';
 import { isSendableEmail } from '@/lib/email/sendEmail';
 import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
+import { getUserDeletionBlockers, describeBlockers } from '@/lib/users/deletionGuard';
 import {
     UserQueryModeSchema,
     UserIncludeRelationSchema,
@@ -15,9 +16,7 @@ import {
     userIncludeConfigs,
     UserUpdateInput,
     UserUpdateData,
-    UserDeleteResponse,
 } from '@/types';
-import { UserWithRelationCounts } from '@/types/models/user.model';
 import { AddressCreateInput } from '@/types/api/common.api';
 import { Prisma, MemberType, AccessLevel, DeliveryMethod } from '@prisma/client';
 
@@ -159,7 +158,7 @@ export async function GET(
 
         if (!user) {
             return NextResponse.json(
-                { message: 'Utilisateur non trouvé' },
+                { message: 'Personne non trouvé' },
                 { status: 404 }
             );
         }
@@ -475,77 +474,57 @@ export async function DELETE(
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
 
-        const existingUser: UserWithRelationCounts | null = await prisma.user.findUnique({
+        // findUnique is NOT soft-delete-filtered, so this resolves even a row
+        // that was already soft-deleted (lets us answer idempotently).
+        const existingUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                isActive: true,
-                _count: {
-                    select: {
-                        ordersAsAveugle: true,
-                        ordersProcessedBy: true,
-                        assignmentReaders: true,
-                        assignmentsProcessedBy: true,
-                    },
-                },
-            },
+            select: { id: true, name: true, email: true, deletedAt: true },
         });
 
         if (!existingUser) {
             return NextResponse.json(
-                { message: 'Utilisateur non trouvé' },
+                { message: 'Personne introuvable' },
                 { status: 404 }
             );
         }
 
-        const hasActiveRelations =
-            existingUser._count.ordersAsAveugle > 0 ||
-            existingUser._count.ordersProcessedBy > 0 ||
-            existingUser._count.assignmentReaders > 0 ||
-            existingUser._count.assignmentsProcessedBy > 0;
-
-        if (hasActiveRelations) {
-            const deactivatedUser = await prisma.user.update({
-                where: { id: userId },
-                data: {
-                    isActive: false,
-                    terminationDate: new Date(),
-                    terminationReason: 'Désactivé via l\'interface',
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    isActive: true,
-                },
-            });
-
-            const response: UserDeleteResponse = {
-                message: 'Utilisateur désactivé avec succès (a des relations existantes)',
-                user: deactivatedUser,
+        if (existingUser.deletedAt) {
+            return NextResponse.json({
+                message: 'Cette personne est déjà supprimée.',
+                deletedId: userId,
                 softDelete: true,
-            };
-
-            return NextResponse.json(response);
+                alreadyDeleted: true,
+            });
         }
 
-        await prisma.user.delete({
+        // Refuse deletion while the person has active (in-progress) relations.
+        // Once everything is closed, the soft-delete below is allowed.
+        const blockers = await getUserDeletionBlockers(userId);
+        if (blockers.total > 0) {
+            return NextResponse.json(
+                { message: describeBlockers(blockers), blockers },
+                { status: 409 }
+            );
+        }
+
+        // Soft delete: mark deletedAt. The global Prisma extension then hides
+        // this user from all searches/lists/dropdowns, so they truly disappear,
+        // while historical bills/orders keep their reference intact.
+        await prisma.user.update({
             where: { id: userId },
+            data: { deletedAt: new Date() },
+            select: { id: true },
         });
 
-        const response: UserDeleteResponse = {
-            message: 'Utilisateur supprimé définitivement avec succès',
+        return NextResponse.json({
+            message: 'Personne supprimée avec succès.',
             deletedId: userId,
-            softDelete: false,
-        };
-
-        return NextResponse.json(response);
+            softDelete: true,
+        });
     } catch (error) {
         console.error('Error deleting user:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de la suppression de l\'utilisateur' },
+            { message: 'Erreur lors de la suppression de la personne' },
             { status: 500 }
         );
     }

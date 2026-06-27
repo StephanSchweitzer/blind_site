@@ -136,7 +136,7 @@ export default function AssignmentsTable({
         toast({
             // @ts-expect-error jsx in toast
             title: <span className="text-2xl font-bold">Succès</span>,
-            description: <span className="text-xl mt-2">L&apos;affectation a été supprimée</span>,
+            description: <span className="text-xl mt-2">L&apos;attribution a été supprimée</span>,
             className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
         });
     };
@@ -215,7 +215,7 @@ export default function AssignmentsTable({
                 variant: "destructive",
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">Impossible de charger les détails de l&apos;affectation</span>,
+                description: <span className="text-xl mt-2">Impossible de charger les détails de l&apos;attribution</span>,
                 className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
             });
         } finally {
@@ -319,10 +319,10 @@ export default function AssignmentsTable({
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="text-3xl font-bold text-gray-100">
-                            Affectations
+                            Attributions
                         </CardTitle>
                         <CardDescription className="text-gray-400 mt-2">
-                            {initialTotalAssignments} affectation{initialTotalAssignments !== 1 ? 's' : ''} au total
+                            {initialTotalAssignments} attribution{initialTotalAssignments !== 1 ? 's' : ''} au total
                         </CardDescription>
                     </div>
                     <Button
@@ -330,7 +330,7 @@ export default function AssignmentsTable({
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         <Plus className="mr-2 h-4 w-4" />
-                        Nouvelle affectation
+                        Nouvelle attribution
                     </Button>
                 </div>
             </CardHeader>
@@ -402,8 +402,8 @@ export default function AssignmentsTable({
                         <div className="text-center py-12">
                             <p className="text-gray-400 text-lg">
                                 {searchTerm || currentStatusId !== 'all'
-                                    ? "Aucune affectation trouvée avec ces critères"
-                                    : "Aucune affectation"}
+                                    ? "Aucune attribution trouvée avec ces critères"
+                                    : "Aucune attribution"}
                             </p>
                         </div>
                     ) : (
@@ -479,7 +479,7 @@ export default function AssignmentsTable({
                             <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
                                 <div className="flex flex-col items-center gap-4">
                                     <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                    <p className="text-lg font-medium text-gray-200">Chargement de l&apos;affectation...</p>
+                                    <p className="text-lg font-medium text-gray-200">Chargement de l&apos;attribution...</p>
                                 </div>
                             </div>
                         </div>

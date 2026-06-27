@@ -569,7 +569,7 @@ export async function DELETE(
         if (existingOrder._count.assignments > 0) {
             return NextResponse.json(
                 {
-                    message: "Impossible de supprimer la commande car une affectation y est associée. Veuillez d'abord supprimer l'affectation.",
+                    message: "Impossible de supprimer la demande car une attribution y est associée. Veuillez d'abord supprimer l'affectation.",
                     hasAssignments: true,
                     assignmentCount: existingOrder._count.assignments,
                 },

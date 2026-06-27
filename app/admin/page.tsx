@@ -81,10 +81,10 @@ export default async function Dashboard() {
                         accentColor="yellow"
                     />
                     <AdminDashboardCard
-                        title="Affectations"
+                        title="Attributions"
                         count={assignmentCount}
                         href="/admin/assignments"
-                        buttonText="Gestion des affectations confiées aux lecteurs"
+                        buttonText="Gestion des attributions confiées aux lecteurs"
                         accentColor="cyan"
                     />
                     <AdminDashboardCard

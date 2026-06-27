@@ -23,6 +23,13 @@ import { getBillingStatusLabel } from '@/lib/billing-enums';
 import type { BillingStatus } from '@prisma/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AddBookFormBackend } from '@/admin/BookFormBackendBase';
+import { useFormToast } from '@/hooks/useFormToast';
+import { useInvalidField } from '@/hooks/useInvalidField';
+import { useRecordingCheck } from '@/hooks/useRecordingCheck';
+
+// N3 — required fields, visual top→bottom.
+const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'statusId', 'mediaFormatId', 'deliveryMethod'];
+const CREATE_FIELD_ORDER = ['aveugleId', 'deliveryMethod', 'mediaFormatId', 'lines'];
 
 interface User {
     id: number;
@@ -81,6 +88,8 @@ export interface OrderAssignment {
 
 interface OrderFormBackendBaseProps {
     initialData?: OrderFormData;
+    /** Order id when editing — lets the recording-duplicate check ignore self. */
+    currentOrderId?: number;
     onSubmit: (formData: OrderFormData) => Promise<number>;
     submitButtonText: string;
     loadingText: string;
@@ -127,6 +136,7 @@ const getUserDisplayName = (
 
 export function OrderFormBackendBase({
                                          initialData,
+                                         currentOrderId,
                                          onSubmit,
                                          submitButtonText,
                                          loadingText,
@@ -142,6 +152,9 @@ export function OrderFormBackendBase({
                                      }: OrderFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { toastError } = useFormToast();
+    const { registerField, focusFirstInvalid } = useInvalidField();
+    const { check: checkRecording, getFor: getRecordingFor } = useRecordingCheck();
 
     // Cost is locked while the linked bill is finalized (payée/soldée); reopen to edit.
     const costLocked = initialBill?.state === 'PAID' || initialBill?.state === 'SOLDE';
@@ -370,31 +383,47 @@ export function OrderFormBackendBase({
         setIsLoading(true);
         setError(null);
 
-        // Validation
-        if (!formData.aveugleId) {
-            setError('Veuillez sélectionner un auditeur');
+        // N3 — collect failing required fields in visual order.
+        const invalid: string[] = [];
+        if (!formData.aveugleId) invalid.push('aveugleId');
+        if (!formData.catalogueId) invalid.push('catalogueId');
+        if (!formData.statusId) invalid.push('statusId');
+        if (!formData.mediaFormatId) invalid.push('mediaFormatId');
+        if (!formData.deliveryMethod) invalid.push('deliveryMethod');
+
+        if (invalid.length) {
+            const messages: Record<string, string> = {
+                aveugleId: 'Veuillez sélectionner un auditeur',
+                catalogueId: 'Veuillez sélectionner un livre',
+                statusId: 'Veuillez sélectionner un statut',
+                mediaFormatId: 'Veuillez sélectionner un format média',
+                deliveryMethod: 'Veuillez sélectionner une méthode de livraison',
+            };
+            const firstName = EDIT_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
+            const msg = messages[firstName];
+            setError(msg);
+            toastError(msg);
+            focusFirstInvalid(EDIT_FIELD_ORDER, new Set(invalid));
             setIsLoading(false);
             return;
         }
-        if (!formData.catalogueId) {
-            setError('Veuillez sélectionner un livre');
-            setIsLoading(false);
-            return;
-        }
-        if (!formData.statusId) {
-            setError('Veuillez sélectionner un statut');
-            setIsLoading(false);
-            return;
-        }
-        if (!formData.mediaFormatId) {
-            setError('Veuillez sélectionner un format média');
-            setIsLoading(false);
-            return;
-        }
-        if (!formData.deliveryMethod) {
-            setError('Veuillez sélectionner une méthode de livraison');
-            setIsLoading(false);
-            return;
+
+        // Guard: warn before creating a SECOND active recording demande for this book.
+        if (formData.lentPhysicalBook && formData.catalogueId) {
+            const res = await checkRecording(formData.catalogueId, currentOrderId);
+            if (res && res.activeRecordingCount > 0) {
+                const who = res.orders[0]?.aveugle?.name;
+                const confirmed = window.confirm(
+                    `Il existe déjà ${res.activeRecordingCount === 1
+                        ? 'une demande d\u2019enregistrement active'
+                        : `${res.activeRecordingCount} demandes d\u2019enregistrement actives`} pour cet ouvrage${who ? ` (ex. ${who})` : ''}.\n\n` +
+                    `Voulez-vous vraiment créer une nouvelle demande d\u2019enregistrement pour ce livre ?`
+                );
+                if (!confirmed) {
+                    setIsLoading(false);
+                    return;
+                }
+            }
         }
 
         try {
@@ -403,11 +432,10 @@ export function OrderFormBackendBase({
                 onSuccess(newOrderId);
             }
         } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError('Échec du traitement de la demande');
-            }
+            // The onSubmit wrapper already shows a detailed error toast; keep only a
+            // quiet inline fallback here so we never mask it (one toast at a time).
+            const msg = err instanceof Error && err.message ? err.message : 'Échec du traitement de la demande';
+            setError(msg);
             return;
         } finally {
             setIsLoading(false);
@@ -435,6 +463,20 @@ export function OrderFormBackendBase({
 
     const audioAlreadyExists = Boolean(selectedBook?.audio_filepath);
 
+    // Active "enregistrement nécessaire" already exists for this book (excluding
+    // the order being edited). Checked whenever the book or the recording flag
+    // changes; result drives an inline warning + a submit-time confirm.
+    useEffect(() => {
+        if (formData.catalogueId && formData.lentPhysicalBook) {
+            void checkRecording(formData.catalogueId, currentOrderId);
+        }
+    }, [formData.catalogueId, formData.lentPhysicalBook, currentOrderId, checkRecording]);
+
+    const recordingDup = formData.lentPhysicalBook
+        ? getRecordingFor(formData.catalogueId)
+        : null;
+    const hasRecordingDup = (recordingDup?.activeRecordingCount ?? 0) > 0;
+
     return (
         <Card className="bg-gray-900 border-gray-700">
             <CardHeader>
@@ -457,6 +499,7 @@ export function OrderFormBackendBase({
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
+                                    ref={registerField('aveugleId')}
                                     variant="outline"
                                     role="combobox"
                                     className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors"
@@ -510,6 +553,7 @@ export function OrderFormBackendBase({
                         <Popover open={bookPopoverOpen} onOpenChange={setBookPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
+                                    ref={registerField('catalogueId')}
                                     variant="outline"
                                     role="combobox"
                                     className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors"
@@ -655,6 +699,24 @@ export function OrderFormBackendBase({
                                         Enregistrement nécessaire
                                     </label>
                                 </div>
+                                {audioAlreadyExists && formData.lentPhysicalBook && (
+                                    <p className="mt-2 ml-9 text-sm text-amber-400">
+                                        Attention : un enregistrement audio existe déjà pour cet ouvrage.
+                                        Vérifiez qu&apos;un nouvel enregistrement est réellement nécessaire
+                                        avant de poursuivre — il s&apos;agit peut-être plutôt d&apos;une duplication.
+                                    </p>
+                                )}
+                                {hasRecordingDup && (
+                                    <p className="mt-2 ml-9 text-sm text-amber-400">
+                                        Il existe déjà {recordingDup!.activeRecordingCount === 1
+                                            ? 'une demande d\u2019enregistrement active'
+                                            : `${recordingDup!.activeRecordingCount} demandes d\u2019enregistrement actives`}{' '}
+                                        pour cet ouvrage
+                                        {recordingDup!.orders[0]?.aveugle?.name
+                                            ? ` (ex. ${recordingDup!.orders[0].aveugle!.name})`
+                                            : ''}. Êtes-vous sûr de vouloir en créer une nouvelle&nbsp;?
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -668,7 +730,7 @@ export function OrderFormBackendBase({
                             value={formData.statusId?.toString() || ''}
                             onValueChange={(value) => setFormData({ ...formData, statusId: parseInt(value) })}
                         >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                            <SelectTrigger ref={registerField('statusId')} className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
@@ -696,7 +758,7 @@ export function OrderFormBackendBase({
                             value={formData.mediaFormatId?.toString() || ''}
                             onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}
                         >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                            <SelectTrigger ref={registerField('mediaFormatId')} className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                 <SelectValue placeholder="Sélectionner un format" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
@@ -724,7 +786,7 @@ export function OrderFormBackendBase({
                             value={formData.deliveryMethod || ''}
                             onValueChange={(value) => setFormData({ ...formData, deliveryMethod: value as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE'})}
                         >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                            <SelectTrigger ref={registerField('deliveryMethod')} className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                 <SelectValue placeholder="Sélectionner une méthode" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-700">
@@ -816,7 +878,7 @@ export function OrderFormBackendBase({
                         a duplication never has an affectation, so showing it confuses the team. */}
                     {!formData.isDuplication && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">Affectation</label>
+                            <label className="text-sm font-medium text-gray-200">Attribution</label>
                             {initialAssignment ? (
                                 <div className="flex items-center justify-between gap-3 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md">
                                     <div className="text-sm text-gray-200 space-y-0.5">
@@ -838,12 +900,12 @@ export function OrderFormBackendBase({
                                         rel="noopener noreferrer"
                                         className="text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
                                     >
-                                        Voir l&apos;affectation
+                                        Voir l&apos;attribution
                                     </Link>
                                 </div>
                             ) : (
                                 <div className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-500 text-sm italic">
-                                    Aucune affectation
+                                    Aucune attribution
                                 </div>
                             )}
                         </div>
@@ -1055,6 +1117,9 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { toastError } = useFormToast();
+    const { registerField, focusFirstInvalid } = useInvalidField();
+    const { check: checkRecording, getFor: getRecordingFor } = useRecordingCheck();
 
     // Options
     const [statuses, setStatuses] = useState<Status[]>([]);
@@ -1072,6 +1137,16 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
     // Book lines
     const [lines, setLines] = useState<OrderBookLine[]>([makeLine('3.00')]);
+
+    // For each ENREGISTREMENT line with a book, look up whether the book already
+    // has an active recording demande (drives the per-line warning + submit confirm).
+    useEffect(() => {
+        for (const l of lines) {
+            if (l.type === 'ENREGISTREMENT' && l.book) {
+                void checkRecording(l.book.id);
+            }
+        }
+    }, [lines, checkRecording]);
 
     // Auditeur search
     const [userSearch, setUserSearch] = useState('');
@@ -1135,11 +1210,28 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
         setIsLoading(true);
         setError(null);
 
-        if (!aveugleId) { setError('Veuillez sélectionner un auditeur'); setIsLoading(false); return; }
-        if (!deliveryMethod) { setError('Veuillez sélectionner une méthode de livraison'); setIsLoading(false); return; }
-        if (!mediaFormatId) { setError('Veuillez sélectionner un format média par défaut'); setIsLoading(false); return; }
-        if (lines.length === 0) { setError('Ajoutez au moins un ouvrage'); setIsLoading(false); return; }
-        if (lines.some(l => !l.book)) { setError('Chaque ligne doit comporter un livre'); setIsLoading(false); return; }
+        // N3 — collect failing required fields in visual order.
+        const invalid: string[] = [];
+        if (!aveugleId) invalid.push('aveugleId');
+        if (!deliveryMethod) invalid.push('deliveryMethod');
+        if (!mediaFormatId) invalid.push('mediaFormatId');
+        const firstLineMissingBook = lines.findIndex((l) => !l.book);
+        if (lines.length === 0 || firstLineMissingBook !== -1) invalid.push('lines');
+
+        if (invalid.length) {
+            let msg: string;
+            const firstName = CREATE_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
+            if (firstName === 'aveugleId') msg = 'Veuillez sélectionner un auditeur';
+            else if (firstName === 'deliveryMethod') msg = 'Veuillez sélectionner une méthode de livraison';
+            else if (firstName === 'mediaFormatId') msg = 'Veuillez sélectionner un format média par défaut';
+            else if (lines.length === 0) msg = 'Ajoutez au moins un ouvrage';
+            else msg = `La ligne ${firstLineMissingBook + 1} doit comporter un livre`;
+            setError(msg);
+            toastError(msg);
+            focusFirstInvalid(CREATE_FIELD_ORDER, new Set(invalid));
+            setIsLoading(false);
+            return;
+        }
 
         const books = lines.map(l => ({
             catalogueId: l.book!.id,
@@ -1151,9 +1243,30 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
         }));
 
         if (books.some(b => !b.statusId)) {
-            setError("Statut introuvable pour un type d'ouvrage. Vérifiez la table des statuts.");
+            const msg = "Statut introuvable pour un type d'ouvrage. Vérifiez la table des statuts.";
+            setError(msg);
+            toastError(msg);
             setIsLoading(false);
             return;
+        }
+
+        // Guard: warn before creating recording demande(s) for book(s) that already
+        // have an active recording demande. One confirm covers all offending lines.
+        const recordingLines = lines.filter((l) => l.type === 'ENREGISTREMENT' && l.book);
+        const dupTitles: string[] = [];
+        for (const l of recordingLines) {
+            const r = await checkRecording(l.book!.id);
+            if (r && r.activeRecordingCount > 0) dupTitles.push(l.book!.title);
+        }
+        if (dupTitles.length > 0) {
+            const confirmed = window.confirm(
+                `Une demande d\u2019enregistrement active existe déjà pour : ${dupTitles.join(', ')}.\n\n` +
+                `Voulez-vous vraiment créer ${dupTitles.length > 1 ? 'ces nouvelles demandes' : 'cette nouvelle demande'} d\u2019enregistrement ?`
+            );
+            if (!confirmed) {
+                setIsLoading(false);
+                return;
+            }
         }
 
         try {
@@ -1195,7 +1308,9 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             if (onSuccess && ids.length) onSuccess(ids[0]);
         } catch (err) {
             console.error('Batch submit error:', err);
-            setError('Échec de la création des commandes');
+            const msg = 'Échec de la création des commandes';
+            setError(msg);
+            toastError(msg);
         } finally {
             setIsLoading(false);
         }
@@ -1222,7 +1337,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         </label>
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                             <PopoverTrigger asChild>
-                                <Button type="button" variant="outline" role="combobox"
+                                <Button ref={registerField('aveugleId')} type="button" variant="outline" role="combobox"
                                         className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
                                     {selectedUser
                                         ? <span className="truncate">{clip(getUserDisplayName(selectedUser))}</span>
@@ -1275,7 +1390,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-200">Méthode de livraison <span className="text-red-500">*</span></label>
                             <Select value={deliveryMethod || ''} onValueChange={(v) => setDeliveryMethod(v as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE')}>
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectTrigger ref={registerField('deliveryMethod')} className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                                 <SelectContent className="bg-gray-800 border-gray-700">
                                     <SelectItem value="RETRAIT" className="text-gray-200">Retrait</SelectItem>
                                     <SelectItem value="ENVOI" className="text-gray-200">Envoi</SelectItem>
@@ -1286,7 +1401,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-200">Format média par défaut <span className="text-red-500">*</span></label>
                             <Select value={mediaFormatId?.toString() || ''} onValueChange={(v) => setMediaFormatId(parseInt(v))}>
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectTrigger ref={registerField('mediaFormatId')} className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                                 <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
                                     {mediaFormats.map((f) => (
                                         <SelectItem key={f.id} value={f.id.toString()} className="text-gray-200">{f.name}</SelectItem>
@@ -1321,7 +1436,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                     {/* Book lines */}
                     <div className="space-y-3 pt-4 border-t border-gray-700">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">Ouvrages ({lines.length})</h3>
+                            <h3 ref={registerField('lines')} tabIndex={-1} className="text-sm font-medium text-gray-400 uppercase tracking-wide outline-none">Ouvrages ({lines.length})</h3>
                             <span className="text-xs text-gray-500">{dupCount} duplication(s) · {recCount} enregistrement(s)</span>
                         </div>
 
@@ -1355,6 +1470,25 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                         Enregistrement nécessaire
                                     </button>
                                 </div>
+
+                                {/* #2 — audio already exists for this book */}
+                                {line.type === 'ENREGISTREMENT' && line.book?.audio_filepath && (
+                                    <p className="text-sm text-amber-400">
+                                        Attention : un enregistrement audio existe déjà pour cet ouvrage.
+                                        Vérifiez qu&apos;un nouvel enregistrement est réellement nécessaire — il
+                                        s&apos;agit peut-être plutôt d&apos;une duplication.
+                                    </p>
+                                )}
+                                {/* Active recording demande already exists for this book */}
+                                {line.type === 'ENREGISTREMENT' && line.book &&
+                                    (getRecordingFor(line.book.id)?.activeRecordingCount ?? 0) > 0 && (
+                                    <p className="text-sm text-amber-400">
+                                        Il existe déjà une demande d&apos;enregistrement active pour cet
+                                        ouvrage{getRecordingFor(line.book.id)!.orders[0]?.aveugle?.name
+                                            ? ` (ex. ${getRecordingFor(line.book.id)!.orders[0].aveugle!.name})`
+                                            : ''}. Êtes-vous sûr de vouloir en créer une nouvelle&nbsp;?
+                                    </p>
+                                )}
 
                                 {/* Per-line overrides */}
                                 <div className="grid grid-cols-2 gap-2">
@@ -1518,6 +1652,7 @@ export function EditOrderFormBackend({
         <>
             <OrderFormBackendBase
                 initialData={initialData}
+                currentOrderId={parseInt(orderId)}
                 onSubmit={handleSubmit}
                 onDelete={handleDelete}
                 showDelete={true}

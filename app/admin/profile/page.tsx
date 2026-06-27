@@ -63,7 +63,7 @@ export default function ProfilePage() {
     const loadProfile = async (): Promise<UserData> => {
         const response = await fetch('/api/user/profile');
         if (!response.ok) {
-            throw new Error('Échec de récupération des données utilisateur');
+            throw new Error('Échec de récupération des données de la personne');
         }
         return response.json();
     };
@@ -208,7 +208,7 @@ export default function ProfilePage() {
             // Afficher un message de succès
             toast({
                 title: "Invitation envoyée",
-                description: `L'utilisateur ${inviteFormData.email} a été invité avec succès.`,
+                description: `La personne ${inviteFormData.email} a été invité avec succès.`,
             });
         } catch (err) {
             const errorMessage = err instanceof Error
@@ -251,7 +251,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="text-center sm:text-left">
                                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-100 mb-2">
-                                    {userData?.name || 'Utilisateur'}
+                                    {userData?.name || 'Personne'}
                                 </h1>
                                 <p className="text-gray-400 mb-1">
                                     Membre depuis {userData?.createdAt && new Date(userData.createdAt).toLocaleDateString('fr-FR')}

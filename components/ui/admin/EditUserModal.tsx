@@ -54,7 +54,7 @@ export function EditUserModal({
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-4 pr-8">
-                        <DialogTitle className="text-gray-100">Modifier l&apos;utilisateur</DialogTitle>
+                        <DialogTitle className="text-gray-100">Modifier la personne</DialogTitle>
                         {userId && (
                             <Button
                                 asChild

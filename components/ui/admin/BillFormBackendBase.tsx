@@ -20,6 +20,11 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
+import { useFormToast } from '@/hooks/useFormToast';
+import { useInvalidField } from '@/hooks/useInvalidField';
+
+// N3 — required fields top→bottom.
+const FIELD_ORDER = ['client', 'orders'];
 
 interface User {
     id: number;
@@ -68,6 +73,8 @@ export function BillFormBackendBase({
                                     }: BillFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { toastError } = useFormToast();
+    const { registerField, focusFirstInvalid } = useInvalidField();
 
     const [selectedClient, setSelectedClient] = useState<User | null>(initialClient ?? null);
     const [state, setState] = useState<BillingStatus>(BillingStatus.BILLED);
@@ -163,19 +170,27 @@ export function BillFormBackendBase({
         e.preventDefault();
         setError(null);
 
-        if (!selectedClient) {
-            setError('Veuillez sélectionner un client');
-            return;
-        }
-        if (selectedOrderIds.size === 0) {
-            setError('Veuillez sélectionner au moins une demande à facturer');
+        // N3 — collect failing fields in visual order, then toast + focus the first.
+        const invalid: string[] = [];
+        if (!selectedClient) invalid.push('client');
+        if (selectedOrderIds.size === 0) invalid.push('orders');
+
+        if (invalid.length) {
+            const messages: Record<string, string> = {
+                client: 'Veuillez sélectionner un auditeur',
+                orders: 'Veuillez sélectionner au moins une demande à facturer',
+            };
+            const msg = messages[invalid[0]];
+            setError(msg);
+            toastError(msg);
+            focusFirstInvalid(FIELD_ORDER, new Set(invalid));
             return;
         }
 
         setIsLoading(true);
         try {
             const billId = await onSubmit({
-                clientId: selectedClient.id,
+                clientId: selectedClient!.id,
                 orderIds: Array.from(selectedOrderIds),
                 state,
                 creationDate,
@@ -183,8 +198,8 @@ export function BillFormBackendBase({
             });
             if (onSuccess) onSuccess(billId);
         } catch (err) {
-            if (err instanceof Error) setError(err.message);
-            else setError('Échec de la création de la facture');
+            const msg = err instanceof Error ? err.message : 'Échec de la création de la facture';
+            setError(msg);
         } finally {
             setIsLoading(false);
         }
@@ -214,11 +229,12 @@ export function BillFormBackendBase({
                     {/* Client */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-200">
-                            Client <span className="text-red-500">*</span>
+                            Auditeur <span className="text-red-500">*</span>
                         </label>
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
+                                    ref={registerField('client')}
                                     variant="outline"
                                     role="combobox"
                                     className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors"
@@ -226,7 +242,7 @@ export function BillFormBackendBase({
                                     {selectedClient ? (
                                         <span className="truncate">{selectedClient.name || selectedClient.email}</span>
                                     ) : (
-                                        <span className="text-gray-400">Rechercher un client ...</span>
+                                        <span className="text-gray-400">Rechercher un auditeur ...</span>
                                     )}
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
@@ -263,7 +279,7 @@ export function BillFormBackendBase({
 
                     {/* Eligible orders */}
                     {selectedClient && (
-                        <div className="space-y-2">
+                        <div ref={registerField('orders')} tabIndex={-1} className="space-y-2 outline-none rounded-lg">
                             <label className="text-sm font-medium text-gray-200">
                                 Demandes à facturer <span className="text-red-500">*</span>
                             </label>

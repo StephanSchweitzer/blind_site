@@ -35,7 +35,7 @@ export async function PUT(request: Request) {
 
         if (!existingUser) {
             return new NextResponse(
-                JSON.stringify({ message: 'Utilisateur non trouvé' }),
+                JSON.stringify({ message: 'Personne non trouvé' }),
                 { status: 404 }
             );
         }

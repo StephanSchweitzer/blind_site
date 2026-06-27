@@ -11,7 +11,7 @@ const TABS = [
     { slug: 'commandes', label: 'Commandes' },
     { slug: 'factures', label: 'Factures' },
     { slug: 'paiements', label: 'Paiements' },
-    { slug: 'affectations', label: 'Affectations' },
+    { slug: 'affectations', label: 'Attributions' },
 ];
 
 export default function DossierTabs({ userId }: DossierTabsProps) {

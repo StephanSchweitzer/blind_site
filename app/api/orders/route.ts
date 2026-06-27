@@ -208,6 +208,11 @@ export async function GET(request: NextRequest) {
                     mediaFormat: {
                         select: { name: true },
                     },
+                    // Lets the assignment form grey out orders that already have an
+                    // attribution (one-assignment-per-order is enforced server-side).
+                    _count: {
+                        select: { assignments: true },
+                    },
                 },
             }),
             prisma.orders.count({ where: whereClause }),
