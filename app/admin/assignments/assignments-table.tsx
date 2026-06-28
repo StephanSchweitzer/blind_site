@@ -242,9 +242,19 @@ export default function AssignmentsTable({
     }, [assignmentParam]);
 
     const clearAssignmentParam = () => {
+        // No deep-link param to clear (the normal row-click edit case): do nothing.
+        // Touching history here at all desyncs Next's router and swallows the
+        // router.refresh() that runs right after an edit — which is exactly why
+        // status/reassign edits never re-rendered. Bail out so refresh runs clean.
+        if (!searchParams.get('assignment')) return;
         const params = new URLSearchParams(searchParams.toString());
         params.delete('assignment');
-        router.replace(`?${params.toString()}`, { scroll: false });
+        // Use the History API instead of router.replace() so dropping the param
+        // does NOT start a navigation that pre-empts the router.refresh() fired
+        // right after it (that race was leaving the table stale after edits).
+        const qs = params.toString();
+        // Preserve Next's routing metadata; passing null wipes it and breaks refresh.
+        window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
     };
 
     const formatDate = (dateString: string | null) => {
@@ -567,6 +577,11 @@ export default function AssignmentsTable({
                         if (!open) {
                             setSelectedAssignment(null);
                             clearAssignmentParam();
+                            // Sub-actions performed while the modal was open (reader
+                            // reassignment hits POST /readers directly) persist without
+                            // telling the table to refetch; the post-save close also lands
+                            // here. Refresh on every close so the change shows in the table.
+                            router.refresh();
                         }
                     }}
                     assignmentId={selectedAssignment.id}

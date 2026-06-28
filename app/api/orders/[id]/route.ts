@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
     OrderQueryModeSchema,
@@ -158,6 +159,7 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    revalidateAdmin();
     try {
         const auth = await checkAdmin();
         if (!auth.authorized) return auth.response;
@@ -350,6 +352,7 @@ export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    revalidateAdmin();
     try {
         const auth = await checkAdmin();
         if (!auth.authorized) return auth.response;
@@ -531,6 +534,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    revalidateAdmin();
     try {
         const auth = await checkAdmin();
         if (!auth.authorized) return auth.response;

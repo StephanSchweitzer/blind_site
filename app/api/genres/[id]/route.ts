@@ -1,6 +1,7 @@
 // app/api/genres/[id]/route.ts
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -22,6 +23,7 @@ export async function PUT(
     request: NextRequest,
     { params }: Params
 ) {
+    revalidateAdmin();
     try {
         const body = await request.json();
 
@@ -80,6 +82,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: Params
 ) {
+    revalidateAdmin();
     try {
         const { id } = await params;
 

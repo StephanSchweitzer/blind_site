@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { PaymentType, Prisma } from '@prisma/client';
 import { getServerSession } from 'next-auth';
@@ -78,6 +79,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
+    revalidateAdmin();
     try {
         const authCheck = await checkAdmin();
         if (!authCheck.authorized) return authCheck.response;
@@ -187,6 +189,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 // Soft delete: mark inactive, stamp deletedAt, store an optional reason.
 export async function DELETE(request: NextRequest, context: RouteContext) {
+    revalidateAdmin();
     try {
         const authCheck = await checkAdmin();
         if (!authCheck.authorized) return authCheck.response;

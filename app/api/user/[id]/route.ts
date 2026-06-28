@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { generatePassword } from '@/lib/utils';
@@ -185,6 +186,7 @@ export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    revalidateAdmin();
     try {
         const { id } = await params;
         const userId = parseInt(id);
@@ -454,6 +456,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    revalidateAdmin();
     try {
         const { id } = await params;
         const userId = parseInt(id);

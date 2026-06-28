@@ -106,7 +106,11 @@ export default function BillsTable({
         if (searchParams.get('bill')) {
             const params = new URLSearchParams(searchParams.toString());
             params.delete('bill');
-            router.replace(`?${params.toString()}`);
+            // History API instead of router.replace() so dropping the param does
+            // not start a navigation that pre-empts a following router.refresh().
+            const qs = params.toString();
+            // Preserve Next's routing metadata; passing null wipes it and breaks refresh.
+            window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
         }
     };
 

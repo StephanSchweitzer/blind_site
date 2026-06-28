@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
 // PUT: Update a specific coup de coeur by ID
 export async function PUT(req: NextRequest, { params }: Params) {
+    revalidateAdmin();
     const { id } = await params;
 
     try {
@@ -102,6 +104,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
 // DELETE: Delete a specific coup de coeur by ID
 export async function DELETE(req: NextRequest, { params }: Params) {
+    revalidateAdmin();
     const { id } = await params;
 
     try {

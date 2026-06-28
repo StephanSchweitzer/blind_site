@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus } from '@prisma/client';
 import { userAddressLines } from '@/lib/users/formatAddress';
@@ -116,6 +117,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
+    revalidateAdmin();
     try {
         const authCheck = await checkAdmin();
         if (!authCheck.authorized) return authCheck.response;
@@ -384,6 +386,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 // Soft delete: mark the bill inactive AND unlink its orders (reset billId + billingStatus).
 export async function DELETE(_request: NextRequest, context: RouteContext) {
+    revalidateAdmin();
     try {
         const authCheck = await checkAdmin();
         if (!authCheck.authorized) {

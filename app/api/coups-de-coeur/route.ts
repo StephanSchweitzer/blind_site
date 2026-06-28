@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -124,6 +125,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+    revalidateAdmin();
     try {
         const session = await getServerSession(authOptions);
         if (!session || !session.user) {

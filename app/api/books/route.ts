@@ -1,6 +1,7 @@
 // app/api/books/route.ts
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { Prisma } from '@prisma/client';
@@ -372,6 +373,7 @@ interface CreateBookResponse {
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
+    revalidateAdmin();
     try {
         const session = await getServerSession(authOptions);
 

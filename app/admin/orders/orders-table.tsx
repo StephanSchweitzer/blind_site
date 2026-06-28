@@ -258,9 +258,19 @@ export default function OrdersTable({
     }, [assignmentOrderParam]);
 
     const clearOrderParam = () => {
+        // No deep-link param to clear (the normal row-click edit case): do nothing.
+        // Touching history here at all desyncs Next's router and swallows the
+        // router.refresh() that runs right after an edit — which is exactly why
+        // status/date edits never re-rendered. Bail out so refresh runs clean.
+        if (!searchParams.get('order')) return;
         const params = new URLSearchParams(searchParams.toString());
         params.delete('order');
-        router.replace(`?${params.toString()}`, { scroll: false });
+        // Use the History API instead of router.replace() so dropping the param
+        // does NOT start a navigation that pre-empts the router.refresh() fired
+        // right after it (that race was leaving the table stale after edits).
+        const qs = params.toString();
+        // Preserve Next's routing metadata; passing null wipes it and breaks refresh.
+        window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
     };
 
     const formatDate = (dateString: string | null) => {
@@ -675,6 +685,11 @@ export default function OrdersTable({
                         if (!open) {
                             setSelectedOrder(null);
                             clearOrderParam();
+                            // Sub-actions performed while the modal was open (e.g. changing
+                            // the book) persist via their own request but never told the
+                            // table to refetch; the post-save close also lands here. Refresh
+                            // on every close so any DB change is reflected in the table.
+                            router.refresh();
                         }
                     }}
                     orderId={selectedOrder.id}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { STATUS, guardReaderEligible, guardCanReassignReader } from '@/lib/statusSync';
 import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
@@ -79,6 +80,7 @@ export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    revalidateAdmin();
     try {
         const { id } = await params;
         const assignmentId = parseInt(id);

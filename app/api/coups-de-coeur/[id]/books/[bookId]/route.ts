@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
+    revalidateAdmin();
     const { id, bookId } = await params;
 
     try {
@@ -52,6 +54,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
+    revalidateAdmin();
     const { id, bookId } = await params;
 
     try {

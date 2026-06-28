@@ -1,6 +1,7 @@
 // app/api/genres/route.ts
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { Prisma } from '@prisma/client';
 
 interface GenreBody {
@@ -108,6 +109,7 @@ async function createGenre(data: GenreBody) {
 
 // Request handlers
 export async function POST(request: NextRequest) {
+    revalidateAdmin();
     try {
         const body = await parseAndValidateBody(request);
         const genre = await createGenre(body);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
     AssignmentUpdateInputSchema,
@@ -64,6 +65,7 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    revalidateAdmin();
     try {
         const { id } = await params;
         const assignmentId = parseInt(id);
@@ -292,6 +294,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    revalidateAdmin();
     try {
         const { id } = await params;
         const assignmentId = parseInt(id);

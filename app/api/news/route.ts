@@ -1,5 +1,6 @@
 // app/api/news/route.ts
 import { NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -8,6 +9,7 @@ import {News, Prisma} from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
 
 export async function POST(req: NextRequest) {
+    revalidateAdmin();
     let session;
 
     try {

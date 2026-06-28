@@ -466,7 +466,10 @@ export function AssignmentFormBackendBase({
             });
 
             if (!response.ok) {
-                throw new Error('Échec de la réattribution');
+                // Surface the server's explanation (e.g. "attribution terminée") instead
+                // of a generic message, so the toast is actually actionable.
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.message || 'Échec de la réattribution');
             }
 
             toast({
@@ -484,7 +487,7 @@ export function AssignmentFormBackendBase({
             toast({
                 variant: "destructive",
                 title: "Erreur",
-                description: "Échec de la réattribution du lecteur",
+                description: error instanceof Error ? error.message : "Échec de la réattribution du lecteur",
             });
         } finally {
             setIsReassigningReader(false);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import { getServerSession } from 'next-auth';
@@ -107,6 +108,7 @@ export async function GET(request: NextRequest) {
 // derive it from orders). A billId is only persisted for ENREGISTREMENT and a
 // cotisationYear only for COTISATION; both are validated/coerced server-side.
 export async function POST(request: NextRequest) {
+    revalidateAdmin();
     try {
         const authCheck = await checkAdmin();
         if (!authCheck.authorized) return authCheck.response;

@@ -1,5 +1,6 @@
 // app/api/news/[id]/route.ts
 import { NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -56,6 +57,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
 // PUT: Update a specific article by ID
 export async function PUT(req: NextRequest, { params }: RouteParams) {
+    revalidateAdmin();
     let session;
 
     try {
@@ -149,6 +151,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
 // DELETE: Delete a specific article by ID
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
+    revalidateAdmin();
     let session;
 
     try {

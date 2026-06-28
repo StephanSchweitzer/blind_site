@@ -414,7 +414,17 @@ export default function UsersTable({
             {selectedUser && (
                 <EditUserModal
                     isOpen={isEditModalOpen}
-                    onOpenChange={setIsEditModalOpen}
+                    onOpenChange={(open) => {
+                        setIsEditModalOpen(open);
+                        if (!open) {
+                            // The activity-status changer (UserActivityHistory) inside this
+                            // modal persists via its own request without refreshing the table;
+                            // the main-form save path doesn't run for a status-only change.
+                            // Refresh on close so the new status shows without a hard reload.
+                            setSelectedUser(null);
+                            router.refresh();
+                        }
+                    }}
                     userId={selectedUser.id}
                     initialData={selectedUser.data}
                     onUserEdited={handleUserEdited}

@@ -1,5 +1,6 @@
 // app/api/assignments/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
     STATUS,
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    revalidateAdmin();
     try {
         const body = await request.json();
         const {
