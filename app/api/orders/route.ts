@@ -145,6 +145,15 @@ export async function GET(request: NextRequest) {
             whereClause.isDuplication = false;
         }
 
+        // Unassigned filter — opt-in. Used by the assignment form's "recent
+        // actionable" list: exclude demandes that already have an attribution
+        // (one-per-demande), so the 10 slots backfill with older still-attributable
+        // demandes instead of thinning out. Default behaviour is unchanged.
+        const unassigned = searchParams.get('unassigned');
+        if (unassigned === 'true') {
+            whereClause.assignments = { none: {} };
+        }
+
         // Retard filter (orders >3 months old and not closed)
         if (retard === 'true') {
             const existingConditions = whereClause.AND

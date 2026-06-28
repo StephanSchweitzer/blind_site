@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -211,7 +211,7 @@ export function AssignmentFormBackendBase({
 
     // Options data
     const [users, setUsers] = useState<ReaderSummary[]>([]);
-    const [orders, setOrders] = useState<(OrderSummary & { _count?: { assignments: number } })[]>([]);
+    const [orders, setOrders] = useState<(OrderSummary & { _count?: { assignments: number }; isDuplication?: boolean })[]>([]);
     const [statuses, setStatuses] = useState<Status[]>([]);
 
     // Reader history
@@ -247,7 +247,10 @@ export function AssignmentFormBackendBase({
             try {
                 const [statusesRes, ordersRes] = await Promise.all([
                     fetch('/api/statuses'),
-                    fetch(`/api/orders?page=1&limit=100${presetClientId ? `&aveugleId=${presetClientId}` : ''}`),
+                    // Recent list excludes duplications + already-attributed demandes
+                    // server-side, so the slots backfill with older attributable demandes
+                    // rather than going empty. All demandes still surface (greyed) on search.
+                    fetch(`/api/orders?page=1&limit=100&isDuplication=false&unassigned=true${presetClientId ? `&aveugleId=${presetClientId}` : ''}`),
                 ]);
 
                 if (statusesRes.ok) {
@@ -353,18 +356,35 @@ export function AssignmentFormBackendBase({
         return () => clearTimeout(debounce);
     }, [userSearch]);
 
-    // Search orders
-    useEffect(() => {
-        const searchOrders = async () => {
-            if (orderSearch.length < 2) {
-                return;
-            }
+    // Skip the first run of the orders effect below — the mount effect already
+    // loads the recent list (and fires onOrdersLoaded). After that, this effect
+    // owns every change to `orders`.
+    const ordersEffectMounted = useRef(false);
 
+    // Orders: empty query → recent actionable list (duplications excluded
+    // server-side); 2+ chars → full search including duplications, which the
+    // render greys out instead of hiding. Clearing the box restores recent.
+    useEffect(() => {
+        if (!ordersEffectMounted.current) {
+            ordersEffectMounted.current = true;
+            return;
+        }
+
+        const q = orderSearch.trim();
+
+        const run = async () => {
             setIsSearchingOrders(true);
             try {
-                const response = await fetch(
-                    `/api/orders?page=1&limit=50&search=${encodeURIComponent(orderSearch)}${presetClientId ? `&aveugleId=${presetClientId}` : ''}`
-                );
+                const params = new URLSearchParams({ page: '1', limit: '50' });
+                if (q.length >= 2) {
+                    params.set('search', q);
+                } else {
+                    params.set('isDuplication', 'false');
+                    params.set('unassigned', 'true');
+                }
+                if (presetClientId) params.set('aveugleId', String(presetClientId));
+
+                const response = await fetch(`/api/orders?${params.toString()}`);
                 if (response.ok) {
                     const data = await response.json();
                     setOrders(data.orders || []);
@@ -376,7 +396,7 @@ export function AssignmentFormBackendBase({
             }
         };
 
-        const debounce = setTimeout(searchOrders, 300);
+        const debounce = setTimeout(run, 300);
         return () => clearTimeout(debounce);
     }, [orderSearch, presetClientId]);
 
@@ -433,6 +453,18 @@ export function AssignmentFormBackendBase({
             setFormData(prev => ({ ...prev, receptionDate: dateString }));
         }
     };
+
+    // Recent list (empty search) shows only actionable demandes; search shows
+    // everything with non-actionable rows greyed. Mirrors the per-row blockReason.
+    const isOrderSearchMode = orderSearch.trim().length >= 2;
+    const visibleOrders = isOrderSearchMode
+        ? orders
+        : orders.filter((order) => {
+            if (order.id === selectedOrder?.id) return true;
+            if (order.isDuplication) return false;
+            if ((order._count?.assignments ?? 0) >= 1) return false;
+            return true;
+        });
 
     const handleReassignReader = async () => {
         if (!assignmentId || !selectedReaderId) {
@@ -920,59 +952,73 @@ export function AssignmentFormBackendBase({
                                 >
                                     {isSearchingOrders ? (
                                         <div className="p-4 text-center text-gray-400">Recherche...</div>
-                                    ) : orders.length > 0 ? (
-                                        orders.map((order) => {
-                                            // One assignment per order (enforced server-side). Grey out and
-                                            // disable orders that already have one — except the order this
-                                            // assignment is currently attached to (edit mode).
-                                            const hasAttribution =
-                                                (order._count?.assignments ?? 0) >= 1 &&
-                                                order.id !== selectedOrder?.id;
+                                    ) : visibleOrders.length > 0 ? (
+                                        visibleOrders.map((order) => {
+                                            // A demande is non-actionable for a new attribution when it's a
+                                            // duplication (no reader needed) or already has an attribution
+                                            // (one-per-demande, server-enforced). The currently-selected
+                                            // demande is exempt so it stays visible/selectable in edit mode.
+                                            const blockReason: 'duplication' | 'attributed' | null =
+                                                order.id === selectedOrder?.id
+                                                    ? null
+                                                    : order.isDuplication
+                                                        ? 'duplication'
+                                                        : (order._count?.assignments ?? 0) >= 1
+                                                            ? 'attributed'
+                                                            : null;
+                                            const blocked = blockReason !== null;
                                             return (
-                                            <div
-                                                key={order.id}
-                                                aria-disabled={hasAttribution}
-                                                className={
-                                                    hasAttribution
-                                                        ? "px-4 py-3 border-b border-gray-700 last:border-b-0 opacity-50 cursor-not-allowed"
-                                                        : "px-4 py-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
-                                                }
-                                                onClick={hasAttribution ? undefined : () => handleOrderSelect(order)}
-                                            >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="flex-1">
-                                                        {/* Primary: who + when — same hierarchy as the trigger */}
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <Package className="h-4 w-4 text-blue-400 shrink-0" />
-                                                            <span className="font-semibold text-gray-200 text-base">
+                                                <div
+                                                    key={order.id}
+                                                    aria-disabled={blocked}
+                                                    className={
+                                                        blocked
+                                                            ? "px-4 py-3 border-b border-gray-700 last:border-b-0 opacity-50 cursor-not-allowed"
+                                                            : "px-4 py-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
+                                                    }
+                                                    onClick={blocked ? undefined : () => handleOrderSelect(order)}
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="flex-1">
+                                                            {/* Primary: who + when — same hierarchy as the trigger */}
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <Package className="h-4 w-4 text-blue-400 shrink-0" />
+                                                                <span className="font-semibold text-gray-200 text-base">
                                                                 {order.aveugle?.name || 'Auditeur inconnu'}
                                                             </span>
-                                                            {(order.requestReceivedDate || order.createdDate) && (
-                                                                <span className="text-sm text-gray-400">
+                                                                {(order.requestReceivedDate || order.createdDate) && (
+                                                                    <span className="text-sm text-gray-400">
                                                                     · {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}
                                                                 </span>
+                                                                )}
+                                                            </div>
+                                                            {order.catalogue && (
+                                                                <div className="text-sm text-gray-300">
+                                                                    {order.catalogue.title}
+                                                                    {order.catalogue.author && <span className="text-gray-500"> — {order.catalogue.author}</span>}
+                                                                </div>
+                                                            )}
+                                                            {blockReason === 'attributed' && (
+                                                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-400">
+                                                                    Une attribution existe déjà
+                                                                </div>
+                                                            )}
+                                                            {blockReason === 'duplication' && (
+                                                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-400">
+                                                                    Duplication — aucune attribution nécessaire
+                                                                </div>
                                                             )}
                                                         </div>
-                                                        {order.catalogue && (
-                                                            <div className="text-sm text-gray-300">
-                                                                {order.catalogue.title}
-                                                                {order.catalogue.author && <span className="text-gray-500"> — {order.catalogue.author}</span>}
-                                                            </div>
-                                                        )}
-                                                        {hasAttribution && (
-                                                            <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-400">
-                                                                Une attribution existe déjà
-                                                            </div>
-                                                        )}
+                                                        <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">Cmd&nbsp;#{order.id}</span>
                                                     </div>
-                                                    <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">Cmd&nbsp;#{order.id}</span>
                                                 </div>
-                                            </div>
                                             );
                                         })
                                     ) : (
                                         <div className="p-4 text-center text-gray-400">
-                                            Aucune commande trouvée
+                                            {isOrderSearchMode
+                                                ? "Aucune commande trouvée"
+                                                : "Aucune demande récente attribuable — utilisez la recherche pour voir toutes les demandes."}
                                         </div>
                                     )}
                                 </div>
