@@ -417,7 +417,7 @@ export default function BooksTable({
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <CardTitle className="text-foreground">Gestion des livres</CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -425,7 +425,7 @@ export default function BooksTable({
                     </CardDescription>
                 </div>
                 <Button
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                     onClick={() => setIsAddModalOpen(true)}
                 >
                     <Plus className="mr-2 h-4 w-4" />
@@ -565,8 +565,8 @@ export default function BooksTable({
                         <div className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
                             <div className="rounded-md border border-border bg-card">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-b border-border bg-card">
+                                    <TableHeader className="bg-card">
+                                        <TableRow className="border-b border-border">
                                             <TableHead className="text-foreground font-medium">Titre</TableHead>
                                             <TableHead className="text-foreground font-medium">Auteur</TableHead>
                                             <TableHead className="text-foreground font-medium">Genres</TableHead>

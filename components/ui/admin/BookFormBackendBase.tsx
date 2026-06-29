@@ -368,9 +368,11 @@ export function BookFormBackendBase({
                                         aria-expanded={open}
                                         className="w-full justify-between bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
                                     >
-                                        {formData.genres.length > 0
-                                            ? 'Sélectionner plus des genres associés...'
-                                            : 'Sélectionner les genres associés...'}
+                                        <span className="truncate min-w-0">
+                                            {formData.genres.length > 0
+                                                ? 'Sélectionner plus des genres associés...'
+                                                : 'Sélectionner les genres associés...'}
+                                        </span>
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-0 bg-card border-border">

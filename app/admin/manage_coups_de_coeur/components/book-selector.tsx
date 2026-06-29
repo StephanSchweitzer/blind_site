@@ -66,8 +66,8 @@ function BookTable({
                    }: BookTableProps) {
     return (
         <Table>
-            <TableHeader>
-                <TableRow className="border-b border-border bg-card">
+            <TableHeader className="bg-card">
+                <TableRow className="border-b border-border">
                     <TableHead className="text-foreground font-medium">
                         <div className="flex items-center gap-2">
                             <Switch

@@ -326,7 +326,7 @@ export default function AssignmentsTable({
     return (
         <Card className="w-full bg-card border-border">
             <CardHeader className="border-b border-border">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle className="text-3xl font-bold text-foreground">
                             Attributions
@@ -337,7 +337,7 @@ export default function AssignmentsTable({
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         Nouvelle attribution

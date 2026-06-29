@@ -63,15 +63,15 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <CardTitle className="text-foreground">Gestion des Genres</CardTitle>
                     <CardDescription className="text-muted-foreground">
                         Gérer et modifier les différents genres associés aux livres
                     </CardDescription>
                 </div>
-                <Link href="/admin/genres/new">
-                    <Button className="bg-muted text-foreground border-border hover:bg-muted">
+                <Link href="/admin/genres/new" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto bg-muted text-foreground border-border hover:bg-muted">
                         Ajouter un Genre
                     </Button>
                 </Link>
@@ -88,8 +88,8 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
 
                 <div className="rounded-md border border-border bg-card">
                     <Table>
-                        <TableHeader>
-                            <TableRow className="border-b border-border bg-card">
+                        <TableHeader className="bg-card">
+                            <TableRow className="border-b border-border">
                                 <TableHead className="text-foreground font-medium">Nom</TableHead>
                                 <TableHead className="text-foreground font-medium">Description</TableHead>
                                 <TableHead className="text-foreground font-medium">Actions</TableHead>

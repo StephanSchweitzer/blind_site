@@ -11,14 +11,14 @@ export function LoadingSkeleton({
                                     message = "Chargement...",
                                     variant = 'frontend'
                                 }: LoadingSkeletonProps) {
-    // Admin variant: always dark background with white text
+    // Admin variant: opaque themed background so it matches the active light/dark theme
     // Frontend variant: no background, theme-aware text
     const backgroundClass = variant === 'admin'
-        ? 'bg-gray-950'
+        ? 'bg-background'
         : '';
 
     const textClass = variant === 'admin'
-        ? 'text-white'
+        ? 'text-foreground'
         : 'text-gray-600 dark:text-gray-400';
 
     return (

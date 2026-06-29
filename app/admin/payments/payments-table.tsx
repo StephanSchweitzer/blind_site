@@ -228,8 +228,8 @@ export default function PaymentsTable({
                         <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
                             <div className="overflow-x-auto">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-card border-b border-border hover:bg-muted">
+                                    <TableHeader className="bg-card">
+                                        <TableRow className="border-b border-border hover:bg-muted">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
                                             <TableHead className="text-foreground font-medium">Client</TableHead>
                                             <TableHead className="text-foreground font-medium">Type</TableHead>

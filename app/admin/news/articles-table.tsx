@@ -201,15 +201,15 @@ export function ArticlesTable({
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <CardTitle className="text-foreground">Gérer les dernières info</CardTitle>
                     <CardDescription className="text-muted-foreground">
                         Gérer et modifier les informations affichées sur dernières info
                     </CardDescription>
                 </div>
-                <Link href="/admin/news/new">
-                    <Button className="bg-muted text-foreground border-border hover:bg-muted">
+                <Link href="/admin/news/new" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto bg-muted text-foreground border-border hover:bg-muted">
                         Ajouter un info
                     </Button>
                 </Link>
@@ -236,8 +236,8 @@ export function ArticlesTable({
 
                 <div className="rounded-md border border-border bg-card">
                     <Table>
-                        <TableHeader>
-                            <TableRow className="border-b border-border bg-card">
+                        <TableHeader className="bg-card">
+                            <TableRow className="border-b border-border">
                                 <TableHead className="text-foreground font-medium">Titre</TableHead>
                                 <TableHead className="text-foreground font-medium">Type</TableHead>
                                 <TableHead className="text-foreground font-medium">Auteur</TableHead>

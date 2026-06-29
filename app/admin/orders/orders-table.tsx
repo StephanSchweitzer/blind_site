@@ -357,7 +357,7 @@ export default function OrdersTable({
     return (
         <Card className="bg-card border-border">
             <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle className="text-2xl text-foreground">Demandes</CardTitle>
                         <CardDescription className="text-muted-foreground">
@@ -366,7 +366,7 @@ export default function OrdersTable({
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         <Plus className="h-4 w-4 mr-2" />
                         Nouvelle demande
@@ -512,8 +512,8 @@ export default function OrdersTable({
                         <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
                             <div className="overflow-x-auto">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-card border-b border-border hover:bg-muted">
+                                    <TableHeader className="bg-card">
+                                        <TableRow className="border-b border-border hover:bg-muted">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
                                             <TableHead className="text-foreground font-medium">Auditeur</TableHead>
                                             <TableHead className="text-foreground font-medium">Livre</TableHead>
