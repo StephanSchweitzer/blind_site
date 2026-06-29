@@ -30,20 +30,27 @@ export async function GET(request: NextRequest) {
         // When set, restrict to members who can currently receive assignments.
         const assignable = searchParams.get('assignable') === 'true';
 
-        if (query.length < 2) {
+        if (query.trim().length < 2) {
             return NextResponse.json([]);
         }
+
+        // Split on whitespace so multi-word queries ("stephan s") match across
+        // fields: every term must hit at least one field (AND of ORs). This lets
+        // "stephan" match firstName while "s" matches lastName.
+        const terms = query.trim().split(/\s+/).filter(Boolean);
 
         const whereClause: Prisma.UserWhereInput = {
             // Exclude soft-deleted users. The global Prisma extension also does
             // this for findMany; set explicitly here so the picker stays clean
             // even if the query path changes.
             deletedAt: null,
-            OR: [
-                { firstName: { contains: query, mode: Prisma.QueryMode.insensitive } },
-                { lastName:  { contains: query, mode: Prisma.QueryMode.insensitive } },
-                { email:     { contains: query, mode: Prisma.QueryMode.insensitive } },
-            ],
+            AND: terms.map((term) => ({
+                OR: [
+                    { firstName: { contains: term, mode: Prisma.QueryMode.insensitive } },
+                    { lastName:  { contains: term, mode: Prisma.QueryMode.insensitive } },
+                    { email:     { contains: term, mode: Prisma.QueryMode.insensitive } },
+                ],
+            })),
         };
 
         if (memberType) {
