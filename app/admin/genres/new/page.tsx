@@ -5,12 +5,12 @@ import GenreForm from './genre-form';
 
 export default function NewGenrePage() {
     return (
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-background">
             <div className="container mx-auto py-8">
-                <Card className="bg-gray-900 border-gray-800">
-                    <CardHeader className="border-b border-gray-700">
-                        <CardTitle className="text-gray-100">Ajouter un Genre</CardTitle>
-                        <CardDescription className="text-gray-400">
+                <Card className="bg-card border-border">
+                    <CardHeader className="border-b border-border">
+                        <CardTitle className="text-foreground">Ajouter un Genre</CardTitle>
+                        <CardDescription className="text-muted-foreground">
                             Créer un nouveau genre pour organiser vos livres
                         </CardDescription>
                     </CardHeader>

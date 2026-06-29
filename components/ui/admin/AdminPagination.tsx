@@ -15,7 +15,7 @@ export function AdminPagination({
 }) {
     return (
         <>
-            <div className="flex justify-center items-center gap-2 mt-4">
+            <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
                 {Array.from({ length: totalPages }, (_, index) => (
                     <Link
                         key={index + 1}
@@ -24,16 +24,16 @@ export function AdminPagination({
                         <Button
                             variant={currentPage === index + 1 ? "default" : "outline"}
                             size="sm"
-                            className={currentPage === index + 1
-                                ? "bg-gray-800 text-gray-200"
-                                : "border-gray-700 text-gray-400 hover:bg-gray-800/50"}
+                            className={`min-h-11 min-w-11 ${currentPage === index + 1
+                                ? "bg-primary text-primary-foreground"
+                                : "border-border text-muted-foreground hover:bg-muted/50"}`}
                         >
                             {index + 1}
                         </Button>
                     </Link>
                 ))}
             </div>
-            <p className="text-center text-sm text-gray-500 mt-2">
+            <p className="text-center text-sm text-muted-foreground mt-2">
                 Page {currentPage} of {totalPages}
             </p>
         </>

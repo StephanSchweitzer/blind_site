@@ -9,9 +9,9 @@ export function AdminSearch({
             <input
                 type="text"
                 placeholder={placeholder}
-                className="w-full p-2 rounded-md border border-gray-800
-                         bg-gray-900/50 text-gray-300 placeholder-gray-500
-                         focus:border-gray-700 focus:ring-1 focus:ring-gray-700"
+                className="w-full h-11 px-3 rounded-md border border-input
+                         bg-background text-foreground text-base placeholder:text-muted-foreground
+                         focus:border-ring focus:ring-1 focus:ring-ring"
             />
         </div>
     );

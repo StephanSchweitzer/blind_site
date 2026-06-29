@@ -201,19 +201,19 @@ export default function EditCoupDeCoeurPage() {
 
     if (!formData) {
         return <div className="flex justify-center items-center min-h-screen">
-            <p className="text-gray-200">Chargement...</p>
+            <p className="text-foreground">Chargement...</p>
         </div>;
     }
 
     return (
         <div className="space-y-4">
-            <Card className="bg-gray-900 border-gray-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-gray-700">
-                    <CardTitle className="text-gray-100">Modifier la liste de livres</CardTitle>
+            <Card className="bg-card border-border">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border">
+                    <CardTitle className="text-foreground">Modifier la liste de livres</CardTitle>
                     <Button
                         variant="destructive"
                         onClick={handleDelete}
-                        className="bg-red-900 hover:bg-red-800 text-gray-100"
+                        className="bg-red-900 hover:bg-red-800 text-foreground"
                     >
                         Supprimer
                     </Button>
@@ -228,7 +228,7 @@ export default function EditCoupDeCoeurPage() {
 
                         <div className="grid gap-6">
                             <div className="space-y-2">
-                                <label htmlFor="title" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="title" className="text-sm font-medium text-foreground">
                                     Titre *
                                 </label>
                                 <Input
@@ -238,12 +238,12 @@ export default function EditCoupDeCoeurPage() {
                                     required
                                     value={formData.title}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="description" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="description" className="text-sm font-medium text-foreground">
                                     Description
                                 </label>
                                 <Textarea
@@ -251,12 +251,12 @@ export default function EditCoupDeCoeurPage() {
                                     id="description"
                                     value={formData.description || ""}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring min-h-[150px]"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
+                                <label className="text-sm font-medium text-foreground">
                                     Enregistrement Audio
                                 </label>
                                 {!isRerecording ? (
@@ -264,13 +264,13 @@ export default function EditCoupDeCoeurPage() {
                                         <audio
                                             src={formData.audioPath}
                                             controls
-                                            className="w-full bg-gray-800 rounded-md"
+                                            className="w-full bg-card rounded-md"
                                         />
                                         <Button
                                             type="button"
                                             onClick={() => setIsRerecording(true)}
                                             variant="outline"
-                                            className="w-full bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                            className="w-full bg-card border-border text-foreground hover:bg-muted"
                                         >
                                             Nouvel Enregistrement
                                         </Button>
@@ -293,16 +293,16 @@ export default function EditCoupDeCoeurPage() {
                                     onCheckedChange={(checked: boolean) => {
                                         setFormData(prev => ({ ...prev!, active: checked }));
                                     }}
-                                    className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-400"
+                                    className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-muted"
                                 />
-                                <label htmlFor="active" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="active" className="text-sm font-medium text-foreground">
                                     Cette liste de livres est-elle visible par le public ?
                                 </label>
                             </div>
 
                             <div className="space-y-2">
                                 <label
-                                    className="text-sm font-medium text-gray-200 cursor-pointer"
+                                    className="text-sm font-medium text-foreground cursor-pointer"
                                     onClick={() => {
                                         setIsBookSelectorOpen(true);
                                     }}
@@ -356,14 +356,14 @@ export default function EditCoupDeCoeurPage() {
                                     router.push('/admin/manage_coups_de_coeur');
                                     router.refresh();
                                 }}
-                                className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                className="bg-card border-border text-foreground hover:bg-muted"
                             >
                                 Annuler
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={isLoading || formData.books.length === 0}
-                                className="bg-gray-700 hover:bg-gray-600 text-gray-100"
+                                className="bg-muted hover:bg-muted text-foreground"
                             >
                                 {isLoading ? 'Mise à jour...' : 'Mettre à jour la liste de livres '}
                             </Button>

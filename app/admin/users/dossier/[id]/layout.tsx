@@ -48,12 +48,12 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
 
     return (
         <div className="space-y-4">
-            <Card className="bg-gray-900 border-gray-800">
+            <Card className="bg-card border-border">
                 <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold text-gray-100">{fullName}</h1>
+                                <h1 className="text-2xl font-bold text-foreground">{fullName}</h1>
                                 <span className="inline-flex items-center rounded-full bg-blue-950 px-2.5 py-1 text-xs font-medium text-blue-300">
                                     {MEMBER_TYPE_LABELS[user.memberType]}
                                 </span>
@@ -63,7 +63,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                                     </span>
                                 )}
                             </div>
-                            <div className="mt-2 text-sm text-gray-400 space-y-0.5">
+                            <div className="mt-2 text-sm text-muted-foreground space-y-0.5">
                                 {user.email && <div>{user.email}</div>}
                                 {(user.cellPhone || user.homePhone) && (
                                     <div>{[user.cellPhone, user.homePhone].filter(Boolean).join(' · ')}</div>
@@ -71,14 +71,14 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                             </div>
                         </div>
                         <div className="text-right">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">
+                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
                                 Solde courant
                             </div>
-                            <div className="text-xl font-semibold text-gray-100">
+                            <div className="text-xl font-semibold text-foreground">
                                 {formatCurrency(user.currentBalance?.toString() ?? null)}
                             </div>
                             {user.paymentThreshold && (
-                                <div className="text-xs text-gray-500 mt-1">
+                                <div className="text-xs text-muted-foreground mt-1">
                                     Seuil: {formatCurrency(user.paymentThreshold.toString())}
                                 </div>
                             )}

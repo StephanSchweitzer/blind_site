@@ -51,16 +51,16 @@ export function EditUserModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-4 pr-8">
-                        <DialogTitle className="text-gray-100">Modifier la personne</DialogTitle>
+                        <DialogTitle className="text-foreground">Modifier la personne</DialogTitle>
                         {userId && (
                             <Button
                                 asChild
                                 variant="outline"
                                 size="sm"
-                                className="border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white"
+                                className="border-border bg-card text-foreground hover:bg-muted hover:text-white"
                             >
                                 <Link href={`/admin/users/dossier/${userId}`}>
                                     <FolderOpen className="h-4 w-4 mr-2" />

@@ -109,7 +109,7 @@ export function ArticlesTable({
                 variant="outline"
                 size="sm"
                 disabled={currentPage === 1}
-                className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700 disabled:opacity-50"
+                className="bg-card text-foreground border-border hover:bg-muted disabled:opacity-50"
                 onClick={() => handlePageChange(currentPage - 1)}
             >
                 <ChevronLeft className="h-4 w-4" />
@@ -132,7 +132,7 @@ export function ArticlesTable({
                     key={1}
                     variant="outline"
                     size="sm"
-                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                    className="bg-card text-foreground border-border hover:bg-muted"
                     onClick={() => handlePageChange(1)}
                 >
                     1
@@ -140,7 +140,7 @@ export function ArticlesTable({
             );
             if (startPage > 2) {
                 buttons.push(
-                    <span key="ellipsis1" className="text-gray-400 px-2">...</span>
+                    <span key="ellipsis1" className="text-muted-foreground px-2">...</span>
                 );
             }
         }
@@ -153,8 +153,8 @@ export function ArticlesTable({
                     variant={currentPage === i ? "default" : "outline"}
                     size="sm"
                     className={currentPage === i
-                        ? "bg-white text-gray-900 hover:bg-gray-100"
-                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                        ? "bg-white text-muted-foreground hover:bg-muted"
+                        : "bg-card text-foreground border-border hover:bg-muted"}
                     onClick={() => handlePageChange(i)}
                 >
                     {i}
@@ -166,7 +166,7 @@ export function ArticlesTable({
         if (endPage < totalPages) {
             if (endPage < totalPages - 1) {
                 buttons.push(
-                    <span key="ellipsis2" className="text-gray-400 px-2">...</span>
+                    <span key="ellipsis2" className="text-muted-foreground px-2">...</span>
                 );
             }
             buttons.push(
@@ -174,7 +174,7 @@ export function ArticlesTable({
                     key={totalPages}
                     variant="outline"
                     size="sm"
-                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                    className="bg-card text-foreground border-border hover:bg-muted"
                     onClick={() => handlePageChange(totalPages)}
                 >
                     {totalPages}
@@ -189,7 +189,7 @@ export function ArticlesTable({
                 variant="outline"
                 size="sm"
                 disabled={currentPage === totalPages}
-                className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700 disabled:opacity-50"
+                className="bg-card text-foreground border-border hover:bg-muted disabled:opacity-50"
                 onClick={() => handlePageChange(currentPage + 1)}
             >
                 <ChevronRight className="h-4 w-4" />
@@ -200,16 +200,16 @@ export function ArticlesTable({
     };
 
     return (
-        <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-700">
+        <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border">
                 <div>
-                    <CardTitle className="text-gray-100">Gérer les dernières info</CardTitle>
-                    <CardDescription className="text-gray-400">
+                    <CardTitle className="text-foreground">Gérer les dernières info</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                         Gérer et modifier les informations affichées sur dernières info
                     </CardDescription>
                 </div>
                 <Link href="/admin/news/new">
-                    <Button className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500">
+                    <Button className="bg-muted text-foreground border-border hover:bg-muted">
                         Ajouter un info
                     </Button>
                 </Link>
@@ -220,35 +220,35 @@ export function ArticlesTable({
                         placeholder="Rechercher les dernières infos..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="max-w-sm bg-white text-gray-900 placeholder:text-gray-500"
+                        className="max-w-sm bg-white text-muted-foreground placeholder:text-muted-foreground"
                     />
                     {search && (
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setSearch('')}
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                         >
                             Effacer
                         </Button>
                     )}
                 </div>
 
-                <div className="rounded-md border border-gray-700 bg-gray-800">
+                <div className="rounded-md border border-border bg-card">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-b border-gray-700 bg-gray-800">
-                                <TableHead className="text-gray-200 font-medium">Titre</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Type</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Date de Publication</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Actions</TableHead>
+                            <TableRow className="border-b border-border bg-card">
+                                <TableHead className="text-foreground font-medium">Titre</TableHead>
+                                <TableHead className="text-foreground font-medium">Type</TableHead>
+                                <TableHead className="text-foreground font-medium">Auteur</TableHead>
+                                <TableHead className="text-foreground font-medium">Date de Publication</TableHead>
+                                <TableHead className="text-foreground font-medium">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {initialArticles.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-gray-400 py-8">
+                                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                                         {search ? 'Aucun article trouvé pour cette recherche' : 'Aucun article trouvé'}
                                     </TableCell>
                                 </TableRow>
@@ -256,21 +256,21 @@ export function ArticlesTable({
                                 initialArticles.map((article) => (
                                     <TableRow
                                         key={article.id}
-                                        className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer transition-colors"
+                                        className="border-b border-border hover:bg-muted cursor-pointer transition-colors"
                                         onClick={() => handleRowClick(article.id)}
                                     >
-                                        <TableCell className="text-gray-200 font-medium">
+                                        <TableCell className="text-foreground font-medium">
                                             {article.title}
                                         </TableCell>
                                         <TableCell>
-                                            <span className="px-2 py-1 rounded-full text-sm font-medium text-white bg-gray-600">
+                                            <span className="px-2 py-1 rounded-full text-sm font-medium text-white bg-muted">
                                                 {newsTypeLabels[article.type]}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="text-gray-200">
+                                        <TableCell className="text-foreground">
                                             {article.author?.name || 'Inconnu'}
                                         </TableCell>
-                                        <TableCell className="text-gray-200">
+                                        <TableCell className="text-foreground">
                                             {new Date(article.publishedAt).toLocaleDateString('fr-FR', {
                                                 year: 'numeric',
                                                 month: 'short',
@@ -281,7 +281,7 @@ export function ArticlesTable({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 transition-colors"
+                                                className="bg-muted text-foreground border-border hover:bg-muted transition-colors"
                                                 onClick={(e) => handleEditClick(e, article.id)}
                                             >
                                                 Modifier
@@ -299,7 +299,7 @@ export function ArticlesTable({
                         <div className="flex justify-center items-center gap-1">
                             {generatePaginationButtons()}
                         </div>
-                        <p className="text-center text-sm text-gray-400 mt-2">
+                        <p className="text-center text-sm text-muted-foreground mt-2">
                             Page {currentPage} sur {totalPages} ({initialArticles.length} article{initialArticles.length !== 1 ? 's' : ''})
                         </p>
                     </div>

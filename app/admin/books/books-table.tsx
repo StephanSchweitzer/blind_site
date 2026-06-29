@@ -416,11 +416,11 @@ export default function BooksTable({
     };
 
     return (
-        <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-700">
+        <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border">
                 <div>
-                    <CardTitle className="text-gray-100">Gestion des livres</CardTitle>
-                    <CardDescription className="text-gray-400">
+                    <CardTitle className="text-foreground">Gestion des livres</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                         {searchResults.total} livre{searchResults.total !== 1 ? 's' : ''} au total
                     </CardDescription>
                 </div>
@@ -440,18 +440,18 @@ export default function BooksTable({
                                 value={searchTerm}
                                 onChange={(e) => handleSearchChange(e.target.value)}
                                 placeholder="Recherche de livres..."
-                                className="pl-10 pr-10 bg-gray-800 text-gray-200 border-gray-700 placeholder:text-gray-500"
+                                className="pl-10 pr-10 bg-card text-foreground border-border placeholder:text-muted-foreground"
                             />
-                            <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                            <Search className="absolute left-3 top-2.5 text-muted-foreground" size={20} />
                             {isSearching && searchTerm.length > 0 && (
-                                <Loader2 className="absolute right-3 top-2.5 text-gray-400 animate-spin" size={20} />
+                                <Loader2 className="absolute right-3 top-2.5 text-muted-foreground animate-spin" size={20} />
                             )}
                         </div>
 
                         <select
                             value={selectedFilter}
                             onChange={(e) => handleFilterChange(e.target.value)}
-                            className="w-[20%] px-4 py-2 rounded-md bg-gray-800 text-gray-200 border-gray-700 focus:ring-2 focus:ring-gray-600"
+                            className="w-[20%] px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
                         >
                             <option value="all">Tous</option>
                             <option value="title">Titre</option>
@@ -469,7 +469,7 @@ export default function BooksTable({
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={open}
-                                            className="w-full justify-between bg-gray-800 text-gray-200 border-gray-700"
+                                            className="w-full justify-between bg-card text-foreground border-border"
                                         >
                                             {selectedGenres.length > 0
                                                 ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} sélectionné${selectedGenres.length > 1 ? 's' : ''}`
@@ -477,13 +477,13 @@ export default function BooksTable({
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[250px] p-0 bg-gray-800 border-gray-700">
+                                    <PopoverContent className="w-[250px] p-0 bg-card border-border">
                                         <div className="p-2">
                                             <Input
                                                 placeholder="Rechercher des genres..."
                                                 value={genreSearchQuery}
                                                 onChange={(e) => setGenreSearchQuery(e.target.value)}
-                                                className="mb-2 bg-gray-700 text-gray-200 border-gray-600"
+                                                className="mb-2 bg-muted text-foreground border-border"
                                             />
                                             <div className="max-h-60 overflow-y-auto">
                                                 {availableGenres
@@ -493,7 +493,7 @@ export default function BooksTable({
                                                     .map((genre) => (
                                                         <div
                                                             key={genre.id}
-                                                            className="flex items-center w-full px-2 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded-sm cursor-pointer"
+                                                            className="flex items-center w-full px-2 py-1.5 text-sm text-foreground hover:bg-muted rounded-sm cursor-pointer"
                                                             onClick={() => {
                                                                 handleGenreSelect(genre.id);
                                                                 setGenreSearchQuery('');
@@ -549,13 +549,13 @@ export default function BooksTable({
 
                 <div className="relative mt-4">
                     {isSearching && searchResults.books.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 bg-gray-800 rounded-lg">
+                        <div className="flex flex-col items-center justify-center py-12 bg-card rounded-lg">
                             <Loader2 className="animate-spin h-12 w-12 text-blue-400" />
-                            <p className="mt-4 text-gray-300">Recherche en cours...</p>
+                            <p className="mt-4 text-foreground">Recherche en cours...</p>
                         </div>
                     ) : searchResults.books.length === 0 ? (
-                        <div className="text-center py-12 bg-gray-800 rounded-lg">
-                            <p className="text-gray-300">
+                        <div className="text-center py-12 bg-card rounded-lg">
+                            <p className="text-foreground">
                                 {searchTerm || selectedGenres.length > 0
                                     ? 'Aucun résultat trouvé pour votre recherche'
                                     : 'Aucun livre disponible'}
@@ -563,40 +563,40 @@ export default function BooksTable({
                         </div>
                     ) : (
                         <div className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
-                            <div className="rounded-md border border-gray-700 bg-gray-800">
+                            <div className="rounded-md border border-border bg-card">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="border-b border-gray-700 bg-gray-800">
-                                            <TableHead className="text-gray-200 font-medium">Titre</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Genres</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Durée de lecture</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Disponible</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Actions</TableHead>
+                                        <TableRow className="border-b border-border bg-card">
+                                            <TableHead className="text-foreground font-medium">Titre</TableHead>
+                                            <TableHead className="text-foreground font-medium">Auteur</TableHead>
+                                            <TableHead className="text-foreground font-medium">Genres</TableHead>
+                                            <TableHead className="text-foreground font-medium">Durée de lecture</TableHead>
+                                            <TableHead className="text-foreground font-medium">Disponible</TableHead>
+                                            <TableHead className="text-foreground font-medium">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {searchResults.books.map((book) => (
                                             <TableRow
                                                 key={book.id}
-                                                className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                                className="border-b border-border hover:bg-muted cursor-pointer"
                                                 onClick={() => openBookEditModal(book)}
                                             >
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-foreground">
                                                     <div>
                                                         <div className="font-medium">{book.title}</div>
                                                         {book.subtitle && (
-                                                            <div className="text-sm text-gray-400">{book.subtitle}</div>
+                                                            <div className="text-sm text-muted-foreground">{book.subtitle}</div>
                                                         )}
                                                         {book.isbn && (
-                                                            <div className="text-sm text-gray-500">
+                                                            <div className="text-sm text-muted-foreground">
                                                                 ISBN: {book.isbn}
                                                             </div>
                                                         )}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">{book.author}</TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-foreground">{book.author}</TableCell>
+                                                <TableCell className="text-foreground">
                                                     <div className="flex flex-wrap gap-1 max-w-xs">
                                                         {book.genres?.slice(0, 2).map((g, idx) => (
                                                             <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 whitespace-nowrap">
@@ -604,17 +604,17 @@ export default function BooksTable({
                                                             </span>
                                                         ))}
                                                         {book.genres?.length > 2 && (
-                                                            <span className="text-xs text-gray-400 whitespace-nowrap">+{book.genres.length - 2} plus</span>
+                                                            <span className="text-xs text-muted-foreground whitespace-nowrap">+{book.genres.length - 2} plus</span>
                                                         )}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-foreground">
                                                     {book.readingDurationMinutes
                                                         ? `${Math.floor(book.readingDurationMinutes / 60)}h ${book.readingDurationMinutes % 60}min`
                                                         : 'N/D'
                                                     }
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-foreground">
                                                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
                                                         book.available
                                                             ? 'bg-green-100 text-green-800'
@@ -627,7 +627,7 @@ export default function BooksTable({
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                                        className="bg-muted text-foreground border-border hover:bg-muted"
                                                         onClick={(e) => openBookEditModal(book, e)}
                                                     >
                                                         Modifier
@@ -643,10 +643,10 @@ export default function BooksTable({
                 </div>
 
                 {searchResults.totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-2 mt-6">
+                    <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(1)}
                             disabled={currentPage === 1}
                         >
@@ -654,7 +654,7 @@ export default function BooksTable({
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
                         >
@@ -668,18 +668,18 @@ export default function BooksTable({
                                     size="sm"
                                     className={currentPage === page
                                         ? "bg-blue-600 text-white hover:bg-blue-700"
-                                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                        : "bg-card text-foreground border-border hover:bg-muted"}
                                     onClick={() => handlePageChange(page)}
                                 >
                                     {page}
                                 </Button>
                             ) : (
-                                <span key={index} className="text-gray-400 px-2">{page}</span>
+                                <span key={index} className="text-muted-foreground px-2">{page}</span>
                             )
                         ))}
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === searchResults.totalPages}
                         >
@@ -687,7 +687,7 @@ export default function BooksTable({
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(searchResults.totalPages)}
                             disabled={currentPage === searchResults.totalPages}
                         >
@@ -697,7 +697,7 @@ export default function BooksTable({
                 )}
 
                 {searchResults.totalPages > 1 && (
-                    <p className="text-center text-sm text-gray-400 mt-2">
+                    <p className="text-center text-sm text-muted-foreground mt-2">
                         Page {currentPage} sur {searchResults.totalPages}
                     </p>
                 )}
@@ -713,9 +713,9 @@ export default function BooksTable({
 
             {/* Add Book Modal */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-100">Ajouter un nouveau livre</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter un nouveau livre</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
                         <AddBookFormBackend onSuccess={handleBookAdded} />
@@ -726,9 +726,9 @@ export default function BooksTable({
             {/* Edit Book Modal */}
             {selectedBook && (
                 <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
-                            <DialogTitle className="text-gray-100">Modifier le livre</DialogTitle>
+                            <DialogTitle className="text-foreground">Modifier le livre</DialogTitle>
                         </DialogHeader>
                         <div className="overflow-y-auto px-1">
                             <EditBookFormBackend

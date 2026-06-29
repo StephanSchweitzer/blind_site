@@ -36,7 +36,7 @@ export default async function Dashboard() {
         <AdminCard className="p-6 md:p-8">
             {/* Content Management Section */}
             <div className="mb-10">
-                <h2 className="text-lg font-semibold text-gray-300 mb-4 px-1">Contenu</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Contenu</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     <AdminDashboardCard
                         title="Catalogue"
@@ -71,7 +71,7 @@ export default async function Dashboard() {
 
             {/* Operations & Admin Section */}
             <div>
-                <h2 className="text-lg font-semibold text-gray-300 mb-4 px-1">Gestion</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Gestion</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     <AdminDashboardCard
                         title="Demandes"

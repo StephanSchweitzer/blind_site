@@ -213,9 +213,9 @@ export function BillFormBackendBase({
     };
 
     return (
-        <Card className="bg-gray-900 border-gray-700">
+        <Card className="bg-card border-border">
             <CardHeader>
-                <CardTitle className="text-gray-100">{title}</CardTitle>
+                <CardTitle className="text-foreground">{title}</CardTitle>
             </CardHeader>
             <CardContent>
                 {error && (
@@ -228,7 +228,7 @@ export function BillFormBackendBase({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Client */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Auditeur <span className="text-red-500">*</span>
                         </label>
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
@@ -237,39 +237,39 @@ export function BillFormBackendBase({
                                     ref={registerField('client')}
                                     variant="outline"
                                     role="combobox"
-                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors"
+                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted transition-colors"
                                 >
                                     {selectedClient ? (
                                         <span className="truncate">{selectedClient.name || selectedClient.email}</span>
                                     ) : (
-                                        <span className="text-gray-400">Rechercher un auditeur ...</span>
+                                        <span className="text-muted-foreground">Rechercher un auditeur ...</span>
                                     )}
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher par nom ou email..."
                                         value={userSearch}
                                         onChange={(e) => setUserSearch(e.target.value)}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
+                                        className="bg-card border-border text-foreground"
                                     />
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
-                                    {isSearchingUsers && <div className="p-4 text-center text-gray-400">Recherche...</div>}
+                                    {isSearchingUsers && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
                                     {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                        <div className="p-4 text-center text-gray-400">Aucune personne trouvée</div>
+                                        <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
                                     )}
                                     {users.map((user) => (
                                         <button
                                             key={user.id}
                                             type="button"
                                             onClick={() => handleClientSelect(user)}
-                                            className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors"
+                                            className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors"
                                         >
                                             <div className="font-medium">{getReaderDisplayName(user)}</div>
-                                            <div className="text-sm text-gray-400">{user.email}</div>
+                                            <div className="text-sm text-muted-foreground">{user.email}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -280,38 +280,38 @@ export function BillFormBackendBase({
                     {/* Eligible orders */}
                     {selectedClient && (
                         <div ref={registerField('orders')} tabIndex={-1} className="space-y-2 outline-none rounded-lg">
-                            <label className="text-sm font-medium text-gray-200">
+                            <label className="text-sm font-medium text-foreground">
                                 Demandes à facturer <span className="text-red-500">*</span>
                             </label>
                             {isLoadingOrders ? (
-                                <div className="flex items-center gap-2 text-gray-400 px-3 py-4">
+                                <div className="flex items-center gap-2 text-muted-foreground px-3 py-4">
                                     <Loader2 className="h-4 w-4 animate-spin" /> Chargement des demandes...
                                 </div>
                             ) : eligibleOrders.length === 0 ? (
-                                <div className="px-3 py-4 bg-gray-800 border border-gray-700 rounded-md text-gray-500 text-sm italic">
+                                <div className="px-3 py-4 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
                                     Aucune demande facturable pour ce client
                                 </div>
                             ) : (
-                                <div className="border border-gray-700 rounded-md divide-y divide-gray-700 max-h-[260px] overflow-y-auto">
+                                <div className="border border-border rounded-md divide-y divide-border max-h-[260px] overflow-y-auto">
                                     {eligibleOrders.map((o) => (
                                         <label
                                             key={o.id}
-                                            className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 cursor-pointer"
+                                            className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted cursor-pointer"
                                         >
                                             <Checkbox
                                                 checked={selectedOrderIds.has(o.id)}
                                                 onCheckedChange={() => toggleOrder(o.id)}
-                                                className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                                className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                                             />
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-gray-200 text-sm font-medium truncate">
+                                                <div className="text-foreground text-sm font-medium truncate">
                                                     #{o.id} — {o.catalogue.title}
                                                 </div>
-                                                <div className="text-gray-400 text-xs truncate">
+                                                <div className="text-muted-foreground text-xs truncate">
                                                     {o.catalogue.author} · {new Date(o.requestReceivedDate).toLocaleDateString('fr-FR')}
                                                 </div>
                                             </div>
-                                            <span className="text-gray-200 text-sm font-medium whitespace-nowrap">
+                                            <span className="text-foreground text-sm font-medium whitespace-nowrap">
                                                 {formatCurrency(o.cost)}
                                             </span>
                                             <a
@@ -320,7 +320,7 @@ export function BillFormBackendBase({
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
                                                 title="Ouvrir la demande dans un nouvel onglet"
-                                                className="shrink-0 p-1 rounded text-gray-500 hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
+                                                className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
                                             >
                                                 <ExternalLink className="h-3.5 w-3.5" />
                                             </a>
@@ -333,18 +333,18 @@ export function BillFormBackendBase({
 
                     {/* State */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">État de la facture</label>
+                        <label className="text-sm font-medium text-foreground">État de la facture</label>
                         <Select value={state} onValueChange={(v) => setState(v as BillingStatus)}>
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                            <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectContent className="bg-card border-border">
                                 <div className="py-1">
                                     {Object.values(BillingStatus).map((s) => (
                                         <SelectItem
                                             key={s}
                                             value={s}
-                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
                                         >
                                             <span className="font-medium">{getBillingStatusLabel(s)}</span>
                                         </SelectItem>
@@ -356,24 +356,24 @@ export function BillFormBackendBase({
 
                     {/* Creation date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Date de création</label>
+                        <label className="text-sm font-medium text-foreground">Date de création</label>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750"
+                                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {format(creationDate, 'PPP', { locale: fr })}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                            <PopoverContent className="w-auto p-0 bg-card border-border">
                                 <CalendarComponent
                                     mode="single"
                                     selected={creationDate}
                                     onSelect={(d) => d && setCreationDate(d)}
                                     initialFocus
-                                    className="bg-gray-800 text-gray-200"
+                                    className="bg-card text-foreground"
                                 />
                             </PopoverContent>
                         </Popover>
@@ -381,41 +381,41 @@ export function BillFormBackendBase({
 
                     {/* Issue date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Date d&apos;émission</label>
+                        <label className="text-sm font-medium text-foreground">Date d&apos;émission</label>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750"
+                                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {issueDate ? format(issueDate, 'PPP', { locale: fr }) : <span>Sélectionner une date</span>}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                            <PopoverContent className="w-auto p-0 bg-card border-border">
                                 <CalendarComponent
                                     mode="single"
                                     selected={issueDate || undefined}
                                     onSelect={(d) => setIssueDate(d || null)}
                                     initialFocus
-                                    className="bg-gray-800 text-gray-200"
+                                    className="bg-card text-foreground"
                                 />
                             </PopoverContent>
                         </Popover>
                     </div>
 
                     {/* Amount (derived) */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-700">
-                        <span className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+                    <div className="flex items-center justify-between pt-4 border-t border-border">
+                        <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                             Montant total ({selectedOrderIds.size} demande{selectedOrderIds.size > 1 ? 's' : ''})
                         </span>
-                        <span className="text-xl font-bold text-gray-100">{formatCurrency(totalAmount)}</span>
+                        <span className="text-xl font-bold text-foreground">{formatCurrency(totalAmount)}</span>
                     </div>
 
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100"
+                        className="w-full bg-muted hover:bg-muted text-foreground border-border"
                     >
                         {isLoading ? loadingText : submitButtonText}
                     </Button>

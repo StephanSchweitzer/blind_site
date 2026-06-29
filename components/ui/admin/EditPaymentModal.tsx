@@ -124,9 +124,9 @@ export function EditPaymentModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100 flex items-center gap-3">
+                    <DialogTitle className="text-foreground flex items-center gap-3">
                         Paiement {paymentId ? `#${paymentId}` : ''}
                         {payment && (
                             <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
@@ -137,7 +137,7 @@ export function EditPaymentModal({
                 </DialogHeader>
 
                 {isLoading && (
-                    <div className="flex items-center justify-center gap-2 text-gray-400 py-10">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground py-10">
                         <Loader2 className="h-5 w-5 animate-spin" /> Chargement...
                     </div>
                 )}
@@ -168,7 +168,7 @@ export function EditPaymentModal({
                                 type="button"
                                 variant="destructive"
                                 onClick={() => { if (paymentId !== null && onRequestDelete) onRequestDelete(paymentId); }}
-                                className="bg-red-700 hover:bg-red-600 text-gray-100 flex items-center gap-2"
+                                className="bg-red-700 hover:bg-red-600 text-foreground flex items-center gap-2"
                             >
                                 <Trash2 className="h-4 w-4" />
                                 Supprimer le paiement

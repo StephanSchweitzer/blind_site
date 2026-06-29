@@ -146,9 +146,9 @@ export default function AddBook() {
 
     return (
         <div className="space-y-4">
-            <Card className="bg-gray-900 border-gray-800">
-                <CardHeader className="border-b border-gray-700">
-                    <CardTitle className="text-gray-100">Ajouter un nouveau livre</CardTitle>
+            <Card className="bg-card border-border">
+                <CardHeader className="border-b border-border">
+                    <CardTitle className="text-foreground">Ajouter un nouveau livre</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -162,7 +162,7 @@ export default function AddBook() {
 
                         <div className="grid gap-6">
                             <div className="space-y-2">
-                                <label htmlFor="title" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="title" className="text-sm font-medium text-foreground">
                                     Titre *
                                 </label>
                                 <Input
@@ -172,13 +172,13 @@ export default function AddBook() {
                                     required
                                     value={formData.title}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Indiquer le titre du livre"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="author" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="author" className="text-sm font-medium text-foreground">
                                     Auteur *
                                 </label>
                                 <Input
@@ -188,13 +188,13 @@ export default function AddBook() {
                                     required
                                     value={formData.author}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Indiquer l'auteur du livre"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="publisher" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="publisher" className="text-sm font-medium text-foreground">
                                     Éditeur
                                 </label>
                                 <Input
@@ -203,14 +203,14 @@ export default function AddBook() {
                                     id="publisher"
                                     value={formData.publisher || ''}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Indiquer l'éditeur du livre"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">
+                                    <label className="text-sm font-medium text-foreground">
                                         Année de publication *
                                     </label>
                                     <YearCommandSelect
@@ -225,7 +225,7 @@ export default function AddBook() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
+                                <label className="text-sm font-medium text-foreground">
                                     Genres
                                 </label>
                                 <div className="flex flex-wrap gap-2 mb-2">
@@ -234,13 +234,13 @@ export default function AddBook() {
                                         return genre ? (
                                             <div
                                                 key={genre.id}
-                                                className="bg-gray-800 text-gray-200 rounded-full px-3 py-1 text-sm flex items-center border border-gray-700"
+                                                className="bg-card text-foreground rounded-full px-3 py-1 text-sm flex items-center border border-border"
                                             >
                                                 {genre.name}
                                                 <button
                                                     type="button"
                                                     onClick={() => removeGenre(genre.id)}
-                                                    className="ml-2 hover:text-gray-400"
+                                                    className="ml-2 hover:text-muted-foreground"
                                                 >
                                                     <X className="h-3 w-3"/>
                                                 </button>
@@ -254,18 +254,18 @@ export default function AddBook() {
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={open}
-                                            className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
+                                            className="w-full justify-between bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
                                         >
                                             Sélectionner les genres associés...
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
+                                    <PopoverContent className="w-full p-0 bg-card border-border">
                                         <div className="p-2">
                                             <Input
                                                 placeholder="Recherche de genres..."
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
+                                                className="mb-2 bg-muted border-border text-foreground"
                                             />
                                             <div className="max-h-60 overflow-y-auto">
                                                 {genres
@@ -275,7 +275,7 @@ export default function AddBook() {
                                                     .map((genre) => (
                                                         <div
                                                             key={genre.id}
-                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
+                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-muted text-foreground rounded-sm cursor-pointer"
                                                             onClick={() => {
                                                                 handleGenreSelect(genre.id);
                                                                 setSearchQuery('');
@@ -298,7 +298,7 @@ export default function AddBook() {
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="isbn" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="isbn" className="text-sm font-medium text-foreground">
                                     ISBN
                                 </label>
                                 <Input
@@ -307,7 +307,7 @@ export default function AddBook() {
                                     id="isbn"
                                     value={formData.isbn}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Indiquer le numéro ISBN du livre (facultatif)"
                                 />
                             </div>
@@ -316,7 +316,7 @@ export default function AddBook() {
 
 
                             <div className="space-y-2">
-                                <label htmlFor="description" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="description" className="text-sm font-medium text-foreground">
                                     Description
                                 </label>
                                 <Textarea
@@ -324,7 +324,7 @@ export default function AddBook() {
                                     id="description"
                                     value={formData.description}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[150px]"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground min-h-[150px]"
                                     placeholder="Décrire le livre pour aider les gens à comprendre de quoi il s'agit."
                                 />
                             </div>
@@ -340,9 +340,9 @@ export default function AddBook() {
                                             available: checked as boolean
                                         }));
                                     }}
-                                    className="border-gray-700 data-[state=checked]:bg-gray-700"
+                                    className="border-border data-[state=checked]:bg-muted"
                                 />
-                                <label htmlFor="available" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="available" className="text-sm font-medium text-foreground">
                                     Disponible
                                 </label>
                             </div>
@@ -351,7 +351,7 @@ export default function AddBook() {
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100"
+                            className="w-full bg-muted hover:bg-muted text-foreground border-border"
                         >
                             {isLoading ? 'En ajoutant...' : 'Ajouter le livre'}
                         </Button>

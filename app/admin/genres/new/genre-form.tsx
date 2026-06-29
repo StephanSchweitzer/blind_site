@@ -61,24 +61,24 @@ export default function GenreForm() {
                 </Alert>
             )}
             <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-200">Nom</Label>
+                <Label htmlFor="name" className="text-foreground">Nom</Label>
                 <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                     placeholder="Nom du genre"
-                    className="bg-gray-800 border-gray-100 text-gray-100 placeholder:text-gray-400"
+                    className="bg-card border-border text-foreground placeholder:text-muted-foreground"
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="description" className="text-gray-200">Description</Label>
+                <Label htmlFor="description" className="text-foreground">Description</Label>
                 <Input
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Description du genre (optionnel)"
-                    className="bg-gray-800 border-gray-100 text-gray-100 placeholder:text-gray-400"
+                    className="bg-card border-border text-foreground placeholder:text-muted-foreground"
                 />
             </div>
             <div className="flex gap-4">
@@ -93,7 +93,7 @@ export default function GenreForm() {
                     type="button"
                     variant="outline"
                     onClick={() => router.push('/admin/genres')}
-                    className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                    className="bg-muted text-foreground border-border hover:bg-muted"
                 >
                     Annuler
                 </Button>

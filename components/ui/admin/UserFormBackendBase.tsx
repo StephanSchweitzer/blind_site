@@ -343,9 +343,9 @@ export function UserFormBackendBase({
     };
 
     return (
-        <Card className="bg-gray-900 border-gray-700">
+        <Card className="bg-card border-border">
             <CardHeader>
-                <CardTitle className="text-gray-100">{title}</CardTitle>
+                <CardTitle className="text-foreground">{title}</CardTitle>
             </CardHeader>
             <CardContent>
                 {error && (
@@ -358,13 +358,13 @@ export function UserFormBackendBase({
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Basic Information */}
                     <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
                             Informations de base
                         </h3>
 
                         {/* Email – full width */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">
+                            <label className="text-sm font-medium text-foreground">
                                 Email {formData.accessLevel === 'admin' && <span className="text-red-500">*</span>}
                             </label>
                             <Input
@@ -372,7 +372,7 @@ export function UserFormBackendBase({
                                 type="email"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                className="bg-card border-border text-foreground"
                                 required={formData.accessLevel === 'admin'}
                                 autoFocus={false}
                                 autoComplete="off"
@@ -382,20 +382,20 @@ export function UserFormBackendBase({
                         {/* Prénom + Nom */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Prénom</label>
+                                <label className="text-sm font-medium text-foreground">Prénom</label>
                                 <Input
                                     value={formData.firstName}
                                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    className="bg-card border-border text-foreground"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Nom</label>
+                                <label className="text-sm font-medium text-foreground">Nom</label>
                                 <Input
                                     value={formData.lastName}
                                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    className="bg-card border-border text-foreground"
                                 />
                             </div>
                         </div>
@@ -403,7 +403,7 @@ export function UserFormBackendBase({
                         {/* Civilité */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Civilité</label>
+                                <label className="text-sm font-medium text-foreground">Civilité</label>
                                 <Select
                                     value={formData.civilityId ? String(formData.civilityId) : 'none'}
                                     onValueChange={(value) =>
@@ -414,13 +414,13 @@ export function UserFormBackendBase({
                                         })
                                     }
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectTrigger className="bg-card border-border text-foreground">
                                         <SelectValue placeholder="Sélectionner..." />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-700 max-h-72">
-                                        <SelectItem value="none" className="text-gray-200">—</SelectItem>
+                                    <SelectContent className="bg-card border-border max-h-72">
+                                        <SelectItem value="none" className="text-foreground">—</SelectItem>
                                         {civilities.map((c) => (
-                                            <SelectItem key={c.id} value={String(c.id)} className="text-gray-200">
+                                            <SelectItem key={c.id} value={String(c.id)} className="text-foreground">
                                                 {c.name}
                                             </SelectItem>
                                         ))}
@@ -430,11 +430,11 @@ export function UserFormBackendBase({
 
                             {showCivilityOther && (
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Civilité (préciser)</label>
+                                    <label className="text-sm font-medium text-foreground">Civilité (préciser)</label>
                                     <Input
                                         value={formData.civilityOther || ''}
                                         onChange={(e) => setFormData({ ...formData, civilityOther: e.target.value })}
-                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                        className="bg-card border-border text-foreground"
                                     />
                                 </div>
                             )}
@@ -443,17 +443,17 @@ export function UserFormBackendBase({
                         {/* Type de membre + Niveau d'accès */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Type de membre</label>
+                                <label className="text-sm font-medium text-foreground">Type de membre</label>
                                 <Select
                                     value={formData.memberType}
                                     onValueChange={(value) => setFormData({ ...formData, memberType: value as UserFormData['memberType'] })}
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectTrigger className="bg-card border-border text-foreground">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectContent className="bg-card border-border">
                                         {MEMBER_TYPE_VALUES.map((type) => (
-                                            <SelectItem key={type} value={type} className="text-gray-200">
+                                            <SelectItem key={type} value={type} className="text-foreground">
                                                 {MEMBER_TYPE_LABELS[type]}
                                             </SelectItem>
                                         ))}
@@ -462,11 +462,11 @@ export function UserFormBackendBase({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
-                                    Niveau d&apos;accès {isAccessLevelLocked && <span className="text-xs text-gray-400">({getLockedReason()})</span>}
+                                <label className="text-sm font-medium text-foreground">
+                                    Niveau d&apos;accès {isAccessLevelLocked && <span className="text-xs text-muted-foreground">({getLockedReason()})</span>}
                                 </label>
                                 {isAccessLevelLocked ? (
-                                    <div className="bg-gray-800/50 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200">
+                                    <div className="bg-card/50 border border-border rounded-md px-3 py-2 text-sm text-foreground">
                                         {getAccessLevelLabel(formData.accessLevel)}
                                     </div>
                                 ) : (
@@ -474,14 +474,14 @@ export function UserFormBackendBase({
                                         value={formData.accessLevel}
                                         onValueChange={(value) => setFormData({ ...formData, accessLevel: value as UserFormData['accessLevel'] })}
                                     >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                        <SelectTrigger className="bg-card border-border text-foreground">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-gray-800 border-gray-700">
+                                        <SelectContent className="bg-card border-border">
                                             {ACCESS_LEVEL_VALUES
                                                 .filter((level) => level !== 'super_admin' || currentUserAccessLevel === 'super_admin')
                                                 .map((level) => (
-                                                    <SelectItem key={level} value={level} className="text-gray-200">
+                                                    <SelectItem key={level} value={level} className="text-foreground">
                                                         {ACCESS_LEVEL_LABELS[level]}
                                                     </SelectItem>
                                                 ))}
@@ -493,28 +493,28 @@ export function UserFormBackendBase({
                     </div>
 
                     <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
                             Coordonnées
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Téléphone fixe</label>
+                                <label className="text-sm font-medium text-foreground">Téléphone fixe</label>
                                 <Input
                                     type="tel"
                                     value={formData.homePhone}
                                     onChange={(e) => setFormData({ ...formData, homePhone: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    className="bg-card border-border text-foreground"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Téléphone portable</label>
+                                <label className="text-sm font-medium text-foreground">Téléphone portable</label>
                                 <Input
                                     type="tel"
                                     value={formData.cellPhone}
                                     onChange={(e) => setFormData({ ...formData, cellPhone: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    className="bg-card border-border text-foreground"
                                 />
                             </div>
                         </div>
@@ -522,8 +522,8 @@ export function UserFormBackendBase({
 
                     {/* Addresses */}
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center border-b border-gray-700 pb-2">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+                        <div className="flex justify-between items-center border-b border-border pb-2">
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                                 Adresses
                             </h3>
                             <Button
@@ -538,9 +538,9 @@ export function UserFormBackendBase({
                         </div>
 
                         {formData.addresses.map((address, index) => (
-                            <div key={index} className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 space-y-4">
+                            <div key={index} className="bg-card/50 p-4 rounded-lg border border-border space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <h4 className="text-sm font-medium text-gray-300">Adresse {index + 1}</h4>
+                                    <h4 className="text-sm font-medium text-foreground">Adresse {index + 1}</h4>
                                     <Button
                                         type="button"
                                         onClick={() => handleRemoveAddress(index)}
@@ -554,56 +554,56 @@ export function UserFormBackendBase({
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Adresse</label>
+                                        <label className="text-sm font-medium text-foreground">Adresse</label>
                                         <Input
                                             value={address.addressLine1}
                                             onChange={(e) => handleAddressChange(index, 'addressLine1', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Complément</label>
+                                        <label className="text-sm font-medium text-foreground">Complément</label>
                                         <Input
                                             value={address.addressSupplement}
                                             onChange={(e) => handleAddressChange(index, 'addressSupplement', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Ville</label>
+                                        <label className="text-sm font-medium text-foreground">Ville</label>
                                         <Input
                                             value={address.city}
                                             onChange={(e) => handleAddressChange(index, 'city', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Code postal</label>
+                                        <label className="text-sm font-medium text-foreground">Code postal</label>
                                         <Input
                                             value={address.postalCode}
                                             onChange={(e) => handleAddressChange(index, 'postalCode', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">État/Province</label>
+                                        <label className="text-sm font-medium text-foreground">État/Province</label>
                                         <Input
                                             value={address.stateProvince}
                                             onChange={(e) => handleAddressChange(index, 'stateProvince', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Pays</label>
+                                        <label className="text-sm font-medium text-foreground">Pays</label>
                                         <Input
                                             value={address.country}
                                             onChange={(e) => handleAddressChange(index, 'country', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
 
@@ -611,9 +611,9 @@ export function UserFormBackendBase({
                                         <Checkbox
                                             checked={address.isDefault}
                                             onCheckedChange={(checked) => handleAddressChange(index, 'isDefault', checked as boolean)}
-                                            className="border-gray-500 data-[state=checked]:bg-blue-600"
+                                            className="border-border data-[state=checked]:bg-blue-600"
                                         />
-                                        <label className="text-sm font-medium text-gray-200">Adresse par défaut</label>
+                                        <label className="text-sm font-medium text-foreground">Adresse par défaut</label>
                                     </div>
                                 </div>
                             </div>
@@ -622,36 +622,36 @@ export function UserFormBackendBase({
 
                     {/* Accounting - Always visible */}
                     <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
                             Comptabilité
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Affiliation non-profit</label>
+                                <label className="text-sm font-medium text-foreground">Affiliation non-profit</label>
                                 <Input
                                     value={formData.nonProfitAffiliation}
                                     onChange={(e) => setFormData({ ...formData, nonProfitAffiliation: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    className="bg-card border-border text-foreground"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">ID Gestconte</label>
+                                <label className="text-sm font-medium text-foreground">ID Gestconte</label>
                                 <Input
                                     type="number"
                                     value={formData.gestconteId || ''}
                                     onChange={(e) => setFormData({ ...formData, gestconteId: e.target.value ? parseInt(e.target.value) : null })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    className="bg-card border-border text-foreground"
                                 />
                             </div>
 
                             <div className="space-y-2 md:col-span-2">
-                                <label className="text-sm font-medium text-gray-200">Notes Gestconte</label>
+                                <label className="text-sm font-medium text-foreground">Notes Gestconte</label>
                                 <Textarea
                                     value={formData.gestconteNotes}
                                     onChange={(e) => setFormData({ ...formData, gestconteNotes: e.target.value })}
-                                    className="bg-gray-800 border-gray-700 text-gray-200"
+                                    className="bg-card border-border text-foreground"
                                 />
                             </div>
                         </div>
@@ -660,7 +660,7 @@ export function UserFormBackendBase({
                     {/* Disponibilité (attributions) — lecteur only (#18b). */}
                     {formData.memberType === 'lecteur' && (
                     <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
                             Disponibilit&#233; (attributions)
                         </h3>
 
@@ -668,24 +668,24 @@ export function UserFormBackendBase({
                             {/* Disponible Checkbox - Only for Lecteurs */}
                             {formData.memberType === 'lecteur' && (
                                 <>
-                                    <div className="bg-gradient-to-br from-gray-800/40 to-gray-800/20 p-4 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-all">
+                                    <div className="bg-gradient-to-br from-card/40 to-card/20 p-4 rounded-lg border border-border/50 hover:border-border/50 transition-all">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <div className="relative">
                                                     <Checkbox
                                                         checked={formData.isAvailable}
                                                         onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
-                                                        className="h-5 w-5 border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md transition-all"
+                                                        className="h-5 w-5 border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md transition-all"
                                                     />
                                                     {formData.isAvailable && (
                                                         <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <label className="text-sm font-medium text-gray-200 cursor-pointer">
+                                                    <label className="text-sm font-medium text-foreground cursor-pointer">
                                                         Disponible pour nouvelles assignations
                                                     </label>
-                                                    <p className="text-xs text-gray-400 mt-0.5">
+                                                    <p className="text-xs text-muted-foreground mt-0.5">
                                                         {formData.isAvailable
                                                             ? 'Peut recevoir de nouveaux livres'
                                                             : 'Ne peut pas recevoir de nouveaux livres'}
@@ -695,7 +695,7 @@ export function UserFormBackendBase({
                                             <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                                                 formData.isAvailable
                                                     ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                                    : 'bg-gray-600/20 text-gray-400 border border-gray-600/30'
+                                                    : 'bg-muted/20 text-muted-foreground border border-border/30'
                                             }`}>
                                                 {formData.isAvailable ? 'Disponible' : 'Indisponible'}
                                             </div>
@@ -703,11 +703,11 @@ export function UserFormBackendBase({
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Notes de disponibilité</label>
+                                        <label className="text-sm font-medium text-foreground">Notes de disponibilité</label>
                                         <Textarea
                                             value={formData.availabilityNotes}
                                             onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                             placeholder="Ex: Parfois exigeant quant à la qualité des livres..."
                                         />
                                     </div>
@@ -723,13 +723,13 @@ export function UserFormBackendBase({
                         (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
                         formData.email && (
                         <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
                                 Gestion du compte
                             </h3>
-                            <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700 flex items-center justify-between gap-4">
+                            <div className="bg-card/30 p-4 rounded-lg border border-border flex items-center justify-between gap-4">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-200">Mot de passe</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">
+                                    <p className="text-sm font-medium text-foreground">Mot de passe</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
                                         G&#233;n&#232;re un nouveau mot de passe temporaire et l&apos;envoie par email
                                         &#224; la personne. L&apos;ancien mot de passe cessera de fonctionner.
                                     </p>
@@ -750,40 +750,40 @@ export function UserFormBackendBase({
                     {/* Preferences & Settings — #14: only for auditeur or lecteur */}
                     {(formData.memberType === 'auditeur' || formData.memberType === 'lecteur') && (
                     <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
                             Préférences
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Méthode de livraison préférée</label>
+                                <label className="text-sm font-medium text-foreground">Méthode de livraison préférée</label>
                                 <Select
                                     value={formData.preferredDeliveryMethod}
                                     onValueChange={(value) => setFormData({ ...formData, preferredDeliveryMethod: value })}
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectTrigger className="bg-card border-border text-foreground">
                                         <SelectValue placeholder="Sélectionner..." />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-700">
-                                        <SelectItem value="RETRAIT" className="text-gray-200">Retrait</SelectItem>
-                                        <SelectItem value="ENVOI" className="text-gray-200">Envoi</SelectItem>
+                                    <SelectContent className="bg-card border-border">
+                                        <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
+                                        <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Méthode de distribution préférée</label>
+                                <label className="text-sm font-medium text-foreground">Méthode de distribution préférée</label>
                                 <Select
                                     value={formData.preferredDistributionMethod}
                                     onValueChange={(value) => setFormData({ ...formData, preferredDistributionMethod: value })}
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                    <SelectTrigger className="bg-card border-border text-foreground">
                                         <SelectValue placeholder="Sélectionner..." />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-700">
-                                        <SelectItem value="cd" className="text-gray-200">CD</SelectItem>
-                                        <SelectItem value="usb" className="text-gray-200">USB</SelectItem>
-                                        <SelectItem value="download" className="text-gray-200">Téléchargement</SelectItem>
+                                    <SelectContent className="bg-card border-border">
+                                        <SelectItem value="cd" className="text-foreground">CD</SelectItem>
+                                        <SelectItem value="usb" className="text-foreground">USB</SelectItem>
+                                        <SelectItem value="download" className="text-foreground">Téléchargement</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -792,24 +792,24 @@ export function UserFormBackendBase({
                             {formData.memberType === 'auditeur' && (
                                 <>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Seuil de paiement (€)</label>
+                                        <label className="text-sm font-medium text-foreground">Seuil de paiement (€)</label>
                                         <Input
                                             type="number"
                                             step="0.01"
                                             value={formData.paymentThreshold}
                                             onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Solde actuel (€)</label>
+                                        <label className="text-sm font-medium text-foreground">Solde actuel (€)</label>
                                         <Input
                                             type="number"
                                             step="0.01"
                                             value={formData.currentBalance}
                                             onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
                                 </>
@@ -821,27 +821,27 @@ export function UserFormBackendBase({
                     {/* Reader-specific fields - Only for Lecteurs */}
                     {formData.memberType === 'lecteur' && (
                         <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
                                 Paramètres de lecture
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Spécialisation</label>
+                                    <label className="text-sm font-medium text-foreground">Spécialisation</label>
                                     <Input
                                         value={formData.specialization}
                                         onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                        className="bg-card border-border text-foreground"
                                     />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Nombre maximum d&apos;attributions simultanées</label>
+                                    <label className="text-sm font-medium text-foreground">Nombre maximum d&apos;attributions simultanées</label>
                                     <Input
                                         type="number"
                                         value={formData.maxConcurrentAssignments || ''}
                                         onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: e.target.value ? parseInt(e.target.value) : null })}
-                                        className="bg-gray-800 border-gray-700 text-gray-200"
+                                        className="bg-card border-border text-foreground"
                                     />
                                 </div>
                             </div>
@@ -850,13 +850,13 @@ export function UserFormBackendBase({
 
                     {/* Notes - Always visible */}
                     <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide border-b border-gray-700 pb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
                             Notes
                         </h3>
                         <Textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                            className="bg-card border-border text-foreground min-h-[100px]"
                             placeholder="Notes supplémentaires..."
                         />
                     </div>
@@ -887,10 +887,10 @@ export function UserFormBackendBase({
 
                 {/* Deactivation Dialog */}
                 <Dialog open={isPasswordResetDialogOpen} onOpenChange={setIsPasswordResetDialogOpen}>
-                    <DialogContent className="bg-gray-900 border-gray-700">
+                    <DialogContent className="bg-card border-border">
                         <DialogHeader>
-                            <DialogTitle className="text-gray-100">Réinitialiser le mot de passe</DialogTitle>
-                            <DialogDescription className="text-gray-400">
+                            <DialogTitle className="text-foreground">Réinitialiser le mot de passe</DialogTitle>
+                            <DialogDescription className="text-muted-foreground">
                                 Cette action génèrera un nouveau mot de passe temporaire et l&apos;enverra par email à la personne.
                             </DialogDescription>
                         </DialogHeader>
@@ -918,7 +918,7 @@ export function UserFormBackendBase({
                                 variant="outline"
                                 onClick={() => setIsPasswordResetDialogOpen(false)}
                                 disabled={isResettingPassword}
-                                className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                                className="bg-card text-foreground border-border hover:bg-muted"
                             >
                                 Annuler
                             </Button>
@@ -935,21 +935,21 @@ export function UserFormBackendBase({
                 </Dialog>
 
                 <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
-                    <DialogContent className="bg-gray-900 border-gray-700">
+                    <DialogContent className="bg-card border-border">
                         <DialogHeader>
-                            <DialogTitle className="text-gray-100">Doublon possible</DialogTitle>
-                            <DialogDescription className="text-gray-400">
+                            <DialogTitle className="text-foreground">Doublon possible</DialogTitle>
+                            <DialogDescription className="text-muted-foreground">
                                 Un ou plusieurs membres portent déjà ce nom. Vérifiez qu&apos;il
                                 ne s&apos;agit pas de la même personne avant de continuer.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="max-h-60 overflow-y-auto space-y-2 py-2">
                             {duplicateMatches.map((m) => (
-                                <div key={m.id} className="rounded border border-gray-700 bg-gray-800 p-2 text-sm text-gray-200">
+                                <div key={m.id} className="rounded border border-border bg-card p-2 text-sm text-foreground">
                                     <div className="font-medium">
                                         {[m.firstName, m.lastName].filter(Boolean).join(' ') || m.name || `#${m.id}`}
                                     </div>
-                                    {m.email && <div className="text-gray-400">{m.email}</div>}
+                                    {m.email && <div className="text-muted-foreground">{m.email}</div>}
                                 </div>
                             ))}
                         </div>
@@ -957,7 +957,7 @@ export function UserFormBackendBase({
                             <Button
                                 variant="outline"
                                 onClick={() => setShowDuplicateDialog(false)}
-                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                className="bg-muted text-foreground border-border hover:bg-muted"
                             >
                                 Annuler
                             </Button>

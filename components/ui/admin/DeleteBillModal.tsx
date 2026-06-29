@@ -58,13 +58,13 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+            <DialogContent className="max-w-md bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100 flex items-center gap-2">
+                    <DialogTitle className="text-foreground flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-red-500" />
                         Supprimer la facture {billId ? `#${billId}` : ''}
                     </DialogTitle>
-                    <DialogDescription className="text-gray-400 pt-2">
+                    <DialogDescription className="text-muted-foreground pt-2">
                         Cette facture sera archivée et les demandes qui y sont rattachées seront détachées
                         (leur état de facturation repassera à « Non facturé »). Cette action peut être effectuée
                         de nouveau si nécessaire.
@@ -77,7 +77,7 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                         disabled={isDeleting}
-                        className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                        className="bg-card border-border text-foreground hover:bg-muted"
                     >
                         Annuler
                     </Button>
@@ -86,7 +86,7 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
                         variant="destructive"
                         onClick={handleDelete}
                         disabled={isDeleting}
-                        className="bg-red-700 hover:bg-red-600 text-gray-100"
+                        className="bg-red-700 hover:bg-red-600 text-foreground"
                     >
                         {isDeleting ? (
                             <span className="flex items-center gap-2">

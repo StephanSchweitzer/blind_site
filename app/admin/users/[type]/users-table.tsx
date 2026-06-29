@@ -233,12 +233,12 @@ export default function UsersTable({
     })();
 
     return (
-        <Card className="border-gray-700 bg-gray-900 shadow-xl">
-            <CardHeader className="border-b border-gray-700">
+        <Card className="border-border bg-card shadow-xl">
+            <CardHeader className="border-b border-border">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <CardTitle className="text-2xl text-gray-100">{plural}</CardTitle>
-                        <CardDescription className="text-gray-400 mt-1">
+                        <CardTitle className="text-2xl text-foreground">{plural}</CardTitle>
+                        <CardDescription className="text-muted-foreground mt-1">
                             {initialTotalUsers} {singular}{initialTotalUsers > 1 ? 's' : ''} au total
                             {' \u2022 '}
                             {activeCount} actif{activeCount > 1 ? 's' : ''}
@@ -259,32 +259,32 @@ export default function UsersTable({
             <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row gap-2 mb-6">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder="Rechercher par nom, email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
+                            className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
                         />
                     </div>
-                    <Button onClick={handleSearch} size="icon" className="bg-gray-800 border border-gray-700 text-gray-200 hover:bg-gray-700 hover:text-white">
+                    <Button onClick={handleSearch} size="icon" className="bg-card border border-border text-foreground hover:bg-muted hover:text-white">
                         <Search className="h-4 w-4" />
                     </Button>
                     {searchTerm && (
-                        <Button onClick={handleClearSearch} size="icon" variant="ghost" className="text-gray-400 hover:text-gray-200 hover:bg-gray-800">
+                        <Button onClick={handleClearSearch} size="icon" variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
                             <X className="h-4 w-4" />
                         </Button>
                     )}
                     <Select value={statusFilter} onValueChange={handleStatusFilter}>
-                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 sm:w-56">
+                        <SelectTrigger className="bg-card border-border text-foreground sm:w-56">
                             <SelectValue placeholder="Statut" />
                         </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                            <SelectItem value="all" className="text-gray-200">Tous les statuts</SelectItem>
-                            <SelectItem value="inactive" className="text-gray-200">Inactifs (tous sauf actifs)</SelectItem>
+                        <SelectContent className="bg-card border-border">
+                            <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
+                            <SelectItem value="inactive" className="text-foreground">Inactifs (tous sauf actifs)</SelectItem>
                             {USER_ACTIVITY_STATUS_VALUES.map((s) => (
-                                <SelectItem key={s} value={s} className="text-gray-200">
+                                <SelectItem key={s} value={s} className="text-foreground">
                                     {getUserActivityStatusLabel(s)}
                                 </SelectItem>
                             ))}
@@ -294,23 +294,23 @@ export default function UsersTable({
 
                 <div className="space-y-6">
                     {initialUsers.length === 0 ? (
-                        <div className="py-20 flex flex-col items-center justify-center border border-gray-800 rounded-lg bg-gray-800/50">
-                            <p className="text-gray-400 text-lg">Aucun {singular} trouv&#233;</p>
+                        <div className="py-20 flex flex-col items-center justify-center border border-border rounded-lg bg-card/50">
+                            <p className="text-muted-foreground text-lg">Aucun {singular} trouv&#233;</p>
                         </div>
                     ) : (
-                        <div className={`border border-gray-800 rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
+                        <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-gray-800 border-b border-gray-700 hover:bg-gray-800">
-                                            <TableHead className="text-gray-200 font-medium">ID</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Email</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Nom complet</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">
+                                        <TableRow className="bg-card border-b border-border hover:bg-muted">
+                                            <TableHead className="text-foreground font-medium">ID</TableHead>
+                                            <TableHead className="text-foreground font-medium">Email</TableHead>
+                                            <TableHead className="text-foreground font-medium">Nom complet</TableHead>
+                                            <TableHead className="text-foreground font-medium">
                                                 {type === 'permanents' ? "Niveau d'acc\u00e8s" : 'Type de membre'}
                                             </TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Statut</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Derni&#232;re mise &#224; jour</TableHead>
+                                            <TableHead className="text-foreground font-medium">Statut</TableHead>
+                                            <TableHead className="text-foreground font-medium">Derni&#232;re mise &#224; jour</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -318,16 +318,16 @@ export default function UsersTable({
                                             <TableRow
                                                 key={user.id}
                                                 onClick={() => handleRowClick(user)}
-                                                className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                                className="border-b border-border hover:bg-muted cursor-pointer"
                                             >
-                                                <TableCell className="font-medium text-gray-200">#{user.id}</TableCell>
-                                                <TableCell className="text-gray-200">
-                                                    {user.email || <span className="text-gray-500 italic">Non d&#233;fini</span>}
+                                                <TableCell className="font-medium text-foreground">#{user.id}</TableCell>
+                                                <TableCell className="text-foreground">
+                                                    {user.email || <span className="text-muted-foreground italic">Non d&#233;fini</span>}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-foreground">
                                                     {(user.firstName || user.lastName || user.civility)
                                                         ? `${user.civility?.name ? user.civility.name + ' ' : ''}${user.firstName || ''} ${user.lastName || ''}`.trim()
-                                                        : <span className="text-gray-500 italic">Non d&#233;fini</span>}
+                                                        : <span className="text-muted-foreground italic">Non d&#233;fini</span>}
                                                 </TableCell>
                                                 <TableCell>
                                                     {type === 'permanents' ? (
@@ -345,7 +345,7 @@ export default function UsersTable({
                                                         {getUserActivityStatusLabel(user.activityStatus)}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">{formatDate(user.lastUpdated)}</TableCell>
+                                                <TableCell className="text-foreground">{formatDate(user.lastUpdated)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -355,11 +355,11 @@ export default function UsersTable({
                     )}
 
                     {isLoadingUser && (
-                        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
-                            <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
+                        <div className="fixed inset-0 bg-card/80 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-card rounded-lg p-8 shadow-2xl border border-border">
                                 <div className="flex flex-col items-center gap-4">
                                     <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                    <p className="text-lg font-medium text-gray-200">Chargement de la personne...</p>
+                                    <p className="text-lg font-medium text-foreground">Chargement de la personne...</p>
                                 </div>
                             </div>
                         </div>
@@ -367,39 +367,39 @@ export default function UsersTable({
                 </div>
 
                 {totalPages > 1 && (
-                    <div className={`flex justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <Button size="sm" className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700" onClick={() => handlePageChange(1)} disabled={currentPage === 1 || isPending}>{'<<'}</Button>
-                        <Button size="sm" className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1 || isPending}>{'<'}</Button>
+                    <div className={`flex flex-wrap justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <Button size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(1)} disabled={currentPage === 1 || isPending}>{'<<'}</Button>
+                        <Button size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1 || isPending}>{'<'}</Button>
                         {visiblePages.map((page, index) => (
                             typeof page === 'number' ? (
                                 <Button
                                     key={index}
                                     variant={currentPage === page ? "default" : "outline"}
                                     size="sm"
-                                    className={currentPage === page ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                    className={currentPage === page ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-card text-foreground border-border hover:bg-muted"}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}
                                 >
                                     {page}
                                 </Button>
                             ) : (
-                                <span key={index} className="text-gray-400 px-2">{page}</span>
+                                <span key={index} className="text-muted-foreground px-2">{page}</span>
                             )
                         ))}
-                        <Button size="sm" className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || isPending}>{'>'}</Button>
-                        <Button size="sm" className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages || isPending}>{'>>'}</Button>
+                        <Button size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || isPending}>{'>'}</Button>
+                        <Button size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages || isPending}>{'>>'}</Button>
                     </div>
                 )}
 
                 {totalPages > 1 && (
-                    <p className="text-center text-sm text-gray-400 mt-2">Page {currentPage} sur {totalPages}</p>
+                    <p className="text-center text-sm text-muted-foreground mt-2">Page {currentPage} sur {totalPages}</p>
                 )}
             </CardContent>
 
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-100">Ajouter une nouvel personne</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter une nouvel personne</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
                         <AddUserFormBackend

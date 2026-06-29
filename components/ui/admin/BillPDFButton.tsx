@@ -105,17 +105,17 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({ bill, onBillUpdate
                 variant="outline"
                 onClick={handleClick}
                 disabled={!bill || busy}
-                className="border-gray-600 bg-gray-800 text-gray-100 hover:bg-gray-700 hover:text-white flex items-center gap-2"
+                className="border-border bg-card text-foreground hover:bg-muted hover:text-white flex items-center gap-2"
             >
                 {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
                 {isExporting ? 'Génération…' : 'Exporter en PDF'}
             </Button>
 
             <Dialog open={showDraftDialog} onOpenChange={(o) => !busy && setShowDraftDialog(o)}>
-                <DialogContent className="max-w-md bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+                <DialogContent className="max-w-md bg-card border-border [&>button>svg]:text-white">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-100">Cette facture est un brouillon</DialogTitle>
-                        <DialogDescription className="text-gray-400">
+                        <DialogTitle className="text-foreground">Cette facture est un brouillon</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Exporter une facture officielle l&apos;émettra et changera son statut en « Émise ».
                             Une fois émise, elle ne pourra plus être modifiée librement.
                         </DialogDescription>
@@ -142,7 +142,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({ bill, onBillUpdate
                             variant="outline"
                             onClick={handleExportDraft}
                             disabled={busy}
-                            className="border-gray-600 bg-gray-800 text-gray-100 hover:bg-gray-700 hover:text-white flex items-center justify-center gap-2"
+                            className="border-border bg-card text-foreground hover:bg-muted hover:text-white flex items-center justify-center gap-2"
                         >
                             {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                             Exporter le brouillon (sans émettre)
@@ -152,7 +152,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({ bill, onBillUpdate
                             variant="ghost"
                             onClick={() => setShowDraftDialog(false)}
                             disabled={busy}
-                            className="text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted"
                         >
                             Annuler
                         </Button>

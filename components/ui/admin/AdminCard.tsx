@@ -7,7 +7,7 @@ export function AdminCard({ children, className = "" }: {
     className?: string;
 }) {
     return (
-        <Card className={`border-gray-800 bg-gray-900/50 backdrop-blur-sm ${className}`}>
+        <Card className={`border-border bg-card backdrop-blur-sm ${className}`}>
             {children}
         </Card>
     );

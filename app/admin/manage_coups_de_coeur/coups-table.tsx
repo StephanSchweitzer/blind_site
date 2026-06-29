@@ -65,16 +65,16 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
     };
 
     return (
-        <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-700">
+        <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border">
                 <div>
-                    <CardTitle className="text-gray-100">Gestion des listes de livres</CardTitle>
-                    <CardDescription className="text-gray-400">
+                    <CardTitle className="text-foreground">Gestion des listes de livres</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                         Gérez et modifiez les listes de livres
                     </CardDescription>
                 </div>
                 <Link href="/admin/manage_coups_de_coeur/new">
-                    <Button className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500">
+                    <Button className="bg-muted text-foreground border-border hover:bg-muted">
                         Nouvelle listes de livres
                     </Button>
                 </Link>
@@ -85,34 +85,34 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                         placeholder="Rechercher des listes de livres..."
                         value={search}
                         onChange={(e) => handleSearch(e.target.value)}
-                        className="max-w-sm bg-white text-gray-900 placeholder:text-gray-500"
+                        className="max-w-sm bg-white text-muted-foreground placeholder:text-muted-foreground"
                     />
                 </div>
 
-                <div className="rounded-md border border-gray-700 bg-gray-800">
+                <div className="rounded-md border border-border bg-card">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-b border-gray-700 bg-gray-800">
-                                <TableHead className="text-gray-200 font-medium">Titre</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Ajouté par</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Statut</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Livres</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Créé le</TableHead>
-                                <TableHead className="text-gray-200 font-medium">Actions</TableHead>
+                            <TableRow className="border-b border-border bg-card">
+                                <TableHead className="text-foreground font-medium">Titre</TableHead>
+                                <TableHead className="text-foreground font-medium">Ajouté par</TableHead>
+                                <TableHead className="text-foreground font-medium">Statut</TableHead>
+                                <TableHead className="text-foreground font-medium">Livres</TableHead>
+                                <TableHead className="text-foreground font-medium">Créé le</TableHead>
+                                <TableHead className="text-foreground font-medium">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {items.map((item) => (
                                 <TableRow
                                     key={item.id}
-                                    className="border-b border-gray-700 hover:bg-gray-750 cursor-pointer"
+                                    className="border-b border-border hover:bg-muted cursor-pointer"
                                     onClick={() => window.location.href = `/admin/manage_coups_de_coeur/${item.id}`}
                                 >
-                                    <TableCell className="text-gray-200">{item.title}</TableCell>
-                                    <TableCell className="text-gray-200">{item.addedBy?.name || 'Inconnu'}</TableCell>
-                                    <TableCell className="text-gray-200">{item.active ? 'Actif' : 'Inactif'}</TableCell>
-                                    <TableCell className="text-gray-200">{item.books.length} livres</TableCell>
-                                    <TableCell className="text-gray-200">
+                                    <TableCell className="text-foreground">{item.title}</TableCell>
+                                    <TableCell className="text-foreground">{item.addedBy?.name || 'Inconnu'}</TableCell>
+                                    <TableCell className="text-foreground">{item.active ? 'Actif' : 'Inactif'}</TableCell>
+                                    <TableCell className="text-foreground">{item.books.length} livres</TableCell>
+                                    <TableCell className="text-foreground">
                                         {new Date(item.createdAt).toLocaleDateString('fr-FR', {
                                             month: 'numeric',
                                             day: 'numeric',
@@ -123,7 +123,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                            className="bg-muted text-foreground border-border hover:bg-muted"
                                             onClick={(e) => {
                                                 e.stopPropagation(); // Prevent row click when clicking the button
                                                 window.location.href = `/admin/manage_coups_de_coeur/${item.id}`;
@@ -138,22 +138,22 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                     </Table>
                 </div>
 
-                <div className="flex justify-center items-center gap-2 mt-6">
+                <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
                     {Array.from({ length: totalPages }, (_, index) => (
                         <Button
                             key={index + 1}
                             variant={currentPage === index + 1 ? "default" : "outline"}
                             size="sm"
                             className={currentPage === index + 1
-                                ? "bg-white text-gray-900 hover:bg-gray-100"
-                                : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                ? "bg-white text-muted-foreground hover:bg-muted"
+                                : "bg-card text-foreground border-border hover:bg-muted"}
                             onClick={() => handlePageChange(index + 1)}
                         >
                             {index + 1}
                         </Button>
                     ))}
                 </div>
-                <p className="text-center text-sm text-gray-400 mt-2">
+                <p className="text-center text-sm text-muted-foreground mt-2">
                     Page {currentPage} sur {totalPages}
                 </p>
             </CardContent>

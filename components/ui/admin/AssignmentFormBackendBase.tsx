@@ -145,18 +145,18 @@ function DatePicker({
 
     return (
         <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-200">{label}</label>
+            <label className="text-sm font-medium text-foreground">{label}</label>
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
                         variant="outline"
-                        className="w-full justify-start text-left font-normal bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                        className="w-full justify-start text-left font-normal bg-card border-border text-foreground hover:bg-muted"
                     >
                         <Calendar className="mr-2 h-4 w-4" />
-                        {date ? format(date, 'PPP', { locale: fr }) : <span className="text-gray-400">{placeholder}</span>}
+                        {date ? format(date, 'PPP', { locale: fr }) : <span className="text-muted-foreground">{placeholder}</span>}
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                <PopoverContent className="w-auto p-0 bg-card border-border">
                     <CalendarComponent
                         mode="single"
                         selected={date}
@@ -627,9 +627,9 @@ export function AssignmentFormBackendBase({
     };
 
     return (
-        <Card className="w-full max-w-4xl mx-auto bg-gray-900 border-gray-800">
-            <CardHeader className="border-b border-gray-800">
-                <CardTitle className="text-2xl font-bold text-gray-100">{title}</CardTitle>
+        <Card className="w-full max-w-4xl mx-auto bg-card border-border">
+            <CardHeader className="border-b border-border">
+                <CardTitle className="text-2xl font-bold text-foreground">{title}</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
                 {error && (
@@ -642,7 +642,7 @@ export function AssignmentFormBackendBase({
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Reader Selection/Display */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Lecteur {!assignmentId && <span className="text-red-400">*</span>}
                         </label>
 
@@ -652,19 +652,19 @@ export function AssignmentFormBackendBase({
                                 {/* Current reader compact bar */}
                                 {currentReader ? (
                                     <div
-                                        className="flex items-center justify-between p-3 bg-gray-800 border border-gray-700 rounded-md hover:bg-gray-750 cursor-pointer transition-colors"
+                                        className="flex items-center justify-between p-3 bg-card border border-border rounded-md hover:bg-muted cursor-pointer transition-colors"
                                         onClick={() => setShowReassignSection(!showReassignSection)}
                                     >
                                         <div className="flex items-center gap-3">
                                             <UserIcon className="h-5 w-5 text-blue-400" />
                                             <div>
-                                                <div className="font-medium text-gray-200">
+                                                <div className="font-medium text-foreground">
                                                     {getReaderDisplayName(currentReader)}
                                                 </div>
                                                 {currentReader.email && (
-                                                    <div className="text-sm text-gray-400">{currentReader.email}</div>
+                                                    <div className="text-sm text-muted-foreground">{currentReader.email}</div>
                                                 )}
-                                                <div className="text-xs text-gray-500 italic mt-0.5">
+                                                <div className="text-xs text-muted-foreground italic mt-0.5">
                                                     Cliquez pour réattribuer cette attribution.
                                                 </div>
                                             </div>
@@ -679,13 +679,13 @@ export function AssignmentFormBackendBase({
                                                         e.stopPropagation();
                                                         setShowHistoryModal(true);
                                                     }}
-                                                    className="text-gray-400 hover:text-gray-200"
+                                                    className="text-muted-foreground hover:text-foreground"
                                                 >
                                                     <History className="h-4 w-4 mr-1" />
                                                     <span className="text-xs">Historique</span>
                                                 </Button>
                                             )}
-                                            <ChevronRight className={`h-5 w-5 text-gray-400 transition-transform ${showReassignSection ? 'rotate-90' : ''}`} />
+                                            <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform ${showReassignSection ? 'rotate-90' : ''}`} />
                                         </div>
                                     </div>
                                 ) : (
@@ -696,23 +696,23 @@ export function AssignmentFormBackendBase({
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted"
                                                 >
                                                     {selectedReader ? (
                                                         <span>{getReaderDisplayName(selectedReader)}</span>
                                                     ) : (
-                                                        <span className="text-gray-400">Sélectionner un lecteur...</span>
+                                                        <span className="text-muted-foreground">Sélectionner un lecteur...</span>
                                                     )}
                                                     <Search className="ml-2 h-4 w-4 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700">
+                                            <PopoverContent className="w-[400px] p-0 bg-card border-border">
                                                 <div className="p-2">
                                                     <Input
                                                         placeholder="Rechercher un lecteur..."
                                                         value={userSearch}
                                                         onChange={(e) => setUserSearch(e.target.value)}
-                                                        className="bg-gray-900 border-gray-700 text-gray-200"
+                                                        className="bg-card border-border text-foreground"
                                                     />
                                                 </div>
                                                 <div
@@ -720,28 +720,28 @@ export function AssignmentFormBackendBase({
                                                     onWheel={(e) => e.stopPropagation()}
                                                 >
                                                     {isSearchingUsers ? (
-                                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                                        <div className="p-4 text-center text-muted-foreground">Recherche...</div>
                                                     ) : users.length > 0 ? (
                                                         users.map((user) => (
                                                             <div
                                                                 key={user.id}
-                                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
+                                                                className="px-4 py-2 hover:bg-muted cursor-pointer text-foreground"
                                                                 onClick={() => handleReaderSelect(user)}
                                                             >
                                                                 <div className="font-medium">
                                                                     {getReaderDisplayName(user)}
                                                                 </div>
                                                                 {user.email && (
-                                                                    <div className="text-sm text-gray-400">{user.email}</div>
+                                                                    <div className="text-sm text-muted-foreground">{user.email}</div>
                                                                 )}
                                                             </div>
                                                         ))
                                                     ) : userSearch.length >= 2 ? (
-                                                        <div className="p-4 text-center text-gray-400">
+                                                        <div className="p-4 text-center text-muted-foreground">
                                                             Aucun lecteur trouvé
                                                         </div>
                                                     ) : (
-                                                        <div className="p-4 text-center text-gray-400">
+                                                        <div className="p-4 text-center text-muted-foreground">
                                                             Tapez au moins 2 caractères pour rechercher
                                                         </div>
                                                     )}
@@ -754,7 +754,7 @@ export function AssignmentFormBackendBase({
                                                 variant="outline"
                                                 onClick={handleReassignReader}
                                                 disabled={isReassigningReader}
-                                                className="w-full bg-blue-700 hover:bg-blue-600 text-gray-100 border-blue-500 disabled:opacity-50"
+                                                className="w-full bg-blue-700 hover:bg-blue-600 text-foreground border-blue-500 disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
                                                 {isReassigningReader ? 'Attribution...' : 'Attribuer ce lecteur'}
@@ -765,8 +765,8 @@ export function AssignmentFormBackendBase({
 
                                 {/* Reassignment section - collapsible (only when currentReader exists) */}
                                 {showReassignSection && currentReader && (
-                                    <div className="p-4 bg-gray-800 border border-gray-700 rounded-md space-y-3">
-                                        <h4 className="font-medium text-gray-200">Réaffecter à un autre lecteur</h4>
+                                    <div className="p-4 bg-card border border-border rounded-md space-y-3">
+                                        <h4 className="font-medium text-foreground">Réaffecter à un autre lecteur</h4>
 
                                         <div className="flex gap-2">
                                             <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
@@ -774,23 +774,23 @@ export function AssignmentFormBackendBase({
                                                     <Button
                                                         type="button"
                                                         variant="outline"
-                                                        className="flex-1 justify-between bg-gray-900 border-gray-700 text-gray-200 hover:bg-gray-800"
+                                                        className="flex-1 justify-between bg-card border-border text-foreground hover:bg-muted"
                                                     >
                                                         {selectedReader && selectedReader.id !== currentReader?.id ? (
                                                             <span>{getReaderDisplayName(selectedReader)}</span>
                                                         ) : (
-                                                            <span className="text-gray-400">Sélectionner un nouveau lecteur...</span>
+                                                            <span className="text-muted-foreground">Sélectionner un nouveau lecteur...</span>
                                                         )}
                                                         <Search className="ml-2 h-4 w-4 opacity-50" />
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700">
+                                                <PopoverContent className="w-[400px] p-0 bg-card border-border">
                                                     <div className="p-2">
                                                         <Input
                                                             placeholder="Rechercher un lecteur..."
                                                             value={userSearch}
                                                             onChange={(e) => setUserSearch(e.target.value)}
-                                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                                            className="bg-card border-border text-foreground"
                                                         />
                                                     </div>
                                                     <div
@@ -798,28 +798,28 @@ export function AssignmentFormBackendBase({
                                                         onWheel={(e) => e.stopPropagation()}
                                                     >
                                                         {isSearchingUsers ? (
-                                                            <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                                            <div className="p-4 text-center text-muted-foreground">Recherche...</div>
                                                         ) : users.length > 0 ? (
                                                             users.map((user) => (
                                                                 <div
                                                                     key={user.id}
-                                                                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
+                                                                    className="px-4 py-2 hover:bg-muted cursor-pointer text-foreground"
                                                                     onClick={() => handleReaderSelect(user)}
                                                                 >
                                                                     <div className="font-medium">
                                                                         {getReaderDisplayName(user)}
                                                                     </div>
                                                                     {user.email && (
-                                                                        <div className="text-sm text-gray-400">{user.email}</div>
+                                                                        <div className="text-sm text-muted-foreground">{user.email}</div>
                                                                     )}
                                                                 </div>
                                                             ))
                                                         ) : userSearch.length >= 2 ? (
-                                                            <div className="p-4 text-center text-gray-400">
+                                                            <div className="p-4 text-center text-muted-foreground">
                                                                 Aucun lecteur trouvé
                                                             </div>
                                                         ) : (
-                                                            <div className="p-4 text-center text-gray-400">
+                                                            <div className="p-4 text-center text-muted-foreground">
                                                                 Tapez au moins 2 caractères pour rechercher
                                                             </div>
                                                         )}
@@ -832,7 +832,7 @@ export function AssignmentFormBackendBase({
                                                 variant="outline"
                                                 onClick={handleReassignReader}
                                                 disabled={isReassigningReader || !selectedReaderId || selectedReaderId === currentReader?.id}
-                                                className="bg-blue-700 hover:bg-blue-600 text-gray-100 border-blue-500 disabled:opacity-50"
+                                                className="bg-blue-700 hover:bg-blue-600 text-foreground border-blue-500 disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
                                                 {isReassigningReader ? 'Réattribution...' : 'Réattribuer'}
@@ -843,7 +843,7 @@ export function AssignmentFormBackendBase({
                                             placeholder="Raison de la réattribution (optionnel)"
                                             value={reassignNotes}
                                             onChange={(e) => setReassignNotes(e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
                                 )}
@@ -855,23 +855,23 @@ export function AssignmentFormBackendBase({
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                        className="w-full justify-between bg-card border-border text-foreground hover:bg-muted"
                                     >
                                         {selectedReader ? (
                                             <span>{getReaderDisplayName(selectedReader)}</span>
                                         ) : (
-                                            <span className="text-gray-400">Sélectionner un lecteur...</span>
+                                            <span className="text-muted-foreground">Sélectionner un lecteur...</span>
                                         )}
                                         <Search className="ml-2 h-4 w-4 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700">
+                                <PopoverContent className="w-[400px] p-0 bg-card border-border">
                                     <div className="p-2">
                                         <Input
                                             placeholder="Rechercher un lecteur..."
                                             value={userSearch}
                                             onChange={(e) => setUserSearch(e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
                                     <div
@@ -879,28 +879,28 @@ export function AssignmentFormBackendBase({
                                         onWheel={(e) => e.stopPropagation()}
                                     >
                                         {isSearchingUsers ? (
-                                            <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                            <div className="p-4 text-center text-muted-foreground">Recherche...</div>
                                         ) : users.length > 0 ? (
                                             users.map((user) => (
                                                 <div
                                                     key={user.id}
-                                                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-200"
+                                                    className="px-4 py-2 hover:bg-muted cursor-pointer text-foreground"
                                                     onClick={() => handleReaderSelect(user)}
                                                 >
                                                     <div className="font-medium">
                                                         {getReaderDisplayName(user)}
                                                     </div>
                                                     {user.email && (
-                                                        <div className="text-sm text-gray-400">{user.email}</div>
+                                                        <div className="text-sm text-muted-foreground">{user.email}</div>
                                                     )}
                                                 </div>
                                             ))
                                         ) : userSearch.length >= 2 ? (
-                                            <div className="p-4 text-center text-gray-400">
+                                            <div className="p-4 text-center text-muted-foreground">
                                                 Aucun lecteur trouvé
                                             </div>
                                         ) : (
-                                            <div className="p-4 text-center text-gray-400">
+                                            <div className="p-4 text-center text-muted-foreground">
                                                 Tapez au moins 2 caractères pour rechercher
                                             </div>
                                         )}
@@ -912,13 +912,13 @@ export function AssignmentFormBackendBase({
 
                     {/* Order Selection - NOW SECOND */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Commande</label>
+                        <label className="text-sm font-medium text-foreground">Commande</label>
                         <Popover open={orderPopoverOpen} onOpenChange={setOrderPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted"
                                 >
                                     {selectedOrder ? (
                                         <div className="flex items-center gap-2">
@@ -928,22 +928,22 @@ export function AssignmentFormBackendBase({
                                                 {(selectedOrder.requestReceivedDate || selectedOrder.createdDate) && (
                                                     <> · {format(new Date(selectedOrder.requestReceivedDate || selectedOrder.createdDate!), 'dd/MM/yyyy', { locale: fr })}</>
                                                 )}
-                                                <span className="text-gray-400"> (Cmd&nbsp;#{selectedOrder.id})</span>
+                                                <span className="text-muted-foreground"> (Cmd&nbsp;#{selectedOrder.id})</span>
                                             </span>
                                         </div>
                                     ) : (
-                                        <span className="text-gray-400">Sélectionner une demande...</span>
+                                        <span className="text-muted-foreground">Sélectionner une demande...</span>
                                     )}
                                     <Search className="ml-2 h-4 w-4 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[600px] p-0 bg-gray-800 border-gray-700">
+                            <PopoverContent className="w-[600px] p-0 bg-card border-border">
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher une demande..."
                                         value={orderSearch}
                                         onChange={(e) => setOrderSearch(e.target.value)}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
+                                        className="bg-card border-border text-foreground"
                                     />
                                 </div>
                                 <div
@@ -951,7 +951,7 @@ export function AssignmentFormBackendBase({
                                     onWheel={(e) => e.stopPropagation()}
                                 >
                                     {isSearchingOrders ? (
-                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                        <div className="p-4 text-center text-muted-foreground">Recherche...</div>
                                     ) : visibleOrders.length > 0 ? (
                                         visibleOrders.map((order) => {
                                             // A demande is non-actionable for a new attribution when it's a
@@ -973,8 +973,8 @@ export function AssignmentFormBackendBase({
                                                     aria-disabled={blocked}
                                                     className={
                                                         blocked
-                                                            ? "px-4 py-3 border-b border-gray-700 last:border-b-0 opacity-50 cursor-not-allowed"
-                                                            : "px-4 py-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
+                                                            ? "px-4 py-3 border-b border-border last:border-b-0 opacity-50 cursor-not-allowed"
+                                                            : "px-4 py-3 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
                                                     }
                                                     onClick={blocked ? undefined : () => handleOrderSelect(order)}
                                                 >
@@ -983,19 +983,19 @@ export function AssignmentFormBackendBase({
                                                             {/* Primary: who + when — same hierarchy as the trigger */}
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <Package className="h-4 w-4 text-blue-400 shrink-0" />
-                                                                <span className="font-semibold text-gray-200 text-base">
+                                                                <span className="font-semibold text-foreground text-base">
                                                                 {order.aveugle?.name || 'Auditeur inconnu'}
                                                             </span>
                                                                 {(order.requestReceivedDate || order.createdDate) && (
-                                                                    <span className="text-sm text-gray-400">
+                                                                    <span className="text-sm text-muted-foreground">
                                                                     · {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}
                                                                 </span>
                                                                 )}
                                                             </div>
                                                             {order.catalogue && (
-                                                                <div className="text-sm text-gray-300">
+                                                                <div className="text-sm text-foreground">
                                                                     {order.catalogue.title}
-                                                                    {order.catalogue.author && <span className="text-gray-500"> — {order.catalogue.author}</span>}
+                                                                    {order.catalogue.author && <span className="text-muted-foreground"> — {order.catalogue.author}</span>}
                                                                 </div>
                                                             )}
                                                             {blockReason === 'attributed' && (
@@ -1009,13 +1009,13 @@ export function AssignmentFormBackendBase({
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">Cmd&nbsp;#{order.id}</span>
+                                                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Cmd&nbsp;#{order.id}</span>
                                                     </div>
                                                 </div>
                                             );
                                         })
                                     ) : (
-                                        <div className="p-4 text-center text-gray-400">
+                                        <div className="p-4 text-center text-muted-foreground">
                                             {isOrderSearchMode
                                                 ? "Aucune commande trouvée"
                                                 : "Aucune demande récente attribuable — utilisez la recherche pour voir toutes les demandes."}
@@ -1039,23 +1039,23 @@ export function AssignmentFormBackendBase({
 
                     {/* Book — read-only: derived from the selected order (one book per order) */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Livre <span className="text-red-400">*</span>
                         </label>
                         <div
                             ref={registerField('catalogueId')}
                             tabIndex={-1}
-                            className="flex items-center w-full rounded-md bg-gray-800/60 border border-gray-700 px-3 py-2 text-gray-200 cursor-not-allowed outline-none"
+                            className="flex items-center w-full rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
                             aria-readonly="true"
                             title="Le livre provient de la demande sélectionnée. Pour le changer, sélectionnez une autre demande ci-dessus."
                         >
                             {selectedBook ? (
                                 <span>{selectedBook.title} - {selectedBook.author}</span>
                             ) : (
-                                <span className="text-gray-400">Sélectionnez une demande pour définir le livre</span>
+                                <span className="text-muted-foreground">Sélectionnez une demande pour définir le livre</span>
                             )}
                         </div>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                             Le livre est repris de la commande. Pour le modifier, changez la commande ci-dessus.
                         </p>
                     </div>
@@ -1084,7 +1084,7 @@ export function AssignmentFormBackendBase({
 
                     {/* Status */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Statut <span className="text-red-400">*</span>
                         </label>
                         <Select
@@ -1093,16 +1093,16 @@ export function AssignmentFormBackendBase({
                                 setFormData({ ...formData, statusId: parseInt(value) })
                             }
                         >
-                            <SelectTrigger ref={registerField('statusId')} className="bg-gray-800 border-gray-700 text-gray-200">
+                            <SelectTrigger ref={registerField('statusId')} className="bg-card border-border text-foreground">
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectContent className="bg-card border-border">
                                 {/* #7a — an assignment can never hold "Soldé" (order-only status);
                                     filter it out so it isn't offered. Uses STATUS.SOLDE, not a literal. */}
                                 {statuses
                                     .filter((status) => status.id !== STATUS.SOLDE)
                                     .map((status) => (
-                                        <SelectItem key={status.id} value={status.id.toString()} className="text-gray-200">
+                                        <SelectItem key={status.id} value={status.id.toString()} className="text-foreground">
                                             {status.name}
                                         </SelectItem>
                                     ))}
@@ -1112,11 +1112,11 @@ export function AssignmentFormBackendBase({
 
                     {/* Notes */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Notes</label>
+                        <label className="text-sm font-medium text-foreground">Notes</label>
                         <Textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                            className="bg-card border-border text-foreground min-h-[100px]"
                             placeholder="Ajouter des notes supplémentaires..."
                         />
                     </div>
@@ -1126,7 +1126,7 @@ export function AssignmentFormBackendBase({
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100"
+                            className="w-full bg-muted hover:bg-muted text-foreground border-border"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
@@ -1137,7 +1137,7 @@ export function AssignmentFormBackendBase({
                                 variant="destructive"
                                 disabled={isLoading}
                                 onClick={handleDeleteClick}
-                                className="w-full bg-red-700 hover:bg-red-600 text-gray-100 border-red-500"
+                                className="w-full bg-red-700 hover:bg-red-600 text-foreground border-red-500"
                             >
                                 Supprimer l&apos;attribution
                             </Button>
@@ -1148,9 +1148,9 @@ export function AssignmentFormBackendBase({
 
             {/* Reader History Modal */}
             <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-                <DialogContent className="max-w-2xl bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+                <DialogContent className="max-w-2xl bg-card border-border [&>button>svg]:text-white">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-100">Historique des lecteurs</DialogTitle>
+                        <DialogTitle className="text-foreground">Historique des lecteurs</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                         {readerHistory.map((history, index) => (
@@ -1159,14 +1159,14 @@ export function AssignmentFormBackendBase({
                                 className={`p-4 rounded ${
                                     index === 0
                                         ? 'bg-blue-900/20 border border-blue-800'
-                                        : 'bg-gray-800 border border-gray-700'
+                                        : 'bg-card border border-border'
                                 }`}
                             >
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <UserIcon className="h-4 w-4 text-gray-400" />
-                                            <span className="font-medium text-gray-200">
+                                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                            <span className="font-medium text-foreground">
                                                 {getReaderDisplayName(history.reader)}
                                             </span>
                                             {index === 0 && (
@@ -1176,15 +1176,15 @@ export function AssignmentFormBackendBase({
                                             )}
                                         </div>
                                         {history.reader.email && (
-                                            <div className="text-sm text-gray-400 mb-2">{history.reader.email}</div>
+                                            <div className="text-sm text-muted-foreground mb-2">{history.reader.email}</div>
                                         )}
                                         {history.notes && (
-                                            <div className="text-sm text-gray-300 mt-2 p-2 bg-gray-900 rounded italic border-l-2 border-blue-700">
+                                            <div className="text-sm text-foreground mt-2 p-2 bg-card rounded italic border-l-2 border-blue-700">
                                                 {history.notes}
                                             </div>
                                         )}
                                     </div>
-                                    <div className="text-sm text-gray-400 ml-4">
+                                    <div className="text-sm text-muted-foreground ml-4">
                                         {format(new Date(history.assignedDate), 'PPP', { locale: fr })}
                                     </div>
                                 </div>

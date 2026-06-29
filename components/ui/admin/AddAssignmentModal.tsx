@@ -49,16 +49,16 @@ export function AddAssignmentModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100">Créer une nouvelle attribution</DialogTitle>
+                    <DialogTitle className="text-foreground">Créer une nouvelle attribution</DialogTitle>
                 </DialogHeader>
                 <div className="overflow-y-auto px-1 relative">
                     {isLoadingOrders && (
-                        <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-card/80 backdrop-blur-sm z-50 flex items-center justify-center">
                             <div className="flex items-center">
-                                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                                <span className="ml-3 text-gray-400">Chargement des demandes...</span>
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                <span className="ml-3 text-muted-foreground">Chargement des demandes...</span>
                             </div>
                         </div>
                     )}

@@ -104,9 +104,9 @@ export default function AddCoupDeCoeur() {
 
     return (
                 <div className="space-y-4">
-                    <Card className="bg-gray-900 border-gray-800">
-                        <CardHeader className="border-b border-gray-700">
-                            <CardTitle className="text-gray-100">Ajouter une nouvelle liste de livres</CardTitle>
+                    <Card className="bg-card border-border">
+                        <CardHeader className="border-b border-border">
+                            <CardTitle className="text-foreground">Ajouter une nouvelle liste de livres</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6">
                             <form onSubmit={handleSubmit} className="space-y-6">
@@ -118,7 +118,7 @@ export default function AddCoupDeCoeur() {
 
                                 <div className="grid gap-6">
                                     <div className="space-y-2">
-                                        <label htmlFor="title" className="text-sm font-medium text-gray-200">
+                                        <label htmlFor="title" className="text-sm font-medium text-foreground">
                                             Titre *
                                         </label>
                                         <Input
@@ -128,14 +128,14 @@ export default function AddCoupDeCoeur() {
                                             required
                                             value={formData.title}
                                             onChange={handleChange}
-                                            className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                            className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                             placeholder="Le titre principal de cette liste de livres"
 
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label htmlFor="description" className="text-sm font-medium text-gray-200">
+                                        <label htmlFor="description" className="text-sm font-medium text-foreground">
                                             Description
                                         </label>
                                         <Textarea
@@ -143,13 +143,13 @@ export default function AddCoupDeCoeur() {
                                             id="description"
                                             value={formData.description}
                                             onChange={handleChange}
-                                            className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[150px]"
+                                            className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground min-h-[150px]"
                                             placeholder="Informations générales ajoutées en haut de la liste de livres"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">
+                                        <label className="text-sm font-medium text-foreground">
                                             Enregistrement audio
                                         </label>
                                         <AudioRecorder
@@ -166,21 +166,21 @@ export default function AddCoupDeCoeur() {
                                                 setFormData(prev => ({...prev, active: checked}))
                                             }
                                         />
-                                        <label htmlFor="active" className="text-sm font-medium text-gray-200">
+                                        <label htmlFor="active" className="text-sm font-medium text-foreground">
                                             Cette liste de livres est-elle visible par le public ?
                                         </label>
                                     </div>
 
                                     <div className="space-y-2">
                                         <label
-                                            className="text-sm font-medium text-gray-200 cursor-pointer"
+                                            className="text-sm font-medium text-foreground cursor-pointer"
                                             onClick={() => {
                                                 setIsBookSelectorOpen(true);
                                             }}
                                         >
                                             Sélectionner les livres *
                                         </label>
-                                        <div className="bg-gray-800 border border-gray-700 rounded-md">
+                                        <div className="bg-card border border-border rounded-md">
                                             <BookSelector
                                                 selectedBooks={formData.bookIds}
                                                 onSelectedBooksChange={(bookIds) =>
@@ -197,7 +197,7 @@ export default function AddCoupDeCoeur() {
                                 <Button
                                     type="submit"
                                     disabled={isLoading || formData.bookIds.length === 0}
-                                    className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100"
+                                    className="w-full bg-muted hover:bg-muted text-foreground"
                                 >
                                     {isLoading ? 'En ajoutant...' : 'Ajouter la liste de livres'}
                                 </Button>

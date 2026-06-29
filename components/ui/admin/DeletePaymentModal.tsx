@@ -71,25 +71,25 @@ export function DeletePaymentModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+            <DialogContent className="max-w-md bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100 flex items-center gap-2">
+                    <DialogTitle className="text-foreground flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-red-400" />
                         Supprimer le paiement {paymentId ? `#${paymentId}` : ''}
                     </DialogTitle>
-                    <DialogDescription className="text-gray-400">
+                    <DialogDescription className="text-muted-foreground">
                         Cette action désactive le paiement (suppression réversible). Vous pouvez indiquer un motif.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-200">Motif (facultatif)</label>
+                    <label className="text-sm font-medium text-foreground">Motif (facultatif)</label>
                     <textarea
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         rows={2}
                         placeholder="Ex: doublon, erreur de saisie…"
-                        className="w-full rounded-md bg-gray-800 border border-gray-700 text-gray-200 placeholder-gray-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-600/50"
+                        className="w-full rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-600/50"
                     />
                 </div>
 
@@ -99,7 +99,7 @@ export function DeletePaymentModal({
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                         disabled={isDeleting}
-                        className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                        className="bg-card border-border text-foreground hover:bg-muted"
                     >
                         Annuler
                     </Button>
@@ -107,7 +107,7 @@ export function DeletePaymentModal({
                         type="button"
                         onClick={handleDelete}
                         disabled={isDeleting}
-                        className="bg-red-700 hover:bg-red-600 text-gray-100 flex items-center gap-2"
+                        className="bg-red-700 hover:bg-red-600 text-foreground flex items-center gap-2"
                     >
                         {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
                         Supprimer

@@ -200,14 +200,14 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
-                    className="w-full justify-start bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
+                    className="w-full justify-start bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
                 >
                     <Search className="w-4 h-4 mr-2" />
                     Rechercher sur Google Books
                 </Button>
             </PopoverTrigger>
             <PopoverContent
-                className="w-[500px] p-4 bg-gray-800 border-gray-700"
+                className="w-[500px] p-4 bg-card border-border"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="space-y-2 mb-4">
@@ -217,7 +217,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="bg-gray-700 border-gray-400 text-gray-100"
+                            className="bg-muted border-border text-foreground"
                             ref={inputRef}
                         />
                         <Button
@@ -226,7 +226,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                                 searchBooks();
                             }}
                             disabled={isLoading}
-                            className="bg-gray-700 hover:bg-gray-600 text-gray-100 whitespace-nowrap"
+                            className="bg-muted hover:bg-muted text-foreground whitespace-nowrap"
                         >
                             {isLoading ? (
                                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -236,7 +236,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                             Rechercher
                         </Button>
                     </div>
-                    <p className="text-sm text-gray-400 italic">
+                    <p className="text-sm text-muted-foreground italic">
                         Appuyez sur Entrée pour lancer la recherche
                     </p>
                 </div>
@@ -254,40 +254,40 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                         {results.map((book, index) => (
                             <Card
                                 key={index}
-                                className="p-3 cursor-pointer bg-gray-700 hover:bg-gray-600 border-gray-600"
+                                className="p-3 cursor-pointer bg-muted hover:bg-muted border-border"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     handleSelect(book);
                                 }}
                             >
-                                <h3 className="font-semibold text-gray-100">{book.title}</h3>
+                                <h3 className="font-semibold text-foreground">{book.title}</h3>
                                 {book.author && (
-                                    <p className="text-sm text-gray-300">par {book.author}</p>
+                                    <p className="text-sm text-foreground">par {book.author}</p>
                                 )}
                                 {book.publisher && (
-                                    <p className="text-sm text-gray-400">
+                                    <p className="text-sm text-muted-foreground">
                                         Éditeur: {book.publisher}
                                     </p>
                                 )}
                                 {book.publishedDate && (
-                                    <p className="text-sm text-gray-400">
+                                    <p className="text-sm text-muted-foreground">
                                         Publié le {book.publishedDate.toLocaleDateString('fr-FR')}
                                     </p>
                                 )}
                                 {book.pageCount > 0 && (
-                                    <p className="text-sm text-gray-400">
+                                    <p className="text-sm text-muted-foreground">
                                         {book.pageCount} pages
                                     </p>
                                 )}
                                 {book.description && (
-                                    <p className="text-sm text-gray-300 line-clamp-2 mt-1">
+                                    <p className="text-sm text-foreground line-clamp-2 mt-1">
                                         {book.description}
                                     </p>
                                 )}
                             </Card>
                         ))}
                         {results.length === 0 && !isLoading && !searchError && hasSearched && (
-                            <p className="text-gray-400 text-center">Aucun résultat trouvé</p>
+                            <p className="text-muted-foreground text-center">Aucun résultat trouvé</p>
                         )}
                     </div>
                 </ScrollArea>

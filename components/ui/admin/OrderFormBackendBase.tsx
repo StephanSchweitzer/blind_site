@@ -478,9 +478,9 @@ export function OrderFormBackendBase({
     const hasRecordingDup = (recordingDup?.activeRecordingCount ?? 0) > 0;
 
     return (
-        <Card className="bg-gray-900 border-gray-700">
+        <Card className="bg-card border-border">
             <CardHeader>
-                <CardTitle className="text-gray-100">{title}</CardTitle>
+                <CardTitle className="text-foreground">{title}</CardTitle>
             </CardHeader>
             <CardContent>
                 {error && (
@@ -493,7 +493,7 @@ export function OrderFormBackendBase({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* User Search (Aveugle) */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Auditeur <span className="text-red-500">*</span>
                         </label>
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
@@ -502,42 +502,42 @@ export function OrderFormBackendBase({
                                     ref={registerField('aveugleId')}
                                     variant="outline"
                                     role="combobox"
-                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors"
+                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted transition-colors"
                                 >
                                     {selectedUser ? (
                                         <span className="truncate">
                                             {getUserDisplayName(selectedUser)}
                                         </span>
                                     ) : (
-                                        <span className="text-gray-400">Rechercher un auditeur ...</span>
+                                        <span className="text-muted-foreground">Rechercher un auditeur ...</span>
                                     )}
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher par nom ou email..."
                                         value={userSearch}
                                         onChange={(e) => setUserSearch(e.target.value)}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
+                                        className="bg-card border-border text-foreground"
                                     />
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                     {isSearchingUsers && (
-                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                        <div className="p-4 text-center text-muted-foreground">Recherche...</div>
                                     )}
                                     {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                        <div className="p-4 text-center text-gray-400">Aucune personne trouvée</div>
+                                        <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
                                     )}
                                     {users.map((user) => (
                                         <button
                                             key={user.id}
                                             onClick={() => handleUserSelect(user)}
-                                            className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors"
+                                            className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors"
                                         >
                                             <div className="font-medium">{getUserDisplayName(user)}</div>
-                                            <div className="text-sm text-gray-400">{user.email}</div>
+                                            <div className="text-sm text-muted-foreground">{user.email}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -547,7 +547,7 @@ export function OrderFormBackendBase({
 
                     {/* Book Search */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Livre <span className="text-red-500">*</span>
                         </label>
                         <Popover open={bookPopoverOpen} onOpenChange={setBookPopoverOpen}>
@@ -556,42 +556,42 @@ export function OrderFormBackendBase({
                                     ref={registerField('catalogueId')}
                                     variant="outline"
                                     role="combobox"
-                                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors"
+                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted transition-colors"
                                 >
                                     {selectedBook ? (
                                         <span className="truncate">
                                             {selectedBook.title} - {selectedBook.author}
                                         </span>
                                     ) : (
-                                        <span className="text-gray-400">Rechercher un livre ...</span>
+                                        <span className="text-muted-foreground">Rechercher un livre ...</span>
                                     )}
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher par titre ou auteur..."
                                         value={bookSearch}
                                         onChange={(e) => setBookSearch(e.target.value)}
-                                        className="bg-gray-900 border-gray-700 text-gray-200"
+                                        className="bg-card border-border text-foreground"
                                     />
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                     {isSearchingBooks && (
-                                        <div className="p-4 text-center text-gray-400">Recherche...</div>
+                                        <div className="p-4 text-center text-muted-foreground">Recherche...</div>
                                     )}
                                     {!isSearchingBooks && books.length === 0 && bookSearch.length >= 2 && (
-                                        <div className="p-4 text-center text-gray-400">Aucun livre trouvé</div>
+                                        <div className="p-4 text-center text-muted-foreground">Aucun livre trouvé</div>
                                     )}
                                     {books.map((book) => (
                                         <button
                                             key={book.id}
                                             onClick={() => handleBookSelect(book)}
-                                            className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors"
+                                            className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors"
                                         >
                                             <div className="font-medium">{book.title}</div>
-                                            <div className="text-sm text-gray-400">{book.author}</div>
+                                            <div className="text-sm text-muted-foreground">{book.author}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -601,14 +601,14 @@ export function OrderFormBackendBase({
 
                     {/* Request Received Date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Date de réception <span className="text-red-500">*</span>
                         </label>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750"
+                                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {formData.requestReceivedDate ? (
@@ -618,13 +618,13 @@ export function OrderFormBackendBase({
                                     )}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                            <PopoverContent className="w-auto p-0 bg-card border-border">
                                 <CalendarComponent
                                     mode="single"
                                     selected={formData.requestReceivedDate}
                                     onSelect={(date) => date && setFormData({ ...formData, requestReceivedDate: date })}
                                     initialFocus
-                                    className="bg-gray-800 text-gray-200"
+                                    className="bg-card text-foreground"
                                 />
                             </PopoverContent>
                         </Popover>
@@ -632,13 +632,13 @@ export function OrderFormBackendBase({
 
                     {/* Closure Date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Date de cloture</label>
-                        <p className="text-xs text-gray-400">Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).</p>
+                        <label className="text-sm font-medium text-foreground">Date de cloture</label>
+                        <p className="text-xs text-muted-foreground">Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).</p>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750"
+                                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {formData.closureDate ? (
@@ -648,21 +648,21 @@ export function OrderFormBackendBase({
                                     )}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                            <PopoverContent className="w-auto p-0 bg-card border-border">
                                 <CalendarComponent
                                     mode="single"
                                     selected={formData.closureDate || undefined}
                                     onSelect={(date) => setFormData({ ...formData, closureDate: date || null })}
                                     initialFocus
-                                    className="bg-gray-800 text-gray-200"
+                                    className="bg-card text-foreground"
                                 />
                             </PopoverContent>
                         </Popover>
                     </div>
 
                     {/* Type de la demande */}
-                    <div className="space-y-2 pt-4 border-t border-gray-700">
-                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+                    <div className="space-y-2 pt-4 border-t border-border">
+                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                             Type de la demande
                         </h3>
                         <div className="space-y-4">
@@ -673,29 +673,29 @@ export function OrderFormBackendBase({
                                     s&apos;il s&apos;agit d&apos;une réécoute / nouvel enregistrement.
                                 </div>
                             )}
-                            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                            <div className="bg-card/50 p-4 rounded-lg border border-border">
                                 <div className="flex items-center space-x-3">
                                     <Checkbox
                                         id="isDuplication"
                                         checked={formData.isDuplication}
                                         onCheckedChange={handleDuplicationChange}
-                                        className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                        className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
                                     />
-                                    <label htmlFor="isDuplication" className="text-base font-bold text-gray-100 cursor-pointer leading-tight flex-1">
+                                    <label htmlFor="isDuplication" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
                                         Duplication
                                     </label>
                                 </div>
                             </div>
 
-                            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                            <div className="bg-card/50 p-4 rounded-lg border border-border">
                                 <div className="flex items-center space-x-3">
                                     <Checkbox
                                         id="lentPhysicalBook"
                                         checked={formData.lentPhysicalBook}
                                         onCheckedChange={handleRecordingChange}
-                                        className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                        className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
                                     />
-                                    <label htmlFor="lentPhysicalBook" className="text-base font-bold text-gray-100 cursor-pointer leading-tight flex-1">
+                                    <label htmlFor="lentPhysicalBook" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
                                         Enregistrement nécessaire
                                     </label>
                                 </div>
@@ -723,23 +723,23 @@ export function OrderFormBackendBase({
 
                     {/* Status */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Statut <span className="text-red-500">*</span>
                         </label>
                         <Select
                             value={formData.statusId?.toString() || ''}
                             onValueChange={(value) => setFormData({ ...formData, statusId: parseInt(value) })}
                         >
-                            <SelectTrigger ref={registerField('statusId')} className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                            <SelectTrigger ref={registerField('statusId')} className="bg-card border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
+                            <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
                                 <div className="py-1">
                                     {statuses.map((status) => (
                                         <SelectItem
                                             key={status.id}
                                             value={status.id.toString()}
-                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 last:border-b-0 transition-colors"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
                                         >
                                             <span className="font-medium">{status.name}</span>
                                         </SelectItem>
@@ -751,23 +751,23 @@ export function OrderFormBackendBase({
 
                     {/* Media Format */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Format média <span className="text-red-500">*</span>
                         </label>
                         <Select
                             value={formData.mediaFormatId?.toString() || ''}
                             onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}
                         >
-                            <SelectTrigger ref={registerField('mediaFormatId')} className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                            <SelectTrigger ref={registerField('mediaFormatId')} className="bg-card border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue placeholder="Sélectionner un format" />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
+                            <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
                                 <div className="py-1">
                                     {mediaFormats.map((format) => (
                                         <SelectItem
                                             key={format.id}
                                             value={format.id.toString()}
-                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 last:border-b-0 transition-colors"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
                                         >
                                             <span className="font-medium">{format.name}</span>
                                         </SelectItem>
@@ -779,33 +779,33 @@ export function OrderFormBackendBase({
 
                     {/* Delivery Method */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Méthode de livraison <span className="text-red-500">*</span>
                         </label>
                         <Select
                             value={formData.deliveryMethod || ''}
                             onValueChange={(value) => setFormData({ ...formData, deliveryMethod: value as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE'})}
                         >
-                            <SelectTrigger ref={registerField('deliveryMethod')} className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                            <SelectTrigger ref={registerField('deliveryMethod')} className="bg-card border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue placeholder="Sélectionner une méthode" />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectContent className="bg-card border-border">
                                 <div className="py-1">
                                     <SelectItem
                                         value="RETRAIT"
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
+                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
                                     >
                                         <span className="font-medium">Retrait</span>
                                     </SelectItem>
                                     <SelectItem
                                         value="ENVOI"
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
+                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
                                     >
                                         <span className="font-medium">Envoi</span>
                                     </SelectItem>
                                     <SelectItem
                                         value="NON_APPLICABLE"
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
                                     >
                                         <span className="font-medium">Non applicable</span>
                                     </SelectItem>
@@ -817,30 +817,30 @@ export function OrderFormBackendBase({
 
                     {/* Billing Status */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">État de facturation</label>
+                        <label className="text-sm font-medium text-foreground">État de facturation</label>
                         {formData.billingStatus === 'BILLED' ? (
-                            <div className="bg-gray-800 border border-gray-700 rounded-md px-3 py-2.5 text-gray-300">
-                                Facturé <span className="text-xs text-gray-500">(géré par la facture liée)</span>
+                            <div className="bg-card border border-border rounded-md px-3 py-2.5 text-foreground">
+                                Facturé <span className="text-xs text-muted-foreground">(géré par la facture liée)</span>
                             </div>
                         ) : (
                             <Select
                                 value={formData.billingStatus}
                                 onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
                             >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                                <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted transition-colors">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
+                                <SelectContent className="bg-card border-border">
                                     <div className="py-1">
                                         <SelectItem
                                             value="UNBILLED"
-                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 border-b border-gray-700/50 transition-colors"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
                                         >
                                             <span className="font-medium">Non facturé</span>
                                         </SelectItem>
                                         <SelectItem
                                             value="UNBILLABLE"
-                                            className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
                                         >
                                             <span className="font-medium">Non facturable</span>
                                         </SelectItem>
@@ -852,10 +852,10 @@ export function OrderFormBackendBase({
 
                     {/* Linked Bill — read-only */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Facture associée</label>
+                        <label className="text-sm font-medium text-foreground">Facture associée</label>
                         {initialBill ? (
-                            <div className="flex items-center justify-between gap-3 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md">
-                                <span className="text-gray-200 text-sm">
+                            <div className="flex items-center justify-between gap-3 px-3 py-2 bg-card border border-border rounded-md">
+                                <span className="text-foreground text-sm">
                                     Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
                                 </span>
                                 <Link
@@ -868,7 +868,7 @@ export function OrderFormBackendBase({
                                 </Link>
                             </div>
                         ) : (
-                            <div className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-500 text-sm italic">
+                            <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
                                 Aucune facture associée
                             </div>
                         )}
@@ -878,18 +878,18 @@ export function OrderFormBackendBase({
                         a duplication never has an affectation, so showing it confuses the team. */}
                     {!formData.isDuplication && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">Attribution</label>
+                            <label className="text-sm font-medium text-foreground">Attribution</label>
                             {initialAssignment ? (
-                                <div className="flex items-center justify-between gap-3 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md">
-                                    <div className="text-sm text-gray-200 space-y-0.5">
+                                <div className="flex items-center justify-between gap-3 px-3 py-2 bg-card border border-border rounded-md">
+                                    <div className="text-sm text-foreground space-y-0.5">
                                         <div>
-                                            <span className="text-gray-300">{initialAssignment.statusName}</span>
+                                            <span className="text-foreground">{initialAssignment.statusName}</span>
                                             {initialAssignment.reader && (
-                                                <span> — Lecteur : <span className="text-gray-100">{initialAssignment.reader.name ?? 'Sans nom'}</span></span>
+                                                <span> — Lecteur : <span className="text-foreground">{initialAssignment.reader.name ?? 'Sans nom'}</span></span>
                                             )}
                                         </div>
                                         {initialAssignment.sentToReaderDate && (
-                                            <div className="text-xs text-gray-500">
+                                            <div className="text-xs text-muted-foreground">
                                                 Envoyé au lecteur le {format(new Date(initialAssignment.sentToReaderDate), 'dd/MM/yyyy', { locale: fr })}
                                             </div>
                                         )}
@@ -904,7 +904,7 @@ export function OrderFormBackendBase({
                                     </Link>
                                 </div>
                             ) : (
-                                <div className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-500 text-sm italic">
+                                <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
                                     Aucune attribution
                                 </div>
                             )}
@@ -913,7 +913,7 @@ export function OrderFormBackendBase({
 
                     {/* Cost */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Coût</label>
+                        <label className="text-sm font-medium text-foreground">Coût</label>
                         <div className="relative">
                             <Input
                                 type="text"
@@ -922,10 +922,10 @@ export function OrderFormBackendBase({
                                 onChange={(e) => setFormData({ ...formData, cost: sanitizeDecimal(e.target.value) })}
                                 onBlur={() => setFormData({ ...formData, cost: formatEuro2(formData.cost) })}
                                 disabled={costLocked}
-                                className={`bg-gray-800 border-gray-700 text-gray-200 pr-8 ${costLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`bg-card border-border text-foreground pr-8 ${costLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 placeholder="0.00"
                             />
-                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">€</span>
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">€</span>
                         </div>
                         {costLocked && (
                             <p className="text-xs text-amber-400">
@@ -936,29 +936,29 @@ export function OrderFormBackendBase({
 
                     {/* Notes */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Notes</label>
+                        <label className="text-sm font-medium text-foreground">Notes</label>
                         <Textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                            className="bg-card border-border text-foreground min-h-[100px]"
                             placeholder="Ajouter des notes supplémentaires..."
                         />
                     </div>
 
                     {/* System Information - Read Only */}
                     {selectedStaff && (
-                        <div className="space-y-2 pt-4 border-t border-gray-700">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+                        <div className="space-y-2 pt-4 border-t border-border">
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                                 Informations système
                             </h3>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-400">
+                                <label className="text-sm font-medium text-muted-foreground">
                                     Traité par
                                 </label>
-                                <div className="px-3 py-2 bg-gray-850 border border-gray-700 rounded-md text-gray-400 cursor-not-allowed opacity-75">
+                                <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground cursor-not-allowed opacity-75">
                                     {getUserDisplayName(selectedStaff)}
                                 </div>
-                                <p className="text-xs text-gray-500 italic">
+                                <p className="text-xs text-muted-foreground italic">
                                 </p>
                             </div>
                         </div>
@@ -969,7 +969,7 @@ export function OrderFormBackendBase({
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100"
+                            className="w-full bg-muted hover:bg-muted text-foreground border-border"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
@@ -980,7 +980,7 @@ export function OrderFormBackendBase({
                                 variant="destructive"
                                 disabled={isLoading}
                                 onClick={handleDeleteClick}
-                                className="w-full bg-red-700 hover:bg-red-600 text-gray-100 border-red-500"
+                                className="w-full bg-red-700 hover:bg-red-600 text-foreground border-red-500"
                             >
                                 Supprimer la demande
                             </Button>
@@ -1042,30 +1042,30 @@ function BookLinePicker({ selected, onSelect }: { selected: Book | null; onSelec
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button type="button" variant="outline" role="combobox"
-                        className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
+                        className="w-full justify-between bg-card border-border text-foreground hover:bg-muted">
                     {selected
                         ? <span className="truncate">{clip(`${selected.title} — ${selected.author}`)}</span>
-                        : <span className="text-gray-400">Rechercher un livre existant ...</span>}
+                        : <span className="text-muted-foreground">Rechercher un livre existant ...</span>}
                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
                 <div className="p-2">
                     <Input placeholder="Rechercher par titre ou auteur..." value={search}
                            onChange={(e) => setSearch(e.target.value)}
-                           className="bg-gray-900 border-gray-700 text-gray-200" />
+                           className="bg-card border-border text-foreground" />
                 </div>
                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
-                    {loading && <div className="p-4 text-center text-gray-400">Recherche...</div>}
+                    {loading && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
                     {!loading && results.length === 0 && search.length >= 2 && (
-                        <div className="p-4 text-center text-gray-400">Aucun livre trouvé</div>
+                        <div className="p-4 text-center text-muted-foreground">Aucun livre trouvé</div>
                     )}
                     {results.map((book) => (
                         <button key={book.id} type="button"
                                 onClick={() => { onSelect(book); setOpen(false); setSearch(''); }}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors">
+                                className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors">
                             <div className="font-medium">{book.title}</div>
-                            <div className="text-sm text-gray-400">{book.author}</div>
+                            <div className="text-sm text-muted-foreground">{book.author}</div>
                         </button>
                     ))}
                 </div>
@@ -1097,13 +1097,13 @@ function CreateBookDialog({ onCreated }: { onCreated: (book: Book) => void }) {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button type="button" variant="outline"
-                        className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700 whitespace-nowrap">
+                        className="bg-card border-border text-foreground hover:bg-muted whitespace-nowrap">
                     <Plus className="h-4 w-4 mr-2" /> Nouveau livre
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100">Créer un nouveau livre</DialogTitle>
+                    <DialogTitle className="text-foreground">Créer un nouveau livre</DialogTitle>
                 </DialogHeader>
                 <AddBookFormBackend onSuccess={handleSuccess} />
             </DialogContent>
@@ -1317,9 +1317,9 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     };
 
     return (
-        <Card className="bg-gray-900 border-gray-700">
+        <Card className="bg-card border-border">
             <CardHeader>
-                <CardTitle className="text-gray-100">Créer une ou plusieurs demandes</CardTitle>
+                <CardTitle className="text-foreground">Créer une ou plusieurs demandes</CardTitle>
             </CardHeader>
             <CardContent>
                 {error && (
@@ -1332,36 +1332,36 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Auditeur */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Auditeur <span className="text-red-500">*</span>
                         </label>
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button ref={registerField('aveugleId')} type="button" variant="outline" role="combobox"
-                                        className="w-full justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                                        className="w-full justify-between bg-card border-border text-foreground hover:bg-muted transition-colors">
                                     {selectedUser
                                         ? <span className="truncate">{clip(getUserDisplayName(selectedUser))}</span>
-                                        : <span className="text-gray-400">Rechercher un auditeur ...</span>}
+                                        : <span className="text-muted-foreground">Rechercher un auditeur ...</span>}
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
                                 <div className="p-2">
                                     <Input placeholder="Rechercher par nom ou email..." value={userSearch}
                                            onChange={(e) => setUserSearch(e.target.value)}
-                                           className="bg-gray-900 border-gray-700 text-gray-200" />
+                                           className="bg-card border-border text-foreground" />
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
-                                    {isSearchingUsers && <div className="p-4 text-center text-gray-400">Recherche...</div>}
+                                    {isSearchingUsers && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
                                     {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                        <div className="p-4 text-center text-gray-400">Aucune personne trouvée</div>
+                                        <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
                                     )}
                                     {users.map((user) => (
                                         <button key={user.id} type="button"
                                                 onClick={() => { setSelectedUser(user); setAveugleId(user.id); setUserPopoverOpen(false); setUserSearch(''); }}
-                                                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors">
+                                                className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors">
                                             <div className="font-medium">{getUserDisplayName(user)}</div>
-                                            <div className="text-sm text-gray-400">{user.email}</div>
+                                            <div className="text-sm text-muted-foreground">{user.email}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -1372,50 +1372,50 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                     {/* Shared header fields */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">Date de réception <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-medium text-foreground">Date de réception <span className="text-red-500">*</span></label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button type="button" variant="outline"
-                                            className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
+                                            className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted">
                                         <Calendar className="mr-2 h-4 w-4" />
                                         {format(requestReceivedDate, 'PPP', { locale: fr })}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                                <PopoverContent className="w-auto p-0 bg-card border-border">
                                     <CalendarComponent mode="single" selected={requestReceivedDate}
-                                                       onSelect={(d) => d && setRequestReceivedDate(d)} initialFocus className="bg-gray-800 text-gray-200" />
+                                                       onSelect={(d) => d && setRequestReceivedDate(d)} initialFocus className="bg-card text-foreground" />
                                 </PopoverContent>
                             </Popover>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">Méthode de livraison <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-medium text-foreground">Méthode de livraison <span className="text-red-500">*</span></label>
                             <Select value={deliveryMethod || ''} onValueChange={(v) => setDeliveryMethod(v as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE')}>
-                                <SelectTrigger ref={registerField('deliveryMethod')} className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="RETRAIT" className="text-gray-200">Retrait</SelectItem>
-                                    <SelectItem value="ENVOI" className="text-gray-200">Envoi</SelectItem>
-                                    <SelectItem value="NON_APPLICABLE" className="text-gray-200">Non applicable</SelectItem>
+                                <SelectTrigger ref={registerField('deliveryMethod')} className="bg-card border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
+                                    <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
+                                    <SelectItem value="NON_APPLICABLE" className="text-foreground">Non applicable</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">Format média par défaut <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-medium text-foreground">Format média par défaut <span className="text-red-500">*</span></label>
                             <Select value={mediaFormatId?.toString() || ''} onValueChange={(v) => setMediaFormatId(parseInt(v))}>
-                                <SelectTrigger ref={registerField('mediaFormatId')} className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700 max-h-[280px] overflow-y-auto">
+                                <SelectTrigger ref={registerField('mediaFormatId')} className="bg-card border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
                                     {mediaFormats.map((f) => (
-                                        <SelectItem key={f.id} value={f.id.toString()} className="text-gray-200">{f.name}</SelectItem>
+                                        <SelectItem key={f.id} value={f.id.toString()} className="text-foreground">{f.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">État de facturation</label>
+                            <label className="text-sm font-medium text-foreground">État de facturation</label>
                             <Select value={billingStatus} onValueChange={(v) => setBillingStatus(v as 'UNBILLED' | 'BILLED' | 'UNBILLABLE')}>
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200"><SelectValue /></SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
-                                    <SelectItem value="UNBILLABLE" className="text-gray-200">Non facturable</SelectItem>
+                                <SelectTrigger className="bg-card border-border text-foreground"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="UNBILLED" className="text-foreground">Non facturé</SelectItem>
+                                    <SelectItem value="UNBILLABLE" className="text-foreground">Non facturable</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1423,30 +1423,30 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
                     {/* Default cost */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Coût par défaut</label>
+                        <label className="text-sm font-medium text-foreground">Coût par défaut</label>
                         <div className="relative">
                             <Input type="text" inputMode="decimal" value={defaultCost}
                                    onChange={(e) => handleDefaultCostChange(sanitizeDecimal(e.target.value))}
                                    onBlur={() => handleDefaultCostChange(formatEuro2(defaultCost))}
-                                   className="bg-gray-800 border-gray-700 text-gray-200 pr-8" placeholder="0.00" />
-                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">€</span>
+                                   className="bg-card border-border text-foreground pr-8" placeholder="0.00" />
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">€</span>
                         </div>
                     </div>
 
                     {/* Book lines */}
-                    <div className="space-y-3 pt-4 border-t border-gray-700">
+                    <div className="space-y-3 pt-4 border-t border-border">
                         <div className="flex items-center justify-between">
-                            <h3 ref={registerField('lines')} tabIndex={-1} className="text-sm font-medium text-gray-400 uppercase tracking-wide outline-none">Ouvrages ({lines.length})</h3>
-                            <span className="text-xs text-gray-500">{dupCount} duplication(s) · {recCount} enregistrement(s)</span>
+                            <h3 ref={registerField('lines')} tabIndex={-1} className="text-sm font-medium text-muted-foreground uppercase tracking-wide outline-none">Ouvrages ({lines.length})</h3>
+                            <span className="text-xs text-muted-foreground">{dupCount} duplication(s) · {recCount} enregistrement(s)</span>
                         </div>
 
                         {lines.map((line, idx) => (
-                            <div key={line.key} className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 space-y-3">
+                            <div key={line.key} className="bg-card/50 p-4 rounded-lg border border-border space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-300">Ouvrage {idx + 1}</span>
+                                    <span className="text-sm font-medium text-foreground">Ouvrage {idx + 1}</span>
                                     {lines.length > 1 && (
                                         <button type="button" onClick={() => removeLine(line.key)}
-                                                className="text-gray-500 hover:text-red-400 transition-colors" aria-label="Retirer l'ouvrage">
+                                                className="text-muted-foreground hover:text-red-400 transition-colors" aria-label="Retirer l'ouvrage">
                                             <Trash2 className="h-4 w-4" />
                                         </button>
                                     )}
@@ -1462,11 +1462,11 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 {/* Type — per book */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION' })}
-                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-700/30 border-green-600 text-green-200' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}>
+                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-700/30 border-green-600 text-green-200' : 'bg-card border-border text-foreground hover:bg-muted'}`}>
                                         Duplication
                                     </button>
                                     <button type="button" onClick={() => updateLine(line.key, { type: 'ENREGISTREMENT' })}
-                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-700/30 border-amber-600 text-amber-200' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}>
+                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-700/30 border-amber-600 text-amber-200' : 'bg-card border-border text-foreground hover:bg-muted'}`}>
                                         Enregistrement nécessaire
                                     </button>
                                 </div>
@@ -1493,25 +1493,25 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 {/* Per-line overrides */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
-                                        <label className="text-xs text-gray-400">Format (sinon défaut)</label>
+                                        <label className="text-xs text-muted-foreground">Format (sinon défaut)</label>
                                         <Select value={line.mediaFormatId?.toString() || ''}
                                                 onValueChange={(v) => updateLine(line.key, { mediaFormatId: v ? parseInt(v) : null })}>
-                                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 h-9"><SelectValue placeholder="Format par défaut" /></SelectTrigger>
-                                            <SelectContent className="bg-gray-800 border-gray-700 max-h-[240px] overflow-y-auto">
+                                            <SelectTrigger className="bg-card border-border text-foreground h-9"><SelectValue placeholder="Format par défaut" /></SelectTrigger>
+                                            <SelectContent className="bg-card border-border max-h-[240px] overflow-y-auto">
                                                 {mediaFormats.map((f) => (
-                                                    <SelectItem key={f.id} value={f.id.toString()} className="text-gray-200">{f.name}</SelectItem>
+                                                    <SelectItem key={f.id} value={f.id.toString()} className="text-foreground">{f.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs text-gray-400">Coût</label>
+                                        <label className="text-xs text-muted-foreground">Coût</label>
                                         <div className="relative">
                                             <Input type="text" inputMode="decimal" value={line.cost}
                                                    onChange={(e) => updateLine(line.key, { cost: sanitizeDecimal(e.target.value) })}
                                                    onBlur={() => updateLine(line.key, { cost: formatEuro2(line.cost) })}
-                                                   className="bg-gray-800 border-gray-700 text-gray-200 h-9 pr-8" placeholder={defaultCost} />
-                                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">€</span>
+                                                   className="bg-card border-border text-foreground h-9 pr-8" placeholder={defaultCost} />
+                                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">€</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1519,27 +1519,27 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         ))}
 
                         <Button type="button" variant="outline" onClick={addLine}
-                                className="w-full bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700">
+                                className="w-full bg-card border-border text-foreground hover:bg-muted">
                             <Plus className="h-4 w-4 mr-2" /> Ajouter un ouvrage
                         </Button>
                     </div>
 
                     {/* Shared notes */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Notes (communes)</label>
+                        <label className="text-sm font-medium text-foreground">Notes (communes)</label>
                         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
-                                  className="bg-gray-800 border-gray-700 text-gray-200 min-h-[100px]"
+                                  className="bg-card border-border text-foreground min-h-[100px]"
                                   placeholder="Ajouter des notes supplémentaires..." />
                     </div>
 
-                    <div className="rounded-md bg-gray-800/50 border border-gray-700 p-3 text-sm text-gray-300">
+                    <div className="rounded-md bg-card/50 border border-border p-3 text-sm text-foreground">
                         {lines.length === 1
                             ? '1 ouvrage → 1 demande sera créée. Le numéro sera attribué lors de la soumission.'
                             : `${lines.length} ouvrages → ${lines.length} demandes seront créées. Les numéros seront attribués lors de la soumission.`}
                     </div>
 
                     <Button type="submit" disabled={isLoading}
-                            className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100">
+                            className="w-full bg-muted hover:bg-muted text-foreground border-border">
                         {isLoading ? 'Création en cours...' : `Créer ${lines.length} ${lines.length === 1 ? 'demande' : 'demandes'}`}
                     </Button>
                 </form>
@@ -1668,13 +1668,13 @@ export function EditOrderFormBackend({
             />
 
             <Dialog open={!!notice} onOpenChange={(open) => { if (!open) acknowledgeNotice(); }}>
-                <DialogContent className="bg-gray-900 border-gray-700 max-w-lg">
+                <DialogContent className="bg-card border-border max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="text-amber-300">
                             {notice?.kind === 'COST' ? 'Coût modifié — facture à régénérer' : 'Éléments visibles modifiés'}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="text-gray-200 text-sm space-y-3">
+                    <div className="text-foreground text-sm space-y-3">
                         {notice?.kind === 'COST' ? (
                             <p>
                                 Vous avez modifié le coût de cette demande, ce qui a mis à jour le montant total de la

@@ -60,19 +60,19 @@ export default function AddArticle() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-background">
             <div className="container mx-auto py-8">
-                <Card className="bg-gray-900 border-gray-800">
-                    <CardHeader className="border-b border-gray-700">
-                        <CardTitle className="text-gray-100">Ajouter une information</CardTitle>
-                        <CardDescription className="text-gray-400">
+                <Card className="bg-card border-border">
+                    <CardHeader className="border-b border-border">
+                        <CardTitle className="text-foreground">Ajouter une information</CardTitle>
+                        <CardDescription className="text-muted-foreground">
                             Ajouter une information à afficher sur dernières infos
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label htmlFor="title" className="block text-sm font-medium text-gray-200 mb-2">
+                                <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
                                     Titre *
                                 </label>
                                 <Input
@@ -82,28 +82,28 @@ export default function AddArticle() {
                                     required
                                     value={formData.title}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Entrez le titre de l'article"
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="type" className="block text-sm font-medium text-gray-200 mb-2">
+                                <label htmlFor="type" className="block text-sm font-medium text-foreground mb-2">
                                     Type d&apos;information *
                                 </label>
                                 <Select
                                     value={formData.type}
                                     onValueChange={handleTypeChange}
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600">
+                                    <SelectTrigger className="bg-card border-border text-foreground focus:ring-ring focus:border-ring">
                                         <SelectValue placeholder="Sélectionnez le type" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectContent className="bg-card border-border">
                                         {Object.entries(newsTypeLabels).map(([value, label]) => (
                                             <SelectItem
                                                 key={value}
                                                 value={value}
-                                                className="text-gray-100 focus:bg-gray-700 focus:text-gray-100"
+                                                className="text-foreground focus:bg-muted focus:text-foreground"
                                             >
                                                 {label}
                                             </SelectItem>
@@ -113,7 +113,7 @@ export default function AddArticle() {
                             </div>
 
                             <div>
-                                <label htmlFor="content" className="block text-sm font-medium text-gray-200 mb-2">
+                                <label htmlFor="content" className="block text-sm font-medium text-foreground mb-2">
                                     Contenu *
                                 </label>
                                 <Textarea
@@ -122,7 +122,7 @@ export default function AddArticle() {
                                     required
                                     value={formData.content}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[200px]"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground min-h-[200px]"
                                     placeholder="Entrez le contenu de l'article"
                                 />
                             </div>
@@ -131,14 +131,14 @@ export default function AddArticle() {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                    className="bg-muted text-foreground border-border hover:bg-muted"
                                     onClick={() => router.push('/admin/news')}
                                 >
                                     Annuler
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500"
+                                    className="bg-muted text-foreground border-border hover:bg-muted"
                                 >
                                     Ajouter l&apos;information
                                 </Button>

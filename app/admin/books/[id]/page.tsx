@@ -119,7 +119,7 @@ export default function EditionLivre() {
 
     if (!formData) {
         return <div className="flex justify-center items-center min-h-screen">
-            <p className="text-gray-200">Chargement...</p>
+            <p className="text-foreground">Chargement...</p>
         </div>;
     }
 
@@ -199,10 +199,10 @@ export default function EditionLivre() {
 
     return (
         <div className="space-y-4">
-            <Card className="bg-gray-900 border-gray-800">
-                <CardHeader className="border-b border-gray-700">
-                    <CardTitle className="text-gray-100">Modifier le livre</CardTitle>
-                    <CardDescription className="text-gray-400">
+            <Card className="bg-card border-border">
+                <CardHeader className="border-b border-border">
+                    <CardTitle className="text-foreground">Modifier le livre</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                         Modifier les détails du livre et les genres associés
                     </CardDescription>
                 </CardHeader>
@@ -216,7 +216,7 @@ export default function EditionLivre() {
 
                         <div className="grid gap-6">
                             <div className="space-y-2">
-                                <label htmlFor="title" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="title" className="text-sm font-medium text-foreground">
                                     Titre *
                                 </label>
                                 <Input
@@ -226,12 +226,12 @@ export default function EditionLivre() {
                                     required
                                     value={formData.title}
                                     onChange={gererChangement}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="author" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="author" className="text-sm font-medium text-foreground">
                                     Auteur *
                                 </label>
                                 <Input
@@ -241,12 +241,12 @@ export default function EditionLivre() {
                                     required
                                     value={formData.author}
                                     onChange={gererChangement}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="publisher" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="publisher" className="text-sm font-medium text-foreground">
                                     Éditeur *
                                 </label>
                                 <Input
@@ -256,13 +256,13 @@ export default function EditionLivre() {
                                     required
                                     value={formData.publisher || ''}
                                     onChange={gererChangement}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">
+                                    <label className="text-sm font-medium text-foreground">
                                         Année de publication *
                                     </label>
                                     <YearCommandSelect
@@ -277,7 +277,7 @@ export default function EditionLivre() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">
+                                <label className="text-sm font-medium text-foreground">
                                     Genres
                                 </label>
                                 <div className="flex flex-wrap gap-2 mb-2">
@@ -286,13 +286,13 @@ export default function EditionLivre() {
                                         return genre ? (
                                             <div
                                                 key={genre.id}
-                                                className="bg-gray-800 text-gray-200 rounded-full px-3 py-1 text-sm flex items-center border border-gray-700"
+                                                className="bg-card text-foreground rounded-full px-3 py-1 text-sm flex items-center border border-border"
                                             >
                                                 {genre.name}
                                                 <button
                                                     type="button"
                                                     onClick={() => supprimerGenre(genre.id)}
-                                                    className="ml-2 hover:text-gray-400"
+                                                    className="ml-2 hover:text-muted-foreground"
                                                 >
                                                     <X className="h-3 w-3"/>
                                                 </button>
@@ -306,19 +306,19 @@ export default function EditionLivre() {
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={open}
-                                            className="w-full justify-between bg-gray-800 border-gray-100 text-gray-200 hover:bg-gray-700 hover:text-gray-100"
+                                            className="w-full justify-between bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
                                         >
                                             Sélectionner des genres...
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
+                                    <PopoverContent className="w-full p-0 bg-card border-border">
                                         <div className="p-2">
                                             <Input
                                                 placeholder="Rechercher des genres..."
                                                 value={rechercheQuery}
                                                 onChange={(e) => setRechercheQuery(e.target.value)}
-                                                className="mb-2 bg-gray-700 border-gray-600 text-gray-100"
+                                                className="mb-2 bg-muted border-border text-foreground"
                                             />
                                             <div className="max-h-60 overflow-y-auto">
                                                 {genresDisponibles
@@ -328,7 +328,7 @@ export default function EditionLivre() {
                                                     .map((genre) => (
                                                         <div
                                                             key={genre.id}
-                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-gray-700 text-gray-200 rounded-sm cursor-pointer"
+                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-muted text-foreground rounded-sm cursor-pointer"
                                                             onClick={() => {
                                                                 gererSelectionGenre(genre.id);
                                                                 setRechercheQuery('');
@@ -351,7 +351,7 @@ export default function EditionLivre() {
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="isbn" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="isbn" className="text-sm font-medium text-foreground">
                                     ISBN
                                 </label>
                                 <Input
@@ -360,7 +360,7 @@ export default function EditionLivre() {
                                     id="isbn"
                                     value={formData.isbn || ''}
                                     onChange={gererChangement}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 />
                             </div>
 
@@ -371,7 +371,7 @@ export default function EditionLivre() {
 
 
                             <div className="space-y-2">
-                                <label htmlFor="description" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="description" className="text-sm font-medium text-foreground">
                                     Description
                                 </label>
                                 <Textarea
@@ -379,7 +379,7 @@ export default function EditionLivre() {
                                     id="description"
                                     value={formData.description || ''}
                                     onChange={gererChangement}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 min-h-[150px]"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring min-h-[150px]"
                                 />
                             </div>
 
@@ -394,9 +394,9 @@ export default function EditionLivre() {
                                             available: checked as boolean
                                         }));
                                     }}
-                                    className="border-gray-700 data-[state=checked]:bg-gray-700"
+                                    className="border-border data-[state=checked]:bg-muted"
                                 />
-                                <label htmlFor="available" className="text-sm font-medium text-gray-200">
+                                <label htmlFor="available" className="text-sm font-medium text-foreground">
                                     Disponible
                                 </label>
                             </div>
@@ -406,7 +406,7 @@ export default function EditionLivre() {
                             <Button
                                 type="submit"
                                 disabled={chargement || suppressionEnCours}
-                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-100"
+                                className="flex-1 bg-muted hover:bg-muted text-foreground"
                             >
                                 {chargement && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                 {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
@@ -424,19 +424,19 @@ export default function EditionLivre() {
                                             {suppressionEnCours ? 'Suppression...' : 'Supprimer le livre'}
                                         </Button>
                                     </AlertDialogTrigger>
-                                    <AlertDialogContent className="bg-gray-900 border-gray-800">
+                                    <AlertDialogContent className="bg-card border-border">
                                         <AlertDialogHeader>
-                                            <AlertDialogTitle className="text-gray-100">
+                                            <AlertDialogTitle className="text-foreground">
                                                 Confirmer la suppression
                                             </AlertDialogTitle>
-                                            <AlertDialogDescription className="text-gray-400">
+                                            <AlertDialogDescription className="text-muted-foreground">
                                                 Êtes-vous sûr de vouloir supprimer ce livre ? Cette action est
                                                 irréversible.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel
-                                                className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                                className="bg-muted text-foreground border-border hover:bg-muted"
                                             >
                                                 Annuler
                                             </AlertDialogCancel>

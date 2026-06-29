@@ -96,7 +96,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
     };
 
     return (
-        <Card className="bg-gray-900 border-gray-800">
+        <Card className="bg-card border-border">
             <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
@@ -107,7 +107,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
 
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name" className="text-sm font-medium text-gray-200">
+                            <Label htmlFor="name" className="text-sm font-medium text-foreground">
                                 Nom
                             </Label>
                             <Input
@@ -116,12 +116,12 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                                 onChange={(e) => setName(e.target.value)}
                                 required
                                 placeholder="Nom du genre"
-                                className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                className="bg-card border-border text-foreground focus:ring-ring focus:border-ring"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="description" className="text-sm font-medium text-gray-200">
+                            <Label htmlFor="description" className="text-sm font-medium text-foreground">
                                 Description
                             </Label>
                             <Input
@@ -129,7 +129,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Description du genre (optionnel)"
-                                className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-gray-700 focus:border-gray-600"
+                                className="bg-card border-border text-foreground focus:ring-ring focus:border-ring"
                             />
                         </div>
                     </div>
@@ -138,7 +138,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                         <Button
                             type="submit"
                             disabled={isLoading || isDeleting}
-                            className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500"
+                            className="bg-muted text-foreground border-border hover:bg-muted"
                         >
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isLoading ? 'Mise à jour...' : 'Mettre à jour le genre'}
@@ -148,7 +148,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                             variant="outline"
                             onClick={() => router.push('/admin/genres')}
                             disabled={isLoading || isDeleting}
-                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                            className="bg-muted text-foreground border-border hover:bg-muted"
                         >
                             Annuler
                         </Button>
@@ -165,17 +165,17 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                                     {isDeleting ? 'Suppression...' : 'Supprimer le genre'}
                                 </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-gray-900 border-gray-800">
+                            <AlertDialogContent className="bg-card border-border">
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-gray-100">
+                                    <AlertDialogTitle className="text-foreground">
                                         Confirmer la suppression
                                     </AlertDialogTitle>
-                                    <AlertDialogDescription className="text-gray-400">
+                                    <AlertDialogDescription className="text-muted-foreground">
                                         Êtes-vous sûr de vouloir supprimer ce genre ? Cette action est irréversible.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600">
+                                    <AlertDialogCancel className="bg-muted text-foreground border-border hover:bg-muted">
                                         Annuler
                                     </AlertDialogCancel>
                                     <AlertDialogAction

@@ -276,28 +276,28 @@ export function PaymentFormBackendBase({
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full justify-start text-left bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750"
+                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
                 >
                     <Calendar className="mr-2 h-4 w-4" />
-                    {value ? format(value, 'PPP', { locale: fr }) : <span className="text-gray-400">{placeholder}</span>}
+                    {value ? format(value, 'PPP', { locale: fr }) : <span className="text-muted-foreground">{placeholder}</span>}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+            <PopoverContent className="w-auto p-0 bg-card border-border">
                 <CalendarComponent
                     mode="single"
                     selected={value || undefined}
                     onSelect={(d) => onChange(d || null)}
                     initialFocus
-                    className="bg-gray-800 text-gray-200"
+                    className="bg-card text-foreground"
                 />
             </PopoverContent>
         </Popover>
     );
 
     return (
-        <Card className="bg-gray-900 border-gray-700">
+        <Card className="bg-card border-border">
             <CardHeader>
-                <CardTitle className="text-gray-100">{title}</CardTitle>
+                <CardTitle className="text-foreground">{title}</CardTitle>
             </CardHeader>
             <CardContent>
                 {error && (
@@ -310,19 +310,19 @@ export function PaymentFormBackendBase({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Type */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Type <span className="text-red-500">*</span>
                         </label>
                         <Select value={type} onValueChange={(v) => setType(v as PaymentType)}>
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors">
+                            <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectContent className="bg-card border-border">
                                 {Object.values(PaymentType).map((t) => (
                                     <SelectItem
                                         key={t}
                                         value={t}
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer py-2.5"
+                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer py-2.5"
                                     >
                                         {getPaymentTypeLabel(t)}
                                     </SelectItem>
@@ -333,13 +333,13 @@ export function PaymentFormBackendBase({
 
                     {/* Client */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Auditeur
                             {(type === PaymentType.COTISATION || type === PaymentType.ENREGISTREMENT) && (
                                 <span className="text-red-500"> *</span>
                             )}
                             {(type === PaymentType.DON || type === PaymentType.DIVERS) && (
-                                <span className="text-gray-500 text-xs font-normal"> (facultatif)</span>
+                                <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
                             )}
                         </label>
                         <div className="flex gap-2">
@@ -350,39 +350,39 @@ export function PaymentFormBackendBase({
                                         type="button"
                                         variant="outline"
                                         role="combobox"
-                                        className="flex-1 justify-between bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 transition-colors"
+                                        className="flex-1 justify-between bg-card border-border text-foreground hover:bg-muted transition-colors"
                                     >
                                         {selectedClient ? (
                                             <span className="truncate">{getDisplayName(selectedClient)}</span>
                                         ) : (
-                                            <span className="text-gray-400">Rechercher un auditeur ...</span>
+                                            <span className="text-muted-foreground">Rechercher un auditeur ...</span>
                                         )}
                                         <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0 bg-gray-800 border-gray-700" align="start">
+                                <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
                                     <div className="p-2">
                                         <Input
                                             placeholder="Rechercher par nom ou email..."
                                             value={userSearch}
                                             onChange={(e) => setUserSearch(e.target.value)}
-                                            className="bg-gray-900 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
                                     <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
-                                        {isSearchingUsers && <div className="p-4 text-center text-gray-400">Recherche...</div>}
+                                        {isSearchingUsers && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
                                         {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                            <div className="p-4 text-center text-gray-400">Aucune personne trouvée</div>
+                                            <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
                                         )}
                                         {users.map((user) => (
                                             <button
                                                 key={user.id}
                                                 type="button"
                                                 onClick={() => handleClientSelect(user)}
-                                                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 transition-colors"
+                                                className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors"
                                             >
                                                 <div className="font-medium">{getDisplayName(user)}</div>
-                                                <div className="text-sm text-gray-400">{user.email}</div>
+                                                <div className="text-sm text-muted-foreground">{user.email}</div>
                                             </button>
                                         ))}
                                     </div>
@@ -393,7 +393,7 @@ export function PaymentFormBackendBase({
                                     type="button"
                                     variant="outline"
                                     onClick={() => { setSelectedClient(null); setSelectedBillId(null); }}
-                                    className="bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-gray-200 px-3"
+                                    className="bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground px-3"
                                     title="Retirer le client"
                                 >
                                     <X className="h-4 w-4" />
@@ -405,15 +405,15 @@ export function PaymentFormBackendBase({
                     {/* Bill link (ENREGISTREMENT only) */}
                     {type === PaymentType.ENREGISTREMENT && selectedClient && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">
+                            <label className="text-sm font-medium text-foreground">
                                 Facture liée <span className="text-red-500">*</span>
                             </label>
                             {isLoadingBills ? (
-                                <div className="px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-md text-gray-400 text-sm">
+                                <div className="px-3 py-2.5 bg-card border border-border rounded-md text-muted-foreground text-sm">
                                     Chargement des factures...
                                 </div>
                             ) : clientBills.length === 0 ? (
-                                <div className="px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-md text-gray-500 text-sm italic">
+                                <div className="px-3 py-2.5 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
                                     Aucune facture pour ce client
                                 </div>
                             ) : (
@@ -421,15 +421,15 @@ export function PaymentFormBackendBase({
                                     value={selectedBillId ? String(selectedBillId) : undefined}
                                     onValueChange={(v) => setSelectedBillId(parseInt(v))}
                                 >
-                                    <SelectTrigger ref={registerField('bill')} className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
+                                    <SelectTrigger ref={registerField('bill')} className="bg-card border-border text-foreground hover:bg-muted">
                                         <SelectValue placeholder="Sélectionner une facture" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectContent className="bg-card border-border">
                                         {clientBills.map((b) => (
                                             <SelectItem
                                                 key={b.id}
                                                 value={String(b.id)}
-                                                className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer"
+                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer"
                                             >
                                                 Facture #{b.id} — {formatCurrency(parseFloat(String(b.invoiceAmount)))}
                                             </SelectItem>
@@ -442,7 +442,7 @@ export function PaymentFormBackendBase({
 
                     {/* Amount */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">
+                        <label className="text-sm font-medium text-foreground">
                             Montant <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
@@ -452,31 +452,31 @@ export function PaymentFormBackendBase({
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 placeholder="0,00"
-                                className="bg-gray-800 border-gray-700 text-gray-200 pr-8"
+                                className="bg-card border-border text-foreground pr-8"
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
                         </div>
                     </div>
 
                     {/* Payment method */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Méthode de paiement</label>
+                        <label className="text-sm font-medium text-foreground">Méthode de paiement</label>
                         <Select
                             value={paymentMethod || NONE}
                             onValueChange={(v) => setPaymentMethod(v === NONE ? '' : (v as PaymentMethod))}
                         >
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
+                            <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value={NONE} className="text-gray-400 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer">
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value={NONE} className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
                                     Non renseignée
                                 </SelectItem>
                                 {Object.values(PaymentMethod).map((m) => (
                                     <SelectItem
                                         key={m}
                                         value={m}
-                                        className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer"
+                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer"
                                     >
                                         {getPaymentMethodLabel(m)}
                                     </SelectItem>
@@ -488,13 +488,13 @@ export function PaymentFormBackendBase({
                     {/* Cotisation year (COTISATION only) */}
                     {type === PaymentType.COTISATION && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">Année de cotisation</label>
+                            <label className="text-sm font-medium text-foreground">Année de cotisation</label>
                             <Input
                                 inputMode="numeric"
                                 value={cotisationYear}
                                 onChange={(e) => setCotisationYear(e.target.value.replace(/\D/g, ''))}
                                 placeholder="2024"
-                                className="bg-gray-800 border-gray-700 text-gray-200"
+                                className="bg-card border-border text-foreground"
                             />
                         </div>
                     )}
@@ -502,29 +502,29 @@ export function PaymentFormBackendBase({
                     {/* Dates */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">Date de création</label>
+                            <label className="text-sm font-medium text-foreground">Date de création</label>
                             {datePicker(creationDate, (d) => d && setCreationDate(d))}
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-200">Date de paiement</label>
+                            <label className="text-sm font-medium text-foreground">Date de paiement</label>
                             {datePicker(paymentDate, setPaymentDate)}
                         </div>
                     </div>
 
                     {/* Observations */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-200">Observations</label>
+                        <label className="text-sm font-medium text-foreground">Observations</label>
                         <textarea
                             value={observations}
                             onChange={(e) => setObservations(e.target.value)}
                             rows={2}
                             placeholder="Notes libres…"
-                            className="w-full rounded-md bg-gray-800 border border-gray-700 text-gray-200 placeholder-gray-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/50"
+                            className="w-full rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/50"
                         />
                     </div>
 
                     {/* Advanced / accounting details */}
-                    <div className="border-t border-gray-700 pt-3">
+                    <div className="border-t border-border pt-3">
                         <button
                             type="button"
                             onClick={() => setShowAdvanced((v) => !v)}
@@ -538,37 +538,37 @@ export function PaymentFormBackendBase({
                             <div className="mt-3 space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">N° de reçu</label>
+                                        <label className="text-sm font-medium text-foreground">N° de reçu</label>
                                         <Input
                                             value={receiptNumber}
                                             onChange={(e) => setReceiptNumber(e.target.value)}
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
+                                            className="bg-card border-border text-foreground"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-200">Date d&apos;émission</label>
+                                        <label className="text-sm font-medium text-foreground">Date d&apos;émission</label>
                                         {datePicker(issueDate, setIssueDate)}
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-200">Comptable</label>
+                                    <label className="text-sm font-medium text-foreground">Comptable</label>
                                     <Select
                                         value={comptable || NONE}
                                         onValueChange={(v) => setComptable(v === NONE ? '' : v)}
                                     >
-                                        <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750">
+                                        <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted">
                                             <SelectValue placeholder="Non renseigné" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-gray-800 border-gray-700">
-                                            <SelectItem value={NONE} className="text-gray-400 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer">
+                                        <SelectContent className="bg-card border-border">
+                                            <SelectItem value={NONE} className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
                                                 Non renseigné
                                             </SelectItem>
                                             {COMPTABLE_OPTIONS.map((c) => (
                                                 <SelectItem
                                                     key={c}
                                                     value={c}
-                                                    className="text-gray-200 hover:bg-gray-700 focus:bg-gray-700 cursor-pointer"
+                                                    className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer"
                                                 >
                                                     {c}
                                                 </SelectItem>
@@ -577,27 +577,27 @@ export function PaymentFormBackendBase({
                                     </Select>
                                 </div>
 
-                                <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                                     <Checkbox
                                         checked={fiscalite}
                                         onCheckedChange={(c) => setFiscalite(!!c)}
-                                        className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                        className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                                     />
                                     Fiscalité (reçu fiscal applicable)
                                 </label>
 
                                 <div className="space-y-3">
-                                    <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                                    <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                                         <Checkbox
                                             checked={isAllocated}
                                             onCheckedChange={(c) => setIsAllocated(!!c)}
-                                            className="border-2 border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                            className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                                         />
                                         Affectée
                                     </label>
                                     {isAllocated && (
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-200">Date d&apos;attribution</label>
+                                            <label className="text-sm font-medium text-foreground">Date d&apos;attribution</label>
                                             {datePicker(allocationDate, setAllocationDate)}
                                         </div>
                                     )}
@@ -609,7 +609,7 @@ export function PaymentFormBackendBase({
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-gray-700 hover:bg-gray-600 text-gray-100 border-gray-100"
+                        className="w-full bg-muted hover:bg-muted text-foreground border-border"
                     >
                         {isLoading ? loadingText : submitButtonText}
                     </Button>

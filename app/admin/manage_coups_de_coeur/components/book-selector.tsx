@@ -67,24 +67,24 @@ function BookTable({
     return (
         <Table>
             <TableHeader>
-                <TableRow className="border-b border-gray-700 bg-gray-800">
-                    <TableHead className="text-gray-200 font-medium">
+                <TableRow className="border-b border-border bg-card">
+                    <TableHead className="text-foreground font-medium">
                         <div className="flex items-center gap-2">
                             <Switch
                                 id={`select-all-${isSearchResults ? 'search' : 'main'}`}
                                 checked={areAllSelected(books)}
                                 onChange={(checked) => handleSelectAll(checked, books)}
-                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
+                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-muted"
                             />
-                            <label htmlFor={`select-all-${isSearchResults ? 'search' : 'main'}`} className="text-sm font-medium text-gray-200">
+                            <label htmlFor={`select-all-${isSearchResults ? 'search' : 'main'}`} className="text-sm font-medium text-foreground">
                                 Tout sélectionner
                             </label>
                         </div>
                     </TableHead>
-                    <TableHead className="text-gray-200 font-medium">Titre</TableHead>
-                    <TableHead className="text-gray-200 font-medium">Auteur</TableHead>
-                    <TableHead className="text-gray-200 font-medium">ISBN</TableHead>
-                    <TableHead className="text-gray-200 font-medium">Date d&apos;ajout</TableHead>
+                    <TableHead className="text-foreground font-medium">Titre</TableHead>
+                    <TableHead className="text-foreground font-medium">Auteur</TableHead>
+                    <TableHead className="text-foreground font-medium">ISBN</TableHead>
+                    <TableHead className="text-foreground font-medium">Date d&apos;ajout</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,8 +92,8 @@ function BookTable({
                     <TableRow
                         key={book.id}
                         className={`
-                            border-b border-gray-700 
-                            hover:bg-gray-750 
+                            border-b border-border 
+                            hover:bg-muted 
                             ${isLoading ? '[&]:hover:cursor-wait' : 'cursor-pointer'}
                             ${isSearchResults && displayedBookIds.includes(book.id) ? "opacity-50" : ""}
                         `}
@@ -106,7 +106,7 @@ function BookTable({
                         }}
                     >
                         <TableCell
-                            className="text-gray-200"
+                            className="text-foreground"
                             onClick={(e) => {
                                 e.stopPropagation();
                             }}
@@ -115,22 +115,22 @@ function BookTable({
                                 id={`book-${book.id}`}
                                 checked={selectedBooks.includes(book.id)}
                                 onChange={() => toggleBookSelection(book.id)}
-                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-gray-600"
+                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-muted"
                             />
                         </TableCell>
-                        <TableCell className="text-gray-200">
+                        <TableCell className="text-foreground">
                             <div className="flex flex-col">
                                 <span>{book.title}</span>
                                 {isSearchResults && displayedBookIds.includes(book.id) && (
-                                    <span className="text-sm text-gray-400">
+                                    <span className="text-sm text-muted-foreground">
                                         Ce livre appartient déjà à la liste
                                     </span>
                                 )}
                             </div>
                         </TableCell>
-                        <TableCell className="text-gray-200">{book.author}</TableCell>
-                        <TableCell className="text-gray-200">{book.isbn || 'N/A'}</TableCell>
-                        <TableCell className="text-gray-200">
+                        <TableCell className="text-foreground">{book.author}</TableCell>
+                        <TableCell className="text-foreground">{book.isbn || 'N/A'}</TableCell>
+                        <TableCell className="text-foreground">
                             {new Date(book.createdAt).toLocaleDateString()}
                         </TableCell>
                     </TableRow>
@@ -411,7 +411,7 @@ export default function BookSelector({
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-100">
+                <h3 className="text-lg font-medium text-foreground">
                     {mode === 'edit' ? 'Livres sélectionnés' : 'Livres récents'}
                 </h3>
                 <div className="flex gap-2">
@@ -422,13 +422,13 @@ export default function BookSelector({
                         onOpenChange={onDialogOpenChange}
                     >
                         <DialogTrigger asChild>
-                            <Button className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600">
+                            <Button className="bg-muted text-foreground border-border hover:bg-muted">
                                 Ajouter un livre existant
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                             <DialogHeader>
-                                <DialogTitle className="text-gray-100">Recherche de livres</DialogTitle>
+                                <DialogTitle className="text-foreground">Recherche de livres</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
                                 <Input
@@ -436,10 +436,10 @@ export default function BookSelector({
                                     placeholder="Rechercher par titre, auteur ou ISBN..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="bg-white text-gray-900 placeholder:text-gray-500"
+                                    className="bg-white text-muted-foreground placeholder:text-muted-foreground"
                                 />
                                 {isSearching ? (
-                                    <p className="text-center py-4 text-gray-200">Chargement...</p>
+                                    <p className="text-center py-4 text-foreground">Chargement...</p>
                                 ) : (
                                     <>
                                         {searchResults.length > 0 ? (
@@ -456,7 +456,7 @@ export default function BookSelector({
                                             />
                                         ) : (
                                             debouncedSearchTerm && (
-                                                <p className="text-center text-gray-400 py-4">
+                                                <p className="text-center text-muted-foreground py-4">
                                                     Aucun livre trouvé correspondant à votre recherche.
                                                 </p>
                                             )
@@ -469,7 +469,7 @@ export default function BookSelector({
                 </div>
             </div>
 
-            <div className="border border-gray-700 rounded-lg bg-gray-800">
+            <div className="border border-border rounded-lg bg-card">
                 <BookTable
                     books={displayedBookDetails}
                     isLoading={isLoading}
@@ -483,7 +483,7 @@ export default function BookSelector({
             </div>
 
             <div className="mt-4">
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-muted-foreground">
                     {selectedBooks.length} livres sélectionnés sur {displayedBookIds.length} livres dans la liste
                 </p>
             </div>

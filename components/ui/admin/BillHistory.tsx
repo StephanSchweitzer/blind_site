@@ -24,14 +24,14 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const TYPE_TINT: Record<string, string> = {
-    CREATED: 'bg-gray-700 text-gray-200',
+    CREATED: 'bg-muted text-foreground',
     ISSUED: 'bg-amber-900/60 text-amber-200',
     REOPENED: 'bg-rose-900/60 text-rose-200',
     PAID: 'bg-emerald-900/60 text-emerald-200',
     SETTLED: 'bg-blue-900/60 text-blue-200',
     AMOUNT_CHANGED: 'bg-violet-900/60 text-violet-200',
-    ORDER_ATTACHED: 'bg-gray-700 text-gray-200',
-    ORDER_DETACHED: 'bg-gray-700 text-gray-200',
+    ORDER_ATTACHED: 'bg-muted text-foreground',
+    ORDER_DETACHED: 'bg-muted text-foreground',
 };
 
 const fmtDateTime = (iso: string) =>
@@ -76,7 +76,7 @@ function summarize(e: BillEventDTO): string | null {
 
 export function BillHistory({ events }: { events: BillEventDTO[] }) {
     if (!events || events.length === 0) {
-        return <p className="text-sm text-gray-500 italic">Aucun événement enregistré.</p>;
+        return <p className="text-sm text-muted-foreground italic">Aucun événement enregistré.</p>;
     }
 
     return (
@@ -88,16 +88,16 @@ export function BillHistory({ events }: { events: BillEventDTO[] }) {
                         ? `${getBillingStatusLabel(e.fromState)} → ${getBillingStatusLabel(e.toState)}`
                         : null;
                 return (
-                    <li key={e.id} className="flex gap-3 border-l-2 border-gray-700 pl-3">
+                    <li key={e.id} className="flex gap-3 border-l-2 border-border pl-3">
                         <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`text-xs font-semibold rounded px-2 py-0.5 ${TYPE_TINT[e.type] ?? 'bg-gray-700 text-gray-200'}`}>
+                                <span className={`text-xs font-semibold rounded px-2 py-0.5 ${TYPE_TINT[e.type] ?? 'bg-muted text-foreground'}`}>
                                     {TYPE_LABEL[e.type] ?? e.type}
                                 </span>
-                                {transition && <span className="text-xs text-gray-400">{transition}</span>}
+                                {transition && <span className="text-xs text-muted-foreground">{transition}</span>}
                             </div>
-                            {summary && <p className="text-sm text-gray-300 mt-1">{summary}</p>}
-                            <p className="text-xs text-gray-500 mt-1">
+                            {summary && <p className="text-sm text-foreground mt-1">{summary}</p>}
+                            <p className="text-xs text-muted-foreground mt-1">
                                 {fmtDateTime(e.createdAt)}
                                 {e.performedBy?.name ? ` · ${e.performedBy.name}` : ''}
                             </p>

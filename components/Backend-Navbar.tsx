@@ -1,172 +1,208 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { Menu, X, ChevronDown } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+
+interface NavItem {
+    href: string;
+    label: string;
+    icon: string;
+}
+
+interface NavGroup {
+    label: string;
+    items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+    {
+        label: 'Livres',
+        items: [
+            { href: '/admin/books', label: 'Catalogue', icon: '📚' },
+            { href: '/admin/genres', label: 'Genres', icon: '🏷️' },
+            { href: '/admin/manage_coups_de_coeur', label: 'Listes de livres', icon: '⭐' },
+        ],
+    },
+    {
+        label: 'Gestion',
+        items: [
+            { href: '/admin/orders', label: 'Demandes', icon: '📋' },
+            { href: '/admin/assignments', label: 'Attributions', icon: '🔗' },
+            { href: '/admin/bills', label: 'Factures', icon: '💰' },
+            { href: '/admin/payments', label: 'Paiements', icon: '💳' },
+        ],
+    },
+    {
+        label: 'Membres',
+        items: [
+            { href: '/admin/users/auditeurs', label: 'Auditeurs', icon: '👤' },
+            { href: '/admin/users/lecteurs', label: 'Lecteurs', icon: '👥' },
+            { href: '/admin/users/bienfaiteurs', label: 'Donateurs', icon: '💝' },
+            { href: '/admin/users/permanents', label: 'Permanents', icon: '🔑' },
+        ],
+    },
+];
 
 const BackendNavbar: React.FC = () => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [mobileGroup, setMobileGroup] = useState<number | null>(null);
+
+    const toggleMobileGroup = (index: number) => {
+        setMobileGroup((prev) => (prev === index ? null : index));
+    };
+
+    const closeAll = () => {
+        setIsMenuOpen(false);
+        setMobileGroup(null);
+    };
+
     return (
-        <nav className="sticky top-0 z-50 bg-gradient-to-br from-slate-900 to-slate-800 shadow-lg border-b-2 border-slate-700">
-            <div className="max-w-7xl mx-auto px-8 flex items-center gap-8">
-                {/* Brand */}
-                <Link
-                    href="/admin"
-                    className="py-5 text-xl font-bold bg-gradient-to-r from-blue-50 to-blue-100 bg-clip-text text-transparent tracking-wide hover:-translate-y-0.5 hover:brightness-125 transition-all duration-300"
-                >
-                    Administration
-                </Link>
-
-                {/* Main Navigation Links */}
-                <div className="flex items-center gap-2 flex-1">
-                    {/* Livres Dropdown */}
-                    <div className="relative group">
-                        <span className="flex items-center gap-2 px-5 py-3 rounded-md text-slate-200 font-medium cursor-pointer select-none hover:text-white hover:bg-white/10 transition-all duration-300">
-                            Livres
-                            <svg
-                                className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:rotate-180 transition-all duration-300"
-                                viewBox="0 0 12 12"
-                                fill="currentColor"
-                            >
-                                <path d="M6 8L2 4h8z"/>
-                            </svg>
-                        </span>
-
-                        <div className="absolute top-full left-0 mt-2 min-w-[220px] bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 -translate-y-2 transition-all duration-300 overflow-hidden">
-                            <Link
-                                href="/admin/books"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">📚</span>
-                                Catalogue
-                            </Link>
-                            <Link
-                                href="/admin/genres"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">🏷️</span>
-                                Genres
-                            </Link>
-                            <Link
-                                href="/admin/manage_coups_de_coeur"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">⭐</span>
-                                Listes de livres
-                            </Link>
-                        </div>
-                    </div>
-
-                    {/* Gestion Dropdown */}
-                    <div className="relative group">
-                        <span className="flex items-center gap-2 px-5 py-3 rounded-md text-slate-200 font-medium cursor-pointer select-none hover:text-white hover:bg-white/10 transition-all duration-300">
-                            Gestion
-                            <svg
-                                className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:rotate-180 transition-all duration-300"
-                                viewBox="0 0 12 12"
-                                fill="currentColor"
-                            >
-                                <path d="M6 8L2 4h8z"/>
-                            </svg>
-                        </span>
-
-                        <div className="absolute top-full left-0 mt-2 min-w-[220px] bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 -translate-y-2 transition-all duration-300 overflow-hidden">
-                            <Link
-                                href="/admin/orders"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">📋</span>
-                                Demandes
-                            </Link>
-                            <Link
-                                href="/admin/assignments"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">🔗</span>
-                                Attributions
-                            </Link>
-                            <Link
-                                href="/admin/bills"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">💰</span>
-                                Factures
-                            </Link>
-                            <Link
-                                href="/admin/payments"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">💳</span>
-                                Paiements
-                            </Link>
-                        </div>
-                    </div>
-
-                    {/* Membres Dropdown */}
-                    <div className="relative group">
-                        <span className="flex items-center gap-2 px-5 py-3 rounded-md text-slate-200 font-medium cursor-pointer select-none hover:text-white hover:bg-white/10 transition-all duration-300">
-                            Membres
-                            <svg
-                                className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:rotate-180 transition-all duration-300"
-                                viewBox="0 0 12 12"
-                                fill="currentColor"
-                            >
-                                <path d="M6 8L2 4h8z"/>
-                            </svg>
-                        </span>
-
-                        <div className="absolute top-full left-0 mt-2 min-w-[220px] bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 -translate-y-2 transition-all duration-300 overflow-hidden">
-                            <Link
-                                href="/admin/users/auditeurs"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">👤</span>
-                                Auditeurs
-                            </Link>
-                            <Link
-                                href="/admin/users/lecteurs"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">👥</span>
-                                Lecteurs
-                            </Link>
-                            <Link
-                                href="/admin/users/bienfaiteurs"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">💝</span>
-                                Donateurs
-                            </Link>
-                            <Link
-                                href="/admin/users/permanents"
-                                className="flex items-center gap-3 px-5 py-3.5 text-slate-200 border-l-3 border-transparent hover:bg-gradient-to-r hover:from-blue-500/15 hover:to-transparent hover:text-white hover:border-blue-500 hover:pl-6 transition-all duration-200"
-                            >
-                                <span className="text-lg transition-transform duration-200 group-hover:scale-110">🔑</span>
-                                Permanents
-                            </Link>
-                        </div>
-                    </div>
-
-                    {/* Standalone Links */}
+        <nav className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between gap-4 h-16">
+                    {/* Brand */}
                     <Link
-                        href="/admin/news"
-                        className="px-5 py-3 rounded-md text-slate-200 font-medium hover:text-white hover:bg-white/10 transition-all duration-300 relative after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-0 after:h-0.5 after:bg-gradient-to-r after:from-blue-400 after:to-blue-600 hover:after:w-4/5 after:transition-all after:duration-300"
+                        href="/admin"
+                        onClick={closeAll}
+                        className="text-xl font-bold bg-gradient-to-r from-blue-500 to-blue-700 dark:from-blue-300 dark:to-blue-500 bg-clip-text text-transparent tracking-wide whitespace-nowrap"
                     >
-                        Dernières infos
+                        Administration
                     </Link>
+
+                    {/* Desktop navigation — hover-triggered dropdowns */}
+                    <div className="hidden lg:flex items-center gap-1 flex-1">
+                        {navGroups.map((group) => (
+                            <div key={group.label} className="relative group">
+                                <span className="flex items-center gap-2 px-4 py-2 rounded-md text-foreground/80 font-medium cursor-pointer select-none hover:text-foreground hover:bg-muted transition-colors duration-200">
+                                    {group.label}
+                                    <ChevronDown
+                                        size={14}
+                                        className="opacity-70 transition-transform duration-200 group-hover:rotate-180"
+                                    />
+                                </span>
+
+                                {/* pt-2 keeps a hover bridge between trigger and panel */}
+                                <div className="absolute hidden group-hover:block top-full left-0 z-50 pt-2">
+                                    <div className="min-w-[220px] bg-popover border border-border rounded-lg shadow-xl overflow-hidden">
+                                        {group.items.map((item) => (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                onClick={closeAll}
+                                                className="flex items-center gap-3 px-4 py-3 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors duration-200"
+                                            >
+                                                <span className="text-lg" aria-hidden="true">{item.icon}</span>
+                                                {item.label}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        <Link
+                            href="/admin/news"
+                            onClick={closeAll}
+                            className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-muted transition-colors duration-200"
+                        >
+                            Dernières infos
+                        </Link>
+                    </div>
+
+                    {/* Desktop right-aligned actions */}
+                    <div className="hidden lg:flex items-center gap-3">
+                        <Link
+                            href="/admin/profile"
+                            onClick={closeAll}
+                            className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-muted transition-colors duration-200"
+                        >
+                            Mon Compte
+                        </Link>
+                        <Link
+                            href="/"
+                            onClick={closeAll}
+                            className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 transition-opacity duration-200"
+                        >
+                            Site principal
+                        </Link>
+                        <ThemeToggle />
+                    </div>
+
+                    {/* Mobile actions */}
+                    <div className="flex items-center gap-2 lg:hidden">
+                        <ThemeToggle />
+                        <button
+                            type="button"
+                            onClick={() => setIsMenuOpen((open) => !open)}
+                            aria-label="Ouvrir le menu"
+                            aria-expanded={isMenuOpen}
+                            className="h-11 w-11 flex items-center justify-center rounded-lg text-foreground hover:bg-muted transition-colors duration-200"
+                        >
+                            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
+                    </div>
                 </div>
 
-                {/* Right-aligned Links */}
-                <div className="flex items-center gap-4 ml-auto">
-                    <Link
-                        href="/admin/profile"
-                        className="px-5 py-3 rounded-md text-slate-200 font-medium hover:text-white hover:bg-white/10 transition-all duration-300"
-                    >
-                        Mon Compte
-                    </Link>
-                    <Link
-                        href="/"
-                        className="px-5 py-3 rounded-md bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold shadow-lg shadow-blue-500/30 hover:from-blue-700 hover:to-blue-800 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
-                    >
-                        Site principal
-                    </Link>
-                </div>
+                {/* Mobile menu — click-toggled dropdowns */}
+                {isMenuOpen && (
+                    <div className="lg:hidden pb-4 space-y-1">
+                        {navGroups.map((group, index) => (
+                            <div key={group.label}>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleMobileGroup(index)}
+                                    aria-expanded={mobileGroup === index}
+                                    className="w-full flex items-center justify-between min-h-11 px-4 py-2.5 rounded-lg text-foreground font-medium hover:bg-muted transition-colors duration-200"
+                                >
+                                    <span>{group.label}</span>
+                                    <ChevronDown
+                                        size={16}
+                                        className={`transition-transform duration-200 ${mobileGroup === index ? 'rotate-180' : ''}`}
+                                    />
+                                </button>
+                                {mobileGroup === index && (
+                                    <div className="pl-4 mt-1 mb-2 space-y-1 border-l-2 border-border ml-3">
+                                        {group.items.map((item) => (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                onClick={closeAll}
+                                                className="flex items-center gap-3 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 hover:bg-muted hover:text-foreground transition-colors duration-200"
+                                            >
+                                                <span className="text-lg" aria-hidden="true">{item.icon}</span>
+                                                {item.label}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+
+                        <Link
+                            href="/admin/news"
+                            onClick={closeAll}
+                            className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-muted hover:text-foreground transition-colors duration-200"
+                        >
+                            Dernières infos
+                        </Link>
+                        <Link
+                            href="/admin/profile"
+                            onClick={closeAll}
+                            className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-muted hover:text-foreground transition-colors duration-200"
+                        >
+                            Mon Compte
+                        </Link>
+                        <Link
+                            href="/"
+                            onClick={closeAll}
+                            className="flex items-center justify-center min-h-11 px-4 py-2.5 mt-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity duration-200"
+                        >
+                            Site principal
+                        </Link>
+                    </div>
+                )}
             </div>
         </nav>
     );

@@ -287,7 +287,7 @@ export default function AssignmentsTable({
             'Assignation terminée': 'bg-green-100 text-green-800 border border-green-300',
             'Assignation annulée': 'bg-red-100 text-red-800 border border-red-300',
         };
-        return colorMap[statusName] || 'bg-gray-100 text-gray-800 border border-gray-300';
+        return colorMap[statusName] || 'bg-muted text-muted-foreground border border-border';
     };
 
     const calculatePageNumbers = () => {
@@ -324,14 +324,14 @@ export default function AssignmentsTable({
     const visiblePages = calculatePageNumbers();
 
     return (
-        <Card className="w-full bg-gray-900 border-gray-800">
-            <CardHeader className="border-b border-gray-800">
+        <Card className="w-full bg-card border-border">
+            <CardHeader className="border-b border-border">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-3xl font-bold text-gray-100">
+                        <CardTitle className="text-3xl font-bold text-foreground">
                             Attributions
                         </CardTitle>
-                        <CardDescription className="text-gray-400 mt-2">
+                        <CardDescription className="text-muted-foreground mt-2">
                             {initialTotalAssignments} attribution{initialTotalAssignments !== 1 ? 's' : ''} au total
                         </CardDescription>
                     </div>
@@ -351,19 +351,19 @@ export default function AssignmentsTable({
                         {!hideSearch && (
                             <div className="flex-1 flex gap-2">
                                 <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                                     <Input
                                         type="text"
                                         placeholder="Rechercher par livre, lecteur ou numéro..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                        className="pl-10 pr-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
+                                        className="pl-10 pr-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
                                     />
                                     {searchTerm && (
                                         <button
                                             onClick={handleClearSearch}
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                         >
                                             <X className="h-4 w-4" />
                                         </button>
@@ -384,18 +384,18 @@ export default function AssignmentsTable({
                                 onValueChange={handleStatusFilter}
                                 disabled={isPending}
                             >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                <SelectTrigger className="bg-card border-border text-foreground">
                                     <SelectValue placeholder="Filtrer par statut" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="all" className="text-gray-200">
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">
                                         Tous les statuts
                                     </SelectItem>
                                     {availableStatuses.map((status) => (
                                         <SelectItem
                                             key={status.id}
                                             value={status.id.toString()}
-                                            className="text-gray-200"
+                                            className="text-foreground"
                                         >
                                             {status.name}
                                         </SelectItem>
@@ -410,7 +410,7 @@ export default function AssignmentsTable({
                 <div className={isPending ? 'opacity-50 pointer-events-none' : ''}>
                     {initialAssignments.length === 0 ? (
                         <div className="text-center py-12">
-                            <p className="text-gray-400 text-lg">
+                            <p className="text-muted-foreground text-lg">
                                 {searchTerm || currentStatusId !== 'all'
                                     ? "Aucune attribution trouvée avec ces critères"
                                     : "Aucune attribution"}
@@ -418,17 +418,17 @@ export default function AssignmentsTable({
                         </div>
                     ) : (
                         <div>
-                            <div className="rounded-lg border border-gray-700 overflow-hidden bg-gray-800">
+                            <div className="rounded-lg border border-border overflow-hidden bg-card">
                                 <Table>
-                                    <TableHeader className="bg-gray-800 border-b border-gray-700">
-                                        <TableRow className="hover:bg-gray-800 border-b border-gray-700">
-                                            <TableHead className="text-gray-200 font-medium">ID</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Lecteur</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Livre</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Date de réception</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Envoyé au lecteur</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Retourné aux ECA</TableHead>
-                                            <TableHead className="text-gray-200 font-medium w-[1%] whitespace-nowrap">Statut</TableHead>
+                                    <TableHeader className="bg-card border-b border-border">
+                                        <TableRow className="hover:bg-muted border-b border-border">
+                                            <TableHead className="text-foreground font-medium">ID</TableHead>
+                                            <TableHead className="text-foreground font-medium">Lecteur</TableHead>
+                                            <TableHead className="text-foreground font-medium">Livre</TableHead>
+                                            <TableHead className="text-foreground font-medium">Date de réception</TableHead>
+                                            <TableHead className="text-foreground font-medium">Envoyé au lecteur</TableHead>
+                                            <TableHead className="text-foreground font-medium">Retourné aux ECA</TableHead>
+                                            <TableHead className="text-foreground font-medium w-[1%] whitespace-nowrap">Statut</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -436,38 +436,38 @@ export default function AssignmentsTable({
                                             <TableRow
                                                 key={assignment.id}
                                                 onClick={() => handleRowClick(assignment)}
-                                                className="border-b border-gray-700 hover:bg-gray-800 cursor-pointer transition-colors"
+                                                className="border-b border-border hover:bg-muted cursor-pointer transition-colors"
                                             >
-                                                <TableCell className="font-medium text-gray-200">
+                                                <TableCell className="font-medium text-foreground">
                                                     #{assignment.id}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200">
+                                                <TableCell className="text-foreground">
                                                     {assignment.currentReader ? (
                                                         <div>
                                                             <div className="font-medium">{assignment.currentReader.name || 'Sans nom'}</div>
-                                                            <div className="text-sm text-gray-400">
+                                                            <div className="text-sm text-muted-foreground">
                                                                 {assignment.currentReader.email}
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="text-gray-400 italic">Aucun lecteur assigné</div>
+                                                        <div className="text-muted-foreground italic">Aucun lecteur assigné</div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200 max-w-xs">
+                                                <TableCell className="text-foreground max-w-xs">
                                                     <div>
                                                         <div className="font-medium break-words">{assignment.catalogue.title}</div>
-                                                        <div className="text-sm text-gray-400">
+                                                        <div className="text-sm text-muted-foreground">
                                                             {assignment.catalogue.author}
                                                         </div>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-gray-200 whitespace-nowrap">
+                                                <TableCell className="text-foreground whitespace-nowrap">
                                                     {formatDate(assignment.receptionDate)}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200 whitespace-nowrap">
+                                                <TableCell className="text-foreground whitespace-nowrap">
                                                     {formatDate(assignment.sentToReaderDate)}
                                                 </TableCell>
-                                                <TableCell className="text-gray-200 whitespace-nowrap">
+                                                <TableCell className="text-foreground whitespace-nowrap">
                                                     {formatDate(assignment.returnedToECADate)}
                                                 </TableCell>
                                                 <TableCell className="w-[1%]">
@@ -485,11 +485,11 @@ export default function AssignmentsTable({
 
                     {/* Loading Overlay for Assignment Data */}
                     {isLoadingAssignment && (
-                        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
-                            <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
+                        <div className="fixed inset-0 bg-card/80 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-card rounded-lg p-8 shadow-2xl border border-border">
                                 <div className="flex flex-col items-center gap-4">
                                     <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                    <p className="text-lg font-medium text-gray-200">Chargement de l&apos;attribution...</p>
+                                    <p className="text-lg font-medium text-foreground">Chargement de l&apos;attribution...</p>
                                 </div>
                             </div>
                         </div>
@@ -498,10 +498,10 @@ export default function AssignmentsTable({
 
                 {/* Enhanced Pagination */}
                 {totalPages > 1 && (
-                    <div className={`flex justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className={`flex flex-wrap justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(1)}
                             disabled={currentPage === 1 || isPending}
                         >
@@ -509,7 +509,7 @@ export default function AssignmentsTable({
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1 || isPending}
                         >
@@ -523,19 +523,19 @@ export default function AssignmentsTable({
                                     size="sm"
                                     className={currentPage === page
                                         ? "bg-blue-600 text-white hover:bg-blue-700"
-                                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                        : "bg-card text-foreground border-border hover:bg-muted"}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}
                                 >
                                     {page}
                                 </Button>
                             ) : (
-                                <span key={index} className="text-gray-400 px-2">{page}</span>
+                                <span key={index} className="text-muted-foreground px-2">{page}</span>
                             )
                         ))}
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages || isPending}
                         >
@@ -543,7 +543,7 @@ export default function AssignmentsTable({
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(totalPages)}
                             disabled={currentPage === totalPages || isPending}
                         >
@@ -553,7 +553,7 @@ export default function AssignmentsTable({
                 )}
 
                 {totalPages > 1 && (
-                    <p className="text-center text-sm text-gray-400 mt-2">
+                    <p className="text-center text-sm text-muted-foreground mt-2">
                         Page {currentPage} sur {totalPages}
                     </p>
                 )}

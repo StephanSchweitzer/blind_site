@@ -63,10 +63,10 @@ export default async function EditGenrePage({ params, searchParams }: PageProps)
 
     return (
         <div className="space-y-6">
-            <Card className="bg-gray-900 border-gray-800">
-                <CardHeader className="border-b border-gray-700">
-                    <CardTitle className="text-gray-100">Modifier le Genre</CardTitle>
-                    <CardDescription className="text-gray-400">
+            <Card className="bg-card border-border">
+                <CardHeader className="border-b border-border">
+                    <CardTitle className="text-foreground">Modifier le Genre</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                         Modifier les détails du genre et voir les livres associés
                     </CardDescription>
                 </CardHeader>
@@ -76,24 +76,24 @@ export default async function EditGenrePage({ params, searchParams }: PageProps)
             </Card>
 
             {genre._count.books > 0 && (
-                <Card className="bg-gray-900 border-gray-800">
-                    <CardHeader className="border-b border-gray-700">
-                        <CardTitle className="text-gray-100">Livres associés</CardTitle>
-                        <CardDescription className="text-gray-400">
+                <Card className="bg-card border-border">
+                    <CardHeader className="border-b border-border">
+                        <CardTitle className="text-foreground">Livres associés</CardTitle>
+                        <CardDescription className="text-muted-foreground">
                             {genre._count.books} livre(s) dans ce genre
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
-                        <ul className="divide-y divide-gray-700">
+                        <ul className="divide-y divide-border">
                             {genre.books.map((bookRelation, index) => (
                                 <li
                                     key={index}
                                     className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
                                 >
-                                    <span className="text-sm font-medium text-gray-200">
+                                    <span className="text-sm font-medium text-foreground">
                                         {bookRelation.book.title}
                                     </span>
-                                    <span className="text-sm text-gray-400">
+                                    <span className="text-sm text-muted-foreground">
                                         {bookRelation.book.author}
                                     </span>
                                 </li>
@@ -101,19 +101,19 @@ export default async function EditGenrePage({ params, searchParams }: PageProps)
                         </ul>
 
                         {totalPages > 1 && (
-                            <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
+                            <div className="flex justify-between items-center mt-4 pt-4 border-t border-border">
                                 <Link
                                     href={`/genres/${id}?page=${page - 1}`}
                                     className={`px-3 py-1 text-sm rounded-md ${
                                         page <= 1
-                                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                            : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                                            ? 'bg-card text-muted-foreground cursor-not-allowed'
+                                            : 'bg-muted text-foreground hover:bg-muted'
                                     }`}
                                     aria-disabled={page <= 1}
                                 >
                                     Précédent
                                 </Link>
-                                <span className="text-sm text-gray-400">
+                                <span className="text-sm text-muted-foreground">
                                     Page {page} sur {totalPages}
                                 </span>
                                 <Link
@@ -121,8 +121,8 @@ export default async function EditGenrePage({ params, searchParams }: PageProps)
                                     scroll={false}
                                     className={`px-3 py-1 text-sm rounded-md ${
                                         page >= totalPages
-                                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                            : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                                            ? 'bg-card text-muted-foreground cursor-not-allowed'
+                                            : 'bg-muted text-foreground hover:bg-muted'
                                     }`}
                                     aria-disabled={page >= totalPages}
                                 >

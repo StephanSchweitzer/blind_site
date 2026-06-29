@@ -355,12 +355,12 @@ export default function OrdersTable({
     const visiblePages = getVisiblePages();
 
     return (
-        <Card className="bg-gray-900 border-gray-800">
+        <Card className="bg-card border-border">
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-2xl text-gray-100">Demandes</CardTitle>
-                        <CardDescription className="text-gray-400">
+                        <CardTitle className="text-2xl text-foreground">Demandes</CardTitle>
+                        <CardDescription className="text-muted-foreground">
                             Gérer et suivre toutes les demandes
                         </CardDescription>
                     </div>
@@ -381,13 +381,13 @@ export default function OrdersTable({
                     {!hideSearch && (
                         <div className="flex gap-2">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                                 <Input
                                     placeholder="Rechercher par auditeur, livre, ou email..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400"
+                                    className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
                                 />
                             </div>
                             {searchTerm && (
@@ -395,7 +395,7 @@ export default function OrdersTable({
                                     variant="ghost"
                                     size="icon"
                                     onClick={handleClearSearch}
-                                    className="text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                                    className="text-muted-foreground hover:text-foreground hover:bg-muted"
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -413,21 +413,21 @@ export default function OrdersTable({
                     {/* Filters */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                            <label className="text-sm text-gray-400 mb-1.5 block">Statut de la demande</label>
+                            <label className="text-sm text-muted-foreground mb-1.5 block">Statut de la demande</label>
                             <Select
                                 value={currentStatusId}
                                 onValueChange={(value) => handleFilterChange('statusId', value)}
                             >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                <SelectTrigger className="bg-card border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="all" className="text-gray-200">Tous les statuts</SelectItem>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
                                     {availableStatuses.map((status) => (
                                         <SelectItem
                                             key={status.id}
                                             value={status.id.toString()}
-                                            className="text-gray-200"
+                                            className="text-foreground"
                                         >
                                             {status.name}
                                         </SelectItem>
@@ -437,53 +437,53 @@ export default function OrdersTable({
                         </div>
 
                         <div>
-                            <label className="text-sm text-gray-400 mb-1.5 block">Facturation</label>
+                            <label className="text-sm text-muted-foreground mb-1.5 block">Facturation</label>
                             <Select
                                 value={currentBillingStatus}
                                 onValueChange={(value) => handleFilterChange('billingStatus', value)}
                             >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                <SelectTrigger className="bg-card border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
-                                    <SelectItem value="UNBILLED" className="text-gray-200">Non facturé</SelectItem>
-                                    <SelectItem value="BILLED" className="text-gray-200">Facturé</SelectItem>
-                                    <SelectItem value="UNBILLABLE" className="text-gray-200">Non facturable</SelectItem>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Tous</SelectItem>
+                                    <SelectItem value="UNBILLED" className="text-foreground">Non facturé</SelectItem>
+                                    <SelectItem value="BILLED" className="text-foreground">Facturé</SelectItem>
+                                    <SelectItem value="UNBILLABLE" className="text-foreground">Non facturable</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div>
-                            <label className="text-sm text-gray-400 mb-1.5 block">Type</label>
+                            <label className="text-sm text-muted-foreground mb-1.5 block">Type</label>
                             <Select
                                 value={currentIsDuplication}
                                 onValueChange={(value) => handleFilterChange('isDuplication', value)}
                             >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                <SelectTrigger className="bg-card border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
-                                    <SelectItem value="true" className="text-gray-200">Duplication</SelectItem>
-                                    <SelectItem value="false" className="text-gray-200">Enregistrement</SelectItem>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Tous</SelectItem>
+                                    <SelectItem value="true" className="text-foreground">Duplication</SelectItem>
+                                    <SelectItem value="false" className="text-foreground">Enregistrement</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div>
-                            <label className="text-sm text-gray-400 mb-1.5 block">Retard</label>
+                            <label className="text-sm text-muted-foreground mb-1.5 block">Retard</label>
                             <Select
                                 value={currentRetard}
                                 onValueChange={(value) => handleFilterChange('retard', value)}
                             >
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                                <SelectTrigger className="bg-card border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="all" className="text-gray-200">Tous</SelectItem>
-                                    <SelectItem value="true" className="text-gray-200">En retard</SelectItem>
-                                    <SelectItem value="false" className="text-gray-200">À jour</SelectItem>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Tous</SelectItem>
+                                    <SelectItem value="true" className="text-foreground">En retard</SelectItem>
+                                    <SelectItem value="false" className="text-foreground">À jour</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -493,10 +493,10 @@ export default function OrdersTable({
                 {/* Loading Overlay */}
                 {isPending && (
                     <div className="relative">
-                        <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center z-10 rounded-lg">
+                        <div className="absolute inset-0 bg-card/50 flex items-center justify-center z-10 rounded-lg">
                             <div className="flex flex-col items-center gap-3">
                                 <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                <p className="text-sm text-gray-300">Chargement...</p>
+                                <p className="text-sm text-foreground">Chargement...</p>
                             </div>
                         </div>
                     </div>
@@ -506,20 +506,20 @@ export default function OrdersTable({
                 <div className="relative">
                     {initialOrders.length === 0 ? (
                         <div className="text-center py-12">
-                            <p className="text-gray-400 text-lg">Aucune demande trouvée</p>
+                            <p className="text-muted-foreground text-lg">Aucune demande trouvée</p>
                         </div>
                     ) : (
-                        <div className={`border border-gray-800 rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
+                        <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-gray-800 border-b border-gray-700 hover:bg-gray-800">
-                                            <TableHead className="text-gray-200 font-medium">ID</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Auditeur</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Livre</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Date demande</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Statut</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Facturation</TableHead>
+                                        <TableRow className="bg-card border-b border-border hover:bg-muted">
+                                            <TableHead className="text-foreground font-medium">ID</TableHead>
+                                            <TableHead className="text-foreground font-medium">Auditeur</TableHead>
+                                            <TableHead className="text-foreground font-medium">Livre</TableHead>
+                                            <TableHead className="text-foreground font-medium">Date demande</TableHead>
+                                            <TableHead className="text-foreground font-medium">Statut</TableHead>
+                                            <TableHead className="text-foreground font-medium">Facturation</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -529,34 +529,34 @@ export default function OrdersTable({
                                                 <TableRow
                                                     key={order.id}
                                                     onClick={() => handleRowClick(order)}
-                                                    className={`border-b border-gray-700 hover:bg-gray-800 cursor-pointer transition-colors ${
+                                                    className={`border-b border-border hover:bg-muted cursor-pointer transition-colors ${
                                                         isOverdue ? 'bg-red-950/30 hover:bg-red-950/40' : ''
                                                     }`}
                                                 >
-                                                    <TableCell className={`font-medium ${isOverdue ? 'text-red-300' : 'text-gray-200'}`}>
+                                                    <TableCell className={`font-medium ${isOverdue ? 'text-red-300' : 'text-foreground'}`}>
                                                         #{order.id}
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-gray-200'}>
+                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-foreground'}>
                                                         <div>
                                                             <div className="font-medium">
                                                                 {order.aveugle.name || order.aveugle.email}
                                                             </div>
                                                             {order.aveugle.name && (
-                                                                <div className={`text-sm ${isOverdue ? 'text-red-300' : 'text-gray-400'}`}>
+                                                                <div className={`text-sm ${isOverdue ? 'text-red-300' : 'text-muted-foreground'}`}>
                                                                     {order.aveugle.email}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-gray-200'}>
+                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-foreground'}>
                                                         <div>
                                                             <div className="font-medium">{order.catalogue.title}</div>
-                                                            <div className={`text-sm ${isOverdue ? 'text-red-300' : 'text-gray-400'}`}>
+                                                            <div className={`text-sm ${isOverdue ? 'text-red-300' : 'text-muted-foreground'}`}>
                                                                 {order.catalogue.author}
                                                             </div>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-gray-200'}>
+                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-foreground'}>
                                                         {formatDate(order.requestReceivedDate)}
                                                     </TableCell>
                                                     <TableCell>
@@ -573,7 +573,7 @@ export default function OrdersTable({
                                                             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                                                                 order.billingStatus === 'BILLED'
                                                                     ? 'bg-yellow-100 text-yellow-800'
-                                                                    : 'bg-gray-100 text-gray-800'
+                                                                    : 'bg-muted text-muted-foreground'
                                                             }`}
                                                         >
                                                             {getBillingStatusLabel(order.billingStatus)}
@@ -590,11 +590,11 @@ export default function OrdersTable({
 
                     {/* Loading Overlay for Order Data */}
                     {isLoadingOrder && (
-                        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
-                            <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
+                        <div className="fixed inset-0 bg-card/80 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-card rounded-lg p-8 shadow-2xl border border-border">
                                 <div className="flex flex-col items-center gap-4">
                                     <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                    <p className="text-lg font-medium text-gray-200">Chargement de la demande...</p>
+                                    <p className="text-lg font-medium text-foreground">Chargement de la demande...</p>
                                 </div>
                             </div>
                         </div>
@@ -603,10 +603,10 @@ export default function OrdersTable({
 
                 {/* Enhanced Pagination */}
                 {totalPages > 1 && (
-                    <div className={`flex justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className={`flex flex-wrap justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(1)}
                             disabled={currentPage === 1 || isPending}
                         >
@@ -614,7 +614,7 @@ export default function OrdersTable({
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1 || isPending}
                         >
@@ -628,19 +628,19 @@ export default function OrdersTable({
                                     size="sm"
                                     className={currentPage === page
                                         ? "bg-blue-600 text-white hover:bg-blue-700"
-                                        : "bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"}
+                                        : "bg-card text-foreground border-border hover:bg-muted"}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}
                                 >
                                     {page}
                                 </Button>
                             ) : (
-                                <span key={index} className="text-gray-400 px-2">{page}</span>
+                                <span key={index} className="text-muted-foreground px-2">{page}</span>
                             )
                         ))}
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages || isPending}
                         >
@@ -648,7 +648,7 @@ export default function OrdersTable({
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(totalPages)}
                             disabled={currentPage === totalPages || isPending}
                         >
@@ -658,7 +658,7 @@ export default function OrdersTable({
                 )}
 
                 {totalPages > 1 && (
-                    <p className="text-center text-sm text-gray-400 mt-2">
+                    <p className="text-center text-sm text-muted-foreground mt-2">
                         Page {currentPage} sur {totalPages}
                     </p>
                 )}
@@ -666,9 +666,9 @@ export default function OrdersTable({
 
             {/* Add Order Dialog */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-100">Ajouter une nouvelle demande</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter une nouvelle demande</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
                         <AddOrderFormBackend onSuccess={handleOrderAdded} initialClient={presetClient} />

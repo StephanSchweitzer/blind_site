@@ -58,15 +58,15 @@ export default function EditArticle() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-                <span className="text-gray-200">Chargement...</span>
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <span className="text-foreground">Chargement...</span>
             </div>
         );
     }
 
     if (error || !formData) {
         return (
-            <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <span className="text-red-400">{error || 'Article non trouvé'}</span>
             </div>
         );
@@ -130,14 +130,14 @@ export default function EditArticle() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-background">
             <div className="container mx-auto py-8">
-                <Card className="bg-gray-900 border-gray-800">
-                    <CardHeader className="border-b border-gray-700">
+                <Card className="bg-card border-border">
+                    <CardHeader className="border-b border-border">
                         <div className="flex justify-between items-start">
                             <div>
-                                <CardTitle className="text-gray-100">Modifier la dernière info</CardTitle>
-                                <CardDescription className="text-gray-400">
+                                <CardTitle className="text-foreground">Modifier la dernière info</CardTitle>
+                                <CardDescription className="text-muted-foreground">
                                     Modifier l&apos;information de la dernière info
                                 </CardDescription>
                             </div>
@@ -153,17 +153,17 @@ export default function EditArticle() {
                                         Supprimer
                                     </Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent className="bg-gray-900 border-gray-700">
+                                <AlertDialogContent className="bg-card border-border">
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle className="text-gray-100">
+                                        <AlertDialogTitle className="text-foreground">
                                             Êtes-vous sûr de vouloir supprimer cet article ?
                                         </AlertDialogTitle>
-                                        <AlertDialogDescription className="text-gray-400">
+                                        <AlertDialogDescription className="text-muted-foreground">
                                             Cette action est irréversible. L&apos;article &quot;{formData.title}&quot; sera définitivement supprimé de la base de données.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600">
+                                        <AlertDialogCancel className="bg-muted text-foreground border-border hover:bg-muted">
                                             Annuler
                                         </AlertDialogCancel>
                                         <AlertDialogAction
@@ -181,7 +181,7 @@ export default function EditArticle() {
                     <CardContent className="pt-6">
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label htmlFor="title" className="block text-sm font-medium text-gray-200 mb-2">
+                                <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
                                     Titre *
                                 </label>
                                 <Input
@@ -191,28 +191,28 @@ export default function EditArticle() {
                                     required
                                     value={formData.title}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Entrez le titre de l'article"
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="type" className="block text-sm font-medium text-gray-200 mb-2">
+                                <label htmlFor="type" className="block text-sm font-medium text-foreground mb-2">
                                     Type d&apos;information *
                                 </label>
                                 <Select
                                     value={formData.type}
                                     onValueChange={handleTypeChange}
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400">
+                                    <SelectTrigger className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground">
                                         <SelectValue placeholder="Sélectionnez le type" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectContent className="bg-card border-border">
                                         {Object.entries(newsTypeLabels).map(([value, label]) => (
                                             <SelectItem
                                                 key={value}
                                                 value={value}
-                                                className="text-gray-100 focus:bg-gray-700 focus:text-gray-100"
+                                                className="text-foreground focus:bg-muted focus:text-foreground"
                                             >
                                                 {label}
                                             </SelectItem>
@@ -222,7 +222,7 @@ export default function EditArticle() {
                             </div>
 
                             <div>
-                                <label htmlFor="content" className="block text-sm font-medium text-gray-200 mb-2">
+                                <label htmlFor="content" className="block text-sm font-medium text-foreground mb-2">
                                     Contenu *
                                 </label>
                                 <Textarea
@@ -231,7 +231,7 @@ export default function EditArticle() {
                                     required
                                     value={formData.content}
                                     onChange={handleChange}
-                                    className="bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400 min-h-[200px]"
+                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground min-h-[200px]"
                                     placeholder="Entrez le contenu de l'article"
                                 />
                             </div>
@@ -246,14 +246,14 @@ export default function EditArticle() {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                    className="bg-muted text-foreground border-border hover:bg-muted"
                                     onClick={() => router.push('/admin/news')}
                                 >
                                     Annuler
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="bg-gray-600 text-gray-200 border-gray-500 hover:bg-gray-500"
+                                    className="bg-muted text-foreground border-border hover:bg-muted"
                                 >
                                     Mettre à jour
                                 </Button>

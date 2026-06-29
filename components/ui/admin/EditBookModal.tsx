@@ -43,10 +43,10 @@ export function EditBookModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700 [&>button>svg]:text-white">
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
 
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100">Modifier le livre</DialogTitle>
+                    <DialogTitle className="text-foreground">Modifier le livre</DialogTitle>
                 </DialogHeader>
                 <div className="overflow-y-auto px-1">
                     <EditBookFormBackend

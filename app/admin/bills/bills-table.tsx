@@ -187,14 +187,14 @@ export default function BillsTable({
     const visiblePages = getVisiblePages();
 
     return (
-        <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="border-b border-gray-800 pb-4">
+        <Card className="bg-card border-border">
+            <CardHeader className="border-b border-border pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <CardTitle className="text-2xl font-bold text-gray-100">
+                        <CardTitle className="text-2xl font-bold text-foreground">
                             Factures
                         </CardTitle>
-                        <CardDescription className="text-gray-400 mt-1">
+                        <CardDescription className="text-muted-foreground mt-1">
                             {initialTotalBills} facture{initialTotalBills > 1 ? 's' : ''} au total
                         </CardDescription>
                     </div>
@@ -214,18 +214,18 @@ export default function BillsTable({
                     {!hideSearch && (
                         <div className="flex-1 flex gap-2">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                                 <Input
                                     placeholder="Rechercher par auditeur..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    className="pl-10 bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
+                                    className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
                                 />
                                 {searchTerm && (
                                     <button
                                         onClick={handleClearSearch}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                     >
                                         <X className="h-4 w-4" />
                                     </button>
@@ -247,24 +247,24 @@ export default function BillsTable({
                             onValueChange={handleStatusFilter}
                             disabled={showLateOnly}
                         >
-                            <SelectTrigger className="w-full sm:w-[200px] bg-gray-800 border-gray-700 text-gray-200 disabled:opacity-50">
+                            <SelectTrigger className="w-full sm:w-[200px] bg-card border-border text-foreground disabled:opacity-50">
                                 <SelectValue placeholder="Filtrer par état" />
                             </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value="all" className="text-gray-200">Tous les états</SelectItem>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Tous les états</SelectItem>
                                 {availableStatuses.map((status) => (
-                                    <SelectItem key={status} value={status} className="text-gray-200">
+                                    <SelectItem key={status} value={status} className="text-foreground">
                                         {BILLING_STATUS_LABELS[status]}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
 
-                        <label className="flex items-center gap-2 text-gray-300 text-sm cursor-pointer whitespace-nowrap">
+                        <label className="flex items-center gap-2 text-foreground text-sm cursor-pointer whitespace-nowrap">
                             <Checkbox
                                 checked={showLateOnly}
                                 onCheckedChange={(checked) => handleLateFilter(!!checked)}
-                                className="border-gray-600"
+                                className="border-border"
                             />
                             Factures en retard
                         </label>
@@ -274,10 +274,10 @@ export default function BillsTable({
                 {/* Loading Overlay */}
                 {isPending && (
                     <div className="relative">
-                        <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center z-10 rounded-lg">
+                        <div className="absolute inset-0 bg-card/50 flex items-center justify-center z-10 rounded-lg">
                             <div className="flex flex-col items-center gap-3">
                                 <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                <p className="text-sm text-gray-300">Chargement...</p>
+                                <p className="text-sm text-foreground">Chargement...</p>
                             </div>
                         </div>
                     </div>
@@ -287,21 +287,21 @@ export default function BillsTable({
                 <div className="relative">
                     {initialBills.length === 0 ? (
                         <div className="text-center py-12">
-                            <p className="text-gray-400 text-lg">Aucune facture trouvée</p>
+                            <p className="text-muted-foreground text-lg">Aucune facture trouvée</p>
                         </div>
                     ) : (
-                        <div className={`border border-gray-800 rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
+                        <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-gray-800 border-b border-gray-700 hover:bg-gray-800">
-                                            <TableHead className="text-gray-200 font-medium">ID</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Auditeur</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Date de création</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Date d&apos;émission</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Date de paiement</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">Montant</TableHead>
-                                            <TableHead className="text-gray-200 font-medium">État</TableHead>
+                                        <TableRow className="bg-card border-b border-border hover:bg-muted">
+                                            <TableHead className="text-foreground font-medium">ID</TableHead>
+                                            <TableHead className="text-foreground font-medium">Auditeur</TableHead>
+                                            <TableHead className="text-foreground font-medium">Date de création</TableHead>
+                                            <TableHead className="text-foreground font-medium">Date d&apos;émission</TableHead>
+                                            <TableHead className="text-foreground font-medium">Date de paiement</TableHead>
+                                            <TableHead className="text-foreground font-medium">Montant</TableHead>
+                                            <TableHead className="text-foreground font-medium">État</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -311,31 +311,31 @@ export default function BillsTable({
                                                 <TableRow
                                                     key={bill.id}
                                                     onClick={() => setViewBillId(bill.id)}
-                                                    className={`border-b border-gray-700 cursor-pointer ${
+                                                    className={`border-b border-border cursor-pointer ${
                                                         late
                                                             ? 'bg-red-950/40 hover:bg-red-950/60'
-                                                            : 'hover:bg-gray-750'
+                                                            : 'hover:bg-muted'
                                                     }`}
                                                 >
-                                                    <TableCell className="font-medium text-gray-200">
+                                                    <TableCell className="font-medium text-foreground">
                                                         #{bill.id}
                                                     </TableCell>
-                                                    <TableCell className="text-gray-200">
+                                                    <TableCell className="text-foreground">
                                                         <div>
                                                             <div className="font-medium">{bill.client.name || 'N/A'}</div>
-                                                            <div className="text-sm text-gray-400">{bill.client.email}</div>
+                                                            <div className="text-sm text-muted-foreground">{bill.client.email}</div>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-gray-200">
+                                                    <TableCell className="text-foreground">
                                                         {formatDate(bill.creationDate)}
                                                     </TableCell>
-                                                    <TableCell className="text-gray-200">
+                                                    <TableCell className="text-foreground">
                                                         {formatDate(bill.issueDate)}
                                                     </TableCell>
-                                                    <TableCell className="text-gray-200">
+                                                    <TableCell className="text-foreground">
                                                         {formatDate(bill.paymentDate)}
                                                     </TableCell>
-                                                    <TableCell className="text-gray-200 font-semibold">
+                                                    <TableCell className="text-foreground font-semibold">
                                                         {formatCurrency(bill.invoiceAmount)}
                                                     </TableCell>
                                                     <TableCell>
@@ -358,10 +358,10 @@ export default function BillsTable({
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                    <div className={`flex justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className={`flex flex-wrap justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(1)}
                             disabled={currentPage === 1 || isPending}
                         >
@@ -369,7 +369,7 @@ export default function BillsTable({
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1 || isPending}
                         >
@@ -383,19 +383,19 @@ export default function BillsTable({
                                     size="sm"
                                     className={currentPage === page
                                         ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                        : 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'}
+                                        : 'bg-card text-foreground border-border hover:bg-muted'}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}
                                 >
                                     {page}
                                 </Button>
                             ) : (
-                                <span key={index} className="text-gray-400 px-2">{page}</span>
+                                <span key={index} className="text-muted-foreground px-2">{page}</span>
                             )
                         )}
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages || isPending}
                         >
@@ -403,7 +403,7 @@ export default function BillsTable({
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                            className="bg-card text-foreground border-border hover:bg-muted"
                             onClick={() => handlePageChange(totalPages)}
                             disabled={currentPage === totalPages || isPending}
                         >
@@ -413,7 +413,7 @@ export default function BillsTable({
                 )}
 
                 {totalPages > 1 && (
-                    <p className="text-center text-sm text-gray-400 mt-2">
+                    <p className="text-center text-sm text-muted-foreground mt-2">
                         Page {currentPage} sur {totalPages}
                     </p>
                 )}
@@ -421,9 +421,9 @@ export default function BillsTable({
 
             {/* Add Bill Dialog */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-100">Créer une nouvelle facture</DialogTitle>
+                        <DialogTitle className="text-foreground">Créer une nouvelle facture</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
                         <AddBillFormBackend onSuccess={handleBillAdded} initialClient={presetClient} />
