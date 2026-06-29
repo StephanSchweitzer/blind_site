@@ -254,7 +254,7 @@ export default function AddBook() {
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={open}
-                                            className="w-full justify-between bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
+                                            className="w-full justify-between bg-field border-border text-foreground hover:bg-muted hover:text-foreground"
                                         >
                                             Sélectionner les genres associés...
                                         </Button>

@@ -25,11 +25,11 @@ const TYPE_LABEL: Record<string, string> = {
 
 const TYPE_TINT: Record<string, string> = {
     CREATED: 'bg-muted text-foreground',
-    ISSUED: 'bg-amber-900/60 text-amber-200',
-    REOPENED: 'bg-rose-900/60 text-rose-200',
-    PAID: 'bg-emerald-900/60 text-emerald-200',
-    SETTLED: 'bg-blue-900/60 text-blue-200',
-    AMOUNT_CHANGED: 'bg-violet-900/60 text-violet-200',
+    ISSUED: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200',
+    REOPENED: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200',
+    PAID: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200',
+    SETTLED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200',
+    AMOUNT_CHANGED: 'bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200',
     ORDER_ATTACHED: 'bg-muted text-foreground',
     ORDER_DETACHED: 'bg-muted text-foreground',
 };

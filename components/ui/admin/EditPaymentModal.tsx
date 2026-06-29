@@ -143,7 +143,7 @@ export function EditPaymentModal({
                 )}
 
                 {error && !isLoading && (
-                    <div className="px-3 py-4 bg-red-900/20 border border-red-800 rounded-md text-red-200 text-sm">
+                    <div className="px-3 py-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
                         {error}
                     </div>
                 )}
@@ -168,7 +168,7 @@ export function EditPaymentModal({
                                 type="button"
                                 variant="destructive"
                                 onClick={() => { if (paymentId !== null && onRequestDelete) onRequestDelete(paymentId); }}
-                                className="bg-red-700 hover:bg-red-600 text-foreground flex items-center gap-2"
+                                className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
                             >
                                 <Trash2 className="h-4 w-4" />
                                 Supprimer le paiement

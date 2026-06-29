@@ -146,7 +146,7 @@ export default function EditArticle() {
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="bg-red-900/20 text-red-400 border-red-800 hover:bg-red-900/40 hover:text-red-300"
+                                        className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 hover:text-red-800 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/40 dark:hover:text-red-300"
                                         disabled={isDeleting}
                                     >
                                         <Trash2 className="w-4 h-4 mr-2" />

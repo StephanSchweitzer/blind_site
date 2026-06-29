@@ -484,7 +484,7 @@ export function OrderFormBackendBase({
             </CardHeader>
             <CardContent>
                 {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-800">
+                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="text-red-200">{error}</AlertDescription>
                     </Alert>
@@ -502,7 +502,7 @@ export function OrderFormBackendBase({
                                     ref={registerField('aveugleId')}
                                     variant="outline"
                                     role="combobox"
-                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted transition-colors"
+                                    className="w-full justify-between bg-field border-border text-foreground hover:bg-muted transition-colors"
                                 >
                                     {selectedUser ? (
                                         <span className="truncate">
@@ -520,7 +520,7 @@ export function OrderFormBackendBase({
                                         placeholder="Rechercher par nom ou email..."
                                         value={userSearch}
                                         onChange={(e) => setUserSearch(e.target.value)}
-                                        className="bg-card border-border text-foreground"
+                                        className="bg-field border-border text-foreground"
                                     />
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
@@ -556,7 +556,7 @@ export function OrderFormBackendBase({
                                     ref={registerField('catalogueId')}
                                     variant="outline"
                                     role="combobox"
-                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted transition-colors"
+                                    className="w-full justify-between bg-field border-border text-foreground hover:bg-muted transition-colors"
                                 >
                                     {selectedBook ? (
                                         <span className="truncate">
@@ -574,7 +574,7 @@ export function OrderFormBackendBase({
                                         placeholder="Rechercher par titre ou auteur..."
                                         value={bookSearch}
                                         onChange={(e) => setBookSearch(e.target.value)}
-                                        className="bg-card border-border text-foreground"
+                                        className="bg-field border-border text-foreground"
                                     />
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
@@ -608,7 +608,7 @@ export function OrderFormBackendBase({
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
+                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {formData.requestReceivedDate ? (
@@ -638,7 +638,7 @@ export function OrderFormBackendBase({
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
+                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {formData.closureDate ? (
@@ -667,7 +667,7 @@ export function OrderFormBackendBase({
                         </h3>
                         <div className="space-y-4">
                             {audioAlreadyExists && (
-                                <div className="bg-amber-900/30 border border-amber-700 text-amber-200 p-3 rounded-lg text-sm">
+                                <div className="bg-amber-50 border border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200 p-3 rounded-lg text-sm">
                                     Un fichier audio existe déjà pour ce livre. La case
                                     « Duplication » a été cochée automatiquement — décochez-la
                                     s&apos;il s&apos;agit d&apos;une réécoute / nouvel enregistrement.
@@ -679,7 +679,7 @@ export function OrderFormBackendBase({
                                         id="isDuplication"
                                         checked={formData.isDuplication}
                                         onCheckedChange={handleDuplicationChange}
-                                        className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                        className="border-2 border-muted-foreground/40 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
                                     />
                                     <label htmlFor="isDuplication" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
                                         Duplication
@@ -693,21 +693,21 @@ export function OrderFormBackendBase({
                                         id="lentPhysicalBook"
                                         checked={formData.lentPhysicalBook}
                                         onCheckedChange={handleRecordingChange}
-                                        className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                        className="border-2 border-muted-foreground/40 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
                                     />
                                     <label htmlFor="lentPhysicalBook" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
                                         Enregistrement nécessaire
                                     </label>
                                 </div>
                                 {audioAlreadyExists && formData.lentPhysicalBook && (
-                                    <p className="mt-2 ml-9 text-sm text-amber-400">
+                                    <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
                                         Attention : un enregistrement audio existe déjà pour cet ouvrage.
                                         Vérifiez qu&apos;un nouvel enregistrement est réellement nécessaire
                                         avant de poursuivre — il s&apos;agit peut-être plutôt d&apos;une duplication.
                                     </p>
                                 )}
                                 {hasRecordingDup && (
-                                    <p className="mt-2 ml-9 text-sm text-amber-400">
+                                    <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
                                         Il existe déjà {recordingDup!.activeRecordingCount === 1
                                             ? 'une demande d\u2019enregistrement active'
                                             : `${recordingDup!.activeRecordingCount} demandes d\u2019enregistrement actives`}{' '}
@@ -730,7 +730,7 @@ export function OrderFormBackendBase({
                             value={formData.statusId?.toString() || ''}
                             onValueChange={(value) => setFormData({ ...formData, statusId: parseInt(value) })}
                         >
-                            <SelectTrigger ref={registerField('statusId')} className="bg-card border-border text-foreground hover:bg-muted transition-colors">
+                            <SelectTrigger ref={registerField('statusId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
@@ -758,7 +758,7 @@ export function OrderFormBackendBase({
                             value={formData.mediaFormatId?.toString() || ''}
                             onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}
                         >
-                            <SelectTrigger ref={registerField('mediaFormatId')} className="bg-card border-border text-foreground hover:bg-muted transition-colors">
+                            <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue placeholder="Sélectionner un format" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
@@ -786,7 +786,7 @@ export function OrderFormBackendBase({
                             value={formData.deliveryMethod || ''}
                             onValueChange={(value) => setFormData({ ...formData, deliveryMethod: value as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE'})}
                         >
-                            <SelectTrigger ref={registerField('deliveryMethod')} className="bg-card border-border text-foreground hover:bg-muted transition-colors">
+                            <SelectTrigger ref={registerField('deliveryMethod')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue placeholder="Sélectionner une méthode" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
@@ -827,7 +827,7 @@ export function OrderFormBackendBase({
                                 value={formData.billingStatus}
                                 onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
                             >
-                                <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted transition-colors">
+                                <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -928,7 +928,7 @@ export function OrderFormBackendBase({
                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">€</span>
                         </div>
                         {costLocked && (
-                            <p className="text-xs text-amber-400">
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
                                 Coût verrouillé : la facture #{initialBill?.id} est {initialBill?.state === 'PAID' ? 'payée' : 'soldée'}. Rouvrez-la pour le modifier.
                             </p>
                         )}
@@ -969,7 +969,7 @@ export function OrderFormBackendBase({
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-muted hover:bg-muted text-foreground border-border"
+                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
@@ -980,7 +980,7 @@ export function OrderFormBackendBase({
                                 variant="destructive"
                                 disabled={isLoading}
                                 onClick={handleDeleteClick}
-                                className="w-full bg-red-700 hover:bg-red-600 text-foreground border-red-500"
+                                className="w-full bg-red-600 hover:bg-red-700 text-white border-red-600 dark:border-red-500"
                             >
                                 Supprimer la demande
                             </Button>
@@ -1042,7 +1042,7 @@ function BookLinePicker({ selected, onSelect }: { selected: Book | null; onSelec
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button type="button" variant="outline" role="combobox"
-                        className="w-full justify-between bg-card border-border text-foreground hover:bg-muted">
+                        className="w-full justify-between bg-field border-border text-foreground hover:bg-muted">
                     {selected
                         ? <span className="truncate">{clip(`${selected.title} — ${selected.author}`)}</span>
                         : <span className="text-muted-foreground">Rechercher un livre existant ...</span>}
@@ -1053,7 +1053,7 @@ function BookLinePicker({ selected, onSelect }: { selected: Book | null; onSelec
                 <div className="p-2">
                     <Input placeholder="Rechercher par titre ou auteur..." value={search}
                            onChange={(e) => setSearch(e.target.value)}
-                           className="bg-card border-border text-foreground" />
+                           className="bg-field border-border text-foreground" />
                 </div>
                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                     {loading && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
@@ -1097,7 +1097,7 @@ function CreateBookDialog({ onCreated }: { onCreated: (book: Book) => void }) {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button type="button" variant="outline"
-                        className="bg-card border-border text-foreground hover:bg-muted whitespace-nowrap">
+                        className="bg-field border-border text-foreground hover:bg-muted whitespace-nowrap">
                     <Plus className="h-4 w-4 mr-2" /> Nouveau livre
                 </Button>
             </DialogTrigger>
@@ -1323,7 +1323,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             </CardHeader>
             <CardContent>
                 {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-800">
+                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="text-red-200">{error}</AlertDescription>
                     </Alert>
@@ -1338,7 +1338,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button ref={registerField('aveugleId')} type="button" variant="outline" role="combobox"
-                                        className="w-full justify-between bg-card border-border text-foreground hover:bg-muted transition-colors">
+                                        className="w-full justify-between bg-field border-border text-foreground hover:bg-muted transition-colors">
                                     {selectedUser
                                         ? <span className="truncate">{clip(getUserDisplayName(selectedUser))}</span>
                                         : <span className="text-muted-foreground">Rechercher un auditeur ...</span>}
@@ -1349,7 +1349,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 <div className="p-2">
                                     <Input placeholder="Rechercher par nom ou email..." value={userSearch}
                                            onChange={(e) => setUserSearch(e.target.value)}
-                                           className="bg-card border-border text-foreground" />
+                                           className="bg-field border-border text-foreground" />
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                     {isSearchingUsers && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
@@ -1376,7 +1376,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button type="button" variant="outline"
-                                            className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted">
+                                            className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted">
                                         <Calendar className="mr-2 h-4 w-4" />
                                         {format(requestReceivedDate, 'PPP', { locale: fr })}
                                     </Button>
@@ -1390,7 +1390,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Méthode de livraison <span className="text-red-500">*</span></label>
                             <Select value={deliveryMethod || ''} onValueChange={(v) => setDeliveryMethod(v as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE')}>
-                                <SelectTrigger ref={registerField('deliveryMethod')} className="bg-card border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectTrigger ref={registerField('deliveryMethod')} className="bg-field border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
                                     <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
@@ -1401,7 +1401,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Format média par défaut <span className="text-red-500">*</span></label>
                             <Select value={mediaFormatId?.toString() || ''} onValueChange={(v) => setMediaFormatId(parseInt(v))}>
-                                <SelectTrigger ref={registerField('mediaFormatId')} className="bg-card border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                                 <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
                                     {mediaFormats.map((f) => (
                                         <SelectItem key={f.id} value={f.id.toString()} className="text-foreground">{f.name}</SelectItem>
@@ -1412,7 +1412,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">État de facturation</label>
                             <Select value={billingStatus} onValueChange={(v) => setBillingStatus(v as 'UNBILLED' | 'BILLED' | 'UNBILLABLE')}>
-                                <SelectTrigger className="bg-card border-border text-foreground"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="bg-field border-border text-foreground"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="UNBILLED" className="text-foreground">Non facturé</SelectItem>
                                     <SelectItem value="UNBILLABLE" className="text-foreground">Non facturable</SelectItem>
@@ -1462,18 +1462,18 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 {/* Type — per book */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION' })}
-                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-700/30 border-green-600 text-green-200' : 'bg-card border-border text-foreground hover:bg-muted'}`}>
+                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-100 border-green-400 text-green-900 dark:bg-green-700/30 dark:border-green-600 dark:text-green-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Duplication
                                     </button>
                                     <button type="button" onClick={() => updateLine(line.key, { type: 'ENREGISTREMENT' })}
-                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-700/30 border-amber-600 text-amber-200' : 'bg-card border-border text-foreground hover:bg-muted'}`}>
+                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-100 border-amber-400 text-amber-900 dark:bg-amber-700/30 dark:border-amber-600 dark:text-amber-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Enregistrement nécessaire
                                     </button>
                                 </div>
 
                                 {/* #2 — audio already exists for this book */}
                                 {line.type === 'ENREGISTREMENT' && line.book?.audio_filepath && (
-                                    <p className="text-sm text-amber-400">
+                                    <p className="text-sm text-amber-700 dark:text-amber-400">
                                         Attention : un enregistrement audio existe déjà pour cet ouvrage.
                                         Vérifiez qu&apos;un nouvel enregistrement est réellement nécessaire — il
                                         s&apos;agit peut-être plutôt d&apos;une duplication.
@@ -1482,7 +1482,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 {/* Active recording demande already exists for this book */}
                                 {line.type === 'ENREGISTREMENT' && line.book &&
                                     (getRecordingFor(line.book.id)?.activeRecordingCount ?? 0) > 0 && (
-                                    <p className="text-sm text-amber-400">
+                                    <p className="text-sm text-amber-700 dark:text-amber-400">
                                         Il existe déjà une demande d&apos;enregistrement active pour cet
                                         ouvrage{getRecordingFor(line.book.id)!.orders[0]?.aveugle?.name
                                             ? ` (ex. ${getRecordingFor(line.book.id)!.orders[0].aveugle!.name})`
@@ -1519,7 +1519,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         ))}
 
                         <Button type="button" variant="outline" onClick={addLine}
-                                className="w-full bg-card border-border text-foreground hover:bg-muted">
+                                className="w-full bg-field border-border text-foreground hover:bg-muted">
                             <Plus className="h-4 w-4 mr-2" /> Ajouter un ouvrage
                         </Button>
                     </div>
@@ -1539,7 +1539,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                     </div>
 
                     <Button type="submit" disabled={isLoading}
-                            className="w-full bg-muted hover:bg-muted text-foreground border-border">
+                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent">
                         {isLoading ? 'Création en cours...' : `Créer ${lines.length} ${lines.length === 1 ? 'demande' : 'demandes'}`}
                     </Button>
                 </form>
@@ -1670,7 +1670,7 @@ export function EditOrderFormBackend({
             <Dialog open={!!notice} onOpenChange={(open) => { if (!open) acknowledgeNotice(); }}>
                 <DialogContent className="bg-card border-border max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="text-amber-300">
+                        <DialogTitle className="text-amber-700 dark:text-amber-300">
                             {notice?.kind === 'COST' ? 'Coût modifié — facture à régénérer' : 'Éléments visibles modifiés'}
                         </DialogTitle>
                     </DialogHeader>

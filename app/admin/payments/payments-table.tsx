@@ -177,7 +177,7 @@ export default function PaymentsTable({
 
                     <div className="flex flex-wrap items-center gap-3">
                         <Select value={currentType ?? 'all'} onValueChange={handleTypeFilter}>
-                            <SelectTrigger className="w-full sm:w-[170px] bg-card border-border text-foreground">
+                            <SelectTrigger className="w-full sm:w-[170px] bg-field border-border text-foreground">
                                 <SelectValue placeholder="Filtrer par type" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
@@ -191,7 +191,7 @@ export default function PaymentsTable({
                         </Select>
 
                         <Select value={currentMethod ?? 'all'} onValueChange={handleMethodFilter}>
-                            <SelectTrigger className="w-full sm:w-[170px] bg-card border-border text-foreground">
+                            <SelectTrigger className="w-full sm:w-[170px] bg-field border-border text-foreground">
                                 <SelectValue placeholder="Filtrer par méthode" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">

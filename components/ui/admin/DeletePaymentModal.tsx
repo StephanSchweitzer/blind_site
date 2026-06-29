@@ -99,7 +99,7 @@ export function DeletePaymentModal({
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                         disabled={isDeleting}
-                        className="bg-card border-border text-foreground hover:bg-muted"
+                        className="bg-field border-border text-foreground hover:bg-muted"
                     >
                         Annuler
                     </Button>
@@ -107,7 +107,7 @@ export function DeletePaymentModal({
                         type="button"
                         onClick={handleDelete}
                         disabled={isDeleting}
-                        className="bg-red-700 hover:bg-red-600 text-foreground flex items-center gap-2"
+                        className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
                     >
                         {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
                         Supprimer

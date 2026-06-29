@@ -150,7 +150,7 @@ function DatePicker({
                 <PopoverTrigger asChild>
                     <Button
                         variant="outline"
-                        className="w-full justify-start text-left font-normal bg-card border-border text-foreground hover:bg-muted"
+                        className="w-full justify-start text-left font-normal bg-field border-border text-foreground hover:bg-muted"
                     >
                         <Calendar className="mr-2 h-4 w-4" />
                         {date ? format(date, 'PPP', { locale: fr }) : <span className="text-muted-foreground">{placeholder}</span>}
@@ -633,7 +633,7 @@ export function AssignmentFormBackendBase({
             </CardHeader>
             <CardContent className="p-6">
                 {error && (
-                    <Alert variant="destructive" className="mb-6 bg-red-900/20 border-red-900 text-red-400">
+                    <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-900 dark:text-red-400">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
@@ -696,7 +696,7 @@ export function AssignmentFormBackendBase({
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted"
+                                                    className="w-full justify-between bg-field border-border text-foreground hover:bg-muted"
                                                 >
                                                     {selectedReader ? (
                                                         <span>{getReaderDisplayName(selectedReader)}</span>
@@ -712,7 +712,7 @@ export function AssignmentFormBackendBase({
                                                         placeholder="Rechercher un lecteur..."
                                                         value={userSearch}
                                                         onChange={(e) => setUserSearch(e.target.value)}
-                                                        className="bg-card border-border text-foreground"
+                                                        className="bg-field border-border text-foreground"
                                                     />
                                                 </div>
                                                 <div
@@ -754,7 +754,7 @@ export function AssignmentFormBackendBase({
                                                 variant="outline"
                                                 onClick={handleReassignReader}
                                                 disabled={isReassigningReader}
-                                                className="w-full bg-blue-700 hover:bg-blue-600 text-foreground border-blue-500 disabled:opacity-50"
+                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white border-blue-600 dark:border-blue-500 disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
                                                 {isReassigningReader ? 'Attribution...' : 'Attribuer ce lecteur'}
@@ -774,7 +774,7 @@ export function AssignmentFormBackendBase({
                                                     <Button
                                                         type="button"
                                                         variant="outline"
-                                                        className="flex-1 justify-between bg-card border-border text-foreground hover:bg-muted"
+                                                        className="flex-1 justify-between bg-field border-border text-foreground hover:bg-muted"
                                                     >
                                                         {selectedReader && selectedReader.id !== currentReader?.id ? (
                                                             <span>{getReaderDisplayName(selectedReader)}</span>
@@ -790,7 +790,7 @@ export function AssignmentFormBackendBase({
                                                             placeholder="Rechercher un lecteur..."
                                                             value={userSearch}
                                                             onChange={(e) => setUserSearch(e.target.value)}
-                                                            className="bg-card border-border text-foreground"
+                                                            className="bg-field border-border text-foreground"
                                                         />
                                                     </div>
                                                     <div
@@ -832,7 +832,7 @@ export function AssignmentFormBackendBase({
                                                 variant="outline"
                                                 onClick={handleReassignReader}
                                                 disabled={isReassigningReader || !selectedReaderId || selectedReaderId === currentReader?.id}
-                                                className="bg-blue-700 hover:bg-blue-600 text-foreground border-blue-500 disabled:opacity-50"
+                                                className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600 dark:border-blue-500 disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
                                                 {isReassigningReader ? 'Réattribution...' : 'Réattribuer'}
@@ -843,7 +843,7 @@ export function AssignmentFormBackendBase({
                                             placeholder="Raison de la réattribution (optionnel)"
                                             value={reassignNotes}
                                             onChange={(e) => setReassignNotes(e.target.value)}
-                                            className="bg-card border-border text-foreground"
+                                            className="bg-field border-border text-foreground"
                                         />
                                     </div>
                                 )}
@@ -855,7 +855,7 @@ export function AssignmentFormBackendBase({
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        className="w-full justify-between bg-card border-border text-foreground hover:bg-muted"
+                                        className="w-full justify-between bg-field border-border text-foreground hover:bg-muted"
                                     >
                                         {selectedReader ? (
                                             <span>{getReaderDisplayName(selectedReader)}</span>
@@ -871,7 +871,7 @@ export function AssignmentFormBackendBase({
                                             placeholder="Rechercher un lecteur..."
                                             value={userSearch}
                                             onChange={(e) => setUserSearch(e.target.value)}
-                                            className="bg-card border-border text-foreground"
+                                            className="bg-field border-border text-foreground"
                                         />
                                     </div>
                                     <div
@@ -918,7 +918,7 @@ export function AssignmentFormBackendBase({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted"
+                                    className="w-full justify-between bg-field border-border text-foreground hover:bg-muted"
                                 >
                                     {selectedOrder ? (
                                         <div className="flex items-center gap-2">
@@ -943,7 +943,7 @@ export function AssignmentFormBackendBase({
                                         placeholder="Rechercher une demande..."
                                         value={orderSearch}
                                         onChange={(e) => setOrderSearch(e.target.value)}
-                                        className="bg-card border-border text-foreground"
+                                        className="bg-field border-border text-foreground"
                                     />
                                 </div>
                                 <div
@@ -999,12 +999,12 @@ export function AssignmentFormBackendBase({
                                                                 </div>
                                                             )}
                                                             {blockReason === 'attributed' && (
-                                                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-400">
+                                                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                                                                     Une attribution existe déjà
                                                                 </div>
                                                             )}
                                                             {blockReason === 'duplication' && (
-                                                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-400">
+                                                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                                                                     Duplication — aucune attribution nécessaire
                                                                 </div>
                                                             )}
@@ -1093,7 +1093,7 @@ export function AssignmentFormBackendBase({
                                 setFormData({ ...formData, statusId: parseInt(value) })
                             }
                         >
-                            <SelectTrigger ref={registerField('statusId')} className="bg-card border-border text-foreground">
+                            <SelectTrigger ref={registerField('statusId')} className="bg-field border-border text-foreground">
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
@@ -1126,7 +1126,7 @@ export function AssignmentFormBackendBase({
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-muted hover:bg-muted text-foreground border-border"
+                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
@@ -1137,7 +1137,7 @@ export function AssignmentFormBackendBase({
                                 variant="destructive"
                                 disabled={isLoading}
                                 onClick={handleDeleteClick}
-                                className="w-full bg-red-700 hover:bg-red-600 text-foreground border-red-500"
+                                className="w-full bg-red-600 hover:bg-red-700 text-white border-red-600 dark:border-red-500"
                             >
                                 Supprimer l&apos;attribution
                             </Button>
@@ -1158,7 +1158,7 @@ export function AssignmentFormBackendBase({
                                 key={history.id}
                                 className={`p-4 rounded ${
                                     index === 0
-                                        ? 'bg-blue-900/20 border border-blue-800'
+                                        ? 'bg-blue-50 border border-blue-300 dark:bg-blue-900/20 dark:border-blue-800'
                                         : 'bg-card border border-border'
                                 }`}
                             >
@@ -1170,7 +1170,7 @@ export function AssignmentFormBackendBase({
                                                 {getReaderDisplayName(history.reader)}
                                             </span>
                                             {index === 0 && (
-                                                <span className="text-xs bg-blue-700 text-blue-100 px-2 py-1 rounded">
+                                                <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
                                                     Actuel
                                                 </span>
                                             )}

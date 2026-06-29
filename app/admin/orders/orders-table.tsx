@@ -418,7 +418,7 @@ export default function OrdersTable({
                                 value={currentStatusId}
                                 onValueChange={(value) => handleFilterChange('statusId', value)}
                             >
-                                <SelectTrigger className="bg-card border-border text-foreground">
+                                <SelectTrigger className="bg-field border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -442,7 +442,7 @@ export default function OrdersTable({
                                 value={currentBillingStatus}
                                 onValueChange={(value) => handleFilterChange('billingStatus', value)}
                             >
-                                <SelectTrigger className="bg-card border-border text-foreground">
+                                <SelectTrigger className="bg-field border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -460,7 +460,7 @@ export default function OrdersTable({
                                 value={currentIsDuplication}
                                 onValueChange={(value) => handleFilterChange('isDuplication', value)}
                             >
-                                <SelectTrigger className="bg-card border-border text-foreground">
+                                <SelectTrigger className="bg-field border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -477,7 +477,7 @@ export default function OrdersTable({
                                 value={currentRetard}
                                 onValueChange={(value) => handleFilterChange('retard', value)}
                             >
-                                <SelectTrigger className="bg-card border-border text-foreground">
+                                <SelectTrigger className="bg-field border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">

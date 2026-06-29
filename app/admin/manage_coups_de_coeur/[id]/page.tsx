@@ -213,7 +213,7 @@ export default function EditCoupDeCoeurPage() {
                     <Button
                         variant="destructive"
                         onClick={handleDelete}
-                        className="bg-red-900 hover:bg-red-800 text-foreground"
+                        className="bg-red-600 hover:bg-red-700 text-white"
                     >
                         Supprimer
                     </Button>
@@ -270,7 +270,7 @@ export default function EditCoupDeCoeurPage() {
                                             type="button"
                                             onClick={() => setIsRerecording(true)}
                                             variant="outline"
-                                            className="w-full bg-card border-border text-foreground hover:bg-muted"
+                                            className="w-full bg-field border-border text-foreground hover:bg-muted"
                                         >
                                             Nouvel Enregistrement
                                         </Button>
@@ -356,7 +356,7 @@ export default function EditCoupDeCoeurPage() {
                                     router.push('/admin/manage_coups_de_coeur');
                                     router.refresh();
                                 }}
-                                className="bg-card border-border text-foreground hover:bg-muted"
+                                className="bg-field border-border text-foreground hover:bg-muted"
                             >
                                 Annuler
                             </Button>

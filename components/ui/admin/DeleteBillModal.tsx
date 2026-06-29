@@ -77,7 +77,7 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                         disabled={isDeleting}
-                        className="bg-card border-border text-foreground hover:bg-muted"
+                        className="bg-field border-border text-foreground hover:bg-muted"
                     >
                         Annuler
                     </Button>
@@ -86,7 +86,7 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
                         variant="destructive"
                         onClick={handleDelete}
                         disabled={isDeleting}
-                        className="bg-red-700 hover:bg-red-600 text-foreground"
+                        className="bg-red-600 hover:bg-red-700 text-white"
                     >
                         {isDeleting ? (
                             <span className="flex items-center gap-2">

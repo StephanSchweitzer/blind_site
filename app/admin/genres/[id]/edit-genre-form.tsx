@@ -159,7 +159,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                                     type="button"
                                     variant="destructive"
                                     disabled={isLoading || isDeleting}
-                                    className="ml-auto bg-red-900 hover:bg-red-800 text-red-200"
+                                    className="ml-auto bg-red-600 hover:bg-red-700 text-white"
                                 >
                                     {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     {isDeleting ? 'Suppression...' : 'Supprimer le genre'}
@@ -180,7 +180,7 @@ export default function EditGenreForm({ genre }: EditGenreFormProps) {
                                     </AlertDialogCancel>
                                     <AlertDialogAction
                                         onClick={handleDelete}
-                                        className="bg-red-900 hover:bg-red-800 text-red-200"
+                                        className="bg-red-600 hover:bg-red-700 text-white"
                                     >
                                         Supprimer
                                     </AlertDialogAction>

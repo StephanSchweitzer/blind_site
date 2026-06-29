@@ -219,9 +219,9 @@ export function BillFormBackendBase({
             </CardHeader>
             <CardContent>
                 {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-800">
+                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-red-200">{error}</AlertDescription>
+                        <AlertDescription className="text-red-700 dark:text-red-200">{error}</AlertDescription>
                     </Alert>
                 )}
 
@@ -237,7 +237,7 @@ export function BillFormBackendBase({
                                     ref={registerField('client')}
                                     variant="outline"
                                     role="combobox"
-                                    className="w-full justify-between bg-card border-border text-foreground hover:bg-muted transition-colors"
+                                    className="w-full justify-between bg-field border-border text-foreground hover:bg-muted transition-colors"
                                 >
                                     {selectedClient ? (
                                         <span className="truncate">{selectedClient.name || selectedClient.email}</span>
@@ -253,7 +253,7 @@ export function BillFormBackendBase({
                                         placeholder="Rechercher par nom ou email..."
                                         value={userSearch}
                                         onChange={(e) => setUserSearch(e.target.value)}
-                                        className="bg-card border-border text-foreground"
+                                        className="bg-field border-border text-foreground"
                                     />
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
@@ -320,7 +320,7 @@ export function BillFormBackendBase({
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
                                                 title="Ouvrir la demande dans un nouvel onglet"
-                                                className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
+                                                className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
                                             >
                                                 <ExternalLink className="h-3.5 w-3.5" />
                                             </a>
@@ -335,7 +335,7 @@ export function BillFormBackendBase({
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">État de la facture</label>
                         <Select value={state} onValueChange={(v) => setState(v as BillingStatus)}>
-                            <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted transition-colors">
+                            <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
@@ -361,7 +361,7 @@ export function BillFormBackendBase({
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
+                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {format(creationDate, 'PPP', { locale: fr })}
@@ -386,7 +386,7 @@ export function BillFormBackendBase({
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
+                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {issueDate ? format(issueDate, 'PPP', { locale: fr }) : <span>Sélectionner une date</span>}

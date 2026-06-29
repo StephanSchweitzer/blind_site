@@ -227,9 +227,9 @@ export function BookFormBackendBase({
             <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
-                        <Alert variant="destructive" className="border-red-500 bg-red-900/20">
-                            <AlertCircle className="h-4 w-4 text-red-400" />
-                            <AlertTitle className="text-red-400">Erreur</AlertTitle>
+                        <Alert variant="destructive" className="border-red-300 bg-red-50 dark:border-red-500 dark:bg-red-900/20">
+                            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                            <AlertTitle className="text-red-600 dark:text-red-400">Erreur</AlertTitle>
                             <AlertDescription className="text-foreground mt-1">
                                 {error}
                             </AlertDescription>
@@ -366,7 +366,7 @@ export function BookFormBackendBase({
                                         variant="outline"
                                         role="combobox"
                                         aria-expanded={open}
-                                        className="w-full justify-between bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
+                                        className="w-full justify-between bg-field border-border text-foreground hover:bg-muted hover:text-foreground"
                                     >
                                         <span className="truncate min-w-0">
                                             {formData.genres.length > 0
@@ -489,7 +489,7 @@ export function BookFormBackendBase({
                                 variant="destructive"
                                 disabled={isLoading}
                                 onClick={handleDeleteClick}
-                                className="w-full bg-red-700 hover:bg-red-600 text-foreground border-red-500"
+                                className="w-full bg-red-600 hover:bg-red-700 text-white border-red-600 dark:border-red-500"
                             >
                                 Supprimer le livre
                             </Button>

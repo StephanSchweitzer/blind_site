@@ -200,7 +200,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
-                    className="w-full justify-start bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
+                    className="w-full justify-start bg-field border-border text-foreground hover:bg-muted hover:text-foreground"
                 >
                     <Search className="w-4 h-4 mr-2" />
                     Rechercher sur Google Books

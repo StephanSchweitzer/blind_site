@@ -257,9 +257,9 @@ export default function ProfilePage() {
                                     Membre depuis {userData?.createdAt && new Date(userData.createdAt).toLocaleDateString('fr-FR')}
                                 </p>
                                 <p className="text-muted-foreground">
-                                    Accès: <span className="text-blue-400">{userData?.accessLevel}</span>
+                                    Accès: <span className="text-blue-600 dark:text-blue-400">{userData?.accessLevel}</span>
                                     {' · '}
-                                    Type: <span className="text-blue-400">{userData?.memberType}</span>
+                                    Type: <span className="text-blue-600 dark:text-blue-400">{userData?.memberType}</span>
                                 </p>
                             </div>
                         </div>
@@ -278,7 +278,7 @@ export default function ProfilePage() {
                 {/* Contenu */}
                 <CardContent className="p-8">
                     {error && (
-                        <div className="mb-6 p-4 bg-red-900/40 text-red-200 rounded-md border border-red-700">
+                        <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-md border border-red-200 dark:bg-red-900/40 dark:text-red-200 dark:border-red-700">
                             <p className="flex items-center">
                                 <X className="mr-2 h-5 w-5" />
                                 {error}
@@ -292,22 +292,22 @@ export default function ProfilePage() {
                             title="Livres"
                             count={userData?._count.books || 0}
                             icon="📚"
-                            color="bg-emerald-900/30 text-emerald-200 border-emerald-800"
-                            iconColor="text-emerald-400"
+                            color="bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800"
+                            iconColor="text-emerald-600 dark:text-emerald-400"
                         />
                         <StatCard
                             title="Dernières infos"
                             count={userData?._count.News || 0}
                             icon="📰"
-                            color="bg-amber-900/30 text-amber-200 border-amber-800"
-                            iconColor="text-amber-400"
+                            color="bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800"
+                            iconColor="text-amber-600 dark:text-amber-400"
                         />
                         <StatCard
                             title="Listes de livres"
                             count={userData?._count.CoupsDeCoeur || 0}
                             icon="💖"
-                            color="bg-rose-900/30 text-rose-200 border-rose-800"
-                            iconColor="text-rose-400"
+                            color="bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-900/30 dark:text-rose-200 dark:border-rose-800"
+                            iconColor="text-rose-600 dark:text-rose-400"
                         />
                     </div>
 

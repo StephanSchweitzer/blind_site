@@ -306,7 +306,7 @@ export default function EditionLivre() {
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={open}
-                                            className="w-full justify-between bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
+                                            className="w-full justify-between bg-field border-border text-foreground hover:bg-muted hover:text-foreground"
                                         >
                                             Sélectionner des genres...
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
@@ -418,7 +418,7 @@ export default function EditionLivre() {
                                         type="button"
                                         variant="destructive"
                                             disabled={chargement || suppressionEnCours}
-                                            className="bg-red-900 hover:bg-red-800 text-red-200"
+                                            className="bg-red-600 hover:bg-red-700 text-white"
                                         >
                                             {suppressionEnCours && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                             {suppressionEnCours ? 'Suppression...' : 'Supprimer le livre'}
@@ -442,7 +442,7 @@ export default function EditionLivre() {
                                             </AlertDialogCancel>
                                             <AlertDialogAction
                                                 onClick={gererSuppression}
-                                                className="bg-red-900 hover:bg-red-800 text-red-200"
+                                                className="bg-red-600 hover:bg-red-700 text-white"
                                             >
                                                 Supprimer
                                             </AlertDialogAction>

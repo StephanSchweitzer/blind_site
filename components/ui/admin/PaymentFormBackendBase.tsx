@@ -276,7 +276,7 @@ export function PaymentFormBackendBase({
                 <Button
                     type="button"
                     variant="outline"
-                    className="w-full justify-start text-left bg-card border-border text-foreground hover:bg-muted"
+                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
                 >
                     <Calendar className="mr-2 h-4 w-4" />
                     {value ? format(value, 'PPP', { locale: fr }) : <span className="text-muted-foreground">{placeholder}</span>}
@@ -301,9 +301,9 @@ export function PaymentFormBackendBase({
             </CardHeader>
             <CardContent>
                 {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-800">
+                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-red-200">{error}</AlertDescription>
+                        <AlertDescription className="text-red-700 dark:text-red-200">{error}</AlertDescription>
                     </Alert>
                 )}
 
@@ -314,7 +314,7 @@ export function PaymentFormBackendBase({
                             Type <span className="text-red-500">*</span>
                         </label>
                         <Select value={type} onValueChange={(v) => setType(v as PaymentType)}>
-                            <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted transition-colors">
+                            <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
@@ -350,7 +350,7 @@ export function PaymentFormBackendBase({
                                         type="button"
                                         variant="outline"
                                         role="combobox"
-                                        className="flex-1 justify-between bg-card border-border text-foreground hover:bg-muted transition-colors"
+                                        className="flex-1 justify-between bg-field border-border text-foreground hover:bg-muted transition-colors"
                                     >
                                         {selectedClient ? (
                                             <span className="truncate">{getDisplayName(selectedClient)}</span>
@@ -366,7 +366,7 @@ export function PaymentFormBackendBase({
                                             placeholder="Rechercher par nom ou email..."
                                             value={userSearch}
                                             onChange={(e) => setUserSearch(e.target.value)}
-                                            className="bg-card border-border text-foreground"
+                                            className="bg-field border-border text-foreground"
                                         />
                                     </div>
                                     <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
@@ -421,7 +421,7 @@ export function PaymentFormBackendBase({
                                     value={selectedBillId ? String(selectedBillId) : undefined}
                                     onValueChange={(v) => setSelectedBillId(parseInt(v))}
                                 >
-                                    <SelectTrigger ref={registerField('bill')} className="bg-card border-border text-foreground hover:bg-muted">
+                                    <SelectTrigger ref={registerField('bill')} className="bg-field border-border text-foreground hover:bg-muted">
                                         <SelectValue placeholder="Sélectionner une facture" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-card border-border">
@@ -465,7 +465,7 @@ export function PaymentFormBackendBase({
                             value={paymentMethod || NONE}
                             onValueChange={(v) => setPaymentMethod(v === NONE ? '' : (v as PaymentMethod))}
                         >
-                            <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted">
+                            <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
@@ -494,7 +494,7 @@ export function PaymentFormBackendBase({
                                 value={cotisationYear}
                                 onChange={(e) => setCotisationYear(e.target.value.replace(/\D/g, ''))}
                                 placeholder="2024"
-                                className="bg-card border-border text-foreground"
+                                className="bg-field border-border text-foreground"
                             />
                         </div>
                     )}
@@ -528,7 +528,7 @@ export function PaymentFormBackendBase({
                         <button
                             type="button"
                             onClick={() => setShowAdvanced((v) => !v)}
-                            className="flex items-center gap-1.5 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                            className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
                         >
                             <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
                             Détails comptables
@@ -542,7 +542,7 @@ export function PaymentFormBackendBase({
                                         <Input
                                             value={receiptNumber}
                                             onChange={(e) => setReceiptNumber(e.target.value)}
-                                            className="bg-card border-border text-foreground"
+                                            className="bg-field border-border text-foreground"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -557,7 +557,7 @@ export function PaymentFormBackendBase({
                                         value={comptable || NONE}
                                         onValueChange={(v) => setComptable(v === NONE ? '' : v)}
                                     >
-                                        <SelectTrigger className="bg-card border-border text-foreground hover:bg-muted">
+                                        <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
                                             <SelectValue placeholder="Non renseigné" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border">

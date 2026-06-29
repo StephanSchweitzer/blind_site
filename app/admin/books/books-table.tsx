@@ -542,7 +542,7 @@ export default function BooksTable({
                 </div>
 
                 {error && (
-                    <div className="text-center py-4 bg-red-900/50 text-red-200 rounded-lg border border-red-800 mt-4">
+                    <div className="text-center py-4 bg-red-50 text-red-700 rounded-lg border border-red-200 mt-4 dark:bg-red-900/50 dark:text-red-200 dark:border-red-800">
                         {error}
                     </div>
                 )}

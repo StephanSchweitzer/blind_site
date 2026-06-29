@@ -361,7 +361,7 @@ export function EditBillModal({
                 )}
 
                 {error && !isLoading && (
-                    <div className="px-3 py-4 bg-red-900/20 border border-red-800 rounded-md text-red-200 text-sm">
+                    <div className="px-3 py-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
                         {error}
                     </div>
                 )}
@@ -421,7 +421,7 @@ export function EditBillModal({
                                     <button
                                         onClick={handleSavePayRef}
                                         disabled={isSavingPayRef}
-                                        className="p-1.5 rounded text-green-400 hover:bg-green-900/20 disabled:opacity-50"
+                                        className="p-1.5 rounded text-green-600 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/20 disabled:opacity-50"
                                         title="Enregistrer"
                                     >
                                         {isSavingPayRef ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -487,7 +487,7 @@ export function EditBillModal({
                                 )}
 
                                 {statusError && (
-                                    <div className="text-red-300 text-sm">{statusError}</div>
+                                    <div className="text-red-700 dark:text-red-300 text-sm">{statusError}</div>
                                 )}
 
                                 {pendingState && (
@@ -505,8 +505,8 @@ export function EditBillModal({
 
                         {/* Reopen (finalized bills) */}
                         {(bill.state === BillingStatus.PAID || bill.state === BillingStatus.SOLDE) && (
-                            <div className="space-y-2 p-3 bg-amber-900/15 border border-amber-800/50 rounded-md">
-                                <div className="text-xs text-amber-300/90 uppercase tracking-wide">Facture finalisée</div>
+                            <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/15 dark:border-amber-800/50 rounded-md">
+                                <div className="text-xs text-amber-700 dark:text-amber-300/90 uppercase tracking-wide">Facture finalisée</div>
                                 <p className="text-sm text-foreground">
                                     Pour corriger le coût d&apos;une demande de cette facture, rouvrez-la d&apos;abord. Elle repassera
                                     à « émise » et ses informations de paiement seront archivées dans l&apos;historique.
@@ -514,7 +514,7 @@ export function EditBillModal({
                                 <Button
                                     onClick={handleReopen}
                                     disabled={isReopening}
-                                    className="bg-amber-700 hover:bg-amber-600 text-foreground h-8 text-sm flex items-center gap-1.5"
+                                    className="bg-amber-600 hover:bg-amber-700 text-white h-8 text-sm flex items-center gap-1.5"
                                 >
                                     {isReopening ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                                     Rouvrir la facture
@@ -549,7 +549,7 @@ export function EditBillModal({
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 title="Ouvrir la demande dans un nouvel onglet"
-                                                className="ml-1 p-1 rounded text-muted-foreground hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
+                                                className="ml-1 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
                                             >
                                                 <ExternalLink className="h-3.5 w-3.5" />
                                             </a>
@@ -557,7 +557,7 @@ export function EditBillModal({
                                                 <button
                                                     onClick={() => handleRemoveOrder(o.id)}
                                                     disabled={removingOrderId === o.id}
-                                                    className="ml-1 p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                                                    className="ml-1 p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
                                                     title="Retirer de la facture"
                                                 >
                                                     {removingOrderId === o.id
@@ -580,7 +580,7 @@ export function EditBillModal({
                                             setOrderSearch('');
                                             setOrderPage(1);
                                         }}
-                                        className="flex items-center gap-1.5 text-sm text-indigo-400 hover:text-indigo-300 transition-colors mt-1"
+                                        className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors mt-1"
                                     >
                                         <Plus className="h-4 w-4" />
                                         {showAddPanel ? 'Masquer' : 'Ajouter une demande'}
@@ -619,7 +619,7 @@ export function EditBillModal({
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 title="Ouvrir la demande dans un nouvel onglet"
-                                                                className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-400 hover:bg-blue-900/20 transition-colors"
+                                                                className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
                                                             >
                                                                 <ExternalLink className="h-3.5 w-3.5" />
                                                             </a>
@@ -693,7 +693,7 @@ export function EditBillModal({
                                 type="button"
                                 variant="destructive"
                                 onClick={() => { if (billId !== null && onRequestDelete) onRequestDelete(billId); }}
-                                className="bg-red-700 hover:bg-red-600 text-foreground flex items-center gap-2"
+                                className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
                             >
                                 <Trash2 className="h-4 w-4" />
                                 Supprimer la facture

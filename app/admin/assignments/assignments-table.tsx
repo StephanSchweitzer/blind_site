@@ -384,7 +384,7 @@ export default function AssignmentsTable({
                                 onValueChange={handleStatusFilter}
                                 disabled={isPending}
                             >
-                                <SelectTrigger className="bg-card border-border text-foreground">
+                                <SelectTrigger className="bg-field border-border text-foreground">
                                     <SelectValue placeholder="Filtrer par statut" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
