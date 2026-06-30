@@ -75,11 +75,11 @@ const BackendNavbar: React.FC = () => {
                     <div className="hidden lg:flex items-center gap-1 flex-1">
                         {navGroups.map((group) => (
                             <div key={group.label} className="relative group">
-                                <span className="flex items-center gap-2 px-4 py-2 rounded-md text-foreground/80 font-medium cursor-pointer select-none hover:text-foreground hover:bg-accent transition-colors duration-200">
+                                <span className="flex items-center gap-2 px-4 py-2 rounded-md text-foreground/80 font-medium cursor-pointer select-none hover:text-foreground hover:bg-accent transition-colors duration-100">
                                     {group.label}
                                     <ChevronDown
                                         size={14}
-                                        className="opacity-70 transition-transform duration-200 group-hover:rotate-180"
+                                        className="opacity-70 transition-transform duration-100 group-hover:rotate-180"
                                     />
                                 </span>
 
@@ -91,7 +91,7 @@ const BackendNavbar: React.FC = () => {
                                                 key={item.href}
                                                 href={item.href}
                                                 onClick={closeAll}
-                                                className="flex items-center gap-3 px-4 py-3 text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-200"
+                                                className="flex items-center gap-3 px-4 py-3 text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
                                             >
                                                 <span className="text-lg" aria-hidden="true">{item.icon}</span>
                                                 {item.label}
@@ -105,7 +105,7 @@ const BackendNavbar: React.FC = () => {
                         <Link
                             href="/admin/news"
                             onClick={closeAll}
-                            className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-200"
+                            className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
                         >
                             Dernières infos
                         </Link>
@@ -116,14 +116,14 @@ const BackendNavbar: React.FC = () => {
                         <Link
                             href="/admin/profile"
                             onClick={closeAll}
-                            className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-200"
+                            className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
                         >
                             Mon Compte
                         </Link>
                         <Link
                             href="/"
                             onClick={closeAll}
-                            className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 transition-opacity duration-200"
+                            className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 transition-opacity duration-100"
                         >
                             Site principal
                         </Link>
@@ -138,7 +138,7 @@ const BackendNavbar: React.FC = () => {
                             onClick={() => setIsMenuOpen((open) => !open)}
                             aria-label="Ouvrir le menu"
                             aria-expanded={isMenuOpen}
-                            className="h-11 w-11 flex items-center justify-center rounded-lg text-foreground hover:bg-accent transition-colors duration-200"
+                            className="h-11 w-11 flex items-center justify-center rounded-lg text-foreground hover:bg-accent transition-colors duration-100"
                         >
                             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
@@ -154,12 +154,12 @@ const BackendNavbar: React.FC = () => {
                                     type="button"
                                     onClick={() => toggleMobileGroup(index)}
                                     aria-expanded={mobileGroup === index}
-                                    className="w-full flex items-center justify-between min-h-11 px-4 py-2.5 rounded-lg text-foreground font-medium hover:bg-accent transition-colors duration-200"
+                                    className="w-full flex items-center justify-between min-h-11 px-4 py-2.5 rounded-lg text-foreground font-medium hover:bg-accent transition-colors duration-100"
                                 >
                                     <span>{group.label}</span>
                                     <ChevronDown
                                         size={16}
-                                        className={`transition-transform duration-200 ${mobileGroup === index ? 'rotate-180' : ''}`}
+                                        className={`transition-transform duration-100 ${mobileGroup === index ? 'rotate-180' : ''}`}
                                     />
                                 </button>
                                 {mobileGroup === index && (
@@ -169,7 +169,7 @@ const BackendNavbar: React.FC = () => {
                                                 key={item.href}
                                                 href={item.href}
                                                 onClick={closeAll}
-                                                className="flex items-center gap-3 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-200"
+                                                className="flex items-center gap-3 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
                                             >
                                                 <span className="text-lg" aria-hidden="true">{item.icon}</span>
                                                 {item.label}
@@ -183,21 +183,21 @@ const BackendNavbar: React.FC = () => {
                         <Link
                             href="/admin/news"
                             onClick={closeAll}
-                            className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-200"
+                            className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-100"
                         >
                             Dernières infos
                         </Link>
                         <Link
                             href="/admin/profile"
                             onClick={closeAll}
-                            className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-200"
+                            className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-100"
                         >
                             Mon Compte
                         </Link>
                         <Link
                             href="/"
                             onClick={closeAll}
-                            className="flex items-center justify-center min-h-11 px-4 py-2.5 mt-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity duration-200"
+                            className="flex items-center justify-center min-h-11 px-4 py-2.5 mt-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity duration-100"
                         >
                             Site principal
                         </Link>
