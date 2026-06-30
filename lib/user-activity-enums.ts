@@ -4,6 +4,14 @@
 //
 // NOTE: labels use \u escapes on purpose so this source stays pure ASCII and the
 // accents can't be corrupted when the file is copied/downloaded between editors.
+//
+// NOTE: these labels are also dropped straight into "X est {label}" sentences
+// (toasts, the inactive-person reactivation dialog) via .toLowerCase(), so each
+// one must read correctly as a predicate after "est" — not just stand alone as
+// a badge. DEMISSION/RADIATION/PB_SANTE_MENTALE used to be nouns ("Démission",
+// "Radiation (sans activité)") which made "X est démission" ungrammatical;
+// they're adjectival/participial forms now ("démissionnaire", "radié",
+// "indisponible (santé mentale)") so the sentence stays correct either way.
 export const USER_ACTIVITY_STATUS_VALUES = [
     'ACTIVE',
     'INACTIVE',
@@ -23,9 +31,9 @@ export const USER_ACTIVITY_STATUS_LABELS: Record<UserActivityStatus, string> = {
     ON_VACATION:      'En vacances',
     SUSPENDED:        'Suspendu',
     DECEASED:         'D\u00e9c\u00e9d\u00e9',
-    DEMISSION:        'D\u00e9mission',
-    RADIATION:        'Radiation (sans activit\u00e9)',
-    PB_SANTE_MENTALE: 'Pb sant\u00e9 mentale',
+    DEMISSION:        'D\u00e9missionnaire',
+    RADIATION:        'Radi\u00e9',
+    PB_SANTE_MENTALE: 'Indisponible (sant\u00e9 mentale)',
 };
 
 // Tailwind badge classes per status (same style as the member-type badges).

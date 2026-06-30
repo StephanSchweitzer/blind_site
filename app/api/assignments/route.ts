@@ -13,6 +13,7 @@ import {
     syncOrderToStatus,
 } from '@/lib/statusSync';
 import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
+import { guardUserIsActive } from '@/lib/users/activityGuard';
 
 export async function GET(request: NextRequest) {
     try {
@@ -206,6 +207,16 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json(
                     { error: readerGuard.message },
                     { status: readerGuard.httpStatus }
+                );
+            }
+
+            // An inactive reader can't be assigned — the admin must reactivate
+            // them first (see lib/users/activityGuard.ts).
+            const activityGuard = await guardUserIsActive(parseInt(readerId), 'lecteur');
+            if (!activityGuard.ok) {
+                return NextResponse.json(
+                    { message: activityGuard.message, blocked: activityGuard.blocked },
+                    { status: activityGuard.httpStatus }
                 );
             }
         }

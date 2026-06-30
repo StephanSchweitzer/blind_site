@@ -112,7 +112,7 @@ export function BookFormBackendBase({
         };
 
         fetchGenres();
-    }, []);
+    }, [toastError]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;

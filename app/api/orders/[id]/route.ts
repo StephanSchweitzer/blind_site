@@ -21,6 +21,7 @@ import {
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { recomputeBillTotal, accrueOrderToOpenDraft, issueDraftIfOverThreshold, logBillEvent } from '@/lib/billing';
+import { guardUserIsActive } from '@/lib/users/activityGuard';
 
 async function checkAdmin() {
     const session = await getServerSession(authOptions);
@@ -186,6 +187,7 @@ export async function PUT(
             where: { id: orderId },
             select: {
                 id: true,
+                aveugleId: true,
                 statusId: true,
                 isDuplication: true,
                 billId: true,
@@ -205,6 +207,19 @@ export async function PUT(
         const assignment = existingOrder.assignments[0] ?? null;
         const billState = existingOrder.bill?.state ?? null;
         const hasBill = existingOrder.billId != null;
+
+        // Changing the auditeur to someone inactive isn't allowed — only guard
+        // when the field is actually changing, so routine edits of an order
+        // that already belongs to a since-deactivated person aren't blocked.
+        if (data.aveugleId !== undefined && data.aveugleId !== existingOrder.aveugleId) {
+            const activityGuard = await guardUserIsActive(data.aveugleId, 'aveugle');
+            if (!activityGuard.ok) {
+                return NextResponse.json(
+                    { message: activityGuard.message, blocked: activityGuard.blocked },
+                    { status: activityGuard.httpStatus }
+                );
+            }
+        }
 
         // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
         if (data.billingStatus === 'BILLED' && existingOrder.billId == null) {
@@ -371,6 +386,7 @@ export async function PATCH(
             where: { id: orderId },
             select: {
                 id: true,
+                aveugleId: true,
                 statusId: true,
                 isDuplication: true,
                 billId: true,
@@ -389,6 +405,18 @@ export async function PATCH(
         const assignment = existingOrder.assignments[0] ?? null;
         const billState = existingOrder.bill?.state ?? null;
         const hasBill = existingOrder.billId != null;
+
+        // Changing the auditeur to someone inactive isn't allowed — only guard
+        // when the field is actually changing (see PUT above for the rationale).
+        if (body.aveugleId !== undefined && body.aveugleId !== existingOrder.aveugleId) {
+            const activityGuard = await guardUserIsActive(body.aveugleId, 'aveugle');
+            if (!activityGuard.ok) {
+                return NextResponse.json(
+                    { message: activityGuard.message, blocked: activityGuard.blocked },
+                    { status: activityGuard.httpStatus }
+                );
+            }
+        }
 
         // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
         if (body.billingStatus === 'BILLED' && existingOrder.billId == null) {

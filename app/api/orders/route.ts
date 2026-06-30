@@ -5,6 +5,7 @@ import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
+import { guardUserIsActive } from '@/lib/users/activityGuard';
 
 async function checkAdmin() {
     const session = await getServerSession(authOptions);
@@ -270,6 +271,16 @@ export async function POST(request: NextRequest) {
                 );
             }
 
+            // An inactive auditeur can't have new demandes attributed to them —
+            // the admin must reactivate them first (see lib/users/activityGuard.ts).
+            const batchActivityGuard = await guardUserIsActive(parseInt(String(aveugleId)), 'aveugle');
+            if (!batchActivityGuard.ok) {
+                return NextResponse.json(
+                    { message: batchActivityGuard.message, blocked: batchActivityGuard.blocked },
+                    { status: batchActivityGuard.httpStatus }
+                );
+            }
+
             // Parse the shared request date once
             let batchReceivedDate: Date;
             try {
@@ -419,6 +430,16 @@ export async function POST(request: NextRequest) {
                     required: ['aveugleId', 'catalogueId', 'requestReceivedDate', 'statusId', 'mediaFormatId', 'deliveryMethod'],
                 },
                 { status: 400 }
+            );
+        }
+
+        // An inactive auditeur can't have a new demande attributed to them —
+        // the admin must reactivate them first (see lib/users/activityGuard.ts).
+        const activityGuard = await guardUserIsActive(parseInt(String(aveugleId)), 'aveugle');
+        if (!activityGuard.ok) {
+            return NextResponse.json(
+                { message: activityGuard.message, blocked: activityGuard.blocked },
+                { status: activityGuard.httpStatus }
             );
         }
 

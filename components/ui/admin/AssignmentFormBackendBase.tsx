@@ -35,6 +35,8 @@ import {
 import { STATUS } from '@/lib/statusSync';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
+import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
+import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
 
 // N3 — required fields, visual top→bottom (book derives from the order picker).
 const ASSIGN_FIELD_ORDER = ['catalogueId', 'statusId'];
@@ -240,6 +242,12 @@ export function AssignmentFormBackendBase({
     const { toast } = useToast();
     const { toastError } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
+    const {
+        blocked: activityBlocked,
+        role: activityRole,
+        requireActive,
+        resolveAndClose: closeActivityGuard,
+    } = useUserActivityGuard();
 
     // Fetch initial data
     useEffect(() => {
@@ -400,7 +408,10 @@ export function AssignmentFormBackendBase({
         return () => clearTimeout(debounce);
     }, [orderSearch, presetClientId]);
 
-    const handleReaderSelect = (user: ReaderSummary) => {
+    const handleReaderSelect = async (user: ReaderSummary) => {
+        const proceed = await requireActive(user.id, 'lecteur');
+        if (!proceed) return;
+
         // #3 — warn when the reader has already reached their max concurrent
         // attributions. The count + max come from /api/user/search?assignable=true.
         const active = user.activeAssignmentCount ?? 0;
@@ -627,6 +638,7 @@ export function AssignmentFormBackendBase({
     };
 
     return (
+        <>
         <Card className="w-full max-w-4xl mx-auto bg-card border-border">
             <CardHeader className="border-b border-border">
                 <CardTitle className="text-2xl font-bold text-foreground">{title}</CardTitle>
@@ -1194,6 +1206,12 @@ export function AssignmentFormBackendBase({
                 </DialogContent>
             </Dialog>
         </Card>
+        <UserActivityGuardDialog
+            blocked={activityBlocked}
+            role={activityRole}
+            onClose={closeActivityGuard}
+        />
+        </>
     );
 }
 

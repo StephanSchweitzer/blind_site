@@ -26,6 +26,8 @@ import { AddBookFormBackend } from '@/admin/BookFormBackendBase';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { useRecordingCheck } from '@/hooks/useRecordingCheck';
+import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
+import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
 
 // N3 — required fields, visual top→bottom.
 const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'statusId', 'mediaFormatId', 'deliveryMethod'];
@@ -155,6 +157,12 @@ export function OrderFormBackendBase({
     const { toastError } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const { check: checkRecording, getFor: getRecordingFor } = useRecordingCheck();
+    const {
+        blocked: activityBlocked,
+        role: activityRole,
+        requireActive,
+        resolveAndClose: closeActivityGuard,
+    } = useUserActivityGuard();
 
     // Cost is locked while the linked bill is finalized (payée/soldée); reopen to edit.
     const costLocked = initialBill?.state === 'PAID' || initialBill?.state === 'SOLDE';
@@ -308,7 +316,10 @@ export function OrderFormBackendBase({
     }, [bookSearch]);
 
 
-    const handleUserSelect = (user: User) => {
+    const handleUserSelect = async (user: User) => {
+        const proceed = await requireActive(user.id, 'aveugle');
+        if (!proceed) return;
+
         setSelectedUser(user);
         setFormData({ ...formData, aveugleId: user.id });
         setUserPopoverOpen(false);
@@ -478,6 +489,7 @@ export function OrderFormBackendBase({
     const hasRecordingDup = (recordingDup?.activeRecordingCount ?? 0) > 0;
 
     return (
+        <>
         <Card className="bg-card border-border">
             <CardHeader>
                 <CardTitle className="text-foreground">{title}</CardTitle>
@@ -989,6 +1001,12 @@ export function OrderFormBackendBase({
                 </form>
             </CardContent>
         </Card>
+        <UserActivityGuardDialog
+            blocked={activityBlocked}
+            role={activityRole}
+            onClose={closeActivityGuard}
+        />
+        </>
     );
 }
 
@@ -1120,6 +1138,12 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     const { toastError } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const { check: checkRecording, getFor: getRecordingFor } = useRecordingCheck();
+    const {
+        blocked: activityBlocked,
+        role: activityRole,
+        requireActive,
+        resolveAndClose: closeActivityGuard,
+    } = useUserActivityGuard();
 
     // Options
     const [statuses, setStatuses] = useState<Status[]>([]);
@@ -1183,6 +1207,16 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
         }, 300);
         return () => clearTimeout(t);
     }, [userSearch]);
+
+    const handleUserSelect = async (user: User) => {
+        const proceed = await requireActive(user.id, 'aveugle');
+        if (!proceed) return;
+
+        setSelectedUser(user);
+        setAveugleId(user.id);
+        setUserPopoverOpen(false);
+        setUserSearch('');
+    };
 
     // Derive a line's status from its type (same rule as the single-order form)
     const statusForType = (type: OrderLineType): number | null => {
@@ -1317,6 +1351,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     };
 
     return (
+        <>
         <Card className="bg-card border-border">
             <CardHeader>
                 <CardTitle className="text-foreground">Créer une ou plusieurs demandes</CardTitle>
@@ -1358,7 +1393,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                     )}
                                     {users.map((user) => (
                                         <button key={user.id} type="button"
-                                                onClick={() => { setSelectedUser(user); setAveugleId(user.id); setUserPopoverOpen(false); setUserSearch(''); }}
+                                                onClick={() => handleUserSelect(user)}
                                                 className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors">
                                             <div className="font-medium">{getUserDisplayName(user)}</div>
                                             <div className="text-sm text-muted-foreground">{user.email}</div>
@@ -1545,6 +1580,12 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                 </form>
             </CardContent>
         </Card>
+        <UserActivityGuardDialog
+            blocked={activityBlocked}
+            role={activityRole}
+            onClose={closeActivityGuard}
+        />
+        </>
     );
 }
 

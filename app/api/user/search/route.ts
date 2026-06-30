@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getActiveAssignmentCounts } from '@/lib/users/deletionGuard';
 import { Prisma } from '@prisma/client';
-import { MemberType, AccessLevel, UserActivityStatus } from '@prisma/client';
+import { MemberType, AccessLevel } from '@prisma/client';
 
 
 export async function GET(request: NextRequest) {
@@ -62,10 +62,15 @@ export async function GET(request: NextRequest) {
         }
 
         if (assignable) {
-            // A reader is assignable only if their membership is ACTIVE and they
-            // haven't been marked unavailable. (isAvailable is nullable; treat
-            // null as available, exclude only explicit false.)
-            whereClause.activityStatus = UserActivityStatus.ACTIVE;
+            // Inactive readers are intentionally NOT filtered out here anymore:
+            // hiding them from search made an inactive lecteur impossible to find
+            // (and impossible to reactivate from this form). They still show up,
+            // and selecting one triggers the activity guard (useUserActivityGuard /
+            // UserActivityGuardDialog) so the admin gets the same "reactivate or
+            // cancel" prompt the order form shows for an inactive auditeur, instead
+            // of silently vanishing from the list.
+            // `isAvailable` is a separate, unrelated flag (an active reader who's
+            // temporarily marked unavailable) and is still excluded.
             whereClause.isAvailable = { not: false };
         }
 

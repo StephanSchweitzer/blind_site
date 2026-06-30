@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { STATUS, guardReaderEligible, guardCanReassignReader } from '@/lib/statusSync';
 import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
 import type { ReminderVariant } from '@/components/emails/AssignmentReminderEmail';
+import { guardUserIsActive } from '@/lib/users/activityGuard';
 
 /**
  * GET /api/assignments/[id]/readers - Get reader history for an assignment
@@ -145,6 +146,16 @@ export async function POST(
             return NextResponse.json(
                 { message: readerGuard.message },
                 { status: readerGuard.httpStatus }
+            );
+        }
+
+        // An inactive reader can't receive a (re)assignment — the admin must
+        // reactivate them first (see lib/users/activityGuard.ts).
+        const activityGuard = await guardUserIsActive(parseInt(readerId), 'lecteur');
+        if (!activityGuard.ok) {
+            return NextResponse.json(
+                { message: activityGuard.message, blocked: activityGuard.blocked },
+                { status: activityGuard.httpStatus }
             );
         }
 
