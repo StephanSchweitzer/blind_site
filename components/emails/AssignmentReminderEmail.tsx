@@ -30,6 +30,8 @@ interface AssignmentReminderEmailProps {
     /** Absolute https URL to the banner, e.g. `${APP_URL}/eca_logo.png`. */
     logoUrl?: string | null;
     variant?: ReminderVariant;
+    /** Branches wording only (pickup vs shipping). Null/NON_APPLICABLE keep the default shipping text. */
+    deliveryMethod?: 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE' | null;
 }
 
 export const AssignmentReminderEmail = ({
@@ -41,21 +43,35 @@ export const AssignmentReminderEmail = ({
                                             appName = 'ECA-Aveugles',
                                             logoUrl,
                                             variant = 'assigned',
+                                            deliveryMethod = null,
                                         }: AssignmentReminderEmailProps) => {
     const displayName = name || 'cher lecteur';
 
     const heading =
-        variant === 'sent' ? 'Votre lecture a été envoyée'
+        variant === 'sent' ? (deliveryMethod === 'RETRAIT' ? 'Votre lecture est disponible' : 'Votre lecture a été envoyée')
             : variant === 'assigned' ? 'Nouvelle lecture assignée'
                 : 'Lecture réassignée';
 
     const preview =
-        variant === 'sent' ? `Votre lecture a été envoyée : ${bookTitle}`
+        variant === 'sent' ? (deliveryMethod === 'RETRAIT' ? `Votre lecture est disponible au retrait : ${bookTitle}` : `Votre lecture a été envoyée : ${bookTitle}`)
             : variant === 'assigned' ? `Une lecture vous a été assignée : ${bookTitle}`
                 : `Une lecture vous a été réassignée : ${bookTitle}`;
 
-    const intro =
-        variant === 'sent'
+    // Wording branches on delivery method. ENVOI and null/NON_APPLICABLE keep
+    // the original shipping text verbatim; RETRAIT swaps to pickup phrasing.
+    const isPickup = deliveryMethod === 'RETRAIT';
+
+    const intro = isPickup
+        ? (variant === 'sent'
+            ? (displayDate
+                ? `L'ouvrage qui vous a été confié est disponible au retrait auprès de l'ECA depuis le ${displayDate}. Vous pouvez désormais en commencer l'enregistrement.`
+                : "L'ouvrage qui vous a été confié est disponible au retrait auprès de l'ECA. Vous pouvez désormais en commencer l'enregistrement.")
+            : variant === 'reassigned_active'
+                ? "Une lecture en cours vous a été réassignée afin que vous puissiez en terminer l'enregistrement. L'ouvrage sera mis à votre disposition pour retrait auprès de l'ECA."
+                : variant === 'reassigned_pending'
+                    ? "Une lecture vous a été réassignée. Vous pourrez retirer l'ouvrage auprès de l'ECA : vous recevrez un message vous confirmant sa mise à disposition."
+                    : "Une nouvelle lecture vous a été assignée. Vous pourrez retirer l'ouvrage auprès de l'ECA : vous recevrez un message vous confirmant sa mise à disposition.")
+        : (variant === 'sent'
             ? (displayDate
                 ? `L'ouvrage qui vous a été confié vous a été expédié le ${displayDate}. Vous pouvez désormais en commencer l'enregistrement.`
                 : "L'ouvrage qui vous a été confié vous a été expédié. Vous pouvez désormais en commencer l'enregistrement.")
@@ -63,17 +79,22 @@ export const AssignmentReminderEmail = ({
                 ? "Une lecture en cours vous a été réassignée afin que vous puissiez en terminer l'enregistrement. L'ECA ou le lecteur précédent vous fera parvenir l'ouvrage dans les meilleurs délais."
                 : variant === 'reassigned_pending'
                     ? "Une lecture vous a été réassignée. L'ouvrage ne vous a pas encore été envoyé : vous recevrez un message vous le confirmant dès son expédition."
-                    : "Une nouvelle lecture vous a été assignée. L'ouvrage ne vous a pas encore été envoyé : vous recevrez un message vous le confirmant dès son expédition.";
+                    : "Une nouvelle lecture vous a été assignée. L'ouvrage ne vous a pas encore été envoyé : vous recevrez un message vous le confirmant dès son expédition.");
 
-    const closing =
-        variant === 'sent'
+    const closing = isPickup
+        ? (variant === 'sent'
+            ? "Merci pour votre engagement."
+            : variant === 'reassigned_active'
+                ? "L'enregistrement pourra commencer dès le retrait de l'ouvrage. Merci pour votre engagement."
+                : "Nous vous préviendrons dès que l'ouvrage sera disponible au retrait. Merci pour votre engagement.")
+        : (variant === 'sent'
             ? "Merci pour votre engagement."
             : variant === 'reassigned_active'
                 ? "L'enregistrement pourra commencer dès réception de l'ouvrage. Merci pour votre engagement."
-                : "Nous vous préviendrons dès l'envoi de l'ouvrage. Merci pour votre engagement.";
+                : "Nous vous préviendrons dès l'envoi de l'ouvrage. Merci pour votre engagement.");
 
     const dateLabel =
-        variant === 'sent' ? "Date d'envoi"
+        variant === 'sent' ? (deliveryMethod === 'RETRAIT' ? 'Date de mise à disposition' : "Date d'envoi")
             : variant === 'assigned' ? "Date d'assignation"
                 : "Date de réattribution";
 

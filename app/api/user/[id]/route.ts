@@ -322,7 +322,7 @@ export async function PATCH(
             }
             updateData.preferredDeliveryMethod = (dm as DeliveryMethod) || null;
         }
-        if (body.preferredDistributionMethod !== undefined) updateData.preferredDistributionMethod = body.preferredDistributionMethod || null;
+        if (body.preferredMediaFormatId !== undefined) updateData.preferredMediaFormatId = body.preferredMediaFormatId ?? null;
         if (body.paymentThreshold !== undefined) {
             updateData.paymentThreshold = body.paymentThreshold ? parseFloat(String(body.paymentThreshold)) : null;
         }

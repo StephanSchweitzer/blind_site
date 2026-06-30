@@ -151,7 +151,7 @@ export async function POST(request: Request) {
                 preferredDeliveryMethod: body.preferredDeliveryMethod || null,
                 paymentThreshold: body.paymentThreshold ? parseFloat(String(body.paymentThreshold)) : 21.00,
                 currentBalance: body.currentBalance ? parseFloat(String(body.currentBalance)) : 0.00,
-                preferredDistributionMethod: body.preferredDistributionMethod || null,
+                preferredMediaFormatId: body.preferredMediaFormatId ?? null,
                 isAvailable: body.isAvailable ?? true,
                 availabilityNotes: body.availabilityNotes || null,
                 specialization: body.specialization || null,

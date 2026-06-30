@@ -16,6 +16,9 @@ export type ReaderSummary = Pick<User, 'id' | 'name' | 'email' | 'firstName' | '
     // Present only when the reader list is fetched with assignable=true (#3).
     activeAssignmentCount?: number;
     maxConcurrentAssignments?: number | null;
+    // Carried from the search payload so the assignment form can pre-fill the
+    // delivery method default from the reader's profile preference.
+    preferredDeliveryMethod?: DeliveryMethod | null;
 };
 export type UserSummary = Pick<User, 'id' | 'name' | 'email' | 'firstName' | 'lastName'>;
 export type UserMinimal = Pick<User, 'id' | 'name'>;
@@ -94,7 +97,7 @@ export const UserCreateInputSchema = z.object({
     gestconteId: z.number().optional(),
     nonProfitAffiliation: z.string().optional(),
     preferredDeliveryMethod: z.nativeEnum(DeliveryMethod).optional(),
-    preferredDistributionMethod: z.string().optional(),
+    preferredMediaFormatId: z.number().int().optional().nullable(),
     paymentThreshold: z.number().or(z.string()).optional().nullable(),
     currentBalance: z.number().or(z.string()).optional().nullable(),
     isAvailable: z.boolean().optional(),
@@ -127,7 +130,7 @@ export const UserUpdateInputSchema = z.object({
     terminationDate: z.string().datetime().optional().nullable(),
     terminationReason: z.string().optional(),
     preferredDeliveryMethod: z.nativeEnum(DeliveryMethod).optional(),
-    preferredDistributionMethod: z.string().optional(),
+    preferredMediaFormatId: z.number().int().optional().nullable(),
     paymentThreshold: z.number().or(z.string()).optional().nullable(),
     currentBalance: z.number().or(z.string()).optional().nullable(),
     isAvailable: z.boolean().optional(),
@@ -157,7 +160,7 @@ export type UserUpdateData = {
     terminationDate?: Date | null;
     terminationReason?: string | null;
     preferredDeliveryMethod?: DeliveryMethod | null;
-    preferredDistributionMethod?: string | null;
+    preferredMediaFormatId?: number | null;
     paymentThreshold?: number | null;
     currentBalance?: number | null;
     isAvailable?: boolean | null;

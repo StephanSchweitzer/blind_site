@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, DeliveryMethod } from '@prisma/client';
 import {
     basicAssignmentSelect,
     detailedAssignmentSelect,
@@ -65,6 +65,7 @@ export const AssignmentCreateInputSchema = z.object({
     statusId: z.number().int().positive(),
     notes: z.string().max(2000).nullable().optional(),
     processedByStaffId: z.number().int().positive().nullable().optional(),
+    deliveryMethod: z.nativeEnum(DeliveryMethod).nullable().optional(),
     readerId: z.number().int().positive().nullable().optional(), // Optional initial reader
 });
 
@@ -79,6 +80,7 @@ export type AssignmentCreateData = {
     returnedToECADate?: string | null;
     notes?: string | null;
     processedByStaffId?: number | null;
+    deliveryMethod?: DeliveryMethod | null;
     readerId?: number | null; // For initial reader assignment
 };
 
@@ -95,6 +97,7 @@ export const AssignmentUpdateInputSchema = z.object({
     statusId: z.number().int().positive().optional(),
     notes: z.string().max(2000).nullable().optional(),
     processedByStaffId: z.number().int().positive().nullable().optional(),
+    deliveryMethod: z.nativeEnum(DeliveryMethod).nullable().optional(),
 });
 
 export type AssignmentUpdateInput = z.infer<typeof AssignmentUpdateInputSchema>;
@@ -108,6 +111,7 @@ export type AssignmentUpdateData = {
     returnedToECADate?: Date | null;
     notes?: string | null;
     processedByStaffId?: number | null;
+    deliveryMethod?: DeliveryMethod | null;
 };
 
 // ============================================================================
@@ -123,6 +127,7 @@ export interface AssignmentFormData {
     statusId: number | null;
     notes: string;
     processedByStaffId?: number | null;
+    deliveryMethod?: DeliveryMethod | null;
 }
 
 // ============================================================================
@@ -165,6 +170,7 @@ export type AssignmentWithCurrentReader = {
     statusId: number;
     notes: string | null;
     processedByStaffId: number | null;
+    deliveryMethod: DeliveryMethod | null;
     currentReader: CurrentReaderInfo;
     catalogue: {
         id: number;

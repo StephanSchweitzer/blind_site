@@ -206,6 +206,9 @@ export async function PUT(
         if (validation.data.processedByStaffId !== undefined) {
             updateData.processedByStaffId = validation.data.processedByStaffId;
         }
+        if (validation.data.deliveryMethod !== undefined) {
+            updateData.deliveryMethod = validation.data.deliveryMethod;
+        }
 
         const updatedAssignment = await prisma.$transaction(async (tx) => {
             const assignment = await tx.assignment.update({
@@ -239,6 +242,7 @@ export async function PUT(
                 where: { id: assignmentId },
                 select: {
                     sentToReaderDate: true,
+                    deliveryMethod: true,
                     catalogue: { select: { title: true, author: true } },
                     readerHistory: {
                         orderBy: { assignedDate: 'desc' },
@@ -268,6 +272,7 @@ export async function PUT(
                     assignmentId,
                     date: detail.sentToReaderDate,
                     variant: 'sent',
+                    deliveryMethod: detail.deliveryMethod,
                 });
             }
         }

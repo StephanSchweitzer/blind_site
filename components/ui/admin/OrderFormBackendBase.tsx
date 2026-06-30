@@ -40,6 +40,8 @@ interface User {
     firstName?: string | null;
     lastName?: string | null;
     civility?: { name: string } | string | null;
+    preferredMediaFormatId?: number | null;
+    preferredDeliveryMethod?: 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE' | null;
 }
 
 interface Book {
@@ -243,7 +245,25 @@ export function OrderFormBackendBase({
             if (initialData.aveugleId && !initialSelectedUser) {
                 fetch(`/api/user/${initialData.aveugleId}`)
                     .then(res => res.json())
-                    .then(user => setSelectedUser(user))
+                    .then(user => {
+                        setSelectedUser(user);
+                        // Default-only seed: in edit mode the demande already has a
+                        // format, so this only fires for genuinely empty values.
+                        if (user?.preferredMediaFormatId != null) {
+                            setFormData(prev =>
+                                prev.mediaFormatId
+                                    ? prev
+                                    : { ...prev, mediaFormatId: user.preferredMediaFormatId }
+                            );
+                        }
+                        if (user?.preferredDeliveryMethod === 'RETRAIT' || user?.preferredDeliveryMethod === 'ENVOI') {
+                            setFormData(prev =>
+                                prev.deliveryMethod
+                                    ? prev
+                                    : { ...prev, deliveryMethod: user.preferredDeliveryMethod }
+                            );
+                        }
+                    })
                     .catch(err => console.error('Error fetching user:', err));
             }
             // Fetch selected book info only if not pre-fetched
@@ -321,7 +341,22 @@ export function OrderFormBackendBase({
         if (!proceed) return;
 
         setSelectedUser(user);
-        setFormData({ ...formData, aveugleId: user.id });
+        setFormData((prev) => ({
+            ...prev,
+            aveugleId: user.id,
+            // Seed the demande's media format from the person's preference, but
+            // only as a default: don't clobber a format the admin already chose.
+            mediaFormatId:
+                user.preferredMediaFormatId != null && !prev.mediaFormatId
+                    ? user.preferredMediaFormatId
+                    : prev.mediaFormatId,
+            // Same idea for delivery method. NON_APPLICABLE is no longer a valid
+            // demande option, so only seed RETRAIT/ENVOI.
+            deliveryMethod:
+                (user.preferredDeliveryMethod === 'RETRAIT' || user.preferredDeliveryMethod === 'ENVOI') && !prev.deliveryMethod
+                    ? user.preferredDeliveryMethod
+                    : prev.deliveryMethod,
+        }));
         setUserPopoverOpen(false);
         setUserSearch('');
     };
@@ -811,15 +846,9 @@ export function OrderFormBackendBase({
                                     </SelectItem>
                                     <SelectItem
                                         value="ENVOI"
-                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
-                                    >
-                                        <span className="font-medium">Envoi</span>
-                                    </SelectItem>
-                                    <SelectItem
-                                        value="NON_APPLICABLE"
                                         className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
                                     >
-                                        <span className="font-medium">Non applicable</span>
+                                        <span className="font-medium">Envoi</span>
                                     </SelectItem>
                                 </div>
                             </SelectContent>
@@ -1214,6 +1243,15 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
         setSelectedUser(user);
         setAveugleId(user.id);
+        // Seed the per-order header default format from the person's preference,
+        // unless a default has already been chosen.
+        if (user.preferredMediaFormatId != null) {
+            setMediaFormatId((prev) => (prev == null ? user.preferredMediaFormatId! : prev));
+        }
+        // Seed delivery method too (NON_APPLICABLE is no longer a valid option).
+        if (user.preferredDeliveryMethod === 'RETRAIT' || user.preferredDeliveryMethod === 'ENVOI') {
+            setDeliveryMethod((prev) => (prev == null ? user.preferredDeliveryMethod! : prev));
+        }
         setUserPopoverOpen(false);
         setUserSearch('');
     };
@@ -1429,12 +1467,11 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
                                     <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
-                                    <SelectItem value="NON_APPLICABLE" className="text-foreground">Non applicable</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Format média par défaut <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-medium text-foreground">Format média<span className="text-red-500">*</span></label>
                             <Select value={mediaFormatId?.toString() || ''} onValueChange={(v) => setMediaFormatId(parseInt(v))}>
                                 <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                                 <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">

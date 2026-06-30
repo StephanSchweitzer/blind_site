@@ -176,7 +176,7 @@ export default function UsersTable({
                 preferredDeliveryMethod: userData.preferredDeliveryMethod || '',
                 paymentThreshold: userData.paymentThreshold?.toString() || '21.00',
                 currentBalance: userData.currentBalance?.toString() || '0.00',
-                preferredDistributionMethod: userData.preferredDistributionMethod || '',
+                preferredMediaFormatId: userData.preferredMediaFormatId ?? null,
                 isAvailable: userData.isAvailable ?? true,
                 availabilityNotes: userData.availabilityNotes || '',
                 specialization: userData.specialization || '',

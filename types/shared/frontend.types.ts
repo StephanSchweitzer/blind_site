@@ -161,7 +161,7 @@ export interface UserFormData {
     preferredDeliveryMethod: string;
     paymentThreshold: string;
     currentBalance: string;
-    preferredDistributionMethod: string;
+    preferredMediaFormatId: number | null;
     isAvailable: boolean;
     availabilityNotes: string;
     specialization: string;

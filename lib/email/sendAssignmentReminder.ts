@@ -21,6 +21,8 @@ interface SendAssignmentReminderParams {
      */
     date?: Date | string | null;
     variant?: ReminderVariant;
+    /** Branches email wording (pickup vs shipping). Snapshot from the attribution. */
+    deliveryMethod?: 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE' | null;
 }
 
 /**
@@ -33,6 +35,7 @@ export async function sendAssignmentReminder({
                                                  assignmentId,
                                                  date,
                                                  variant = 'assigned',
+                                                 deliveryMethod = null,
                                              }: SendAssignmentReminderParams): Promise<SendEmailResult> {
     const displayName = reader.name || reader.firstName || '';
     const displayDate = date ? new Date(date).toLocaleDateString('fr-FR') : null;
@@ -42,7 +45,9 @@ export async function sendAssignmentReminder({
     const logoUrl = `${baseUrl}/eca_logo.png`;
 
     const subject =
-        variant === 'sent' ? `Votre lecture a été envoyée : ${book.title} - ${appName}`
+        variant === 'sent' ? (deliveryMethod === 'RETRAIT'
+                ? `Votre lecture est disponible au retrait : ${book.title} - ${appName}`
+                : `Votre lecture a été envoyée : ${book.title} - ${appName}`)
             : variant === 'assigned' ? `Nouvelle lecture assignée : ${book.title} - ${appName}`
                 : `Lecture réassignée : ${book.title} - ${appName}`;
 
@@ -58,6 +63,7 @@ export async function sendAssignmentReminder({
                 appName,
                 logoUrl,
                 variant,
+                deliveryMethod,
             })
         );
     } catch (error) {

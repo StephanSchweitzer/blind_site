@@ -18,61 +18,62 @@ model News {
 }
 
 model User {
-  id                          Int                 @id @default(autoincrement())
-  email                       String?             @unique
-  password                    String?
-  name                        String?
-  memberType                  MemberType          @default(auditeur)
-  accessLevel                 AccessLevel         @default(member)
-  role                        String              @default("user")
-  createdAt                   DateTime            @default(now())
-  passwordNeedsChange         Boolean             @default(true)
-  firstName                   String?
-  lastName                    String?
-  homePhone                   String?
-  cellPhone                   String?
-  gestconteNotes              String?
-  gestconteId                 Int?
-  nonProfitAffiliation        String?
+  id                       Int                 @id @default(autoincrement())
+  email                    String?             @unique
+  password                 String?
+  name                     String?
+  memberType               MemberType          @default(auditeur)
+  accessLevel              AccessLevel         @default(member)
+  role                     String              @default("user")
+  createdAt                DateTime            @default(now())
+  passwordNeedsChange      Boolean             @default(true)
+  firstName                String?
+  lastName                 String?
+  homePhone                String?
+  cellPhone                String?
+  gestconteNotes           String?
+  gestconteId              Int?
+  nonProfitAffiliation     String?
   /// LEGACY: replaced by activityStatus + UserActivityEvent. For `db push`: keep
   /// this for the first push, run backfill.sql, THEN delete it and push again.
-  isActive                    Boolean?            @default(true)
-  activityStatus              UserActivityStatus  @default(ACTIVE)
-  activityChangedAt           DateTime?
+  isActive                 Boolean?            @default(true)
+  activityStatus           UserActivityStatus  @default(ACTIVE)
+  activityChangedAt        DateTime?
   /// LEGACY: superseded by UserActivityEvent history; no longer written. Refactor out.
-  terminationDate             DateTime?
+  terminationDate          DateTime?
   /// LEGACY: superseded by UserActivityEvent.reason; no longer written. Refactor out.
-  terminationReason           String?
-  lastUpdated                 DateTime?           @updatedAt
+  terminationReason        String?
+  lastUpdated              DateTime?           @updatedAt
   /// Soft-delete marker. When set, the user is treated as deleted everywhere:
   /// a global Prisma query extension (lib/prisma.ts) excludes rows with a
   /// non-null deletedAt from all user list/search reads.
-  deletedAt                   DateTime?
-  preferredDeliveryMethod     DeliveryMethod?
-  paymentThreshold            Decimal?            @default(21.00) @db.Decimal(10, 2)
-  currentBalance              Decimal?            @default(0.00) @db.Decimal(10, 2)
-  preferredDistributionMethod String?
-  isAvailable                 Boolean?            @default(true)
-  availabilityNotes           String?
-  specialization              String?
-  maxConcurrentAssignments    Int?                @default(3)
-  notes                       String?
-  civilityId                  Int?
-  civilityOther               String?
-  addresses                   Address[]
-  assignmentsProcessedBy      Assignment[]        @relation("AssignmentsProcessedBy")
-  assignmentReaders           AssignmentReader[]
-  bills                       Bill[]
-  books                       Book[]
-  CoupsDeCoeur                CoupsDeCoeur[]
-  News                        News[]              @relation("UserNews")
-  ordersAsAveugle             Orders[]            @relation("OrdersAsAveugle")
-  ordersProcessedBy           Orders[]            @relation("OrdersProcessedBy")
-  payments                    Payment[]
-  billEventsPerformed         BillEvent[]         @relation("BillEventsPerformedBy")
-  activityEvents              UserActivityEvent[] @relation("UserActivityEvents")
-  activityEventsPerformed     UserActivityEvent[] @relation("UserActivityEventsBy")
-  civility                    Civility?           @relation(fields: [civilityId], references: [id])
+  deletedAt                DateTime?
+  preferredDeliveryMethod  DeliveryMethod?
+  paymentThreshold         Decimal?            @default(21.00) @db.Decimal(10, 2)
+  currentBalance           Decimal?            @default(0.00) @db.Decimal(10, 2)
+  preferredMediaFormatId   Int?
+  preferredMediaFormat     MediaFormat?        @relation("UserPreferredMediaFormat", fields: [preferredMediaFormatId], references: [id])
+  isAvailable              Boolean?            @default(true)
+  availabilityNotes        String?
+  specialization           String?
+  maxConcurrentAssignments Int?                @default(3)
+  notes                    String?
+  civilityId               Int?
+  civilityOther            String?
+  addresses                Address[]
+  assignmentsProcessedBy   Assignment[]        @relation("AssignmentsProcessedBy")
+  assignmentReaders        AssignmentReader[]
+  bills                    Bill[]
+  books                    Book[]
+  CoupsDeCoeur             CoupsDeCoeur[]
+  News                     News[]              @relation("UserNews")
+  ordersAsAveugle          Orders[]            @relation("OrdersAsAveugle")
+  ordersProcessedBy        Orders[]            @relation("OrdersProcessedBy")
+  payments                 Payment[]
+  billEventsPerformed      BillEvent[]         @relation("BillEventsPerformedBy")
+  activityEvents           UserActivityEvent[] @relation("UserActivityEvents")
+  activityEventsPerformed  UserActivityEvent[] @relation("UserActivityEventsBy")
+  civility                 Civility?           @relation(fields: [civilityId], references: [id])
 
   @@index([deletedAt])
 }
@@ -195,10 +196,11 @@ model Status {
 }
 
 model MediaFormat {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique @db.VarChar(80)
-  description String?  @db.VarChar(200)
-  orders      Orders[]
+  id               Int      @id @default(autoincrement())
+  name             String   @unique @db.VarChar(80)
+  description      String?  @db.VarChar(200)
+  orders           Orders[]
+  preferredByUsers User[]   @relation("UserPreferredMediaFormat")
 
   @@index([name])
 }
@@ -307,6 +309,7 @@ model Assignment {
   statusId           Int
   notes              String?
   processedByStaffId Int?
+  deliveryMethod     DeliveryMethod?
   catalogue          Book               @relation(fields: [catalogueId], references: [id])
   order              Orders?            @relation(fields: [orderId], references: [id])
   processedByStaff   User?              @relation("AssignmentsProcessedBy", fields: [processedByStaffId], references: [id])

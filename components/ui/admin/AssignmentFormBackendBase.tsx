@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { DeliveryMethod } from '@prisma/client';
 import {
     ReaderSummary,
     BookSummary,
@@ -204,6 +205,7 @@ export function AssignmentFormBackendBase({
         returnedToECADate: null,
         statusId: null,
         notes: '',
+        deliveryMethod: null,
     });
 
     // Reader state (separate from formData)
@@ -428,6 +430,15 @@ export function AssignmentFormBackendBase({
         }
         setSelectedReader(user);
         setSelectedReaderId(user.id);
+        // Seed the delivery method from the reader's profile preference, but only
+        // as a default — don't clobber a value the admin already chose.
+        if (user.preferredDeliveryMethod) {
+            setFormData(prev =>
+                prev.deliveryMethod
+                    ? prev
+                    : { ...prev, deliveryMethod: user.preferredDeliveryMethod }
+            );
+        }
         setUserPopoverOpen(false);
         setUserSearch('');
     };
@@ -1118,6 +1129,25 @@ export function AssignmentFormBackendBase({
                                             {status.name}
                                         </SelectItem>
                                     ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Delivery method */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Méthode de livraison</label>
+                        <Select
+                            value={formData.deliveryMethod ?? ''}
+                            onValueChange={(value) =>
+                                setFormData({ ...formData, deliveryMethod: (value || null) as DeliveryMethod | null })
+                            }
+                        >
+                            <SelectTrigger className="bg-field border-border text-foreground">
+                                <SelectValue placeholder="Sélectionner..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
+                                <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

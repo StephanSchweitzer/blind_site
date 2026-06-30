@@ -180,6 +180,7 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
             returnedToECADate: assignment.returnedToECADate ? assignment.returnedToECADate.toISOString() : null,
             statusId: assignment.statusId,
             notes: assignment.notes,
+            deliveryMethod: assignment.deliveryMethod,
             currentReader: currentReader ? {
                 id: currentReader.id,
                 name: currentReader.name,

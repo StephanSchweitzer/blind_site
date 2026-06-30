@@ -72,6 +72,7 @@ export const detailedAssignmentSelect = {
     statusId: true,
     notes: true,
     processedByStaffId: true,
+    deliveryMethod: true,
 } as const satisfies Prisma.AssignmentSelect;
 
 // ============================================================================

@@ -174,6 +174,7 @@ export default function AssignmentsTable({
                 returnedToECADate: formatDateForForm(assignmentData.returnedToECADate),
                 statusId: assignmentData.statusId,
                 notes: assignmentData.notes || '',
+                deliveryMethod: assignmentData.deliveryMethod ?? null,
             };
 
             const selectedReader: ReaderSummary | null = currentReader ? {
@@ -424,6 +425,7 @@ export default function AssignmentsTable({
                                         <TableRow className="hover:bg-muted border-b border-border">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
                                             <TableHead className="text-foreground font-medium">Lecteur</TableHead>
+                                            <TableHead className="text-foreground font-medium">Livraison</TableHead>
                                             <TableHead className="text-foreground font-medium">Livre</TableHead>
                                             <TableHead className="text-foreground font-medium">Date de réception</TableHead>
                                             <TableHead className="text-foreground font-medium">Envoyé au lecteur</TableHead>
@@ -451,6 +453,19 @@ export default function AssignmentsTable({
                                                         </div>
                                                     ) : (
                                                         <div className="text-muted-foreground italic">Aucun lecteur assigné</div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    {assignment.deliveryMethod === 'RETRAIT' ? (
+                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                                            Retrait
+                                                        </span>
+                                                    ) : assignment.deliveryMethod === 'ENVOI' ? (
+                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300">
+                                                            Envoi
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">—</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-foreground max-w-xs">

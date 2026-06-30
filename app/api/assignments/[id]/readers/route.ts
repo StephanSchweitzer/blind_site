@@ -5,6 +5,7 @@ import { STATUS, guardReaderEligible, guardCanReassignReader } from '@/lib/statu
 import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
 import type { ReminderVariant } from '@/components/emails/AssignmentReminderEmail';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
+import { DeliveryMethod } from '@prisma/client';
 
 /**
  * GET /api/assignments/[id]/readers - Get reader history for an assignment
@@ -108,6 +109,7 @@ export async function POST(
             select: {
                 id: true,
                 statusId: true,
+                deliveryMethod: true,
                 catalogue: { select: { title: true, author: true } },
                 _count: { select: { readerHistory: true } },
             },
@@ -131,7 +133,7 @@ export async function POST(
 
         const reader = await prisma.user.findUnique({
             where: { id: parseInt(readerId) },
-            select: { id: true, memberType: true },
+            select: { id: true, memberType: true, preferredDeliveryMethod: true },
         });
 
         if (!reader) {
@@ -186,6 +188,18 @@ export async function POST(
             },
         });
 
+        // The attribution's delivery method is an explicit per-attribution value:
+        // never overwrite an existing one on reassignment. Only seed it (from the
+        // new reader's profile preference) when it hasn't been set yet.
+        let effectiveDelivery: DeliveryMethod | null = assignment.deliveryMethod ?? null;
+        if (effectiveDelivery === null && reader.preferredDeliveryMethod) {
+            effectiveDelivery = reader.preferredDeliveryMethod;
+            await prisma.assignment.update({
+                where: { id: assignmentId },
+                data: { deliveryMethod: effectiveDelivery },
+            });
+        }
+
         if (assignment.catalogue) {
             await sendAssignmentReminder({
                 reader: assignmentReader.reader,
@@ -196,6 +210,7 @@ export async function POST(
                 assignmentId,
                 date: assignmentReader.assignedDate,
                 variant,
+                deliveryMethod: effectiveDelivery,
             });
         }
 

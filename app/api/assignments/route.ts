@@ -14,6 +14,7 @@ import {
 } from '@/lib/statusSync';
 import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
+import { DeliveryMethod } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
     try {
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
             returnedToECADate,
             statusId,
             notes,
+            deliveryMethod,
         } = body;
 
         if (!catalogueId) {
@@ -194,14 +196,16 @@ export async function POST(request: NextRequest) {
         }
 
         // An auditeur can't be the initial reader.
+        let readerPreferredDelivery: DeliveryMethod | null = null;
         if (readerId) {
             const reader = await prisma.user.findUnique({
                 where: { id: parseInt(readerId) },
-                select: { id: true, memberType: true },
+                select: { id: true, memberType: true, preferredDeliveryMethod: true },
             });
             if (!reader) {
                 return NextResponse.json({ error: 'Lecteur non trouvé' }, { status: 404 });
             }
+            readerPreferredDelivery = reader.preferredDeliveryMethod ?? null;
             const readerGuard = guardReaderEligible(reader.memberType as string | null);
             if (!readerGuard.ok) {
                 return NextResponse.json(
@@ -221,6 +225,12 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Per-attribution delivery method: an explicit value wins; otherwise
+        // seed from the initial reader's profile preference (snapshot at creation,
+        // so later profile edits don't retroactively change this attribution).
+        const effectiveDelivery: DeliveryMethod | null =
+            (deliveryMethod as DeliveryMethod | undefined) ?? readerPreferredDelivery ?? null;
+
         const result = await prisma.$transaction(async (tx) => {
             const assignment = await tx.assignment.create({
                 data: {
@@ -231,6 +241,7 @@ export async function POST(request: NextRequest) {
                     returnedToECADate: returnedToECADate ? new Date(returnedToECADate) : null,
                     statusId: parsedStatusId,
                     notes: notes || null,
+                    deliveryMethod: effectiveDelivery,
                 },
             });
 
@@ -311,6 +322,7 @@ export async function POST(request: NextRequest) {
                     assignmentId: result.id,
                     date: result.sentToReaderDate,
                     variant: 'sent',
+                    deliveryMethod: result.deliveryMethod,
                 });
             } else if (result.statusId === STATUS.ATTENTE && initialReader) {
                 await sendAssignmentReminder({
@@ -319,6 +331,7 @@ export async function POST(request: NextRequest) {
                     assignmentId: result.id,
                     date: initialRecord?.assignedDate,
                     variant: 'assigned',
+                    deliveryMethod: result.deliveryMethod,
                 });
             }
         }

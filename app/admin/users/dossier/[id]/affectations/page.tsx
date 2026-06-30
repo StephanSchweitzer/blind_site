@@ -103,6 +103,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
             returnedToECADate: assignment.returnedToECADate ? assignment.returnedToECADate.toISOString() : null,
             statusId: assignment.statusId,
             notes: assignment.notes,
+            deliveryMethod: assignment.deliveryMethod,
             currentReader: currentReader
                 ? { id: currentReader.id, name: currentReader.name, email: currentReader.email }
                 : null,

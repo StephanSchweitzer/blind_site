@@ -75,7 +75,7 @@ function sanitizeInitialData(
         nonProfitAffiliation: data.nonProfitAffiliation || '',
         terminationReason: data.terminationReason || '',
         preferredDeliveryMethod: data.preferredDeliveryMethod || '',
-        preferredDistributionMethod: data.preferredDistributionMethod || '',
+        preferredMediaFormatId: data.preferredMediaFormatId ?? null,
         paymentThreshold: data.paymentThreshold || '21.00',
         currentBalance: data.currentBalance || '0.00',
         availabilityNotes: data.availabilityNotes || '',
@@ -128,6 +128,15 @@ export function UserFormBackendBase({
             .catch(() => setCivilities([]));
     }, []);
 
+    const [mediaFormats, setMediaFormats] = useState<{ id: number; name: string }[]>([]);
+
+    useEffect(() => {
+        fetch('/api/media-formats')
+            .then((res) => (res.ok ? res.json() : []))
+            .then(setMediaFormats)
+            .catch(() => setMediaFormats([]));
+    }, []);
+
     const defaultMemberType: UserFormData['memberType'] =
         userType === 'auditeurs' ? 'auditeur' :
             userType === 'bienfaiteurs' ? 'bienfaiteur' :
@@ -157,7 +166,7 @@ export function UserFormBackendBase({
                 preferredDeliveryMethod: '',
                 paymentThreshold: '21.00',
                 currentBalance: '0.00',
-                preferredDistributionMethod: '',
+                preferredMediaFormatId: null,
                 isAvailable: true,
                 availabilityNotes: '',
                 specialization: '',
@@ -772,18 +781,24 @@ export function UserFormBackendBase({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Méthode de distribution préférée</label>
+                                <label className="text-sm font-medium text-foreground">Format média préféré</label>
                                 <Select
-                                    value={formData.preferredDistributionMethod}
-                                    onValueChange={(value) => setFormData({ ...formData, preferredDistributionMethod: value })}
+                                    value={formData.preferredMediaFormatId?.toString() || ''}
+                                    onValueChange={(value) => setFormData({ ...formData, preferredMediaFormatId: value ? parseInt(value) : null })}
                                 >
                                     <SelectTrigger className="bg-field border-border text-foreground">
                                         <SelectValue placeholder="Sélectionner..." />
                                     </SelectTrigger>
                                     <SelectContent className="bg-card border-border">
-                                        <SelectItem value="cd" className="text-foreground">CD</SelectItem>
-                                        <SelectItem value="usb" className="text-foreground">USB</SelectItem>
-                                        <SelectItem value="download" className="text-foreground">Téléchargement</SelectItem>
+                                        {mediaFormats.map((format) => (
+                                            <SelectItem
+                                                key={format.id}
+                                                value={format.id.toString()}
+                                                className="text-foreground"
+                                            >
+                                                {format.name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

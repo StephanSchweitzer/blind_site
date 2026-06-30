@@ -86,6 +86,10 @@ export async function GET(request: NextRequest) {
                 civility: { select: { name: true } },
                 // #3 — needed to compare against the active-assignment count.
                 maxConcurrentAssignments: true,
+                // Carried so forms can pre-fill demande/attribution defaults from
+                // the selected person's profile without an extra round-trip.
+                preferredMediaFormatId: true,
+                preferredDeliveryMethod: true,
             },
             take: 20,
             orderBy: [
