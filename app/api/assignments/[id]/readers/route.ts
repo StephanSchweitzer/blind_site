@@ -33,7 +33,7 @@ export async function GET(
 
         if (!assignment) {
             return NextResponse.json(
-                { message: 'Affectation non trouvée' },
+                { message: 'Attribution non trouvée' },
                 { status: 404 }
             );
         }
@@ -117,7 +117,7 @@ export async function POST(
 
         if (!assignment) {
             return NextResponse.json(
-                { message: 'Affectation non trouvée' },
+                { message: 'Attribution non trouvée' },
                 { status: 404 }
             );
         }

@@ -41,7 +41,7 @@ export async function GET(
 
         if (!assignment) {
             return NextResponse.json(
-                { message: 'Affectation non trouvée' },
+                { message: 'Attribution non trouvée' },
                 { status: 404 }
             );
         }
@@ -107,7 +107,7 @@ export async function PUT(
 
         if (!existingAssignment) {
             return NextResponse.json(
-                { message: 'Affectation non trouvée' },
+                { message: 'Attribution non trouvée' },
                 { status: 404 }
             );
         }
@@ -278,7 +278,7 @@ export async function PUT(
         }
 
         return NextResponse.json({
-            message: 'Affectation mise à jour avec succès',
+            message: 'Attribution mise à jour avec succès',
             assignment: updatedAssignment,
         });
     } catch (error) {
@@ -325,7 +325,7 @@ export async function DELETE(
 
         if (!existingAssignment) {
             return NextResponse.json(
-                { message: 'Affectation non trouvée' },
+                { message: 'Attribution non trouvée' },
                 { status: 404 }
             );
         }
@@ -335,7 +335,7 @@ export async function DELETE(
         });
 
         return NextResponse.json({
-            message: 'Affectation supprimée avec succès',
+            message: 'Attribution supprimée avec succès',
             deletedId: assignmentId,
             deletedReaderHistoryCount: existingAssignment._count.readerHistory,
         });

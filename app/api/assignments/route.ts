@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
                         assignmentId: assignment.id,
                         readerId: parseInt(readerId),
                         assignedDate: new Date(),
-                        notes: 'Affectation initiale',
+                        notes: 'Attribution initiale',
                     },
                 });
             }
