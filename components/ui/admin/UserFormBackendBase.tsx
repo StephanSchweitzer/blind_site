@@ -542,7 +542,7 @@ export function UserFormBackendBase({
                                 className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
-                                Ajouter
+                                {formData.addresses.length > 0 ? "Ajouter une autre adresse" : "Ajouter une adresse"}
                             </Button>
                         </div>
 
@@ -717,7 +717,7 @@ export function UserFormBackendBase({
                                             value={formData.availabilityNotes}
                                             onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
                                             className="bg-field border-border text-foreground"
-                                            placeholder="Ex: Parfois exigeant quant à la qualité des livres..."
+                                            placeholder="Ex: Il ne peut venir récupérer les livres que le samedi...."
                                         />
                                     </div>
                                 </>
