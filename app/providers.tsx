@@ -12,7 +12,7 @@ type Props = {
 export const Providers = ({ children }: Props) => {
     return (
         <SessionProvider>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                 <ChakraProvider value={defaultSystem}>
                     {children}
                 </ChakraProvider>

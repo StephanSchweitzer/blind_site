@@ -96,6 +96,7 @@ export const profileUserSelect = {
     isAvailable: true,
     availabilityNotes: true,
     specialization: true,
+    saveType: true,
     maxConcurrentAssignments: true,
     notes: true,
 } as const satisfies Prisma.UserSelect;
@@ -128,6 +129,7 @@ export const fullUserSelect = {
     isAvailable: true,
     availabilityNotes: true,
     specialization: true,
+    saveType: true,
     maxConcurrentAssignments: true,
     notes: true,
     // SECURITY: Explicitly exclude sensitive fields

@@ -369,7 +369,7 @@ export default function OrdersTable({
                         className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         <Plus className="h-4 w-4 mr-2" />
-                        Nouvelle demande
+                        Ajouter une demande
                     </Button>
                 </div>
             </CardHeader>

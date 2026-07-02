@@ -25,6 +25,8 @@ import {
     ACCESS_LEVEL_VALUES,
     ACCESS_LEVEL_LABELS,
     getAccessLevelLabel,
+    SAVE_TYPE_VALUES,
+    SAVE_TYPE_LABELS,
 } from '@/lib/user-enums';
 
 interface UserFormBackendBaseProps {
@@ -80,6 +82,7 @@ function sanitizeInitialData(
         currentBalance: data.currentBalance || '0.00',
         availabilityNotes: data.availabilityNotes || '',
         specialization: data.specialization || '',
+        saveType: data.saveType || '',
         notes: data.notes || '',
         addresses: (data.addresses || []).map(addr => ({
             ...addr,
@@ -170,6 +173,7 @@ export function UserFormBackendBase({
                 isAvailable: true,
                 availabilityNotes: '',
                 specialization: '',
+                saveType: '',
                 maxConcurrentAssignments: 3,
                 notes: '',
                 addresses: [],
@@ -719,6 +723,28 @@ export function UserFormBackendBase({
                                             className="bg-field border-border text-foreground"
                                             placeholder="Ex: Il ne peut venir récupérer les livres que le samedi...."
                                         />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-foreground">Logiciel d&apos;enregistrement</label>
+                                        <Select
+                                            value={formData.saveType || 'none'}
+                                            onValueChange={(value) =>
+                                                setFormData({ ...formData, saveType: value === 'none' ? '' : value })
+                                            }
+                                        >
+                                            <SelectTrigger className="bg-field border-border text-foreground">
+                                                <SelectValue placeholder="Sélectionner..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-card border-border">
+                                                <SelectItem value="none" className="text-foreground">—</SelectItem>
+                                                {SAVE_TYPE_VALUES.map((v) => (
+                                                    <SelectItem key={v} value={v} className="text-foreground">
+                                                        {SAVE_TYPE_LABELS[v]}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </>
                             )}

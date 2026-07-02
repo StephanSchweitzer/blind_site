@@ -561,7 +561,7 @@ export function OrderFormBackendBase({
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
+                            <PopoverContent className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border" align="start" collisionPadding={16}>
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher par nom ou email..."
@@ -615,7 +615,7 @@ export function OrderFormBackendBase({
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
+                            <PopoverContent className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border" align="start" collisionPadding={16}>
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher par titre ou auteur..."
@@ -1096,7 +1096,7 @@ function BookLinePicker({ selected, onSelect }: { selected: Book | null; onSelec
                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
+            <PopoverContent className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border" align="start" collisionPadding={16}>
                 <div className="p-2">
                     <Input placeholder="Rechercher par titre ou auteur..." value={search}
                            onChange={(e) => setSearch(e.target.value)}
@@ -1418,7 +1418,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0 bg-card border-border" align="start">
+                            <PopoverContent className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border" align="start" collisionPadding={16}>
                                 <div className="p-2">
                                     <Input placeholder="Rechercher par nom ou email..." value={userSearch}
                                            onChange={(e) => setUserSearch(e.target.value)}

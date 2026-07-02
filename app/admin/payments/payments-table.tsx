@@ -141,7 +141,7 @@ export default function PaymentsTable({
                         className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
                     >
                         <Plus className="h-4 w-4" />
-                        Nouveau paiement
+                        Ajouter un paiement
                     </Button>
                 </div>
             </CardHeader>

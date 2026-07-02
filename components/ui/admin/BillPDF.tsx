@@ -189,7 +189,9 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                         <Text style={s.metaName}>{auditeurName}</Text>
                         {(() => {
                             const addr = bill.client.address?.filter(Boolean) ?? [];
-                            return addr.length ? <Text style={s.metaLine}>{addr.join(', ')}</Text> : null;
+                            return addr.length
+                                ? addr.map((l, i) => <Text key={i} style={s.metaLine}>{l}</Text>)
+                                : null;
                         })()}
                     </View>
                     <View style={s.billMetaCol}>

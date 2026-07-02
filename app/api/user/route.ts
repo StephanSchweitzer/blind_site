@@ -155,6 +155,7 @@ export async function POST(request: Request) {
                 isAvailable: body.isAvailable ?? true,
                 availabilityNotes: body.availabilityNotes || null,
                 specialization: body.specialization || null,
+                saveType: body.saveType || null,
                 maxConcurrentAssignments: body.maxConcurrentAssignments || 3,
                 notes: body.notes || null,
                 addresses: body.addresses && body.addresses.length > 0 ? {

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
-    STATUS,
     guardAssignmentStatus,
     guardAssignmentConsistency,
     guardAssignmentMatchesOrder,
@@ -12,7 +11,6 @@ import {
     guardReaderEligible,
     syncOrderToStatus,
 } from '@/lib/statusSync';
-import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
 
@@ -300,41 +298,6 @@ export async function POST(request: NextRequest) {
 
             return completeAssignment;
         });
-
-        // Notification — fired AFTER the transaction commits (sendAssignmentReminder
-        // never throws). Creation is a single event, distinct from later edits, so
-        // there's no overlap with the readers route or the PUT 'sent' email.
-        //   created EN_COURS              -> 'sent'     (date = sentToReaderDate)
-        //   created ATTENTE with a reader -> 'assigned' (date = AssignmentReader.assignedDate)
-        //   created ATTENTE without reader, or created TERMINE (backfill) -> nothing
-        if (result?.catalogue) {
-            const initialRecord = result.readerHistory[0];
-            const initialReader = initialRecord?.reader;
-            const book = {
-                title: result.catalogue.title,
-                author: result.catalogue.author,
-            };
-
-            if (result.statusId === STATUS.EN_COURS && initialReader) {
-                await sendAssignmentReminder({
-                    reader: initialReader,
-                    book,
-                    assignmentId: result.id,
-                    date: result.sentToReaderDate,
-                    variant: 'sent',
-                    deliveryMethod: result.deliveryMethod,
-                });
-            } else if (result.statusId === STATUS.ATTENTE && initialReader) {
-                await sendAssignmentReminder({
-                    reader: initialReader,
-                    book,
-                    assignmentId: result.id,
-                    date: initialRecord?.assignedDate,
-                    variant: 'assigned',
-                    deliveryMethod: result.deliveryMethod,
-                });
-            }
-        }
 
         return NextResponse.json({ assignment: result }, { status: 201 });
     } catch (error) {

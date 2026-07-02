@@ -56,6 +56,7 @@ model User {
   isAvailable              Boolean?            @default(true)
   availabilityNotes        String?
   specialization           String?
+  saveType                 SaveType?
   maxConcurrentAssignments Int?                @default(3)
   notes                    String?
   civilityId               Int?
@@ -382,6 +383,18 @@ enum AccessLevel {
   member
   admin
   super_admin
+}
+
+enum SaveType {
+  AUDACITY
+  GARAGEBAND
+  REAPER
+  ADOBE_AUDITION
+  OCENAUDIO
+  WAVEPAD
+  LOGIC_PRO
+  STUDIO_ONE
+  AUTRE
 }
 
 enum NewsType {

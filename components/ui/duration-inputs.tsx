@@ -55,38 +55,38 @@ const DurationInputs: React.FC<DurationInputsProps> = ({ formData, handleChange 
 
     return (
         <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-200">
+            <label className="text-sm font-medium text-foreground">
                 Durée de la lecture
             </label>
             <div className="flex gap-4">
                 <div className="flex-1">
-                    <label htmlFor="hours" className="block text-sm text-gray-400">
+                    <label htmlFor="hours" className="block text-sm text-muted-foreground">
                         Heures
                     </label>
                     <input
                         type="number"
                         name="hours"
                         id="hours"
-                        value={hours}
+                        value={hours === 0 ? '' : hours}
                         onChange={handleDurationChange}
                         min="0"
-                        className="w-full bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                        className="w-full bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                         placeholder="Heures"
                     />
                 </div>
                 <div className="flex-1">
-                    <label htmlFor="minutes" className="block text-sm text-gray-400">
+                    <label htmlFor="minutes" className="block text-sm text-muted-foreground">
                         Minutes
                     </label>
                     <input
                         type="number"
                         name="minutes"
                         id="minutes"
-                        value={minutes}
+                        value={minutes === 0 ? '' : minutes}
                         onChange={handleDurationChange}
                         min="0"
                         max="59"
-                        className="w-full bg-gray-800 border-gray-100 text-gray-100 focus:ring-gray-700 focus:border-gray-600 placeholder:text-gray-400"
+                        className="w-full bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                         placeholder="Minutes"
                     />
                 </div>

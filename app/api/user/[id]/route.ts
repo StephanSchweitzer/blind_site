@@ -334,6 +334,7 @@ export async function PATCH(
         if (body.isAvailable !== undefined) updateData.isAvailable = body.isAvailable;
         if (body.availabilityNotes !== undefined) updateData.availabilityNotes = body.availabilityNotes || null;
         if (body.specialization !== undefined) updateData.specialization = body.specialization || null;
+        if (body.saveType !== undefined) updateData.saveType = body.saveType || null;
         if (body.maxConcurrentAssignments !== undefined) updateData.maxConcurrentAssignments = body.maxConcurrentAssignments || null;
 
         // Notes

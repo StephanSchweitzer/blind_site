@@ -180,6 +180,7 @@ export default function UsersTable({
                 isAvailable: userData.isAvailable ?? true,
                 availabilityNotes: userData.availabilityNotes || '',
                 specialization: userData.specialization || '',
+                saveType: userData.saveType || '',
                 maxConcurrentAssignments: userData.maxConcurrentAssignments,
                 notes: userData.notes || '',
                 addresses: userData.addresses || [],
@@ -251,7 +252,7 @@ export default function UsersTable({
                         className="bg-green-600 hover:bg-green-700 text-white"
                     >
                         <Plus className="h-4 w-4 mr-2" />
-                        Nouveau membre
+                        Ajouter un membre
                     </Button>
                 </div>
             </CardHeader>

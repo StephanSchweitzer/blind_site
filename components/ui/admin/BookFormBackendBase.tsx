@@ -375,7 +375,11 @@ export function BookFormBackendBase({
                                         </span>
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-64 p-0 bg-card border-border">
+                                <PopoverContent
+                                    align="start"
+                                    collisionPadding={16}
+                                    className="w-[min(16rem,calc(100vw-2rem))] p-0 bg-card border-border"
+                                >
                                     <div className="flex flex-col h-80">
                                         <div className="p-2">
                                             <Input
@@ -401,7 +405,7 @@ export function BookFormBackendBase({
                                                     .map((genre) => (
                                                         <div
                                                             key={genre.id}
-                                                            className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-muted text-foreground rounded-sm cursor-pointer"
+                                                            className="flex items-center w-full min-w-0 px-2 py-1.5 text-sm hover:bg-muted text-foreground rounded-sm cursor-pointer"
                                                             onClick={() => {
                                                                 handleGenreSelect(genre.id);
                                                                 setSearchQuery('');
@@ -414,7 +418,7 @@ export function BookFormBackendBase({
                                                                         : "opacity-0"
                                                                 }`}
                                                             />
-                                                            {genre.name}
+                                                            <span className="break-words">{genre.name}</span>
                                                         </div>
                                                     ))}
                                             </div>

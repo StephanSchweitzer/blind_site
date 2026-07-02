@@ -70,3 +70,17 @@ export const getMemberTypeColor = (value: string): string =>
 
 export const getAccessLevelColor = (value: string): string =>
     ACCESS_LEVEL_COLORS[value as AccessLevel] ?? 'bg-gray-100 text-gray-800';
+export const SAVE_TYPE_VALUES = [
+    'AUDACITY', 'GARAGEBAND', 'REAPER', 'ADOBE_AUDITION',
+    'OCENAUDIO', 'WAVEPAD', 'LOGIC_PRO', 'STUDIO_ONE', 'AUTRE',
+] as const;
+export type SaveType = typeof SAVE_TYPE_VALUES[number];
+
+export const SAVE_TYPE_LABELS: Record<SaveType, string> = {
+    AUDACITY: 'Audacity', GARAGEBAND: 'GarageBand', REAPER: 'Reaper',
+    ADOBE_AUDITION: 'Adobe Audition', OCENAUDIO: 'Ocenaudio', WAVEPAD: 'WavePad',
+    LOGIC_PRO: 'Logic Pro', STUDIO_ONE: 'Studio One', AUTRE: 'Autre',
+};
+
+export const getSaveTypeLabel = (v: string): string =>
+    SAVE_TYPE_LABELS[v as SaveType] ?? v;

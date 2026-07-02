@@ -84,7 +84,9 @@ const BackendNavbar: React.FC = () => {
                                 </span>
 
                                 {/* pt-2 keeps a hover bridge between trigger and panel */}
-                                <div className="absolute hidden group-hover:block top-full left-0 z-50 pt-2">
+                                <div className="absolute top-full left-0 z-50 pt-2 invisible opacity-0 -translate-y-1
+                                group-hover:visible group-hover:opacity-100 group-hover:translate-y-0
+                                transition-[opacity,transform] duration-100 ease-out">
                                     <div className="min-w-[220px] bg-popover border border-border rounded-lg shadow-xl overflow-hidden">
                                         {group.items.map((item) => (
                                             <Link

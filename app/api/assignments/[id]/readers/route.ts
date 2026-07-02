@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
-import { STATUS, guardReaderEligible, guardCanReassignReader } from '@/lib/statusSync';
-import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
-import type { ReminderVariant } from '@/components/emails/AssignmentReminderEmail';
+import { guardReaderEligible, guardCanReassignReader } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
 
@@ -161,13 +159,6 @@ export async function POST(
             );
         }
 
-        const isReassignment = assignment._count.readerHistory > 0;
-        const variant: ReminderVariant = !isReassignment
-            ? 'assigned'
-            : assignment.statusId === STATUS.EN_COURS
-                ? 'reassigned_active'
-                : 'reassigned_pending';
-
         const assignmentReader = await prisma.assignmentReader.create({
             data: {
                 assignmentId,
@@ -197,20 +188,6 @@ export async function POST(
             await prisma.assignment.update({
                 where: { id: assignmentId },
                 data: { deliveryMethod: effectiveDelivery },
-            });
-        }
-
-        if (assignment.catalogue) {
-            await sendAssignmentReminder({
-                reader: assignmentReader.reader,
-                book: {
-                    title: assignment.catalogue.title,
-                    author: assignment.catalogue.author,
-                },
-                assignmentId,
-                date: assignmentReader.assignedDate,
-                variant,
-                deliveryMethod: effectiveDelivery,
             });
         }
 

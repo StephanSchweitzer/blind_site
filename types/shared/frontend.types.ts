@@ -165,6 +165,7 @@ export interface UserFormData {
     isAvailable: boolean;
     availabilityNotes: string;
     specialization: string;
+    saveType: string; // '' when unset
     maxConcurrentAssignments: number | null;
     notes: string;
     addresses: AddressFormData[];

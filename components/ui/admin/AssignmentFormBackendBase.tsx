@@ -729,7 +729,7 @@ export function AssignmentFormBackendBase({
                                                     <Search className="ml-2 h-4 w-4 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-[400px] p-0 bg-card border-border">
+                                            <PopoverContent align="start" collisionPadding={16} className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border">
                                                 <div className="p-2">
                                                     <Input
                                                         placeholder="Rechercher un lecteur..."
@@ -807,7 +807,7 @@ export function AssignmentFormBackendBase({
                                                         <Search className="ml-2 h-4 w-4 opacity-50" />
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent className="w-[400px] p-0 bg-card border-border">
+                                                <PopoverContent align="start" collisionPadding={16} className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border">
                                                     <div className="p-2">
                                                         <Input
                                                             placeholder="Rechercher un lecteur..."
@@ -888,7 +888,7 @@ export function AssignmentFormBackendBase({
                                         <Search className="ml-2 h-4 w-4 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[400px] p-0 bg-card border-border">
+                                <PopoverContent align="start" collisionPadding={16} className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border">
                                     <div className="p-2">
                                         <Input
                                             placeholder="Rechercher un lecteur..."
@@ -960,7 +960,7 @@ export function AssignmentFormBackendBase({
                                     <Search className="ml-2 h-4 w-4 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[600px] p-0 bg-card border-border">
+                            <PopoverContent align="start" collisionPadding={16} className="w-[min(600px,calc(100vw-2rem))] p-0 bg-card border-border">
                                 <div className="p-2">
                                     <Input
                                         placeholder="Rechercher une demande..."

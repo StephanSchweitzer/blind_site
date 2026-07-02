@@ -7,14 +7,12 @@ import {
 } from '@/types/api';
 import { assignmentIncludeConfigs } from '@/types/models';
 import {
-    STATUS,
     guardAssignmentStatus,
     guardAssignmentConsistency,
     guardAssignmentMatchesOrder,
     guardOrderNotSettled,
     syncOrderToStatus,
 } from '@/lib/statusSync';
-import { sendAssignmentReminder } from '@/lib/email/sendAssignmentReminder';
 
 /**
  * GET /api/assignments/[id] - Get a single assignment by ID
@@ -228,54 +226,6 @@ export async function PUT(
 
             return assignment;
         });
-
-        // Reminder email — when the assignment transitions INTO the active-reading
-        // state (EN_COURS). Fired AFTER the transaction commits so a slow/failed
-        // send never affects the update. The current reader is the most recent
-        // entry in the reader history (EN_COURS guarantees one exists).
-        const enteringActiveReading =
-            newStatusId === STATUS.EN_COURS &&
-            existingAssignment.statusId !== STATUS.EN_COURS;
-
-        if (enteringActiveReading) {
-            const detail = await prisma.assignment.findUnique({
-                where: { id: assignmentId },
-                select: {
-                    sentToReaderDate: true,
-                    deliveryMethod: true,
-                    catalogue: { select: { title: true, author: true } },
-                    readerHistory: {
-                        orderBy: { assignedDate: 'desc' },
-                        take: 1,
-                        select: {
-                            reader: {
-                                select: {
-                                    email: true,
-                                    name: true,
-                                    firstName: true,
-                                    lastName: true,
-                                },
-                            },
-                        },
-                    },
-                },
-            });
-
-            const currentReader = detail?.readerHistory[0]?.reader;
-            if (detail?.catalogue && currentReader) {
-                await sendAssignmentReminder({
-                    reader: currentReader,
-                    book: {
-                        title: detail.catalogue.title,
-                        author: detail.catalogue.author,
-                    },
-                    assignmentId,
-                    date: detail.sentToReaderDate,
-                    variant: 'sent',
-                    deliveryMethod: detail.deliveryMethod,
-                });
-            }
-        }
 
         return NextResponse.json({
             message: 'Attribution mise à jour avec succès',

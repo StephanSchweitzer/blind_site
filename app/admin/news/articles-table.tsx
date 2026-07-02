@@ -210,7 +210,7 @@ export function ArticlesTable({
                 </div>
                 <Link href="/admin/news/new" className="w-full sm:w-auto">
                     <Button className="w-full sm:w-auto bg-muted text-foreground border-border hover:bg-muted">
-                        Ajouter un info
+                        Ajouter une info
                     </Button>
                 </Link>
             </CardHeader>
