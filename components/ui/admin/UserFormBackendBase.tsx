@@ -692,7 +692,7 @@ export function UserFormBackendBase({
                                                 </div>
                                                 <div>
                                                     <label className="text-sm font-medium text-foreground cursor-pointer">
-                                                        Disponible pour nouvelles assignations
+                                                        Disponible pour nouvelles attributions
                                                     </label>
                                                     <p className="text-xs text-muted-foreground mt-0.5">
                                                         {formData.isAvailable

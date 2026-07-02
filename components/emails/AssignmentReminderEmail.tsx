@@ -95,7 +95,7 @@ export const AssignmentReminderEmail = ({
 
     const dateLabel =
         variant === 'sent' ? (deliveryMethod === 'RETRAIT' ? 'Date de mise à disposition' : "Date d'envoi")
-            : variant === 'assigned' ? "Date d'assignation"
+            : variant === 'assigned' ? "Date d'attribution"
                 : "Date de réattribution";
 
     return (

@@ -221,7 +221,7 @@ export async function POST(
     } catch (error) {
         console.error('Error assigning reader:', error);
         return NextResponse.json(
-            { message: 'Erreur lors de l\'assignation du lecteur' },
+            { message: 'Erreur lors de l\'attribution du lecteur' },
             { status: 500 }
         );
     }

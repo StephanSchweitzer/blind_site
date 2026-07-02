@@ -271,8 +271,8 @@ export default function AssignmentsTable({
             'Envoyé au lecteur': 'Envoyé',
             'Chez le lecteur': 'Chez lecteur',
             'Retourné à l\'ECA': 'Retourné',
-            'Assignation terminée': 'Terminée',
-            'Assignation annulée': 'Annulée',
+            'Attribution terminée': 'Terminée',
+            'Attribution annulée': 'Annulée',
         };
         return displayMap[statusName] || statusName;
     };
@@ -285,8 +285,8 @@ export default function AssignmentsTable({
             'Envoyé au lecteur': 'bg-purple-100 text-purple-800 border border-purple-300',
             'Chez le lecteur': 'bg-indigo-100 text-indigo-800 border border-indigo-300',
             'Retourné à l\'ECA': 'bg-teal-100 text-teal-800 border border-teal-300',
-            'Assignation terminée': 'bg-green-100 text-green-800 border border-green-300',
-            'Assignation annulée': 'bg-red-100 text-red-800 border border-red-300',
+            'Attribution terminée': 'bg-green-100 text-green-800 border border-green-300',
+            'Attribution annulée': 'bg-red-100 text-red-800 border border-red-300',
         };
         return colorMap[statusName] || 'bg-muted text-muted-foreground border border-border';
     };
