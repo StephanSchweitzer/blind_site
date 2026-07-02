@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { UserActivityStatus } from '@prisma/client';
-import { USER_ACTIVITY_STATUS_VALUES } from '@/lib/user-activity-enums';
+import { USER_ACTIVITY_STATUS_VALUES, ACTIVE_USER_ACTIVITY_STATUSES } from '@/lib/user-activity-enums';
 
 // History of a member's activity-status changes, newest first.
 export async function GET(
@@ -94,6 +94,13 @@ export async function POST(
         const changedById = session.user.id ? parseInt(session.user.id) : null;
         const now = new Date();
 
+        // One-directional sync: leaving an active status always clears
+        // isAvailable, so an inactive/resigned/etc. person can't stay
+        // selectable for new attributions. Reactivating does NOT force
+        // isAvailable back to true — that flag also covers "active but
+        // temporarily unavailable" and shouldn't be silently overwritten.
+        const becomingInactive = !(ACTIVE_USER_ACTIVITY_STATUSES as readonly string[]).includes(toStatus);
+
         const [event] = await prisma.$transaction([
             prisma.userActivityEvent.create({
                 data: {
@@ -117,7 +124,11 @@ export async function POST(
             }),
             prisma.user.update({
                 where: { id: userId },
-                data: { activityStatus: toStatus as UserActivityStatus, activityChangedAt: now },
+                data: {
+                    activityStatus: toStatus as UserActivityStatus,
+                    activityChangedAt: now,
+                    ...(becomingInactive ? { isAvailable: false } : {}),
+                },
             }),
         ]);
 
