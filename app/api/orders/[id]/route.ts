@@ -16,6 +16,7 @@ import {
     STATUS,
     guardOrderCompletion,
     guardDuplicationFlip,
+    guardDemandeStatusSync,
     syncAssignmentToStatus,
 } from '@/lib/statusSync';
 import { getServerSession } from 'next-auth';
@@ -194,7 +195,16 @@ export async function PUT(
                 cost: true,
                 catalogueId: true,
                 requestReceivedDate: true,
-                assignments: { select: { id: true, statusId: true }, take: 1 },
+                assignments: {
+                    select: {
+                        id: true,
+                        statusId: true,
+                        sentToReaderDate: true,
+                        returnedToECADate: true,
+                        _count: { select: { readerHistory: true } },
+                    },
+                    take: 1,
+                },
                 bill: { select: { id: true, state: true } },
             },
         });
@@ -246,6 +256,26 @@ export async function PUT(
             const flipGuard = guardDuplicationFlip(data.isDuplication, assignment !== null);
             if (!flipGuard.ok) {
                 return NextResponse.json({ message: flipGuard.message }, { status: flipGuard.httpStatus });
+            }
+        }
+
+        // A demande status change may only reflect a status the attribution could legitimately
+        // hold given its own owned fields (send/return dates). Block the side door that would
+        // otherwise strand attribution-owned data (e.g. status→Attente while a date d'envoi is set).
+        if (
+            assignment &&
+            typeof data.statusId === 'number' &&
+            data.statusId !== STATUS.SOLDE &&
+            data.statusId !== assignment.statusId
+        ) {
+            const syncGuard = guardDemandeStatusSync({
+                statusId: data.statusId,
+                hasReader: assignment._count.readerHistory > 0,
+                sentToReaderDate: assignment.sentToReaderDate,
+                returnedToECADate: assignment.returnedToECADate,
+            });
+            if (!syncGuard.ok) {
+                return NextResponse.json({ message: syncGuard.message }, { status: syncGuard.httpStatus });
             }
         }
 
@@ -393,7 +423,16 @@ export async function PATCH(
                 cost: true,
                 catalogueId: true,
                 requestReceivedDate: true,
-                assignments: { select: { id: true, statusId: true }, take: 1 },
+                assignments: {
+                    select: {
+                        id: true,
+                        statusId: true,
+                        sentToReaderDate: true,
+                        returnedToECADate: true,
+                        _count: { select: { readerHistory: true } },
+                    },
+                    take: 1,
+                },
                 bill: { select: { id: true, state: true } },
             },
         });
@@ -443,6 +482,26 @@ export async function PATCH(
             const flipGuard = guardDuplicationFlip(body.isDuplication, assignment !== null);
             if (!flipGuard.ok) {
                 return NextResponse.json({ message: flipGuard.message }, { status: flipGuard.httpStatus });
+            }
+        }
+
+        // A demande status change may only reflect a status the attribution could legitimately
+        // hold given its own owned fields (send/return dates). Block the side door that would
+        // otherwise strand attribution-owned data (e.g. status→Attente while a date d'envoi is set).
+        if (
+            assignment &&
+            typeof body.statusId === 'number' &&
+            body.statusId !== STATUS.SOLDE &&
+            body.statusId !== assignment.statusId
+        ) {
+            const syncGuard = guardDemandeStatusSync({
+                statusId: body.statusId,
+                hasReader: assignment._count.readerHistory > 0,
+                sentToReaderDate: assignment.sentToReaderDate,
+                returnedToECADate: assignment.returnedToECADate,
+            });
+            if (!syncGuard.ok) {
+                return NextResponse.json({ message: syncGuard.message }, { status: syncGuard.httpStatus });
             }
         }
 

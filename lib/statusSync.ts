@@ -165,6 +165,35 @@ export function guardAssignmentConsistency(args: {
     }
 }
 
+/**
+ * Sync is asymmetric. An attribution owns its reader and its send/return dates;
+ * the demande may only *reflect* a status onto the attribution when that status
+ * stays consistent with those attribution-owned fields. It must never push the
+ * attribution into a status that contradicts them (e.g. forcing « Attente envoi »
+ * while a date d'envoi is set), which would strand/invalidate attribution data
+ * through the demande side door. Callers reject the demande update and point the
+ * user to the attribution for that transition.
+ * Pass the RESULTING attribution state (incoming status + existing owned fields).
+ */
+export function guardDemandeStatusSync(args: {
+    statusId: number;
+    hasReader: boolean;
+    sentToReaderDate: Date | string | null | undefined;
+    returnedToECADate: Date | string | null | undefined;
+}): GuardResult {
+    // SOLDE is order-only and never propagates to the attribution — nothing to guard.
+    if (args.statusId === STATUS.SOLDE) return OK;
+
+    if (!guardAssignmentConsistency(args).ok) {
+        return fail(
+            409,
+            "Ce changement de statut modifierait des données appartenant à l'attribution " +
+            "(date d'envoi / date de retour). Gérez ce statut directement sur l'attribution."
+        );
+    }
+    return OK;
+}
+
 /** A linked assignment must be for the same book (catalogue entry) as its order. */
 export function guardAssignmentMatchesOrder(
     assignmentCatalogueId: number,
