@@ -1,36 +1,14 @@
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { UserIcon } from "lucide-react";
-
-interface TeamMember {
-    name: string;
-    role: string;
-    category?: string;
-}
+import type { TeamMember } from "@prisma/client";
+import { getTeam } from "./data";
 
 export default async function EquipePage() {
-    const leadership: TeamMember[] = [
-        { name: "Catherine PORTE", role: "Présidente" },
-        { name: "Françoise REY", role: "Trésorière" },
-        { name: "Agnès BLANC", role: "Secrétaire générale" },
-        { name: "Bernard GEFFRAY", role: "Président d'Honneur" },
-    ];
+    const members = await getTeam();
 
-    const boardMembers: TeamMember[] = [
-        { name: "Frédéric Labarthe", role: "Représentant ECA au Conseil d'Administration des AA" },
-    ];
-
-    const permanenceTeam: TeamMember[] = [
-        { name: "Leïla BENNOUR", role: "" },
-        { name: "Annie CAZEJUST", role: "" },
-        { name: "Marie-Noëlle DEMARRE", role: "" },
-        { name: "Vincent GRISON", role: "" },
-        { name: "Andrée HORDÉ", role: "" },
-        { name: "Marie-Line LUSSON", role: "" },
-        { name: "Odile MORTIER-WALDSCHMIDT", role: "" },
-        { name: "Anne Marie SUDRES", role: "" },
-        { name: "Michèle NARJOZ", role: "" },
-        { name: "Estelle OUDOT", role: "" },
-    ];
+    const leadership = members.filter((m) => m.section === 'DIRECTION');
+    const boardMembers = members.filter((m) => m.section === 'CONSEIL');
+    const permanenceTeam = members.filter((m) => m.section === 'PERMANENCE');
 
     return (
         <main className="min-h-screen relative">
@@ -47,57 +25,63 @@ export default async function EquipePage() {
                     </p>
                 </section>
 
-                <section className="space-y-8">
-                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
-                        Direction
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {leadership.map((member, index) => (
-                            <div key={index} className="glass-card p-6 hover:scale-[1.02] transition-transform duration-300 flex items-center space-x-4">
-                                <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                                    <UserIcon className="h-6 w-6 text-white" />
+                {leadership.length > 0 && (
+                    <section className="space-y-8">
+                        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
+                            Direction
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {leadership.map((member: TeamMember) => (
+                                <div key={member.id} className="glass-card p-6 hover:scale-[1.02] transition-transform duration-300 flex items-center space-x-4">
+                                    <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                                        <UserIcon className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
+                                        {member.role && <p className="text-blue-600 dark:text-blue-300">{member.role}</p>}
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
-                                    <p className="text-blue-600 dark:text-blue-300">{member.role}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
-                <section className="space-y-8">
-                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
-                        Conseil d&apos;Administration
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {boardMembers.map((member, index) => (
-                            <div key={index} className="glass-card p-6 hover:scale-[1.02] transition-transform duration-300 flex items-center space-x-4">
-                                <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                                    <UserIcon className="h-6 w-6 text-white" />
+                {boardMembers.length > 0 && (
+                    <section className="space-y-8">
+                        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
+                            Conseil d&apos;Administration
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {boardMembers.map((member: TeamMember) => (
+                                <div key={member.id} className="glass-card p-6 hover:scale-[1.02] transition-transform duration-300 flex items-center space-x-4">
+                                    <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                                        <UserIcon className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
+                                        {member.role && <p className="text-green-600 dark:text-green-300">{member.role}</p>}
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
-                                    <p className="text-green-600 dark:text-green-300">{member.role}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
-                <section className="space-y-8">
-                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
-                        Animation des Permanences
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {permanenceTeam.map((member, index) => (
-                            <div key={index} className="glass-card p-4 hover:scale-[1.02] transition-transform duration-300">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
-                                {member.role && <p className="text-gray-700 dark:text-gray-300">{member.role}</p>}
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                {permanenceTeam.length > 0 && (
+                    <section className="space-y-8">
+                        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
+                            Animation des Permanences
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {permanenceTeam.map((member: TeamMember) => (
+                                <div key={member.id} className="glass-card p-4 hover:scale-[1.02] transition-transform duration-300">
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
+                                    {member.role && <p className="text-gray-700 dark:text-gray-300">{member.role}</p>}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 <section className="glass-card p-6 border-l-4 border-yellow-500">
                     <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Notre Engagement</h2>

@@ -1,6 +1,8 @@
 // app/api/news/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidatePublic } from '@/lib/revalidate-public';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -136,6 +138,9 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
             }
         });
 
+        // On-demand invalidation of the public Dernières infos page.
+        revalidatePublic(CACHE_TAGS.news, '/dernieres-infos');
+
         return NextResponse.json({
             message: 'Article mis à jour avec succès',
             article: updatedArticle
@@ -199,6 +204,9 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         await prisma.news.delete({
             where: { id }
         });
+
+        // On-demand invalidation of the public Dernières infos page.
+        revalidatePublic(CACHE_TAGS.news, '/dernieres-infos');
 
         return NextResponse.json({
             message: 'Article supprimé avec succès'

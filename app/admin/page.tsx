@@ -18,6 +18,8 @@ export default async function Dashboard() {
         orderCount,
         billCount,
         paymentCount,
+        siteContactCount,
+        teamMemberCount,
     ] = await Promise.all([
         prisma.book.count(),
         prisma.news.count(),
@@ -30,13 +32,15 @@ export default async function Dashboard() {
         prisma.orders.count(),
         prisma.bill.count(),
         prisma.payment.count(),
+        prisma.siteContact.count(),
+        prisma.teamMember.count(),
     ]);
 
     return (
         <AdminCard className="p-6 md:p-8">
             {/* Content Management Section */}
             <div className="mb-10">
-                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Contenu</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Livres</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     <AdminDashboardCard
                         title="Catalogue"
@@ -59,12 +63,33 @@ export default async function Dashboard() {
                         buttonText="Gestion des listes de livres (anciennement appelés « coups de cœur »)"
                         accentColor="pink"
                     />
+                </div>
+            </div>
+
+            {/* Site Pages Section */}
+            <div className="mb-10">
+                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Pages du site</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     <AdminDashboardCard
                         title="Dernières infos"
                         count={newsCount}
                         href="/admin/news"
                         buttonText="Gestion des informations importantes et actuelles"
                         accentColor="green"
+                    />
+                    <AdminDashboardCard
+                        title="Contact"
+                        count={siteContactCount}
+                        href="/admin/site-contact"
+                        buttonText="Coordonnées affichées sur la page Contact"
+                        accentColor="teal"
+                    />
+                    <AdminDashboardCard
+                        title="Équipe"
+                        count={teamMemberCount}
+                        href="/admin/team"
+                        buttonText="Membres affichés sur la page Équipe (glisser-déposer pour réordonner)"
+                        accentColor="indigo"
                     />
                 </div>
             </div>

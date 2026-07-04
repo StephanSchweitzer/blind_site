@@ -1,6 +1,7 @@
 // app/api/books/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
@@ -146,6 +147,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
             }
         });
 
+        revalidateCatalogue();
+
         return NextResponse.json(
             {
                 message: 'Book updated successfully',
@@ -173,6 +176,8 @@ export async function DELETE(request: NextRequest, { params }: Params) {
         await prisma.book.delete({
             where: { id: parseInt(id, 10) }
         });
+
+        revalidateCatalogue();
 
         return NextResponse.json(
             { success: true },

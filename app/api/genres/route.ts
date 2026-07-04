@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { Prisma } from '@prisma/client';
 
 interface GenreBody {
@@ -113,6 +114,8 @@ export async function POST(request: NextRequest) {
     try {
         const body = await parseAndValidateBody(request);
         const genre = await createGenre(body);
+
+        revalidateCatalogue();
 
         return NextResponse.json({
             success: true,

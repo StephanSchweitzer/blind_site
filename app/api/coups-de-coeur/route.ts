@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidatePublic } from '@/lib/revalidate-public';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -171,6 +173,8 @@ export async function POST(req: NextRequest) {
                 }
             }
         });
+
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
 
         return NextResponse.json(newCoupDeCoeur, { status: 201 });
     } catch (error) {

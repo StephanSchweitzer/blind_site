@@ -43,6 +43,14 @@ const navGroups: NavGroup[] = [
             { href: '/admin/users/permanents', label: 'Permanents', icon: '🔑' },
         ],
     },
+    {
+        label: 'Pages',
+        items: [
+            { href: '/admin/news', label: 'Dernières infos', icon: '📰' },
+            { href: '/admin/site-contact', label: 'Contact', icon: '📍' },
+            { href: '/admin/team', label: 'Équipe', icon: '🧑‍🤝‍🧑' },
+        ],
+    },
 ];
 
 const BackendNavbar: React.FC = () => {
@@ -103,14 +111,6 @@ const BackendNavbar: React.FC = () => {
                                 </div>
                             </div>
                         ))}
-
-                        <Link
-                            href="/admin/news"
-                            onClick={closeAll}
-                            className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
-                        >
-                            Dernières infos
-                        </Link>
                     </div>
 
                     {/* Desktop right-aligned actions */}
@@ -181,14 +181,6 @@ const BackendNavbar: React.FC = () => {
                                 )}
                             </div>
                         ))}
-
-                        <Link
-                            href="/admin/news"
-                            onClick={closeAll}
-                            className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-100"
-                        >
-                            Dernières infos
-                        </Link>
                         <Link
                             href="/admin/profile"
                             onClick={closeAll}

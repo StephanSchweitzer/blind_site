@@ -1,34 +1,11 @@
 import { Suspense } from 'react';
 import { BooksClient } from './BooksClient';
 import FrontendNavbar from "@/components/Frontend-Navbar";
-import { prisma } from '@/lib/prisma';
-
-export const revalidate = 300;
+import { getCatalogueData } from './data';
 
 async function getInitialData() {
     try {
-        const [books, genres, totalBooks] = await Promise.all([
-            prisma.book.findMany({
-                include: {
-                    genres: {
-                        include: { genre: true }
-                    }
-                },
-                take: 9,
-                orderBy: { createdAt: 'desc' }
-            }),
-            prisma.genre.findMany({
-                orderBy: { name: 'asc' }
-            }),
-            prisma.book.count()
-        ]);
-
-        return {
-            initialBooks: books,
-            genres,
-            totalBooks,
-            totalPages: Math.ceil(totalBooks / 9)
-        };
+        return await getCatalogueData();
     } catch (error) {
         console.error('Error fetching initial data:', error);
         return {

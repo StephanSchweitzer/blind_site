@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidatePublic } from '@/lib/revalidate-public';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
@@ -92,6 +94,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
             timeout: 10000 // Increase timeout to 10 seconds just to be safe
         });
 
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
+
         return NextResponse.json({
             message: 'Coup de coeur updated successfully',
             coupDeCoeur: updatedCoupDeCoeur,
@@ -117,6 +121,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
         await prisma.coupsDeCoeur.delete({
             where: { id: parseInt(id, 10) }
         });
+
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
 
         return NextResponse.json({ message: 'Coup de coeur deleted successfully' });
     } catch (error) {

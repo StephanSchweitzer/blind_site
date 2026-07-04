@@ -459,3 +459,37 @@ model UserActivityEvent {
   @@index([userId])
   @@index([changedAt])
 }
+
+/// Singleton (id = 1) holding the editable content of the public Contact page.
+model SiteContact {
+  id           Int      @id @default(1)
+  orgName      String
+  orgSubtitle  String?
+  addressLines String
+  phones       String
+  email        String
+  hoursText    String
+  metroText    String?
+  busText      String?
+  visitText    String?
+  updatedAt    DateTime @updatedAt
+}
+
+enum TeamSection {
+  DIRECTION
+  CONSEIL
+  PERMANENCE
+}
+
+/// A member shown on the public Équipe page. Ordered within its section by sortOrder.
+model TeamMember {
+  id        Int         @id @default(autoincrement())
+  name      String
+  role      String?
+  section   TeamSection
+  sortOrder Int         @default(0)
+  active    Boolean     @default(true)
+  updatedAt DateTime    @updatedAt
+
+  @@index([section, sortOrder])
+}

@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { Prisma } from '@prisma/client';
@@ -444,6 +445,8 @@ export async function POST(req: NextRequest): Promise<Response> {
             message: 'Book added successfully',
             book: newBook
         };
+
+        revalidateCatalogue();
 
         return new Response(JSON.stringify(successResponse), {
             status: 201,

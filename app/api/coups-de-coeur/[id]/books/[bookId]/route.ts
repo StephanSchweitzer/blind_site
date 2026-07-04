@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidatePublic } from '@/lib/revalidate-public';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
@@ -46,6 +48,8 @@ export async function POST(req: NextRequest, { params }: Params) {
             }
         });
 
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
+
         return NextResponse.json({ success: true, data: newRelation });
     } catch (error) {
         console.error('Failed to add book to coup de coeur:', error);
@@ -66,6 +70,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
                 }
             }
         });
+
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
 
         return NextResponse.json({ success: true });
     } catch (error) {

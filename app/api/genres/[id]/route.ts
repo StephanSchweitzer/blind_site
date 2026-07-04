@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -52,6 +53,8 @@ export async function PUT(
             }
         });
 
+        revalidateCatalogue();
+
         return NextResponse.json(
             { data: genre },
             {
@@ -89,6 +92,8 @@ export async function DELETE(
         await prisma.genre.delete({
             where: { id: parseInt(id, 10) },
         });
+
+        revalidateCatalogue();
 
         return NextResponse.json(
             { success: true },

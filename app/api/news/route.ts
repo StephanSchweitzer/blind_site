@@ -1,6 +1,8 @@
 // app/api/news/route.ts
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidatePublic } from '@/lib/revalidate-public';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -88,6 +90,9 @@ export async function POST(req: NextRequest) {
             },
         });
         console.log("Article created:", newArticle);
+
+        // On-demand invalidation of the public Dernières infos page.
+        revalidatePublic(CACHE_TAGS.news, '/dernieres-infos');
 
         return NextResponse.json(
             { message: 'Article créé avec succès', article: newArticle },
