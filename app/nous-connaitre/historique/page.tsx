@@ -1,76 +1,9 @@
 import FrontendNavbar from "@/components/Frontend-Navbar";
-import { Calendar, Bookmark, Award, BookOpen, Archive, FileText, Heart, Users } from "lucide-react";
-
-interface HistoryEvent {
-    year: string;
-    title: string;
-    description: string;
-    icon: React.ReactNode;
-}
+import { resolveIcon } from "@/lib/icons";
+import { getHistory } from "./data";
 
 export default async function HistoriquePage() {
-    const historyEvents: HistoryEvent[] = [
-        {
-            year: "1985",
-            title: "Création d'ECA",
-            description: "ECA a été créée par Mesdames Marguerite de Praslin et Odile Testa avec, comme objectif, l'enregistrement de tous documents utiles à la profession ou aux loisirs des aveugles et malvoyants. À la création, ECA signifie « Enregistrements sur Cassettes pour les Aveugles ».",
-            icon: <Calendar className="h-6 w-6" />
-        },
-        {
-            year: "1987",
-            title: "Premier bulletin d'informations",
-            description: "Parution du premier numéro du bulletin d'informations « le coup d'œil d'ECA »",
-            icon: <FileText className="h-6 w-6" />
-        },
-        {
-            year: "1992",
-            title: "Reconnaissance d'utilité publique",
-            description: "L'association est reconnue d'utilité publique (décret du 30 octobre 1992, paru au Journal Officiel le 5 novembre 1992).",
-            icon: <Award className="h-6 w-6" />
-        },
-        {
-            year: "2005",
-            title: "Changement de nom",
-            description: "L'association devient « Enregistrements à la Carte pour les Aveugles ».",
-            icon: <Bookmark className="h-6 w-6" />
-        },
-        {
-            year: "2008",
-            title: "Catalogue « Lu Pour Vous ! »",
-            description: "Création du catalogue « Lu Pour Vous ! », une sélection des enregistrements les plus demandés par les auditeurs.",
-            icon: <BookOpen className="h-6 w-6" />
-        },
-        {
-            year: "2009",
-            title: "Intégration à la BDEA",
-            description: "Les enregistrements figurant dans le catalogue « Lu Pour Vous ! » entrent dans la Banque de Données de l'Edition Adaptée (BDEA) de l'Institut National des Jeunes Aveugles.",
-            icon: <Archive className="h-6 w-6" />
-        },
-        {
-            year: "2012",
-            title: "Stockage informatique",
-            description: "ECA garde en mémoire les ouvrages enregistrés, grâce à une importante unité de stockage informatique.",
-            icon: <Archive className="h-6 w-6" />
-        },
-        {
-            year: "2014",
-            title: "Création des «Coups de Cœur»",
-            description: "Création des « Coups de Cœur », palmarès mensuel des enregistrements recommandés par les lecteurs et les permanentes de l'association.",
-            icon: <Heart className="h-6 w-6" />
-        },
-        {
-            year: "2018",
-            title: "Délégation des Auxiliaires des Aveugles",
-            description: "Aux termes du décret du 5 septembre 2018 paru au J.O. du 7 septembre 2018, ECA devient une délégation des Auxiliaires des Aveugles, association-loi de 1901, reconnue d'utilité publique et prend le nom de « ECA / Délégation des Auxiliaires des Aveugles ».",
-            icon: <Users className="h-6 w-6" />
-        },
-        {
-            year: "2023",
-            title: "Évolution des coups de cœur",
-            description: "Les coups de cœurs deviennent \"Listes de livres\" et paraissent tous les deux mois.",
-            icon: <Bookmark className="h-6 w-6" />
-        }
-    ];
+    const historyEvents = await getHistory();
 
     return (
         <main className="min-h-screen relative">
@@ -90,39 +23,42 @@ export default async function HistoriquePage() {
                     {/* Timeline center line */}
                     <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-blue-500 hidden md:block"></div>
 
-                    {historyEvents.map((event, index) => (
-                        <div key={index} className={`mb-12 md:mb-16 relative ${index % 2 === 0 ? 'md:pr-8 md:text-right md:ml-auto md:mr-1/2' : 'md:pl-8 md:ml-1/2'} md:w-1/2`}>
-                            {/* Timeline dot */}
-                            <div className="hidden md:flex md:absolute md:top-5 md:items-center md:justify-center md:w-10 md:h-10 md:rounded-full md:bg-blue-600 md:border-4 md:border-white dark:md:border-gray-800 md:shadow-lg md:z-10 md:text-white"
-                                 style={{ [index % 2 === 0 ? 'right' : 'left']: '-20px' }}>
-                                {event.icon}
-                            </div>
+                    {historyEvents.map((event, index) => {
+                        const Icon = resolveIcon(event.iconKey);
+                        return (
+                            <div key={event.id} className={`mb-12 md:mb-16 relative ${index % 2 === 0 ? 'md:pr-8 md:text-right md:ml-auto md:mr-1/2' : 'md:pl-8 md:ml-1/2'} md:w-1/2`}>
+                                {/* Timeline dot */}
+                                <div className="hidden md:flex md:absolute md:top-5 md:items-center md:justify-center md:w-10 md:h-10 md:rounded-full md:bg-blue-600 md:border-4 md:border-white dark:md:border-gray-800 md:shadow-lg md:z-10 md:text-white"
+                                     style={{ [index % 2 === 0 ? 'right' : 'left']: '-20px' }}>
+                                    <Icon className="h-6 w-6" />
+                                </div>
 
-                            <div className={`glass-card overflow-hidden hover:scale-[1.02] transition-transform duration-300 ${index % 2 === 0 ? 'md:rounded-r-none' : 'md:rounded-l-none'}`}>
-                                <div className="bg-gradient-to-r from-blue-700 to-blue-600 p-3">
-                                    <div className="flex md:hidden items-center justify-center w-8 h-8 rounded-full bg-white mr-3 text-blue-700 float-left">
-                                        {event.icon}
+                                <div className={`glass-card overflow-hidden hover:scale-[1.02] transition-transform duration-300 ${index % 2 === 0 ? 'md:rounded-r-none' : 'md:rounded-l-none'}`}>
+                                    <div className="bg-gradient-to-r from-blue-700 to-blue-600 p-3">
+                                        <div className="flex md:hidden items-center justify-center w-8 h-8 rounded-full bg-white mr-3 text-blue-700 float-left">
+                                            <Icon className="h-6 w-6" />
+                                        </div>
+                                        <h2 className="text-xl font-semibold text-white flex flex-wrap md:flex-nowrap items-center">
+                                            <span className="inline-block bg-blue-800 text-white py-1 px-4 rounded-full mr-3 min-w-[90px] text-center whitespace-nowrap text-lg">
+                                                {event.year}
+                                            </span>
+                                            <span>{event.title}</span>
+                                        </h2>
                                     </div>
-                                    <h2 className="text-xl font-semibold text-white flex flex-wrap md:flex-nowrap items-center">
-                                        <span className="inline-block bg-blue-800 text-white py-1 px-4 rounded-full mr-3 min-w-[90px] text-center whitespace-nowrap text-lg">
-                                            {event.year}
-                                        </span>
-                                        <span>{event.title}</span>
-                                    </h2>
+                                    <div className="p-4">
+                                        <p className="text-gray-700 dark:text-gray-100">{event.description}</p>
+                                    </div>
                                 </div>
-                                <div className="p-4">
-                                    <p className="text-gray-700 dark:text-gray-100">{event.description}</p>
-                                </div>
-                            </div>
 
-                            {/* Arrow for desktop */}
-                            <div className={`hidden md:block absolute top-5 w-0 h-0 border-t-8 border-b-8 border-transparent ${
-                                index % 2 === 0
-                                    ? 'border-l-[16px] border-l-white dark:border-l-gray-800 -right-4'
-                                    : 'border-r-[16px] border-r-white dark:border-r-gray-800 -left-4'
-                            }`}></div>
-                        </div>
-                    ))}
+                                {/* Arrow for desktop */}
+                                <div className={`hidden md:block absolute top-5 w-0 h-0 border-t-8 border-b-8 border-transparent ${
+                                    index % 2 === 0
+                                        ? 'border-l-[16px] border-l-white dark:border-l-gray-800 -right-4'
+                                        : 'border-r-[16px] border-r-white dark:border-r-gray-800 -left-4'
+                                }`}></div>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 <section className="glass-card-lg p-8 text-center bg-gradient-to-r from-blue-500/10 to-indigo-500/10">

@@ -1,7 +1,12 @@
 import FrontendNavbar from "@/components/Frontend-Navbar";
-import { Headphones, BookOpen, Clock, Heart } from "lucide-react";
+import { resolveIcon } from "@/lib/icons";
+import { MEMBERSHIP_THEME, asTheme } from "@/lib/color-themes";
+import { Markdown } from "@/components/Markdown";
+import { getMembershipOptions } from "./data";
 
 export default async function NousRejoindre() {
+    const options = await getMembershipOptions();
+
     return (
         <main className="min-h-screen relative">
             <FrontendNavbar />
@@ -17,123 +22,55 @@ export default async function NousRejoindre() {
                     </p>
                 </section>
 
-                {/* Membership Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Auditeur Card */}
-                    <section className="glass-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 flex items-center">
-                            <Headphones className="h-8 w-8 text-white mr-3" />
-                            <h2 className="text-2xl font-semibold text-white">Auditeur</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-gray-700 dark:text-gray-100">
-                                Vous êtes aveugle ou malvoyant. Après paiement de votre cotisation annuelle,
-                                vous devenez auditeur membre d&apos;ECA et avez également accès à tous les services
-                                et activités de l&apos;association Auxiliaires des Aveugles (AA).
-                            </p>
-                            <p className="text-gray-700 dark:text-gray-100">
-                                En ce qui concerne les enregistrements, vous pouvez faire parvenir à ECA les livres,
-                                revues ou documents qui vous intéressent. Ce sont VOS livres que lisent les lecteurs.
-                            </p>
-                            <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 p-4 rounded-lg">
-                                <p className="text-gray-900 dark:text-gray-100">
-                                    <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-blue-600 dark:text-blue-300">50€</span>
-                                </p>
-                                <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 mt-2 space-y-1 text-sm">
-                                    <li>Non déductible des impôts, au titre de l&apos;accession à un service</li>
-                                    <li>Permet de voter à l&apos;assemblée générale des Auxiliaires des Aveugles</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </section>
+                    {options.map((opt) => {
+                        const Icon = resolveIcon(opt.iconKey);
+                        const theme = MEMBERSHIP_THEME[asTheme(opt.colorTheme)];
+                        const bullets = (opt.bullets ?? '').split('\n').map((b) => b.trim()).filter(Boolean);
+                        const emphasizeValue = !!opt.highlightValue && opt.highlightValue.length <= 12;
+                        return (
+                            <section key={opt.id} className="glass-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                                <div className={`bg-gradient-to-r ${theme.header} p-4 flex items-center`}>
+                                    <Icon className="h-8 w-8 text-white mr-3" />
+                                    <h2 className="text-2xl font-semibold text-white">{opt.title}</h2>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <Markdown>{opt.body}</Markdown>
 
-                    {/* Lecteur Card */}
-                    <section className="glass-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
-                        <div className="bg-gradient-to-r from-green-600 to-green-500 p-4 flex items-center">
-                            <BookOpen className="h-8 w-8 text-white mr-3" />
-                            <h2 className="text-2xl font-semibold text-white">Lecteur</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-gray-700 dark:text-gray-100">
-                                Vous aimez lire à haute voix, vous avez une voix agréable, bien timbrée et vous articulez
-                                clairement. Vous avez du temps libre et votre environnement est calme.
-                            </p>
-                            <p className="text-gray-700 dark:text-gray-100">
-                                Rejoignez l&apos;équipe de lecteurs, vivant dans toute la France, et qui, pour certains,
-                                peuvent lire en allemand, anglais, arabe, espagnol, grec, italien.
-                            </p>
-                            <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 p-4 rounded-lg">
-                                <p className="text-gray-900 dark:text-gray-100">
-                                    <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-green-600 dark:text-green-300">20€</span>
-                                </p>
-                                <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 mt-2 space-y-1 text-sm">
-                                    <li>Déductible des impôts</li>
-                                    <li>Permet d&apos;être assuré et de voter à l&apos;assemblée générale des Auxiliaires des Aveugles</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </section>
-                </div>
+                                    {(opt.highlightLabel || bullets.length > 0) && (
+                                        <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 p-4 rounded-lg">
+                                            {opt.highlightLabel && (
+                                                <p className="text-gray-900 dark:text-gray-100">
+                                                    <span className="font-semibold">{opt.highlightLabel}</span>
+                                                    {opt.highlightValue && (
+                                                        <>
+                                                            {' : '}
+                                                            {emphasizeValue
+                                                                ? <span className={`text-xl font-bold ${theme.value}`}>{opt.highlightValue}</span>
+                                                                : opt.highlightValue}
+                                                        </>
+                                                    )}
+                                                </p>
+                                            )}
+                                            {bullets.length > 0 && (
+                                                <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 mt-2 space-y-1 text-sm">
+                                                    {bullets.map((b, i) => <li key={i}>{b}</li>)}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    )}
 
-                {/* Second Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Animateur Card */}
-                    <section className="glass-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
-                        <div className="bg-gradient-to-r from-amber-600 to-amber-500 p-4 flex items-center">
-                            <Clock className="h-8 w-8 text-white mr-3" />
-                            <h2 className="text-2xl font-semibold text-white">Animateur de permanence</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-gray-700 dark:text-gray-100">
-                                Vous avez du temps libre et vous pouvez consacrer régulièrement une ou une demi-journée
-                                par semaine pour venir au siège afin d&apos;accueillir lecteurs ou mal voyants, gérer les
-                                livres reçus ou envoyés, participer ou initier des actions de communication, ou encore
-                                assurer la comptabilité.
-                            </p>
-                            <p className="text-gray-700 dark:text-gray-100 font-semibold">
-                                En un mot, mettre vos compétences à la disposition d&apos;ECA.
-                            </p>
-                            <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 p-4 rounded-lg">
-                                <p className="text-gray-900 dark:text-gray-100">
-                                    <span className="font-semibold">Cotisation annuelle</span> : <span className="text-xl font-bold text-amber-600 dark:text-amber-300">20€</span>
-                                </p>
-                                <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 mt-2 space-y-1 text-sm">
-                                    <li>Mêmes conditions que pour les lecteurs</li>
-                                    <li>Permet d&apos;être assuré pendant vos activités</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Bienfaiteur Card */}
-                    <section className="glass-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
-                        <div className="bg-gradient-to-r from-red-600 to-red-500 p-4 flex items-center">
-                            <Heart className="h-8 w-8 text-white mr-3" />
-                            <h2 className="text-2xl font-semibold text-white">Bienfaiteur</h2>
-                        </div>
-                        <div className="p-6 flex flex-col justify-between h-full space-y-4">
-                            <div>
-                                <p className="text-gray-700 dark:text-gray-100 text-lg">
-                                    Nous ne bénéficions d&apos;aucune subvention. Grâce à votre don, vous permettez à ECA de poursuivre sa mission.
-                                </p>
-                                <p className="text-gray-600 dark:text-gray-300 mt-4">
-                                    Vos dons nous permettent d&apos;acquérir du matériel d&apos;enregistrement,
-                                    de former nos lecteurs et d&apos;améliorer nos services pour les personnes
-                                    malvoyantes.
-                                </p>
-                            </div>
-                            <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 p-4 rounded-lg">
-                                <p className="text-gray-900 dark:text-gray-100">
-                                    <span className="font-semibold">Avantage fiscal</span> : Vos dons sont déductibles des impôts à hauteur de 66% dans la limite de 20% de votre revenu imposable.
-                                </p>
-                            </div>
-                            <div className="text-center pt-4">
-                                <a href="/faire-un-don" className="inline-block bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
-                                    Faire un don
-                                </a>
-                            </div>
-                        </div>
-                    </section>
+                                    {opt.ctaLabel && opt.ctaHref && (
+                                        <div className="text-center pt-4">
+                                            <a href={opt.ctaHref} className={`inline-block bg-gradient-to-r ${theme.cta} text-white font-medium py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105`}>
+                                                {opt.ctaLabel}
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+                        );
+                    })}
                 </div>
 
                 {/* CTA Section */}

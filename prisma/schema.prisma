@@ -493,3 +493,48 @@ model TeamMember {
 
   @@index([section, sortOrder])
 }
+
+/// A dated milestone on the public Historique timeline (ordered by year).
+model HistoryEvent {
+  id          Int      @id @default(autoincrement())
+  year        Int
+  title       String
+  description String
+  iconKey     String
+  updatedAt   DateTime @updatedAt
+
+  @@index([year])
+}
+
+/// A FAQ-style card on the public Informations pratiques page (drag-ordered).
+model PracticalInfo {
+  id         Int      @id @default(autoincrement())
+  iconKey    String
+  colorTheme String   @default("blue")
+  question   String
+  body       String   // markdown
+  sortOrder  Int      @default(0)
+  active     Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+
+  @@index([sortOrder])
+}
+
+/// A membership card on the public Nous rejoindre page (drag-ordered).
+model MembershipOption {
+  id             Int      @id @default(autoincrement())
+  iconKey        String
+  colorTheme     String   @default("blue")
+  title          String
+  body           String   // markdown
+  highlightLabel String?
+  highlightValue String?
+  bullets        String?  // one bullet per line
+  ctaLabel       String?
+  ctaHref        String?
+  sortOrder      Int      @default(0)
+  active         Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+
+  @@index([sortOrder])
+}

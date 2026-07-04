@@ -20,6 +20,9 @@ export default async function Dashboard() {
         paymentCount,
         siteContactCount,
         teamMemberCount,
+        historyEventCount,
+        practicalInfoCount,
+        membershipCount,
     ] = await Promise.all([
         prisma.book.count(),
         prisma.news.count(),
@@ -34,6 +37,9 @@ export default async function Dashboard() {
         prisma.payment.count(),
         prisma.siteContact.count(),
         prisma.teamMember.count(),
+        prisma.historyEvent.count(),
+        prisma.practicalInfo.count(),
+        prisma.membershipOption.count(),
     ]);
 
     return (
@@ -62,34 +68,6 @@ export default async function Dashboard() {
                         href="/admin/manage_coups_de_coeur"
                         buttonText="Gestion des listes de livres (anciennement appelés « coups de cœur »)"
                         accentColor="pink"
-                    />
-                </div>
-            </div>
-
-            {/* Site Pages Section */}
-            <div className="mb-10">
-                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Pages du site</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    <AdminDashboardCard
-                        title="Dernières infos"
-                        count={newsCount}
-                        href="/admin/news"
-                        buttonText="Gestion des informations importantes et actuelles"
-                        accentColor="green"
-                    />
-                    <AdminDashboardCard
-                        title="Contact"
-                        count={siteContactCount}
-                        href="/admin/site-contact"
-                        buttonText="Coordonnées affichées sur la page Contact"
-                        accentColor="teal"
-                    />
-                    <AdminDashboardCard
-                        title="Équipe"
-                        count={teamMemberCount}
-                        href="/admin/team"
-                        buttonText="Membres affichés sur la page Équipe (glisser-déposer pour réordonner)"
-                        accentColor="indigo"
                     />
                 </div>
             </div>
@@ -145,6 +123,55 @@ export default async function Dashboard() {
                         count={permanentsCount}
                         href="/admin/users/permanents"
                         buttonText="Gestion des membres permanents"
+                        accentColor="red"
+                    />
+                </div>
+            </div>
+
+            {/* Site Pages Section */}
+            <div className="mb-10">
+                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Pages du site</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    <AdminDashboardCard
+                        title="Dernières infos"
+                        count={newsCount}
+                        href="/admin/news"
+                        buttonText="Gestion des informations importantes et actuelles"
+                        accentColor="green"
+                    />
+                    <AdminDashboardCard
+                        title="Contact"
+                        count={siteContactCount}
+                        href="/admin/site-contact"
+                        buttonText="Coordonnées affichées sur la page Contact"
+                        accentColor="teal"
+                    />
+                    <AdminDashboardCard
+                        title="Équipe"
+                        count={teamMemberCount}
+                        href="/admin/team"
+                        buttonText="Membres affichés sur la page Équipe (glisser-déposer pour réordonner)"
+                        accentColor="indigo"
+                    />
+                    <AdminDashboardCard
+                        title="Historique"
+                        count={historyEventCount}
+                        href="/admin/historique"
+                        buttonText="Frise chronologique de la page Historique"
+                        accentColor="orange"
+                    />
+                    <AdminDashboardCard
+                        title="Infos pratiques"
+                        count={practicalInfoCount}
+                        href="/admin/informations-pratiques"
+                        buttonText="Cartes de la page Informations pratiques (glisser-déposer)"
+                        accentColor="cyan"
+                    />
+                    <AdminDashboardCard
+                        title="Nous rejoindre"
+                        count={membershipCount}
+                        href="/admin/nous-rejoindre"
+                        buttonText="Cartes d’adhésion de la page Nous rejoindre (glisser-déposer)"
                         accentColor="red"
                     />
                 </div>

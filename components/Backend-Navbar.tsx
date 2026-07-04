@@ -49,6 +49,9 @@ const navGroups: NavGroup[] = [
             { href: '/admin/news', label: 'Dernières infos', icon: '📰' },
             { href: '/admin/site-contact', label: 'Contact', icon: '📍' },
             { href: '/admin/team', label: 'Équipe', icon: '🧑‍🤝‍🧑' },
+            { href: '/admin/historique', label: 'Historique', icon: '📜' },
+            { href: '/admin/informations-pratiques', label: 'Infos pratiques', icon: 'ℹ️' },
+            { href: '/admin/nous-rejoindre', label: 'Nous rejoindre', icon: '🤝' },
         ],
     },
 ];
