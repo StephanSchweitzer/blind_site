@@ -400,7 +400,7 @@ export default function UsersTable({
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground">Ajouter une nouvel personne</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter une nouvelle personne</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
                         <AddUserFormBackend

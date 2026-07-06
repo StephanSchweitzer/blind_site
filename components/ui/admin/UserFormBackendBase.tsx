@@ -144,8 +144,16 @@ export function UserFormBackendBase({
         userType === 'auditeurs' ? 'auditeur' :
             userType === 'bienfaiteurs' ? 'bienfaiteur' :
                 'lecteur';
+    // Only super admins may create "permanent" (admin/super_admin) members. Since
+    // the access-level field is locked for regular admins, defaulting lecteurs to
+    // 'admin' left them stuck on a level they aren't allowed to create — blocking
+    // every creation. Default to a non-permanent level unless a super admin is creating.
     const defaultAccessLevel: UserFormData['accessLevel'] =
-        userType === 'auditeurs' || userType === 'bienfaiteurs' ? 'member' : 'admin';
+        userType === 'auditeurs' || userType === 'bienfaiteurs'
+            ? 'member'
+            : currentUserAccessLevel === 'super_admin'
+                ? 'admin'
+                : 'member';
 
     const [formData, setFormData] = useState<UserFormData>(
         initialData
@@ -672,84 +680,84 @@ export function UserFormBackendBase({
 
                     {/* Disponibilité (attributions) — lecteur only (#18b). */}
                     {formData.memberType === 'lecteur' && (
-                    <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
-                            Disponibilit&#233; (attributions)
-                        </h3>
-
                         <div className="space-y-4">
-                            {/* Disponible Checkbox - Only for Lecteurs */}
-                            {formData.memberType === 'lecteur' && (
-                                <>
-                                    <div className="bg-gradient-to-br from-card/40 to-card/20 p-4 rounded-lg border border-border/50 hover:border-border/50 transition-all">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="relative">
-                                                    <Checkbox
-                                                        checked={formData.isAvailable}
-                                                        onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
-                                                        className="h-5 w-5 border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md transition-all"
-                                                    />
-                                                    {formData.isAvailable && (
-                                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                                    )}
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                                Disponibilit&#233; (attributions)
+                            </h3>
+
+                            <div className="space-y-4">
+                                {/* Disponible Checkbox - Only for Lecteurs */}
+                                {formData.memberType === 'lecteur' && (
+                                    <>
+                                        <div className="bg-gradient-to-br from-card/40 to-card/20 p-4 rounded-lg border border-border/50 hover:border-border/50 transition-all">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative">
+                                                        <Checkbox
+                                                            checked={formData.isAvailable}
+                                                            onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
+                                                            className="h-5 w-5 border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md transition-all"
+                                                        />
+                                                        {formData.isAvailable && (
+                                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-medium text-foreground cursor-pointer">
+                                                            Disponible pour nouvelles attributions
+                                                        </label>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                                            {formData.isAvailable
+                                                                ? 'Peut recevoir de nouveaux livres'
+                                                                : 'Ne peut pas recevoir de nouveaux livres'}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label className="text-sm font-medium text-foreground cursor-pointer">
-                                                        Disponible pour nouvelles attributions
-                                                    </label>
-                                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                                        {formData.isAvailable
-                                                            ? 'Peut recevoir de nouveaux livres'
-                                                            : 'Ne peut pas recevoir de nouveaux livres'}
-                                                    </p>
+                                                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                                    formData.isAvailable
+                                                        ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30'
+                                                        : 'bg-muted/20 text-muted-foreground border border-border/30'
+                                                }`}>
+                                                    {formData.isAvailable ? 'Disponible' : 'Indisponible'}
                                                 </div>
-                                            </div>
-                                            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                                formData.isAvailable
-                                                    ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30'
-                                                    : 'bg-muted/20 text-muted-foreground border border-border/30'
-                                            }`}>
-                                                {formData.isAvailable ? 'Disponible' : 'Indisponible'}
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">Notes de disponibilité</label>
-                                        <Textarea
-                                            value={formData.availabilityNotes}
-                                            onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
-                                            className="bg-field border-border text-foreground"
-                                            placeholder="Ex: Il ne peut venir récupérer les livres que le samedi...."
-                                        />
-                                    </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-foreground">Notes de disponibilité</label>
+                                            <Textarea
+                                                value={formData.availabilityNotes}
+                                                onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
+                                                className="bg-field border-border text-foreground"
+                                                placeholder="Ex: Il ne peut venir récupérer les livres que le samedi...."
+                                            />
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">Logiciel d&apos;enregistrement</label>
-                                        <Select
-                                            value={formData.saveType || 'none'}
-                                            onValueChange={(value) =>
-                                                setFormData({ ...formData, saveType: value === 'none' ? '' : value })
-                                            }
-                                        >
-                                            <SelectTrigger className="bg-field border-border text-foreground">
-                                                <SelectValue placeholder="Sélectionner..." />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-card border-border">
-                                                <SelectItem value="none" className="text-foreground">—</SelectItem>
-                                                {SAVE_TYPE_VALUES.map((v) => (
-                                                    <SelectItem key={v} value={v} className="text-foreground">
-                                                        {SAVE_TYPE_LABELS[v]}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </>
-                            )}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-foreground">Logiciel d&apos;enregistrement</label>
+                                            <Select
+                                                value={formData.saveType || 'none'}
+                                                onValueChange={(value) =>
+                                                    setFormData({ ...formData, saveType: value === 'none' ? '' : value })
+                                                }
+                                            >
+                                                <SelectTrigger className="bg-field border-border text-foreground">
+                                                    <SelectValue placeholder="Sélectionner..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-card border-border">
+                                                    <SelectItem value="none" className="text-foreground">—</SelectItem>
+                                                    {SAVE_TYPE_VALUES.map((v) => (
+                                                        <SelectItem key={v} value={v} className="text-foreground">
+                                                            {SAVE_TYPE_LABELS[v]}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
                     )}
 
                     {/* Gestion du compte — password reset, permanent members (super_admin only). */}
@@ -757,106 +765,106 @@ export function UserFormBackendBase({
                         currentUserAccessLevel === 'super_admin' &&
                         (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
                         formData.email && (
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
-                                Gestion du compte
-                            </h3>
-                            <div className="bg-card/30 p-4 rounded-lg border border-border flex items-center justify-between gap-4">
-                                <div>
-                                    <p className="text-sm font-medium text-foreground">Mot de passe</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        G&#233;n&#232;re un nouveau mot de passe temporaire et l&apos;envoie par email
-                                        &#224; la personne. L&apos;ancien mot de passe cessera de fonctionner.
-                                    </p>
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                                    Gestion du compte
+                                </h3>
+                                <div className="bg-card/30 p-4 rounded-lg border border-border flex items-center justify-between gap-4">
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">Mot de passe</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            G&#233;n&#232;re un nouveau mot de passe temporaire et l&apos;envoie par email
+                                            &#224; la personne. L&apos;ancien mot de passe cessera de fonctionner.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        onClick={() => setIsPasswordResetDialogOpen(true)}
+                                        variant="outline"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shrink-0"
+                                    >
+                                        <Mail className="h-4 w-4 mr-2" />
+                                        R&#233;initialiser mot de passe
+                                    </Button>
                                 </div>
-                                <Button
-                                    type="button"
-                                    onClick={() => setIsPasswordResetDialogOpen(true)}
-                                    variant="outline"
-                                    className="bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shrink-0"
-                                >
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    R&#233;initialiser mot de passe
-                                </Button>
                             </div>
-                        </div>
-                    )}
+                        )}
 
                     {/* Preferences & Settings — #14: only for auditeur or lecteur */}
                     {(formData.memberType === 'auditeur' || formData.memberType === 'lecteur') && (
-                    <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
-                            Préférences
-                        </h3>
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                                Préférences
+                            </h3>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Méthode de livraison préférée</label>
-                                <Select
-                                    value={formData.preferredDeliveryMethod}
-                                    onValueChange={(value) => setFormData({ ...formData, preferredDeliveryMethod: value })}
-                                >
-                                    <SelectTrigger className="bg-field border-border text-foreground">
-                                        <SelectValue placeholder="Sélectionner..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-card border-border">
-                                        <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
-                                        <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Méthode de livraison préférée</label>
+                                    <Select
+                                        value={formData.preferredDeliveryMethod}
+                                        onValueChange={(value) => setFormData({ ...formData, preferredDeliveryMethod: value })}
+                                    >
+                                        <SelectTrigger className="bg-field border-border text-foreground">
+                                            <SelectValue placeholder="Sélectionner..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-card border-border">
+                                            <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
+                                            <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Format média préféré</label>
+                                    <Select
+                                        value={formData.preferredMediaFormatId?.toString() || ''}
+                                        onValueChange={(value) => setFormData({ ...formData, preferredMediaFormatId: value ? parseInt(value) : null })}
+                                    >
+                                        <SelectTrigger className="bg-field border-border text-foreground">
+                                            <SelectValue placeholder="Sélectionner..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-card border-border">
+                                            {mediaFormats.map((format) => (
+                                                <SelectItem
+                                                    key={format.id}
+                                                    value={format.id.toString()}
+                                                    className="text-foreground"
+                                                >
+                                                    {format.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* #16: payment threshold + balance only for auditeur */}
+                                {formData.memberType === 'auditeur' && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-foreground">Seuil de paiement (€)</label>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                value={formData.paymentThreshold}
+                                                onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
+                                                className="bg-field border-border text-foreground"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-foreground">Solde actuel (€)</label>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                value={formData.currentBalance}
+                                                onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
+                                                className="bg-field border-border text-foreground"
+                                            />
+                                        </div>
+                                    </>
+                                )}
                             </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Format média préféré</label>
-                                <Select
-                                    value={formData.preferredMediaFormatId?.toString() || ''}
-                                    onValueChange={(value) => setFormData({ ...formData, preferredMediaFormatId: value ? parseInt(value) : null })}
-                                >
-                                    <SelectTrigger className="bg-field border-border text-foreground">
-                                        <SelectValue placeholder="Sélectionner..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-card border-border">
-                                        {mediaFormats.map((format) => (
-                                            <SelectItem
-                                                key={format.id}
-                                                value={format.id.toString()}
-                                                className="text-foreground"
-                                            >
-                                                {format.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* #16: payment threshold + balance only for auditeur */}
-                            {formData.memberType === 'auditeur' && (
-                                <>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">Seuil de paiement (€)</label>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            value={formData.paymentThreshold}
-                                            onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
-                                            className="bg-field border-border text-foreground"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">Solde actuel (€)</label>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            value={formData.currentBalance}
-                                            onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-                                            className="bg-field border-border text-foreground"
-                                        />
-                                    </div>
-                                </>
-                            )}
                         </div>
-                    </div>
                     )}
 
                     {/* Reader-specific fields - Only for Lecteurs */}
