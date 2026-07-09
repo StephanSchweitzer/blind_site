@@ -19,7 +19,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { AddressFormData, UserFormData, UserType } from '@/types';
-import { formatFrenchPhone } from '@/lib/utils';
+import { formatPhone } from '@/lib/utils';
 import {
     MEMBER_TYPE_VALUES,
     MEMBER_TYPE_LABELS,
@@ -528,7 +528,7 @@ export function UserFormBackendBase({
                                     type="tel"
                                     value={formData.homePhone}
                                     onChange={(e) => setFormData({ ...formData, homePhone: e.target.value })}
-                                    onBlur={(e) => setFormData({ ...formData, homePhone: formatFrenchPhone(e.target.value) })}
+                                    onBlur={(e) => setFormData({ ...formData, homePhone: formatPhone(e.target.value) })}
                                     className="bg-field border-border text-foreground"
                                 />
                             </div>
@@ -539,7 +539,7 @@ export function UserFormBackendBase({
                                     type="tel"
                                     value={formData.cellPhone}
                                     onChange={(e) => setFormData({ ...formData, cellPhone: e.target.value })}
-                                    onBlur={(e) => setFormData({ ...formData, cellPhone: formatFrenchPhone(e.target.value) })}
+                                    onBlur={(e) => setFormData({ ...formData, cellPhone: formatPhone(e.target.value) })}
                                     className="bg-field border-border text-foreground"
                                 />
                             </div>

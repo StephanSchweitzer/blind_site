@@ -1,17 +1,31 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Formats a French phone number as pairs: "0612345678" -> "06 12 34 56 78".
-// Also normalizes a leading "+33"/"33" international prefix to "0".
-export function formatFrenchPhone(raw?: string | null): string {
+// Formats a phone number for display, country-aware.
+// - Numbers written in national form (no leading "+") are assumed to belong to
+//   `defaultCountry` (France for ECA): "0612345678" -> "06 12 34 56 78".
+// - Numbers with an explicit country code are auto-detected: a home-country
+//   number is shown national, a foreign one international, e.g.
+//   "+12133734253" -> "+1 213 373 4253", "+442079460958" -> "+44 20 7946 0958".
+// - Anything unparseable is returned trimmed but otherwise unchanged, so a
+//   half-typed value in a form field is never mangled.
+export function formatPhone(raw?: string | null, defaultCountry: CountryCode = 'FR'): string {
   if (!raw) return '';
-  let digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('33') && digits.length === 11) digits = '0' + digits.slice(2);
-  return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  const parsed = parsePhoneNumberFromString(
+    trimmed,
+    trimmed.startsWith('+') ? undefined : defaultCountry,
+  );
+  if (!parsed) return trimmed;
+  return parsed.country === defaultCountry
+    ? parsed.formatNational()
+    : parsed.formatInternational();
 }
 
 export function generatePassword(length = 12): string {

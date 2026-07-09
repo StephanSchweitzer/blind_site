@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { Card, CardContent } from '@/components/ui/card';
 import DossierTabs from './dossier-tabs';
 import { MEMBER_TYPE_LABELS } from '@/lib/user-enums';
-import { formatFrenchPhone } from '@/lib/utils';
+import { formatPhone } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -67,7 +67,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                             <div className="mt-2 text-sm text-muted-foreground space-y-0.5">
                                 {user.email && <div>{user.email}</div>}
                                 {(user.cellPhone || user.homePhone) && (
-                                    <div>{[user.cellPhone, user.homePhone].map(formatFrenchPhone).filter(Boolean).join(' · ')}</div>
+                                    <div>{[user.cellPhone, user.homePhone].map((p) => formatPhone(p)).filter(Boolean).join(' · ')}</div>
                                 )}
                             </div>
                         </div>
