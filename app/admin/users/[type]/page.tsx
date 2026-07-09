@@ -9,6 +9,7 @@ import { UserTypeTabs } from './user-type-tabs';
 import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
 import { USER_ACTIVITY_STATUS_VALUES } from '@/lib/user-activity-enums';
 import { LANGUAGE_VALUES } from '@/lib/user-enums';
+import { cotisationReferenceCutoff } from '@/lib/cotisation';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -29,7 +30,8 @@ async function getUsers(
     searchTerm: string,
     userType: UserType,
     statusFilter: string,
-    languageFilter: string
+    languageFilter: string,
+    cotisationFilter: string
 ) {
     const usersPerPage = 10;
 
@@ -58,18 +60,42 @@ async function getUsers(
         }
     }
 
-    // List filter adds the activity-status filter on top of the base.
-    const listWhere: Prisma.UserWhereInput = { ...baseWhere };
+    // "Scoped" population: base + search + language + cotisation, but NOT the
+    // activity-status filter. The actifs/inactifs breakdown is computed over this
+    // set so the two counts always reflect the current filters AND always sum to
+    // the scoped total (active + inactive partitions it exactly).
+    const scopedWhere: Prisma.UserWhereInput = { ...baseWhere };
+
+    if (languageFilter && (LANGUAGE_VALUES as readonly string[]).includes(languageFilter)) {
+        scopedWhere.languages = { some: { language: languageFilter as Language } };
+    }
+
+    // Cotisation filter: "à jour" = has an active cotisation still in coverage;
+    // "en retard" = none (covers both lapsed cotisations and no cotisation at all).
+    // The OR mirrors lib/cotisation.ts referenceDate(): prefer paymentDate, fall
+    // back to creationDate when paymentDate is null.
+    if (cotisationFilter === 'a_jour' || cotisationFilter === 'en_retard') {
+        const cutoff = cotisationReferenceCutoff();
+        const cotisationMatch: Prisma.PaymentWhereInput = {
+            type: 'COTISATION',
+            isActive: true,
+            OR: [
+                { paymentDate: { gte: cutoff } },
+                { AND: [{ paymentDate: null }, { creationDate: { gte: cutoff } }] },
+            ],
+        };
+        scopedWhere.payments =
+            cotisationFilter === 'a_jour' ? { some: cotisationMatch } : { none: cotisationMatch };
+    }
+
+    // The list adds the activity-status filter on top of the scoped population.
+    const listWhere: Prisma.UserWhereInput = { ...scopedWhere };
     if (statusFilter === 'active') {
         listWhere.activityStatus = UserActivityStatus.ACTIVE;
     } else if (statusFilter === 'inactive') {
         listWhere.activityStatus = { not: UserActivityStatus.ACTIVE };
     } else if ((USER_ACTIVITY_STATUS_VALUES as readonly string[]).includes(statusFilter)) {
         listWhere.activityStatus = statusFilter as UserActivityStatus;
-    }
-
-    if (languageFilter && (LANGUAGE_VALUES as readonly string[]).includes(languageFilter)) {
-        listWhere.languages = { some: { language: languageFilter as Language } };
     }
 
     try {
@@ -93,13 +119,16 @@ async function getUsers(
                 },
             }),
             prisma.user.count({ where: listWhere }),
-            prisma.user.count({ where: { ...baseWhere, activityStatus: UserActivityStatus.ACTIVE } }),
-            prisma.user.count({ where: { ...baseWhere, activityStatus: { not: UserActivityStatus.ACTIVE } } }),
+            prisma.user.count({ where: { ...scopedWhere, activityStatus: UserActivityStatus.ACTIVE } }),
+            prisma.user.count({ where: { ...scopedWhere, activityStatus: { not: UserActivityStatus.ACTIVE } } }),
         ]);
 
         return {
             users,
             totalUsers,
+            // Scoped total = actifs + inactifs (they partition the scoped set), so
+            // the summary line is always internally consistent.
+            scopedTotal: activeCount + inactiveCount,
             activeCount,
             inactiveCount,
             totalPages: Math.ceil(totalUsers / usersPerPage),
@@ -143,18 +172,21 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
     const languageFilter = Array.isArray(searchParamsResolved.language)
         ? searchParamsResolved.language[0]
         : searchParamsResolved.language || '';
+    const cotisationFilter = Array.isArray(searchParamsResolved.cotisation)
+        ? searchParamsResolved.cotisation[0]
+        : searchParamsResolved.cotisation || '';
 
     // Only the data fetch is guarded. JSX is returned at the top level so render
     // errors propagate to an error boundary instead of being silently swallowed.
     let data: Awaited<ReturnType<typeof getUsers>>;
     try {
-        data = await getUsers(page, searchTerm, userType, statusFilter, languageFilter);
+        data = await getUsers(page, searchTerm, userType, statusFilter, languageFilter, cotisationFilter);
     } catch (error) {
         console.error('Error in Users page:', error);
         notFound();
     }
 
-    const { users, totalUsers, totalPages, activeCount, inactiveCount } = data;
+    const { users, totalUsers, scopedTotal, totalPages, activeCount, inactiveCount } = data;
 
     const serializedUsers = users.map(user => ({
         ...user,
@@ -172,8 +204,10 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                 initialSearch={searchTerm}
                 initialStatus={statusFilter}
                 initialLanguage={languageFilter}
+                initialCotisation={cotisationFilter}
                 totalPages={totalPages}
                 initialTotalUsers={totalUsers}
+                scopedTotal={scopedTotal}
                 activeCount={activeCount}
                 inactiveCount={inactiveCount}
                 currentUserAccessLevel={session.user.accessLevel}

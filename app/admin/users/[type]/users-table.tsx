@@ -14,7 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Search, X, Loader2, Plus } from 'lucide-react';
 import {
     Dialog,
@@ -65,8 +65,10 @@ interface UsersTableProps {
     initialSearch: string;
     initialStatus: string;
     initialLanguage: string;
+    initialCotisation: string;
     totalPages: number;
     initialTotalUsers: number;
+    scopedTotal: number;
     activeCount: number;
     inactiveCount: number;
     currentUserAccessLevel?: string;
@@ -79,8 +81,10 @@ export default function UsersTable({
                                        initialSearch,
                                        initialStatus,
                                        initialLanguage,
+                                       initialCotisation,
                                        totalPages,
                                        initialTotalUsers,
+                                       scopedTotal,
                                        activeCount,
                                        inactiveCount,
                                        currentUserAccessLevel,
@@ -95,6 +99,7 @@ export default function UsersTable({
     const canCreateUsers = ADMINS_CAN_CREATE_USERS || session?.user.accessLevel === 'super_admin';
     const [statusFilter, setStatusFilter] = useState(initialStatus || 'all');
     const [languageFilter, setLanguageFilter] = useState(initialLanguage || 'all');
+    const [cotisationFilter, setCotisationFilter] = useState(initialCotisation || 'all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isLoadingUser, setIsLoadingUser] = useState(false);
@@ -105,6 +110,14 @@ export default function UsersTable({
 
     const currentPage = initialPage;
     const { plural, singular } = USER_TYPE_META[type];
+
+    // Which activity segment (if any) the current status filter is showing. The
+    // actif/inactif figures double as toggle chips that drive this filter.
+    const activeSelected = statusFilter === 'ACTIVE' || statusFilter === 'active';
+    const inactiveSelected = statusFilter === 'inactive';
+    // A granular status (e.g. "En congé") is selected via the dropdown, not the chips.
+    const statusIsGranular =
+        statusFilter !== 'all' && statusFilter !== '' && !activeSelected && !inactiveSelected;
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -137,6 +150,11 @@ export default function UsersTable({
     const handleLanguageFilter = (value: string) => {
         setLanguageFilter(value);
         updateUrl({ language: value === 'all' ? undefined : value, page: '1' });
+    };
+
+    const handleCotisationFilter = (value: string) => {
+        setCotisationFilter(value);
+        updateUrl({ cotisation: value === 'all' ? undefined : value, page: '1' });
     };
 
     const handlePageChange = (newPage: number) => {
@@ -253,13 +271,46 @@ export default function UsersTable({
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <CardTitle className="text-2xl text-foreground">{plural}</CardTitle>
-                        <CardDescription className="text-muted-foreground mt-1">
-                            {initialTotalUsers} {singular}{initialTotalUsers > 1 ? 's' : ''} au total
-                            {' \u2022 '}
-                            {activeCount} actif{activeCount > 1 ? 's' : ''}
-                            {' \u2022 '}
-                            {inactiveCount} inactif{inactiveCount > 1 ? 's' : ''}
-                        </CardDescription>
+                        <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
+                            <span>
+                                {scopedTotal} {singular}{scopedTotal > 1 ? 's' : ''} au total
+                            </span>
+                            <span aria-hidden className="text-muted-foreground/50">&#8226;</span>
+                            <button
+                                type="button"
+                                aria-pressed={activeSelected}
+                                onClick={() => handleStatusFilter(activeSelected ? 'all' : 'ACTIVE')}
+                                title={activeSelected ? 'Retirer le filtre' : 'Afficher uniquement les actifs'}
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
+                                    activeSelected
+                                        ? 'bg-emerald-950 text-emerald-300 ring-1 ring-inset ring-emerald-800'
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                }`}
+                            >
+                                <span className={`h-1.5 w-1.5 rounded-full ${activeSelected ? 'bg-emerald-400' : 'bg-emerald-500/50'}`} />
+                                {activeCount} actif{activeCount > 1 ? 's' : ''}
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={inactiveSelected}
+                                onClick={() => handleStatusFilter(inactiveSelected ? 'all' : 'inactive')}
+                                title={inactiveSelected ? 'Retirer le filtre' : 'Afficher uniquement les inactifs'}
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
+                                    inactiveSelected
+                                        ? 'bg-red-950 text-red-300 ring-1 ring-inset ring-red-800'
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                }`}
+                            >
+                                <span className={`h-1.5 w-1.5 rounded-full ${inactiveSelected ? 'bg-red-400' : 'bg-red-500/50'}`} />
+                                {inactiveCount} inactif{inactiveCount > 1 ? 's' : ''}
+                            </button>
+                            {statusIsGranular && (
+                                <>
+                                    <span aria-hidden className="text-muted-foreground/50">&#8226;</span>
+                                    <span className="italic">{initialTotalUsers} affich&#233;{initialTotalUsers > 1 ? 's' : ''}</span>
+                                </>
+                            )}
+                        </div>
                     </div>
                     {canCreateUsers && (
                         <Button
@@ -305,6 +356,16 @@ export default function UsersTable({
                                     {getUserActivityStatusLabel(s)}
                                 </SelectItem>
                             ))}
+                        </SelectContent>
+                    </Select>
+                    <Select value={cotisationFilter} onValueChange={handleCotisationFilter}>
+                        <SelectTrigger className="bg-card border-border text-foreground sm:w-52">
+                            <SelectValue placeholder="Cotisation" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                            <SelectItem value="all" className="text-foreground">Toutes les cotisations</SelectItem>
+                            <SelectItem value="a_jour" className="text-foreground">Cotisation à jour</SelectItem>
+                            <SelectItem value="en_retard" className="text-foreground">Cotisation non à jour</SelectItem>
                         </SelectContent>
                     </Select>
                     {type === 'lecteurs' && (

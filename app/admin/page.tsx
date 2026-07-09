@@ -77,7 +77,7 @@ export default async function Dashboard() {
             </div>
 
             {/* Operations & Admin Section */}
-            <div>
+            <div className="mb-10">
                 <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Gestion</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     <AdminDashboardCard
@@ -133,7 +133,7 @@ export default async function Dashboard() {
             </div>
 
             {/* Site Pages Section */}
-            <div className="mb-10">
+            <div>
                 <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Pages du site</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     <AdminDashboardCard

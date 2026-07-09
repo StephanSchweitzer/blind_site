@@ -18,6 +18,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { CotisationStatusBanner } from '@/components/ui/admin/CotisationStatusBanner';
 import { AddressFormData, UserFormData, UserType } from '@/types';
 import { formatPhone } from '@/lib/utils';
 import {
@@ -372,6 +373,8 @@ export function UserFormBackendBase({
                 <CardTitle className="text-foreground">{title}</CardTitle>
             </CardHeader>
             <CardContent>
+                {userId && <CotisationStatusBanner userId={userId} />}
+
                 {error && (
                     <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />

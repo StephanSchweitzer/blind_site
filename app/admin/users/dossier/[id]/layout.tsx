@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import DossierTabs from './dossier-tabs';
 import { MEMBER_TYPE_LABELS } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
+import { computeCotisationStatus, formatCotisationDate } from '@/lib/cotisation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,6 +45,12 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
     });
     if (!user) notFound();
 
+    const cotisationPayments = await prisma.payment.findMany({
+        where: { clientId: userId, type: 'COTISATION', isActive: true },
+        select: { cotisationYear: true, paymentDate: true, creationDate: true },
+    });
+    const cotisation = computeCotisationStatus(cotisationPayments);
+
     const fullName =
         [user.firstName, user.lastName].filter(Boolean).join(' ') || user.name || 'Sans nom';
 
@@ -61,6 +68,17 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                                 {user.isActive === false && (
                                     <span className="inline-flex items-center rounded-full bg-red-950 px-2.5 py-1 text-xs font-medium text-red-300">
                                         Inactif
+                                    </span>
+                                )}
+                                {cotisation.isPaid ? (
+                                    <span className="inline-flex items-center rounded-full bg-green-950 px-2.5 py-1 text-xs font-medium text-green-300">
+                                        Cotisation à jour · expire le {formatCotisationDate(cotisation.expiresAt)}
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center rounded-full bg-red-950 px-2.5 py-1 text-xs font-medium text-red-300">
+                                        {cotisation.expiresAt
+                                            ? `Cotisation expirée le ${formatCotisationDate(cotisation.expiresAt)}`
+                                            : 'Cotisation non payée'}
                                     </span>
                                 )}
                             </div>
