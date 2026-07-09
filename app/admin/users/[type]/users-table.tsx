@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { ADMINS_CAN_CREATE_USERS } from '@/lib/feature-flags';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -89,6 +91,8 @@ export default function UsersTable({
     const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
+    const { data: session } = useSession();
+    const canCreateUsers = ADMINS_CAN_CREATE_USERS || session?.user.accessLevel === 'super_admin';
     const [statusFilter, setStatusFilter] = useState(initialStatus || 'all');
     const [languageFilter, setLanguageFilter] = useState(initialLanguage || 'all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -257,13 +261,15 @@ export default function UsersTable({
                             {inactiveCount} inactif{inactiveCount > 1 ? 's' : ''}
                         </CardDescription>
                     </div>
-                    <Button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Ajouter un membre
-                    </Button>
+                    {canCreateUsers && (
+                        <Button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Ajouter un membre
+                        </Button>
+                    )}
                 </div>
             </CardHeader>
 

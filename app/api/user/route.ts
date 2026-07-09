@@ -10,6 +10,7 @@ import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 import { UserCreateInput } from '@/types/api/user.api';
 import { AddressCreateInput } from '@/types/api/common.api';
 import { MemberType, AccessLevel, Language } from '@prisma/client';
+import { ADMINS_CAN_CREATE_USERS } from '@/lib/feature-flags';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -69,6 +70,11 @@ export async function POST(request: Request) {
         }
 
         if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
+            return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
+        }
+
+        // TEMP (see lib/feature-flags.ts): only super_admins may create users.
+        if (!ADMINS_CAN_CREATE_USERS && session.user.accessLevel !== 'super_admin') {
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
 
