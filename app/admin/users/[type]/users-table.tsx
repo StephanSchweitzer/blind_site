@@ -37,6 +37,8 @@ import {
     getAccessLevelLabel,
     getAccessLevelColor,
     USER_TYPE_META,
+    LANGUAGE_VALUES,
+    getLanguageLabel,
 } from '@/lib/user-enums';
 import {
     USER_ACTIVITY_STATUS_VALUES,
@@ -60,6 +62,7 @@ interface UsersTableProps {
     initialPage: number;
     initialSearch: string;
     initialStatus: string;
+    initialLanguage: string;
     totalPages: number;
     initialTotalUsers: number;
     activeCount: number;
@@ -73,6 +76,7 @@ export default function UsersTable({
                                        initialPage,
                                        initialSearch,
                                        initialStatus,
+                                       initialLanguage,
                                        totalPages,
                                        initialTotalUsers,
                                        activeCount,
@@ -86,6 +90,7 @@ export default function UsersTable({
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [statusFilter, setStatusFilter] = useState(initialStatus || 'all');
+    const [languageFilter, setLanguageFilter] = useState(initialLanguage || 'all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isLoadingUser, setIsLoadingUser] = useState(false);
@@ -123,6 +128,11 @@ export default function UsersTable({
     const handleStatusFilter = (value: string) => {
         setStatusFilter(value);
         updateUrl({ status: value === 'all' ? undefined : value, page: '1' });
+    };
+
+    const handleLanguageFilter = (value: string) => {
+        setLanguageFilter(value);
+        updateUrl({ language: value === 'all' ? undefined : value, page: '1' });
     };
 
     const handlePageChange = (newPage: number) => {
@@ -179,7 +189,7 @@ export default function UsersTable({
                 preferredMediaFormatId: userData.preferredMediaFormatId ?? null,
                 isAvailable: userData.isAvailable ?? true,
                 availabilityNotes: userData.availabilityNotes || '',
-                specialization: userData.specialization || '',
+                languages: (userData.languages ?? []).map((l: { language: string }) => l.language),
                 saveType: userData.saveType || '',
                 maxConcurrentAssignments: userData.maxConcurrentAssignments,
                 notes: userData.notes || '',
@@ -291,6 +301,21 @@ export default function UsersTable({
                             ))}
                         </SelectContent>
                     </Select>
+                    {type === 'lecteurs' && (
+                        <Select value={languageFilter} onValueChange={handleLanguageFilter}>
+                            <SelectTrigger className="bg-card border-border text-foreground sm:w-48">
+                                <SelectValue placeholder="Langue" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Toutes les langues</SelectItem>
+                                {LANGUAGE_VALUES.map((l) => (
+                                    <SelectItem key={l} value={l} className="text-foreground">
+                                        {getLanguageLabel(l)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
                 </div>
 
                 <div className="space-y-6">

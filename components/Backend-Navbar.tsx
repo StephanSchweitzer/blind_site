@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X, ChevronDown } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface NavItem {
@@ -59,6 +60,15 @@ const navGroups: NavGroup[] = [
 const BackendNavbar: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [mobileGroup, setMobileGroup] = useState<number | null>(null);
+    const { data: session } = useSession();
+    const isSuper = session?.user.accessLevel === 'super_admin';
+
+    // Non-super-admins only see "Dernières infos" (news) in the Pages group.
+    const visibleGroups = navGroups
+        .map((g) => g.label === 'Pages' && !isSuper
+            ? { ...g, items: g.items.filter((i) => i.href === '/admin/news') }
+            : g)
+        .filter((g) => g.items.length > 0);
 
     const toggleMobileGroup = (index: number) => {
         setMobileGroup((prev) => (prev === index ? null : index));
@@ -84,7 +94,7 @@ const BackendNavbar: React.FC = () => {
 
                     {/* Desktop navigation — hover-triggered dropdowns */}
                     <div className="hidden lg:flex items-center gap-1 flex-1">
-                        {navGroups.map((group) => (
+                        {visibleGroups.map((group) => (
                             <div key={group.label} className="relative group">
                                 <span className="flex items-center gap-2 px-4 py-2 rounded-md text-foreground/80 font-medium cursor-pointer select-none hover:text-foreground hover:bg-accent transition-colors duration-100">
                                     {group.label}
@@ -153,7 +163,7 @@ const BackendNavbar: React.FC = () => {
                 {/* Mobile menu — click-toggled dropdowns */}
                 {isMenuOpen && (
                     <div className="lg:hidden pb-4 space-y-1">
-                        {navGroups.map((group, index) => (
+                        {visibleGroups.map((group, index) => (
                             <div key={group.label}>
                                 <button
                                     type="button"

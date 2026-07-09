@@ -20,8 +20,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session?.user.accessLevel !== 'super_admin') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     try {
         const { iconKey, colorTheme, question, body } = await req.json();
@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session?.user.accessLevel !== 'super_admin') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     try {
         const { items } = await req.json();

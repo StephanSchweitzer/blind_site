@@ -22,10 +22,7 @@ export function ThemePicker({ value, onChange }: { value: string; onChange: (v: 
     return (
         <Select value={value} onValueChange={onChange}>
             <SelectTrigger className="bg-card border-border text-foreground">
-                <div className="flex items-center gap-2">
-                    <span className={`inline-block h-3 w-3 rounded-full ${SWATCH[value] ?? 'bg-blue-500'}`} />
-                    <SelectValue placeholder="Couleur" />
-                </div>
+                <SelectValue placeholder="Couleur" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border">
                 {THEME_KEYS.map((key) => (

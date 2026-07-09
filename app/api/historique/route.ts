@@ -20,8 +20,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session?.user.accessLevel !== 'super_admin') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     try {
         const { year, title, description, iconKey } = await req.json();

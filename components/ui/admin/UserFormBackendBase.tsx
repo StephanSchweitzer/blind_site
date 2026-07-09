@@ -19,6 +19,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { AddressFormData, UserFormData, UserType } from '@/types';
+import { formatFrenchPhone } from '@/lib/utils';
 import {
     MEMBER_TYPE_VALUES,
     MEMBER_TYPE_LABELS,
@@ -27,6 +28,8 @@ import {
     getAccessLevelLabel,
     SAVE_TYPE_VALUES,
     SAVE_TYPE_LABELS,
+    LANGUAGE_VALUES,
+    getLanguageLabel,
 } from '@/lib/user-enums';
 
 interface UserFormBackendBaseProps {
@@ -81,7 +84,7 @@ function sanitizeInitialData(
         paymentThreshold: data.paymentThreshold || '21.00',
         currentBalance: data.currentBalance || '0.00',
         availabilityNotes: data.availabilityNotes || '',
-        specialization: data.specialization || '',
+        languages: data.languages ?? [],
         saveType: data.saveType || '',
         notes: data.notes || '',
         addresses: (data.addresses || []).map(addr => ({
@@ -180,7 +183,7 @@ export function UserFormBackendBase({
                 preferredMediaFormatId: null,
                 isAvailable: true,
                 availabilityNotes: '',
-                specialization: '',
+                languages: [],
                 saveType: '',
                 maxConcurrentAssignments: 3,
                 notes: '',
@@ -525,6 +528,7 @@ export function UserFormBackendBase({
                                     type="tel"
                                     value={formData.homePhone}
                                     onChange={(e) => setFormData({ ...formData, homePhone: e.target.value })}
+                                    onBlur={(e) => setFormData({ ...formData, homePhone: formatFrenchPhone(e.target.value) })}
                                     className="bg-field border-border text-foreground"
                                 />
                             </div>
@@ -535,6 +539,7 @@ export function UserFormBackendBase({
                                     type="tel"
                                     value={formData.cellPhone}
                                     onChange={(e) => setFormData({ ...formData, cellPhone: e.target.value })}
+                                    onBlur={(e) => setFormData({ ...formData, cellPhone: formatFrenchPhone(e.target.value) })}
                                     className="bg-field border-border text-foreground"
                                 />
                             </div>
@@ -606,15 +611,6 @@ export function UserFormBackendBase({
                                         <Input
                                             value={address.postalCode}
                                             onChange={(e) => handleAddressChange(index, 'postalCode', e.target.value)}
-                                            className="bg-field border-border text-foreground"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">État/Province</label>
-                                        <Input
-                                            value={address.stateProvince}
-                                            onChange={(e) => handleAddressChange(index, 'stateProvince', e.target.value)}
                                             className="bg-field border-border text-foreground"
                                         />
                                     </div>
@@ -875,16 +871,28 @@ export function UserFormBackendBase({
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-foreground">Spécialisation</label>
-                                    <Input
-                                        value={formData.specialization}
-                                        onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                                        className="bg-field border-border text-foreground"
-                                    />
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-sm font-medium text-foreground">Langues (spécialisation)</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {LANGUAGE_VALUES.map((lang) => (
+                                            <label key={lang} className="flex items-center gap-2 text-sm text-foreground">
+                                                <Checkbox
+                                                    checked={formData.languages.includes(lang)}
+                                                    onCheckedChange={(checked) => setFormData({
+                                                        ...formData,
+                                                        languages: checked
+                                                            ? [...formData.languages, lang]
+                                                            : formData.languages.filter((l) => l !== lang),
+                                                    })}
+                                                    className="border-border data-[state=checked]:bg-blue-600"
+                                                />
+                                                {getLanguageLabel(lang)}
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
 
-                                <div className="space-y-2">
+                                <div className="space-y-2 md:col-span-2">
                                     <label className="text-sm font-medium text-foreground">Nombre maximum d&apos;attributions simultanées</label>
                                     <Input
                                         type="number"

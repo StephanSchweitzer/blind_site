@@ -9,7 +9,7 @@ import { isSendableEmail } from '@/lib/email/sendEmail';
 import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 import { UserCreateInput } from '@/types/api/user.api';
 import { AddressCreateInput } from '@/types/api/common.api';
-import { MemberType, AccessLevel } from '@prisma/client';
+import { MemberType, AccessLevel, Language } from '@prisma/client';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -154,7 +154,9 @@ export async function POST(request: Request) {
                 preferredMediaFormatId: body.preferredMediaFormatId ?? null,
                 isAvailable: body.isAvailable ?? true,
                 availabilityNotes: body.availabilityNotes || null,
-                specialization: body.specialization || null,
+                languages: body.languages?.length
+                    ? { create: body.languages.map((language: string) => ({ language: language as Language })) }
+                    : undefined,
                 saveType: body.saveType || null,
                 maxConcurrentAssignments: body.maxConcurrentAssignments || 3,
                 notes: body.notes || null,

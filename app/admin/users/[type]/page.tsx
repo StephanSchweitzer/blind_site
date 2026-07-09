@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { Prisma, UserActivityStatus } from '@prisma/client';
+import { Prisma, UserActivityStatus, Language } from '@prisma/client';
 import UsersTable from './users-table';
 import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { UserTypeTabs } from './user-type-tabs';
 import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
 import { USER_ACTIVITY_STATUS_VALUES } from '@/lib/user-activity-enums';
+import { LANGUAGE_VALUES } from '@/lib/user-enums';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -27,7 +28,8 @@ async function getUsers(
     page: number,
     searchTerm: string,
     userType: UserType,
-    statusFilter: string
+    statusFilter: string,
+    languageFilter: string
 ) {
     const usersPerPage = 10;
 
@@ -64,6 +66,10 @@ async function getUsers(
         listWhere.activityStatus = { not: UserActivityStatus.ACTIVE };
     } else if ((USER_ACTIVITY_STATUS_VALUES as readonly string[]).includes(statusFilter)) {
         listWhere.activityStatus = statusFilter as UserActivityStatus;
+    }
+
+    if (languageFilter && (LANGUAGE_VALUES as readonly string[]).includes(languageFilter)) {
+        listWhere.languages = { some: { language: languageFilter as Language } };
     }
 
     try {
@@ -134,12 +140,15 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
     const statusFilter = Array.isArray(searchParamsResolved.status)
         ? searchParamsResolved.status[0]
         : searchParamsResolved.status || '';
+    const languageFilter = Array.isArray(searchParamsResolved.language)
+        ? searchParamsResolved.language[0]
+        : searchParamsResolved.language || '';
 
     // Only the data fetch is guarded. JSX is returned at the top level so render
     // errors propagate to an error boundary instead of being silently swallowed.
     let data: Awaited<ReturnType<typeof getUsers>>;
     try {
-        data = await getUsers(page, searchTerm, userType, statusFilter);
+        data = await getUsers(page, searchTerm, userType, statusFilter, languageFilter);
     } catch (error) {
         console.error('Error in Users page:', error);
         notFound();
@@ -162,6 +171,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                 initialPage={page}
                 initialSearch={searchTerm}
                 initialStatus={statusFilter}
+                initialLanguage={languageFilter}
                 totalPages={totalPages}
                 initialTotalUsers={totalUsers}
                 activeCount={activeCount}

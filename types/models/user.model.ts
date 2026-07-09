@@ -132,6 +132,7 @@ export const fullUserSelect = {
     saveType: true,
     maxConcurrentAssignments: true,
     notes: true,
+    languages: { select: { language: true } },
     // SECURITY: Explicitly exclude sensitive fields
     password: false,
     passwordNeedsChange: false,

@@ -19,7 +19,7 @@ import {
     UserUpdateData,
 } from '@/types';
 import { AddressCreateInput } from '@/types/api/common.api';
-import { Prisma, MemberType, AccessLevel, DeliveryMethod } from '@prisma/client';
+import { Prisma, MemberType, AccessLevel, DeliveryMethod, Language } from '@prisma/client';
 
 export async function GET(
     request: NextRequest,
@@ -333,7 +333,6 @@ export async function PATCH(
         // Reader/staff fields
         if (body.isAvailable !== undefined) updateData.isAvailable = body.isAvailable;
         if (body.availabilityNotes !== undefined) updateData.availabilityNotes = body.availabilityNotes || null;
-        if (body.specialization !== undefined) updateData.specialization = body.specialization || null;
         if (body.saveType !== undefined) updateData.saveType = body.saveType || null;
         if (body.maxConcurrentAssignments !== undefined) updateData.maxConcurrentAssignments = body.maxConcurrentAssignments || null;
 
@@ -389,6 +388,16 @@ export async function PATCH(
                         isDefault: addr.isDefault || false,
                     }))
                 };
+            }
+        }
+
+        // Handle languages separately (one-to-many; replace-all)
+        if (body.languages !== undefined) {
+            await prisma.readerLanguage.deleteMany({ where: { userId } });
+            if (body.languages.length > 0) {
+                await prisma.readerLanguage.createMany({
+                    data: body.languages.map((language: string) => ({ userId, language: language as Language })),
+                });
             }
         }
 

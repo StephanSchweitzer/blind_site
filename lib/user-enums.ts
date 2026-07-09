@@ -84,3 +84,19 @@ export const SAVE_TYPE_LABELS: Record<SaveType, string> = {
 
 export const getSaveTypeLabel = (v: string): string =>
     SAVE_TYPE_LABELS[v as SaveType] ?? v;
+
+// Reader language specialization (mirrors the Language enum in schema.prisma).
+export const LANGUAGE_VALUES = [
+    'FRANCAIS', 'ANGLAIS', 'ESPAGNOL', 'ALLEMAND', 'ITALIEN',
+    'PORTUGAIS', 'ARABE', 'RUSSE', 'CHINOIS', 'AUTRE',
+] as const;
+export type Language = typeof LANGUAGE_VALUES[number];
+
+export const LANGUAGE_LABELS: Record<Language, string> = {
+    FRANCAIS: 'Français', ANGLAIS: 'Anglais', ESPAGNOL: 'Espagnol',
+    ALLEMAND: 'Allemand', ITALIEN: 'Italien', PORTUGAIS: 'Portugais',
+    ARABE: 'Arabe', RUSSE: 'Russe', CHINOIS: 'Chinois', AUTRE: 'Autre',
+};
+
+export const getLanguageLabel = (v: string): string =>
+    LANGUAGE_LABELS[v as Language] ?? v;

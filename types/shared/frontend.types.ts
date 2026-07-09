@@ -164,7 +164,7 @@ export interface UserFormData {
     preferredMediaFormatId: number | null;
     isAvailable: boolean;
     availabilityNotes: string;
-    specialization: string;
+    languages: string[]; // Language enum values
     saveType: string; // '' when unset
     maxConcurrentAssignments: number | null;
     notes: string;

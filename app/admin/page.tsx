@@ -1,11 +1,15 @@
 // app/admin/page.tsx
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { AdminCard } from '@/components/ui/admin';
 import { AdminDashboardCard } from '@/components/ui/admin/AdminDashboardCard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
+    const session = await getServerSession(authOptions);
+    const isSuper = session?.user.accessLevel === 'super_admin';
     const [
         bookCount,
         newsCount,
@@ -139,41 +143,45 @@ export default async function Dashboard() {
                         buttonText="Gestion des informations importantes et actuelles"
                         accentColor="green"
                     />
-                    <AdminDashboardCard
-                        title="Contact"
-                        count={siteContactCount}
-                        href="/admin/site-contact"
-                        buttonText="Coordonnées affichées sur la page Contact"
-                        accentColor="teal"
-                    />
-                    <AdminDashboardCard
-                        title="Équipe"
-                        count={teamMemberCount}
-                        href="/admin/team"
-                        buttonText="Membres affichés sur la page Équipe (glisser-déposer pour réordonner)"
-                        accentColor="indigo"
-                    />
-                    <AdminDashboardCard
-                        title="Historique"
-                        count={historyEventCount}
-                        href="/admin/historique"
-                        buttonText="Frise chronologique de la page Historique"
-                        accentColor="orange"
-                    />
-                    <AdminDashboardCard
-                        title="Infos pratiques"
-                        count={practicalInfoCount}
-                        href="/admin/informations-pratiques"
-                        buttonText="Cartes de la page Informations pratiques (glisser-déposer)"
-                        accentColor="cyan"
-                    />
-                    <AdminDashboardCard
-                        title="Nous rejoindre"
-                        count={membershipCount}
-                        href="/admin/nous-rejoindre"
-                        buttonText="Cartes d’adhésion de la page Nous rejoindre (glisser-déposer)"
-                        accentColor="red"
-                    />
+                    {isSuper && (
+                        <>
+                            <AdminDashboardCard
+                                title="Contact"
+                                count={siteContactCount}
+                                href="/admin/site-contact"
+                                buttonText="Coordonnées affichées sur la page Contact"
+                                accentColor="teal"
+                            />
+                            <AdminDashboardCard
+                                title="Équipe"
+                                count={teamMemberCount}
+                                href="/admin/team"
+                                buttonText="Membres affichés sur la page Équipe (glisser-déposer pour réordonner)"
+                                accentColor="indigo"
+                            />
+                            <AdminDashboardCard
+                                title="Historique"
+                                count={historyEventCount}
+                                href="/admin/historique"
+                                buttonText="Frise chronologique de la page Historique"
+                                accentColor="orange"
+                            />
+                            <AdminDashboardCard
+                                title="Infos pratiques"
+                                count={practicalInfoCount}
+                                href="/admin/informations-pratiques"
+                                buttonText="Cartes de la page Informations pratiques (glisser-déposer)"
+                                accentColor="cyan"
+                            />
+                            <AdminDashboardCard
+                                title="Nous rejoindre"
+                                count={membershipCount}
+                                href="/admin/nous-rejoindre"
+                                buttonText="Cartes d’adhésion de la page Nous rejoindre (glisser-déposer)"
+                                accentColor="red"
+                            />
+                        </>
+                    )}
                 </div>
             </div>
         </AdminCard>

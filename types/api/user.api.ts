@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Prisma, MemberType, AccessLevel, DeliveryMethod, SaveType } from '@prisma/client';
+import { Prisma, MemberType, AccessLevel, DeliveryMethod, SaveType, Language } from '@prisma/client';
 import {
     basicUserSelect,
     profileUserSelect,
@@ -102,7 +102,7 @@ export const UserCreateInputSchema = z.object({
     currentBalance: z.number().or(z.string()).optional().nullable(),
     isAvailable: z.boolean().optional(),
     availabilityNotes: z.string().optional(),
-    specialization: z.string().optional(),
+    languages: z.array(z.nativeEnum(Language)).optional(),
     saveType: z.nativeEnum(SaveType).optional().nullable(),
     maxConcurrentAssignments: z.number().optional(),
     notes: z.string().optional(),
@@ -136,7 +136,7 @@ export const UserUpdateInputSchema = z.object({
     currentBalance: z.number().or(z.string()).optional().nullable(),
     isAvailable: z.boolean().optional(),
     availabilityNotes: z.string().optional(),
-    specialization: z.string().optional(),
+    languages: z.array(z.nativeEnum(Language)).optional(),
     saveType: z.nativeEnum(SaveType).optional().nullable(),
     maxConcurrentAssignments: z.number().optional(),
     notes: z.string().optional(),
@@ -167,7 +167,6 @@ export type UserUpdateData = {
     currentBalance?: number | null;
     isAvailable?: boolean | null;
     availabilityNotes?: string | null;
-    specialization?: string | null;
     saveType?: SaveType | null;
     maxConcurrentAssignments?: number | null;
     notes?: string | null;

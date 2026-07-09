@@ -14,10 +14,7 @@ export function IconPicker({ value, onChange }: { value: string; onChange: (v: s
     return (
         <Select value={value} onValueChange={onChange}>
             <SelectTrigger className="bg-card border-border text-foreground">
-                <div className="flex items-center gap-2">
-                    {createElement(resolveIcon(value), { className: 'h-4 w-4' })}
-                    <SelectValue placeholder="Icône" />
-                </div>
+                <SelectValue placeholder="Icône" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border max-h-72">
                 {ICON_KEYS.map((key) => (

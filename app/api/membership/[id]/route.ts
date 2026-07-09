@@ -11,8 +11,8 @@ const PATH = '/nous-rejoindre';
 
 export async function PUT(req: NextRequest, { params }: Params) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session?.user.accessLevel !== 'super_admin') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     try {
         const { id } = await params;
@@ -43,8 +43,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
 export async function DELETE(req: NextRequest, { params }: Params) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session?.user.accessLevel !== 'super_admin') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     try {
         const { id } = await params;
