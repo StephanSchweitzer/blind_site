@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Search, X, Plus, Loader2 } from 'lucide-react';
-import { AddOrderFormBackend } from '@/admin/OrderFormBackendBase';
+import { AddOrderFormBackend } from '@/admin/AddOrderFormBackend';
 import { EditOrderModal } from '@/admin/EditOrderModal';
 import { OrderFormData } from '@/admin/OrderFormBackendBase';
 import { useToast } from '@/hooks/use-toast';

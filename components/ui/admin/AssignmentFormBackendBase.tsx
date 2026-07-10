@@ -38,60 +38,11 @@ import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
+import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
+import { getUserDisplayName } from '@/lib/users/displayName';
 
 // N3 — required fields, visual top→bottom (book derives from the order picker).
 const ASSIGN_FIELD_ORDER = ['catalogueId', 'statusId'];
-
-/**
- * Maps a server validation response ({ message, errors }) into readable French
- * lines so the user sees WHICH field failed and why — instead of a bare
- * "Données invalides" that looks like their fault.
- */
-const FIELD_LABELS: Record<string, string> = {
-    catalogueId: 'Livre',
-    orderId: 'Commande',
-    statusId: 'Statut',
-    receptionDate: 'Date de réception',
-    sentToReaderDate: 'Date d\'envoi au lecteur',
-    returnedToECADate: 'Date de retour à l\'ECA',
-    notes: 'Notes',
-    processedByStaffId: 'Traité par',
-};
-
-function humanizeMessage(raw: string): string {
-    // Normalize Zod date/datetime messages to something non-technical.
-    if (/Invalid ISO date|Invalid ISO datetime|Invalid datetime|Invalid date/i.test(raw)) {
-        return 'format de date invalide';
-    }
-    return raw;
-}
-
-function getFieldErrorLines(data: unknown): string[] {
-    if (!data || typeof data !== 'object') return [];
-    const errors = (data as { errors?: Record<string, string[]> }).errors;
-    if (!errors || typeof errors !== 'object') return [];
-
-    return Object.entries(errors).flatMap(([field, messages]) => {
-        const label = FIELD_LABELS[field] ?? field;
-        const list = Array.isArray(messages) ? messages : [String(messages)];
-        return list.map((m) => `${label} : ${humanizeMessage(m)}`);
-    });
-}
-
-function ErrorToastBody({ message, lines }: { message: string; lines: string[] }) {
-    return (
-        <div className="text-xl mt-2">
-            <p>{message}</p>
-            {lines.length > 0 && (
-                <ul className="mt-2 list-disc list-inside text-base font-normal">
-                    {lines.map((line, i) => (
-                        <li key={i}>{line}</li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-}
 
 export interface AssignmentFormBackendBaseProps {
     presetClientId?: number | null;
@@ -214,7 +165,6 @@ export function AssignmentFormBackendBase({
     const [currentReader, setCurrentReader] = useState<ReaderSummary | null>(null);
 
     // Options data
-    const [users, setUsers] = useState<ReaderSummary[]>([]);
     const [orders, setOrders] = useState<(OrderSummary & { _count?: { assignments: number }; isDuplication?: boolean })[]>([]);
     const [statuses, setStatuses] = useState<Status[]>([]);
 
@@ -222,14 +172,11 @@ export function AssignmentFormBackendBase({
     const [readerHistory, setReaderHistory] = useState<AssignmentReaderHistory[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-    // Search states
-    const [userSearch, setUserSearch] = useState('');
+    // Search states (order search only — reader search lives in UserSearchCombobox)
     const [orderSearch, setOrderSearch] = useState('');
-    const [isSearchingUsers, setIsSearchingUsers] = useState(false);
     const [isSearchingOrders, setIsSearchingOrders] = useState(false);
 
     // Popover open states
-    const [userPopoverOpen, setUserPopoverOpen] = useState(false);
     const [orderPopoverOpen, setOrderPopoverOpen] = useState(false);
 
     // Selected display values
@@ -339,33 +286,6 @@ export function AssignmentFormBackendBase({
         }
     }, [initialData, initialSelectedBook, initialSelectedOrder]);
 
-    // Search users (readers)
-    useEffect(() => {
-        const searchUsers = async () => {
-            const q = userSearch.trim();
-            if (q.length < 2) {
-                setUsers([]);
-                return;
-            }
-
-            setIsSearchingUsers(true);
-            try {
-                const response = await fetch(`/api/user/search?q=${encodeURIComponent(q)}&assignable=true`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setUsers(data);
-                }
-            } catch (err) {
-                console.error('Error searching users:', err);
-            } finally {
-                setIsSearchingUsers(false);
-            }
-        };
-
-        const debounce = setTimeout(searchUsers, 300);
-        return () => clearTimeout(debounce);
-    }, [userSearch]);
-
     // Skip the first run of the orders effect below — the mount effect already
     // loads the recent list (and fires onOrdersLoaded). After that, this effect
     // owns every change to `orders`.
@@ -411,8 +331,9 @@ export function AssignmentFormBackendBase({
     }, [orderSearch, presetClientId]);
 
     const handleReaderSelect = async (user: ReaderSummary) => {
+        // Vetoed selections return false so the picker stays open.
         const proceed = await requireActive(user.id, 'lecteur');
-        if (!proceed) return;
+        if (!proceed) return false;
 
         // #3 — warn when the reader has already reached their max concurrent
         // attributions. The count + max come from /api/user/search?assignable=true.
@@ -425,7 +346,7 @@ export function AssignmentFormBackendBase({
                 `Voulez-vous quand même lui en attribuer une autre ?`
             );
             if (!confirmed) {
-                return;
+                return false;
             }
         }
         setSelectedReader(user);
@@ -439,8 +360,6 @@ export function AssignmentFormBackendBase({
                     : { ...prev, deliveryMethod: user.preferredDeliveryMethod }
             );
         }
-        setUserPopoverOpen(false);
-        setUserSearch('');
     };
 
     const handleOrderSelect = async (order: OrderSummary) => {
@@ -626,27 +545,8 @@ export function AssignmentFormBackendBase({
         }
     };
 
-    const getReaderDisplayName = (
-        reader: ReaderSummary | null
-    ) => {
-        if (!reader) return null;
-
-        // civility may come back as { name: "Monsieur" }, a plain string, or null
-        const civilityRaw = (reader as { civility?: { name?: string } | string | null }).civility;
-        const civility =
-            typeof civilityRaw === 'string'
-                ? civilityRaw
-                : civilityRaw?.name ?? '';
-
-        const fullName = [reader.firstName, reader.lastName]
-            .filter(Boolean)
-            .join(' ')
-            .trim();
-
-        const composed = [civility, fullName].filter(Boolean).join(' ').trim();
-
-        return composed || reader.name || reader.email || 'Sans nom';
-    };
+    const getReaderDisplayName = (reader: ReaderSummary | null) =>
+        reader ? getUserDisplayName(reader) : null;
 
     return (
         <>
@@ -714,63 +614,15 @@ export function AssignmentFormBackendBase({
                                 ) : (
                                     /* No reader assigned yet in edit mode - show simple selection like create mode */
                                     <div className="space-y-2">
-                                        <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    className="w-full justify-between bg-field border-border text-foreground hover:bg-muted"
-                                                >
-                                                    {selectedReader ? (
-                                                        <span>{getReaderDisplayName(selectedReader)}</span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">Sélectionner un lecteur...</span>
-                                                    )}
-                                                    <Search className="ml-2 h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent align="start" collisionPadding={16} className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border">
-                                                <div className="p-2">
-                                                    <Input
-                                                        placeholder="Rechercher un lecteur..."
-                                                        value={userSearch}
-                                                        onChange={(e) => setUserSearch(e.target.value)}
-                                                        className="bg-field border-border text-foreground"
-                                                    />
-                                                </div>
-                                                <div
-                                                    className="max-h-[300px] overflow-y-auto"
-                                                    onWheel={(e) => e.stopPropagation()}
-                                                >
-                                                    {isSearchingUsers ? (
-                                                        <div className="p-4 text-center text-muted-foreground">Recherche...</div>
-                                                    ) : users.length > 0 ? (
-                                                        users.map((user) => (
-                                                            <div
-                                                                key={user.id}
-                                                                className="px-4 py-2 hover:bg-muted cursor-pointer text-foreground"
-                                                                onClick={() => handleReaderSelect(user)}
-                                                            >
-                                                                <div className="font-medium">
-                                                                    {getReaderDisplayName(user)}
-                                                                </div>
-                                                                {user.email && (
-                                                                    <div className="text-sm text-muted-foreground">{user.email}</div>
-                                                                )}
-                                                            </div>
-                                                        ))
-                                                    ) : userSearch.length >= 2 ? (
-                                                        <div className="p-4 text-center text-muted-foreground">
-                                                            Aucun lecteur trouvé
-                                                        </div>
-                                                    ) : (
-                                                        <div className="p-4 text-center text-muted-foreground">
-                                                            Tapez au moins 2 caractères pour rechercher
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
+                                        <UserSearchCombobox<ReaderSummary>
+                                            value={selectedReader}
+                                            onSelect={handleReaderSelect}
+                                            assignable
+                                            placeholder="Sélectionner un lecteur..."
+                                            searchPlaceholder="Rechercher un lecteur..."
+                                            emptyMessage="Aucun lecteur trouvé"
+                                            listClassName="max-h-[300px]"
+                                        />
                                         {selectedReader && (
                                             <Button
                                                 type="button"
@@ -792,63 +644,17 @@ export function AssignmentFormBackendBase({
                                         <h4 className="font-medium text-foreground">Réaffecter à un autre lecteur</h4>
 
                                         <div className="flex gap-2">
-                                            <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        className="flex-1 justify-between bg-field border-border text-foreground hover:bg-muted"
-                                                    >
-                                                        {selectedReader && selectedReader.id !== currentReader?.id ? (
-                                                            <span>{getReaderDisplayName(selectedReader)}</span>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">Sélectionner un nouveau lecteur...</span>
-                                                        )}
-                                                        <Search className="ml-2 h-4 w-4 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent align="start" collisionPadding={16} className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border">
-                                                    <div className="p-2">
-                                                        <Input
-                                                            placeholder="Rechercher un lecteur..."
-                                                            value={userSearch}
-                                                            onChange={(e) => setUserSearch(e.target.value)}
-                                                            className="bg-field border-border text-foreground"
-                                                        />
-                                                    </div>
-                                                    <div
-                                                        className="max-h-[300px] overflow-y-auto"
-                                                        onWheel={(e) => e.stopPropagation()}
-                                                    >
-                                                        {isSearchingUsers ? (
-                                                            <div className="p-4 text-center text-muted-foreground">Recherche...</div>
-                                                        ) : users.length > 0 ? (
-                                                            users.map((user) => (
-                                                                <div
-                                                                    key={user.id}
-                                                                    className="px-4 py-2 hover:bg-muted cursor-pointer text-foreground"
-                                                                    onClick={() => handleReaderSelect(user)}
-                                                                >
-                                                                    <div className="font-medium">
-                                                                        {getReaderDisplayName(user)}
-                                                                    </div>
-                                                                    {user.email && (
-                                                                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                                                                    )}
-                                                                </div>
-                                                            ))
-                                                        ) : userSearch.length >= 2 ? (
-                                                            <div className="p-4 text-center text-muted-foreground">
-                                                                Aucun lecteur trouvé
-                                                            </div>
-                                                        ) : (
-                                                            <div className="p-4 text-center text-muted-foreground">
-                                                                Tapez au moins 2 caractères pour rechercher
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
+                                            <div className="flex-1 min-w-0">
+                                                <UserSearchCombobox<ReaderSummary>
+                                                    value={selectedReader && selectedReader.id !== currentReader?.id ? selectedReader : null}
+                                                    onSelect={handleReaderSelect}
+                                                    assignable
+                                                    placeholder="Sélectionner un nouveau lecteur..."
+                                                    searchPlaceholder="Rechercher un lecteur..."
+                                                    emptyMessage="Aucun lecteur trouvé"
+                                                    listClassName="max-h-[300px]"
+                                                />
+                                            </div>
 
                                             <Button
                                                 type="button"
@@ -873,63 +679,15 @@ export function AssignmentFormBackendBase({
                             </div>
                         ) : (
                             /* Create mode: Simple reader selection */
-                            <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="w-full justify-between bg-field border-border text-foreground hover:bg-muted"
-                                    >
-                                        {selectedReader ? (
-                                            <span>{getReaderDisplayName(selectedReader)}</span>
-                                        ) : (
-                                            <span className="text-muted-foreground">Sélectionner un lecteur...</span>
-                                        )}
-                                        <Search className="ml-2 h-4 w-4 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align="start" collisionPadding={16} className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border">
-                                    <div className="p-2">
-                                        <Input
-                                            placeholder="Rechercher un lecteur..."
-                                            value={userSearch}
-                                            onChange={(e) => setUserSearch(e.target.value)}
-                                            className="bg-field border-border text-foreground"
-                                        />
-                                    </div>
-                                    <div
-                                        className="max-h-[300px] overflow-y-auto"
-                                        onWheel={(e) => e.stopPropagation()}
-                                    >
-                                        {isSearchingUsers ? (
-                                            <div className="p-4 text-center text-muted-foreground">Recherche...</div>
-                                        ) : users.length > 0 ? (
-                                            users.map((user) => (
-                                                <div
-                                                    key={user.id}
-                                                    className="px-4 py-2 hover:bg-muted cursor-pointer text-foreground"
-                                                    onClick={() => handleReaderSelect(user)}
-                                                >
-                                                    <div className="font-medium">
-                                                        {getReaderDisplayName(user)}
-                                                    </div>
-                                                    {user.email && (
-                                                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                                                    )}
-                                                </div>
-                                            ))
-                                        ) : userSearch.length >= 2 ? (
-                                            <div className="p-4 text-center text-muted-foreground">
-                                                Aucun lecteur trouvé
-                                            </div>
-                                        ) : (
-                                            <div className="p-4 text-center text-muted-foreground">
-                                                Tapez au moins 2 caractères pour rechercher
-                                            </div>
-                                        )}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
+                            <UserSearchCombobox<ReaderSummary>
+                                value={selectedReader}
+                                onSelect={handleReaderSelect}
+                                assignable
+                                placeholder="Sélectionner un lecteur..."
+                                searchPlaceholder="Rechercher un lecteur..."
+                                emptyMessage="Aucun lecteur trouvé"
+                                listClassName="max-h-[300px]"
+                            />
                         )}
                     </div>
 
@@ -1245,186 +1003,3 @@ export function AssignmentFormBackendBase({
     );
 }
 
-// Add Assignment Form using the base
-export function AddAssignmentFormBackend({
-                                             onSuccess,
-                                             onOrdersLoaded,
-                                             presetClientId,
-                                             initialReader,
-                                         }: {
-    onSuccess?: (assignmentId: number) => void;
-    onOrdersLoaded?: () => void;
-    presetClientId?: number | null;
-    initialReader?: ReaderSummary | null;
-}) {
-    const { toast } = useToast();
-
-    const handleSubmit = async (formData: AssignmentFormData, readerId?: number | null): Promise<number> => {
-        try {
-            const payload = {
-                ...formData,
-                readerId, // Include readerId for create
-            };
-
-            console.log('Submitting assignment with data:', payload);
-
-            const response = await fetch('/api/assignments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                console.error('Assignment creation failed:', data);
-                const errorMessage = data?.message || data?.error || 'Échec de la création de l\'attribution';
-                const fieldLines = getFieldErrorLines(data);
-
-                toast({
-                    variant: "destructive",
-                    // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <ErrorToastBody message={errorMessage} lines={fieldLines} />,
-                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
-                });
-
-                return Promise.reject();
-            }
-
-            toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;attribution a été créée avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
-            });
-
-            return data.assignment.id;
-        } catch (error) {
-            console.error('Submit error:', error);
-            return Promise.reject();
-        }
-    };
-
-    return (
-        <AssignmentFormBackendBase
-            onSubmit={handleSubmit}
-            submitButtonText="Créer l'attribution"
-            loadingText="Création en cours..."
-            title="Créer une nouvelle attribution"
-            onSuccess={onSuccess}
-            onOrdersLoaded={onOrdersLoaded}
-            presetClientId={presetClientId}
-            initialSelectedReader={initialReader}
-        />
-    );
-}
-
-// Edit Assignment Form using the base
-export function EditAssignmentFormBackend({
-                                              assignmentId,
-                                              initialData,
-                                              onSuccess,
-                                              initialSelectedReader,
-                                              initialSelectedBook,
-                                              initialSelectedOrder,
-                                              onReadersLoaded,
-                                              onOrdersLoaded,
-                                          }: {
-    assignmentId: string;
-    initialData: AssignmentFormData;
-    onSuccess?: (assignmentId: number, isDeleted?: boolean) => void;
-    initialSelectedReader?: ReaderSummary | null;
-    initialSelectedBook?: BookSummary | null;
-    initialSelectedOrder?: OrderSummary | null;
-    onReadersLoaded?: () => void;
-    onOrdersLoaded?: () => void;
-}) {
-    const { toast } = useToast();
-
-    const handleDelete = async (): Promise<void> => {
-        try {
-            const response = await fetch(`/api/assignments/${assignmentId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                throw new Error('Échec de la suppression de l\'attribution');
-            }
-
-            toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;attribution a été supprimée avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
-            });
-
-            if (onSuccess) {
-                onSuccess(parseInt(assignmentId), true);
-            }
-        } catch (error) {
-            console.error('Delete error:', error);
-            throw error;
-        }
-    };
-
-    const handleSubmit = async (formData: AssignmentFormData): Promise<number> => {
-        try {
-            // For updates, we DON'T include readerId - it's handled via reassignment
-            const response = await fetch(`/api/assignments/${assignmentId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData), // No readerId in update
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                const errorMessage = errorData?.message || 'Échec de la mise à jour de l\'attribution';
-                const fieldLines = getFieldErrorLines(errorData);
-
-                toast({
-                    variant: "destructive",
-                    // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <ErrorToastBody message={errorMessage} lines={fieldLines} />,
-                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
-                });
-
-                return Promise.reject();
-            }
-
-            toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;attribution a été mise à jour avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
-            });
-
-            return parseInt(assignmentId);
-        } catch (error) {
-            console.error('Submit error:', error);
-            return Promise.reject();
-        }
-    };
-
-    return (
-        <AssignmentFormBackendBase
-            assignmentId={assignmentId}
-            initialData={initialData}
-            onSubmit={handleSubmit}
-            onDelete={handleDelete}
-            showDelete={true}
-            submitButtonText="Mettre à jour l'attribution"
-            loadingText="Mise à jour en cours..."
-            title="Modifier l'attribution"
-            onSuccess={onSuccess}
-            initialSelectedReader={initialSelectedReader}
-            initialSelectedBook={initialSelectedBook}
-            initialSelectedOrder={initialSelectedOrder}
-            onReadersLoaded={onReadersLoaded}
-            onOrdersLoaded={onOrdersLoaded}
-        />
-    );
-}

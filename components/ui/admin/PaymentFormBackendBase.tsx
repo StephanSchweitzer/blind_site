@@ -13,7 +13,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Search, X, ChevronDown } from 'lucide-react';
+import { AlertCircle, Calendar, X, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -27,6 +27,7 @@ import {
 } from '@/lib/payment-enums';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
+import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 
 // N3 — required fields, visual top→bottom (client picker, linked bill, amount).
 const FIELD_ORDER = ['client', 'bill', 'amount'];
@@ -100,11 +101,6 @@ function formatCurrency(amount: number) {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
 }
 
-function getDisplayName(user: User | null) {
-    if (!user) return null;
-    return user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-}
-
 export function PaymentFormBackendBase({
                                            onSubmit,
                                            submitButtonText,
@@ -145,37 +141,10 @@ export function PaymentFormBackendBase({
         initialData?.allocationDate ? new Date(initialData.allocationDate) : null
     );
 
-    // Client search
-    const [users, setUsers] = useState<User[]>([]);
-    const [userSearch, setUserSearch] = useState('');
-    const [isSearchingUsers, setIsSearchingUsers] = useState(false);
-    const [userPopoverOpen, setUserPopoverOpen] = useState(false);
-
     // Bills of the selected client (only for ENREGISTREMENT)
     const [clientBills, setClientBills] = useState<BillOption[]>([]);
     const [selectedBillId, setSelectedBillId] = useState<number | null>(initialData?.bill?.id ?? null);
     const [isLoadingBills, setIsLoadingBills] = useState(false);
-
-    // ── Search users (debounced) ───────────────────────────────────────────────
-    useEffect(() => {
-        const searchUsers = async () => {
-            if (userSearch.length < 2) {
-                setUsers([]);
-                return;
-            }
-            setIsSearchingUsers(true);
-            try {
-                const response = await fetch(`/api/user/search?q=${encodeURIComponent(userSearch)}`);
-                if (response.ok) setUsers(await response.json());
-            } catch (err) {
-                console.error('Error searching users:', err);
-            } finally {
-                setIsSearchingUsers(false);
-            }
-        };
-        const debounce = setTimeout(searchUsers, 300);
-        return () => clearTimeout(debounce);
-    }, [userSearch]);
 
     useEffect(() => {
         let active = true;
@@ -205,8 +174,6 @@ export function PaymentFormBackendBase({
     const handleClientSelect = (user: User) => {
         setSelectedClient(user);
         setSelectedBillId(null);
-        setUserPopoverOpen(false);
-        setUserSearch('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -343,51 +310,13 @@ export function PaymentFormBackendBase({
                             )}
                         </label>
                         <div className="flex gap-2">
-                            <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        ref={registerField('client')}
-                                        type="button"
-                                        variant="outline"
-                                        role="combobox"
-                                        className="flex-1 justify-between bg-field border-border text-foreground hover:bg-muted transition-colors"
-                                    >
-                                        {selectedClient ? (
-                                            <span className="truncate">{getDisplayName(selectedClient)}</span>
-                                        ) : (
-                                            <span className="text-muted-foreground">Rechercher un auditeur ...</span>
-                                        )}
-                                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border" align="start" collisionPadding={16}>
-                                    <div className="p-2">
-                                        <Input
-                                            placeholder="Rechercher par nom ou email..."
-                                            value={userSearch}
-                                            onChange={(e) => setUserSearch(e.target.value)}
-                                            className="bg-field border-border text-foreground"
-                                        />
-                                    </div>
-                                    <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
-                                        {isSearchingUsers && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
-                                        {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                            <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
-                                        )}
-                                        {users.map((user) => (
-                                            <button
-                                                key={user.id}
-                                                type="button"
-                                                onClick={() => handleClientSelect(user)}
-                                                className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors"
-                                            >
-                                                <div className="font-medium">{getDisplayName(user)}</div>
-                                                <div className="text-sm text-muted-foreground">{user.email}</div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
+                            <div className="flex-1 min-w-0">
+                                <UserSearchCombobox<User>
+                                    value={selectedClient}
+                                    onSelect={handleClientSelect}
+                                    triggerRef={registerField('client')}
+                                />
+                            </div>
                             {selectedClient && (
                                 <Button
                                     type="button"

@@ -5,7 +5,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { EditUserFormBackend } from '@/admin/UserFormBackendBase';
+import { EditUserFormBackend } from '@/admin/EditUserFormBackend';
 import { UserActivityHistory } from '@/components/ui/admin/UserActivityHistory';
 import { UserFormData, UserType } from '@/types';
 import { Button } from '@/components/ui/button';

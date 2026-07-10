@@ -5,7 +5,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { AddAssignmentFormBackend } from '@/admin/AssignmentFormBackendBase';
+import { AddAssignmentFormBackend } from '@/admin/AddAssignmentFormBackend';
 import type { ReaderSummary } from '@/types';
 import { Loader2 } from 'lucide-react';
 

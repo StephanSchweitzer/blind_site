@@ -5,7 +5,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { EditAssignmentFormBackend } from '@/admin/AssignmentFormBackendBase';
+import { EditAssignmentFormBackend } from '@/admin/EditAssignmentFormBackend';
 import {
     AssignmentFormData,
     BookSummary,

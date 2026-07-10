@@ -29,7 +29,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { AddUserFormBackend } from '@/admin/UserFormBackendBase';
+import { AddUserFormBackend } from '@/admin/AddUserFormBackend';
 import { EditUserModal } from '@/admin/EditUserModal';
 import { UserFormData, UserType } from '@/types';
 import { useToast } from '@/hooks/use-toast';

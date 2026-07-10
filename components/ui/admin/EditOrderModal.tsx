@@ -5,7 +5,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { EditOrderFormBackend } from '@/admin/OrderFormBackendBase';
+import { EditOrderFormBackend } from '@/admin/EditOrderFormBackend';
 import { OrderFormData } from '@/admin/OrderFormBackendBase';
 
 interface User {
