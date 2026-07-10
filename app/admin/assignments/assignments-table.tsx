@@ -355,7 +355,7 @@ export default function AssignmentsTable({
                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                                     <Input
                                         type="text"
-                                        placeholder="Rechercher par livre, lecteur ou numéro..."
+                                        placeholder="Rechercher par livre, lecteur, auditeur ou numéro..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

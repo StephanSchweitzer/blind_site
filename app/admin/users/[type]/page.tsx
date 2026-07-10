@@ -9,7 +9,7 @@ import { UserTypeTabs } from './user-type-tabs';
 import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
 import { USER_ACTIVITY_STATUS_VALUES } from '@/lib/user-activity-enums';
 import { LANGUAGE_VALUES } from '@/lib/user-enums';
-import { cotisationReferenceCutoff } from '@/lib/cotisation';
+import { cotisationCoverageQuery } from '@/lib/cotisation';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -72,16 +72,28 @@ async function getUsers(
 
     // Cotisation filter: "à jour" = has an active cotisation still in coverage;
     // "en retard" = none (covers both lapsed cotisations and no cotisation at all).
-    // The OR mirrors lib/cotisation.ts referenceDate(): prefer paymentDate, fall
-    // back to creationDate when paymentDate is null.
+    // Mirrors lib/cotisation.ts computeCotisationStatus: calendar-year coverage via
+    // cotisationYear, with the legacy rolling rule for rows that predate it.
     if (cotisationFilter === 'a_jour' || cotisationFilter === 'en_retard') {
-        const cutoff = cotisationReferenceCutoff();
+        const { currentYear, legacyCutoff } = cotisationCoverageQuery();
         const cotisationMatch: Prisma.PaymentWhereInput = {
             type: 'COTISATION',
             isActive: true,
             OR: [
-                { paymentDate: { gte: cutoff } },
-                { AND: [{ paymentDate: null }, { creationDate: { gte: cutoff } }] },
+                // Calendar-year: covers the current year or a prepaid future year.
+                { cotisationYear: { gte: currentYear } },
+                // Legacy rows without a cotisationYear: rolling 12 months.
+                {
+                    AND: [
+                        { cotisationYear: null },
+                        {
+                            OR: [
+                                { paymentDate: { gte: legacyCutoff } },
+                                { AND: [{ paymentDate: null }, { creationDate: { gte: legacyCutoff } }] },
+                            ],
+                        },
+                    ],
+                },
             ],
         };
         scopedWhere.payments =

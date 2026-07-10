@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { buildUserNameSearch } from '@/lib/search';
 import AssignmentsTable from './assignments-table';
 import { notFound } from 'next/navigation';
 
@@ -24,28 +25,6 @@ async function getAssignments(
     if (searchTerm) {
         const searchOR: Prisma.AssignmentWhereInput[] = [
             {
-                readerHistory: {
-                    some: {
-                        reader: {
-                            OR: [
-                                {
-                                    name: {
-                                        contains: searchTerm,
-                                        mode: Prisma.QueryMode.insensitive,
-                                    },
-                                },
-                                {
-                                    email: {
-                                        contains: searchTerm,
-                                        mode: Prisma.QueryMode.insensitive,
-                                    },
-                                },
-                            ],
-                        },
-                    },
-                },
-            },
-            {
                 catalogue: {
                     OR: [
                         {
@@ -64,6 +43,16 @@ async function getAssignments(
                 },
             },
         ];
+
+        // Tokenized name search across firstName / lastName / name / email — so a
+        // full-name query ("steffy ref") matches even when the words live in
+        // different columns. Used for both the reader (lecteur) and the auditeur
+        // (the aveugle on the linked demande).
+        const personSearch = buildUserNameSearch(searchTerm);
+        if (personSearch) {
+            searchOR.push({ readerHistory: { some: { reader: personSearch } } });
+            searchOR.push({ order: { aveugle: personSearch } });
+        }
 
         const trimmedSearch = searchTerm.trim();
         if (/^\d+$/.test(trimmedSearch) && Number.isSafeInteger(Number(trimmedSearch))) {

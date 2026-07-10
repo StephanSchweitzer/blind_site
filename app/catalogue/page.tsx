@@ -29,6 +29,12 @@ function BooksLoading() {
     );
 }
 
+// Pin this segment to static/ISR rendering so the whole page HTML is served from
+// cache — not re-rendered on every visit — matching the cached data layer in
+// ./data.ts. On-demand `catalogue`-tag invalidation still refreshes it after any
+// book/genre write; this revalidate is only a long fallback.
+export const revalidate = 3600;
+
 export default async function BooksPage() {
     const { initialBooks, genres, totalBooks, totalPages } = await getInitialData();
 

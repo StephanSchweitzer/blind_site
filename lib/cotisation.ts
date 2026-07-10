@@ -21,8 +21,38 @@ export interface CotisationStatus {
     expiresAt: Date | null;
     /** The year the cotisation covers (from cotisationYear, else the reference year). */
     coverYear: number | null;
-    /** Reference date of the most recent cotisation (paymentDate ?? creationDate). */
+    /** Reference date of the cotisation that grants the current coverage
+     *  (paymentDate ?? creationDate). */
     latestPaymentDate: Date | null;
+}
+
+/** End of 31 December of a given year (local time) — the expiry of a
+ *  calendar-year cotisation covering that year. */
+function endOfYear(year: number): Date {
+    return new Date(year, 11, 31, 23, 59, 59, 999);
+}
+
+/** Coverage a single cotisation payment grants:
+ *  - When `cotisationYear` is set (the authoritative, admin-entered year), the
+ *    cotisation covers that CALENDAR year and expires on 31 Dec of it.
+ *  - Legacy rows without a `cotisationYear` keep the old ROLLING rule:
+ *    a full year from the reference date (paymentDate ?? creationDate). */
+function paymentCoverage(
+    p: CotisationPaymentInput,
+): { expiresAt: Date; coverYear: number; ref: Date } | null {
+    const ref = referenceDate(p);
+
+    if (p.cotisationYear != null) {
+        return { expiresAt: endOfYear(p.cotisationYear), coverYear: p.cotisationYear, ref: ref ?? endOfYear(p.cotisationYear) };
+    }
+
+    if (ref) {
+        const expiresAt = new Date(ref);
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        return { expiresAt, coverYear: ref.getFullYear(), ref };
+    }
+
+    return null;
 }
 
 function toDate(value: Date | string | null | undefined): Date | null {
@@ -41,55 +71,67 @@ function referenceDate(p: CotisationPaymentInput): Date | null {
  * Compute the current cotisation status from a member's active COTISATION
  * payments.
  *
- * CURRENT RULE (intentionally simple): a cotisation grants a FULL year from its
- * reference date — expiresAt = referenceDate + 1 year. This is the single line
- * to change when the proration rule lands (e.g. calendar-year semantics where a
- * June payment only runs to 31 Dec, or cotisationYear-driven expiry). Nothing
- * downstream — the form banner or the dossier header — needs to change.
+ * RULE: coverage is CALENDAR-YEAR, driven by each payment's `cotisationYear`
+ * (expires 31 Dec of that year). Payments with no `cotisationYear` (legacy rows)
+ * fall back to the old ROLLING rule (one year from the reference date). See
+ * paymentCoverage(). The payment granting the LATEST expiry wins — so prepaying
+ * a future year while the current one is already covered extends coverage rather
+ * than being masked by a more recent same-year payment. Output shape is
+ * unchanged; nothing downstream (form banner, dossier header) needs to change.
  */
 export function computeCotisationStatus(
     payments: CotisationPaymentInput[],
 ): CotisationStatus {
-    const dated = payments
-        .map((p) => ({ p, ref: referenceDate(p) }))
-        .filter((x): x is { p: CotisationPaymentInput; ref: Date } => x.ref !== null);
+    const covered = payments
+        .map(paymentCoverage)
+        .filter((x): x is { expiresAt: Date; coverYear: number; ref: Date } => x !== null);
 
-    if (dated.length === 0) {
+    if (covered.length === 0) {
         return { isPaid: false, expiresAt: null, coverYear: null, latestPaymentDate: null };
     }
 
-    // Most recent cotisation wins.
-    dated.sort((a, b) => b.ref.getTime() - a.ref.getTime());
-    const { p: latest, ref } = dated[0];
+    // The furthest expiry is the member's real coverage horizon.
+    covered.sort((a, b) => b.expiresAt.getTime() - a.expiresAt.getTime());
+    const best = covered[0];
 
-    // ── Expiry rule — change HERE when proration is introduced ──────────────
-    const expiresAt = new Date(ref);
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    // ────────────────────────────────────────────────────────────────────────
+    const isPaid = best.expiresAt.getTime() >= Date.now();
 
-    const isPaid = expiresAt.getTime() >= Date.now();
-    const coverYear = latest.cotisationYear ?? ref.getFullYear();
-
-    return { isPaid, expiresAt, coverYear, latestPaymentDate: ref };
+    return {
+        isPaid,
+        expiresAt: best.expiresAt,
+        coverYear: best.coverYear,
+        latestPaymentDate: best.ref,
+    };
 }
 
 /**
- * The reference-date cutoff for "à jour": with the current full-year rule, a
- * cotisation is up to date iff its reference date (paymentDate ?? creationDate)
- * is on or after (now − 1 year), since expiresAt = referenceDate + 1 year.
+ * DB-query counterpart of computeCotisationStatus — the parts a caller needs to
+ * build the "currently à jour" Prisma filter. Keep the two in sync.
  *
- * This is the DB-query counterpart of the expiry rule in computeCotisationStatus
- * — keep the two in sync when proration lands. Callers turn this into a Prisma
- * `Payment` relation filter (see app/admin/users/[type]/page.tsx):
- *   payments: { some: { type: 'COTISATION', isActive: true, OR: [
- *       { paymentDate: { gte: cutoff } },
- *       { AND: [{ paymentDate: null }, { creationDate: { gte: cutoff } }] },
- *   ] } }
+ * A member is à jour iff they have an active COTISATION payment that is EITHER:
+ *   - calendar-year: `cotisationYear >= currentYear` (covers this year or a
+ *     prepaid future year), OR
+ *   - legacy (no `cotisationYear`): reference date (paymentDate ?? creationDate)
+ *     on or after `legacyCutoff` (now − 1 year), the old rolling rule.
+ *
+ * This module stays Prisma-free, so callers assemble the filter themselves
+ * (see app/admin/users/[type]/page.tsx):
+ *   const { currentYear, legacyCutoff } = cotisationCoverageQuery();
+ *   const match = { type: 'COTISATION', isActive: true, OR: [
+ *       { cotisationYear: { gte: currentYear } },
+ *       { AND: [{ cotisationYear: null }, { OR: [
+ *           { paymentDate: { gte: legacyCutoff } },
+ *           { AND: [{ paymentDate: null }, { creationDate: { gte: legacyCutoff } }] },
+ *       ] }] },
+ *   ] };
  */
-export function cotisationReferenceCutoff(now: Date = new Date()): Date {
-    const cutoff = new Date(now);
-    cutoff.setFullYear(cutoff.getFullYear() - 1);
-    return cutoff;
+export function cotisationCoverageQuery(now: Date = new Date()): {
+    currentYear: number;
+    legacyCutoff: Date;
+} {
+    const legacyCutoff = new Date(now);
+    legacyCutoff.setFullYear(legacyCutoff.getFullYear() - 1);
+    return { currentYear: now.getFullYear(), legacyCutoff };
 }
 
 /** Shared French date formatter so the form and the dossier render expiry

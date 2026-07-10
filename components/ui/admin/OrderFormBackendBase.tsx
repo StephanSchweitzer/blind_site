@@ -169,6 +169,12 @@ export function OrderFormBackendBase({
     // Cost is locked while the linked bill is finalized (payée/soldée); reopen to edit.
     const costLocked = initialBill?.state === 'PAID' || initialBill?.state === 'SOLDE';
 
+    // True only right after picking a book that already has audio auto-checks the
+    // « Duplication » box — drives the "cochée automatiquement" banner. Reset once
+    // the admin touches the checkboxes, and never set when merely opening an existing
+    // order, so the banner doesn't nag on every (already-duplication) order.
+    const [dupAutoChecked, setDupAutoChecked] = useState(false);
+
     // Form data state
     const [formData, setFormData] = useState<OrderFormData>(() =>
         initialData
@@ -378,6 +384,9 @@ export function OrderFormBackendBase({
         setSelectedBook(full);
 
         const hasAudio = Boolean(full.audio_filepath);
+        // Only when we actually auto-check duplication here should the
+        // "cochée automatiquement" banner show.
+        setDupAutoChecked(hasAudio);
         setFormData(prev => ({
             ...prev,
             catalogueId: full.id,
@@ -389,6 +398,8 @@ export function OrderFormBackendBase({
 
 
     const handleDuplicationChange = (checked: boolean) => {
+        // The admin is now deciding manually — the auto-check banner no longer applies.
+        setDupAutoChecked(false);
         setFormData(prev => {
             // Check if current status is "Terminé"
             const currentStatus = statuses.find(s => s.id === prev.statusId);
@@ -407,6 +418,8 @@ export function OrderFormBackendBase({
     };
 
     const handleRecordingChange = (checked: boolean) => {
+        // The admin is now deciding manually — the auto-check banner no longer applies.
+        setDupAutoChecked(false);
         setFormData(prev => {
             // Check if current status is "Terminé"
             const currentStatus = statuses.find(s => s.id === prev.statusId);
@@ -713,7 +726,7 @@ export function OrderFormBackendBase({
                             Type de la demande
                         </h3>
                         <div className="space-y-4">
-                            {audioAlreadyExists && (
+                            {dupAutoChecked && formData.isDuplication && (
                                 <div className="bg-amber-50 border border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200 p-3 rounded-lg text-sm">
                                     Un fichier audio existe déjà pour ce livre. La case
                                     « Duplication » a été cochée automatiquement — décochez-la
@@ -1669,23 +1682,33 @@ export function EditOrderFormBackend({
     };
 
     const handleDelete = async (): Promise<void> => {
-        try {
-            const response = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.message || 'Échec de la suppression de la demande');
-            }
+        const response = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
+
+        if (!response.ok) {
+            // Surface the API's error message in a toast (same protocol as the
+            // update path) so blocking rules — e.g. "supprimez d'abord
+            // l'attribution" — reach the user instead of failing silently.
+            const errorData = await response.json().catch(() => null);
+            const errorMessage = errorData?.message || 'Échec de la suppression de la demande';
             toast({
+                variant: "destructive",
                 // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">La demande a été supprimée avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                title: <span className="text-2xl font-bold">Erreur</span>,
+                description: <span className="text-xl mt-2">{errorMessage}</span>,
+                className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
             });
-            if (onSuccess) onSuccess(parseInt(orderId), true);
-        } catch (error) {
-            console.error('Delete error:', error);
-            throw error;
+            // Signal failure to the caller (keeps the modal open, resets loading)
+            // without a message, so the inline fallback doesn't duplicate the toast.
+            throw new Error();
         }
+
+        toast({
+            // @ts-expect-error jsx in toast
+            title: <span className="text-2xl font-bold">Succès</span>,
+            description: <span className="text-xl mt-2">La demande a été supprimée avec succès</span>,
+            className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+        });
+        if (onSuccess) onSuccess(parseInt(orderId), true);
     };
 
     const handleSubmit = async (formData: OrderFormData): Promise<number> => {

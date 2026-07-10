@@ -21,24 +21,39 @@ export default async function HistoriquePage() {
 
                 <div className="relative">
                     {/* Timeline center line */}
-                    <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-blue-500 hidden md:block"></div>
+                    <div className="absolute left-1/2 -translate-x-1/2 h-full w-1 bg-blue-500 hidden md:block"></div>
 
                     {historyEvents.map((event, index) => {
                         const Icon = resolveIcon(event.iconKey);
+                        const isLeft = index % 2 === 0;
                         return (
-                            <div key={event.id} className={`mb-12 md:mb-16 relative ${index % 2 === 0 ? 'md:pr-8 md:text-right md:ml-auto md:mr-1/2' : 'md:pl-8 md:ml-1/2'} md:w-1/2`}>
-                                {/* Timeline dot */}
-                                <div className="hidden md:flex md:absolute md:top-5 md:items-center md:justify-center md:w-10 md:h-10 md:rounded-full md:bg-blue-600 md:border-4 md:border-white dark:md:border-gray-800 md:shadow-lg md:z-10 md:text-white"
-                                     style={{ [index % 2 === 0 ? 'right' : 'left']: '-20px' }}>
+                            <div
+                                key={event.id}
+                                className={`mb-12 md:mb-16 relative md:w-1/2 ${
+                                    // Each card lives fully inside its half with a gap from the
+                                    // center pole (pr-10 / pl-10). Right-side cards start at 50%
+                                    // via ml-[50%] — both are real Tailwind classes, unlike the
+                                    // former md:mr-1/2 / md:ml-1/2, which did nothing and let the
+                                    // cards spill over the center line.
+                                    isLeft ? 'md:pr-10 md:text-right' : 'md:pl-10 md:ml-[50%]'
+                                }`}
+                            >
+                                {/* Timeline dot — a 40px circle centered on the pole. Sitting at
+                                    the wrapper edge (which lands on the center line) with a -20px
+                                    offset keeps it perfectly on the pole. */}
+                                <div
+                                    className="hidden md:flex md:absolute md:top-5 md:items-center md:justify-center md:w-10 md:h-10 md:rounded-full md:bg-blue-600 md:border-4 md:border-white dark:md:border-gray-800 md:shadow-lg md:z-10 md:text-white"
+                                    style={{ [isLeft ? 'right' : 'left']: '-20px' }}
+                                >
                                     <Icon className="h-6 w-6" />
                                 </div>
 
-                                <div className={`glass-card overflow-hidden hover:scale-[1.02] transition-transform duration-300 ${index % 2 === 0 ? 'md:rounded-r-none' : 'md:rounded-l-none'}`}>
+                                <div className="glass-card overflow-hidden hover:scale-[1.02] transition-transform duration-300">
                                     <div className="bg-gradient-to-r from-blue-700 to-blue-600 p-3">
                                         <div className="flex md:hidden items-center justify-center w-8 h-8 rounded-full bg-white mr-3 text-blue-700 float-left">
                                             <Icon className="h-6 w-6" />
                                         </div>
-                                        <h2 className="text-xl font-semibold text-white flex flex-wrap md:flex-nowrap items-center">
+                                        <h2 className={`text-xl font-semibold text-white flex flex-wrap md:flex-nowrap items-center ${isLeft ? 'md:justify-end' : ''}`}>
                                             <span className="inline-block bg-blue-800 text-white py-1 px-4 rounded-full mr-3 min-w-[90px] text-center whitespace-nowrap text-lg">
                                                 {event.year}
                                             </span>
@@ -49,13 +64,6 @@ export default async function HistoriquePage() {
                                         <p className="text-gray-700 dark:text-gray-100">{event.description}</p>
                                     </div>
                                 </div>
-
-                                {/* Arrow for desktop */}
-                                <div className={`hidden md:block absolute top-5 w-0 h-0 border-t-8 border-b-8 border-transparent ${
-                                    index % 2 === 0
-                                        ? 'border-l-[16px] border-l-white dark:border-l-gray-800 -right-4'
-                                        : 'border-r-[16px] border-r-white dark:border-r-gray-800 -left-4'
-                                }`}></div>
                             </div>
                         );
                     })}

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus, BillingStatus } from '@prisma/client';
+import { buildUserNameSearch } from '@/lib/search';
 import OrdersTable from './orders-table';
 import { notFound } from 'next/navigation';
 import { ordersTableInclude } from '@/types/models/order.model';
@@ -29,24 +30,6 @@ async function getOrders(
     if (searchTerm) {
         const searchOR: Prisma.OrdersWhereInput[] = [
             {
-                aveugle: {
-                    OR: [
-                        {
-                            name: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive,
-                            },
-                        },
-                        {
-                            email: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive,
-                            },
-                        },
-                    ],
-                },
-            },
-            {
                 catalogue: {
                     OR: [
                         {
@@ -65,6 +48,14 @@ async function getOrders(
                 },
             },
         ];
+
+        // Tokenized name search across firstName / lastName / name / email, so a
+        // full-name query ("steffy ref") matches the auditeur even when the words
+        // live in different columns.
+        const personSearch = buildUserNameSearch(searchTerm);
+        if (personSearch) {
+            searchOR.push({ aveugle: personSearch });
+        }
 
         const trimmedSearch = searchTerm.trim();
         if (/^\d+$/.test(trimmedSearch) && Number.isSafeInteger(Number(trimmedSearch))) {
