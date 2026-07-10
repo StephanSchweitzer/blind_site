@@ -38,18 +38,18 @@ export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
 };
 
 export const MEMBER_TYPE_COLORS: Record<MemberType, string> = {
-    auditeur:       'bg-blue-100 text-blue-800',
-    lecteur:        'bg-emerald-100 text-emerald-800',
-    informaticien:  'bg-purple-100 text-purple-800',
-    administration: 'bg-orange-100 text-orange-800',
-    bienfaiteur:    'bg-green-100 text-green-800',
-    ecouteur:       'bg-blue-100 text-blue-800', // LEGACY: mirrors auditeur; remove once migrated.
+    auditeur:       'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+    lecteur:        'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+    informaticien:  'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+    administration: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+    bienfaiteur:    'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+    ecouteur:       'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', // LEGACY: mirrors auditeur; remove once migrated.
 };
 
 export const ACCESS_LEVEL_COLORS: Record<AccessLevel, string> = {
-    member:      'bg-blue-100 text-blue-800',
-    admin:       'bg-purple-100 text-purple-800',
-    super_admin: 'bg-red-100 text-red-800',
+    member:      'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+    admin:       'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+    super_admin: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 };
 
 export const USER_TYPE_META: Record<UserType, { plural: string; singular: string }> = {
@@ -66,10 +66,10 @@ export const getAccessLevelLabel = (value: string): string =>
     ACCESS_LEVEL_LABELS[value as AccessLevel] ?? value;
 
 export const getMemberTypeColor = (value: string): string =>
-    MEMBER_TYPE_COLORS[value as MemberType] ?? 'bg-gray-100 text-gray-800';
+    MEMBER_TYPE_COLORS[value as MemberType] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-300';
 
 export const getAccessLevelColor = (value: string): string =>
-    ACCESS_LEVEL_COLORS[value as AccessLevel] ?? 'bg-gray-100 text-gray-800';
+    ACCESS_LEVEL_COLORS[value as AccessLevel] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-300';
 export const SAVE_TYPE_VALUES = [
     'AUDACITY', 'GARAGEBAND', 'REAPER', 'ADOBE_AUDITION',
     'OCENAUDIO', 'WAVEPAD', 'LOGIC_PRO', 'STUDIO_ONE', 'AUTRE',

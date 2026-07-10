@@ -562,8 +562,8 @@ export default function OrdersTable({
                                                     <TableCell>
                                                         <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                                                             isOverdue
-                                                                ? 'bg-red-200 text-red-900'
-                                                                : 'bg-blue-100 text-blue-800'
+                                                                ? 'bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300'
+                                                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
                                                         }`}>
                                                             {getStatusDisplayName(order.status.name)}
                                                         </span>
@@ -572,7 +572,7 @@ export default function OrdersTable({
                                                         <span
                                                             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                                                                 order.billingStatus === 'BILLED'
-                                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
                                                                     : 'bg-muted text-muted-foreground'
                                                             }`}
                                                         >

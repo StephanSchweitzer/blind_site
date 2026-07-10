@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Card, CardContent } from '@/components/ui/card';
 import DossierTabs from './dossier-tabs';
-import { MEMBER_TYPE_LABELS } from '@/lib/user-enums';
+import { MEMBER_TYPE_LABELS, getMemberTypeColor } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
 import { computeCotisationStatus, formatCotisationDate } from '@/lib/cotisation';
 
@@ -62,20 +62,20 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                         <div>
                             <div className="flex items-center gap-3">
                                 <h1 className="text-2xl font-bold text-foreground">{fullName}</h1>
-                                <span className="inline-flex items-center rounded-full bg-blue-950 px-2.5 py-1 text-xs font-medium text-blue-300">
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
                                     {MEMBER_TYPE_LABELS[user.memberType]}
                                 </span>
                                 {user.isActive === false && (
-                                    <span className="inline-flex items-center rounded-full bg-red-950 px-2.5 py-1 text-xs font-medium text-red-300">
+                                    <span className="inline-flex items-center rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2.5 py-1 text-xs font-medium">
                                         Inactif
                                     </span>
                                 )}
                                 {cotisation.isPaid ? (
-                                    <span className="inline-flex items-center rounded-full bg-green-950 px-2.5 py-1 text-xs font-medium text-green-300">
+                                    <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 px-2.5 py-1 text-xs font-medium">
                                         Cotisation à jour · expire le {formatCotisationDate(cotisation.expiresAt)}
                                     </span>
                                 ) : (
-                                    <span className="inline-flex items-center rounded-full bg-red-950 px-2.5 py-1 text-xs font-medium text-red-300">
+                                    <span className="inline-flex items-center rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2.5 py-1 text-xs font-medium">
                                         {cotisation.expiresAt
                                             ? `Cotisation expirée le ${formatCotisationDate(cotisation.expiresAt)}`
                                             : 'Cotisation non payée'}

@@ -35,14 +35,14 @@ export function getPaymentTypeLabel(type: PaymentType): string {
 }
 
 const PAYMENT_TYPE_COLORS: Record<PaymentType, string> = {
-    [PaymentType.COTISATION]: 'bg-blue-900/40 text-blue-300 border border-blue-800',
-    [PaymentType.ENREGISTREMENT]: 'bg-purple-900/40 text-purple-300 border border-purple-800',
-    [PaymentType.DON]: 'bg-green-900/40 text-green-300 border border-green-800',
-    [PaymentType.DIVERS]: 'bg-gray-700/60 text-gray-300 border border-gray-600',
+    [PaymentType.COTISATION]: 'bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
+    [PaymentType.ENREGISTREMENT]: 'bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800',
+    [PaymentType.DON]: 'bg-green-100 text-green-800 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800',
+    [PaymentType.DIVERS]: 'bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-700/60 dark:text-gray-300 dark:border-gray-600',
 };
 
 export function getPaymentTypeColor(type: PaymentType): string {
-    return PAYMENT_TYPE_COLORS[type] ?? 'bg-gray-700 text-gray-200';
+    return PAYMENT_TYPE_COLORS[type] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
 }
 
 // ─── Payment method ───────────────────────────────────────────────────────────

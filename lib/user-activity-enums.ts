@@ -38,14 +38,14 @@ export const USER_ACTIVITY_STATUS_LABELS: Record<UserActivityStatus, string> = {
 
 // Tailwind badge classes per status (same style as the member-type badges).
 export const USER_ACTIVITY_STATUS_COLORS: Record<UserActivityStatus, string> = {
-    ACTIVE:           'bg-green-100 text-green-800',
-    INACTIVE:         'bg-red-100 text-red-800',
-    ON_VACATION:      'bg-blue-100 text-blue-800',
-    SUSPENDED:        'bg-orange-100 text-orange-800',
-    DECEASED:         'bg-gray-200 text-gray-800',
-    DEMISSION:        'bg-yellow-100 text-yellow-800',
-    RADIATION:        'bg-purple-100 text-purple-800',
-    PB_SANTE_MENTALE: 'bg-pink-100 text-pink-800',
+    ACTIVE:           'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+    INACTIVE:         'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+    ON_VACATION:      'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+    SUSPENDED:        'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+    DECEASED:         'bg-gray-200 text-gray-800 dark:bg-gray-800/60 dark:text-gray-300',
+    DEMISSION:        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+    RADIATION:        'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+    PB_SANTE_MENTALE: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
 };
 
 // Statuses that count as "currently active" for list filters that used to
@@ -56,4 +56,4 @@ export const getUserActivityStatusLabel = (status: string): string =>
     USER_ACTIVITY_STATUS_LABELS[status as UserActivityStatus] ?? status;
 
 export const getUserActivityStatusColor = (status: string): string =>
-    USER_ACTIVITY_STATUS_COLORS[status as UserActivityStatus] ?? 'bg-gray-100 text-gray-800';
+    USER_ACTIVITY_STATUS_COLORS[status as UserActivityStatus] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-300';

@@ -1,11 +1,12 @@
-// app/genres/[id]/page.tsx
+// app/admin/genres/[id]/page.tsx
 import { prisma } from '@/lib/prisma';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import EditGenreForm from './edit-genre-form';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import Link from 'next/link';
 
 const ITEMS_PER_PAGE = 10;
+const BASE_PATH = '/admin/genres';
 
 interface PageProps {
     params: Promise<{
@@ -54,12 +55,24 @@ export default async function EditGenrePage({ params, searchParams }: PageProps)
     const resolvedSearchParams = await searchParams;
 
     const { id } = resolvedParams;
-    const page = typeof resolvedSearchParams.page === 'string'
-        ? parseInt(resolvedSearchParams.page, 10)
-        : 1;
+
+    // Clamp page: page=0, negatives and non-numeric all resolve to 1, so `skip`
+    // can never go negative (Prisma rejects a negative skip).
+    const rawPage = typeof resolvedSearchParams.page === 'string'
+        ? resolvedSearchParams.page
+        : undefined;
+    const page = Math.max(1, parseInt(rawPage ?? '1', 10) || 1);
 
     const genre = await getGenre(parseInt(id, 10), page);
-    const totalPages = Math.ceil(genre._count.books / ITEMS_PER_PAGE);
+    const totalPages = Math.max(1, Math.ceil(genre._count.books / ITEMS_PER_PAGE));
+
+    // Out-of-range page -> back to the base URL instead of an empty list.
+    if (page > totalPages) {
+        redirect(`${BASE_PATH}/${id}`);
+    }
+
+    const isFirst = page <= 1;
+    const isLast = page >= totalPages;
 
     return (
         <div className="space-y-6">
@@ -102,32 +115,43 @@ export default async function EditGenrePage({ params, searchParams }: PageProps)
 
                         {totalPages > 1 && (
                             <div className="flex justify-between items-center mt-4 pt-4 border-t border-border">
-                                <Link
-                                    href={`/genres/${id}?page=${page - 1}`}
-                                    className={`px-3 py-1 text-sm rounded-md ${
-                                        page <= 1
-                                            ? 'bg-card text-muted-foreground cursor-not-allowed'
-                                            : 'bg-muted text-foreground hover:bg-muted'
-                                    }`}
-                                    aria-disabled={page <= 1}
-                                >
-                                    Précédent
-                                </Link>
+                                {isFirst ? (
+                                    <span
+                                        className="px-3 py-1 text-sm rounded-md bg-card text-muted-foreground cursor-not-allowed"
+                                        aria-disabled
+                                    >
+                                        Précédent
+                                    </span>
+                                ) : (
+                                    <Link
+                                        href={`${BASE_PATH}/${id}?page=${page - 1}`}
+                                        scroll={false}
+                                        className="px-3 py-1 text-sm rounded-md bg-muted text-foreground hover:bg-muted"
+                                    >
+                                        Précédent
+                                    </Link>
+                                )}
+
                                 <span className="text-sm text-muted-foreground">
                                     Page {page} sur {totalPages}
                                 </span>
-                                <Link
-                                    href={`/admin/genres/${id}?page=${page + 1}`}
-                                    scroll={false}
-                                    className={`px-3 py-1 text-sm rounded-md ${
-                                        page >= totalPages
-                                            ? 'bg-card text-muted-foreground cursor-not-allowed'
-                                            : 'bg-muted text-foreground hover:bg-muted'
-                                    }`}
-                                    aria-disabled={page >= totalPages}
-                                >
-                                    Suivant
-                                </Link>
+
+                                {isLast ? (
+                                    <span
+                                        className="px-3 py-1 text-sm rounded-md bg-card text-muted-foreground cursor-not-allowed"
+                                        aria-disabled
+                                    >
+                                        Suivant
+                                    </span>
+                                ) : (
+                                    <Link
+                                        href={`${BASE_PATH}/${id}?page=${page + 1}`}
+                                        scroll={false}
+                                        className="px-3 py-1 text-sm rounded-md bg-muted text-foreground hover:bg-muted"
+                                    >
+                                        Suivant
+                                    </Link>
+                                )}
                             </div>
                         )}
                     </CardContent>
