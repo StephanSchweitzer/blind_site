@@ -16,7 +16,7 @@ export function UserTypeTabs({ currentType }: UserTypeTabsProps) {
 
     return (
         <div className="border-b border-border">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <nav className="-mb-px flex gap-4 sm:gap-8 overflow-x-auto" aria-label="Tabs">
                 {tabs.map((tab) => {
                     const isActive = currentType === tab.key;
                     return (

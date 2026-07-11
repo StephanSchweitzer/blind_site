@@ -64,7 +64,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
         <div className="min-h-screen bg-background">
             <div className="container mx-auto py-8 space-y-6">
                 <Card className="bg-card border-border">
-                    <CardHeader className="border-b border-border flex flex-row items-center justify-between">
+                    <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <CardTitle className="text-foreground">Informations pratiques ({items.length})</CardTitle>
                         <div className="flex gap-2">
                             {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-blue-600 text-white hover:bg-blue-700">Enregistrer l&apos;ordre</Button>}
@@ -115,9 +115,9 @@ function Row({ item, editing, busy, draft, setDraft, onEdit, onCancel, onSave, o
                         <GripVertical className="h-5 w-5" />
                     </button>
                     {React.createElement(resolveIcon(item.iconKey), { className: 'h-5 w-5 text-muted-foreground shrink-0' })}
-                    <span className="flex-1 min-w-0 text-foreground font-medium truncate">{item.question}</span>
-                    <Button size="icon" variant="ghost" onClick={onEdit} aria-label="Modifier"><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" disabled={busy} onClick={onDelete} aria-label="Supprimer"><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                    <span className="flex-1 min-w-0 text-foreground font-medium line-clamp-2 break-words">{item.question}</span>
+                    <Button size="icon" variant="ghost" className="size-8 sm:size-10 shrink-0" onClick={onEdit} aria-label="Modifier"><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="size-8 sm:size-10 shrink-0" disabled={busy} onClick={onDelete} aria-label="Supprimer"><Trash2 className="h-4 w-4 text-red-500" /></Button>
                 </div>
             )}
         </Reorder.Item>

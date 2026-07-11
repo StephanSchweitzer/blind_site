@@ -13,7 +13,7 @@ export default async function InformationsPratique() {
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
                 {/* Hero Section */}
-                <section className="text-center glass-card-lg p-12">
+                <section className="text-center glass-card-lg p-8 sm:p-12">
                     <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Informations Pratiques</h1>
                     <p className="text-lg text-gray-700 dark:text-gray-100">Tout ce que vous devez savoir sur nos services</p>
                 </section>

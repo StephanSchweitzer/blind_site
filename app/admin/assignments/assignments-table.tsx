@@ -348,7 +348,7 @@ export default function AssignmentsTable({
             <CardContent className="p-6">
                 {/* Search and Filters */}
                 <div className="mb-6 space-y-4">
-                    <div className="flex gap-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
                         {!hideSearch && (
                             <div className="flex-1 flex gap-2">
                                 <div className="relative flex-1">
@@ -379,7 +379,7 @@ export default function AssignmentsTable({
                                 </Button>
                             </div>
                         )}
-                        <div className="w-64">
+                        <div className="w-full sm:w-64">
                             <Select
                                 value={currentStatusId}
                                 onValueChange={handleStatusFilter}

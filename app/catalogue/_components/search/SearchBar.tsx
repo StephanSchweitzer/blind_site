@@ -42,9 +42,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
     return (
         <div className="animate-fade-in">
-            <div className="flex gap-3 w-full items-center">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:items-center">
                 {/* Search input - 45% */}
-                <div className="relative w-[45%] group">
+                <div className="relative w-full sm:w-[45%] group">
                     <input
                         type="text"
                         value={searchTerm}
@@ -82,7 +82,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 <select
                     value={selectedFilter}
                     onChange={(e) => onFilterChange(e.target.value)}
-                    className="w-[20%] px-4 py-3
+                    className="w-full sm:w-[20%] px-4 py-3
                         bg-white/95 dark:bg-gray-700/95
                         backdrop-blur-xl
                         border-2 border-gray-300/50 dark:border-gray-600/50
@@ -104,7 +104,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 </select>
 
                 {/* Genre selector - 30% */}
-                <div className="w-[30%]">
+                <div className="w-full sm:w-[30%]">
                     <Popover open={open} onOpenChange={setOpen}>
                         <PopoverTrigger asChild>
                             <Button

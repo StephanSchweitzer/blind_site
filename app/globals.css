@@ -228,6 +228,32 @@
         scroll-behavior: smooth;
     }
 
+    /* Respect reduced-motion: stop decorative animations, keep loading spinners */
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
+
+        body:not(.dark),
+        .dark body,
+        .animate-blob,
+        .animate-fade-in,
+        .animate-fade-in-up,
+        .animate-scale-in,
+        .animate-pulse-subtle {
+            animation: none;
+        }
+
+        .glass-card,
+        .glass-card-lg {
+            transition: none;
+        }
+
+        .glass-card:hover {
+            transform: none;
+        }
+    }
+
     /* Custom scrollbar */
     .custom-scrollbar::-webkit-scrollbar {
         width: 8px;

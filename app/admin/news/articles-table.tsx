@@ -215,12 +215,12 @@ export function ArticlesTable({
                 </Link>
             </CardHeader>
             <CardContent className="pt-6">
-                <div className="flex items-center space-x-2 mb-4">
+                <div className="flex items-center gap-2 mb-4">
                     <Input
                         placeholder="Rechercher les dernières infos..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="max-w-sm bg-white text-muted-foreground placeholder:text-muted-foreground"
+                        className="max-w-sm bg-card border-border text-foreground placeholder:text-muted-foreground"
                     />
                     {search && (
                         <Button

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { FileDown, Loader2 } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
 import {
     Dialog,
     DialogContent,
@@ -12,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { BillingStatus } from '@/lib/billing-enums';
-import { BillPDF, type BillPDFData } from './BillPDF';
+import type { BillPDFData } from './BillPDF';
 
 interface BillPDFButtonProps {
     bill: BillPDFData | null;
@@ -27,6 +26,11 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({ bill, onBillUpdate
     const [error, setError] = useState<string | null>(null);
 
     const download = async (data: BillPDFData, draft: boolean) => {
+        // The PDF library is heavy and only needed on export — load it on demand.
+        const [{ pdf }, { BillPDF }] = await Promise.all([
+            import('@react-pdf/renderer'),
+            import('./BillPDF'),
+        ]);
         const blob = await pdf(<BillPDF bill={data} draft={draft} />).toBlob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');

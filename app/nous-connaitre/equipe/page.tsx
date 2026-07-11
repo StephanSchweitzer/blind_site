@@ -15,12 +15,12 @@ export default async function EquipePage() {
             <FrontendNavbar />
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
-                <section className="text-center glass-card-lg p-12">
+                <section className="text-center glass-card-lg p-8 sm:p-12">
                     <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Notre Équipe</h1>
                     <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-6"></div>
                     <p className="text-lg text-gray-700 dark:text-gray-100 max-w-2xl mx-auto">
-                        Découvrez les membres de l&apos;équipe qui animent <br />
-                        <span className="whitespace-nowrap">les Enregistrements à la Carte pour les Aveugles</span> <br />
+                        Découvrez les membres de l&apos;équipe qui animent <br className="hidden sm:block" />
+                        <span className="sm:whitespace-nowrap">les Enregistrements à la Carte pour les Aveugles</span> <br className="hidden sm:block" />
                         et contribuent à la mission de rendre la lecture accessible à tous.
                     </p>
                 </section>

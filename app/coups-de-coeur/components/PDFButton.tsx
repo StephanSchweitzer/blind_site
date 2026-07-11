@@ -2,9 +2,7 @@
 
 import React, { useState } from 'react';
 import { Download } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
 import { Button } from '@/components/ui/button';
-import { CoupDeCoeurPDF } from './CoupDeCoeurPDF';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 
 interface PDFButtonProps {
@@ -18,6 +16,11 @@ export const PDFButton: React.FC<PDFButtonProps> = ({ content }) => {
         if (!content.length) return;
         setIsExporting(true);
         try {
+            // The PDF library is heavy and only needed on export — load it on demand.
+            const [{ pdf }, { CoupDeCoeurPDF }] = await Promise.all([
+                import('@react-pdf/renderer'),
+                import('./CoupDeCoeurPDF'),
+            ]);
             const blob = await pdf(<CoupDeCoeurPDF content={content} />).toBlob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');

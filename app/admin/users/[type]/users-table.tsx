@@ -326,24 +326,26 @@ export default function UsersTable({
 
             <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row gap-2 mb-6">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Rechercher par nom, email..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
-                        />
-                    </div>
-                    <Button onClick={handleSearch} size="icon" className="bg-card border border-border text-foreground hover:bg-muted hover:text-white">
-                        <Search className="h-4 w-4" />
-                    </Button>
-                    {searchTerm && (
-                        <Button onClick={handleClearSearch} size="icon" variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted">
-                            <X className="h-4 w-4" />
+                    <div className="flex flex-1 gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Rechercher par nom, email..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
+                            />
+                        </div>
+                        <Button onClick={handleSearch} size="icon" className="shrink-0 bg-card border border-border text-foreground hover:bg-muted hover:text-white">
+                            <Search className="h-4 w-4" />
                         </Button>
-                    )}
+                        {searchTerm && (
+                            <Button onClick={handleClearSearch} size="icon" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
                     <Select value={statusFilter} onValueChange={handleStatusFilter}>
                         <SelectTrigger className="bg-card border-border text-foreground sm:w-56">
                             <SelectValue placeholder="Statut" />

@@ -8,7 +8,7 @@ export default function UnderDevelopmentPage() {
             <FrontendNavbar />
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 min-h-[80vh] flex flex-col items-center justify-center">
-                <div className="glass-card-lg p-12 text-center space-y-8 max-w-2xl">
+                <div className="glass-card-lg p-8 sm:p-12 text-center space-y-8 max-w-2xl">
                     <div className="flex justify-center">
                         <div className="w-24 h-24 bg-amber-500/20 rounded-full flex items-center justify-center">
                             <Construction size={48} className="text-amber-600 dark:text-amber-400 animate-pulse" />

@@ -434,8 +434,8 @@ export default function BooksTable({
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="space-y-4">
-                    <div className="flex gap-2 w-full items-center">
-                        <div className="relative w-[45%]">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:items-center">
+                        <div className="relative w-full sm:w-[45%]">
                             <Input
                                 value={searchTerm}
                                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -451,7 +451,7 @@ export default function BooksTable({
                         <select
                             value={selectedFilter}
                             onChange={(e) => handleFilterChange(e.target.value)}
-                            className="w-[20%] px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
+                            className="w-full sm:w-[20%] px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
                         >
                             <option value="all">Tous</option>
                             <option value="title">Titre</option>
@@ -462,7 +462,7 @@ export default function BooksTable({
                         </select>
 
                         {availableGenres && availableGenres.length > 0 && (
-                            <div className="w-[30%]">
+                            <div className="w-full sm:w-[30%]">
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
                                         <Button

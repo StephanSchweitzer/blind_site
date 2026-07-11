@@ -13,7 +13,7 @@ export default async function NousRejoindre() {
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
                 {/* Hero Section */}
-                <section className="text-center glass-card-lg p-12">
+                <section className="text-center glass-card-lg p-8 sm:p-12">
                     <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Nous rejoindre</h1>
                     <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-6"></div>
                     <p className="text-lg text-gray-700 dark:text-gray-100 max-w-2xl mx-auto">

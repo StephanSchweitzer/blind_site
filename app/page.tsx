@@ -8,7 +8,7 @@ export default async function Home() {
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8">
                 {/* Hero Section - First card with welcome text */}
-                <section className="text-center glass-card-lg p-12 border-t-4 border-blue-500 dark:border-purple-400">
+                <section className="text-center glass-card-lg p-8 sm:p-12 border-t-4 border-blue-500 dark:border-purple-400">
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-white dark:to-gray-300">
                         Bienvenue sur le site ECA !
                     </h1>

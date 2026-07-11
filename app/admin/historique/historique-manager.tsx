@@ -59,7 +59,7 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
         <div className="min-h-screen bg-background">
             <div className="container mx-auto py-8 space-y-6">
                 <Card className="bg-card border-border">
-                    <CardHeader className="border-b border-border flex flex-row items-center justify-between">
+                    <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <CardTitle className="text-foreground">Historique ({events.length})</CardTitle>
                         <Button onClick={() => { setAdding(true); setDraft({ year: '', title: '', description: '', iconKey: 'Calendar' }); }} className="bg-muted text-foreground border-border hover:bg-muted">
                             <Plus className="h-4 w-4 mr-1" /> Ajouter
@@ -93,14 +93,14 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
                                 );
                             }
                             return (
-                                <div key={ev.id} className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2">
+                                <div key={ev.id} className="flex items-center gap-2 sm:gap-3 rounded-lg border border-border bg-background px-3 py-2">
                                     <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
-                                    <span className="font-mono text-sm text-muted-foreground w-14 shrink-0">{ev.year}</span>
-                                    <span className="flex-1 min-w-0 text-foreground font-medium truncate">{ev.title}</span>
-                                    <Button size="icon" variant="ghost" onClick={() => { setEditingId(ev.id); setAdding(false); setDraft({ year: String(ev.year), title: ev.title, description: ev.description, iconKey: ev.iconKey }); }} aria-label="Modifier">
+                                    <span className="font-mono text-sm text-muted-foreground w-auto sm:w-14 shrink-0">{ev.year}</span>
+                                    <span className="flex-1 min-w-0 text-foreground font-medium line-clamp-2 break-words">{ev.title}</span>
+                                    <Button size="icon" variant="ghost" className="size-8 sm:size-10 shrink-0" onClick={() => { setEditingId(ev.id); setAdding(false); setDraft({ year: String(ev.year), title: ev.title, description: ev.description, iconKey: ev.iconKey }); }} aria-label="Modifier">
                                         <Pencil className="h-4 w-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" disabled={busy} onClick={() => remove(ev.id)} aria-label="Supprimer">
+                                    <Button size="icon" variant="ghost" className="size-8 sm:size-10 shrink-0" disabled={busy} onClick={() => remove(ev.id)} aria-label="Supprimer">
                                         <Trash2 className="h-4 w-4 text-red-500" />
                                     </Button>
                                 </div>

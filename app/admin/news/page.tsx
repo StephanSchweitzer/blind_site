@@ -50,7 +50,11 @@ async function getArticles(page: number, searchTerm: string) {
             prisma.news.findMany({
                 where: whereClause,
                 include: {
-                    author: true
+                    author: {
+                        select: {
+                            name: true
+                        }
+                    }
                 },
                 orderBy: {
                     publishedAt: 'desc'

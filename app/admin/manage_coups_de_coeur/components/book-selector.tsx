@@ -436,7 +436,7 @@ export default function BookSelector({
                                     placeholder="Rechercher par titre, auteur ou ISBN..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="bg-white text-muted-foreground placeholder:text-muted-foreground"
+                                    className="bg-card border-border text-foreground placeholder:text-muted-foreground"
                                 />
                                 {isSearching ? (
                                     <p className="text-center py-4 text-foreground">Chargement...</p>
