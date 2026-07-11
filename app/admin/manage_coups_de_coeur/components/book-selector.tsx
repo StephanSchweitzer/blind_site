@@ -426,7 +426,7 @@ export default function BookSelector({
                                 Ajouter un livre existant
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
+                        <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                             <DialogHeader>
                                 <DialogTitle className="text-foreground">Recherche de livres</DialogTitle>
                             </DialogHeader>

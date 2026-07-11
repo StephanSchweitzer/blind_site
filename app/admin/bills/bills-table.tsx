@@ -421,7 +421,7 @@ export default function BillsTable({
 
             {/* Add Bill Dialog */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+                <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Créer une nouvelle facture</DialogTitle>
                     </DialogHeader>

@@ -62,9 +62,6 @@ const orderDate = (o: BillOrderLite) => o.sentDate ?? o.requestReceivedDate;
 const COUNT_ROOMY = 2;
 const COUNT_TIGHT = 10;
 
-// Space reserved at the bottom of every page for the fixed payment footer.
-const FOOTER_RESERVE = 112;
-
 const densityFor = (n: number) => {
     const t = Math.min(1, Math.max(0, (n - COUNT_ROOMY) / (COUNT_TIGHT - COUNT_ROOMY)));
     const L = (roomy: number, tight: number) => roomy + (tight - roomy) * t;
@@ -93,7 +90,7 @@ type Density = ReturnType<typeof densityFor>;
 
 // ─── Styles (built per-bill so spacing can adapt to the order count) ─────────
 const makeStyles = (d: Density) => StyleSheet.create({
-    page: { paddingTop: d.pageTop, paddingBottom: FOOTER_RESERVE, paddingHorizontal: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#111827', lineHeight: d.line },
+    page: { paddingTop: d.pageTop, paddingBottom: d.pageTop, paddingHorizontal: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#111827', lineHeight: d.line },
 
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 2, borderColor: NAVY, paddingBottom: d.headPadB, marginBottom: d.headMarB },
     headerOrg: { maxWidth: 320 },
@@ -140,8 +137,8 @@ const makeStyles = (d: Density) => StyleSheet.create({
     legal: { marginTop: d.legalTop, fontSize: 9, color: '#374151' },
     draftNote: { marginTop: d.legalTop, fontSize: 9, color: '#92400e', fontWeight: 'bold' },
 
-    // Pinned to the bottom of every page (fixed); page paddingBottom reserves its space.
-    payInfoBox: { position: 'absolute', left: 48, right: 48, bottom: d.pageTop, borderWidth: 1, borderColor: NAVY, borderRadius: 4, padding: d.infoPad, alignItems: 'center' },
+    // Flows once at the very end of the document (last page only).
+    payInfoBox: { marginTop: d.payTop, borderWidth: 1, borderColor: NAVY, borderRadius: 4, padding: d.infoPad, alignItems: 'center' },
     payInfoLine: { fontSize: 9.5, color: '#111827', textAlign: 'center', marginBottom: d.infoLineMarB },
 
     watermark: { position: 'absolute', top: '42%', left: 0, right: 0, textAlign: 'center', fontSize: 96, fontWeight: 'bold', color: NAVY, opacity: 0.06, transform: 'rotate(-24deg)' },
@@ -268,8 +265,8 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                     <Text style={s.legal}>TVA non applicable, art. 293 B du CGI.</Text>
                 )}
 
-                {/* Encadré paiement — épinglé en bas de chaque page */}
-                <View style={s.payInfoBox} fixed>
+                {/* Encadré paiement — une seule fois, en fin de dernière page */}
+                <View style={s.payInfoBox} wrap={false}>
                     <Text style={s.payInfoLine}>Association (loi 1901) non assujettie à la TVA.</Text>
                     <Text style={s.payInfoLine}>Règlement par chèque ou par virement bancaire :</Text>
                     <Text style={s.payInfoLine}>IBAN : FR76 1820 6004 6565 0607 5246 408</Text>

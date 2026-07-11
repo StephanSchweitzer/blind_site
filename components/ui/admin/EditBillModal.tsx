@@ -336,7 +336,7 @@ export function EditBillModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-3 pr-8">
                         <DialogTitle className="text-foreground">

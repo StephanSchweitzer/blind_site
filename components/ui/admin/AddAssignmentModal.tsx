@@ -49,7 +49,7 @@ export function AddAssignmentModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
                     <DialogTitle className="text-foreground">Créer une nouvelle attribution</DialogTitle>
                 </DialogHeader>

@@ -952,7 +952,7 @@ export function AssignmentFormBackendBase({
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Historique des lecteurs</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                    <div className="space-y-3 max-h-[60dvh] overflow-y-auto">
                         {readerHistory.map((history, index) => (
                             <div
                                 key={history.id}

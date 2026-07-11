@@ -114,7 +114,7 @@ export const BookModal: React.FC<BookModalProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col
+            <DialogContent className="max-w-2xl w-[95vw] max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] overflow-hidden flex flex-col
                 rounded-2xl
                 bg-white/95 dark:bg-gray-800/95
                 backdrop-blur-xl backdrop-saturate-150

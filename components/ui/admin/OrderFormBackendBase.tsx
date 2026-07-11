@@ -160,6 +160,13 @@ export function OrderFormBackendBase({
     // order, so the banner doesn't nag on every (already-duplication) order.
     const [dupAutoChecked, setDupAutoChecked] = useState(false);
 
+    // The « enregistrement audio existe déjà » warning is only meaningful at
+    // decision time: on a new demande, or when the admin actively toggles the
+    // « Enregistrement nécessaire » box on an existing one. An old demande loaded
+    // with the box already checked is usually the very demande that produced the
+    // audio file — warning there is noise, so we wait for an actual interaction.
+    const [recordingTouched, setRecordingTouched] = useState(false);
+
     // Form data state
     const [formData, setFormData] = useState<OrderFormData>(() =>
         initialData
@@ -338,6 +345,7 @@ export function OrderFormBackendBase({
     const handleRecordingChange = (checked: boolean) => {
         // The admin is now deciding manually — the auto-check banner no longer applies.
         setDupAutoChecked(false);
+        setRecordingTouched(true);
         setFormData(prev => {
             // Check if current status is "Terminé"
             const currentStatus = statuses.find(s => s.id === prev.statusId);
@@ -593,7 +601,7 @@ export function OrderFormBackendBase({
                                         Enregistrement nécessaire
                                     </label>
                                 </div>
-                                {audioAlreadyExists && formData.lentPhysicalBook && (
+                                {audioAlreadyExists && formData.lentPhysicalBook && (!currentOrderId || recordingTouched) && (
                                     <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
                                         Attention : un enregistrement audio existe déjà pour cet ouvrage.
                                         Vérifiez qu&apos;un nouvel enregistrement est réellement nécessaire

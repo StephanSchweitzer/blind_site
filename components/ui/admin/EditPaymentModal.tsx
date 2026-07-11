@@ -124,7 +124,7 @@ export function EditPaymentModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
                     <DialogTitle className="text-foreground flex items-center gap-3">
                         Paiement {paymentId ? `#${paymentId}` : ''}

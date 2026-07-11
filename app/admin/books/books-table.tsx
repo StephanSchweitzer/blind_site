@@ -713,7 +713,7 @@ export default function BooksTable({
 
             {/* Add Book Modal */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+                <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Ajouter un nouveau livre</DialogTitle>
                     </DialogHeader>
@@ -726,7 +726,7 @@ export default function BooksTable({
             {/* Edit Book Modal */}
             {selectedBook && (
                 <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+                    <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
                             <DialogTitle className="text-foreground">Modifier le livre</DialogTitle>
                         </DialogHeader>

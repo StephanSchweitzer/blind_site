@@ -91,7 +91,7 @@ function CreateBookDialog({ onCreated }: { onCreated: (book: Book) => void }) {
                     <Plus className="h-4 w-4 mr-2" /> Nouveau livre
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+            <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-foreground">Créer un nouveau livre</DialogTitle>
                 </DialogHeader>

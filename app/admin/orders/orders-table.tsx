@@ -530,33 +530,33 @@ export default function OrdersTable({
                                                     key={order.id}
                                                     onClick={() => handleRowClick(order)}
                                                     className={`border-b border-border hover:bg-muted cursor-pointer transition-colors ${
-                                                        isOverdue ? 'bg-red-950/30 hover:bg-red-950/40' : ''
+                                                        isOverdue ? 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40' : ''
                                                     }`}
                                                 >
-                                                    <TableCell className={`font-medium ${isOverdue ? 'text-red-300' : 'text-foreground'}`}>
+                                                    <TableCell className={`font-medium ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-foreground'}`}>
                                                         #{order.id}
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-foreground'}>
+                                                    <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
                                                         <div>
                                                             <div className="font-medium">
                                                                 {order.aveugle.name || order.aveugle.email}
                                                             </div>
                                                             {order.aveugle.name && (
-                                                                <div className={`text-sm ${isOverdue ? 'text-red-300' : 'text-muted-foreground'}`}>
+                                                                <div className={`text-sm ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
                                                                     {order.aveugle.email}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-foreground'}>
+                                                    <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
                                                         <div>
                                                             <div className="font-medium">{order.catalogue.title}</div>
-                                                            <div className={`text-sm ${isOverdue ? 'text-red-300' : 'text-muted-foreground'}`}>
+                                                            <div className={`text-sm ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
                                                                 {order.catalogue.author}
                                                             </div>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-200' : 'text-foreground'}>
+                                                    <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
                                                         {formatDate(order.requestReceivedDate)}
                                                     </TableCell>
                                                     <TableCell>
@@ -666,7 +666,7 @@ export default function OrdersTable({
 
             {/* Add Order Dialog */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+                <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Ajouter une nouvelle demande</DialogTitle>
                     </DialogHeader>

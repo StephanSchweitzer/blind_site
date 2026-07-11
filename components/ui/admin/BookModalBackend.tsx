@@ -28,12 +28,12 @@ export function BookModalBackend({ isOpen, onOpenChange, onBookAdded }: BookModa
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-4xl max-h-[85dvh] flex flex-col overflow-hidden bg-card border-border [&>button>svg]:text-white">
 
-                <DialogHeader>
+                <DialogHeader className="flex-shrink-0">
                     <DialogTitle className="text-foreground">Ajouter un nouveau livre</DialogTitle>
                 </DialogHeader>
-                <div className="overflow-y-auto px-1">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1">
                     <AddBookFormBackend onSuccess={handleSuccess} />
                 </div>
             </DialogContent>
