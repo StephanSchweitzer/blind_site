@@ -33,7 +33,7 @@ const navGroups: NavGroup[] = [
             { href: '/admin/assignments', label: 'Attributions', icon: '🔗' },
             { href: '/admin/bills', label: 'Factures', icon: '💰' },
             { href: '/admin/payments', label: 'Paiements', icon: '💳' },
-            { href: '/admin/stats', label: 'Statistiques', icon: '📊' },
+            // { href: '/admin/stats', label: 'Statistiques', icon: '📊' },
         ],
     },
     {
