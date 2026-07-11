@@ -1,14 +1,13 @@
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { redirect } from 'next/navigation';
 import { HistoriqueManager } from './historique-manager';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHistorique() {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') redirect('/admin');
+    const me = await getCurrentUser();
+    if (!isSuperAdmin(me?.accessLevel)) redirect('/admin');
 
     const events = await prisma.historyEvent.findMany({ orderBy: { year: 'asc' } });
     return <HistoriqueManager initial={events} />;

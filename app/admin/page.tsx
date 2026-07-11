@@ -1,15 +1,14 @@
 // app/admin/page.tsx
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { AdminCard } from '@/components/ui/admin';
 import { AdminDashboardCard } from '@/components/ui/admin/AdminDashboardCard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
-    const session = await getServerSession(authOptions);
-    const isSuper = session?.user.accessLevel === 'super_admin';
+    const me = await getCurrentUser();
+    const isSuper = isSuperAdmin(me?.accessLevel);
     const [
         bookCount,
         newsCount,

@@ -2,8 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma, UserActivityStatus, Language } from '@prisma/client';
 import UsersTable from './users-table';
 import { notFound } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { redirect } from 'next/navigation';
 import { UserTypeTabs } from './user-type-tabs';
 import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
@@ -152,13 +151,13 @@ async function getUsers(
 }
 
 export default async function UsersPage({ params, searchParams }: PageProps) {
-    const session = await getServerSession(authOptions);
+    const me = await getCurrentUser();
 
-    if (!session) {
+    if (!me) {
         redirect('/login');
     }
 
-    if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
+    if (!isAdmin(me.accessLevel)) {
         redirect('/');
     }
 
@@ -222,7 +221,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                 scopedTotal={scopedTotal}
                 activeCount={activeCount}
                 inactiveCount={inactiveCount}
-                currentUserAccessLevel={session.user.accessLevel}
+                currentUserAccessLevel={me.accessLevel}
             />
         </div>
     );
