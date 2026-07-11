@@ -131,6 +131,8 @@ model Book {
   @@index([author])
   @@index([isbn])
   @@index([available])
+  // Stats dashboard: per-staff-per-day aggregates on /admin/stats.
+  @@index([addedById, createdAt])
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -299,6 +301,8 @@ model Orders {
   @@index([mediaFormatId])
   @@index([billId])
   @@index([isActive])
+  // Stats dashboard: per-staff-per-day aggregates on /admin/stats.
+  @@index([processedByStaffId, createdDate])
 }
 
 model Assignment {
@@ -321,6 +325,9 @@ model Assignment {
   @@index([catalogueId])
   @@index([orderId])
   @@index([statusId])
+  // Stats dashboard: reader timeline windows on /admin/stats.
+  @@index([sentToReaderDate])
+  @@index([returnedToECADate])
 }
 
 model AssignmentReader {
@@ -445,6 +452,8 @@ model BillEvent {
 
   @@index([billId])
   @@index([createdAt])
+  // Stats dashboard: per-staff-per-day aggregates on /admin/stats.
+  @@index([performedById, createdAt])
 }
 
 enum BillEventType {

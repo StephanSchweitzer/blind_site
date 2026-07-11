@@ -20,3 +20,6 @@ export * from './book.api';
 
 // Common API types (Genre, Status, MediaFormat, Address, Bill, News, CoupsDeCoeur)
 export * from './common.api';
+
+// Stats dashboard API types (super-admin /admin/stats)
+export * from './stats.api';

@@ -12,7 +12,7 @@ export interface BillEventDTO {
     performedBy: { id: number; name: string | null } | null;
 }
 
-const TYPE_LABEL: Record<string, string> = {
+export const TYPE_LABEL: Record<string, string> = {
     CREATED: 'Facture créée',
     ISSUED: 'Facture émise',
     REOPENED: 'Facture rouverte',
@@ -23,7 +23,7 @@ const TYPE_LABEL: Record<string, string> = {
     ORDER_DETACHED: 'Demande retirée',
 };
 
-const TYPE_TINT: Record<string, string> = {
+export const TYPE_TINT: Record<string, string> = {
     CREATED: 'bg-muted text-foreground',
     ISSUED: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200',
     REOPENED: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200',

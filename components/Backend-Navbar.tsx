@@ -33,6 +33,7 @@ const navGroups: NavGroup[] = [
             { href: '/admin/assignments', label: 'Attributions', icon: '🔗' },
             { href: '/admin/bills', label: 'Factures', icon: '💰' },
             { href: '/admin/payments', label: 'Paiements', icon: '💳' },
+            { href: '/admin/stats', label: 'Statistiques', icon: '📊' },
         ],
     },
     {
@@ -63,11 +64,15 @@ const BackendNavbar: React.FC = () => {
     const { data: session } = useSession();
     const isSuper = session?.user.accessLevel === 'super_admin';
 
-    // Non-super-admins only see "Dernières infos" (news) in the Pages group.
+    // Non-super-admins only see "Dernières infos" (news) in the Pages group,
+    // and never the super-admin-only Statistiques entry.
     const visibleGroups = navGroups
         .map((g) => g.label === 'Pages' && !isSuper
             ? { ...g, items: g.items.filter((i) => i.href === '/admin/news') }
             : g)
+        .map((g) => isSuper
+            ? g
+            : { ...g, items: g.items.filter((i) => i.href !== '/admin/stats') })
         .filter((g) => g.items.length > 0);
 
     const toggleMobileGroup = (index: number) => {
