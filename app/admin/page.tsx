@@ -14,6 +14,7 @@ export default async function Dashboard() {
         newsCount,
         genreCount,
         coupsDeCoeurCount,
+        reviewCount,
         lecteursCount,
         auditeursCount,
         permanentsCount,
@@ -31,6 +32,7 @@ export default async function Dashboard() {
         prisma.news.count(),
         prisma.genre.count(),
         prisma.coupsDeCoeur.count(),
+        prisma.book.count({ where: { needsReview: true } }),
         prisma.user.count({ where: { memberType: 'lecteur' } }),
         prisma.user.count({ where: { memberType: 'auditeur' } }),
         prisma.user.count({ where: { accessLevel: { in: ['admin', 'super_admin'] } } }),
@@ -71,6 +73,13 @@ export default async function Dashboard() {
                         href="/admin/manage_coups_de_coeur"
                         buttonText="Gestion des listes de livres (anciennement appelés « coups de cœur »)"
                         accentColor="pink"
+                    />
+                    <AdminDashboardCard
+                        title="Doublons"
+                        count={reviewCount}
+                        href="/admin/review"
+                        buttonText="Révision et fusion des doublons potentiels du catalogue"
+                        accentColor="orange"
                     />
                 </div>
             </div>

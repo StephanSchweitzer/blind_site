@@ -58,3 +58,4 @@ app/generated/
 package-lock.json
 
 public/book_descriptions/
+.claude/

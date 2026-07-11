@@ -72,6 +72,7 @@ model User {
   ordersProcessedBy        Orders[]            @relation("OrdersProcessedBy")
   payments                 Payment[]
   billEventsPerformed      BillEvent[]         @relation("BillEventsPerformedBy")
+  bookMergeEventsPerformed BookMergeEvent[]    @relation("BookMergeEventsPerformedBy")
   activityEvents           UserActivityEvent[] @relation("UserActivityEvents")
   activityEventsPerformed  UserActivityEvent[] @relation("UserActivityEventsBy")
   languages                ReaderLanguage[]
@@ -493,6 +494,24 @@ model UserActivityEvent {
 
   @@index([userId])
   @@index([changedAt])
+}
+
+/// Append-only audit log of book duplicate fusions. One row per FUSE action,
+/// keeping a JSON snapshot of the removed duplicate. Never updated or deleted.
+/// canonicalId / duplicateId are plain ints (no FK) so the row survives the
+/// duplicate's deletion — and any later deletion of the canonical.
+model BookMergeEvent {
+  id            Int      @id @default(autoincrement())
+  canonicalId   Int
+  duplicateId   Int
+  snapshot      Json
+  performedById Int?
+  createdAt     DateTime @default(now())
+  performedBy   User?    @relation("BookMergeEventsPerformedBy", fields: [performedById], references: [id], onDelete: SetNull)
+
+  @@index([canonicalId])
+  @@index([duplicateId])
+  @@index([createdAt])
 }
 
 /// Singleton (id = 1) holding the editable content of the public Contact page.

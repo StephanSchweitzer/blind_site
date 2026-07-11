@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
-import { BookOpen, Theater, Newspaper, List, ShoppingCart, UserCheck, Headphones, FileText, Mic, LucideIcon } from 'lucide-react';
+import { BookOpen, Theater, Newspaper, List, ShoppingCart, UserCheck, Headphones, FileText, Mic, Copy, LucideIcon } from 'lucide-react';
 
 interface AdminDashboardCardProps {
     title: string;
@@ -80,6 +80,7 @@ const iconMap: Record<string, LucideIcon> = {
     'Genres': Theater,
     'Dernières infos': Newspaper,
     'Listes de livres': List,
+    'Doublons': Copy,
     'Demandes': ShoppingCart,
     'Attributions': UserCheck,
     'Factures': FileText,
