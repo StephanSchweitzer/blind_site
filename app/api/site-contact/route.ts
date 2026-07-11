@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
+import { withSuperAdmin } from '@/lib/auth/guards';
 
 export async function GET() {
     try {
@@ -16,12 +15,7 @@ export async function GET() {
     }
 }
 
-export async function PUT(req: NextRequest) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
+export const PUT = withSuperAdmin(async (req) => {
     try {
         const body = await req.json();
         const {
@@ -66,4 +60,4 @@ export async function PUT(req: NextRequest) {
         console.error('Error saving site contact:', error);
         return NextResponse.json({ error: 'Failed to save contact' }, { status: 500 });
     }
-}
+});

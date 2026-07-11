@@ -1,11 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma, TeamSection } from '@prisma/client';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
+import { withSuperAdmin } from '@/lib/auth/guards';
 
 const SECTIONS: TeamSection[] = ['DIRECTION', 'CONSEIL', 'PERMANENCE'];
 
@@ -21,12 +20,7 @@ export async function GET() {
     }
 }
 
-export async function POST(req: NextRequest) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
+export const POST = withSuperAdmin(async (req) => {
     try {
         const { name, role, section } = await req.json();
 
@@ -57,15 +51,10 @@ export async function POST(req: NextRequest) {
         console.error('Error creating team member:', error);
         return NextResponse.json({ error: 'Failed to create member' }, { status: 500 });
     }
-}
+});
 
 // Batch reorder: body { items: [{ id, sortOrder }] }
-export async function PATCH(req: NextRequest) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
+export const PATCH = withSuperAdmin(async (req) => {
     try {
         const { items } = await req.json();
         if (!Array.isArray(items)) {
@@ -93,4 +82,4 @@ export async function PATCH(req: NextRequest) {
         }
         return NextResponse.json({ error: 'Failed to reorder' }, { status: 500 });
     }
-}
+});

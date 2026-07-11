@@ -1,27 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getActiveAssignmentCounts } from '@/lib/users/deletionGuard';
 import { Prisma } from '@prisma/client';
 import { MemberType, AccessLevel } from '@prisma/client';
+import { withAdmin } from '@/lib/auth/guards';
 
 
-export async function GET(request: NextRequest) {
-    const session = await getServerSession(authOptions);
-
-    if (!session) {
-        return new NextResponse(JSON.stringify({ error: "unauthorized" }), {
-            status: 401,
-        });
-    }
-
-    if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
-        return new NextResponse(JSON.stringify({ error: "insufficient authorization" }), {
-            status: 403,
-        });
-    }
-
+export const GET = withAdmin(async (request) => {
     try {
         const searchParams = request.nextUrl.searchParams;
         const query = searchParams.get('q') || '';
@@ -143,4 +128,4 @@ export async function GET(request: NextRequest) {
         console.error('Error searching users:', error);
         return NextResponse.json({ error: 'Failed to search users' }, { status: 500 });
     }
-}
+});

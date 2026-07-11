@@ -1,21 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
+import { withSuperAdmin } from '@/lib/auth/guards';
 
-type Params = { params: Promise<{ id: string }> };
 const PATH = '/nous-rejoindre';
 
-export async function PUT(req: NextRequest, { params }: Params) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+export const PUT = withSuperAdmin(async (req, { params }) => {
     try {
-        const { id } = await params;
+        const { id } = await params!;
         const b = await req.json();
         const item = await prisma.membershipOption.update({
             where: { id: parseInt(id, 10) },
@@ -39,15 +33,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
         console.error('Error updating membership option:', error);
         return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
     }
-}
+});
 
-export async function DELETE(req: NextRequest, { params }: Params) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+export const DELETE = withSuperAdmin(async (_req, { params }) => {
     try {
-        const { id } = await params;
+        const { id } = await params!;
         await prisma.membershipOption.delete({ where: { id: parseInt(id, 10) } });
         revalidateAdmin();
         revalidatePublic(CACHE_TAGS.nousRejoindre, PATH);
@@ -56,4 +46,4 @@ export async function DELETE(req: NextRequest, { params }: Params) {
         console.error('Error deleting membership option:', error);
         return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
     }
-}
+});

@@ -1,21 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
+import { withSuperAdmin } from '@/lib/auth/guards';
 
-type Params = { params: Promise<{ id: string }> };
 const PATH = '/nous-connaitre/historique';
 
-export async function PUT(req: NextRequest, { params }: Params) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+export const PUT = withSuperAdmin(async (req, { params }) => {
     try {
-        const { id } = await params;
+        const { id } = await params!;
         const { year, title, description, iconKey } = await req.json();
         const data: { year?: number; title?: string; description?: string; iconKey?: string } = {};
         if (year !== undefined) {
@@ -37,15 +31,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
         console.error('Error updating history event:', error);
         return NextResponse.json({ error: 'Failed to update event' }, { status: 500 });
     }
-}
+});
 
-export async function DELETE(req: NextRequest, { params }: Params) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+export const DELETE = withSuperAdmin(async (_req, { params }) => {
     try {
-        const { id } = await params;
+        const { id } = await params!;
         await prisma.historyEvent.delete({ where: { id: parseInt(id, 10) } });
         revalidateAdmin();
         revalidatePublic(CACHE_TAGS.historique, PATH);
@@ -54,4 +44,4 @@ export async function DELETE(req: NextRequest, { params }: Params) {
         console.error('Error deleting history event:', error);
         return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
     }
-}
+});

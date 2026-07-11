@@ -5,33 +5,12 @@ import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import {News, Prisma} from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
+import { withAdmin } from '@/lib/auth/guards';
 
-export async function POST(req: NextRequest) {
+export const POST = withAdmin(async (req, { me }) => {
     revalidateAdmin();
-    let session;
-
-    try {
-        session = await getServerSession(authOptions);
-        console.log("Session retrieved:", session);
-    } catch (error) {
-        console.error("Session retrieval failed:", error);
-        return NextResponse.json(
-            { error: 'Erreur d\'authentification' },
-            { status: 500 }
-        );
-    }
-
-    if (!session?.user?.id) {
-        console.log("Invalid session:", session);
-        return NextResponse.json(
-            { error: 'Non autorisé' },
-            { status: 401 }
-        );
-    }
 
     // Request body parsing
     let title, content, type;
@@ -63,21 +42,6 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    // Author ID parsing
-    let parsedAuthorId;
-    try {
-        parsedAuthorId = parseInt(session.user.id, 10);
-        if (isNaN(parsedAuthorId)) {
-            throw new Error('Format d\'ID auteur invalide');
-        }
-    } catch (error) {
-        console.error("Author ID parsing failed:", error);
-        return NextResponse.json(
-            { error: 'ID auteur invalide' },
-            { status: 400 }
-        );
-    }
-
     // Database operation
     try {
         const newArticle = await prisma.news.create({
@@ -85,7 +49,7 @@ export async function POST(req: NextRequest) {
                 title,
                 content,
                 type: (type as News['type']) || 'GENERAL',
-                authorId: parsedAuthorId,
+                authorId: me.id,
                 publishedAt: new Date(),
             },
         });
@@ -105,7 +69,7 @@ export async function POST(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
 
 export async function GET(req: NextRequest) {
     try {

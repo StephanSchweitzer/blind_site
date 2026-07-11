@@ -27,6 +27,10 @@ export function isAdmin(level: string | null | undefined): boolean {
     return level === 'admin' || level === 'super_admin';
 }
 
+export function isSuperAdmin(level: string | null | undefined): boolean {
+    return level === 'super_admin';
+}
+
 type RouteCtx = { params?: Promise<Record<string, string>> };
 type GuardedHandler = (
     req: NextRequest,
@@ -49,6 +53,18 @@ export function withAdmin(handler: GuardedHandler): RouteHandler {
         const me = await getCurrentUser();
         if (!me) return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
         if (!isAdmin(me.accessLevel)) {
+            return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
+        }
+        return handler(req, { ...ctx, me });
+    };
+}
+
+/** Wrap a handler to require super_admin specifically. Passes `me` through ctx. */
+export function withSuperAdmin(handler: GuardedHandler): RouteHandler {
+    return async (req, ctx) => {
+        const me = await getCurrentUser();
+        if (!me) return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
+        if (!isSuperAdmin(me.accessLevel)) {
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
         return handler(req, { ...ctx, me });

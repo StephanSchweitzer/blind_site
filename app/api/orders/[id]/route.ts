@@ -19,21 +19,9 @@ import {
     guardDemandeStatusSync,
     syncAssignmentToStatus,
 } from '@/lib/statusSync';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { recomputeBillTotal, accrueOrderToOpenDraft, issueDraftIfOverThreshold, logBillEvent } from '@/lib/billing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
-
-async function checkAdmin() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return { authorized: false as const, response: NextResponse.json({ message: 'Non autorisé' }, { status: 401 }) };
-    }
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return { authorized: false as const, response: NextResponse.json({ message: 'Non autorisé' }, { status: 403 }) };
-    }
-    return { authorized: true as const, session };
-}
+import { withAdmin } from '@/lib/auth/guards';
 
 // Reprint notice returned to the client when an invoice-relevant field changes on a
 // non-DRAFT (issued) bill. COST = total recomputed; VISIBLE = printed field changed.
@@ -48,12 +36,9 @@ function parseCost(raw: unknown): number | null {
     return Number.isNaN(n) ? null : n;
 }
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withAdmin(async (request, { params }) => {
     try {
-        const { id } = await params;
+        const { id } = await params!;
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
@@ -155,19 +140,14 @@ export async function GET(
             { status: 500 }
         );
     }
-}
+});
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const PUT = withAdmin(async (request, { me, params }) => {
     revalidateAdmin();
     try {
-        const auth = await checkAdmin();
-        if (!auth.authorized) return auth.response;
-        const performedById = auth.session.user?.id ? parseInt(auth.session.user.id) : null;
+        const performedById = me.id;
 
-        const { id } = await params;
+        const { id } = await params!;
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
@@ -391,19 +371,14 @@ export async function PUT(
             { status: 500 }
         );
     }
-}
+});
 
-export async function PATCH(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const PATCH = withAdmin(async (request, { me, params }) => {
     revalidateAdmin();
     try {
-        const auth = await checkAdmin();
-        if (!auth.authorized) return auth.response;
-        const performedById = auth.session.user?.id ? parseInt(auth.session.user.id) : null;
+        const performedById = me.id;
 
-        const { id } = await params;
+        const { id } = await params!;
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
@@ -615,18 +590,12 @@ export async function PATCH(
             { status: 500 }
         );
     }
-}
+});
 
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAdmin(async (_request, { params }) => {
     revalidateAdmin();
     try {
-        const auth = await checkAdmin();
-        if (!auth.authorized) return auth.response;
-
-        const { id } = await params;
+        const { id } = await params!;
         const orderId = parseInt(id);
 
         if (isNaN(orderId)) {
@@ -687,4 +656,4 @@ export async function DELETE(
             { status: 500 }
         );
     }
-}
+});

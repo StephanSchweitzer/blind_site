@@ -1,40 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus } from '@prisma/client';
 import { userAddressLines } from '@/lib/users/formatAddress';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { STATUS } from '@/lib/statusSync';
 import { recomputeBillTotal, logBillEvent, transitionEventType } from '@/lib/billing';
+import { withAdmin } from '@/lib/auth/guards';
 
 // An order is BILLED once its bill is issued (anything past DRAFT); a draft (brouillon) leaves it UNBILLED.
 const orderBillingForBillState = (state: string): 'BILLED' | 'UNBILLED' =>
     state === 'DRAFT' ? 'UNBILLED' : 'BILLED';
 
-async function checkAdmin() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return { authorized: false as const, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 }) };
-    }
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return { authorized: false as const, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 }) };
-    }
-    return { authorized: true as const, session };
-}
-
-interface RouteContext {
-    params: Promise<{ id: string }>;
-}
-
-export async function GET(_request: NextRequest, context: RouteContext) {
+export const GET = withAdmin(async (_request, context) => {
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) {
-            return authCheck.response;
-        }
-
-        const { id } = await context.params;
+        const { id } = await context.params!;
         const billId = parseInt(id);
         if (isNaN(billId)) {
             return NextResponse.json({ error: 'Invalid id', message: 'Identifiant invalide' }, { status: 400 });
@@ -114,16 +93,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
             { status: 500 }
         );
     }
-}
+});
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
+export const PATCH = withAdmin(async (request, { me, params }) => {
     revalidateAdmin();
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) return authCheck.response;
-        const performedById = authCheck.session.user?.id ? parseInt(authCheck.session.user.id) : null;
+        const performedById = me.id;
 
-        const { id } = await context.params;
+        const { id } = await params!;
         const billId = parseInt(id);
         if (isNaN(billId)) {
             return NextResponse.json({ error: 'Invalid id', message: 'Identifiant invalide' }, { status: 400 });
@@ -382,18 +359,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             { status: 500 }
         );
     }
-}
+});
 
 // Soft delete: mark the bill inactive AND unlink its orders (reset billId + billingStatus).
-export async function DELETE(_request: NextRequest, context: RouteContext) {
+export const DELETE = withAdmin(async (_request, context) => {
     revalidateAdmin();
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) {
-            return authCheck.response;
-        }
-
-        const { id } = await context.params;
+        const { id } = await context.params!;
         const billId = parseInt(id);
         if (isNaN(billId)) {
             return NextResponse.json({ error: 'Invalid id', message: 'Identifiant invalide' }, { status: 400 });
@@ -436,4 +408,4 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
             { status: 500 }
         );
     }
-}
+});

@@ -1,18 +1,15 @@
 // app/api/user/change-password/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { render } from '@react-email/render';
 import PasswordChangedEmail from '@/components/emails/PasswordChangedEmail';
 import { sendEmail } from '@/lib/email/sendEmail';
+import { withAuth } from '@/lib/auth/guards';
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req, { me }) => {
     try {
-        const session = await getServerSession(authOptions);
-
-        if (!session || !session.user?.email) {
+        if (!me.email) {
             return NextResponse.json(
                 { message: 'Non authentifié' },
                 { status: 401 }
@@ -29,7 +26,7 @@ export async function POST(req: NextRequest) {
         }
 
         const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
+            where: { email: me.email },
             select: { id: true, password: true, email: true, name: true, firstName: true },
         });
 
@@ -101,4 +98,4 @@ export async function POST(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { withAdmin } from '@/lib/auth/guards';
 import bcrypt from 'bcrypt';
 import { generatePassword } from '@/lib/utils';
 import { isSendableEmail } from '@/lib/email/sendEmail';
@@ -12,21 +11,7 @@ import { AddressCreateInput } from '@/types/api/common.api';
 import { MemberType, AccessLevel, Language } from '@prisma/client';
 import { ADMINS_CAN_CREATE_USERS } from '@/lib/feature-flags';
 
-export async function GET() {
-    const session = await getServerSession(authOptions);
-
-    if (!session) {
-        return new NextResponse(JSON.stringify({ error: "unauthorized" }), {
-            status: 401,
-        });
-    }
-
-    if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
-        return new NextResponse(JSON.stringify({ error: "insufficient authorization" }), {
-            status: 403,
-        });
-    }
-
+export const GET = withAdmin(async () => {
     try {
         const users = await prisma.user.findMany({
             select: {
@@ -50,7 +35,7 @@ export async function GET() {
         console.error('Error fetching users:', error);
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
     }
-}
+});
 
 interface UserCreateRequestBody extends Omit<UserCreateInput, 'password'> {
     addresses?: Omit<AddressCreateInput, 'userId'>[];
@@ -60,21 +45,11 @@ interface UserCreateRequestBody extends Omit<UserCreateInput, 'password'> {
     civilityOther?: string | null;
 }
 
-export async function POST(request: Request) {
+export const POST = withAdmin(async (request, { me }) => {
     revalidateAdmin();
     try {
-        const session = await getServerSession(authOptions);
-
-        if (!session) {
-            return NextResponse.json({ message: 'Non autorisé' }, { status: 401 });
-        }
-
-        if (session?.user.accessLevel !== 'admin' && session?.user.accessLevel !== 'super_admin') {
-            return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
-        }
-
         // TEMP (see lib/feature-flags.ts): only super_admins may create users.
-        if (!ADMINS_CAN_CREATE_USERS && session.user.accessLevel !== 'super_admin') {
+        if (!ADMINS_CAN_CREATE_USERS && me.accessLevel !== 'super_admin') {
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
 
@@ -90,7 +65,7 @@ export async function POST(request: Request) {
             body.accessLevel === 'admin' || body.accessLevel === 'super_admin';
 
         // Only super_admin can create admin or super_admin access levels
-        if (isLoginAccount && session.user.accessLevel !== 'super_admin') {
+        if (isLoginAccount && me.accessLevel !== 'super_admin') {
             return NextResponse.json({
                 message: 'Seuls les super administrateurs peuvent créer des membres permanents ou des administrateurs'
             }, { status: 403 });
@@ -228,4 +203,4 @@ export async function POST(request: Request) {
             { status: 500 }
         );
     }
-}
+});

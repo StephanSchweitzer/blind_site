@@ -1,17 +1,13 @@
 // app/api/user/update/route.ts
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { withAuth } from '@/lib/auth/guards';
 
-export async function PUT(request: Request) {
+export const PUT = withAuth(async (request, { me }) => {
     revalidateAdmin();
     try {
-        // Get session
-        const session = await getServerSession(authOptions);
-
-        if (!session || !session.user?.email) {
+        if (!me.email) {
             return new NextResponse(
                 JSON.stringify({ error: 'Non autorisé' }),
                 { status: 401 }
@@ -32,7 +28,7 @@ export async function PUT(request: Request) {
 
         // Check if user exists
         const existingUser = await prisma.user.findUnique({
-            where: { email: session.user.email },
+            where: { email: me.email },
         });
 
         if (!existingUser) {
@@ -43,7 +39,7 @@ export async function PUT(request: Request) {
         }
 
         // Check if new email already exists (if changing email)
-        if (email !== session.user.email) {
+        if (email !== me.email) {
             const emailExists = await prisma.user.findUnique({
                 where: { email },
             });
@@ -58,7 +54,7 @@ export async function PUT(request: Request) {
 
         // Update user
         const updatedUser = await prisma.user.update({
-            where: { email: session.user.email },
+            where: { email: me.email },
             data: {
                 name,
                 email,
@@ -78,4 +74,4 @@ export async function PUT(request: Request) {
             { status: 500 }
         );
     }
-}
+});

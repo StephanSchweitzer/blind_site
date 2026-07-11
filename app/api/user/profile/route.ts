@@ -1,14 +1,11 @@
 // app/api/user/profile/route.ts
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { withAuth } from '@/lib/auth/guards';
 
-export async function GET() {
+export const GET = withAuth(async (_req, { me }) => {
     try {
-        const session = await getServerSession(authOptions);
-
-        if (!session || !session.user?.email) {
+        if (!me.email) {
             return new NextResponse(
                 JSON.stringify({ error: 'Non autorisé' }),
                 { status: 401 }
@@ -18,7 +15,7 @@ export async function GET() {
         // Get user data with counts
         const userData = await prisma.user.findUnique({
             where: {
-                email: session.user.email,
+                email: me.email,
             },
             select: {
                 id: true,
@@ -53,4 +50,4 @@ export async function GET() {
             { status: 500 }
         );
     }
-}
+});

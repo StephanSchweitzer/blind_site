@@ -1,24 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { TeamSection } from '@prisma/client';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
-
-type Params = { params: Promise<{ id: string }> };
+import { withSuperAdmin } from '@/lib/auth/guards';
 
 const SECTIONS: TeamSection[] = ['DIRECTION', 'CONSEIL', 'PERMANENCE'];
 
-export async function PUT(req: NextRequest, { params }: Params) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
+export const PUT = withSuperAdmin(async (req, { params }) => {
     try {
-        const { id } = await params;
+        const { id } = await params!;
         const { name, role, section, active } = await req.json();
 
         if (section !== undefined && !SECTIONS.includes(section)) {
@@ -43,16 +35,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
         console.error('Error updating team member:', error);
         return NextResponse.json({ error: 'Failed to update member' }, { status: 500 });
     }
-}
+});
 
-export async function DELETE(req: NextRequest, { params }: Params) {
-    const session = await getServerSession(authOptions);
-    if (session?.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
+export const DELETE = withSuperAdmin(async (_req, { params }) => {
     try {
-        const { id } = await params;
+        const { id } = await params!;
         await prisma.teamMember.delete({ where: { id: parseInt(id, 10) } });
 
         revalidateAdmin();
@@ -63,4 +50,4 @@ export async function DELETE(req: NextRequest, { params }: Params) {
         console.error('Error deleting team member:', error);
         return NextResponse.json({ error: 'Failed to delete member' }, { status: 500 });
     }
-}
+});

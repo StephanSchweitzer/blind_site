@@ -1,25 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { UserActivityStatus } from '@prisma/client';
 import { USER_ACTIVITY_STATUS_VALUES, ACTIVE_USER_ACTIVITY_STATUSES } from '@/lib/user-activity-enums';
+import { withAdmin } from '@/lib/auth/guards';
 
 // History of a member's activity-status changes, newest first.
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-    }
-
-    const { id } = await params;
+export const GET = withAdmin(async (_request, { params }) => {
+    const { id } = await params!;
     const userId = parseInt(id, 10);
     if (Number.isNaN(userId)) {
         return NextResponse.json({ message: 'Invalid id' }, { status: 400 });
@@ -47,24 +35,14 @@ export async function GET(
         console.error('activity history error:', error);
         return NextResponse.json({ message: 'Failed to load history' }, { status: 500 });
     }
-}
+});
 
 // Record a status change: writes a history event (capturing the acting admin)
 // and updates the user's current activityStatus.
-export async function POST(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const POST = withAdmin(async (request, { me, params }) => {
     revalidateAdmin();
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-    }
 
-    const { id } = await params;
+    const { id } = await params!;
     const userId = parseInt(id, 10);
     if (Number.isNaN(userId)) {
         return NextResponse.json({ message: 'Invalid id' }, { status: 400 });
@@ -91,7 +69,7 @@ export async function POST(
             return NextResponse.json({ message: 'Personne introuvable' }, { status: 404 });
         }
 
-        const changedById = session.user.id ? parseInt(session.user.id) : null;
+        const changedById = me.id;
         const now = new Date();
 
         // One-directional sync: leaving an active status always clears
@@ -137,4 +115,4 @@ export async function POST(
         console.error('activity change error:', error);
         return NextResponse.json({ message: 'Failed to change status' }, { status: 500 });
     }
-}
+});

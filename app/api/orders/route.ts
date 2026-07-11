@@ -1,45 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
+import { withAdmin } from '@/lib/auth/guards';
 
-async function checkAdmin() {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-        return {
-            authorized: false,
-            response: NextResponse.json(
-                { success: false, message: 'Unauthorized' },
-                { status: 401 }
-            )
-        };
-    }
-
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return {
-            authorized: false,
-            response: NextResponse.json(
-                { success: false, message: 'Unauthorized' },
-                { status: 403 }
-            )
-        };
-    }
-
-    return { authorized: true, session };
-}
-
-export async function GET(request: NextRequest) {
+export const GET = withAdmin(async (request) => {
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) {
-            return authCheck.response;
-        }
-
         const searchParams = request.nextUrl.searchParams;
         const page = parseInt(searchParams.get('page') || '1');
         const search = searchParams.get('search') || '';
@@ -241,17 +209,11 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAdmin(async (request, { me }) => {
     revalidateAdmin();
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) {
-            return authCheck.response;
-        }
-
-        const session = authCheck.session;
         const body = await request.json();
 
         // ---- Batch creation: one order per book (fan-out) ----
@@ -361,7 +323,7 @@ export async function POST(request: NextRequest) {
             }
 
             const batchNow = new Date();
-            const batchStaffId = session?.user?.id ? parseInt(session.user.id) : null;
+            const batchStaffId = me.id;
             const batchAveugleId = parseInt(String(aveugleId));
 
             const { created, autoBill } = await prisma.$transaction(async (tx) => {
@@ -511,7 +473,7 @@ export async function POST(request: NextRequest) {
         }
 
         const createdDate: Date = new Date();
-        const staffId = session?.user?.id ? parseInt(session.user.id) : null;
+        const staffId = me.id;
 
         const orderData = {
             aveugleId: parseInt(aveugleId),
@@ -620,4 +582,4 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

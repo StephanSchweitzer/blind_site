@@ -1,30 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { PaymentCreateInputSchema } from '@/types/api/payment.api';
-
-async function checkAdmin() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return { authorized: false, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 }) };
-    }
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return { authorized: false, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 }) };
-    }
-    return { authorized: true, session };
-}
+import { withAdmin } from '@/lib/auth/guards';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true };
 
-export async function GET(request: NextRequest) {
+export const GET = withAdmin(async (request) => {
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) return authCheck.response;
-
         const sp = request.nextUrl.searchParams;
 
         const page = Math.max(1, parseInt(sp.get('page') || '1'));
@@ -102,17 +87,14 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
 
 // POST: create a payment. The amount is supplied directly (unlike bills, which
 // derive it from orders). A billId is only persisted for ENREGISTREMENT and a
 // cotisationYear only for COTISATION; both are validated/coerced server-side.
-export async function POST(request: NextRequest) {
+export const POST = withAdmin(async (request) => {
     revalidateAdmin();
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) return authCheck.response;
-
         const body = await request.json();
         const parsed = PaymentCreateInputSchema.safeParse(body);
 
@@ -218,4 +200,4 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

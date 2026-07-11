@@ -1,13 +1,12 @@
 // app/api/user/invite/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { generatePassword } from '@/lib/utils';
 import { isSendableEmail } from '@/lib/email/sendEmail';
 import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
+import { withSuperAdmin } from '@/lib/auth/guards';
 
 export async function OPTIONS() {
     return NextResponse.json({}, {
@@ -20,25 +19,9 @@ export async function OPTIONS() {
     });
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withSuperAdmin(async (req) => {
     revalidateAdmin();
     try {
-        const session = await getServerSession(authOptions);
-        if (!session) {
-            return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
-        }
-
-        const currentUser = await prisma.user.findUnique({
-            where: { email: session.user?.email as string },
-        });
-
-        if (!currentUser || currentUser.accessLevel !== 'super_admin') {
-            return NextResponse.json(
-                { message: 'Permission refusée. Seuls les super administrateurs peuvent inviter des personnes.' },
-                { status: 403 }
-            );
-        }
-
         const { email, name, accessLevel, memberType } = await req.json();
 
         if (!email) {
@@ -112,4 +95,4 @@ export async function POST(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

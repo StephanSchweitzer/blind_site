@@ -1,25 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { PaymentType, Prisma } from '@prisma/client';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { PaymentUpdateInputSchema } from '@/types/api/payment.api';
-
-async function checkAdmin() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return { authorized: false, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 }) };
-    }
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return { authorized: false, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 }) };
-    }
-    return { authorized: true, session };
-}
-
-interface RouteContext {
-    params: Promise<{ id: string }>;
-}
+import { withAdmin } from '@/lib/auth/guards';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true };
@@ -48,12 +32,9 @@ function serialize(p: {
     };
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+export const GET = withAdmin(async (_request, context) => {
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) return authCheck.response;
-
-        const { id } = await context.params;
+        const { id } = await context.params!;
         const paymentId = parseInt(id);
         if (isNaN(paymentId)) {
             return NextResponse.json({ error: 'Invalid id', message: 'Identifiant invalide' }, { status: 400 });
@@ -76,15 +57,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
             { status: 500 }
         );
     }
-}
+});
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
+export const PATCH = withAdmin(async (request, context) => {
     revalidateAdmin();
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) return authCheck.response;
-
-        const { id } = await context.params;
+        const { id } = await context.params!;
         const paymentId = parseInt(id);
         if (isNaN(paymentId)) {
             return NextResponse.json({ error: 'Invalid id', message: 'Identifiant invalide' }, { status: 400 });
@@ -185,16 +163,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             { status: 500 }
         );
     }
-}
+});
 
 // Soft delete: mark inactive, stamp deletedAt, store an optional reason.
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export const DELETE = withAdmin(async (request, context) => {
     revalidateAdmin();
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) return authCheck.response;
-
-        const { id } = await context.params;
+        const { id } = await context.params!;
         const paymentId = parseInt(id);
         if (isNaN(paymentId)) {
             return NextResponse.json({ error: 'Invalid id', message: 'Identifiant invalide' }, { status: 400 });
@@ -221,4 +196,4 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
             { status: 500 }
         );
     }
-}
+});

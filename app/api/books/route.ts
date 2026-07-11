@@ -3,10 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { Prisma } from '@prisma/client';
 import { BookWithGenres } from '@/types/book';
+import { withAdmin } from '@/lib/auth/guards';
 
 // Type definitions for raw SQL queries
 interface CountResult {
@@ -373,23 +372,10 @@ interface CreateBookResponse {
     book?: BookWithGenres;
 }
 
-export async function POST(req: NextRequest): Promise<Response> {
+export const POST = withAdmin(async (req, { me }): Promise<Response> => {
     revalidateAdmin();
     try {
-        const session = await getServerSession(authOptions);
-
-        if (!session?.user?.id) {
-            const unauthorizedResponse: CreateBookResponse = {
-                success: false,
-                message: 'Unauthorized'
-            };
-            return new Response(JSON.stringify(unauthorizedResponse), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
-        const userId = parseInt(session.user.id, 10);
+        const userId = me.id;
         const formData: CreateBookRequest = await req.json();
 
         if (formData.isbn?.trim()) {
@@ -464,4 +450,4 @@ export async function POST(req: NextRequest): Promise<Response> {
             headers: { 'Content-Type': 'application/json' },
         });
     }
-}
+});

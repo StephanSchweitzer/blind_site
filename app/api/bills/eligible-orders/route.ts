@@ -1,28 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-
-async function checkAdmin() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return { authorized: false, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 }) };
-    }
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return { authorized: false, response: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 }) };
-    }
-    return { authorized: true, session };
-}
+import { withAdmin } from '@/lib/auth/guards';
 
 // Returns the orders that are eligible to be attached to a new facture for a client:
 // belong to the client, not already on a bill (billId null), not UNBILLABLE, and active.
-export async function GET(request: NextRequest) {
+export const GET = withAdmin(async (request) => {
     try {
-        const authCheck = await checkAdmin();
-        if (!authCheck.authorized) {
-            return authCheck.response;
-        }
-
         const clientIdParam = request.nextUrl.searchParams.get('clientId');
         const clientId = clientIdParam ? parseInt(clientIdParam) : NaN;
 
@@ -69,4 +52,4 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

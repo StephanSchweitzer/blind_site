@@ -4,9 +4,8 @@ import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { Prisma } from '@prisma/client';
+import { withAdmin } from '@/lib/auth/guards';
 
 export async function GET(request: NextRequest) {
     try {
@@ -126,14 +125,9 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withAdmin(async (req, { me }) => {
     revalidateAdmin();
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
         const body = await req.json();
         const { title, description, audioPath, bookIds, active } = body;
 
@@ -144,21 +138,13 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const parsedAuthorId = parseInt(session.user.id, 10);
-        if (isNaN(parsedAuthorId)) {
-            return NextResponse.json(
-                { error: 'Invalid author ID' },
-                { status: 400 }
-            );
-        }
-
         const newCoupDeCoeur = await prisma.coupsDeCoeur.create({
             data: {
                 title,
                 description: description || null,
                 audioPath: audioPath || null,
                 active: active ?? true,
-                addedById: parsedAuthorId,
+                addedById: me.id,
                 books: {
                     create: bookIds.map((bookId: number) => ({
                         book: { connect: { id: bookId } }
@@ -184,4 +170,4 @@ export async function POST(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

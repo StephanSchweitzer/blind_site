@@ -5,10 +5,9 @@ import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { News } from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
+import { withAdmin } from '@/lib/auth/guards';
 
 interface RouteParams {
     params: Promise<{
@@ -58,31 +57,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 }
 
 // PUT: Update a specific article by ID
-export async function PUT(req: NextRequest, { params }: RouteParams) {
+export const PUT = withAdmin(async (req, { params }) => {
     revalidateAdmin();
-    let session;
 
     try {
-        session = await getServerSession(authOptions);
-        console.log("Session retrieved:", session);
-    } catch (error) {
-        console.error("Session retrieval failed:", error);
-        return NextResponse.json(
-            { error: 'Erreur d\'authentification' },
-            { status: 500 }
-        );
-    }
-
-    if (!session?.user?.id) {
-        console.log("Invalid session:", session);
-        return NextResponse.json(
-            { error: 'Non autorisé' },
-            { status: 401 }
-        );
-    }
-
-    try {
-        const { id: string_id } = await params;  // Correctly destructure 'id' and rename to string_id
+        const { id: string_id } = await params!;  // Correctly destructure 'id' and rename to string_id
         const id = parseInt(string_id, 10);
         if (isNaN(id)) {
             return NextResponse.json(
@@ -152,34 +131,14 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
             { status: 500 }
         );
     }
-}
+});
 
 // DELETE: Delete a specific article by ID
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+export const DELETE = withAdmin(async (_req, { params }) => {
     revalidateAdmin();
-    let session;
 
     try {
-        session = await getServerSession(authOptions);
-        console.log("Session retrieved:", session);
-    } catch (error) {
-        console.error("Session retrieval failed:", error);
-        return NextResponse.json(
-            { error: 'Erreur d\'authentification' },
-            { status: 500 }
-        );
-    }
-
-    if (!session?.user?.id) {
-        console.log("Invalid session:", session);
-        return NextResponse.json(
-            { error: 'Non autorisé' },
-            { status: 401 }
-        );
-    }
-
-    try {
-        const { id: string_id } = await params;  // Correctly destructure 'id' and rename to string_id
+        const { id: string_id } = await params!;  // Correctly destructure 'id' and rename to string_id
         const id = parseInt(string_id, 10);
 
         if (isNaN(id)) {
@@ -218,4 +177,4 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
             { status: 500 }
         );
     }
-}
+});

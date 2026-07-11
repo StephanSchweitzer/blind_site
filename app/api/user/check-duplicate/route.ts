@@ -1,20 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAdmin } from '@/lib/auth/guards';
 
 // Returns existing users that share the given first + last name (case-insensitive)
 // so the create form can warn about a possible duplicate. This is a soft warning,
 // not a block — real people legitimately share names.
-export async function GET(request: NextRequest) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    if (session.user.accessLevel !== 'admin' && session.user.accessLevel !== 'super_admin') {
-        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-    }
-
+export const GET = withAdmin(async (request) => {
     const firstName = request.nextUrl.searchParams.get('firstName')?.trim();
     const lastName = request.nextUrl.searchParams.get('lastName')?.trim();
 
@@ -43,4 +34,4 @@ export async function GET(request: NextRequest) {
         console.error('check-duplicate error:', error);
         return NextResponse.json({ message: 'Failed to check duplicates' }, { status: 500 });
     }
-}
+});
