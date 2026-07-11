@@ -387,7 +387,7 @@ export default function ProfilePage() {
                                             <Button
                                                 type="submit"
                                                 disabled={isLoading}
-                                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors disabled:bg-muted disabled:text-muted-foreground"
+                                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-md transition-colors disabled:bg-muted disabled:text-muted-foreground"
                                             >
                                                 {isLoading ? (
                                                     <>
@@ -545,7 +545,7 @@ export default function ProfilePage() {
                             <Button
                                 type="submit"
                                 disabled={isInviting}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             >
                                 {isInviting ? (
                                     <>
@@ -588,4 +588,4 @@ function StatCard({ title, count, icon, color, iconColor }: StatCardProps) {
             </div>
         </div>
     );
-}
+}

@@ -67,7 +67,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
                     <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <CardTitle className="text-foreground">Informations pratiques ({items.length})</CardTitle>
                         <div className="flex gap-2">
-                            {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-blue-600 text-white hover:bg-blue-700">Enregistrer l&apos;ordre</Button>}
+                            {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">Enregistrer l&apos;ordre</Button>}
                             <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-muted">
                                 <Plus className="h-4 w-4 mr-1" /> Ajouter
                             </Button>
@@ -139,7 +139,7 @@ function InfoForm({ draft, setDraft, busy, onSave, onCancel }: {
             <Textarea placeholder="Réponse (markdown : **gras**, [lien](url), listes)" value={draft.body} onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))} className={`${field} min-h-40 font-mono text-sm`} />
             <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={onCancel}><X className="h-4 w-4 mr-1" /> Annuler</Button>
-                <Button size="sm" disabled={busy} onClick={onSave} className="bg-blue-600 text-white hover:bg-blue-700"><Check className="h-4 w-4 mr-1" /> Enregistrer</Button>
+                <Button size="sm" disabled={busy} onClick={onSave} className="bg-primary text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4 mr-1" /> Enregistrer</Button>
             </div>
         </div>
     );

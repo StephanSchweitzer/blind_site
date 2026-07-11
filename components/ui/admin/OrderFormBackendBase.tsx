@@ -573,7 +573,7 @@ export function OrderFormBackendBase({
                                         id="isDuplication"
                                         checked={formData.isDuplication}
                                         onCheckedChange={handleDuplicationChange}
-                                        className="border-2 border-muted-foreground/40 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                        className="border-2 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary w-6 h-6"
                                     />
                                     <label htmlFor="isDuplication" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
                                         Duplication
@@ -587,7 +587,7 @@ export function OrderFormBackendBase({
                                         id="lentPhysicalBook"
                                         checked={formData.lentPhysicalBook}
                                         onCheckedChange={handleRecordingChange}
-                                        className="border-2 border-muted-foreground/40 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 w-6 h-6"
+                                        className="border-2 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary w-6 h-6"
                                     />
                                     <label htmlFor="lentPhysicalBook" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
                                         Enregistrement nécessaire

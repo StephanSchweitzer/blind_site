@@ -325,8 +325,8 @@ export default function UsersTable({
             </CardHeader>
 
             <CardContent className="pt-6">
-                <div className="flex flex-col sm:flex-row gap-2 mb-6">
-                    <div className="flex flex-1 gap-2">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-6">
+                    <div className="flex flex-1 gap-2 sm:min-w-[280px]">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -471,7 +471,7 @@ export default function UsersTable({
                                     key={index}
                                     variant={currentPage === page ? "default" : "outline"}
                                     size="sm"
-                                    className={currentPage === page ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-card text-foreground border-border hover:bg-muted"}
+                                    className={currentPage === page ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-card text-foreground border-border hover:bg-muted"}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}
                                 >

@@ -29,7 +29,7 @@ export default function DossierTabs({ userId }: DossierTabsProps) {
                         href={href}
                         className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
                             active
-                                ? 'border-blue-500 text-foreground'
+                                ? 'border-primary text-foreground'
                                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                         }`}
                     >

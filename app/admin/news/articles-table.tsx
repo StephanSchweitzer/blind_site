@@ -153,7 +153,7 @@ export function ArticlesTable({
                     variant={currentPage === i ? "default" : "outline"}
                     size="sm"
                     className={currentPage === i
-                        ? "bg-white text-muted-foreground hover:bg-muted"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
                         : "bg-card text-foreground border-border hover:bg-muted"}
                     onClick={() => handlePageChange(i)}
                 >

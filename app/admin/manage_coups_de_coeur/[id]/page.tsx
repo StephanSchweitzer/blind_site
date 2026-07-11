@@ -293,7 +293,7 @@ export default function EditCoupDeCoeurPage() {
                                     onCheckedChange={(checked: boolean) => {
                                         setFormData(prev => ({ ...prev!, active: checked }));
                                     }}
-                                    className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-muted"
+                                    className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
                                 />
                                 <label htmlFor="active" className="text-sm font-medium text-foreground">
                                     Cette liste de livres est-elle visible par le public ?
@@ -374,4 +374,4 @@ export default function EditCoupDeCoeurPage() {
             </Card>
         </div>
     );
-}
+}

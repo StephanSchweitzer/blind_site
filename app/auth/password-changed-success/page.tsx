@@ -51,7 +51,7 @@ export default function PasswordChangedSuccess() {
                 <CardFooter className="flex justify-center pt-2 pb-6">
                     <Button
                         onClick={() => router.push('/api/auth/signin')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-8"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
                     >
                         <LogIn className="mr-2 h-4 w-4" />
                         Se connecter
@@ -60,4 +60,4 @@ export default function PasswordChangedSuccess() {
             </Card>
         </div>
     );
-}
+}

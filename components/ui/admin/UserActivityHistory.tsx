@@ -141,7 +141,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
                         type="button"
                         onClick={handleSave}
                         disabled={!newStatus || newStatus === currentStatus || saving}
-                        className="bg-blue-600 hover:bg-blue-500 text-white"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         size="sm"
                     >
                         {saving ? 'Enregistrement\u2026' : 'Enregistrer'}

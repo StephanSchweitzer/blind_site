@@ -338,7 +338,7 @@ export default function AssignmentsTable({
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         Ajouter une attribution
@@ -373,7 +373,7 @@ export default function AssignmentsTable({
                                 <Button
                                     onClick={handleSearch}
                                     disabled={isPending}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                 >
                                     Rechercher
                                 </Button>
@@ -537,7 +537,7 @@ export default function AssignmentsTable({
                                     variant={currentPage === page ? "default" : "outline"}
                                     size="sm"
                                     className={currentPage === page
-                                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
                                         : "bg-card text-foreground border-border hover:bg-muted"}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}

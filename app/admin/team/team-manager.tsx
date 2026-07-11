@@ -136,7 +136,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                     <CardHeader className="border-b border-border flex flex-row items-center justify-between">
                         <CardTitle className="text-foreground">Équipe ({total})</CardTitle>
                         {dirty && (
-                            <Button onClick={saveOrder} disabled={busy} className="bg-blue-600 text-white hover:bg-blue-700">
+                            <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">
                                 Enregistrer l&apos;ordre
                             </Button>
                         )}

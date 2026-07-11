@@ -510,7 +510,7 @@ export function PaymentFormBackendBase({
                                     <Checkbox
                                         checked={fiscalite}
                                         onCheckedChange={(c) => setFiscalite(!!c)}
-                                        className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                        className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                     />
                                     Fiscalité (reçu fiscal applicable)
                                 </label>
@@ -520,7 +520,7 @@ export function PaymentFormBackendBase({
                                         <Checkbox
                                             checked={isAllocated}
                                             onCheckedChange={(c) => setIsAllocated(!!c)}
-                                            className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                            className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                         />
                                         Affectée
                                     </label>

@@ -301,7 +301,7 @@ export function BillFormBackendBase({
                                             <Checkbox
                                                 checked={selectedOrderIds.has(o.id)}
                                                 onCheckedChange={() => toggleOrder(o.id)}
-                                                className="border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                                className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                             />
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-foreground text-sm font-medium truncate">

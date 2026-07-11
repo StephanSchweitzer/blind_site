@@ -151,7 +151,7 @@ export default function ChangePasswordDialog({ open, onOpenChange }: ChangePassw
                         >
                             Annuler
                         </Button>
-                        <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white">
+                        <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             {isSubmitting ? (
                                 <>
                                     <div className="animate-spin mr-2 h-4 w-4 border-2 border-b-0 border-white rounded-full"></div>

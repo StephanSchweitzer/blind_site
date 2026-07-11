@@ -559,7 +559,7 @@ export function UserFormBackendBase({
                                 type="button"
                                 onClick={handleAddAddress}
                                 size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
                                 {formData.addresses.length > 0 ? "Ajouter une autre adresse" : "Ajouter une adresse"}
@@ -631,7 +631,7 @@ export function UserFormBackendBase({
                                         <Checkbox
                                             checked={address.isDefault}
                                             onCheckedChange={(checked) => handleAddressChange(index, 'isDefault', checked as boolean)}
-                                            className="border-border data-[state=checked]:bg-blue-600"
+                                            className="border-border data-[state=checked]:bg-primary"
                                         />
                                         <label className="text-sm font-medium text-foreground">Adresse par défaut</label>
                                     </div>
@@ -695,7 +695,7 @@ export function UserFormBackendBase({
                                                         <Checkbox
                                                             checked={formData.isAvailable}
                                                             onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
-                                                            className="h-5 w-5 border-2 border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md transition-all"
+                                                            className="h-5 w-5 border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-md transition-all"
                                                         />
                                                         {formData.isAvailable && (
                                                             <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -780,7 +780,7 @@ export function UserFormBackendBase({
                                         type="button"
                                         onClick={() => setIsPasswordResetDialogOpen(true)}
                                         variant="outline"
-                                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shrink-0"
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground border-primary shrink-0"
                                     >
                                         <Mail className="h-4 w-4 mr-2" />
                                         R&#233;initialiser mot de passe
@@ -887,7 +887,7 @@ export function UserFormBackendBase({
                                                             ? [...formData.languages, lang]
                                                             : formData.languages.filter((l) => l !== lang),
                                                     })}
-                                                    className="border-border data-[state=checked]:bg-blue-600"
+                                                    className="border-border data-[state=checked]:bg-primary"
                                                 />
                                                 {getLanguageLabel(lang)}
                                             </label>
@@ -926,7 +926,7 @@ export function UserFormBackendBase({
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
@@ -986,7 +986,7 @@ export function UserFormBackendBase({
                                 type="button"
                                 onClick={handlePasswordReset}
                                 disabled={isResettingPassword}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             >
                                 {isResettingPassword ? 'Envoi en cours...' : 'Confirmer et envoyer'}
                             </Button>
@@ -1026,7 +1026,7 @@ export function UserFormBackendBase({
                                     setShowDuplicateDialog(false);
                                     void doSubmit();
                                 }}
-                                className="bg-blue-600 hover:bg-blue-500 text-white"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             >
                                 Créer quand même
                             </Button>

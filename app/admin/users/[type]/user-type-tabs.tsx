@@ -26,7 +26,7 @@ export function UserTypeTabs({ currentType }: UserTypeTabsProps) {
                             className={`
                                 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium
                                 ${isActive
-                                ? 'border-blue-500 text-blue-600'
+                                ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:border-border hover:text-muted-foreground'
                             }
                             `}

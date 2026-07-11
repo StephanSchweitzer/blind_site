@@ -74,7 +74,7 @@ function BookTable({
                                 id={`select-all-${isSearchResults ? 'search' : 'main'}`}
                                 checked={areAllSelected(books)}
                                 onChange={(checked) => handleSelectAll(checked, books)}
-                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-muted"
+                                className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
                             />
                             <label htmlFor={`select-all-${isSearchResults ? 'search' : 'main'}`} className="text-sm font-medium text-foreground">
                                 Tout sélectionner
@@ -115,7 +115,7 @@ function BookTable({
                                 id={`book-${book.id}`}
                                 checked={selectedBooks.includes(book.id)}
                                 onChange={() => toggleBookSelection(book.id)}
-                                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-muted"
+                                className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
                             />
                         </TableCell>
                         <TableCell className="text-foreground">
@@ -500,4 +500,4 @@ export default function BookSelector({
             )}
         </div>
     );
-}
+}

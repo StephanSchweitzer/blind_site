@@ -138,7 +138,7 @@ export default function PaymentsTable({
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
                     >
                         <Plus className="h-4 w-4" />
                         Ajouter un paiement
@@ -169,7 +169,7 @@ export default function PaymentsTable({
                                     </button>
                                 )}
                             </div>
-                            <Button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isPending}>
+                            <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
                                 Rechercher
                             </Button>
                         </div>
@@ -303,7 +303,7 @@ export default function PaymentsTable({
                                     variant={currentPage === page ? 'default' : 'outline'}
                                     size="sm"
                                     className={currentPage === page
-                                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                                         : 'bg-card text-foreground border-border hover:bg-muted'}
                                     onClick={() => handlePageChange(page)}
                                     disabled={isPending}

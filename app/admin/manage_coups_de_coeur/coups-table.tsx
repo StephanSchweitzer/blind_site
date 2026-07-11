@@ -145,7 +145,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                             variant={currentPage === index + 1 ? "default" : "outline"}
                             size="sm"
                             className={currentPage === index + 1
-                                ? "bg-white text-muted-foreground hover:bg-muted"
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90"
                                 : "bg-card text-foreground border-border hover:bg-muted"}
                             onClick={() => handlePageChange(index + 1)}
                         >

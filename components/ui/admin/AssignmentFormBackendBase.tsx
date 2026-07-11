@@ -629,7 +629,7 @@ export function AssignmentFormBackendBase({
                                                 variant="outline"
                                                 onClick={handleReassignReader}
                                                 disabled={isReassigningReader}
-                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white border-blue-600 dark:border-blue-500 disabled:opacity-50"
+                                                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-primary disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
                                                 {isReassigningReader ? 'Attribution...' : 'Attribuer ce lecteur'}
@@ -661,7 +661,7 @@ export function AssignmentFormBackendBase({
                                                 variant="outline"
                                                 onClick={handleReassignReader}
                                                 disabled={isReassigningReader || !selectedReaderId || selectedReaderId === currentReader?.id}
-                                                className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600 dark:border-blue-500 disabled:opacity-50"
+                                                className="bg-primary hover:bg-primary/90 text-primary-foreground border-primary disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
                                                 {isReassigningReader ? 'Réattribution...' : 'Réattribuer'}
@@ -970,7 +970,7 @@ export function AssignmentFormBackendBase({
                                                 {getReaderDisplayName(history.reader)}
                                             </span>
                                             {index === 0 && (
-                                                <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                                                <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
                                                     Actuel
                                                 </span>
                                             )}
