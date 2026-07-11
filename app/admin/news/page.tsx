@@ -49,7 +49,11 @@ async function getArticles(page: number, searchTerm: string) {
         const [articles, totalArticles] = await Promise.all([
             prisma.news.findMany({
                 where: whereClause,
-                include: {
+                select: {
+                    id: true,
+                    title: true,
+                    publishedAt: true,
+                    type: true,
                     author: {
                         select: {
                             name: true
