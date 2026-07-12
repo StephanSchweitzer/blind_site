@@ -10,6 +10,7 @@ import {
     ChevronRight,
     FileAudio,
     AlertTriangle,
+    Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -106,6 +107,9 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
     const router = useRouter();
     const [pending, setPending] = useState<Pending>(null);
     const [isPending, startTransition] = useTransition();
+    // Separate transition for page navigation so we can show a spinner + lock the
+    // controls until the next page's data has loaded.
+    const [isNavPending, startNav] = useTransition();
 
     const run = (fn: () => Promise<ActionResult>) => {
         startTransition(async () => {
@@ -129,8 +133,10 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
     const goto = (p: number) => {
         const sp = new URLSearchParams(window.location.search);
         sp.set('page', String(p));
-        router.push(`/admin/review?${sp.toString()}`);
+        startNav(() => router.push(`/admin/review?${sp.toString()}`));
     };
+
+    const busy = isPending || isNavPending;
 
     return (
         <div className="space-y-4">
@@ -150,7 +156,7 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
                     key={flagged.id}
                     flagged={flagged}
                     matched={matched}
-                    busy={isPending}
+                    busy={busy}
                     onRequestFuse={(p) => setPending({ kind: 'fuse', ...p })}
                     onRequestDelete={(book) => setPending({ kind: 'delete', bookId: book.id, title: book.title })}
                     onDismiss={(bookId) => run(() => dismissReview(bookId))}
@@ -159,13 +165,14 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
 
             {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-3 pt-2">
-                    <Button variant="outline" size="sm" disabled={page <= 1 || isPending} onClick={() => goto(page - 1)}>
+                    <Button variant="outline" size="sm" disabled={page <= 1 || busy} onClick={() => goto(page - 1)}>
                         <ChevronLeft className="h-4 w-4" /> Précédent
                     </Button>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground inline-flex items-center gap-2">
+                        {isNavPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         Page {page} / {totalPages}
                     </span>
-                    <Button variant="outline" size="sm" disabled={page >= totalPages || isPending} onClick={() => goto(page + 1)}>
+                    <Button variant="outline" size="sm" disabled={page >= totalPages || busy} onClick={() => goto(page + 1)}>
                         Suivant <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
