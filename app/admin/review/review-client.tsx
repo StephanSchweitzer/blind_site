@@ -2,9 +2,18 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeftRight, Trash2, Check, ChevronLeft, ChevronRight, FileAudio } from 'lucide-react';
+import {
+    ArrowLeftRight,
+    Trash2,
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    FileAudio,
+    AlertTriangle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import {
     AlertDialog,
@@ -48,34 +57,50 @@ interface Props {
     total: number;
 }
 
-type Pending =
-    | { kind: 'fuse'; canonical: ReviewBook; duplicate: ReviewBook }
-    | { kind: 'delete'; book: ReviewBook }
-    | { kind: 'dismiss'; book: ReviewBook }
-    | null;
-
 const fmtDate = (v: Date | string | null): string => {
     if (!v) return '—';
     const d = new Date(v);
     return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('fr-FR');
 };
-const fmtText = (v: string | number | null): string =>
-    v == null || v === '' ? '—' : String(v);
+const fmtText = (v: string | number | null): string => (v == null || v === '' ? '—' : String(v));
 const fmtDuration = (v: number | null): string => (v == null ? '—' : `${v} min`);
 
-const FIELDS: { label: string; render: (b: ReviewBook) => string; key: keyof ReviewBook; format?: (b: ReviewBook) => string }[] = [
-    { label: 'Titre', key: 'title', render: (b) => fmtText(b.title) },
-    { label: 'Auteur', key: 'author', render: (b) => fmtText(b.author) },
-    { label: 'Sous-titre', key: 'subtitle', render: (b) => fmtText(b.subtitle) },
-    { label: 'Date de publication', key: 'publishedDate', render: (b) => fmtDate(b.publishedDate) },
-    { label: 'ISBN', key: 'isbn', render: (b) => fmtText(b.isbn) },
-    { label: 'Éditeur', key: 'publisher', render: (b) => fmtText(b.publisher) },
-    { label: 'Pages', key: 'pageCount', render: (b) => fmtText(b.pageCount) },
-    { label: 'Durée', key: 'readingDurationMinutes', render: (b) => fmtDuration(b.readingDurationMinutes) },
-    { label: 'Fichier audio', key: 'audio_filepath', render: (b) => fmtText(b.audio_filepath) },
-    { label: 'Description', key: 'description', render: (b) => fmtText(b.description) },
-    { label: 'ID source (Access)', key: 'source_access_id', render: (b) => fmtText(b.source_access_id) },
+interface FieldDef {
+    label: string;
+    key: keyof ReviewBook;
+    render: (b: ReviewBook) => string;
+    overridable: boolean;
+}
+
+// Order shown in comparisons. `overridable` fields can be pulled from the removed book;
+// audio + source id are shown but never freely chosen (audio is auto/guarded, id is identity).
+const FIELDS: FieldDef[] = [
+    { label: 'Titre', key: 'title', render: (b) => fmtText(b.title), overridable: true },
+    { label: 'Auteur', key: 'author', render: (b) => fmtText(b.author), overridable: true },
+    { label: 'Sous-titre', key: 'subtitle', render: (b) => fmtText(b.subtitle), overridable: true },
+    { label: 'Date de publication', key: 'publishedDate', render: (b) => fmtDate(b.publishedDate), overridable: true },
+    { label: 'ISBN', key: 'isbn', render: (b) => fmtText(b.isbn), overridable: true },
+    { label: 'Éditeur', key: 'publisher', render: (b) => fmtText(b.publisher), overridable: true },
+    { label: 'Pages', key: 'pageCount', render: (b) => fmtText(b.pageCount), overridable: true },
+    { label: 'Durée', key: 'readingDurationMinutes', render: (b) => fmtDuration(b.readingDurationMinutes), overridable: true },
+    { label: 'Description', key: 'description', render: (b) => fmtText(b.description), overridable: true },
+    { label: 'Fichier audio', key: 'audio_filepath', render: (b) => fmtText(b.audio_filepath), overridable: false },
+    { label: 'ID source (Access)', key: 'source_access_id', render: (b) => fmtText(b.source_access_id), overridable: false },
 ];
+
+const hasAudio = (b: ReviewBook): boolean => !!b.audio_filepath?.trim();
+const differs = (f: FieldDef, a: ReviewBook, b: ReviewBook): boolean => f.render(a) !== f.render(b);
+
+type Pending =
+    | {
+          kind: 'fuse';
+          survivorId: number;
+          removedId: number;
+          overrides: string[];
+          pulledLabels: string[];
+      }
+    | { kind: 'delete'; bookId: number; title: string }
+    | null;
 
 export default function ReviewClient({ pairs, page, totalPages, total }: Props) {
     const router = useRouter();
@@ -97,9 +122,8 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
 
     const confirm = () => {
         if (!pending) return;
-        if (pending.kind === 'fuse') run(() => fuseBooks(pending.canonical.id, pending.duplicate.id));
-        else if (pending.kind === 'delete') run(() => deleteBook(pending.book.id));
-        else run(() => dismissReview(pending.book.id));
+        if (pending.kind === 'fuse') run(() => fuseBooks(pending.survivorId, pending.removedId, pending.overrides));
+        else run(() => deleteBook(pending.bookId));
     };
 
     const goto = (p: number) => {
@@ -126,10 +150,10 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
                     key={flagged.id}
                     flagged={flagged}
                     matched={matched}
-                    disabled={isPending}
-                    onFuse={(canonical, duplicate) => setPending({ kind: 'fuse', canonical, duplicate })}
-                    onDelete={(book) => setPending({ kind: 'delete', book })}
-                    onDismiss={(book) => setPending({ kind: 'dismiss', book })}
+                    busy={isPending}
+                    onRequestFuse={(p) => setPending({ kind: 'fuse', ...p })}
+                    onRequestDelete={(book) => setPending({ kind: 'delete', bookId: book.id, title: book.title })}
+                    onDismiss={(bookId) => run(() => dismissReview(bookId))}
                 />
             ))}
 
@@ -151,18 +175,17 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {pending?.kind === 'fuse' && 'Confirmer la fusion'}
-                            {pending?.kind === 'delete' && 'Confirmer la suppression'}
-                            {pending?.kind === 'dismiss' && 'Marquer comme non-doublon'}
+                            {pending?.kind === 'fuse' ? 'Confirmer la fusion' : 'Confirmer la suppression'}
                         </AlertDialogTitle>
                         <AlertDialogDescription asChild>
                             <div className="space-y-2">
                                 {pending?.kind === 'fuse' && (
                                     <>
+                                        <p>Les deux fiches seront fusionnées en une seule.</p>
                                         <p>
-                                            Le livre <strong>« {pending.duplicate.title} »</strong> (#{pending.duplicate.id}) sera
-                                            supprimé et ses demandes, attributions, genres et listes seront transférés vers{' '}
-                                            <strong>« {pending.canonical.title} »</strong> (#{pending.canonical.id}).
+                                            {pending.pulledLabels.length === 0
+                                                ? 'La fiche fusionnée conserve ses valeurs actuelles.'
+                                                : `Valeurs reprises de l’autre version : ${pending.pulledLabels.join(', ')}.`}
                                         </p>
                                         <p className="text-destructive">Cette action est irréversible.</p>
                                     </>
@@ -170,17 +193,11 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
                                 {pending?.kind === 'delete' && (
                                     <>
                                         <p>
-                                            Le livre <strong>« {pending.book.title} »</strong> (#{pending.book.id}) sera
-                                            définitivement supprimé.
+                                            Le livre <strong>« {pending.title} »</strong> (#{pending.bookId}) sera définitivement
+                                            supprimé.
                                         </p>
                                         <p className="text-destructive">Cette action est irréversible.</p>
                                     </>
-                                )}
-                                {pending?.kind === 'dismiss' && (
-                                    <p>
-                                        Le livre <strong>« {pending.book.title} »</strong> (#{pending.book.id}) sera retiré de la
-                                        file de révision. Aucune fusion ni suppression.
-                                    </p>
                                 )}
                             </div>
                         </AlertDialogDescription>
@@ -193,11 +210,7 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
                                 confirm();
                             }}
                             disabled={isPending}
-                            className={
-                                pending?.kind === 'dismiss'
-                                    ? undefined
-                                    : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                            }
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             {isPending ? 'En cours…' : 'Confirmer'}
                         </AlertDialogAction>
@@ -208,21 +221,32 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
     );
 }
 
+interface FusePayload {
+    survivorId: number;
+    removedId: number;
+    overrides: string[];
+    pulledLabels: string[];
+}
+
 function PairCard({
     flagged,
     matched,
-    disabled,
-    onFuse,
-    onDelete,
+    busy,
+    onRequestFuse,
+    onRequestDelete,
     onDismiss,
 }: {
     flagged: ReviewBook;
     matched: ReviewBook | null;
-    disabled: boolean;
-    onFuse: (canonical: ReviewBook, duplicate: ReviewBook) => void;
-    onDelete: (book: ReviewBook) => void;
-    onDismiss: (book: ReviewBook) => void;
+    busy: boolean;
+    onRequestFuse: (p: FusePayload) => void;
+    onRequestDelete: (book: ReviewBook) => void;
+    onDismiss: (bookId: number) => void;
 }) {
+    const [mode, setMode] = useState<'collapsed' | 'fuse' | 'distinct'>('collapsed');
+    // Fields to pull FROM the matched (Access import) record onto the kept site book.
+    const [overrides, setOverrides] = useState<Set<string>>(new Set());
+
     if (!matched) {
         return (
             <Card>
@@ -236,7 +260,7 @@ function PairCard({
                     <Badge variant="secondary">Aucun correspondant trouvé</Badge>
                 </CardHeader>
                 <CardContent className="flex justify-end">
-                    <Button variant="outline" size="sm" disabled={disabled} onClick={() => onDismiss(flagged)}>
+                    <Button variant="outline" size="sm" disabled={busy} onClick={() => onDismiss(flagged.id)}>
                         <Check className="h-4 w-4" /> Pas un doublon
                     </Button>
                 </CardContent>
@@ -244,97 +268,275 @@ function PairCard({
         );
     }
 
+    const audioConflict = hasAudio(flagged) && hasAudio(matched) && flagged.audio_filepath !== matched.audio_filepath;
+    const diffCount = FIELDS.filter((f) => f.overridable && differs(f, flagged, matched)).length;
+
+    // Always keep the flagged book — it's the live site catalogue entry that already
+    // carries the orders/attributions; the matched record (the Access import) is deleted.
+    const survivor = flagged;
+    const removed = matched;
+    const resultingAudio = hasAudio(survivor) ? survivor.audio_filepath : removed.audio_filepath;
+
+    const toggleField = (key: string, takeFromRemoved: boolean) => {
+        setOverrides((prev) => {
+            const next = new Set(prev);
+            if (takeFromRemoved) next.add(key);
+            else next.delete(key);
+            return next;
+        });
+    };
+
+    const startFuse = () => {
+        const pulledLabels = FIELDS.filter((f) => overrides.has(String(f.key))).map((f) => f.label);
+        onRequestFuse({
+            survivorId: survivor.id,
+            removedId: removed.id,
+            overrides: [...overrides],
+            pulledLabels,
+        });
+    };
+
+    const diffFields = FIELDS.filter((f) => differs(f, flagged, matched));
+    const sameFields = FIELDS.filter((f) => !differs(f, flagged, matched));
+
     return (
         <Card>
-            <CardHeader className="space-y-1">
-                <div className="flex items-center gap-2">
-                    <Badge>Signalé</Badge>
-                    <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
-                    <Badge variant="secondary">Correspondant</Badge>
+            <CardHeader className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
+                    <BookHead book={flagged} />
+                    <ArrowLeftRight className="hidden sm:block h-5 w-5 text-muted-foreground mx-auto" />
+                    <BookHead book={matched} align="right" />
                 </div>
-                <CardTitle className="text-base">Comparaison — champs divergents surlignés</CardTitle>
+                <div className="text-sm text-muted-foreground">
+                    {diffCount === 0
+                        ? 'Les champs comparés sont identiques.'
+                        : `${diffCount} champ${diffCount > 1 ? 's' : ''} diffère${diffCount > 1 ? 'nt' : ''}.`}
+                </div>
+
+                {audioConflict && (
+                    <div className="flex items-start gap-2 rounded-md border border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>
+                            Double enregistrement audio pour ce livre. La version à conserver n’étant pas évidente, une
+                            vérification manuelle est nécessaire — la fusion et la suppression sont désactivées.
+                        </span>
+                    </div>
+                )}
             </CardHeader>
+
             <CardContent className="space-y-4">
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm">
-                        <thead>
-                            <tr className="border-b border-border text-left">
-                                <th className="py-2 pr-4 font-medium text-muted-foreground w-40">Champ</th>
-                                <th className="py-2 px-3 font-medium">
-                                    Signalé <span className="text-muted-foreground font-normal">#{flagged.id}</span>
-                                </th>
-                                <th className="py-2 px-3 font-medium">
-                                    Correspondant <span className="text-muted-foreground font-normal">#{matched.id}</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {FIELDS.map((f) => {
-                                const a = f.render(flagged);
-                                const b = f.render(matched);
-                                const differs = a !== b;
-                                return (
-                                    <tr key={f.label} className="border-b border-border/60 align-top">
-                                        <td className="py-2 pr-4 text-muted-foreground">{f.label}</td>
-                                        <td className={`py-2 px-3 ${differs ? 'bg-amber-100 dark:bg-amber-950/40 rounded' : ''}`}>
-                                            {f.key === 'audio_filepath' && flagged.audio_filepath ? (
-                                                <span className="inline-flex items-center gap-1">
-                                                    <FileAudio className="h-3.5 w-3.5" /> {a}
-                                                </span>
-                                            ) : (
-                                                a
-                                            )}
-                                        </td>
-                                        <td className={`py-2 px-3 ${differs ? 'bg-amber-100 dark:bg-amber-950/40 rounded' : ''}`}>
-                                            {f.key === 'audio_filepath' && matched.audio_filepath ? (
-                                                <span className="inline-flex items-center gap-1">
-                                                    <FileAudio className="h-3.5 w-3.5" /> {b}
-                                                </span>
-                                            ) : (
-                                                b
-                                            )}
-                                        </td>
+                {mode === 'collapsed' && (
+                    <div className="flex flex-wrap gap-2">
+                        <Button size="sm" disabled={busy || audioConflict} onClick={() => setMode('fuse')}>
+                            <ArrowLeftRight className="h-4 w-4" /> Fusionner
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={busy} onClick={() => setMode('distinct')}>
+                            Livres distincts
+                        </Button>
+                    </div>
+                )}
+
+                {mode === 'fuse' && (
+                    <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            Pour chaque champ différent, cochez la valeur à garder dans la fiche fusionnée.
+                        </p>
+
+                        {diffFields.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                Aucune différence à arbitrer. Le livre conservé garde toutes ses valeurs.
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border text-left">
+                                            <th className="py-2 pr-4 font-medium text-muted-foreground w-40">Champ divergent</th>
+                                            <ColHeader book={flagged} />
+                                            <ColHeader book={matched} />
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {diffFields.map((f) => {
+                                            const key = String(f.key);
+                                            const selectable = f.overridable;
+                                            // For auto/forced fields, the value that survives is locked:
+                                            // audio → whichever side actually has a file; otherwise the survivor.
+                                            const forcedKeptId = selectable
+                                                ? null
+                                                : f.key === 'audio_filepath'
+                                                  ? hasAudio(survivor)
+                                                      ? survivor.id
+                                                      : hasAudio(removed)
+                                                        ? removed.id
+                                                        : null
+                                                  : survivor.id;
+                                            return (
+                                                <tr key={key} className="border-b border-border/60 align-top">
+                                                    <td className="py-2 pr-4 text-muted-foreground">{f.label}</td>
+                                                    {[flagged, matched].map((book) => {
+                                                        const isSurvivorCol = book.id === survivor.id;
+                                                        const checked = isSurvivorCol ? !overrides.has(key) : overrides.has(key);
+                                                        return (
+                                                            <td key={book.id} className="py-2 px-3">
+                                                                {selectable ? (
+                                                                    <label className="flex items-start gap-2 cursor-pointer">
+                                                                        <Checkbox
+                                                                            checked={checked}
+                                                                            disabled={busy}
+                                                                            onCheckedChange={() =>
+                                                                                toggleField(key, !isSurvivorCol)
+                                                                            }
+                                                                            className="mt-0.5"
+                                                                        />
+                                                                        <span className={checked ? 'font-medium' : 'text-muted-foreground'}>
+                                                                            {f.render(book)}
+                                                                        </span>
+                                                                    </label>
+                                                                ) : (
+                                                                    <label className="flex items-start gap-2">
+                                                                        <Checkbox
+                                                                            checked={book.id === forcedKeptId}
+                                                                            disabled
+                                                                            className="mt-0.5"
+                                                                        />
+                                                                        <span
+                                                                            className={
+                                                                                book.id === forcedKeptId
+                                                                                    ? 'font-medium'
+                                                                                    : 'text-muted-foreground'
+                                                                            }
+                                                                        >
+                                                                            {f.key === 'audio_filepath' && hasAudio(book) ? (
+                                                                                <span className="inline-flex items-center gap-1">
+                                                                                    <FileAudio className="h-3.5 w-3.5" />
+                                                                                    {f.render(book)}
+                                                                                </span>
+                                                                            ) : (
+                                                                                f.render(book)
+                                                                            )}
+                                                                        </span>
+                                                                    </label>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        <p className="text-sm text-muted-foreground inline-flex items-center gap-1">
+                            <FileAudio className="h-3.5 w-3.5" />
+                            Fichier audio conservé : <span className="font-medium">{fmtText(resultingAudio)}</span>
+                        </p>
+
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            <Button size="sm" disabled={busy} onClick={startFuse}>
+                                <ArrowLeftRight className="h-4 w-4" /> Fusionner les deux fiches
+                            </Button>
+                            <Button variant="ghost" size="sm" disabled={busy} onClick={() => setMode('collapsed')}>
+                                Annuler
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {mode === 'distinct' && (
+                    <div className="space-y-4">
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-sm">
+                                <thead>
+                                    <tr className="border-b border-border text-left">
+                                        <th className="py-2 pr-4 font-medium text-muted-foreground w-40">Champ</th>
+                                        <th className="py-2 px-3 font-medium">
+                                            {flagged.title} <span className="text-muted-foreground font-normal">#{flagged.id}</span>
+                                        </th>
+                                        <th className="py-2 px-3 font-medium">
+                                            {matched.title} <span className="text-muted-foreground font-normal">#{matched.id}</span>
+                                        </th>
                                     </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                </thead>
+                                <tbody>
+                                    {FIELDS.map((f) => {
+                                        const d = differs(f, flagged, matched);
+                                        return (
+                                            <tr key={String(f.key)} className="border-b border-border/60 align-top">
+                                                <td className="py-2 pr-4 text-muted-foreground">{f.label}</td>
+                                                <td className={`py-2 px-3 ${d ? 'font-medium' : 'text-muted-foreground'}`}>
+                                                    {f.render(flagged)}
+                                                </td>
+                                                <td className={`py-2 px-3 ${d ? 'font-medium' : 'text-muted-foreground'}`}>
+                                                    {f.render(matched)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
 
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="text-sm text-muted-foreground mr-1">Fusionner — conserver :</span>
-                    <Button variant="default" size="sm" disabled={disabled} onClick={() => onFuse(flagged, matched)}>
-                        <ArrowLeftRight className="h-4 w-4" /> Signalé #{flagged.id}
-                    </Button>
-                    <Button variant="default" size="sm" disabled={disabled} onClick={() => onFuse(matched, flagged)}>
-                        <ArrowLeftRight className="h-4 w-4" /> Correspondant #{matched.id}
-                    </Button>
-
-                    <span className="w-px h-6 bg-border mx-1" aria-hidden />
-
-                    <Button variant="outline" size="sm" disabled={disabled} onClick={() => onDismiss(flagged)}>
-                        <Check className="h-4 w-4" /> Pas un doublon
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={disabled}
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => onDelete(flagged)}
-                    >
-                        <Trash2 className="h-4 w-4" /> Suppr. signalé #{flagged.id}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={disabled}
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => onDelete(matched)}
-                    >
-                        <Trash2 className="h-4 w-4" /> Suppr. correspondant #{matched.id}
-                    </Button>
-                </div>
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <Button variant="outline" size="sm" disabled={busy} onClick={() => onDismiss(flagged.id)}>
+                                <Check className="h-4 w-4" /> Confirmer : livres distincts
+                            </Button>
+                            <span className="w-px h-6 bg-border mx-1" aria-hidden />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={busy || audioConflict}
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => onRequestDelete(flagged)}
+                            >
+                                <Trash2 className="h-4 w-4" /> Supprimer #{flagged.id}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={busy || audioConflict}
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => onRequestDelete(matched)}
+                            >
+                                <Trash2 className="h-4 w-4" /> Supprimer #{matched.id}
+                            </Button>
+                            <Button variant="ghost" size="sm" disabled={busy} onClick={() => setMode('collapsed')}>
+                                Annuler
+                            </Button>
+                        </div>
+                        {sameFields.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                {sameFields.length} champ{sameFields.length > 1 ? 's' : ''} identique
+                                {sameFields.length > 1 ? 's' : ''}.
+                            </p>
+                        )}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
+}
+
+function BookHead({ book, align }: { book: ReviewBook; align?: 'right' }) {
+    return (
+        <div className={align === 'right' ? 'sm:text-right' : ''}>
+            <div className="font-semibold">
+                {book.title} <span className="text-muted-foreground font-normal">#{book.id}</span>
+            </div>
+            <div className="text-sm text-muted-foreground">{book.author}</div>
+            {hasAudio(book) && (
+                <div className={`mt-1 ${align === 'right' ? 'sm:flex sm:justify-end' : ''}`}>
+                    <Badge variant="secondary" className="gap-1">
+                        <FileAudio className="h-3 w-3" /> Audio
+                    </Badge>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ColHeader({ book }: { book: ReviewBook }) {
+    return <th className="py-2 px-3 font-normal text-muted-foreground">#{book.id}</th>;
 }

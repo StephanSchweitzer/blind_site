@@ -13,83 +13,99 @@ async function requireAdmin() {
     return me;
 }
 
-// Descriptive scalars copied onto the canonical only where it is null (never overwrite).
-const FILLABLE = [
+// Scalars the permanent may choose to pull from the removed book onto the survivor.
+// audio_filepath is deliberately NOT here — it's auto-handled (always kept; a genuine
+// two-recording conflict blocks the whole merge). source_access_id/id_arbre are identity.
+const OVERRIDABLE_FIELDS = [
+    'title',
+    'author',
     'subtitle',
     'publishedDate',
     'isbn',
-    'description',
     'publisher',
     'pageCount',
     'readingDurationMinutes',
-    'audio_filepath',
-    'polly_audio_url',
-    'stock_date',
-    'last_downloaded_date',
+    'description',
 ] as const;
 
+const OVERRIDABLE = new Set<string>(OVERRIDABLE_FIELDS);
+
 /**
- * FUSE: merge a duplicate book into the canonical one, in a single transaction.
- * Reassigns relations, null-fills canonical scalars, deletes the duplicate, clears
+ * FUSE: merge the removed book into the survivor, in a single transaction.
+ * `overrides` lists the fields whose value should be taken FROM the removed book
+ * (everything else keeps the survivor's value). Reassigns relations, applies the
+ * chosen fields, always preserves an audio path, deletes the removed book, clears
  * the review flag, and appends an immutable BookMergeEvent with a snapshot.
  */
-export async function fuseBooks(canonicalId: number, duplicateId: number): Promise<ActionResult> {
+export async function fuseBooks(
+    survivorId: number,
+    removedId: number,
+    overrides: string[] = []
+): Promise<ActionResult> {
     const me = await requireAdmin();
     if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(canonicalId) || !Number.isInteger(duplicateId)) {
+    if (!Number.isInteger(survivorId) || !Number.isInteger(removedId)) {
         return { ok: false, message: 'Identifiants invalides' };
     }
-    if (canonicalId === duplicateId) {
+    if (survivorId === removedId) {
         return { ok: false, message: 'Un livre ne peut pas être fusionné avec lui-même' };
     }
 
+    const fields = [...new Set(overrides)].filter((f) => OVERRIDABLE.has(f));
+
     try {
         await prisma.$transaction(async (tx) => {
-            const canonical = await tx.book.findUnique({ where: { id: canonicalId } });
-            const duplicate = await tx.book.findUnique({ where: { id: duplicateId } });
-            if (!canonical) throw new Error('CANONICAL_NOT_FOUND');
-            if (!duplicate) throw new Error('DUPLICATE_NOT_FOUND');
+            const survivor = await tx.book.findUnique({ where: { id: survivorId } });
+            const removed = await tx.book.findUnique({ where: { id: removedId } });
+            if (!survivor) throw new Error('SURVIVOR_NOT_FOUND');
+            if (!removed) throw new Error('REMOVED_NOT_FOUND');
 
-            // 1. Reassign relations off the duplicate onto the canonical.
+            // Double-audio guard: never delete a distinct recording. If both sides carry a
+            // different audio path, the merge is blocked pending manual review.
+            const sAudio = survivor.audio_filepath?.trim() || null;
+            const rAudio = removed.audio_filepath?.trim() || null;
+            if (sAudio && rAudio && sAudio !== rAudio) throw new Error('AUDIO_CONFLICT');
+
+            // 1. Reassign relations off the removed book onto the survivor.
             //    Assignment/Orders reference the book via `catalogueId` (no unique constraint).
-            await tx.assignment.updateMany({ where: { catalogueId: duplicateId }, data: { catalogueId: canonicalId } });
-            await tx.orders.updateMany({ where: { catalogueId: duplicateId }, data: { catalogueId: canonicalId } });
+            await tx.assignment.updateMany({ where: { catalogueId: removedId }, data: { catalogueId: survivorId } });
+            await tx.orders.updateMany({ where: { catalogueId: removedId }, data: { catalogueId: survivorId } });
 
-            // BookGenre PK is (bookId, genreId): drop dup rows the canonical already has, move the rest.
-            const canonGenres = await tx.bookGenre.findMany({ where: { bookId: canonicalId }, select: { genreId: true } });
+            // BookGenre PK is (bookId, genreId): drop removed rows the survivor already has, move the rest.
+            const keepGenres = await tx.bookGenre.findMany({ where: { bookId: survivorId }, select: { genreId: true } });
             await tx.bookGenre.deleteMany({
-                where: { bookId: duplicateId, genreId: { in: canonGenres.map((g) => g.genreId) } },
+                where: { bookId: removedId, genreId: { in: keepGenres.map((g) => g.genreId) } },
             });
-            await tx.bookGenre.updateMany({ where: { bookId: duplicateId }, data: { bookId: canonicalId } });
+            await tx.bookGenre.updateMany({ where: { bookId: removedId }, data: { bookId: survivorId } });
 
             // CoupsDeCoeurBooks PK is (coupsDeCoeurId, bookId): same de-dup then move.
-            const canonLists = await tx.coupsDeCoeurBooks.findMany({ where: { bookId: canonicalId }, select: { coupsDeCoeurId: true } });
+            const keepLists = await tx.coupsDeCoeurBooks.findMany({ where: { bookId: survivorId }, select: { coupsDeCoeurId: true } });
             await tx.coupsDeCoeurBooks.deleteMany({
-                where: { bookId: duplicateId, coupsDeCoeurId: { in: canonLists.map((c) => c.coupsDeCoeurId) } },
+                where: { bookId: removedId, coupsDeCoeurId: { in: keepLists.map((c) => c.coupsDeCoeurId) } },
             });
-            await tx.coupsDeCoeurBooks.updateMany({ where: { bookId: duplicateId }, data: { bookId: canonicalId } });
+            await tx.coupsDeCoeurBooks.updateMany({ where: { bookId: removedId }, data: { bookId: survivorId } });
 
-            // 2. Snapshot + delete the duplicate BEFORE writing scalars onto the canonical,
-            //    so copying the duplicate's @unique isbn can't collide with the still-live row.
-            const snapshot = JSON.parse(JSON.stringify(duplicate)) as Prisma.InputJsonValue;
-            await tx.book.delete({ where: { id: duplicateId } });
+            // 2. Snapshot + delete the removed book BEFORE writing scalars onto the survivor,
+            //    so pulling the removed book's @unique isbn can't collide with the still-live row.
+            const snapshot = {
+                removedBook: JSON.parse(JSON.stringify(removed)),
+                overrides: fields,
+            } as unknown as Prisma.InputJsonValue;
+            await tx.book.delete({ where: { id: removedId } });
 
-            // 3. Null-fill canonical scalars from the duplicate (never overwrite non-null),
-            //    then clear the review flag.
-            const fill: Prisma.BookUpdateInput = {};
-            for (const f of FILLABLE) {
-                if (canonical[f] == null && duplicate[f] != null) {
-                    (fill as Record<string, unknown>)[f] = duplicate[f];
-                }
+            // 3. Apply the chosen field overrides onto the survivor, always keep an audio
+            //    path (take the removed one if the survivor had none), clear the review flag.
+            const data: Prisma.BookUpdateInput = { needsReview: false, id_arbre: null };
+            for (const f of fields) {
+                (data as Record<string, unknown>)[f] = (removed as Record<string, unknown>)[f];
             }
-            await tx.book.update({
-                where: { id: canonicalId },
-                data: { ...fill, needsReview: false, id_arbre: null },
-            });
+            if (!sAudio && rAudio) data.audio_filepath = removed.audio_filepath;
+
+            await tx.book.update({ where: { id: survivorId }, data });
 
             // 4. Append-only audit entry.
             await tx.bookMergeEvent.create({
-                data: { canonicalId, duplicateId, snapshot, performedById: me.id },
+                data: { canonicalId: survivorId, duplicateId: removedId, snapshot, performedById: me.id },
             });
         });
 
@@ -98,8 +114,10 @@ export async function fuseBooks(canonicalId: number, duplicateId: number): Promi
     } catch (error) {
         const msg = error instanceof Error ? error.message : '';
         const map: Record<string, string> = {
-            CANONICAL_NOT_FOUND: 'Le livre à conserver est introuvable',
-            DUPLICATE_NOT_FOUND: 'Le doublon est introuvable',
+            SURVIVOR_NOT_FOUND: 'Le livre à conserver est introuvable',
+            REMOVED_NOT_FOUND: 'Le doublon est introuvable',
+            AUDIO_CONFLICT:
+                'Double enregistrement audio : la fusion est bloquée. Ce doublon nécessite une vérification manuelle.',
         };
         console.error('fuseBooks error:', error);
         return { ok: false, message: map[msg] ?? 'Échec de la fusion. Aucune modification enregistrée.' };
