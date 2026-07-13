@@ -97,6 +97,8 @@ export default function DetailDrawer({
                         <Link
                             key={item.id}
                             href={item.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="block rounded-lg border border-border p-3 hover:bg-accent transition-colors"
                         >
                             <div className="flex items-start justify-between gap-2">

@@ -52,7 +52,7 @@ export const GET = withSuperAdmin(async (request) => {
                 title: r.title,
                 subtitle: r.author,
                 needsReview: r.needsReview,
-                href: `/admin/books?search=${encodeURIComponent(r.title)}`,
+                href: `/admin/books?book=${r.id}`,
             }));
         } else if (metric === 'billEvents') {
             // Actor 0 is the "Système" bucket (events without a performer).
@@ -80,7 +80,7 @@ export const GET = withSuperAdmin(async (request) => {
                     title: `Facture n°${r.billId}`,
                     subtitle: clientName,
                     type: r.type,
-                    href: `/admin/bills?search=${encodeURIComponent(clientName)}`,
+                    href: `/admin/bills?bill=${r.billId}`,
                 };
             });
         } else {
@@ -102,7 +102,7 @@ export const GET = withSuperAdmin(async (request) => {
                 at: r.at,
                 title: `Demande n°${r.id} — ${r.bookTitle}`,
                 subtitle: getUserDisplayName(r),
-                href: `/admin/orders?search=${r.id}`,
+                href: `/admin/orders?order=${r.id}`,
             }));
         }
 

@@ -132,6 +132,10 @@ export default function BooksTable({
     // Track if we need to invalidate cache after mutations
     const cacheInvalidatedRef = useRef(false);
 
+    // Guards the ?book=<id> deep-link so it opens the modal once per id, not on
+    // every re-render / router.refresh().
+    const openedBookRef = useRef<string | null>(null);
+
     // Track if initial load had any filters
     const initialHadFilters = useRef(
         initialSearch ||
@@ -316,11 +320,16 @@ export default function BooksTable({
         if (e) {
             e.stopPropagation();
         }
+        await openBookById(book.id);
+    };
 
+    // Fetches a book's full details and opens the edit modal. Shared by the
+    // row-click handler and the ?book=<id> deep-link (e.g. from the stats page).
+    const openBookById = async (bookId: number | string) => {
         setIsLoadingBook(true);
 
         try {
-            const response = await fetch(`/api/books/${book.id}`, {
+            const response = await fetch(`/api/books/${bookId}`, {
                 headers: {
                     'Cache-Control': 'no-store, no-cache, must-revalidate',
                 },
@@ -365,6 +374,29 @@ export default function BooksTable({
         } finally {
             setIsLoadingBook(false);
         }
+    };
+
+    // Deep-link: open the edit modal directly when arriving with ?book=<id>
+    // (e.g. from the stats page), even when the book isn't on the current page.
+    const bookParam = searchParams?.get('book') ?? null;
+
+    useEffect(() => {
+        if (bookParam && openedBookRef.current !== bookParam) {
+            openedBookRef.current = bookParam;
+            openBookById(bookParam);
+        } else if (!bookParam) {
+            openedBookRef.current = null;
+        }
+    }, [bookParam]);
+
+    // Strip the `book` param on close so the deep-link doesn't re-fire and the
+    // URL stays clean. History API avoids pre-empting a following router.refresh().
+    const clearBookParam = () => {
+        if (!searchParams?.get('book')) return;
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('book');
+        const qs = params.toString();
+        window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
     };
 
     const handleBookEdited = async (bookId: number, isDeleted = false) => {
@@ -725,7 +757,13 @@ export default function BooksTable({
 
             {/* Edit Book Modal */}
             {selectedBook && (
-                <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <Dialog
+                    open={isEditModalOpen}
+                    onOpenChange={(open) => {
+                        setIsEditModalOpen(open);
+                        if (!open) clearBookParam();
+                    }}
+                >
                     <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
                             <DialogTitle className="text-foreground">Modifier le livre</DialogTitle>

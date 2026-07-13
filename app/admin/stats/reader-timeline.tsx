@@ -217,7 +217,9 @@ export default function ReaderTimeline({
                                             return (
                                                 <a
                                                     key={interval.assignmentId}
-                                                    href={`/admin/assignments?search=${interval.assignmentId}`}
+                                                    href={`/admin/assignments?assignment=${interval.assignmentId}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
                                                     title={label}
                                                     aria-label={label}
                                                     className={`absolute top-1 bottom-1 rounded hover:opacity-80 ${BAR_CLASS[interval.status]} ${
