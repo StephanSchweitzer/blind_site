@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import {
     AlertTriangle,
     Download,
+    FolderArchive,
     FolderPlus,
     Loader2,
     Pause,
@@ -19,9 +20,11 @@ import {
     RotateCcw,
     Trash2,
     Upload,
+    X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioUpload } from '@/hooks/useAudioUpload';
+import { safeZipName, useAudioFolderZip, type ZipEntry } from '@/hooks/useAudioFolderZip';
 import {
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
@@ -90,6 +93,18 @@ const formatDate = (iso: string) =>
 const personLabel = (p: { name: string | null; email: string | null } | null) =>
     p?.name || p?.email || 'inconnu';
 
+/**
+ * Archive entries for a folder. The path is the key relative to the book
+ * folder, which keeps any sub-folder structure and guarantees unique entry
+ * names even if two sub-folders happen to share a filename.
+ */
+const toZipEntries = (d: ManageResponse): ZipEntry[] =>
+    d.tracks.map((t) => ({
+        path: (d.prefix && t.key.startsWith(d.prefix) ? t.key.slice(d.prefix.length) : t.name) || t.name,
+        url: t.url,
+        sizeBytes: t.sizeBytes,
+    }));
+
 export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: BookAudioModalProps) {
     const { toast } = useToast();
     const [tab, setTab] = useState<'pistes' | 'corbeille'>('pistes');
@@ -107,6 +122,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const { phase, progress, error: uploadError, needsFolder, upload, reset } = useAudioUpload(bookId);
+    const zip = useAudioFolderZip();
 
     const notifyError = useCallback(
         (message: string) => {
@@ -233,10 +249,56 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
 
     const busy = phase === 'preparing' || phase === 'uploading' || phase === 'finalising';
     const activeTrash = trash.filter((t) => !t.restoredAt);
+    const zipping = zip.phase === 'running';
+
+    /**
+     * Zip the whole folder. Nobody wants to click Download forty times.
+     *
+     * The archive is built in the browser from the same presigned URLs the
+     * player uses, so the bytes go straight from the bucket — see
+     * useAudioFolderZip.
+     */
+    const handleDownloadFolder = () => {
+        if (!data || !data.tracks.length) return;
+
+        // No streaming sink here: the whole archive has to sit in memory first.
+        if (zip.bufferedFallback) {
+            const proceed = window.confirm(
+                `Ce navigateur doit préparer l’archive entièrement en mémoire (${formatSize(data.totalBytes)}).\n\n` +
+                    'Sur un dossier volumineux, Chrome ou Edge écrivent directement sur le disque et sont préférables.\n\n' +
+                    'Continuer quand même ?',
+            );
+            if (!proceed) return;
+        }
+
+        const resign = async (): Promise<ZipEntry[]> => {
+            const res = await fetch(`/api/books/${bookId}/audio/manage`);
+            if (!res.ok) return [];
+            return toZipEntries((await res.json()) as ManageResponse);
+        };
+
+        void zip.start(toZipEntries(data), safeZipName(`${data.title} - ${data.author}`), resign);
+    };
+
+    /**
+     * Closing mid-archive would leave the download running with nothing left to
+     * show its progress or stop it — the dialogue owns that state. So make the
+     * choice explicit rather than silent.
+     */
+    const handleOpenChange = (open: boolean) => {
+        if (!open && zipping) {
+            const stop = window.confirm(
+                'Une archive est en cours de préparation. La fermeture annulera le téléchargement.\n\nFermer quand même ?',
+            );
+            if (!stop) return;
+            zip.cancel();
+        }
+        onOpenChange(open);
+    };
 
     return (
         <>
-            <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <Dialog open={isOpen} onOpenChange={handleOpenChange}>
                 <DialogContent className="max-w-4xl max-h-[88dvh] flex flex-col overflow-hidden bg-card border-border [&>button>svg]:text-white">
                     <DialogHeader className="flex-shrink-0">
                         <DialogTitle className="text-foreground">
@@ -292,7 +354,84 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                         >
                             Corbeille ({activeTrash.length})
                         </Button>
+
+                        {/* Whole-folder download — the alternative is one click per chapter. */}
+                        {tab === 'pistes' && (data?.trackCount ?? 0) > 0 && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={zipping ? zip.cancel : handleDownloadFolder}
+                                className="ml-auto bg-field border-border text-foreground hover:bg-muted"
+                            >
+                                {zipping ? (
+                                    <span className="flex items-center gap-2">
+                                        <X className="h-4 w-4" /> Annuler
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        <FolderArchive className="h-4 w-4" />
+                                        Tout télécharger (ZIP)
+                                        {data && (
+                                            <span className="text-muted-foreground">
+                                                · {formatSize(data.totalBytes)}
+                                            </span>
+                                        )}
+                                    </span>
+                                )}
+                            </Button>
+                        )}
                     </div>
+
+                    {/* --- Zip progress ------------------------------------------------ */}
+                    {(zipping || zip.phase === 'done' || zip.phase === 'error') && (
+                        <div className="flex-shrink-0 rounded-md border border-border bg-field p-3">
+                            {zipping && (
+                                <>
+                                    <div className="flex justify-between gap-2 text-xs">
+                                        <span className="truncate text-foreground">
+                                            Archivage… {zip.currentName ?? ''}
+                                        </span>
+                                        <span className="whitespace-nowrap text-muted-foreground">
+                                            {formatSize(zip.written)} / {formatSize(zip.total)}
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-muted">
+                                        <div
+                                            className="h-full bg-green-500"
+                                            style={{
+                                                width: `${zip.total ? Math.min(100, Math.round((zip.written / zip.total) * 100)) : 0}%`,
+                                            }}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                            {zip.phase === 'done' && (
+                                <div className="flex items-center justify-between gap-2 text-xs">
+                                    <span className="text-foreground">Archive téléchargée.</span>
+                                    <button
+                                        type="button"
+                                        onClick={zip.reset}
+                                        className="text-muted-foreground underline underline-offset-2"
+                                    >
+                                        Masquer
+                                    </button>
+                                </div>
+                            )}
+                            {zip.phase === 'error' && (
+                                <div className="flex items-center justify-between gap-2 text-xs">
+                                    <span className="text-red-500">{zip.error}</span>
+                                    <button
+                                        type="button"
+                                        onClick={zip.reset}
+                                        className="text-muted-foreground underline underline-offset-2"
+                                    >
+                                        Masquer
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1 py-3">
                         {loading && (

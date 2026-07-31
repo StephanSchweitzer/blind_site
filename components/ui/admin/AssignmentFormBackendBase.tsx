@@ -39,6 +39,7 @@ import { useInvalidField } from '@/hooks/useInvalidField';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
+import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
 // N3 — required fields, visual top→bottom (book derives from the order picker).
@@ -839,6 +840,15 @@ export function AssignmentFormBackendBase({
                         <p className="text-xs text-muted-foreground">
                             Le livre est repris de la commande. Pour le modifier, changez la commande ci-dessus.
                         </p>
+                        {/* The book is read-only here, but its recordings are the whole
+                            point of the attribution — reach them without leaving. */}
+                        {selectedBook && (
+                            <BookAudioButton
+                                bookId={selectedBook.id}
+                                bookTitle={selectedBook.title}
+                                size="sm"
+                            />
+                        )}
                     </div>
 
                     {/* Date Fields */}

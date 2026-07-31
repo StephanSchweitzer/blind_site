@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X, AlertCircle } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
+import { BookAudioButton } from '@/admin/BookAudioButton';
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
 import { useFormToast } from "@/hooks/useFormToast";
@@ -55,6 +56,8 @@ interface BookFormBackendBaseProps {
     onSuccess?: (bookId: number, isDeleted?: boolean) => void;
     onDelete?: () => Promise<void>;
     showDelete?: boolean;
+    /** Existing book — enables the audio editor. Absent while creating one. */
+    audioBookId?: number;
 }
 
 export function BookFormBackendBase({
@@ -65,7 +68,8 @@ export function BookFormBackendBase({
                                         title,
                                         onSuccess,
                                         onDelete,
-                                        showDelete
+                                        showDelete,
+                                        audioBookId
                                     }: BookFormBackendBaseProps) {
     const [formData, setFormData] = useState<BookFormData>(initialData || {
         title: '',
@@ -219,7 +223,16 @@ export function BookFormBackendBase({
     return (
         <Card className="bg-card border-border">
             <CardHeader className="border-b border-border">
-                <CardTitle className="text-foreground">{title}</CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <CardTitle className="text-foreground">{title}</CardTitle>
+                    {audioBookId != null && (
+                        <BookAudioButton
+                            bookId={audioBookId}
+                            bookTitle={formData.title}
+                            size="sm"
+                        />
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -678,6 +691,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
             loadingText="En cours de mise à jour..."
             title="Modifier le livre"
             onSuccess={onSuccess}
+            audioBookId={Number.isInteger(Number(bookId)) ? Number(bookId) : undefined}
         />
     );
 }

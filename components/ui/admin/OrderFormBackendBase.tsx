@@ -27,6 +27,7 @@ import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
+import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
 // N3 — required fields, visual top→bottom.
@@ -499,6 +500,15 @@ export function OrderFormBackendBase({
                             onSelect={handleBookSelect}
                             triggerRef={registerField('catalogueId')}
                         />
+                        {/* The recordings of the book this demande is about, without
+                            leaving the form. */}
+                        {selectedBook && (
+                            <BookAudioButton
+                                bookId={selectedBook.id}
+                                bookTitle={selectedBook.title}
+                                size="sm"
+                            />
+                        )}
                     </div>
 
                     {/* Request Received Date */}

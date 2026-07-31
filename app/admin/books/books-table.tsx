@@ -673,7 +673,8 @@ export default function BooksTable({
                                                             size="sm"
                                                             className="bg-muted text-foreground border-border hover:bg-accent"
                                                             onClick={() => setAudioBook({ id: book.id, title: book.title })}
-                                                            aria-label={`Gérer les fichiers audio de ${book.title}`}
+                                                            aria-label={`Ouvrir l’éditeur audio de ${book.title}`}
+                                                            title="Ouvrir l’éditeur audio"
                                                         >
                                                             <FileAudio className="h-4 w-4" />
                                                         </Button>
