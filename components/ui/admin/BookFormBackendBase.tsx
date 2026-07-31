@@ -81,9 +81,6 @@ export function BookFormBackendBase({
         pageCount: undefined,
     });
 
-    console.log(formData)
-
-
     const [genres, setGenres] = useState<Genre[]>([]);
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');

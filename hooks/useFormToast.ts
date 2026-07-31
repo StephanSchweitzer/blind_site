@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import type { ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,7 +21,10 @@ import { useToast } from "@/hooks/use-toast";
 export function useFormToast() {
     const { toast } = useToast();
 
-    const toastError = (
+    // Stable identities: these are used as effect dependencies (e.g. the genre
+    // fetch in BookFormBackendBase), so a fresh closure per render would refire
+    // those effects in a loop. `toast` is module-level and already stable.
+    const toastError = useCallback((
         description: string | ReactNode,
         title: string = "Erreur"
     ): void => {
@@ -32,9 +36,9 @@ export function useFormToast() {
             // convention and renders consistently in light/dark.
             className: "bg-red-100 border-red-500 text-red-900",
         });
-    };
+    }, [toast]);
 
-    const toastSuccess = (
+    const toastSuccess = useCallback((
         description: string | ReactNode,
         title: string = "Succès"
     ): void => {
@@ -43,7 +47,7 @@ export function useFormToast() {
             description,
             className: "bg-green-100 border-green-500 text-green-900",
         });
-    };
+    }, [toast]);
 
     return { toastError, toastSuccess };
 }
