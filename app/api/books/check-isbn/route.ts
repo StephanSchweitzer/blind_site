@@ -2,36 +2,30 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 
-// Returns existing users that share the given first + last name (case-insensitive)
-// so the create form can warn about a possible duplicate. This is a soft warning,
-// not a block — real people legitimately share names.
+// Tells the book search whether an ISBN is already catalogued, so importing a
+// Google Books result can be refused up front. Mirrors the duplicate-ISBN check
+// in POST /api/books, which stays the authoritative guard.
 export const GET = withAdmin(async (request) => {
-    const firstName = request.nextUrl.searchParams.get('firstName')?.trim();
-    const lastName = request.nextUrl.searchParams.get('lastName')?.trim();
+    const isbn = request.nextUrl.searchParams.get('isbn')?.trim();
 
-    if (!firstName || !lastName) {
-        return NextResponse.json({ matches: [] });
+    if (!isbn) {
+        return NextResponse.json({ exists: false });
     }
 
     try {
-        const matches = await prisma.user.findMany({
+        const existingBook = await prisma.book.findFirst({
             where: {
-                firstName: { equals: firstName, mode: 'insensitive' },
-                lastName: { equals: lastName, mode: 'insensitive' },
+                isbn: {
+                    equals: isbn,
+                    mode: 'insensitive'
+                }
             },
-            select: {
-                id: true,
-                name: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-            },
-            take: 10,
+            select: { id: true },
         });
 
-        return NextResponse.json({ matches });
+        return NextResponse.json({ exists: existingBook !== null });
     } catch (error) {
-        console.error('check-duplicate error:', error);
-        return NextResponse.json({ message: 'Failed to check duplicates' }, { status: 500 });
+        console.error('check-isbn error:', error);
+        return NextResponse.json({ message: 'Failed to check ISBN' }, { status: 500 });
     }
 });
