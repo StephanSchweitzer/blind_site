@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X, ChevronsUpDown, Check, Plus, Loader2 } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
+import { BookAudioModal } from '@/admin/BookAudioModal';
 import { toast } from "@/hooks/use-toast";
 
 const ITEMS_PER_PAGE = 10;
@@ -108,6 +109,8 @@ export default function BooksTable({
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
+    /** Book whose audio folder is open in the management dialogue. */
+    const [audioBook, setAudioBook] = useState<{ id: number; title: string } | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [isLoadingBook, setIsLoadingBook] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -656,14 +659,25 @@ export default function BooksTable({
                                                     </span>
                                                 </TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="bg-muted text-foreground border-border hover:bg-accent"
-                                                        onClick={(e) => openBookEditModal(book, e)}
-                                                    >
-                                                        Modifier
-                                                    </Button>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="bg-muted text-foreground border-border hover:bg-accent"
+                                                            onClick={(e) => openBookEditModal(book, e)}
+                                                        >
+                                                            Modifier
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="bg-muted text-foreground border-border hover:bg-accent"
+                                                            onClick={() => setAudioBook({ id: book.id, title: book.title })}
+                                                            aria-label={`Gérer les fichiers audio de ${book.title}`}
+                                                        >
+                                                            <FileAudio className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -777,6 +791,17 @@ export default function BooksTable({
                         </div>
                     </DialogContent>
                 </Dialog>
+            )}
+
+            {/* Audio folder management */}
+            {audioBook && (
+                <BookAudioModal
+                    isOpen={audioBook !== null}
+                    onOpenChange={(open) => {
+                        if (!open) setAudioBook(null);
+                    }}
+                    bookId={audioBook.id}
+                />
             )}
         </Card>
     );

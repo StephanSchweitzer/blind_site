@@ -1,4 +1,12 @@
-import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+    S3Client,
+    ListObjectsV2Command,
+    GetObjectCommand,
+    PutObjectCommand,
+    HeadObjectCommand,
+    CopyObjectCommand,
+    DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
@@ -117,9 +125,159 @@ export async function listBookTracks(prefix: string): Promise<AudioTrack[]> {
         }));
 }
 
-/** Time-limited download URL for one track. Default one hour. */
-export function getTrackUrl(key: string, expiresIn = 3600): Promise<string> {
-    return getSignedUrl(getS3(), new GetObjectCommand({ Bucket: AUDIO_BUCKET, Key: key }), {
-        expiresIn,
-    });
+/**
+ * Every object under a prefix, audio or not.
+ *
+ * `listBookTracks` filters to audio, which cannot distinguish "the folder is
+ * there but holds only B2's .bzEmpty placeholder" (FOLDER_EMPTY) from "there is
+ * nothing at this prefix at all" (FOLDER_MISSING). Callers that must tell those
+ * apart — the status refresh — need the unfiltered listing.
+ */
+export async function listRawObjects(prefix: string): Promise<{ key: string; size: number }[]> {
+    if (!prefix) return [];
+    const s3 = getS3();
+    const out: { key: string; size: number }[] = [];
+    let token: string | undefined;
+    do {
+        const res = await s3.send(
+            new ListObjectsV2Command({
+                Bucket: AUDIO_BUCKET,
+                Prefix: prefix,
+                ContinuationToken: token,
+            }),
+        );
+        for (const o of res.Contents ?? []) {
+            if (o.Key) out.push({ key: o.Key, size: o.Size ?? 0 });
+        }
+        token = res.IsTruncated ? res.NextContinuationToken : undefined;
+    } while (token);
+    return out;
+}
+
+/**
+ * Time-limited download URL for one track. Default one hour.
+ *
+ * `downloadAs` sets Content-Disposition on the response: a cross-origin
+ * `<a download>` is ignored by browsers, so without it a "download" click opens
+ * the file in a tab under a meaningless key-derived name.
+ */
+export function getTrackUrl(key: string, expiresIn = 3600, downloadAs?: string): Promise<string> {
+    return getSignedUrl(
+        getS3(),
+        new GetObjectCommand({
+            Bucket: AUDIO_BUCKET,
+            Key: key,
+            ...(downloadAs
+                ? {
+                      // RFC 5987: the corpus is full of accents, which are not
+                      // legal raw in a header value.
+                      ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(downloadAs)}`,
+                  }
+                : {}),
+        }),
+        { expiresIn },
+    );
+}
+
+/**
+ * Time-limited URL the BROWSER uploads to with a direct PUT.
+ *
+ * The bytes never touch our server — a 50 MB track through a Vercel function
+ * would be slow, metered, and pointless. The server's only role is minting this
+ * URL, which is what keeps the B2 credentials server-side.
+ *
+ * Requires a B2 CORS rule allowing `s3_put` from the site origin; without one
+ * the browser's preflight fails and no upload can succeed.
+ */
+export function putTrackUrl(key: string, contentType: string, expiresIn = 3600): Promise<string> {
+    return getSignedUrl(
+        getS3(),
+        new PutObjectCommand({ Bucket: AUDIO_BUCKET, Key: key, ContentType: contentType }),
+        { expiresIn },
+    );
+}
+
+export interface TrackHead {
+    sizeBytes: number;
+    contentType: string | null;
+    lastModified: Date | null;
+}
+
+/** Metadata for one object, or null when it doesn't exist. */
+export async function headTrack(key: string): Promise<TrackHead | null> {
+    try {
+        const r = await getS3().send(
+            new HeadObjectCommand({ Bucket: AUDIO_BUCKET, Key: key }),
+        );
+        return {
+            sizeBytes: r.ContentLength ?? 0,
+            contentType: r.ContentType ?? null,
+            lastModified: r.LastModified ?? null,
+        };
+    } catch (e) {
+        const name = (e as { name?: string }).name;
+        const status = (e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+        if (name === 'NotFound' || name === 'NoSuchKey' || status === 404) return null;
+        throw e;
+    }
+}
+
+/**
+ * CopySource must be `bucket/key`, percent-encoded but with the path separators
+ * left intact. The corpus makes this load-bearing rather than pedantic: keys
+ * contain spaces, accents, `!`, `#` and `&`, all of which break an unencoded
+ * value — `#` in particular truncates the key at the fragment.
+ */
+function copySource(key: string): string {
+    return `${AUDIO_BUCKET}/${key}`.split('/').map(encodeURIComponent).join('/');
+}
+
+/** Server-side copy — B2 moves the bytes internally, nothing transits our server. */
+export async function copyTrack(fromKey: string, toKey: string): Promise<void> {
+    await getS3().send(
+        new CopyObjectCommand({
+            Bucket: AUDIO_BUCKET,
+            CopySource: copySource(fromKey),
+            Key: toKey,
+        }),
+    );
+}
+
+/**
+ * Remove one object.
+ *
+ * Deliberately server-side: a presigned DELETE would put the power to erase a
+ * recording into a URL, and the payload is a few bytes, so there is no bandwidth
+ * argument for handing it out. Callers are expected to have copied the object to
+ * the corbeille first — this function itself does not make that check.
+ */
+export async function deleteTrack(key: string): Promise<void> {
+    await getS3().send(new DeleteObjectCommand({ Bucket: AUDIO_BUCKET, Key: key }));
+}
+
+/**
+ * Keep an emptied folder in existence, the way B2 itself does.
+ *
+ * Object storage has no real directories: a prefix exists only while something
+ * lives under it. B2's own tooling papers over this by writing a zero-byte
+ * `.bzEmpty`, which is why the corpus is littered with them — and why
+ * listBookTracks filters them out.
+ *
+ * Without this, deleting a book's last track makes its folder evaporate, and
+ * the status lands on FOLDER_MISSING ("nothing at this path") when the truthful
+ * answer is FOLDER_EMPTY ("the folder is there, an admin emptied it"). Those
+ * mean very different things to whoever picks the book up next.
+ */
+export async function ensureFolderPlaceholder(prefix: string): Promise<boolean> {
+    if (!prefix) return false;
+    const remaining = await listRawObjects(prefix);
+    if (remaining.length) return false;
+    await getS3().send(
+        new PutObjectCommand({
+            Bucket: AUDIO_BUCKET,
+            Key: `${prefix}.bzEmpty`,
+            Body: new Uint8Array(0),
+        }),
+    );
+    return true;
 }

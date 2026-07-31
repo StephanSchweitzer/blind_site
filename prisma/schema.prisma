@@ -75,6 +75,8 @@ model User {
   bookMergeEventsPerformed BookMergeEvent[]    @relation("BookMergeEventsPerformedBy")
   activityEvents           UserActivityEvent[] @relation("UserActivityEvents")
   activityEventsPerformed  UserActivityEvent[] @relation("UserActivityEventsBy")
+  audioTracksDeleted       DeletedAudioTrack[] @relation("AudioTracksDeletedBy")
+  audioTracksRestored      DeletedAudioTrack[] @relation("AudioTracksRestoredBy")
   languages                ReaderLanguage[]
   civility                 Civility?           @relation(fields: [civilityId], references: [id])
 
@@ -134,6 +136,7 @@ model Book {
   audioCheckedAt         DateTime?
   audioTrackCount        Int?
   orphanAudioFolders     OrphanAudioFolder[]
+  deletedAudioTracks     DeletedAudioTrack[] @relation("BookDeletedAudioTracks")
 
   @@index([audioLinkStatus])
   @@index([createdAt(sort: Desc)])
@@ -582,6 +585,42 @@ model OrphanAudioFolder {
   @@index([year])
   @@index([dismissedAt])
   @@index([resolvedAt])
+}
+
+/// Corbeille for audio tracks an admin removed from a book's folder.
+///
+/// Deletion is deliberately NOT a bucket delete: the object is copied to the
+/// `corbeille/` prefix first and only then removed from its original key, so a
+/// mistake stays fixable. The bucket does have versioning, but its lifecycle
+/// rule expires noncurrent versions after 30 days and B2 cannot say *which*
+/// portal user deleted a track — neither is good enough for recordings that are
+/// often the only copy in existence.
+///
+/// A row is written on delete and updated only to record a restore. There is
+/// deliberately no purge operation: nothing in this feature can permanently
+/// destroy a recording.
+model DeletedAudioTrack {
+  id           Int       @id @default(autoincrement())
+  /// Nullable + SetNull so the corbeille outlives the book it came from.
+  bookId       Int?
+  /// Key the object lived at, verbatim — restoring writes it back here.
+  originalKey  String
+  /// Key it was copied to under `corbeille/`. Unique: two rows must never
+  /// claim the same object, or restoring one would delete the other's copy.
+  trashKey     String    @unique
+  filename     String
+  sizeBytes    BigInt
+  deletedAt    DateTime  @default(now())
+  deletedById  Int?
+  restoredAt   DateTime?
+  restoredById Int?
+  book         Book?     @relation("BookDeletedAudioTracks", fields: [bookId], references: [id], onDelete: SetNull)
+  deletedBy    User?     @relation("AudioTracksDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy   User?     @relation("AudioTracksRestoredBy", fields: [restoredById], references: [id], onDelete: SetNull)
+
+  @@index([bookId])
+  @@index([deletedAt])
+  @@index([restoredAt])
 }
 
 /// Singleton (id = 1) holding the editable content of the public Contact page.
