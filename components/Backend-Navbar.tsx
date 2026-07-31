@@ -44,6 +44,7 @@ const navGroups: NavGroup[] = [
             { href: '/admin/users/lecteurs', label: 'Lecteurs', icon: '👥' },
             { href: '/admin/users/bienfaiteurs', label: 'Donateurs', icon: '💝' },
             { href: '/admin/users/permanents', label: 'Permanents', icon: '🔑' },
+            { href: '/admin/disponibilites', label: 'Disponibilités', icon: '📅' },
         ],
     },
     {

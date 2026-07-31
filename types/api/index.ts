@@ -23,3 +23,6 @@ export * from './common.api';
 
 // Stats dashboard API types (super-admin /admin/stats)
 export * from './stats.api';
+
+// Disponibilités API types (/admin/disponibilites)
+export * from './availability.api';

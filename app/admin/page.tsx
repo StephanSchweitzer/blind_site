@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { AdminCard } from '@/components/ui/admin';
 import { AdminDashboardCard } from '@/components/ui/admin/AdminDashboardCard';
+import { unavailableNowWhere } from '@/lib/users/activityStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,7 @@ export default async function Dashboard() {
         auditeursCount,
         bienfaiteursCount,
         permanentsCount,
+        unavailableCount,
         assignmentCount,
         orderCount,
         billCount,
@@ -38,6 +40,9 @@ export default async function Dashboard() {
         prisma.user.count({ where: { memberType: 'auditeur' } }),
         prisma.user.count({ where: { memberType: 'bienfaiteur' } }),
         prisma.user.count({ where: { accessLevel: { in: ['admin', 'super_admin'] } } }),
+        // Members whose indisponibilité is in force today — the count the
+        // Disponibilités card leads with.
+        prisma.user.count({ where: unavailableNowWhere() }),
         prisma.assignment.count(),
         prisma.orders.count(),
         prisma.bill.count(),
@@ -145,6 +150,13 @@ export default async function Dashboard() {
                         href="/admin/users/permanents"
                         buttonText="Gestion des membres permanents"
                         accentColor="red"
+                    />
+                    <AdminDashboardCard
+                        title="Disponibilités"
+                        count={unavailableCount}
+                        href="/admin/disponibilites"
+                        buttonText="Calendrier des indisponibilités et lecteurs libres"
+                        accentColor="blue"
                     />
                 </div>
             </div>
