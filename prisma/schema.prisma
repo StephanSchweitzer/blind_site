@@ -127,6 +127,15 @@ model Book {
   id_arbre               Int?
   polly_audio_url        String?
 
+  /// State of the link between audio_filepath and the storage bucket, refreshed
+  /// by scripts/sync-audio-links.ts. Deliberately NOT `needsReview` — that flag
+  /// belongs to the duplicate-fusion queue on /admin/review.
+  audioLinkStatus        AudioLinkStatus     @default(UNVERIFIED)
+  audioCheckedAt         DateTime?
+  audioTrackCount        Int?
+  orphanAudioFolders     OrphanAudioFolder[]
+
+  @@index([audioLinkStatus])
   @@index([createdAt(sort: Desc)])
   @@index([title])
   @@index([author])
@@ -512,6 +521,67 @@ model BookMergeEvent {
   @@index([canonicalId])
   @@index([duplicateId])
   @@index([createdAt])
+}
+
+/// Pre-backfill snapshot of Book.audio_filepath.
+///
+/// The rewrite from the NAS path (`T:\2022\21525  Titre`) to the bucket prefix
+/// (`dirt/2022/21525  Titre/`) is one-way — trailing dots stripped for Windows
+/// cannot be reconstructed — so the original is kept here. Written once by
+/// scripts/backfill-audio-paths.ts; safe to drop when you're confident.
+model AudioFilepathBackup {
+  bookId    Int      @id
+  oldPath   String
+  newPath   String
+  createdAt DateTime @default(now())
+}
+
+/// Health of a book's link to its audio in the bucket.
+///   OK             the folder exists and holds audio
+///   FOLDER_EMPTY   the folder exists but contains no audio — upload landed empty
+///   FOLDER_MISSING nothing at that prefix at all
+///   NO_PATH        audio_filepath is null
+///   UNVERIFIED     never checked
+enum AudioLinkStatus {
+  OK
+  FOLDER_EMPTY
+  FOLDER_MISSING
+  NO_PATH
+  UNVERIFIED
+}
+
+/// Audio folders in the bucket that no book points at.
+///
+/// Rows describe storage, they don't own it: nothing here moves, renames or
+/// deletes an object. `prefix` is the bucket key prefix exactly as stored,
+/// trailing slash included, so it can be handed straight to ListObjectsV2.
+///
+/// Refreshed by scripts/sync-audio-links.ts: folders still orphaned get their
+/// lastSeenAt bumped, folders that stopped being orphaned are deleted.
+model OrphanAudioFolder {
+  id          Int       @id @default(autoincrement())
+  prefix      String    @unique
+  year        Int?
+  /// Leading number in the folder name — matches Book.source_access_id, which is
+  /// what lets the relink screen suggest a book instead of making admins search.
+  folderNum   Int?
+  title       String
+  trackCount  Int
+  bytes       BigInt
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @updatedAt
+  /// Set when an admin relinks the folder to a book.
+  linkedBookId Int?
+  linkedBook  Book?     @relation(fields: [linkedBookId], references: [id], onDelete: SetNull)
+  resolvedAt  DateTime?
+  /// Set when an admin decides the folder is junk (recycle bin, stray upload).
+  dismissedAt DateTime?
+  note        String?
+
+  @@index([folderNum])
+  @@index([year])
+  @@index([dismissedAt])
+  @@index([resolvedAt])
 }
 
 /// Singleton (id = 1) holding the editable content of the public Contact page.

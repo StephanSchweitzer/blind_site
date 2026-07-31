@@ -1,0 +1,2 @@
+-- This is a baseline migration to sync with the current database state
+-- All changes have already been applied directly to the database

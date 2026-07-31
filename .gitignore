@@ -46,6 +46,10 @@ stephan-aws-info.txt
 public/coup_descriptions/
 
 *.sql
+# …but migration SQL is source, not a dump. The blanket rule above kept every
+# migration.sql out of the repo, which is a large part of why the migration
+# history drifted from the databases.
+!prisma/migrations/**/*.sql
 passStuff.txt
 data_to_convert_and_upload/wc-product-export-15-11-2024-1731676285314.csv*
 
@@ -59,3 +63,5 @@ package-lock.json
 
 public/book_descriptions/
 .claude/
+# Local output of scripts/audit-audio-files.ts
+audio-audit/

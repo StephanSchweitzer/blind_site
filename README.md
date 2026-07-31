@@ -168,6 +168,14 @@ NEXTAUTH_SECRET=
 AWS_ACCESS_KEY_ID=         # Polly (region us-east-1 is set in code)
 AWS_SECRET_ACCESS_KEY=
 
+# Backblaze B2 (S3-compatible API) — book audio storage
+S3_AUDIO_BUCKET=           # B2 bucket name
+S3_ENDPOINT=               # e.g. https://s3.eu-central-003.backblazeb2.com
+S3_REGION=                 # must match the endpoint, e.g. eu-central-003
+S3_ACCESS_KEY_ID=          # B2 application keyID
+S3_SECRET_ACCESS_KEY=      # B2 applicationKey (shown once at creation)
+S3_AUDIO_PREFIX=           # optional, restricts audits/listings to one prefix
+
 BLOB_READ_WRITE_TOKEN=     # Vercel Blob (audio storage)
 GOOGLE_BOOKS_API_KEY=      # catalogue metadata lookup
 RESEND_API_KEY=            # transactional email
@@ -183,7 +191,34 @@ RESEND_API_KEY=            # transactional email
 | `pnpm build` | `prisma generate` + Next.js build |
 | `pnpm start` | Serve the production build |
 | `pnpm lint` | ESLint |
-| `pnpm prisma migrate dev` / `db seed` | Migrate / seed the database |
+| `pnpm prisma db seed` | Seed the database |
+| `pnpm prisma db execute --file <sql>` | Apply a schema change — see the warning below |
+| `pnpm tsx scripts/audit-audio-files.ts` | Read-only audit of the B2 audio bucket vs `Book.audio_filepath`; derives the NAS rename rule, writes CSVs to `./audio-audit` |
+| `pnpm tsx scripts/audio-match-rules.test.ts` | Tests for the filename-matching logic (no network, no DB) |
+
+### Schema changes — do not use `prisma migrate`
+
+The migration history is out of sync with the databases: the migrations in
+`prisma/migrations/` are recorded as unapplied against databases that already
+contain those tables. `prisma migrate dev` would try to replay them and can
+prompt a destructive reset; `prisma migrate deploy` fails on the first one.
+
+Apply schema changes like this instead:
+
+```bash
+pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script -o prisma/migrations/<timestamp>_<name>/migration.sql
+```
+
+**Read the generated SQL before running it** — if the target has drifted it can
+contain `DROP` statements. Then apply it:
+
+```bash
+pnpm prisma db execute --file prisma/migrations/<timestamp>_<name>/migration.sql
+```
+
+Keep the SQL file in the repo so the change is recorded even though the history
+itself is not trustworthy. `prisma.config.ts` points the datasource at
+`DIRECT_URL`, so override that variable to target a different database.
 
 ## Deployment
 
