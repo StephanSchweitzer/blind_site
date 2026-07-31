@@ -89,14 +89,14 @@ export function BillHistory({ events }: { events: BillEventDTO[] }) {
                         : null;
                 return (
                     <li key={e.id} className="flex gap-3 border-l-2 border-border pl-3">
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`text-xs font-semibold rounded px-2 py-0.5 ${TYPE_TINT[e.type] ?? 'bg-muted text-foreground'}`}>
                                     {TYPE_LABEL[e.type] ?? e.type}
                                 </span>
                                 {transition && <span className="text-xs text-muted-foreground">{transition}</span>}
                             </div>
-                            {summary && <p className="text-sm text-foreground mt-1">{summary}</p>}
+                            {summary && <p className="text-sm text-foreground mt-1 break-words">{summary}</p>}
                             <p className="text-xs text-muted-foreground mt-1">
                                 {fmtDateTime(e.createdAt)}
                                 {e.performedBy?.name ? ` · ${e.performedBy.name}` : ''}

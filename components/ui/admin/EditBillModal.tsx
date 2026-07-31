@@ -370,19 +370,19 @@ export function EditBillModal({
                     <div className="space-y-5">
                         {/* Summary */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
+                            <div className="min-w-0">
                                 <div className="text-xs text-muted-foreground uppercase tracking-wide">Auditeur</div>
-                                <div className="text-foreground font-medium">{bill.client.name || 'N/A'}</div>
-                                <div className="text-muted-foreground text-sm">{bill.client.email}</div>
+                                <div className="text-foreground font-medium break-words">{bill.client.name || 'N/A'}</div>
+                                <div className="text-muted-foreground text-sm break-words">{bill.client.email}</div>
                                 {bill.client.address && bill.client.address.filter(Boolean).length > 0 && (
-                                    <div className="text-muted-foreground text-sm mt-1 leading-snug">
+                                    <div className="text-muted-foreground text-sm mt-1 leading-snug break-words">
                                         {bill.client.address.filter(Boolean).map((line, i) => (
                                             <div key={i}>{line}</div>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                            <div className="text-right">
+                            <div className="min-w-0 text-right">
                                 <div className="text-xs text-muted-foreground uppercase tracking-wide">État actuel</div>
                                 <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
                                     {getBillingStatusLabel(bill.state)}
@@ -532,16 +532,16 @@ export function EditBillModal({
                                     <div className="px-3 py-4 text-muted-foreground text-sm italic">Aucune demande rattachée</div>
                                 ) : (
                                     bill.orders.map((o) => (
-                                        <div key={o.id} className="flex items-center gap-3 px-3 py-2.5">
+                                        <div key={o.id} className="flex items-start gap-3 px-3 py-2.5">
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-foreground text-sm font-medium truncate">
+                                                <div className="text-foreground text-sm font-medium break-words">
                                                     #{o.id} — {o.catalogue.title}
                                                 </div>
-                                                <div className="text-muted-foreground text-xs truncate">
+                                                <div className="text-muted-foreground text-xs break-words">
                                                     {o.catalogue.author} · {formatDate(o.requestReceivedDate)}
                                                 </div>
                                             </div>
-                                            <span className="text-foreground text-sm font-medium whitespace-nowrap">
+                                            <span className="shrink-0 text-foreground text-sm font-medium whitespace-nowrap">
                                                 {o.cost != null ? formatCurrency(o.cost) : '-'}
                                             </span>
                                             <a
@@ -549,7 +549,7 @@ export function EditBillModal({
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 title="Ouvrir la demande dans un nouvel onglet"
-                                                className="ml-1 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
+                                                className="shrink-0 ml-1 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
                                             >
                                                 <ExternalLink className="h-3.5 w-3.5" />
                                             </a>
@@ -557,7 +557,7 @@ export function EditBillModal({
                                                 <button
                                                     onClick={() => handleRemoveOrder(o.id)}
                                                     disabled={removingOrderId === o.id}
-                                                    className="ml-1 p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                                                    className="shrink-0 ml-1 p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
                                                     title="Retirer de la facture"
                                                 >
                                                     {removingOrderId === o.id
@@ -604,12 +604,12 @@ export function EditBillModal({
                                             ) : (
                                                 <div className="divide-y divide-border max-h-[200px] overflow-y-auto">
                                                     {unbilledOrders.map((o) => (
-                                                        <div key={o.id} className="flex items-center gap-3 py-2">
+                                                        <div key={o.id} className="flex items-start gap-3 py-2">
                                                             <div className="flex-1 min-w-0">
-                                                                <div className="text-foreground text-sm truncate">
+                                                                <div className="text-foreground text-sm break-words">
                                                                     #{o.id} — {o.catalogue.title}
                                                                 </div>
-                                                                <div className="text-muted-foreground text-xs truncate">
+                                                                <div className="text-muted-foreground text-xs break-words">
                                                                     {o.catalogue.author} · {formatDate(o.requestReceivedDate)}
                                                                     {o.cost != null && ` · ${formatCurrency(o.cost)}`}
                                                                 </div>
