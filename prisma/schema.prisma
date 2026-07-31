@@ -135,6 +135,12 @@ model Book {
   audioLinkStatus        AudioLinkStatus     @default(UNVERIFIED)
   audioCheckedAt         DateTime?
   audioTrackCount        Int?
+
+  /// Set when a permanent hits "Impossible de fusionner" on /admin/review: the
+  /// pair carries two different recordings, so it can only be sorted out by hand
+  /// in the database. Stamping the date keeps the escalation mail from being
+  /// re-sent on every visit; the book stays in the review queue either way.
+  escalatedAt            DateTime?
   orphanAudioFolders     OrphanAudioFolder[]
   deletedAudioTracks     DeletedAudioTrack[] @relation("BookDeletedAudioTracks")
 
@@ -364,6 +370,9 @@ enum DeliveryMethod {
 }
 
 enum Language {
+  /// LEGACY: no longer offered as a specialization (every reader reads French),
+  /// but kept here so existing ReaderLanguage rows stay valid and keep rendering.
+  /// See LEGACY_LANGUAGE_VALUES in lib/user-enums.ts.
   FRANCAIS
   ANGLAIS
   ESPAGNOL
@@ -373,6 +382,9 @@ enum Language {
   ARABE
   RUSSE
   CHINOIS
+  GREC_ANCIEN
+  GREC_MODERNE
+  LATIN
   AUTRE
 }
 
