@@ -6,5 +6,7 @@ export default async function DossierIndex({
     params: Promise<{ id: string }>;
 }) {
     const { id } = await params;
-    redirect(`/admin/users/dossier/${id}/commandes`);
+    // Attributions first: opening someone's file is almost always about what they
+    // are currently reading, not about their demandes.
+    redirect(`/admin/users/dossier/${id}/affectations`);
 }
