@@ -14,8 +14,15 @@ const config = [
   // `.claude/` is agent scratch space (gitignored): `.claude/worktrees/*` are
   // throwaway checkouts, each with its own `.next/`. Nothing in there is source
   // this project ships, so none of it should ever be linted.
+  //
+  // `app/generated/prisma/` is the Prisma client, rewritten wholesale by every
+  // `prisma generate` (the path is set by the generator block in
+  // prisma/schema.prisma - keep the two in sync if it ever moves). Its own
+  // `/* eslint-disable */` headers were being reported as unused directives,
+  // and no finding there is actionable: you cannot fix generated code, it just
+  // comes back on the next generate.
   {
-    ignores: ["**/.next/**", ".claude/**"],
+    ignores: ["**/.next/**", ".claude/**", "app/generated/**"],
   },
 
   // Project-specific overrides go here, e.g.:
