@@ -43,6 +43,8 @@ super-admin-only `/admin/stats`.
 How to use it:
 
 1. `preview_start` the `dev` config (`.claude/launch.json`), which serves http://localhost:3000.
+   Reuse a server that is already running, and stop it when you are done — see
+   [Always stop the dev server when you are done](#always-stop-the-dev-server-when-you-are-done-important).
 2. Go to `/auth/signin`, fill the email + password fields, submit. The session is a NextAuth
    JWT cookie and persists across navigations in that tab.
 3. Navigate anywhere under `/admin`.
@@ -56,6 +58,36 @@ The provisioning script (`prisma/dev-claude-user.ts`) refuses to run against any
 local database: Supabase hosts are rejected outright, and any other non-local host must be
 named explicitly via `DEV_USER_ALLOW_HOST=<host>`. Never create this account, or any account
 with a repo-committed password, on the production database.
+
+## Always stop the dev server when you are done (IMPORTANT)
+
+Only **one** dev server should ever be running on this project. A live `next dev` holds a lock
+on `.next/` (Windows keeps the build output and the `.next/trace` / SWC files open), so a second
+agent that starts its own server either fails or silently falls back to another port — leaving
+stale servers, split state, and a `.next` directory nobody can clean.
+
+Rules:
+
+1. **Before starting a server, reuse the running one.** Call `preview_list` first. If a `dev`
+   server is already up, `preview_start` the `dev` config again (it reuses the existing process)
+   or just `navigate` to it — do **not** start a second server and do **not** launch it on
+   another port.
+2. **Never run the dev server through Bash/PowerShell** (`pnpm dev`, `next dev`, `start-process`…).
+   Always go through `preview_start` so the process is tracked and can be stopped.
+3. **When your changes are finished and verified, stop the server** with
+   `preview_stop { serverId }` for every server id `preview_list` reports. Do this at the end of
+   the task — before you report back — not "later". Stopping it releases the `.next` lock so the
+   next agent can start cleanly on port 3000.
+4. If a lock survives anyway (`EPERM`/`EBUSY` on `.next`, or port 3000 reported busy with no
+   server in `preview_list`), an orphaned node process is holding it. Kill it, then delete the
+   stale build output:
+
+   ```powershell
+   Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -like '*next*dev*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+   Remove-Item -Recurse -Force .next
+   ```
+
+   Only remove `.next` after the process is gone — it is regenerated on the next `pnpm dev`.
 
 ## Terminology (IMPORTANT — a rename happened)
 
