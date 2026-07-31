@@ -23,15 +23,15 @@ import { AddressFormData, UserFormData, UserType } from '@/types';
 import { formatPhone } from '@/lib/utils';
 import {
     MEMBER_TYPE_VALUES,
-    MEMBER_TYPE_LABELS,
-    ACCESS_LEVEL_VALUES,
-    ACCESS_LEVEL_LABELS,
-    getAccessLevelLabel,
+    getMemberTypeLabel,
     SAVE_TYPE_VALUES,
-    SAVE_TYPE_LABELS,
+    getSaveTypeLabel,
     LANGUAGE_VALUES,
     getLanguageLabel,
+    DELIVERY_METHOD_VALUES,
+    getDeliveryMethodLabel,
 } from '@/lib/user-enums';
+import { withCurrentValue, withCurrentValues } from '@/lib/select-options';
 
 interface UserFormBackendBaseProps {
     initialData?: UserFormData;
@@ -148,16 +148,16 @@ export function UserFormBackendBase({
         userType === 'auditeurs' ? 'auditeur' :
             userType === 'bienfaiteurs' ? 'bienfaiteur' :
                 'lecteur';
-    // Only super admins may create "permanent" (admin/super_admin) members. Since
-    // the access-level field is locked for regular admins, defaulting lecteurs to
-    // 'admin' left them stuck on a level they aren't allowed to create — blocking
-    // every creation. Default to a non-permanent level unless a super admin is creating.
+    // The access level is no longer editable from this form (it is an internal
+    // permission, not something to arbitrate while filling in a member's file),
+    // so it has to be derived correctly here: the tab the person is created from
+    // decides it. Only the "permanents" tab creates a permanent, and only a super
+    // admin may — everyone else is a plain member. On edit the stored level is
+    // carried through untouched by sanitizeInitialData.
     const defaultAccessLevel: UserFormData['accessLevel'] =
-        userType === 'auditeurs' || userType === 'bienfaiteurs'
-            ? 'member'
-            : currentUserAccessLevel === 'super_admin'
-                ? 'admin'
-                : 'member';
+        userType === 'permanents' && currentUserAccessLevel === 'super_admin'
+            ? 'admin'
+            : 'member';
 
     const [formData, setFormData] = useState<UserFormData>(
         initialData
@@ -350,22 +350,8 @@ export function UserFormBackendBase({
         }
     };
 
-    const isAccessLevelLocked =
-        (initialData && initialData.accessLevel === 'super_admin' && currentUserAccessLevel !== 'super_admin') ||
-        (currentUserAccessLevel === 'admin');
-
     const selectedCivility = civilities.find((c) => c.id === formData.civilityId);
     const showCivilityOther = selectedCivility?.name === 'Autre';
-
-    const getLockedReason = (): string => {
-        if (currentUserAccessLevel === 'admin') {
-            return 'Seuls les super administrateurs peuvent modifier les niveaux d\'accès';
-        }
-        if (initialData?.accessLevel === 'super_admin') {
-            return 'Verrouillé';
-        }
-        return 'Verrouillé';
-    };
 
     return (
         <Card className="bg-card border-border">
@@ -467,7 +453,9 @@ export function UserFormBackendBase({
                             )}
                         </div>
 
-                        {/* Type de membre + Niveau d'accès */}
+                        {/* Type de membre. The access level is deliberately absent:
+                            it is a back-office permission, derived from the tab on
+                            creation and left untouched here on edit. */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Type de membre</label>
@@ -479,42 +467,15 @@ export function UserFormBackendBase({
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-card border-border">
-                                        {MEMBER_TYPE_VALUES.map((type) => (
+                                        {/* A retired type already on the record (e.g. `ecouteur`) stays
+                                            listed so the trigger isn't blank and the value survives a save. */}
+                                        {withCurrentValue(MEMBER_TYPE_VALUES, formData.memberType).map((type) => (
                                             <SelectItem key={type} value={type} className="text-foreground">
-                                                {MEMBER_TYPE_LABELS[type]}
+                                                {getMemberTypeLabel(type)}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Niveau d&apos;accès {isAccessLevelLocked && <span className="text-xs text-muted-foreground">({getLockedReason()})</span>}
-                                </label>
-                                {isAccessLevelLocked ? (
-                                    <div className="bg-card/50 border border-border rounded-md px-3 py-2 text-sm text-foreground">
-                                        {getAccessLevelLabel(formData.accessLevel)}
-                                    </div>
-                                ) : (
-                                    <Select
-                                        value={formData.accessLevel}
-                                        onValueChange={(value) => setFormData({ ...formData, accessLevel: value as UserFormData['accessLevel'] })}
-                                    >
-                                        <SelectTrigger className="bg-field border-border text-foreground">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-card border-border">
-                                            {ACCESS_LEVEL_VALUES
-                                                .filter((level) => level !== 'super_admin' || currentUserAccessLevel === 'super_admin')
-                                                .map((level) => (
-                                                    <SelectItem key={level} value={level} className="text-foreground">
-                                                        {ACCESS_LEVEL_LABELS[level]}
-                                                    </SelectItem>
-                                                ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -745,9 +706,9 @@ export function UserFormBackendBase({
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-card border-border">
                                                     <SelectItem value="none" className="text-foreground">—</SelectItem>
-                                                    {SAVE_TYPE_VALUES.map((v) => (
+                                                    {withCurrentValue(SAVE_TYPE_VALUES, formData.saveType).map((v) => (
                                                         <SelectItem key={v} value={v} className="text-foreground">
-                                                            {SAVE_TYPE_LABELS[v]}
+                                                            {getSaveTypeLabel(v)}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -807,8 +768,11 @@ export function UserFormBackendBase({
                                             <SelectValue placeholder="Sélectionner..." />
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border">
-                                            <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
-                                            <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
+                                            {withCurrentValue(DELIVERY_METHOD_VALUES, formData.preferredDeliveryMethod).map((v) => (
+                                                <SelectItem key={v} value={v} className="text-foreground">
+                                                    {getDeliveryMethodLabel(v)}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -877,7 +841,10 @@ export function UserFormBackendBase({
                                 <div className="space-y-2 md:col-span-2">
                                     <label className="text-sm font-medium text-foreground">Langues (spécialisation)</label>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                        {LANGUAGE_VALUES.map((lang) => (
+                                        {/* A retired language already recorded on the reader (Français)
+                                            keeps its box so it stays visible and isn't dropped by the
+                                            replace-all save — unchecking it is the only way to remove it. */}
+                                        {withCurrentValues(LANGUAGE_VALUES, formData.languages).map((lang) => (
                                             <label key={lang} className="flex items-center gap-2 text-sm text-foreground">
                                                 <Checkbox
                                                     checked={formData.languages.includes(lang)}

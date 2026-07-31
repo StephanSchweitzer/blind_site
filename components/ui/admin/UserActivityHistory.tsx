@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
@@ -16,6 +15,7 @@ import {
     getUserActivityStatusLabel,
     getUserActivityStatusColor,
 } from '@/lib/user-activity-enums';
+import { withCurrentValue } from '@/lib/select-options';
 
 interface ActivityEvent {
     id: number;
@@ -33,7 +33,6 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
     const [error, setError] = useState<string | null>(null);
 
     const [newStatus, setNewStatus] = useState<string>('');
-    const [reason, setReason] = useState('');
     const [comment, setComment] = useState('');
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -69,7 +68,9 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
             const res = await fetch(`/api/user/${userId}/activity`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ toStatus: newStatus, reason, comment }),
+                // No `reason`: the motif field is gone — the comment carries the
+                // wording now. Motifs recorded before that stay in the history below.
+                body: JSON.stringify({ toStatus: newStatus, comment }),
             });
             if (!res.ok) {
                 const d = await res.json().catch(() => ({}));
@@ -78,7 +79,6 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
             const { event } = await res.json();
             setEvents((prev) => [event, ...prev]);
             setNewStatus('');
-            setReason('');
             setComment('');
         } catch (err: unknown) {
             setSaveError(err instanceof Error ? err.message : 'Erreur');
@@ -114,19 +114,16 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
                             <SelectValue placeholder="Nouveau statut" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
-                            {USER_ACTIVITY_STATUS_VALUES.map((s) => (
+                            {/* A status the person still carries but that is no longer
+                                offered stays listed (disabled, since it's the current
+                                one) rather than vanishing from the list. */}
+                            {withCurrentValue(USER_ACTIVITY_STATUS_VALUES, currentStatus).map((s) => (
                                 <SelectItem key={s} value={s} className="text-foreground" disabled={s === currentStatus}>
                                     {getUserActivityStatusLabel(s)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                    <Input
-                        placeholder="Motif (optionnel)"
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        className="bg-card border-border text-foreground placeholder:text-muted-foreground flex-1"
-                    />
                 </div>
                 <Textarea
                     placeholder="Commentaire (optionnel)"

@@ -85,17 +85,47 @@ export const SAVE_TYPE_LABELS: Record<SaveType, string> = {
 export const getSaveTypeLabel = (v: string): string =>
     SAVE_TYPE_LABELS[v as SaveType] ?? v;
 
-// Reader language specialization (mirrors the Language enum in schema.prisma).
+// Delivery preference (mirrors the DeliveryMethod enum in schema.prisma).
+export const DELIVERY_METHOD_VALUES = ['RETRAIT', 'ENVOI'] as const;
+
+// LEGACY: retired option, kept out of DELIVERY_METHOD_VALUES so it is never
+// offered again — but records still carrying it must keep rendering it.
+export const LEGACY_DELIVERY_METHOD_VALUES = ['NON_APPLICABLE'] as const;
+
+export type DeliveryMethod =
+    typeof DELIVERY_METHOD_VALUES[number] | typeof LEGACY_DELIVERY_METHOD_VALUES[number];
+
+export const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
+    RETRAIT: 'Retrait',
+    ENVOI: 'Envoi',
+    NON_APPLICABLE: 'Non applicable', // LEGACY
+};
+
+export const getDeliveryMethodLabel = (v: string): string =>
+    DELIVERY_METHOD_LABELS[v as DeliveryMethod] ?? v;
+
+// Reader language specialization — the selectable options (a subset of the
+// Language enum in schema.prisma).
 export const LANGUAGE_VALUES = [
-    'FRANCAIS', 'ANGLAIS', 'ESPAGNOL', 'ALLEMAND', 'ITALIEN',
-    'PORTUGAIS', 'ARABE', 'RUSSE', 'CHINOIS', 'AUTRE',
+    'ANGLAIS', 'ESPAGNOL', 'ALLEMAND', 'ITALIEN', 'PORTUGAIS',
+    'ARABE', 'RUSSE', 'CHINOIS', 'GREC_ANCIEN', 'GREC_MODERNE', 'LATIN', 'AUTRE',
 ] as const;
-export type Language = typeof LANGUAGE_VALUES[number];
+
+// LEGACY: kept ONLY so readers already recorded as French specialists keep
+// type-checking and rendering. Deliberately excluded from LANGUAGE_VALUES so it
+// is never offered again — reading in French is the default, not a specialization.
+export const LEGACY_LANGUAGE_VALUES = ['FRANCAIS'] as const;
+
+export type ActiveLanguage = typeof LANGUAGE_VALUES[number];
+export type LegacyLanguage = typeof LEGACY_LANGUAGE_VALUES[number];
+export type Language = ActiveLanguage | LegacyLanguage;
 
 export const LANGUAGE_LABELS: Record<Language, string> = {
-    FRANCAIS: 'Français', ANGLAIS: 'Anglais', ESPAGNOL: 'Espagnol',
-    ALLEMAND: 'Allemand', ITALIEN: 'Italien', PORTUGAIS: 'Portugais',
-    ARABE: 'Arabe', RUSSE: 'Russe', CHINOIS: 'Chinois', AUTRE: 'Autre',
+    ANGLAIS: 'Anglais', ESPAGNOL: 'Espagnol', ALLEMAND: 'Allemand',
+    ITALIEN: 'Italien', PORTUGAIS: 'Portugais', ARABE: 'Arabe',
+    RUSSE: 'Russe', CHINOIS: 'Chinois', GREC_ANCIEN: 'Grec ancien',
+    GREC_MODERNE: 'Grec moderne', LATIN: 'Latin', AUTRE: 'Autre',
+    FRANCAIS: 'Français', // LEGACY: still displayed on existing records; never offered.
 };
 
 export const getLanguageLabel = (v: string): string =>

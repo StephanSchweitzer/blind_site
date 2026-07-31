@@ -6,7 +6,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
@@ -21,6 +20,7 @@ import {
     USER_ACTIVITY_STATUS_VALUES,
     getUserActivityStatusLabel,
 } from '@/lib/user-activity-enums';
+import { withCurrentValue } from '@/lib/select-options';
 import type { ActivityBlockInfo, ActivityGuardRole } from '@/hooks/useUserActivityGuard';
 
 const ROLE_ACTION: Record<ActivityGuardRole, string> = {
@@ -45,7 +45,6 @@ export function UserActivityGuardDialog({
 }) {
     const { toast } = useToast();
     const [toStatus, setToStatus] = useState<string>('ACTIVE');
-    const [reason, setReason] = useState('');
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -60,7 +59,6 @@ export function UserActivityGuardDialog({
         setPrevBlockedId(currentId);
         if (blocked) {
             setToStatus('ACTIVE');
-            setReason('');
             setComment('');
         }
     }
@@ -73,9 +71,9 @@ export function UserActivityGuardDialog({
             const res = await fetch(`/api/user/${blocked.userId}/activity`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                // No `reason`: the motif field is gone — the comment carries the wording now.
                 body: JSON.stringify({
                     toStatus,
-                    reason: reason.trim() || undefined,
                     comment: comment.trim() || undefined,
                 }),
             });
@@ -137,8 +135,8 @@ export function UserActivityGuardDialog({
                     )}
                     <p>
                         Pour continuer et {ROLE_ACTION[role]}, vous devez réactiver cette personne.
-                        Vous pouvez choisir un autre statut ci-dessous, ainsi qu&apos;un motif et un
-                        commentaire si vous le souhaitez.
+                        Vous pouvez choisir un autre statut ci-dessous, ainsi qu&apos;un commentaire
+                        si vous le souhaitez.
                     </p>
 
                     <div className="space-y-2">
@@ -148,23 +146,15 @@ export function UserActivityGuardDialog({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                {USER_ACTIVITY_STATUS_VALUES.map((value) => (
+                                {/* The person's own status stays listed even if it is no
+                                    longer offered, so the list never hides where they are. */}
+                                {withCurrentValue(USER_ACTIVITY_STATUS_VALUES, blocked.activityStatus).map((value) => (
                                     <SelectItem key={value} value={value}>
                                         {getUserActivityStatusLabel(value)}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Motif (optionnel)</label>
-                        <Input
-                            value={reason}
-                            onChange={(e) => setReason(e.target.value)}
-                            placeholder="Ex : retour de vacances"
-                            className="bg-field border-border text-foreground"
-                        />
                     </div>
 
                     <div className="space-y-2">

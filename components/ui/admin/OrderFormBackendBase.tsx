@@ -19,6 +19,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Link from 'next/link';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
+import { DELIVERY_METHOD_VALUES, getDeliveryMethodLabel } from '@/lib/user-enums';
+import { isLegacyValue } from '@/lib/select-options';
 import type { BillingStatus } from '@prisma/client';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
@@ -715,6 +717,16 @@ export function OrderFormBackendBase({
                                     >
                                         <span className="font-medium">Envoi</span>
                                     </SelectItem>
+                                    {/* An older demande saved as NON_APPLICABLE keeps its option, so
+                                        editing it doesn't show an empty required field and force a rewrite. */}
+                                    {isLegacyValue(DELIVERY_METHOD_VALUES, formData.deliveryMethod) && (
+                                        <SelectItem
+                                            value={formData.deliveryMethod!}
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-t border-border/50 transition-colors"
+                                        >
+                                            <span className="font-medium">{getDeliveryMethodLabel(formData.deliveryMethod!)}</span>
+                                        </SelectItem>
+                                    )}
                                 </div>
                             </SelectContent>
                         </Select>
