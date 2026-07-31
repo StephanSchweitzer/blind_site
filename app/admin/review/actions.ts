@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { sendReviewEscalation } from '@/lib/email/sendReviewEscalation';
+import { getUserDisplayName } from '@/lib/users/displayName';
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -146,6 +148,66 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
         }
         console.error('deleteBook error:', error);
         return { ok: false, message: 'Échec de la suppression' };
+    }
+}
+
+/**
+ * ESCALATE: hand a pair that can't be merged (two different recordings) over to
+ * the person who fixes those by hand in the database.
+ *
+ * Nothing about the books changes and they stay in the queue — the only trace is
+ * `escalatedAt`, which exists so the mail isn't re-sent on every visit. The stamp
+ * is written only once the mail has actually left, otherwise the escalation would
+ * look done while nobody was told.
+ */
+export async function escalateReview(flaggedId: number, matchedId: number | null): Promise<ActionResult> {
+    const me = await requireAdmin();
+    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
+    if (!Number.isInteger(flaggedId)) return { ok: false, message: 'Identifiant invalide' };
+
+    const select = {
+        id: true,
+        title: true,
+        author: true,
+        audio_filepath: true,
+        source_access_id: true,
+    } as const;
+
+    try {
+        const [flagged, matched, actor] = await Promise.all([
+            prisma.book.findUnique({ where: { id: flaggedId }, select }),
+            matchedId != null && Number.isInteger(matchedId)
+                ? prisma.book.findUnique({ where: { id: matchedId }, select })
+                : Promise.resolve(null),
+            prisma.user.findUnique({
+                where: { id: me.id },
+                select: { name: true, email: true, firstName: true, lastName: true },
+            }),
+        ]);
+        if (!flagged) return { ok: false, message: 'Livre introuvable' };
+
+        const result = await sendReviewEscalation({
+            flagged,
+            matched,
+            escalatedBy: getUserDisplayName(actor) || me.email || `#${me.id}`,
+        });
+
+        if (!result.sent) {
+            return {
+                ok: false,
+                message:
+                    result.reason === 'no-recipient'
+                        ? "Aucune adresse d'escalade configurée. Prévenez Stéphan directement."
+                        : "L'email n'a pas pu être envoyé. Le doublon n'a pas été signalé — prévenez Stéphan directement.",
+            };
+        }
+
+        await prisma.book.update({ where: { id: flaggedId }, data: { escalatedAt: new Date() } });
+        revalidateAdmin();
+        return { ok: true, message: 'Doublon signalé à Stéphan pour traitement manuel' };
+    } catch (error) {
+        console.error('escalateReview error:', error);
+        return { ok: false, message: "Échec de l'envoi. Le doublon n'a pas été signalé." };
     }
 }
 

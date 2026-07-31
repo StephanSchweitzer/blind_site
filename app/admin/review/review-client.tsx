@@ -12,9 +12,13 @@ import {
     FileX2,
     AlertTriangle,
     Loader2,
+    Search,
+    Send,
+    X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import {
@@ -36,7 +40,7 @@ import {
     getAudioLinkStatusHint,
     getAudioLinkStatusLabel,
 } from '@/lib/audio-enums';
-import { fuseBooks, deleteBook, dismissReview, type ActionResult } from './actions';
+import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
 
 export interface ReviewBook {
     id: number;
@@ -54,6 +58,8 @@ export interface ReviewBook {
     source_access_id: number | null;
     needsReview: boolean;
     id_arbre: number | null;
+    /** Set once the pair has been handed over for manual DB treatment. */
+    escalatedAt?: Date | string | null;
 }
 
 export interface ReviewPair {
@@ -65,7 +71,11 @@ interface Props {
     pairs: ReviewPair[];
     page: number;
     totalPages: number;
+    /** Matches for the current search, or the whole queue when not searching. */
     total: number;
+    /** Size of the whole queue, regardless of the search. */
+    queueTotal: number;
+    search: string;
 }
 
 const fmtDate = (v: Date | string | null): string => {
@@ -113,8 +123,9 @@ type Pending =
     | { kind: 'delete'; bookId: number; title: string }
     | null;
 
-export default function ReviewClient({ pairs, page, totalPages, total }: Props) {
+export default function ReviewClient({ pairs, page, totalPages, total, queueTotal, search }: Props) {
     const router = useRouter();
+    const [searchTerm, setSearchTerm] = useState(search);
     const [pending, setPending] = useState<Pending>(null);
     /** Book whose audio folder is open for listening. */
     const [audioBook, setAudioBook] = useState<ReviewBook | null>(null);
@@ -148,20 +159,76 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
         startNav(() => router.push(`/admin/review?${sp.toString()}`));
     };
 
+    const runSearch = (term: string) => {
+        const sp = new URLSearchParams(window.location.search);
+        if (term.trim()) sp.set('q', term.trim());
+        else sp.delete('q');
+        // A new search always restarts at page 1 — page 7 of the old result set
+        // would otherwise land on an empty page.
+        sp.delete('page');
+        startNav(() => router.push(`/admin/review?${sp.toString()}`));
+    };
+
     const busy = isPending || isNavPending;
 
     return (
         <div className="space-y-4">
             <Card>
-                <CardHeader>
-                    <CardTitle>Révision des doublons</CardTitle>
-                    <CardDescription>
-                        {total === 0
-                            ? 'Aucun livre en attente de révision.'
-                            : `${total} livre${total > 1 ? 's' : ''} signalé${total > 1 ? 's' : ''} comme doublon potentiel.`}
-                    </CardDescription>
+                <CardHeader className="space-y-4">
+                    <div>
+                        <CardTitle>Révision des doublons</CardTitle>
+                        <CardDescription>
+                            {search
+                                ? `${total} résultat${total > 1 ? 's' : ''} pour « ${search} » — ${queueTotal} livre${queueTotal > 1 ? 's' : ''} dans la file.`
+                                : total === 0
+                                  ? 'Aucun livre en attente de révision.'
+                                  : `${total} livre${total > 1 ? 's' : ''} signalé${total > 1 ? 's' : ''} comme doublon potentiel.`}
+                        </CardDescription>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') runSearch(searchTerm);
+                                }}
+                                placeholder="Rechercher un titre, un auteur, un ISBN ou un numéro…"
+                                className="pl-9 pr-9"
+                                disabled={busy}
+                            />
+                            {searchTerm && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                                    disabled={busy}
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        runSearch('');
+                                    }}
+                                    aria-label="Effacer la recherche"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                        <Button variant="outline" disabled={busy} onClick={() => runSearch(searchTerm)}>
+                            Rechercher
+                        </Button>
+                    </div>
                 </CardHeader>
             </Card>
+
+            {search && pairs.length === 0 && (
+                <Card>
+                    <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                        Aucun livre de la file ne correspond à « {search} ».
+                    </CardContent>
+                </Card>
+            )}
 
             {pairs.map(({ flagged, matched }) => (
                 <PairCard
@@ -172,6 +239,7 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
                     onRequestFuse={(p) => setPending({ kind: 'fuse', ...p })}
                     onRequestDelete={(book) => setPending({ kind: 'delete', bookId: book.id, title: book.title })}
                     onDismiss={(bookId) => run(() => dismissReview(bookId))}
+                    onEscalate={(flaggedId, matchedId) => run(() => escalateReview(flaggedId, matchedId))}
                     onListen={setAudioBook}
                 />
             ))}
@@ -269,6 +337,7 @@ function PairCard({
     onRequestFuse,
     onRequestDelete,
     onDismiss,
+    onEscalate,
     onListen,
 }: {
     flagged: ReviewBook;
@@ -277,6 +346,7 @@ function PairCard({
     onRequestFuse: (p: FusePayload) => void;
     onRequestDelete: (book: ReviewBook) => void;
     onDismiss: (bookId: number) => void;
+    onEscalate: (flaggedId: number, matchedId: number | null) => void;
     onListen: (book: ReviewBook) => void;
 }) {
     const [mode, setMode] = useState<'collapsed' | 'fuse' | 'distinct'>('collapsed');
@@ -306,6 +376,7 @@ function PairCard({
     }
 
     const audioConflict = hasAudio(flagged) && hasAudio(matched) && flagged.audio_filepath !== matched.audio_filepath;
+    const escalated = !!flagged.escalatedAt;
     const diffCount = FIELDS.filter((f) => f.overridable && differs(f, flagged, matched)).length;
 
     // Always keep the flagged book — it's the live site catalogue entry that already
@@ -358,12 +429,36 @@ function PairCard({
                 </div>
 
                 {audioConflict && (
-                    <div className="flex items-start gap-2 rounded-md border border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200">
-                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                        <span>
-                            Double enregistrement audio pour ce livre. La version à conserver n’étant pas évidente, une
-                            vérification manuelle est nécessaire — la fusion et la suppression sont désactivées.
-                        </span>
+                    <div className="space-y-3 rounded-md border border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200">
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                            <span>
+                                Double enregistrement audio pour ce livre. La version à conserver n’étant pas évidente, une
+                                vérification manuelle est nécessaire — la fusion et la suppression sont désactivées.
+                            </span>
+                        </div>
+                        {/* Dead end for the queue: only a direct fix in the database can
+                            sort these out, so the card offers the handover instead of
+                            leaving the permanent with nothing but disabled buttons. */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={busy || escalated}
+                                className="border-amber-500 bg-transparent text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/40"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEscalate(flagged.id, matched.id);
+                                }}
+                            >
+                                <Send className="h-4 w-4" /> Impossible de fusionner, envoyer à Stéphan
+                            </Button>
+                            {escalated && (
+                                <span className="text-xs">
+                                    Signalé le {fmtDate(flagged.escalatedAt ?? null)} — traitement manuel en attente.
+                                </span>
+                            )}
+                        </div>
                     </div>
                 )}
             </CardHeader>
