@@ -12,6 +12,7 @@
  * CMS content). All people are fictional — no real names or emails.
  *
  * Login (every seeded account, same password): Password123!
+ *   claude@eca.test        Super Admin  — dev agent account (ClaudeDev2026!)
  *   superadmin@eca.test    Super Admin  — sees everything, incl. /admin/stats
  *   permanent@eca.test     Permanent    — back-office staff (admin access)
  *   permanent2@eca.test    Permanent    — second staff member (for stats spread)
@@ -298,6 +299,19 @@ async function main() {
             civilityId: civilityId.get('Madame'), cellPhone: '+33 6 12 34 56 78',
         },
     });
+    // Permanent local dev account for Claude Code (see prisma/dev-claude-user.ts,
+    // which recreates just this user without wiping anything).
+    await prisma.user.create({
+        data: {
+            ...base, email: 'claude@eca.test', name: 'Claude Dev',
+            firstName: 'Claude', lastName: 'Dev', memberType: 'informaticien',
+            accessLevel: 'super_admin', role: 'admin',
+            password: await hash('ClaudeDev2026!', 10),
+            specialization: 'Compte de développement (agent)',
+            notes: 'Compte de développement local — ne pas créer en production.',
+        },
+    });
+
     const permanentA = await prisma.user.create({
         data: {
             ...base, email: 'permanent@eca.test', name: 'Julien Moreau',
@@ -668,6 +682,7 @@ async function main() {
     console.log('\n✅ Seed terminé.');
     console.log(`   Users: ${users} · Books: ${bookCount} · Orders: ${orderCount} · Bills: ${billCount} · Payments: ${paymentCount}`);
     console.log('\n🔑 Connexion (mot de passe commun : Password123!)');
+    console.log('   claude@eca.test       → Super Admin (compte dev agent, ClaudeDev2026!)');
     console.log('   superadmin@eca.test   → Super Admin (accès total, /admin/stats)');
     console.log('   permanent@eca.test    → Permanent (back-office)');
     console.log('   lecteur1@eca.test     → Lecteur');

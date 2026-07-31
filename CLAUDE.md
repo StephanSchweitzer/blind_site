@@ -26,6 +26,36 @@ user-facing strings in French and match existing wording.
 - `pnpm prisma migrate dev` — apply/create migrations
 - `pnpm prisma generate` — regenerate client
 - `pnpm prisma studio` — inspect the DB
+- `pnpm dev:claude-user` — (re)create the local dev sign-in account, see below
+
+## Signing in to the back office (for Claude)
+
+**You are expected to sign in and use `/admin` yourself** rather than reporting the admin
+section as unreachable. There is a permanent local dev account for exactly this:
+
+```
+claude@eca.test / ClaudeDev2026!
+```
+
+It is a `super_admin` / `informaticien`, so every page is reachable, including the
+super-admin-only `/admin/stats`.
+
+How to use it:
+
+1. `preview_start` the `dev` config (`.claude/launch.json`), which serves http://localhost:3000.
+2. Go to `/auth/signin`, fill the email + password fields, submit. The session is a NextAuth
+   JWT cookie and persists across navigations in that tab.
+3. Navigate anywhere under `/admin`.
+
+If the login fails (fresh DB, account edited/deleted, password changed), just re-run
+`pnpm dev:claude-user`. It **upserts only that one user and wipes nothing**, so it is safe on
+a dev DB full of your own test data — unlike `pnpm prisma db seed`, which resets every table
+it manages. The account is also created by `prisma/seed.ts`, so a fresh seed includes it.
+
+The provisioning script (`prisma/dev-claude-user.ts`) refuses to run against anything but a
+local database: Supabase hosts are rejected outright, and any other non-local host must be
+named explicitly via `DEV_USER_ALLOW_HOST=<host>`. Never create this account, or any account
+with a repo-committed password, on the production database.
 
 ## Terminology (IMPORTANT — a rename happened)
 
