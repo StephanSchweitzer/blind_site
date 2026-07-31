@@ -1,23 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { guardReaderEligible, guardCanReassignReader } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
+import { withAdmin } from '@/lib/auth/guards';
 
 /**
  * GET /api/assignments/[id]/readers - Get reader history for an assignment
  * Returns all reader assignments ordered by most recent first
  */
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withAdmin(async (_request, { params }) => {
     try {
-        const { id } = await params;
-        const assignmentId = parseInt(id);
+        const { id } = (await params) ?? {};
+        const assignmentId = Number(id);
 
-        if (isNaN(assignmentId)) {
+        if (!Number.isInteger(assignmentId)) {
             return NextResponse.json(
                 { message: 'ID d\'attribution invalide' },
                 { status: 400 }
@@ -62,7 +60,7 @@ export async function GET(
             { status: 500 }
         );
     }
-}
+});
 
 /**
  * POST /api/assignments/[id]/readers - Assign or reassign a reader to an assignment
@@ -76,16 +74,13 @@ export async function GET(
  * The date shown is this reader's AssignmentReader.assignedDate. The 'sent' email
  * (with sentToReaderDate) is owned by the EN_COURS transition in PUT /api/assignments/[id].
  */
-export async function POST(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const POST = withAdmin(async (request, { params }) => {
     revalidateAdmin();
     try {
-        const { id } = await params;
-        const assignmentId = parseInt(id);
+        const { id } = (await params) ?? {};
+        const assignmentId = Number(id);
 
-        if (isNaN(assignmentId)) {
+        if (!Number.isInteger(assignmentId)) {
             return NextResponse.json(
                 { message: 'ID d\'attribution invalide' },
                 { status: 400 }
@@ -202,4 +197,4 @@ export async function POST(
             { status: 500 }
         );
     }
-}
+});

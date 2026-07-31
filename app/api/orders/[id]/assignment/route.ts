@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAdmin } from '@/lib/auth/guards';
 
 /**
  * GET /api/orders/[id]/assignment
@@ -7,14 +8,11 @@ import { prisma } from '@/lib/prisma';
  * one-to-one with its assignment; if several ever exist we return the latest.
  * The reader is the current reader (most recent entry in the reader history).
  */
-export async function GET(
-    _request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    const { id } = await params;
-    const orderId = parseInt(id, 10);
+export const GET = withAdmin(async (_request, { params }) => {
+    const { id } = (await params) ?? {};
+    const orderId = Number(id);
 
-    if (Number.isNaN(orderId)) {
+    if (!Number.isInteger(orderId)) {
         return NextResponse.json({ message: 'orderId invalide' }, { status: 400 });
     }
 
@@ -62,4 +60,4 @@ export async function GET(
             { status: 500 }
         );
     }
-}
+});

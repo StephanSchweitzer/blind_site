@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { Prisma } from '@prisma/client';
+import { withAdmin } from '@/lib/auth/guards';
 
 interface GenreBody {
     name: string;
@@ -109,7 +110,7 @@ async function createGenre(data: GenreBody) {
 }
 
 // Request handlers
-export async function POST(request: NextRequest) {
+export const POST = withAdmin(async (request: NextRequest) => {
     revalidateAdmin();
     try {
         const body = await parseAndValidateBody(request);
@@ -143,10 +144,12 @@ export async function POST(request: NextRequest) {
         // Fallback for non-Error types
         return handleGenericError(new Error('An unknown error occurred'));
     }
-}
+});
 
 
-export async function GET() {
+// Back-office only: the public catalogue gets its genre list server-side via
+// `app/catalogue/data.ts`, not through this route.
+export const GET = withAdmin(async () => {
     try {
         const genres = await prisma.genre.findMany({
             orderBy: {
@@ -158,5 +161,5 @@ export async function GET() {
         console.error('Error fetching genres:', error);
         return NextResponse.json({ error: 'Failed to fetch genres' }, { status: 500 });
     }
-}
+});
 

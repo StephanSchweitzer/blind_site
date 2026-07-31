@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
@@ -13,19 +13,17 @@ import {
     guardOrderNotSettled,
     syncOrderToStatus,
 } from '@/lib/statusSync';
+import { withAdmin } from '@/lib/auth/guards';
 
 /**
  * GET /api/assignments/[id] - Get a single assignment by ID
  */
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withAdmin(async (_request, { params }) => {
     try {
-        const { id } = await params;
-        const assignmentId = parseInt(id);
+        const { id } = (await params) ?? {};
+        const assignmentId = Number(id);
 
-        if (isNaN(assignmentId)) {
+        if (!Number.isInteger(assignmentId)) {
             return NextResponse.json(
                 { message: 'ID d\'attribution invalide' },
                 { status: 400 }
@@ -52,23 +50,20 @@ export async function GET(
             { status: 500 }
         );
     }
-}
+});
 
 /**
  * PUT /api/assignments/[id] - Update an assignment.
  * A status change (1–3) propagates up to the linked order.
  * Reader assignments are managed via POST /api/assignments/[id]/readers.
  */
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const PUT = withAdmin(async (request, { params }) => {
     revalidateAdmin();
     try {
-        const { id } = await params;
-        const assignmentId = parseInt(id);
+        const { id } = (await params) ?? {};
+        const assignmentId = Number(id);
 
-        if (isNaN(assignmentId)) {
+        if (!Number.isInteger(assignmentId)) {
             return NextResponse.json(
                 { message: 'ID d\'attribution invalide' },
                 { status: 400 }
@@ -238,23 +233,20 @@ export async function PUT(
             { status: 500 }
         );
     }
-}
+});
 
 /**
  * DELETE /api/assignments/[id] - Delete an assignment.
  * Cascading delete removes related AssignmentReader records.
  * The linked order keeps its current status and becomes freely editable again.
  */
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAdmin(async (_request, { params }) => {
     revalidateAdmin();
     try {
-        const { id } = await params;
-        const assignmentId = parseInt(id);
+        const { id } = (await params) ?? {};
+        const assignmentId = Number(id);
 
-        if (isNaN(assignmentId)) {
+        if (!Number.isInteger(assignmentId)) {
             return NextResponse.json(
                 { message: 'ID d\'attribution invalide' },
                 { status: 400 }
@@ -296,4 +288,4 @@ export async function DELETE(
             { status: 500 }
         );
     }
-}
+});

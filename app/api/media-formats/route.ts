@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAdmin } from '@/lib/auth/guards';
 
-export async function GET() {
+// Reference list for the back-office user/demande forms (cf. /api/civilities).
+export const GET = withAdmin(async () => {
     try {
         const mediaFormats = await prisma.mediaFormat.findMany({
             select: {
@@ -19,4 +21,4 @@ export async function GET() {
         console.error('Error fetching media formats:', error);
         return NextResponse.json({ error: 'Failed to fetch media formats' }, { status: 500 });
     }
-}
+});

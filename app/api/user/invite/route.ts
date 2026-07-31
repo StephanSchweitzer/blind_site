@@ -8,17 +8,6 @@ import { isSendableEmail } from '@/lib/email/sendEmail';
 import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 import { withSuperAdmin } from '@/lib/auth/guards';
 
-export async function OPTIONS() {
-    return NextResponse.json({}, {
-        status: 200,
-        headers: {
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            'Access-Control-Allow-Origin': '*',
-        },
-    });
-}
-
 export const POST = withSuperAdmin(async (req) => {
     revalidateAdmin();
     try {

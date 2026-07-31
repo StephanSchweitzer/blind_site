@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAdmin } from '@/lib/auth/guards';
 
-export async function GET() {
+// Reference list for the back-office demande/attribution forms (cf. /api/civilities).
+export const GET = withAdmin(async () => {
     try {
         const statuses = await prisma.status.findMany({
             select: {
@@ -25,4 +27,4 @@ export async function GET() {
         console.error('Error fetching statuses:', error);
         return NextResponse.json({ error: 'Failed to fetch statuses' }, { status: 500 });
     }
-}
+});

@@ -3,25 +3,27 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
-import { NextRequest } from 'next/server';
+import { withAdmin } from '@/lib/auth/guards';
 
-interface Params {
-    params: Promise<{
-        id: string;
-        bookId: string;
-    }>;
+/** The composite key from the route params, or null when either part isn't numeric. */
+async function keyFrom(params?: Promise<Record<string, string>>) {
+    const { id, bookId } = (await params) ?? {};
+    const coupsDeCoeurId = Number(id);
+    const book = Number(bookId);
+    if (!Number.isInteger(coupsDeCoeurId) || !Number.isInteger(book)) return null;
+    return { coupsDeCoeurId, bookId: book };
 }
 
-export async function GET(req: NextRequest, { params }: Params) {
-    const { id, bookId } = await params;
+const invalidId = () => NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
+
+export const GET = withAdmin(async (_req, { params }) => {
+    const key = await keyFrom(params);
+    if (!key) return invalidId();
 
     try {
         const relation = await prisma.coupsDeCoeurBooks.findUnique({
             where: {
-                coupsDeCoeurId_bookId: {
-                    coupsDeCoeurId: parseInt(id, 10),
-                    bookId: parseInt(bookId, 10)
-                }
+                coupsDeCoeurId_bookId: key
             }
         });
 
@@ -34,18 +36,16 @@ export async function GET(req: NextRequest, { params }: Params) {
         console.error('Failed to check book in coup de coeur:', error);
         return NextResponse.json({ error: 'Failed to check book' }, { status: 500 });
     }
-}
+});
 
-export async function POST(req: NextRequest, { params }: Params) {
+export const POST = withAdmin(async (_req, { params }) => {
     revalidateAdmin();
-    const { id, bookId } = await params;
+    const key = await keyFrom(params);
+    if (!key) return invalidId();
 
     try {
         const newRelation = await prisma.coupsDeCoeurBooks.create({
-            data: {
-                coupsDeCoeurId: parseInt(id, 10),
-                bookId: parseInt(bookId, 10)
-            }
+            data: key
         });
 
         revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
@@ -55,19 +55,17 @@ export async function POST(req: NextRequest, { params }: Params) {
         console.error('Failed to add book to coup de coeur:', error);
         return NextResponse.json({ error: 'Failed to add book' }, { status: 500 });
     }
-}
+});
 
-export async function DELETE(req: NextRequest, { params }: Params) {
+export const DELETE = withAdmin(async (_req, { params }) => {
     revalidateAdmin();
-    const { id, bookId } = await params;
+    const key = await keyFrom(params);
+    if (!key) return invalidId();
 
     try {
         await prisma.coupsDeCoeurBooks.delete({
             where: {
-                coupsDeCoeurId_bookId: {
-                    coupsDeCoeurId: parseInt(id, 10),
-                    bookId: parseInt(bookId, 10)
-                }
+                coupsDeCoeurId_bookId: key
             }
         });
 
@@ -78,4 +76,4 @@ export async function DELETE(req: NextRequest, { params }: Params) {
         console.error('Failed to remove book from coup de coeur:', error);
         return NextResponse.json({ error: 'Failed to remove book' }, { status: 500 });
     }
-}
+});

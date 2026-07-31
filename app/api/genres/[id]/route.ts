@@ -1,29 +1,11 @@
 // app/api/genres/[id]/route.ts
 import { prisma } from '@/lib/prisma';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { withAdmin } from '@/lib/auth/guards';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-export async function OPTIONS() {
-    return NextResponse.json({}, { headers: corsHeaders });
-}
-
-interface Params {
-    params: Promise<{
-        id: string;
-    }>;
-}
-
-export async function PUT(
-    request: NextRequest,
-    { params }: Params
-) {
+export const PUT = withAdmin(async (request, { params }) => {
     revalidateAdmin();
     try {
         const body = await request.json();
@@ -31,21 +13,19 @@ export async function PUT(
         if (!body?.name) {
             return NextResponse.json(
                 { error: 'Name is required' },
-                {
-                    status: 400,
-                    headers: {
-                        ...corsHeaders,
-                        'Content-Type': 'application/json',
-                    }
-                }
+                { status: 400 }
             );
         }
 
-        const { id } = await params;
+        const { id } = (await params) ?? {};
+        const genreId = Number(id);
+        if (!Number.isInteger(genreId)) {
+            return NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
+        }
 
         const genre = await prisma.genre.update({
             where: {
-                id: parseInt(id, 10)
+                id: genreId
             },
             data: {
                 name: body.name,
@@ -60,7 +40,6 @@ export async function PUT(
             {
                 status: 200,
                 headers: {
-                    ...corsHeaders,
                     'Content-Type': 'application/json',
                     'Cache-Control': 'no-store',
                 }
@@ -70,47 +49,33 @@ export async function PUT(
         console.error('Error updating genre:', error);
         return NextResponse.json(
             { error: 'Failed to update genre' },
-            {
-                status: 500,
-                headers: {
-                    ...corsHeaders,
-                    'Content-Type': 'application/json',
-                }
-            }
+            { status: 500 }
         );
     }
-}
+});
 
-export async function DELETE(
-    request: NextRequest,
-    { params }: Params
-) {
+export const DELETE = withAdmin(async (_request, { params }) => {
     revalidateAdmin();
     try {
-        const { id } = await params;
+        const { id } = (await params) ?? {};
+        const genreId = Number(id);
+        if (!Number.isInteger(genreId)) {
+            return NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
+        }
 
         await prisma.genre.delete({
-            where: { id: parseInt(id, 10) },
+            where: { id: genreId },
         });
 
         revalidateCatalogue();
 
-        return NextResponse.json(
-            { success: true },
-            {
-                status: 200,
-                headers: corsHeaders
-            }
-        );
+        return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
         console.error('Error deleting genre:', error);
 
         return NextResponse.json(
             { error: 'Failed to delete genre' },
-            {
-                status: 500,
-                headers: corsHeaders
-            }
+            { status: 500 }
         );
     }
-}
+});

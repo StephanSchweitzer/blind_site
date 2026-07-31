@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withAdmin } from '@/lib/auth/guards';
 
-export async function GET(request: NextRequest) {
+// Admin-only: this proxies our metered Google Books key, so an open route lets
+// anyone spend our quota. Only the back-office book search calls it.
+export const GET = withAdmin(async (request) => {
     const q = request.nextUrl.searchParams.get('q')?.trim();
     if (!q) {
         return NextResponse.json({ error: 'Missing query' }, { status: 400 });
@@ -37,4 +40,4 @@ export async function GET(request: NextRequest) {
         console.error('Google Books proxy error:', error);
         return NextResponse.json({ error: 'Failed to reach Google Books' }, { status: 502 });
     }
-}
+});

@@ -13,8 +13,9 @@ import {
 } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
+import { withAdmin } from '@/lib/auth/guards';
 
-export async function GET(request: NextRequest) {
+export const GET = withAdmin(async (request: NextRequest) => {
     try {
         const searchParams = request.nextUrl.searchParams;
         const id = searchParams.get('id');
@@ -89,9 +90,9 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAdmin(async (request: NextRequest) => {
     revalidateAdmin();
     try {
         const body = await request.json();
@@ -310,4 +311,4 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

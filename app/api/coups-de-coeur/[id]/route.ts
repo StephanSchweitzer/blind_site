@@ -3,21 +3,21 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
-import { NextRequest } from 'next/server';
+import { withAdmin } from '@/lib/auth/guards';
 
-interface Params {
-    params: Promise<{
-        id: string;
-    }>;
-}
-
-// GET: Fetch a specific coup de coeur by ID
-export async function GET(req: NextRequest, { params }: Params) {
-    const { id } = await params;
+// Back-office only. The public /coups-de-coeur page reads the active list
+// through `/api/coups-de-coeur` (and /preview, /position), which stay open;
+// this route is the editor's view of a single entry.
+export const GET = withAdmin(async (_req, { params }) => {
+    const { id } = (await params) ?? {};
+    const coupId = Number(id);
+    if (!Number.isInteger(coupId)) {
+        return NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
+    }
 
     try {
         const coupDeCoeur = await prisma.coupsDeCoeur.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: coupId },
             include: {
                 books: {
                     include: {
@@ -36,12 +36,16 @@ export async function GET(req: NextRequest, { params }: Params) {
         console.error('Failed to fetch coup de coeur:', error);
         return NextResponse.json({ error: 'Failed to fetch coup de coeur' }, { status: 500 });
     }
-}
+});
 
 // PUT: Update a specific coup de coeur by ID
-export async function PUT(req: NextRequest, { params }: Params) {
+export const PUT = withAdmin(async (req, { params }) => {
     revalidateAdmin();
-    const { id } = await params;
+    const { id } = (await params) ?? {};
+    const coupId = Number(id);
+    if (!Number.isInteger(coupId)) {
+        return NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
+    }
 
     try {
         const { title, description, audioPath, bookIds, active } = await req.json();
@@ -56,7 +60,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         const updatedCoupDeCoeur = await prisma.$transaction(async (tx) => {
             // Update the main record first
             const updated = await tx.coupsDeCoeur.update({
-                where: { id: parseInt(id, 10) },
+                where: { id: coupId },
                 data: {
                     title,
                     description,
@@ -69,19 +73,19 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
             // Delete and recreate relationships in bulk
             await tx.coupsDeCoeurBooks.deleteMany({
-                where: { coupsDeCoeurId: parseInt(id, 10) }
+                where: { coupsDeCoeurId: coupId }
             });
 
             await tx.coupsDeCoeurBooks.createMany({
                 data: bookIds.map(bookId => ({
-                    coupsDeCoeurId: parseInt(id, 10),
+                    coupsDeCoeurId: coupId,
                     bookId: parseInt(bookId, 10)
                 }))
             });
 
             // Fetch the final result
             return tx.coupsDeCoeur.findUnique({
-                where: { id: parseInt(id, 10) },
+                where: { id: coupId },
                 include: {
                     books: {
                         include: {
@@ -104,22 +108,26 @@ export async function PUT(req: NextRequest, { params }: Params) {
         console.error('Failed to update coup de coeur:', error);
         return NextResponse.json({ error: 'Failed to update coup de coeur' }, { status: 500 });
     }
-}
+});
 
 // DELETE: Delete a specific coup de coeur by ID
-export async function DELETE(req: NextRequest, { params }: Params) {
+export const DELETE = withAdmin(async (_req, { params }) => {
     revalidateAdmin();
-    const { id } = await params;
+    const { id } = (await params) ?? {};
+    const coupId = Number(id);
+    if (!Number.isInteger(coupId)) {
+        return NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
+    }
 
     try {
         // First delete the related CoupsDeCoeurBooks entries
         await prisma.coupsDeCoeurBooks.deleteMany({
-            where: { coupsDeCoeurId: parseInt(id, 10) }
+            where: { coupsDeCoeurId: coupId }
         });
 
         // Then delete the CoupsDeCoeur entry
         await prisma.coupsDeCoeur.delete({
-            where: { id: parseInt(id, 10) }
+            where: { id: coupId }
         });
 
         revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
@@ -129,4 +137,4 @@ export async function DELETE(req: NextRequest, { params }: Params) {
         console.error('Failed to delete coup de coeur:', error);
         return NextResponse.json({ error: 'Failed to delete coup de coeur' }, { status: 500 });
     }
-}
+});
