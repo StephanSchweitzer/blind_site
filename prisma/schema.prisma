@@ -39,6 +39,12 @@ model User {
   isActive                 Boolean?            @default(true)
   activityStatus           UserActivityStatus  @default(ACTIVE)
   activityChangedAt        DateTime?
+  /// UNAVAILABLE window, both ends inclusive, stored as UTC-midnight days.
+  /// The EFFECTIVE status is computed from these at read time
+  /// (lib/users/activityStatus.ts): a window that hasn't started yet, or that
+  /// has elapsed, reads as ACTIVE. Nothing rewrites these rows on a schedule.
+  unavailableFrom          DateTime?
+  unavailableUntil         DateTime?
   /// LEGACY: superseded by UserActivityEvent history; no longer written. Refactor out.
   terminationDate          DateTime?
   /// LEGACY: superseded by UserActivityEvent.reason; no longer written. Refactor out.
@@ -492,14 +498,24 @@ enum BillEventType {
   ORDER_DETACHED
 }
 
+/// Five statuses are offered, for every member type: ACTIVE, UNAVAILABLE,
+/// RADIATION, DEMISSION, DECEASED (see lib/user-activity-enums.ts). The others
+/// are LEGACY: rows recorded under them keep rendering, but they are never
+/// offered for a new change. Enum values are kept — dropping one would orphan
+/// existing User rows and UserActivityEvent history.
 enum UserActivityStatus {
   ACTIVE
-  INACTIVE
-  ON_VACATION
-  SUSPENDED
+  UNAVAILABLE
   DECEASED
   DEMISSION
   RADIATION
+  /// LEGACY: no longer offered.
+  INACTIVE
+  /// LEGACY: no longer offered — superseded by UNAVAILABLE + its date window.
+  ON_VACATION
+  /// LEGACY: no longer offered.
+  SUSPENDED
+  /// LEGACY: no longer offered — superseded by UNAVAILABLE + its date window.
   PB_SANTE_MENTALE
 }
 
@@ -511,6 +527,10 @@ model UserActivityEvent {
   toStatus    UserActivityStatus
   reason      String?
   comment     String?
+  /// Window recorded with the change when toStatus is UNAVAILABLE, so the
+  /// history keeps showing the dates that were set even after they change.
+  unavailableFrom  DateTime?
+  unavailableUntil DateTime?
   changedById Int?
   changedAt   DateTime            @default(now())
   user        User                @relation("UserActivityEvents", fields: [userId], references: [id])

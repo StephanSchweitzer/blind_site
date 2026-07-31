@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { withSuperAdmin } from '@/lib/auth/guards';
 import { isValidRange, isoUtc, parisDayStartUtc, parseDateParam } from '@/lib/stats';
 import { getUserDisplayName } from '@/lib/users/displayName';
+import { resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
 import type { ReaderActivityMarker, ReaderInterval, ReaderStatsResponse } from '@/types';
 
 // Module B: attribution intervals per reader (sentToReaderDate → returnedToECADate),
@@ -20,6 +21,8 @@ interface RawUserRow {
     lastName: string | null;
     email: string | null;
     activityStatus: string;
+    unavailableFrom: Date | null;
+    unavailableUntil: Date | null;
 }
 
 export const GET = withSuperAdmin(async (request) => {
@@ -70,7 +73,9 @@ export const GET = withSuperAdmin(async (request) => {
         // findMany, but historical attributions must keep naming their reader.
         const [users, activityEvents] = await Promise.all([
             prisma.$queryRaw<RawUserRow[]>`
-                SELECT id, name, "firstName", "lastName", email, "activityStatus"::text AS "activityStatus"
+                SELECT id, name, "firstName", "lastName", email,
+                       "activityStatus"::text AS "activityStatus",
+                       "unavailableFrom", "unavailableUntil"
                 FROM "User"
                 WHERE id IN (${Prisma.join(readerIds)})`,
             prisma.$queryRaw<ReaderActivityMarker[]>`
@@ -86,7 +91,9 @@ export const GET = withSuperAdmin(async (request) => {
             readers: users.map((u) => ({
                 id: u.id,
                 name: getUserDisplayName(u),
-                activityStatus: u.activityStatus,
+                // Effective status: the timeline flags a reader as inactive only
+                // when they read as such today.
+                activityStatus: resolveEffectiveActivityStatus(u),
             })),
             intervals,
             activityEvents,

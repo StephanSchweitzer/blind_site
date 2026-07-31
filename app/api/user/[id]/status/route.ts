@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { getUserActivitySnapshot, composeUserDisplayName } from '@/lib/users/activityGuard';
-import { getUserActivityStatusLabel, ACTIVE_USER_ACTIVITY_STATUSES } from '@/lib/user-activity-enums';
+import { getUserActivityStatusLabel } from '@/lib/user-activity-enums';
+import {
+    describeUnavailability,
+    isEffectivelyActive,
+    resolveEffectiveActivityStatus,
+    toDayString,
+} from '@/lib/users/activityStatus';
 
 /**
  * GET /api/user/[id]/status
@@ -30,12 +36,21 @@ export const GET = withAdmin(async (
 
     const { user, latestEvent } = snapshot;
 
+    // Effective status: a booked-but-not-started (or already elapsed)
+    // unavailability reads as ACTIVE and must not block the form.
+    const effectiveStatus = resolveEffectiveActivityStatus(user);
+
     return NextResponse.json({
         id: user.id,
         name: composeUserDisplayName(user),
-        activityStatus: user.activityStatus,
-        statusLabel: getUserActivityStatusLabel(user.activityStatus),
-        isActive: (ACTIVE_USER_ACTIVITY_STATUSES as readonly string[]).includes(user.activityStatus),
+        activityStatus: effectiveStatus,
+        statusLabel: getUserActivityStatusLabel(effectiveStatus),
+        statusDetail: describeUnavailability(user),
+        isActive: isEffectivelyActive(user),
+        // The stored window, so the dialog can prefill it when the permanent
+        // edits the unavailability instead of ending it.
+        unavailableFrom: toDayString(user.unavailableFrom),
+        unavailableUntil: toDayString(user.unavailableUntil),
         reason: latestEvent?.reason ?? null,
         comment: latestEvent?.comment ?? null,
         changedAt: (latestEvent?.changedAt ?? user.activityChangedAt)?.toISOString() ?? null,

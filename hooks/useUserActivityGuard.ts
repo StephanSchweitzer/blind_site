@@ -5,8 +5,11 @@ import { useCallback, useRef, useState } from "react";
 export interface ActivityBlockInfo {
     userId: number;
     name: string;
+    /** Effective status: the dates of an unavailability are already applied. */
     activityStatus: string;
     statusLabel: string;
+    /** "jusqu'au 15/08/2026" when an unavailability window is in force. */
+    statusDetail?: string | null;
     reason: string | null;
     comment: string | null;
     changedAt: string | null;
@@ -68,6 +71,7 @@ export function useUserActivityGuard() {
                         name: data.name,
                         activityStatus: data.activityStatus,
                         statusLabel: data.statusLabel,
+                        statusDetail: data.statusDetail ?? null,
                         reason: data.reason,
                         comment: data.comment,
                         changedAt: data.changedAt,

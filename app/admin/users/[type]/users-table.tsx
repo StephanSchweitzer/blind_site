@@ -43,10 +43,12 @@ import {
     getLanguageLabel,
 } from '@/lib/user-enums';
 import {
-    USER_ACTIVITY_STATUS_VALUES,
+    OFFERED_USER_ACTIVITY_STATUSES,
+    LEGACY_USER_ACTIVITY_STATUSES,
     getUserActivityStatusLabel,
     getUserActivityStatusColor,
 } from '@/lib/user-activity-enums';
+import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
 
 interface UsersTableProps {
     type: UserType;
@@ -58,6 +60,8 @@ interface UsersTableProps {
         memberType: string;
         accessLevel: string;
         activityStatus: string;
+        unavailableFrom: Date | string | null;
+        unavailableUntil: Date | string | null;
         lastUpdated: string | null;
         civility?: { name: string } | null;
     }>;
@@ -72,6 +76,29 @@ interface UsersTableProps {
     activeCount: number;
     inactiveCount: number;
     currentUserAccessLevel?: string;
+}
+
+/**
+ * Status badge: the EFFECTIVE status, with the end date of an unavailability
+ * spelled out under it. A window that has elapsed, or has not started, simply
+ * reads as Actif — nothing rewrote the row.
+ */
+function StatusCell({
+    user,
+}: {
+    user: { activityStatus: string; unavailableFrom: Date | string | null; unavailableUntil: Date | string | null };
+}) {
+    const status = resolveEffectiveActivityStatus(user);
+    const detail = describeUnavailability(user);
+
+    return (
+        <div className="flex flex-col gap-0.5">
+            <span className={`inline-flex w-fit items-center rounded-full px-2 py-1 text-xs font-medium ${getUserActivityStatusColor(status)}`}>
+                {getUserActivityStatusLabel(status)}
+            </span>
+            {detail && <span className="text-xs text-muted-foreground">{detail}</span>}
+        </div>
+    );
 }
 
 export default function UsersTable({
@@ -353,9 +380,16 @@ export default function UsersTable({
                         <SelectContent className="bg-card border-border">
                             <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
                             <SelectItem value="inactive" className="text-foreground">Inactifs (tous sauf actifs)</SelectItem>
-                            {USER_ACTIVITY_STATUS_VALUES.map((s) => (
+                            {OFFERED_USER_ACTIVITY_STATUSES.map((s) => (
                                 <SelectItem key={s} value={s} className="text-foreground">
                                     {getUserActivityStatusLabel(s)}
+                                </SelectItem>
+                            ))}
+                            {/* Retired statuses stay filterable so the people left
+                                on them can still be found — just listed apart. */}
+                            {LEGACY_USER_ACTIVITY_STATUSES.map((s) => (
+                                <SelectItem key={s} value={s} className="text-muted-foreground">
+                                    {getUserActivityStatusLabel(s)} (ancien)
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -436,9 +470,7 @@ export default function UsersTable({
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getUserActivityStatusColor(user.activityStatus)}`}>
-                                                        {getUserActivityStatusLabel(user.activityStatus)}
-                                                    </span>
+                                                    <StatusCell user={user} />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">{formatDate(user.lastUpdated)}</TableCell>
                                             </TableRow>

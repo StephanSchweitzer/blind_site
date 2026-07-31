@@ -1,12 +1,12 @@
 import { prisma } from '@/lib/prisma';
-import { Prisma, UserActivityStatus, Language } from '@prisma/client';
+import { Prisma, Language } from '@prisma/client';
 import UsersTable from './users-table';
 import { notFound } from 'next/navigation';
 import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { redirect } from 'next/navigation';
 import { UserTypeTabs } from './user-type-tabs';
 import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
-import { USER_ACTIVITY_STATUS_VALUES } from '@/lib/user-activity-enums';
+import { activityStatusFilterWhere, effectivelyActiveWhere } from '@/lib/users/activityStatus';
 import { LANGUAGE_VALUES } from '@/lib/user-enums';
 import { cotisationCoverageQuery } from '@/lib/cotisation';
 
@@ -100,14 +100,18 @@ async function getUsers(
     }
 
     // The list adds the activity-status filter on top of the scoped population.
-    const listWhere: Prisma.UserWhereInput = { ...scopedWhere };
-    if (statusFilter === 'active') {
-        listWhere.activityStatus = UserActivityStatus.ACTIVE;
-    } else if (statusFilter === 'inactive') {
-        listWhere.activityStatus = { not: UserActivityStatus.ACTIVE };
-    } else if ((USER_ACTIVITY_STATUS_VALUES as readonly string[]).includes(statusFilter)) {
-        listWhere.activityStatus = statusFilter as UserActivityStatus;
-    }
+    // The filter matches the EFFECTIVE status (an unavailability whose window
+    // is not in force reads as Actif), so it is a `where` fragment, not a plain
+    // column comparison — wrapped in AND so it can't collide with the search's
+    // own AND on scopedWhere.
+    const statusWhere = activityStatusFilterWhere(statusFilter);
+    const listWhere: Prisma.UserWhereInput = statusWhere
+        ? { AND: [scopedWhere, statusWhere] }
+        : scopedWhere;
+    const activeWhere: Prisma.UserWhereInput = { AND: [scopedWhere, effectivelyActiveWhere()] };
+    const inactiveWhere: Prisma.UserWhereInput = {
+        AND: [scopedWhere, { NOT: effectivelyActiveWhere() }],
+    };
 
     try {
         const [users, totalUsers, activeCount, inactiveCount] = await Promise.all([
@@ -125,13 +129,15 @@ async function getUsers(
                     memberType: true,
                     accessLevel: true,
                     activityStatus: true,
+                    unavailableFrom: true,
+                    unavailableUntil: true,
                     lastUpdated: true,
                     civility: { select: { name: true } },
                 },
             }),
             prisma.user.count({ where: listWhere }),
-            prisma.user.count({ where: { ...scopedWhere, activityStatus: UserActivityStatus.ACTIVE } }),
-            prisma.user.count({ where: { ...scopedWhere, activityStatus: { not: UserActivityStatus.ACTIVE } } }),
+            prisma.user.count({ where: activeWhere }),
+            prisma.user.count({ where: inactiveWhere }),
         ]);
 
         return {

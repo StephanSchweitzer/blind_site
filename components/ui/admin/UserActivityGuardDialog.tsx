@@ -7,20 +7,18 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
-    USER_ACTIVITY_STATUS_VALUES,
     getUserActivityStatusLabel,
+    needsActivityStatusConfirmation,
 } from '@/lib/user-activity-enums';
-import { withCurrentValue } from '@/lib/select-options';
+import {
+    ActivityStatusConfirmDialog,
+    ActivityStatusFields,
+    useActivityStatusDraft,
+} from '@/components/ui/admin/ActivityStatusFields';
+import { isEffectivelyActive } from '@/lib/users/activityStatus';
 import type { ActivityBlockInfo, ActivityGuardRole } from '@/hooks/useUserActivityGuard';
 
 const ROLE_ACTION: Record<ActivityGuardRole, string> = {
@@ -44,9 +42,10 @@ export function UserActivityGuardDialog({
     onClose: (proceed: boolean) => void;
 }) {
     const { toast } = useToast();
-    const [toStatus, setToStatus] = useState<string>('ACTIVE');
+    const draft = useActivityStatusDraft({ status: 'ACTIVE' });
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
     // Reset the small form every time a new person is presented. Done during
     // render instead of in an effect to avoid the cascading re-render the
@@ -58,14 +57,18 @@ export function UserActivityGuardDialog({
     if (currentId !== prevBlockedId) {
         setPrevBlockedId(currentId);
         if (blocked) {
-            setToStatus('ACTIVE');
+            draft.reset('ACTIVE');
             setComment('');
+            setPendingStatus(null);
         }
     }
 
     if (!blocked) return null;
 
+    const toStatus = draft.status;
+
     const handleReactivate = async () => {
+        setPendingStatus(null);
         setIsSubmitting(true);
         try {
             const res = await fetch(`/api/user/${blocked.userId}/activity`, {
@@ -73,7 +76,7 @@ export function UserActivityGuardDialog({
                 headers: { 'Content-Type': 'application/json' },
                 // No `reason`: the motif field is gone — the comment carries the wording now.
                 body: JSON.stringify({
-                    toStatus,
+                    ...draft.payload(),
                     comment: comment.trim() || undefined,
                 }),
             });
@@ -95,9 +98,16 @@ export function UserActivityGuardDialog({
             });
 
             setIsSubmitting(false);
-            // Only ACTIVE actually unblocks the order/assignment action — any
-            // other status leaves the person still ineligible.
-            onClose(toStatus === 'ACTIVE');
+            // Only an EFFECTIVELY active person unblocks the order/assignment
+            // action. An unavailability booked for later counts as active today
+            // (the server guard agrees); any other status leaves them blocked.
+            onClose(
+                isEffectivelyActive({
+                    activityStatus: toStatus,
+                    unavailableFrom: draft.needsWindow ? draft.from : null,
+                    unavailableUntil: draft.needsWindow ? draft.until : null,
+                })
+            );
         } catch (err) {
             console.error('Reactivation error:', err);
             toast({
@@ -128,6 +138,7 @@ export function UserActivityGuardDialog({
                     <p>
                         <span className="font-semibold">{blocked.name}</span> est{' '}
                         <span className="font-semibold">{blocked.statusLabel.toLowerCase()}</span>
+                        {blocked.statusDetail ? <> {blocked.statusDetail}</> : null}
                         {blocked.reason ? <> pour le motif « {blocked.reason} »</> : null}.
                     </p>
                     {blocked.comment && (
@@ -141,20 +152,11 @@ export function UserActivityGuardDialog({
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Nouveau statut</label>
-                        <Select value={toStatus} onValueChange={setToStatus}>
-                            <SelectTrigger className="bg-field border-border text-foreground">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {/* The person's own status stays listed even if it is no
-                                    longer offered, so the list never hides where they are. */}
-                                {withCurrentValue(USER_ACTIVITY_STATUS_VALUES, blocked.activityStatus).map((value) => (
-                                    <SelectItem key={value} value={value}>
-                                        {getUserActivityStatusLabel(value)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <ActivityStatusFields
+                            draft={draft}
+                            currentStatus={blocked.activityStatus}
+                            triggerClassName="bg-field border-border text-foreground"
+                        />
                     </div>
 
                     <div className="space-y-2">
@@ -172,13 +174,26 @@ export function UserActivityGuardDialog({
                         Annuler
                     </Button>
                     <Button
-                        onClick={handleReactivate}
-                        disabled={isSubmitting}
+                        onClick={() => {
+                            if (needsActivityStatusConfirmation(toStatus)) {
+                                setPendingStatus(toStatus);
+                                return;
+                            }
+                            void handleReactivate();
+                        }}
+                        disabled={isSubmitting || !draft.isComplete}
                         className="bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                         {isSubmitting ? 'Mise à jour...' : 'Réactiver et continuer'}
                     </Button>
                 </div>
+
+                <ActivityStatusConfirmDialog
+                    status={pendingStatus}
+                    personName={blocked.name}
+                    onConfirm={() => void handleReactivate()}
+                    onCancel={() => setPendingStatus(null)}
+                />
             </DialogContent>
         </Dialog>
     );

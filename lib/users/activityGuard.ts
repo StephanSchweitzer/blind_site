@@ -1,5 +1,10 @@
 import { prisma } from '@/lib/prisma';
-import { ACTIVE_USER_ACTIVITY_STATUSES, getUserActivityStatusLabel } from '@/lib/user-activity-enums';
+import { getUserActivityStatusLabel } from '@/lib/user-activity-enums';
+import {
+    describeUnavailability,
+    isEffectivelyActive,
+    resolveEffectiveActivityStatus,
+} from '@/lib/users/activityStatus';
 import type { UserActivityStatus } from '@prisma/client';
 
 /**
@@ -9,8 +14,11 @@ import type { UserActivityStatus } from '@prisma/client';
 export interface BlockedActivityInfo {
     userId: number;
     name: string;
+    /** EFFECTIVE status - what the person reads as today, dates applied. */
     activityStatus: UserActivityStatus;
     statusLabel: string;
+    /** "jusqu'au 15/08/2026" when an unavailability window is in force. */
+    statusDetail: string | null;
     reason: string | null;
     comment: string | null;
     changedAt: string | null;
@@ -35,10 +43,6 @@ export function composeUserDisplayName(u: NameParts): string {
     return composed || u.name || u.email || 'Personne sans nom';
 }
 
-function isActiveStatus(status: UserActivityStatus): boolean {
-    return (ACTIVE_USER_ACTIVITY_STATUSES as readonly string[]).includes(status);
-}
-
 const userActivitySelect = {
     id: true,
     name: true,
@@ -47,6 +51,8 @@ const userActivitySelect = {
     lastName: true,
     activityStatus: true,
     activityChangedAt: true,
+    unavailableFrom: true,
+    unavailableUntil: true,
     civility: { select: { name: true } },
 } as const;
 
@@ -73,7 +79,8 @@ export async function getUserActivitySnapshot(userId: number) {
 
 /**
  * Guard used before linking a person to a new order (as auditeur/aveugle) or
- * a new assignment (as lecteur): they must currently be ACTIVE. Returns a
+ * a new assignment (as lecteur): they must currently READ as ACTIVE — which
+ * for an unavailability means the window is not in force today. Returns a
  * structured `blocked` payload on failure so the API can answer 409 with
  * enough detail for the admin UI to offer reactivation right there, instead
  * of sending the admin to the user's profile.
@@ -94,6 +101,7 @@ export async function guardUserIsActive(
                 name: 'Personne introuvable',
                 activityStatus: 'INACTIVE' as UserActivityStatus,
                 statusLabel: 'Inconnu',
+                statusDetail: null,
                 reason: null,
                 comment: null,
                 changedAt: null,
@@ -103,20 +111,23 @@ export async function guardUserIsActive(
 
     const { user, latestEvent } = snapshot;
 
-    if (isActiveStatus(user.activityStatus)) {
+    if (isEffectivelyActive(user)) {
         return { ok: true };
     }
 
+    const effectiveStatus = resolveEffectiveActivityStatus(user) as UserActivityStatus;
     const name = composeUserDisplayName(user);
-    const statusLabel = getUserActivityStatusLabel(user.activityStatus);
+    const statusLabel = getUserActivityStatusLabel(effectiveStatus);
+    const statusDetail = describeUnavailability(user);
     const reason = latestEvent?.reason ?? null;
     const action = role === 'aveugle' ? 'lui attribuer une demande' : 'lui assigner une attribution';
 
     const blocked: BlockedActivityInfo = {
         userId: user.id,
         name,
-        activityStatus: user.activityStatus,
+        activityStatus: effectiveStatus,
         statusLabel,
+        statusDetail,
         reason,
         comment: latestEvent?.comment ?? null,
         changedAt: (latestEvent?.changedAt ?? user.activityChangedAt)?.toISOString() ?? null,
@@ -126,7 +137,8 @@ export async function guardUserIsActive(
         ok: false,
         httpStatus: 409,
         message:
-            `${name} est ${statusLabel.toLowerCase()}${reason ? ` (${reason})` : ''}. ` +
+            `${name} est ${statusLabel.toLowerCase()}${statusDetail ? ` ${statusDetail}` : ''}` +
+            `${reason ? ` (${reason})` : ''}. ` +
             `Pour continuer, vous devez réactiver cette personne avant de ${action}.`,
         blocked,
     };
