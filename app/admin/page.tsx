@@ -17,6 +17,7 @@ export default async function Dashboard() {
         reviewCount,
         lecteursCount,
         auditeursCount,
+        bienfaiteursCount,
         permanentsCount,
         assignmentCount,
         orderCount,
@@ -35,6 +36,7 @@ export default async function Dashboard() {
         prisma.book.count({ where: { needsReview: true } }),
         prisma.user.count({ where: { memberType: 'lecteur' } }),
         prisma.user.count({ where: { memberType: 'auditeur' } }),
+        prisma.user.count({ where: { memberType: 'bienfaiteur' } }),
         prisma.user.count({ where: { accessLevel: { in: ['admin', 'super_admin'] } } }),
         prisma.assignment.count(),
         prisma.orders.count(),
@@ -129,6 +131,13 @@ export default async function Dashboard() {
                         href="/admin/users/lecteurs"
                         buttonText="Gestion des lecteurs"
                         accentColor="indigo"
+                    />
+                    <AdminDashboardCard
+                        title="Donateurs"
+                        count={bienfaiteursCount}
+                        href="/admin/users/bienfaiteurs"
+                        buttonText="Gestion des donateurs"
+                        accentColor="pink"
                     />
                     <AdminDashboardCard
                         title="Permanents"
