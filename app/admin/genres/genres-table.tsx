@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -14,10 +14,17 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AddGenreFormBackend, EditGenreFormBackend } from '@/admin/GenreFormBackendBase';
 import type { Genre } from '@/types';
 
+export interface GenreRow extends Genre {
+    /** Books already carrying this genre — surfaced in the edit dialogue. */
+    booksCount?: number;
+}
+
 interface GenresTableProps {
-    initialGenres: Genre[];
+    initialGenres: GenreRow[];
     initialPage: number;
     initialSearch: string;
     totalPages: number;
@@ -27,6 +34,14 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
     const router = useRouter();
     const searchParams = useSearchParams();
     const [search, setSearch] = useState(initialSearch);
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [editing, setEditing] = useState<GenreRow | null>(null);
+
+    const handleSaved = () => {
+        setEditing(null);
+        setIsAddOpen(false);
+        router.refresh();
+    };
 
     // Get current page from URL
     const currentPage = parseInt(searchParams.get('page') || '1');
@@ -70,11 +85,13 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
                         Gérer et modifier les différents genres associés aux livres
                     </CardDescription>
                 </div>
-                <Link href="/admin/genres/new" className="w-full sm:w-auto">
-                    <Button className="w-full sm:w-auto bg-muted text-foreground border-border hover:bg-muted">
-                        Ajouter un Genre
-                    </Button>
-                </Link>
+                <Button
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                    onClick={() => setIsAddOpen(true)}
+                >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ajouter un Genre
+                </Button>
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -92,6 +109,7 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
                             <TableRow className="border-b border-border">
                                 <TableHead className="text-foreground font-medium">Nom</TableHead>
                                 <TableHead className="text-foreground font-medium">Description</TableHead>
+                                <TableHead className="text-foreground font-medium">Livres</TableHead>
                                 <TableHead className="text-foreground font-medium">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -100,18 +118,19 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
                                 <TableRow
                                     key={genre.id}
                                     className="border-b border-border hover:bg-muted cursor-pointer"
-                                    onClick={() => window.location.href = `/admin/genres/${genre.id}`}
+                                    onClick={() => setEditing(genre)}
                                 >
                                     <TableCell className="text-foreground">{genre.name}</TableCell>
                                     <TableCell className="text-foreground">{genre.description || 'N/A'}</TableCell>
+                                    <TableCell className="text-muted-foreground">{genre.booksCount ?? '—'}</TableCell>
                                     <TableCell>
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="bg-muted text-foreground border-border hover:bg-muted"
+                                            className="bg-muted text-foreground border-border hover:bg-accent"
                                             onClick={(e) => {
                                                 e.stopPropagation(); // Prevent row click when clicking the button
-                                                window.location.href = `/admin/genres/${genre.id}`;
+                                                setEditing(genre);
                                             }}
                                         >
                                             Modifier
@@ -142,6 +161,41 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
                     Page {currentPage} sur {totalPages}
                 </p>
             </CardContent>
+
+            {/* Add */}
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto bg-card border-border">
+                    <DialogHeader>
+                        <DialogTitle className="text-foreground">Ajouter un genre</DialogTitle>
+                    </DialogHeader>
+                    <div className="overflow-y-auto px-1">
+                        <AddGenreFormBackend onSuccess={handleSaved} onCancel={() => setIsAddOpen(false)} />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit */}
+            {editing && (
+                <Dialog open onOpenChange={(open) => { if (!open) setEditing(null); }}>
+                    <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto bg-card border-border">
+                        <DialogHeader>
+                            <DialogTitle className="text-foreground">Modifier le genre</DialogTitle>
+                        </DialogHeader>
+                        <div className="overflow-y-auto px-1">
+                            <EditGenreFormBackend
+                                genreId={editing.id}
+                                initialData={{
+                                    name: editing.name,
+                                    description: editing.description ?? '',
+                                }}
+                                booksCount={editing.booksCount}
+                                onSuccess={handleSaved}
+                                onCancel={() => setEditing(null)}
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </Card>
     );
 }

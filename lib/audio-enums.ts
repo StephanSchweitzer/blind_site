@@ -39,6 +39,37 @@ export const AUDIO_LINK_STATUS_COLORS: Record<AudioLinkStatus, string> = {
     UNVERIFIED: 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-300',
 };
 
+/**
+ * Colours for the button that opens the audio editor, wherever a book is
+ * listed. A book with nothing to listen to has to be visible at a glance in a
+ * long table, but it is a to-do rather than an error — so the missing case is a
+ * soft red outline, not a filled destructive button.
+ */
+export const AUDIO_LINK_STATUS_BUTTON_COLORS: Record<AudioLinkStatus, string> = {
+    OK: 'bg-muted text-foreground border-border hover:bg-accent',
+    FOLDER_EMPTY:
+        'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/40',
+    FOLDER_MISSING:
+        'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/40',
+    NO_PATH:
+        'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/40',
+    // Never checked: silence is not the same as an established absence.
+    UNVERIFIED: 'bg-muted text-foreground border-border hover:bg-accent',
+};
+
+/** Does this status mean there is audio to listen to right now? */
+export const audioLinkStatusHasAudio = (status: AudioLinkStatus): boolean =>
+    status === AudioLinkStatus.OK;
+
+/** Is the absence of audio established (as opposed to simply unverified)? */
+export const audioLinkStatusIsMissing = (status: AudioLinkStatus): boolean =>
+    status === AudioLinkStatus.NO_PATH ||
+    status === AudioLinkStatus.FOLDER_MISSING ||
+    status === AudioLinkStatus.FOLDER_EMPTY;
+
+export const getAudioLinkStatusButtonColor = (status: AudioLinkStatus): string =>
+    AUDIO_LINK_STATUS_BUTTON_COLORS[status] ?? 'bg-muted text-foreground border-border hover:bg-accent';
+
 export const getAudioLinkStatusLabel = (status: AudioLinkStatus): string =>
     AUDIO_LINK_STATUS_LABELS[status] ?? status;
 

@@ -37,6 +37,9 @@ async function getGenres(page: number, searchTerm: string) {
             orderBy: { name: 'asc' }, // Keep the original ordering
             skip: (page - 1) * genresPerPage,
             take: genresPerPage,
+            // The edit dialogue replaced the genre detail page — it still tells
+            // you how many books hang off the genre before you delete it.
+            include: { _count: { select: { books: true } } },
         }),
         prisma.genre.count({ where: whereClause }),
     ]);
@@ -64,7 +67,10 @@ export default async function Genres({ searchParams }: PageProps) {
     return (
         <div className="space-y-4">
             <GenresTable
-                initialGenres={genres}
+                initialGenres={genres.map(({ _count, ...genre }) => ({
+                    ...genre,
+                    booksCount: _count.books,
+                }))}
                 initialPage={page}
                 initialSearch={searchTerm}
                 totalPages={totalPages}

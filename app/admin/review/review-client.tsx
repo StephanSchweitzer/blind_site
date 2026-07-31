@@ -9,6 +9,7 @@ import {
     ChevronLeft,
     ChevronRight,
     FileAudio,
+    FileX2,
     AlertTriangle,
     Loader2,
 } from 'lucide-react';
@@ -27,6 +28,14 @@ import {
     AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import { BookAudioModal } from '@/admin/BookAudioModal';
+import {
+    AudioLinkStatus,
+    audioLinkStatusIsMissing,
+    getAudioLinkStatusButtonColor,
+    getAudioLinkStatusHint,
+    getAudioLinkStatusLabel,
+} from '@/lib/audio-enums';
 import { fuseBooks, deleteBook, dismissReview, type ActionResult } from './actions';
 
 export interface ReviewBook {
@@ -41,6 +50,7 @@ export interface ReviewBook {
     pageCount: number | null;
     readingDurationMinutes: number | null;
     audio_filepath: string | null;
+    audioLinkStatus?: AudioLinkStatus;
     source_access_id: number | null;
     needsReview: boolean;
     id_arbre: number | null;
@@ -106,6 +116,8 @@ type Pending =
 export default function ReviewClient({ pairs, page, totalPages, total }: Props) {
     const router = useRouter();
     const [pending, setPending] = useState<Pending>(null);
+    /** Book whose audio folder is open for listening. */
+    const [audioBook, setAudioBook] = useState<ReviewBook | null>(null);
     const [isPending, startTransition] = useTransition();
     // Separate transition for page navigation so we can show a spinner + lock the
     // controls until the next page's data has loaded.
@@ -160,6 +172,7 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
                     onRequestFuse={(p) => setPending({ kind: 'fuse', ...p })}
                     onRequestDelete={(book) => setPending({ kind: 'delete', bookId: book.id, title: book.title })}
                     onDismiss={(bookId) => run(() => dismissReview(bookId))}
+                    onListen={setAudioBook}
                 />
             ))}
 
@@ -224,6 +237,20 @@ export default function ReviewClient({ pairs, page, totalPages, total }: Props) 
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Listening to both folders is often the only way to tell two
+                near-identical fiches apart — so the editor opens right here,
+                without leaving the queue. */}
+            {audioBook && (
+                <BookAudioModal
+                    isOpen={audioBook !== null}
+                    onOpenChange={(open) => {
+                        if (!open) setAudioBook(null);
+                    }}
+                    bookId={audioBook.id}
+                    onChanged={() => router.refresh()}
+                />
+            )}
         </div>
     );
 }
@@ -242,6 +269,7 @@ function PairCard({
     onRequestFuse,
     onRequestDelete,
     onDismiss,
+    onListen,
 }: {
     flagged: ReviewBook;
     matched: ReviewBook | null;
@@ -249,6 +277,7 @@ function PairCard({
     onRequestFuse: (p: FusePayload) => void;
     onRequestDelete: (book: ReviewBook) => void;
     onDismiss: (bookId: number) => void;
+    onListen: (book: ReviewBook) => void;
 }) {
     const [mode, setMode] = useState<'collapsed' | 'fuse' | 'distinct'>('collapsed');
     // Fields to pull FROM the matched (Access import) record onto the kept site book.
@@ -266,7 +295,8 @@ function PairCard({
                     </div>
                     <Badge variant="secondary">Aucun correspondant trouvé</Badge>
                 </CardHeader>
-                <CardContent className="flex justify-end">
+                <CardContent className="flex justify-end gap-2">
+                    <ListenButton book={flagged} onListen={onListen} />
                     <Button variant="outline" size="sm" disabled={busy} onClick={() => onDismiss(flagged.id)}>
                         <Check className="h-4 w-4" /> Pas un doublon
                     </Button>
@@ -308,16 +338,23 @@ function PairCard({
 
     return (
         <Card>
-            <CardHeader className="space-y-3">
+            {/* Clicking the pair opens the comparison — the whole card is the
+                obvious target, and comparing is never destructive. The buttons
+                below stay the accessible path for keyboard and screen readers. */}
+            <CardHeader
+                className={`space-y-3 ${mode === 'collapsed' ? 'cursor-pointer' : ''}`}
+                onClick={mode === 'collapsed' ? () => setMode('fuse') : undefined}
+            >
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
-                    <BookHead book={flagged} />
+                    <BookHead book={flagged} onListen={onListen} />
                     <ArrowLeftRight className="hidden sm:block h-5 w-5 text-muted-foreground mx-auto" />
-                    <BookHead book={matched} align="right" />
+                    <BookHead book={matched} align="right" onListen={onListen} />
                 </div>
                 <div className="text-sm text-muted-foreground">
                     {diffCount === 0
                         ? 'Les champs comparés sont identiques.'
                         : `${diffCount} champ${diffCount > 1 ? 's' : ''} diffère${diffCount > 1 ? 'nt' : ''}.`}
+                    {mode === 'collapsed' && ' Cliquez pour comparer les deux fiches.'}
                 </div>
 
                 {audioConflict && (
@@ -334,8 +371,10 @@ function PairCard({
             <CardContent className="space-y-4">
                 {mode === 'collapsed' && (
                     <div className="flex flex-wrap gap-2">
-                        <Button size="sm" disabled={busy || audioConflict} onClick={() => setMode('fuse')}>
-                            <ArrowLeftRight className="h-4 w-4" /> Fusionner
+                        {/* Not "Fusionner": this only opens the comparison, and
+                            nothing is merged until the dialogue is confirmed. */}
+                        <Button size="sm" disabled={busy} onClick={() => setMode('fuse')}>
+                            <ArrowLeftRight className="h-4 w-4" /> Comparer les deux fiches
                         </Button>
                         <Button variant="outline" size="sm" disabled={busy} onClick={() => setMode('distinct')}>
                             Livres distincts
@@ -347,6 +386,7 @@ function PairCard({
                     <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
                             Pour chaque champ différent, cochez la valeur à garder dans la fiche fusionnée.
+                            Rien n’est fusionné avant la confirmation.
                         </p>
 
                         {diffFields.length === 0 ? (
@@ -442,8 +482,12 @@ function PairCard({
                         </p>
 
                         <div className="flex flex-wrap gap-2 pt-1">
-                            <Button size="sm" disabled={busy} onClick={startFuse}>
+                            {/* The audio conflict blocks the merge itself, never the comparison. */}
+                            <Button size="sm" disabled={busy || audioConflict} onClick={startFuse}>
                                 <ArrowLeftRight className="h-4 w-4" /> Fusionner les deux fiches
+                            </Button>
+                            <Button variant="outline" size="sm" disabled={busy} onClick={() => setMode('distinct')}>
+                                Livres distincts
                             </Button>
                             <Button variant="ghost" size="sm" disabled={busy} onClick={() => setMode('collapsed')}>
                                 Annuler
@@ -526,21 +570,64 @@ function PairCard({
     );
 }
 
-function BookHead({ book, align }: { book: ReviewBook; align?: 'right' }) {
+function BookHead({
+    book,
+    align,
+    onListen,
+}: {
+    book: ReviewBook;
+    align?: 'right';
+    onListen: (book: ReviewBook) => void;
+}) {
     return (
         <div className={align === 'right' ? 'sm:text-right' : ''}>
             <div className="font-semibold">
                 {book.title} <span className="text-muted-foreground font-normal">#{book.id}</span>
             </div>
             <div className="text-sm text-muted-foreground">{book.author}</div>
-            {hasAudio(book) && (
-                <div className={`mt-1 ${align === 'right' ? 'sm:flex sm:justify-end' : ''}`}>
+            <div
+                className={`mt-1 flex flex-wrap items-center gap-2 ${align === 'right' ? 'sm:justify-end' : ''}`}
+            >
+                {hasAudio(book) && (
                     <Badge variant="secondary" className="gap-1">
                         <FileAudio className="h-3 w-3" /> Audio
                     </Badge>
-                </div>
-            )}
+                )}
+                <ListenButton book={book} onListen={onListen} />
+            </div>
         </div>
+    );
+}
+
+/**
+ * Opens the audio editor for one side of the pair. The saved path alone does
+ * not say what is actually in the folder — and when two fiches both claim a
+ * recording, hearing them is the only way to decide which one to keep.
+ */
+function ListenButton({ book, onListen }: { book: ReviewBook; onListen: (book: ReviewBook) => void }) {
+    const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
+    const missing = audioLinkStatusIsMissing(status);
+
+    return (
+        <Button
+            variant="outline"
+            size="sm"
+            className={`h-7 gap-1 px-2 text-xs ${getAudioLinkStatusButtonColor(status)}`}
+            // The card behind this button opens the comparison on click.
+            onClick={(e) => {
+                e.stopPropagation();
+                onListen(book);
+            }}
+            aria-label={`Écouter l’audio de « ${book.title} » (#${book.id})`}
+            title={
+                missing
+                    ? `${getAudioLinkStatusLabel(status)} — ${getAudioLinkStatusHint(status)}`
+                    : 'Écouter le contenu du dossier audio'
+            }
+        >
+            {missing ? <FileX2 className="h-3.5 w-3.5" /> : <FileAudio className="h-3.5 w-3.5" />}
+            Écouter
+        </Button>
     );
 }
 

@@ -20,6 +20,7 @@ const BOOK_SELECT = {
     pageCount: true,
     readingDurationMinutes: true,
     audio_filepath: true,
+    audioLinkStatus: true,
     source_access_id: true,
     needsReview: true,
     id_arbre: true,

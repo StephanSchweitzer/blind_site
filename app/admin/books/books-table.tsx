@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -18,6 +18,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
 import { BookAudioModal } from '@/admin/BookAudioModal';
+import {
+    AudioLinkStatus,
+    audioLinkStatusIsMissing,
+    getAudioLinkStatusButtonColor,
+    getAudioLinkStatusHint,
+    getAudioLinkStatusLabel,
+} from '@/lib/audio-enums';
 import { toast } from "@/hooks/use-toast";
 
 const ITEMS_PER_PAGE = 10;
@@ -62,6 +69,8 @@ interface Book {
     addedById: number;
     publisher: string | null;
     createdAt: Date | null;
+    /** Health of the link to the audio folder, refreshed by the sync script. */
+    audioLinkStatus?: AudioLinkStatus;
 }
 
 interface BookWithFormData extends Book {
@@ -82,6 +91,39 @@ interface BooksTableProps {
     totalPages: number;
     availableGenres?: { id: number; name: string; }[];
     initialTotalBooks: number;
+}
+
+/**
+ * Entry point to the audio editor for one row — and the status light for its
+ * recording. A book with nothing to listen to has to be spottable while
+ * scrolling the table, so the button itself carries the state: soft red outline
+ * and a crossed-out file icon. Deliberately not a filled destructive button —
+ * a missing recording is a to-do, not a failure.
+ */
+function AudioEditorButton({ book, onOpen }: { book: Book; onOpen: () => void }) {
+    const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
+    const missing = audioLinkStatusIsMissing(status);
+
+    return (
+        <Button
+            variant="outline"
+            size="sm"
+            className={getAudioLinkStatusButtonColor(status)}
+            onClick={onOpen}
+            aria-label={
+                missing
+                    ? `Ouvrir l’éditeur audio de ${book.title} — ${getAudioLinkStatusLabel(status).toLowerCase()}`
+                    : `Ouvrir l’éditeur audio de ${book.title}`
+            }
+            title={
+                missing
+                    ? `${getAudioLinkStatusLabel(status)} — ${getAudioLinkStatusHint(status)}`
+                    : 'Ouvrir l’éditeur audio'
+            }
+        >
+            {missing ? <FileX2 className="h-4 w-4" /> : <FileAudio className="h-4 w-4" />}
+        </Button>
+    );
 }
 
 export default function BooksTable({
@@ -668,16 +710,10 @@ export default function BooksTable({
                                                         >
                                                             Modifier
                                                         </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="bg-muted text-foreground border-border hover:bg-accent"
-                                                            onClick={() => setAudioBook({ id: book.id, title: book.title })}
-                                                            aria-label={`Ouvrir l’éditeur audio de ${book.title}`}
-                                                            title="Ouvrir l’éditeur audio"
-                                                        >
-                                                            <FileAudio className="h-4 w-4" />
-                                                        </Button>
+                                                        <AudioEditorButton
+                                                            book={book}
+                                                            onOpen={() => setAudioBook({ id: book.id, title: book.title })}
+                                                        />
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -802,6 +838,12 @@ export default function BooksTable({
                         if (!open) setAudioBook(null);
                     }}
                     bookId={audioBook.id}
+                    // Uploading or deleting a track moves audioLinkStatus, and
+                    // with it the colour of the button that opened this dialogue.
+                    onChanged={() => {
+                        cacheInvalidatedRef.current = true;
+                        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
+                    }}
                 />
             )}
         </Card>

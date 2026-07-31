@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -13,10 +12,18 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDebounce } from 'use-debounce';
 import { useEffect, useState, useCallback } from 'react';
-import { NewsType, newsTypeLabels } from '@/types/news';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { NewsType } from '@/types/news';
+import NewsTypeBadge from '@/components/NewsTypeBadge';
+import {
+    AddNewsFormBackend,
+    EditNewsFormBackend,
+    type NewsFormData,
+} from '@/admin/NewsFormBackendBase';
+import { toast } from '@/hooks/use-toast';
+import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 
 type Article = {
     id: number;
@@ -46,6 +53,10 @@ export function ArticlesTable({
     const [search, setSearch] = useState(initialSearch);
     const [prevUrlSearch, setPrevUrlSearch] = useState(initialSearch);
     const [debouncedSearch] = useDebounce(search, 300);
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    /** Article open in the edit dialogue, with the content the list doesn't carry. */
+    const [editing, setEditing] = useState<{ id: number; data: NewsFormData } | null>(null);
+    const [isLoadingArticle, setIsLoadingArticle] = useState(false);
 
 // Sync from URL during render instead of in an effect
     const urlSearch = searchParams.get('search') || '';
@@ -81,21 +92,50 @@ export function ArticlesTable({
         router.push(`?${params.toString()}`, { scroll: false });
     }, [currentPage, totalPages, searchParams, router]);
 
-    // Navigate to article edit page
-    const navigateToArticle = useCallback((articleId: number) => {
-        router.push(`/admin/news/${articleId}`);
-    }, [router]);
+    // The list only carries title/type/date — the content comes from the API
+    // when the dialogue opens, the same way the catalogue loads a book.
+    const openArticle = useCallback(async (articleId: number) => {
+        setIsLoadingArticle(true);
+        try {
+            const res = await fetch(`/api/news/${articleId}`, {
+                headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
+            });
+            if (!res.ok) throw new Error('Échec du chargement');
+            const article = await res.json();
+            setEditing({
+                id: articleId,
+                data: {
+                    title: article.title ?? '',
+                    content: article.content ?? '',
+                    type: article.type ?? 'GENERAL',
+                },
+            });
+        } catch {
+            toast({
+                title: 'Erreur',
+                description: 'Échec du chargement de l’information. Veuillez réessayer.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsLoadingArticle(false);
+        }
+    }, []);
 
-    // Handle article row click
     const handleRowClick = useCallback((articleId: number) => {
-        navigateToArticle(articleId);
-    }, [navigateToArticle]);
+        void openArticle(articleId);
+    }, [openArticle]);
 
     // Handle edit button click with event propagation stop
     const handleEditClick = useCallback((e: React.MouseEvent, articleId: number) => {
         e.stopPropagation();
-        navigateToArticle(articleId);
-    }, [navigateToArticle]);
+        void openArticle(articleId);
+    }, [openArticle]);
+
+    const handleSaved = useCallback(() => {
+        setEditing(null);
+        setIsAddOpen(false);
+        router.refresh();
+    }, [router]);
 
     // Generate pagination buttons with improved UX
     const generatePaginationButtons = () => {
@@ -208,11 +248,13 @@ export function ArticlesTable({
                         Gérer et modifier les informations affichées sur dernières info
                     </CardDescription>
                 </div>
-                <Link href="/admin/news/new" className="w-full sm:w-auto">
-                    <Button className="w-full sm:w-auto bg-muted text-foreground border-border hover:bg-muted">
-                        Ajouter une info
-                    </Button>
-                </Link>
+                <Button
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                    onClick={() => setIsAddOpen(true)}
+                >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ajouter une info
+                </Button>
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -263,9 +305,7 @@ export function ArticlesTable({
                                             {article.title}
                                         </TableCell>
                                         <TableCell>
-                                            <span className="px-2 py-1 rounded-full text-sm font-medium text-white bg-muted">
-                                                {newsTypeLabels[article.type]}
-                                            </span>
+                                            <NewsTypeBadge type={article.type} />
                                         </TableCell>
                                         <TableCell className="text-foreground">
                                             {article.author?.name || 'Inconnu'}
@@ -305,6 +345,47 @@ export function ArticlesTable({
                     </div>
                 )}
             </CardContent>
+
+            {isLoadingArticle && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 gap-3">
+                    <Loader2 className="h-10 w-10 animate-spin text-white" />
+                    <span className="text-white text-sm">Chargement de l&apos;information...</span>
+                </div>
+            )}
+
+            {/* Add */}
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
+                    <DialogHeader>
+                        <DialogTitle className="text-foreground">Ajouter une information</DialogTitle>
+                    </DialogHeader>
+                    <div className="overflow-y-auto px-1">
+                        <AddNewsFormBackend onSuccess={handleSaved} onCancel={() => setIsAddOpen(false)} />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit */}
+            {editing && (
+                <Dialog open onOpenChange={(open) => { if (!open) setEditing(null); }}>
+                    <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
+                        <DialogHeader>
+                            <DialogTitle className="text-foreground flex flex-wrap items-center gap-3">
+                                Modifier la dernière info
+                                <NewsTypeBadge type={editing.data.type} />
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="overflow-y-auto px-1">
+                            <EditNewsFormBackend
+                                newsId={editing.id}
+                                initialData={editing.data}
+                                onSuccess={handleSaved}
+                                onCancel={() => setEditing(null)}
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </Card>
     );
 }

@@ -5,7 +5,7 @@ import { SearchBar } from '@/dernieres-infos/SearchBar';
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import { Tag, Filter, User, Calendar } from 'lucide-react';
 import type { NewsPost, NewsResponse } from '@/types/news';
-import { newsTypeLabels, newsTypeColors } from '@/types/news';
+import { newsTypeLabels, newsTypeColors, getNewsTypeColor, getNewsTypeTextColor } from '@/types/news';
 
 interface DernieresInfosClientProps {
     initialData: NewsResponse;
@@ -208,8 +208,8 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                                 </div>
                                 <span className={`
                                     px-4 py-1.5 rounded-full text-sm font-semibold shadow-md
-                                    ${newsTypeColors[post.type]} 
-                                    ${post.type === 'ANNONCE' ? 'text-gray-900' : 'text-white'}
+                                    ${getNewsTypeColor(post.type)}
+                                    ${getNewsTypeTextColor(post.type)}
                                     transition-transform duration-300 group-hover:scale-105
                                 `}>
                                     {newsTypeLabels[post.type]}
