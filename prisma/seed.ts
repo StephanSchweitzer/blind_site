@@ -111,12 +111,9 @@ const MEDIA_FORMATS = [
     { name: "MD", description: "MiniDisc" },
     { name: "WeTransfer", description: "Transfert numérique via WeTransfer" },
     { name: "Clé USB", description: "Clé USB" },
-    { name: "Revue AFTC", description: "Revue AFTC" },
-    { name: "LUMEN Magazine UNADEV", description: "Magazine LUMEN UNADEV" },
-    { name: "Journal COLIN MAILLARD UNADEV", description: "Journal COLIN MAILLARD UNADEV" },
-    { name: "Gazette Paris en Compagnie GCSMS Paris", description: "Gazette Paris en Compagnie" },
-    { name: "La vie à Bry Bry Sur Marne", description: "La vie à Bry" },
-    { name: "Revue EDF EDF", description: "Revue EDF" },
+    // Les revues (Revue AFTC, LUMEN, COLIN MAILLARD, Gazette Paris en Compagnie,
+    // La vie à Bry, Revue EDF) ont été retirées : ce sont des périodiques, pas
+    // des formats de média. Ne pas les remettre ici.
     { name: "Non défini", description: "Ce format de média n'a pas été défini" },
 ];
 

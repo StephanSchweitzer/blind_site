@@ -498,25 +498,22 @@ enum BillEventType {
   ORDER_DETACHED
 }
 
-/// Five statuses are offered, for every member type: ACTIVE, UNAVAILABLE,
-/// RADIATION, DEMISSION, DECEASED (see lib/user-activity-enums.ts). The others
-/// are LEGACY: rows recorded under them keep rendering, but they are never
-/// offered for a new change. Enum values are kept — dropping one would orphan
-/// existing User rows and UserActivityEvent history.
+/// Four statuses are offered, for every member type: ACTIVE, UNAVAILABLE,
+/// RADIATION, DECEASED (see lib/user-activity-enums.ts). INACTIVE is LEGACY:
+/// rows recorded under it keep rendering, but it is never offered for a new
+/// change. Its value is kept — dropping it would orphan existing User rows and
+/// UserActivityEvent history.
+///
+/// DEMISSION, ON_VACATION, SUSPENDED and PB_SANTE_MENTALE were removed from the
+/// enum once their rows were migrated (DEMISSION -> RADIATION, the other three
+/// -> INACTIVE). Don't reintroduce them.
 enum UserActivityStatus {
   ACTIVE
   UNAVAILABLE
   DECEASED
-  DEMISSION
   RADIATION
   /// LEGACY: no longer offered.
   INACTIVE
-  /// LEGACY: no longer offered — superseded by UNAVAILABLE + its date window.
-  ON_VACATION
-  /// LEGACY: no longer offered.
-  SUSPENDED
-  /// LEGACY: no longer offered — superseded by UNAVAILABLE + its date window.
-  PB_SANTE_MENTALE
 }
 
 /// Append-only history of a member's activity-status changes (who/what/when/why).

@@ -34,7 +34,7 @@ import { withCurrentValue } from '@/lib/select-options';
 /**
  * The one place a status change is composed, shared by the profile's
  * "Changer le statut" box and the reactivation dialog of the order/attribution
- * forms — so both offer the same five statuses, ask for the same dates, and
+ * forms — so both offer the same four statuses, ask for the same dates, and
  * ask the same confirmation.
  */
 
