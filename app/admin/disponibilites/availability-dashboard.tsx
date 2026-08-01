@@ -9,6 +9,8 @@ import {
     CalendarClock,
     CalendarOff,
     CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
     Loader2,
     Moon,
     RefreshCw,
@@ -71,6 +73,138 @@ const TYPE_FILTERS = [
 ] as const;
 
 type TypeFilter = typeof TYPE_FILTERS[number]['value'];
+
+/** Les deux vues « lecteurs » : qui est libre, et qui est déjà chargé. */
+const READER_TABS = [
+    { value: 'free', label: 'Sans attribution en cours' },
+    { value: 'loaded', label: 'Charge des lecteurs' },
+] as const;
+
+type ReaderTab = typeof READER_TABS[number]['value'];
+
+const PAGE_SIZE = 10;
+
+/** Numéros de page à afficher, resserrés autour de la page courante. */
+function pageItems(page: number, totalPages: number): Array<number | 'gap'> {
+    if (totalPages <= 7) {
+        return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+    const items: Array<number | 'gap'> = [1];
+    // Fenêtre de 5 pages autour de la page courante, recalée près des bords
+    // pour que la largeur du pied de tableau ne bouge pas d'une page à l'autre.
+    let first = Math.max(2, page - 2);
+    let last = Math.min(totalPages - 1, page + 2);
+    if (page <= 3) last = Math.min(totalPages - 1, 5);
+    if (page >= totalPages - 2) first = Math.max(2, totalPages - 4);
+    if (first > 2) items.push('gap');
+    for (let p = first; p <= last; p += 1) items.push(p);
+    if (last < totalPages - 1) items.push('gap');
+    items.push(totalPages);
+    return items;
+}
+
+/**
+ * Découpe une liste en pages de 10. `resetKey` rassemble les filtres qui
+ * changent le contenu de la liste : quand il bouge, on revient page 1 —
+ * ajusté pendant le rendu, sans effet (cf. react-hooks/set-state-in-effect).
+ */
+function usePagedRows<T>(rows: T[], resetKey: string) {
+    const [page, setPage] = useState(1);
+    const [syncedKey, setSyncedKey] = useState(resetKey);
+
+    if (resetKey !== syncedKey) {
+        setSyncedKey(resetKey);
+        setPage(1);
+    }
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+    const current = Math.min(page, totalPages);
+    const offset = (current - 1) * PAGE_SIZE;
+
+    return {
+        visible: rows.slice(offset, offset + PAGE_SIZE),
+        page: current,
+        totalPages,
+        total: rows.length,
+        from: rows.length === 0 ? 0 : offset + 1,
+        to: Math.min(offset + PAGE_SIZE, rows.length),
+        setPage,
+    };
+}
+
+/** Pied de tableau : « 1–10 sur 34 » + navigation. Masqué s'il n'y a qu'une page. */
+function PaginationFooter({
+    page,
+    totalPages,
+    from,
+    to,
+    total,
+    unit,
+    onPageChange,
+}: {
+    page: number;
+    totalPages: number;
+    from: number;
+    to: number;
+    total: number;
+    unit: string;
+    onPageChange: (page: number) => void;
+}) {
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
+            <p className="text-xs text-muted-foreground">
+                {from}–{to} sur {total} {unit}
+            </p>
+            <div className="flex items-center gap-1">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-2"
+                    onClick={() => onPageChange(page - 1)}
+                    disabled={page === 1}
+                    aria-label="Page précédente"
+                >
+                    <ChevronLeft size={15} />
+                </Button>
+                {pageItems(page, totalPages).map((item, index) =>
+                    item === 'gap' ? (
+                        <span
+                            key={`gap-${index}`}
+                            aria-hidden
+                            className="px-1 text-xs text-muted-foreground"
+                        >
+                            …
+                        </span>
+                    ) : (
+                        <Button
+                            key={item}
+                            variant={item === page ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-9 px-0"
+                            onClick={() => onPageChange(item)}
+                            aria-label={`Page ${item}`}
+                            aria-current={item === page ? 'page' : undefined}
+                        >
+                            {item}
+                        </Button>
+                    )
+                )}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-2"
+                    onClick={() => onPageChange(page + 1)}
+                    disabled={page === totalPages}
+                    aria-label="Page suivante"
+                >
+                    <ChevronRight size={15} />
+                </Button>
+            </div>
+        </div>
+    );
+}
 
 function matchesType(person: AvailabilityPerson, filter: TypeFilter): boolean {
     if (filter === 'all') return true;
@@ -135,6 +269,29 @@ function StatTile({
     );
 }
 
+/**
+ * Rappel du filtre de page. Le champ de recherche vit dans l'en-tête de la page :
+ * une fois descendu jusqu'aux tableaux il n'est plus à l'écran, et sans ce rappel
+ * les compteurs réduits n'auraient aucune explication visible.
+ */
+function SearchChip({ search, onClear }: { search: string; onClear: () => void }) {
+    if (!search.trim()) return null;
+
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            Filtré : «&nbsp;{search}&nbsp;»
+            <button
+                type="button"
+                onClick={onClear}
+                aria-label="Effacer le filtre par nom"
+                className="hover:text-foreground"
+            >
+                <X size={11} />
+            </button>
+        </span>
+    );
+}
+
 /** One alert group. Renders nothing at all when it is empty. */
 function AlertGroup({
     title,
@@ -184,6 +341,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
     const [search, setSearch] = useState('');
     const [onlyDormant, setOnlyDormant] = useState(false);
+    const [readerTab, setReaderTab] = useState<ReaderTab>('free');
 
     const { people, today, warningDays, justClosed } = data;
 
@@ -247,6 +405,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     const displayedFree = onlyDormant ? free.filter((r) => r.dormant) : free;
     const totalAlerts = alertCount(alerts);
 
+    const freePage = usePagedRows(displayedFree, `${search}|${onlyDormant}`);
+    const loadedPage = usePagedRows(loaded, search);
+
     return (
         <div className="space-y-6">
             {/* ── header ─────────────────────────────────────────────────── */}
@@ -259,6 +420,31 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* Filtre de page : il s'applique au calendrier ET aux deux
+                        listes de lecteurs, d'où sa place ici plutôt que dans une carte. */}
+                    <div className="relative">
+                        <Search
+                            size={14}
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        />
+                        <Input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Filtrer toute la page par nom…"
+                            aria-label="Filtrer toute la page par nom"
+                            className="h-9 w-64 pl-8 pr-8 bg-field border-border text-foreground"
+                        />
+                        {search && (
+                            <button
+                                type="button"
+                                onClick={() => setSearch('')}
+                                aria-label="Effacer le filtre"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
                     <Button
                         variant="outline"
                         size="sm"
@@ -442,28 +628,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                     </Button>
                                 ))}
                             </div>
-                            <div className="relative">
-                                <Search
-                                    size={14}
-                                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                                />
-                                <Input
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Filtrer par nom…"
-                                    className="h-9 w-48 pl-8 pr-8 bg-field border-border text-foreground"
-                                />
-                                {search && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSearch('')}
-                                        aria-label="Effacer le filtre"
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                )}
-                            </div>
                         </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -481,19 +645,62 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                 </CardContent>
             </Card>
 
-            {/* ── free readers ───────────────────────────────────────────── */}
+            {/* ── readers: free / load ───────────────────────────────────── */}
             <Card className="border-border bg-card">
-                <CardHeader className="pb-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <CardTitle className="text-lg text-foreground">
-                                Lecteurs actifs sans attribution en cours
-                            </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                Actifs, disponibles, et aucun livre en cours : les prochains à
-                                solliciter. Les plus anciennement sollicités d&apos;abord.
-                            </p>
-                        </div>
+                <CardHeader className="pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <CardTitle className="text-lg text-foreground">Lecteurs</CardTitle>
+                        <SearchChip search={search} onClear={() => setSearch('')} />
+                    </div>
+                    <div className="border-b border-border">
+                        <nav
+                            role="tablist"
+                            aria-label="Vues lecteurs"
+                            className="-mb-px flex gap-4 sm:gap-8 overflow-x-auto"
+                        >
+                            {READER_TABS.map((tab) => {
+                                const isActive = readerTab === tab.value;
+                                const count =
+                                    tab.value === 'free' ? displayedFree.length : loaded.length;
+                                return (
+                                    <button
+                                        key={tab.value}
+                                        type="button"
+                                        role="tab"
+                                        id={`reader-tab-${tab.value}`}
+                                        aria-selected={isActive}
+                                        aria-controls={`reader-panel-${tab.value}`}
+                                        onClick={() => setReaderTab(tab.value)}
+                                        className={`whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium ${
+                                            isActive
+                                                ? 'border-primary text-primary'
+                                                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                            ({count})
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
+                </CardHeader>
+
+                {/* ── free readers ───────────────────────────────────────── */}
+                <CardContent
+                    role="tabpanel"
+                    id="reader-panel-free"
+                    aria-labelledby="reader-tab-free"
+                    hidden={readerTab !== 'free'}
+                    className={readerTab === 'free' ? 'pt-4' : 'hidden'}
+                >
+                    <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                        <p className="text-xs text-muted-foreground">
+                            Actifs, disponibles, et aucun livre en cours : les prochains à
+                            solliciter. Les plus anciennement sollicités d&apos;abord.
+                        </p>
                         <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                             <input
                                 type="checkbox"
@@ -504,8 +711,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             Uniquement les dormants ({DORMANT_READER_DAYS}+ jours)
                         </label>
                     </div>
-                </CardHeader>
-                <CardContent>
                     {displayedFree.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-6 text-center">
                             Aucun lecteur libre ne correspond à ces critères.
@@ -522,7 +727,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {displayedFree.map(({ person, idleDays, dormant }) => (
+                                    {freePage.visible.map(({ person, idleDays, dormant }) => (
                                         <TableRow key={person.id}>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
@@ -561,18 +766,28 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             </Table>
                         </div>
                     )}
+                    <PaginationFooter
+                        page={freePage.page}
+                        totalPages={freePage.totalPages}
+                        from={freePage.from}
+                        to={freePage.to}
+                        total={freePage.total}
+                        unit="lecteurs libres"
+                        onPageChange={freePage.setPage}
+                    />
                 </CardContent>
-            </Card>
 
-            {/* ── load ───────────────────────────────────────────────────── */}
-            <Card className="border-border bg-card">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-lg text-foreground">Charge des lecteurs</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                {/* ── load ───────────────────────────────────────────────── */}
+                <CardContent
+                    role="tabpanel"
+                    id="reader-panel-loaded"
+                    aria-labelledby="reader-tab-loaded"
+                    hidden={readerTab !== 'loaded'}
+                    className={readerTab === 'loaded' ? 'pt-4' : 'hidden'}
+                >
+                    <p className="text-xs text-muted-foreground mb-3">
                         Attributions en cours par rapport au maximum simultané de chaque fiche.
                     </p>
-                </CardHeader>
-                <CardContent>
                     {loaded.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-6 text-center">
                             Aucune attribution en cours.
@@ -589,7 +804,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {loaded.map(({ person, max, saturated: isSaturated }) => (
+                                    {loadedPage.visible.map(({ person, max, saturated: isSaturated }) => (
                                         <TableRow key={person.id}>
                                             <TableCell>
                                                 <PersonLink person={person} />
@@ -636,6 +851,15 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             </Table>
                         </div>
                     )}
+                    <PaginationFooter
+                        page={loadedPage.page}
+                        totalPages={loadedPage.totalPages}
+                        from={loadedPage.from}
+                        to={loadedPage.to}
+                        total={loadedPage.total}
+                        unit="lecteurs"
+                        onPageChange={loadedPage.setPage}
+                    />
                 </CardContent>
             </Card>
 
