@@ -273,6 +273,20 @@ function OrphanCard({
 
                 {tab === 'a-traiter' && (
                     <>
+                        {/* Back in the queue because the book it was attached to no longer
+                            exists — without this the note below ("rattaché au livre #…")
+                            reads as a contradiction. */}
+                        {orphan.resolvedAt && !orphan.linkedBook && (
+                            <div className="flex items-start gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 p-2 text-xs text-orange-800 dark:text-orange-300">
+                                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>
+                                    Ce dossier avait été rattaché à un livre qui a depuis été
+                                    supprimé du catalogue. Il est de nouveau orphelin : à
+                                    rattacher à un autre livre.
+                                </span>
+                            </div>
+                        )}
+
                         {orphan.suggestions.length > 0 && (
                             <div className="space-y-2">
                                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

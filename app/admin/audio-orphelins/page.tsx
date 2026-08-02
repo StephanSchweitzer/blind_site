@@ -21,10 +21,21 @@ const TABS = ['a-traiter', 'rattaches', 'ecartes'] as const;
  *   à traiter  — nobody has decided anything yet
  *   rattachés  — resolvedAt + linkedBookId: a book now points at the folder
  *   écartés    — dismissedAt: junk, kept so the sync job stops re-queueing it
+ *
+ * "Rattaché" needs BOTH stamps. linkedBookId is `onDelete: SetNull`, so deleting
+ * a book — on the doublons screen, say — leaves the row claiming to be resolved
+ * while pointing at nothing, and the folder is in fact orphaned again. Treating
+ * that as à traiter is what stops it from silently dropping out of the queue,
+ * and it happens the moment the book is deleted rather than at the next sync.
  */
+const RE_ORPHANED: Prisma.OrphanAudioFolderWhereInput = {
+    resolvedAt: { not: null },
+    linkedBookId: null,
+};
+
 const TAB_WHERE: Record<OrphanTab, Prisma.OrphanAudioFolderWhereInput> = {
-    'a-traiter': { resolvedAt: null, dismissedAt: null },
-    rattaches: { resolvedAt: { not: null } },
+    'a-traiter': { dismissedAt: null, OR: [{ resolvedAt: null }, RE_ORPHANED] },
+    rattaches: { resolvedAt: { not: null }, linkedBookId: { not: null } },
     ecartes: { dismissedAt: { not: null }, resolvedAt: null },
 };
 

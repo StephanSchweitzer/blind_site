@@ -27,6 +27,18 @@ async function requireAdmin() {
     return me;
 }
 
+/**
+ * Is this folder genuinely spoken for?
+ *
+ * `resolvedAt` alone is not enough: linkedBookId is `onDelete: SetNull`, so a
+ * row whose book was deleted still carries the stamp while pointing at nothing.
+ * The folder is orphaned again at that point and must be actionable, otherwise
+ * an admin's mistake on the doublons screen quietly takes a recording out of the
+ * queue for good.
+ */
+const isLinked = (o: { resolvedAt: Date | null; linkedBookId: number | null }): boolean =>
+    o.resolvedAt !== null && o.linkedBookId !== null;
+
 /** Append a dated line to the row's note rather than overwriting the previous one. */
 function appendNote(existing: string | null, line: string): string {
     const stamped = `${new Date().toLocaleDateString('fr-FR')} — ${line}`;
@@ -76,7 +88,7 @@ export async function linkOrphanToBook(
     try {
         const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
         if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
-        if (orphan.resolvedAt) {
+        if (isLinked(orphan)) {
             return { ok: false, message: 'Ce dossier est déjà rattaché à un livre' };
         }
 
@@ -182,7 +194,7 @@ export async function createBookForOrphan(
     try {
         const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
         if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
-        if (orphan.resolvedAt) {
+        if (isLinked(orphan)) {
             return { ok: false, message: 'Ce dossier est déjà rattaché à un livre' };
         }
 
@@ -321,7 +333,7 @@ export async function dismissOrphan(orphanId: number, reason: string): Promise<A
     try {
         const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
         if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
-        if (orphan.resolvedAt) {
+        if (isLinked(orphan)) {
             return { ok: false, message: 'Ce dossier est rattaché à un livre — annulez le rattachement d\'abord' };
         }
 

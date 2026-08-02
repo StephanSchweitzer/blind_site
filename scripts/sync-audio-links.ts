@@ -163,10 +163,16 @@ async function main() {
             trackCount: info.count,
             bytes: BigInt(info.bytes),
         };
+        // Appearing in this list means no book claims the folder, so any
+        // "rattaché" stamp on an existing row is stale — the book it pointed at
+        // was deleted, and the folder is up for grabs again. Clearing it is what
+        // lets a final reconciliation recover from an admin's mistake.
+        // dismissedAt is deliberately kept: "this is junk" is a judgement about
+        // the folder itself, independent of whether a book claims it.
         await prisma.orphanAudioFolder.upsert({
             where: { prefix },
             create: { prefix, ...data },
-            update: data,
+            update: { ...data, resolvedAt: null, linkedBookId: null },
         });
         seen.push(prefix);
     }
