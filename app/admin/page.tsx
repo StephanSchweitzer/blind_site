@@ -16,6 +16,7 @@ export default async function Dashboard() {
         genreCount,
         coupsDeCoeurCount,
         reviewCount,
+        orphanAudioCount,
         lecteursCount,
         auditeursCount,
         bienfaiteursCount,
@@ -36,6 +37,8 @@ export default async function Dashboard() {
         prisma.genre.count(),
         prisma.coupsDeCoeur.count(),
         prisma.book.count({ where: { needsReview: true } }),
+        // Folders in the bucket no book claims, minus those already handled.
+        prisma.orphanAudioFolder.count({ where: { resolvedAt: null, dismissedAt: null } }),
         prisma.user.count({ where: { memberType: 'lecteur' } }),
         prisma.user.count({ where: { memberType: 'auditeur' } }),
         prisma.user.count({ where: { memberType: 'bienfaiteur' } }),
@@ -87,6 +90,13 @@ export default async function Dashboard() {
                         href="/admin/review"
                         buttonText="Révision et fusion des doublons potentiels du catalogue"
                         accentColor="orange"
+                    />
+                    <AdminDashboardCard
+                        title="Audio orphelin"
+                        count={orphanAudioCount}
+                        href="/admin/audio-orphelins"
+                        buttonText="Dossiers audio du stockage qu’aucun livre ne revendique"
+                        accentColor="teal"
                     />
                 </div>
             </div>

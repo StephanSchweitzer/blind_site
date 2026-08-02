@@ -171,8 +171,10 @@ async function main() {
         seen.push(prefix);
     }
 
-    // Folders that are no longer orphaned. Dismissed rows survive so an admin's
-    // "this is junk" decision isn't silently undone by the next run.
+    // Folders that are no longer orphaned. Rows an admin acted on survive, so
+    // neither a "this is junk" (dismissedAt) nor a "this belongs to book X"
+    // (resolvedAt) decision is silently undone by the next run — the relink
+    // screen's Écartés and Rattachés tabs are exactly those rows.
     //
     // `notIn: []` matches every row, so an empty orphan set would wipe the table.
     // That only happens if the listing came back empty — a bucket or credential
@@ -180,7 +182,7 @@ async function main() {
     const removed =
         seen.length > 0
             ? await prisma.orphanAudioFolder.deleteMany({
-                  where: { prefix: { notIn: seen }, dismissedAt: null },
+                  where: { prefix: { notIn: seen }, dismissedAt: null, resolvedAt: null },
               })
             : { count: 0 };
     if (!seen.length) console.log('  (aucun orphelin listé — suppression ignorée par sécurité)');

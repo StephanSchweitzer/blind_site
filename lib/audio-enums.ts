@@ -14,21 +14,31 @@ export const AudioLinkStatus = {
 
 export type AudioLinkStatus = typeof AudioLinkStatus[keyof typeof AudioLinkStatus];
 
+/**
+ * Wording note: these are read by permanents, not by whoever maintains the
+ * storage, so they describe the *recording* rather than the plumbing.
+ *
+ * NO_PATH and FOLDER_MISSING are the pair worth keeping distinct — both used to
+ * read as "there is no folder", though they call for opposite reactions:
+ * NO_PATH means nobody has said where the audio lives (normal for a book not yet
+ * recorded), FOLDER_MISSING means we know where it should be and it is gone
+ * (always an anomaly). Only the second one is alarming.
+ */
 export const AUDIO_LINK_STATUS_LABELS: Record<AudioLinkStatus, string> = {
-    OK: 'Dossier OK',
+    OK: 'Audio disponible',
     FOLDER_EMPTY: 'Dossier vide',
     FOLDER_MISSING: 'Dossier introuvable',
-    NO_PATH: 'Aucun dossier',
+    NO_PATH: 'Pas d’audio associé',
     UNVERIFIED: 'Non vérifié',
 };
 
 /** One-line explanation of what the admin is looking at, and what to do next. */
 export const AUDIO_LINK_STATUS_HINTS: Record<AudioLinkStatus, string> = {
-    OK: 'Le dossier existe et contient de l’audio.',
-    FOLDER_EMPTY: 'Le dossier existe mais ne contient aucun fichier audio.',
-    FOLDER_MISSING: 'Aucun dossier à ce chemin dans le stockage.',
-    NO_PATH: 'Ce livre n’a pas de chemin audio enregistré.',
-    UNVERIFIED: 'Ce dossier n’a jamais été vérifié.',
+    OK: 'L’enregistrement est disponible et peut être écouté.',
+    FOLDER_EMPTY: 'Le dossier de ce livre existe mais ne contient aucun enregistrement.',
+    FOLDER_MISSING: 'Le dossier associé à ce livre est introuvable dans le stockage.',
+    NO_PATH: 'Aucun enregistrement n’est associé à ce livre.',
+    UNVERIFIED: 'L’audio de ce livre n’a jamais été vérifié.',
 };
 
 export const AUDIO_LINK_STATUS_COLORS: Record<AudioLinkStatus, string> = {
