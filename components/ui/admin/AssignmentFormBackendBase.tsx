@@ -43,7 +43,9 @@ import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
 // N3 — required fields, visual top→bottom (book derives from the order picker).
-const ASSIGN_FIELD_ORDER = ['catalogueId', 'statusId'];
+// `readerId` is required on creation only: an attribution always belongs to a
+// lecteur. Existing readerless attributions stay editable so one can be given.
+const ASSIGN_FIELD_ORDER = ['readerId', 'catalogueId', 'statusId'];
 
 export interface AssignmentFormBackendBaseProps {
     presetClientId?: number | null;
@@ -147,6 +149,9 @@ export function AssignmentFormBackendBase({
                                           }: AssignmentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // An assignmentId means we're editing an existing attribution.
+    const isEditMode = !!assignmentId;
 
     // Form data state (NO readerId here)
     const [formData, setFormData] = useState<AssignmentFormData>(initialData || {
@@ -474,11 +479,13 @@ export function AssignmentFormBackendBase({
 
         // N3 — collect failing required fields in visual order.
         const invalid: string[] = [];
+        if (!isEditMode && !selectedReaderId) invalid.push('readerId');
         if (!formData.catalogueId) invalid.push('catalogueId');
         if (!formData.statusId) invalid.push('statusId');
 
         if (invalid.length) {
             const messages: Record<string, string> = {
+                readerId: 'Veuillez sélectionner un lecteur : une attribution ne peut pas être créée sans lecteur',
                 catalogueId: 'Veuillez sélectionner un livre du catalogue',
                 statusId: 'Veuillez sélectionner un statut',
             };
@@ -679,16 +686,24 @@ export function AssignmentFormBackendBase({
                                 )}
                             </div>
                         ) : (
-                            /* Create mode: Simple reader selection */
-                            <UserSearchCombobox<ReaderSummary>
-                                value={selectedReader}
-                                onSelect={handleReaderSelect}
-                                assignable
-                                placeholder="Sélectionner un lecteur..."
-                                searchPlaceholder="Rechercher un lecteur..."
-                                emptyMessage="Aucun lecteur trouvé"
-                                listClassName="max-h-[300px]"
-                            />
+                            /* Create mode: Simple reader selection — mandatory. */
+                            <>
+                                <UserSearchCombobox<ReaderSummary>
+                                    value={selectedReader}
+                                    onSelect={handleReaderSelect}
+                                    assignable
+                                    placeholder="Sélectionner un lecteur..."
+                                    searchPlaceholder="Rechercher un lecteur..."
+                                    emptyMessage="Aucun lecteur trouvé"
+                                    listClassName="max-h-[300px]"
+                                    triggerRef={registerField('readerId')}
+                                />
+                                {!selectedReaderId && (
+                                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                                        Une attribution ne peut pas être créée sans lecteur.
+                                    </p>
+                                )}
+                            </>
                         )}
                     </div>
 
@@ -933,10 +948,13 @@ export function AssignmentFormBackendBase({
 
                     {/* Submit Button */}
                     <div className="space-y-4">
+                        {/* No lecteur, no attribution — the submit stays disabled on
+                            creation. The API refuses it too (guardAssignmentHasReader). */}
                         <Button
                             type="submit"
-                            disabled={isLoading}
-                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent"
+                            disabled={isLoading || (!isEditMode && !selectedReaderId)}
+                            title={!isEditMode && !selectedReaderId ? 'Sélectionnez d’abord un lecteur' : undefined}
+                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>

@@ -3,6 +3,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
+import { guardOrderStatus, resolveClosureDate } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -287,6 +288,7 @@ export const POST = withAdmin(async (request, { me }) => {
                 isDuplication: boolean;
                 lentPhysicalBook: boolean;
                 cost: Prisma.Decimal | null;
+                closureDate: Date | null;
             }[] = [];
 
             for (const b of books) {
@@ -294,6 +296,17 @@ export const POST = withAdmin(async (request, { me }) => {
                     return NextResponse.json(
                         { error: 'Missing fields in book line', message: 'Chaque ouvrage doit comporter un livre, un statut et un format média' },
                         { status: 400 }
+                    );
+                }
+
+                const lineStatusId = parseInt(String(b.statusId));
+
+                // « Soldé » is a facture status — a demande can never be created with it.
+                const lineStatusGuard = guardOrderStatus(lineStatusId);
+                if (!lineStatusGuard.ok) {
+                    return NextResponse.json(
+                        { error: 'Invalid status', message: lineStatusGuard.message, field: 'statusId' },
+                        { status: lineStatusGuard.httpStatus }
                     );
                 }
 
@@ -314,11 +327,18 @@ export const POST = withAdmin(async (request, { me }) => {
 
                 preparedLines.push({
                     catalogueId: parseInt(String(b.catalogueId)),
-                    statusId: parseInt(String(b.statusId)),
+                    statusId: lineStatusId,
                     mediaFormatId: parseInt(String(b.mediaFormatId)),
                     isDuplication: !!b.isDuplication,
                     lentPhysicalBook: !!b.lentPhysicalBook,
                     cost: lineCost,
+                    // A line created straight into « Terminé » is closed today.
+                    closureDate:
+                        resolveClosureDate({
+                            previousStatusId: null,
+                            nextStatusId: lineStatusId,
+                            explicitClosureDate: undefined,
+                        }) ?? null,
                 });
             }
 
@@ -341,6 +361,7 @@ export const POST = withAdmin(async (request, { me }) => {
                             processedByStaffId: batchStaffId,
                             createdDate: batchNow,
                             updatedAt: batchNow,
+                            closureDate: l.closureDate,
                             cost: l.cost,
                             billingStatus: batchBillingStatus,
                             lentPhysicalBook: l.lentPhysicalBook,
@@ -392,6 +413,17 @@ export const POST = withAdmin(async (request, { me }) => {
                     required: ['aveugleId', 'catalogueId', 'requestReceivedDate', 'statusId', 'mediaFormatId', 'deliveryMethod'],
                 },
                 { status: 400 }
+            );
+        }
+
+        const parsedStatusId = parseInt(statusId);
+
+        // « Soldé » is a facture status — a demande can never be created with it.
+        const orderStatusGuard = guardOrderStatus(parsedStatusId);
+        if (!orderStatusGuard.ok) {
+            return NextResponse.json(
+                { error: 'Invalid status', message: orderStatusGuard.message, field: 'statusId' },
+                { status: orderStatusGuard.httpStatus }
             );
         }
 
@@ -479,13 +511,20 @@ export const POST = withAdmin(async (request, { me }) => {
             aveugleId: parseInt(aveugleId),
             catalogueId: parseInt(catalogueId),
             requestReceivedDate: parsedRequestReceivedDate,
-            statusId: parseInt(statusId),
+            statusId: parsedStatusId,
             isDuplication: isDuplication || false,
             mediaFormatId: parseInt(mediaFormatId),
             deliveryMethod: deliveryMethod as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE',
             processedByStaffId: staffId,
             createdDate,
-            closureDate: parsedClosureDate,
+            // A demande created straight into « Terminé » is closed today,
+            // unless the admin supplied a date explicitly.
+            closureDate:
+                resolveClosureDate({
+                    previousStatusId: null,
+                    nextStatusId: parsedStatusId,
+                    explicitClosureDate: parsedClosureDate,
+                }) ?? null,
             updatedAt: new Date(),
             cost: parsedCost,
             billingStatus: finalBillingStatus,

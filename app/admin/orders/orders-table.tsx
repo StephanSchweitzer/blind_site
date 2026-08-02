@@ -31,6 +31,7 @@ import { AddOrderFormBackend } from '@/admin/AddOrderFormBackend';
 import { EditOrderModal } from '@/admin/EditOrderModal';
 import { OrderFormData } from '@/admin/OrderFormBackendBase';
 import { useToast } from '@/hooks/use-toast';
+import { STATUS } from '@/lib/statusSync';
 import type {
     SerializedOrderTableRow,
     OrderUserOption,
@@ -423,15 +424,19 @@ export default function OrdersTable({
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
-                                    {availableStatuses.map((status) => (
-                                        <SelectItem
-                                            key={status.id}
-                                            value={status.id.toString()}
-                                            className="text-foreground"
-                                        >
-                                            {status.name}
-                                        </SelectItem>
-                                    ))}
+                                    {/* « Soldé » is a facture status — no demande can hold it, so it
+                                        isn't offered as a filter (kept only if already in the URL). */}
+                                    {availableStatuses
+                                        .filter((status) => status.id !== STATUS.SOLDE || currentStatusId === String(STATUS.SOLDE))
+                                        .map((status) => (
+                                            <SelectItem
+                                                key={status.id}
+                                                value={status.id.toString()}
+                                                className="text-foreground"
+                                            >
+                                                {status.name}
+                                            </SelectItem>
+                                        ))}
                                 </SelectContent>
                             </Select>
                         </div>

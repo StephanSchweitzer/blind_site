@@ -5,13 +5,19 @@ type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0
 /**
  * Workflow statuses (shared Status lookup table).
  * Only TERMINE and SOLDE carry special meaning in the sync logic:
- * an assignment tops out at TERMINE; SOLDE is order-only.
+ * an assignment tops out at TERMINE, and so does a demande.
+ *
+ * SOLDE is RETIRED as a workflow status: « Soldé » belongs to factures
+ * (BillingStatus.SOLDE), not to demandes or attributions. It is kept here
+ * because the Status row still exists and the guards below still have to
+ * recognise it — but neither a demande nor an attribution may be set to it.
+ * See guardOrderStatus / guardAssignmentStatus.
  */
 export const STATUS = {
     ATTENTE: 1, // Attente envoi vers lecteur
     EN_COURS: 2, // En cours
     TERMINE: 3, // Terminé
-    SOLDE: 4, // Soldé
+    SOLDE: 4, // Soldé — retired, facture-only (see above)
 } as const;
 
 export type GuardResult =
@@ -31,6 +37,32 @@ export function guardAssignmentStatus(statusId: number): GuardResult {
         return fail(
             400,
             'Une attribution ne peut pas avoir le statut « Soldé » : ce statut est réservé aux demandes.'
+        );
+    }
+    return OK;
+}
+
+/**
+ * A demande can never hold the SOLDE status either — « Soldé » is a facture
+ * status. The pre-existing SOLDE guards below are kept intact for legacy rows
+ * that may still carry it; this one stops any *new* demande from taking it.
+ */
+export function guardOrderStatus(statusId: number): GuardResult {
+    if (statusId === STATUS.SOLDE) {
+        return fail(
+            400,
+            'Une demande ne peut pas avoir le statut « Soldé » : ce statut est réservé aux factures.'
+        );
+    }
+    return OK;
+}
+
+/** An attribution always belongs to a lecteur — it can't be created without one. */
+export function guardAssignmentHasReader(hasReader: boolean): GuardResult {
+    if (!hasReader) {
+        return fail(
+            400,
+            "Une attribution doit être attribuée à un lecteur. Veuillez sélectionner un lecteur."
         );
     }
     return OK;
@@ -95,6 +127,45 @@ export function guardCanSettleOrder(
         );
     }
     return OK;
+}
+
+/** Local midnight today — closureDate is a calendar date, not a timestamp. */
+function startOfToday(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/**
+ * Derives a demande's date de clôture from its status instead of asking the
+ * admin to type it: entering « Terminé » stamps today, leaving « Terminé »
+ * clears the date again. Not a guard — it computes a value.
+ *
+ * An explicit non-null date always wins, so an admin can still correct the day,
+ * and an explicit null on a demande that was ALREADY « Terminé » is honoured
+ * (deliberate clearing). Returns `undefined` when nothing should change, which
+ * Prisma treats as "leave this column alone" — that's what keeps the 19 000+
+ * legacy « Terminé » demandes from being back-stamped with today's date on an
+ * unrelated edit.
+ *
+ * Pass `previousStatusId: null` when creating.
+ */
+export function resolveClosureDate(args: {
+    previousStatusId: number | null;
+    nextStatusId: number | null;
+    /** `undefined` = caller did not send the field; `null` = caller cleared it. */
+    explicitClosureDate: Date | null | undefined;
+}): Date | null | undefined {
+    const { previousStatusId, nextStatusId, explicitClosureDate } = args;
+
+    if (explicitClosureDate) return explicitClosureDate;
+
+    const wasTermine = previousStatusId === STATUS.TERMINE;
+    const isTermine = nextStatusId === STATUS.TERMINE;
+
+    if (isTermine && !wasTermine) return startOfToday();
+    if (wasTermine && !isTermine) return null;
+
+    return explicitClosureDate;
 }
 
 export async function syncOrderToStatus(

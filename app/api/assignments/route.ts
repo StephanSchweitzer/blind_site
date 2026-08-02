@@ -4,6 +4,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
     guardAssignmentStatus,
+    guardAssignmentHasReader,
     guardAssignmentConsistency,
     guardAssignmentMatchesOrder,
     guardNotDuplication,
@@ -119,6 +120,16 @@ export const POST = withAdmin(async (request: NextRequest) => {
             return NextResponse.json(
                 { error: 'Le statut est requis' },
                 { status: 400 }
+            );
+        }
+
+        // An attribution is always attributed to someone — no readerless creation.
+        // (Enforced here, not only in the form: the client check is not enough.)
+        const readerGuardRequired = guardAssignmentHasReader(!!readerId);
+        if (!readerGuardRequired.ok) {
+            return NextResponse.json(
+                { error: readerGuardRequired.message },
+                { status: readerGuardRequired.httpStatus }
             );
         }
 

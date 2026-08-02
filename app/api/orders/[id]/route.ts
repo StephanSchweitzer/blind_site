@@ -14,9 +14,11 @@ import {
 import { Prisma, BillingStatus } from '@prisma/client';
 import {
     STATUS,
+    guardOrderStatus,
     guardOrderCompletion,
     guardDuplicationFlip,
     guardDemandeStatusSync,
+    resolveClosureDate,
     syncAssignmentToStatus,
 } from '@/lib/statusSync';
 import { recomputeBillTotal, accrueOrderToOpenDraft, issueDraftIfOverThreshold, logBillEvent } from '@/lib/billing';
@@ -219,6 +221,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             );
         }
 
+        // « Soldé » is a facture status — a demande can never be set to it.
+        if (data.statusId !== undefined) {
+            const orderStatusGuard = guardOrderStatus(data.statusId);
+            if (!orderStatusGuard.ok) {
+                return NextResponse.json({ message: orderStatusGuard.message }, { status: orderStatusGuard.httpStatus });
+            }
+        }
+
         // A non-duplication order can't reach Terminé/Soldé without a finished assignment.
         if (data.statusId !== undefined) {
             const completionGuard = guardOrderCompletion({
@@ -283,6 +293,15 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             );
         }
 
+        // Date de clôture follows the status: stamped on entering « Terminé »,
+        // cleared on leaving it. An explicit date from the form still wins.
+        const closureDate = resolveClosureDate({
+            previousStatusId: existingOrder.statusId,
+            nextStatusId: data.statusId ?? existingOrder.statusId,
+            explicitClosureDate:
+                data.closureDate === undefined ? undefined : data.closureDate ? new Date(data.closureDate) : null,
+        });
+
         const updateData: Prisma.OrdersUncheckedUpdateInput = {
             aveugleId: data.aveugleId,
             catalogueId: data.catalogueId,
@@ -294,7 +313,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             lentPhysicalBook: data.lentPhysicalBook,
             processedByStaffId: data.processedByStaffId || null,
             createdDate: data.createdDate ? new Date(data.createdDate) : null,
-            closureDate: data.closureDate ? new Date(data.closureDate) : null,
+            closureDate,
             cost: data.cost !== undefined ? newCost : undefined,
             billingStatus: data.billingStatus,
             // billId is intentionally NOT set here: an order's bill membership is managed
@@ -440,6 +459,14 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             );
         }
 
+        // « Soldé » is a facture status — a demande can never be set to it.
+        if (body.statusId !== undefined) {
+            const orderStatusGuard = guardOrderStatus(body.statusId);
+            if (!orderStatusGuard.ok) {
+                return NextResponse.json({ message: orderStatusGuard.message }, { status: orderStatusGuard.httpStatus });
+            }
+        }
+
         // A non-duplication order can't reach Terminé/Soldé without a finished assignment.
         if (body.statusId !== undefined) {
             const completionGuard = guardOrderCompletion({
@@ -515,7 +542,15 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         if (body.deliveryMethod !== undefined) updateData.deliveryMethod = body.deliveryMethod;
         if (body.processedByStaffId !== undefined) updateData.processedByStaffId = body.processedByStaffId || null;
         if (body.createdDate !== undefined) updateData.createdDate = body.createdDate ? new Date(body.createdDate) : null;
-        if (body.closureDate !== undefined) updateData.closureDate = body.closureDate ? new Date(body.closureDate) : null;
+        // Date de clôture follows the status: stamped on entering « Terminé »,
+        // cleared on leaving it. An explicit date from the caller still wins.
+        const closureDate = resolveClosureDate({
+            previousStatusId: existingOrder.statusId,
+            nextStatusId: body.statusId ?? existingOrder.statusId,
+            explicitClosureDate:
+                body.closureDate === undefined ? undefined : body.closureDate ? new Date(body.closureDate) : null,
+        });
+        if (closureDate !== undefined) updateData.closureDate = closureDate;
         if (body.cost !== undefined) updateData.cost = newCost;
         if (body.billingStatus !== undefined) updateData.billingStatus = body.billingStatus;
         // billId intentionally omitted — bill membership is managed by the bill route, not order edits.

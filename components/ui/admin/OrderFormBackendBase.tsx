@@ -31,6 +31,7 @@ import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
+import { STATUS } from '@/lib/statusSync';
 
 // N3 — required fields, visual top→bottom.
 const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'statusId', 'mediaFormatId', 'deliveryMethod'];
@@ -366,6 +367,30 @@ export function OrderFormBackendBase({
         });
     };
 
+    // Date de clôture is derived from the statut, never typed by hand: entering
+    // « Terminé » stamps today, leaving it clears the date again. Mirrors
+    // resolveClosureDate() in lib/statusSync.ts, which is the authority — this
+    // only gives the admin immediate feedback in the form. A date already filled
+    // in is kept, so a manual correction survives.
+    const handleStatusChange = (value: string) => {
+        const nextStatusId = parseInt(value);
+        setFormData(prev => {
+            const wasTermine = prev.statusId === STATUS.TERMINE;
+            const isTermine = nextStatusId === STATUS.TERMINE;
+
+            let closureDate = prev.closureDate;
+            if (isTermine && !wasTermine && !closureDate) {
+                // Local midnight, like every date the calendar picker produces.
+                const now = new Date();
+                closureDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            } else if (wasTermine && !isTermine) {
+                closureDate = null;
+            }
+
+            return { ...prev, statusId: nextStatusId, closureDate };
+        });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -546,8 +571,12 @@ export function OrderFormBackendBase({
 
                     {/* Closure Date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Date de cloture</label>
-                        <p className="text-xs text-muted-foreground">Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).</p>
+                        <label className="text-sm font-medium text-foreground">Date de clôture</label>
+                        <p className="text-xs text-muted-foreground">
+                            Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).
+                            Renseignée automatiquement au passage au statut « Terminé » et effacée si la
+                            demande en ressort — modifiez-la seulement pour corriger le jour.
+                        </p>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
@@ -642,22 +671,27 @@ export function OrderFormBackendBase({
                         </label>
                         <Select
                             value={formData.statusId?.toString() || ''}
-                            onValueChange={(value) => setFormData({ ...formData, statusId: parseInt(value) })}
+                            onValueChange={handleStatusChange}
                         >
                             <SelectTrigger ref={registerField('statusId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
                                 <div className="py-1">
-                                    {statuses.map((status) => (
-                                        <SelectItem
-                                            key={status.id}
-                                            value={status.id.toString()}
-                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
-                                        >
-                                            <span className="font-medium">{status.name}</span>
-                                        </SelectItem>
-                                    ))}
+                                    {/* « Soldé » is a facture status, not a demande status — never offer
+                                        it. A legacy demande that still holds it keeps its option so
+                                        editing it doesn't show an empty required field. */}
+                                    {statuses
+                                        .filter((status) => status.id !== STATUS.SOLDE || formData.statusId === STATUS.SOLDE)
+                                        .map((status) => (
+                                            <SelectItem
+                                                key={status.id}
+                                                value={status.id.toString()}
+                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
+                                            >
+                                                <span className="font-medium">{status.name}</span>
+                                            </SelectItem>
+                                        ))}
                                 </div>
                             </SelectContent>
                         </Select>
