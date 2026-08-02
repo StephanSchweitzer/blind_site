@@ -3,6 +3,8 @@ import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { headTrack, deleteTrack } from '@/lib/audio/bucket';
 import { refreshBookAudioState, resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
+import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 
 /** An upload that lands more than this far off the announced size is suspect. */
 const SIZE_TOLERANCE_BYTES = 0;
@@ -33,7 +35,7 @@ export const POST = withAdmin(async (req, { params }) => {
 
     const book = await prisma.book.findUnique({
         where: { id: bookId },
-        select: { audio_filepath: true },
+        select: { audio_filepath: true, available: true },
     });
     if (!book) {
         return NextResponse.json({ message: 'Livre non trouvé' }, { status: 404 });
@@ -72,10 +74,24 @@ export const POST = withAdmin(async (req, { params }) => {
 
     const state = await refreshBookAudioState(bookId);
 
+    // A book left « en attente » only because nobody had recorded it yet. Now
+    // that a track has landed, the reason is gone: publish it rather than make
+    // someone remember to tick the box on a second screen. Conditioned on the
+    // refreshed status, so a batch where every file failed verification does
+    // not publish an empty folder.
+    let becameAvailable = false;
+    if (confirmed.length && !book.available && state.status === 'OK') {
+        await prisma.book.update({ where: { id: bookId }, data: { available: true } });
+        becameAvailable = true;
+        revalidateAdmin();
+        revalidateCatalogue();
+    }
+
     return NextResponse.json({
         confirmed: confirmed.length,
         failed,
         status: state.status,
         trackCount: state.trackCount,
+        becameAvailable,
     });
 });

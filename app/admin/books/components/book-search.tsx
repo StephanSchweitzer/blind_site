@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Loader2 } from "lucide-react";
+import { calendarMonth, calendarYear, formatCalendarDate } from '@/lib/calendar-date';
 
 interface BookSearchProps {
     onBookSelect: (bookData: {
@@ -172,10 +173,11 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             }
         }
 
-        const month = book.publishedDate ?
-            (book.publishedDate.getMonth() + 1).toString().padStart(2, '0') : '';
-        const year = book.publishedDate ?
-            book.publishedDate.getFullYear().toString() : '';
+        // Google Books answers "2018" or "2018-05-01", which the spec parses as
+        // UTC — so read it back as UTC too, or the prefilled year is one short
+        // for anyone in a timezone behind Greenwich.
+        const month = calendarMonth(book.publishedDate);
+        const year = (calendarYear(book.publishedDate) ?? '').toString();
 
         onBookSelect({
             title: book.title,
@@ -271,7 +273,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                                 )}
                                 {book.publishedDate && (
                                     <p className="text-sm text-muted-foreground">
-                                        Publié le {book.publishedDate.toLocaleDateString('fr-FR')}
+                                        Publié le {formatCalendarDate(book.publishedDate)}
                                     </p>
                                 )}
                                 {book.pageCount > 0 && (

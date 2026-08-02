@@ -101,11 +101,23 @@ module.exports = {
 					to: {
 						height: '0'
 					}
+				},
+				// Indeterminate progress: a step whose duration is genuinely
+				// unknown (the storage acknowledging an upload) must not be
+				// drawn as a bar filling towards a finish line it cannot know.
+				'indeterminate-bar': {
+					'0%': {
+						transform: 'translateX(-100%)'
+					},
+					'100%': {
+						transform: 'translateX(400%)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'indeterminate-bar': 'indeterminate-bar 1.6s ease-in-out infinite'
 			}
 		}
 	},

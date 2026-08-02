@@ -18,6 +18,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { useDebounce } from 'use-debounce';
+import { calendarYear } from '@/lib/calendar-date';
 import { AddBookButtonBackend } from "@/admin/BookModalBackend";
 import { EditBookModal } from '@/admin/EditBookModal';
 import { BookFormData } from "@/admin/BookFormBackendBase";
@@ -362,9 +363,9 @@ export default function BookSelector({
                 subtitle: bookDetails.subtitle || '',
                 author: bookDetails.author || '',
                 publisher: bookDetails.publisher || '',
-                publishedYear: bookDetails.publishedDate ?
-                    new Date(bookDetails.publishedDate).getFullYear().toString() :
-                    '',
+                // UTC year: this field is saved back verbatim, so a local read
+                // shifts the date on every edit west of Greenwich.
+                publishedYear: (calendarYear(bookDetails.publishedDate) ?? '').toString(),
                 genres: genreIds,
                 isbn: bookDetails.isbn || '',
                 description: bookDetails.description || '',

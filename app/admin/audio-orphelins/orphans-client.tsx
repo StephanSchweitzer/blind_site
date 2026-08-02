@@ -40,11 +40,12 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
+import { BookSearchCombobox, bookLabel } from '@/admin/BookSearchCombobox';
+import { calendarYear } from '@/lib/calendar-date';
 import {
+    AudioLinkStatus,
     getAudioLinkStatusColor,
     getAudioLinkStatusLabel,
-    type AudioLinkStatus,
 } from '@/lib/audio-enums';
 import { OrphanAudioModal } from './orphan-audio-modal';
 import { formatBytes, formatDate, isNasArtefact } from './format';
@@ -62,7 +63,9 @@ export type OrphanTab = 'a-traiter' | 'rattaches' | 'ecartes';
 export interface SuggestedBook {
     id: number;
     title: string;
+    subtitle: string | null;
     author: string;
+    year: number | null;
     audioFilepath: string | null;
     audioLinkStatus: AudioLinkStatus;
     audioTrackCount: number | null;
@@ -70,6 +73,26 @@ export interface SuggestedBook {
     /** Why this book is being proposed — the Access number, or an identical title. */
     reason: 'numero' | 'titre';
 }
+
+/**
+ * A catalogue hit in the manual search, as this screen needs to read it.
+ *
+ * /api/books returns whole book rows, so none of this costs an extra query —
+ * it was simply never displayed. Title alone is not enough to choose with:
+ * « Quatre soeurs » exists twice, same author, separated only by its subtitle.
+ */
+interface BookHit {
+    id: number;
+    title: string;
+    subtitle: string | null;
+    author: string;
+    publishedDate: string | null;
+    audioLinkStatus: AudioLinkStatus | null;
+    audioTrackCount: number | null;
+    source_access_id: number | null;
+}
+
+const yearOf = calendarYear;
 
 export interface OrphanRow {
     id: number;
@@ -84,7 +107,7 @@ export interface OrphanRow {
     resolvedAt: string | null;
     dismissedAt: string | null;
     note: string | null;
-    linkedBook: { id: number; title: string; author: string } | null;
+    linkedBook: { id: number; title: string; subtitle: string | null; author: string } | null;
     suggestions: SuggestedBook[];
 }
 
@@ -122,8 +145,12 @@ function SuggestionLine({ book, busy, onLink }: SuggestionLineProps) {
                 <div className="text-sm font-medium text-foreground">
                     #{book.id} — {book.title}
                 </div>
+                {book.subtitle?.trim() && (
+                    <div className="text-xs italic text-foreground/80">{book.subtitle}</div>
+                )}
                 <div className="text-xs text-muted-foreground">
                     {book.author}
+                    {book.year != null && ` · ${book.year}`}
                     {book.sourceAccessId != null && ` · n° ${book.sourceAccessId}`}
                     {' · '}
                     <span className={`rounded px-1.5 py-0.5 ${getAudioLinkStatusColor(book.audioLinkStatus)}`}>
@@ -167,6 +194,40 @@ interface OrphanCardProps {
     onRestore: (orphanId: number) => void;
 }
 
+/**
+ * One catalogue hit in the manual search. Deliberately verbose: this list is
+ * where a folder gets attached to the wrong book, and every line here is one
+ * fewer reason to guess — subtitle, author, year, Access number, and whether
+ * the book already carries audio (a hit that does is almost always the sign
+ * that this orphan is a duplicate).
+ */
+function BookHitRow({ book }: { book: BookHit }) {
+    const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
+    const year = yearOf(book.publishedDate);
+
+    return (
+        <>
+            <div className="font-medium">
+                #{book.id} — {book.title}
+            </div>
+            {book.subtitle?.trim() && (
+                <div className="text-sm italic text-foreground/80">{book.subtitle}</div>
+            )}
+            <div className="text-sm text-muted-foreground">
+                {book.author}
+                {year != null && ` · ${year}`}
+                {book.source_access_id != null && ` · n° ${book.source_access_id}`}
+            </div>
+            <div className="mt-1">
+                <span className={`rounded px-1.5 py-0.5 text-xs ${getAudioLinkStatusColor(status)}`}>
+                    {getAudioLinkStatusLabel(status)}
+                    {book.audioTrackCount != null && ` (${book.audioTrackCount})`}
+                </span>
+            </div>
+        </>
+    );
+}
+
 function OrphanCard({
     orphan,
     tab,
@@ -178,7 +239,7 @@ function OrphanCard({
     onUnlink,
     onRestore,
 }: OrphanCardProps) {
-    const [manual, setManual] = useState<{ id: number; title: string; author: string } | null>(null);
+    const [manual, setManual] = useState<BookHit | null>(null);
     const artefact = isNasArtefact(orphan.prefix);
 
     return (
@@ -234,7 +295,7 @@ function OrphanCard({
                         <p className="text-sm text-foreground">
                             Rattaché à{' '}
                             <span className="font-medium">
-                                #{orphan.linkedBook.id} — {orphan.linkedBook.title}
+                                #{orphan.linkedBook.id} — {bookLabel(orphan.linkedBook)}
                             </span>{' '}
                             <span className="text-muted-foreground">({orphan.linkedBook.author})</span>{' '}
                             le {formatDate(orphan.resolvedAt)}
@@ -309,11 +370,13 @@ function OrphanCard({
                             </p>
                             <div className="flex flex-wrap items-center gap-2">
                                 <div className="min-w-[260px] flex-1">
-                                    <BookSearchCombobox
+                                    <BookSearchCombobox<BookHit>
                                         value={manual}
                                         onSelect={(b) => {
                                             setManual(b);
                                         }}
+                                        renderItem={(b) => <BookHitRow book={b} />}
+                                        renderValue={(b) => `#${b.id} — ${bookLabel(b)} · ${b.author}`}
                                         placeholder="Rechercher un livre du catalogue…"
                                     />
                                 </div>

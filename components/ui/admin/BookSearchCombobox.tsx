@@ -7,6 +7,13 @@ export interface BookSearchResult {
     id: number;
     title: string;
     author: string;
+    /**
+     * Present in every /api/books payload, and the only thing telling some
+     * catalogue entries apart: the corpus holds several books recorded in
+     * parts, identical down to the author, distinguished purely by « CD 1 et
+     * 2 » / « CD 2 et 3 ». Optional so existing callers keep compiling.
+     */
+    subtitle?: string | null;
 }
 
 interface BookSearchComboboxProps<T extends BookSearchResult> {
@@ -15,15 +22,29 @@ interface BookSearchComboboxProps<T extends BookSearchResult> {
     placeholder?: string;
     /** Trigger label; defaults to « Titre - Auteur ». */
     renderValue?: (book: T) => React.ReactNode;
+    /** Result row; defaults to title (+ subtitle) over author. */
+    renderItem?: (book: T) => React.ReactNode;
     triggerRef?: React.Ref<HTMLButtonElement>;
     triggerClassName?: string;
 }
+
+/**
+ * « Titre — sous-titre », or just the title when there is no subtitle.
+ * Both are trimmed: imported titles carry trailing spaces often enough that
+ * joining them raw produces a visible double space.
+ */
+export const bookLabel = (book: BookSearchResult): string => {
+    const title = book.title.trim();
+    const subtitle = book.subtitle?.trim();
+    return subtitle ? `${title} — ${subtitle}` : title;
+};
 
 export function BookSearchCombobox<T extends BookSearchResult>({
     value,
     onSelect,
     placeholder = 'Rechercher un livre ...',
     renderValue,
+    renderItem,
     triggerRef,
     triggerClassName,
 }: BookSearchComboboxProps<T>) {
@@ -40,13 +61,19 @@ export function BookSearchCombobox<T extends BookSearchResult>({
             onSelect={onSelect}
             fetcher={fetcher}
             getItemKey={(book) => book.id}
-            renderValue={renderValue ?? ((book) => `${book.title} - ${book.author}`)}
-            renderItem={(book) => (
-                <>
-                    <div className="font-medium">{book.title}</div>
-                    <div className="text-sm text-muted-foreground">{book.author}</div>
-                </>
-            )}
+            renderValue={renderValue ?? ((book) => `${bookLabel(book)} - ${book.author}`)}
+            renderItem={
+                renderItem ??
+                ((book) => (
+                    <>
+                        <div className="font-medium">{book.title}</div>
+                        {book.subtitle?.trim() && (
+                            <div className="text-sm text-foreground/80">{book.subtitle}</div>
+                        )}
+                        <div className="text-sm text-muted-foreground">{book.author}</div>
+                    </>
+                ))
+            }
             placeholder={placeholder}
             searchPlaceholder="Rechercher par titre ou auteur..."
             emptyMessage="Aucun livre trouvé"

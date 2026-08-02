@@ -40,6 +40,7 @@ import {
     getAudioLinkStatusHint,
     getAudioLinkStatusLabel,
 } from '@/lib/audio-enums';
+import { formatCalendarDate } from '@/lib/calendar-date';
 import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
 
 export interface ReviewBook {
@@ -78,6 +79,7 @@ interface Props {
     search: string;
 }
 
+/** For real instants (escalatedAt…), which belong in the reader's own timezone. */
 const fmtDate = (v: Date | string | null): string => {
     if (!v) return '—';
     const d = new Date(v);
@@ -99,7 +101,10 @@ const FIELDS: FieldDef[] = [
     { label: 'Titre', key: 'title', render: (b) => fmtText(b.title), overridable: true },
     { label: 'Auteur', key: 'author', render: (b) => fmtText(b.author), overridable: true },
     { label: 'Sous-titre', key: 'subtitle', render: (b) => fmtText(b.subtitle), overridable: true },
-    { label: 'Date de publication', key: 'publishedDate', render: (b) => fmtDate(b.publishedDate), overridable: true },
+    // Calendar date, not an instant: two candidates for a fusion have to be
+    // compared on the year that is stored, not the one the viewer's timezone
+    // makes of it.
+    { label: 'Date de publication', key: 'publishedDate', render: (b) => formatCalendarDate(b.publishedDate, '—'), overridable: true },
     { label: 'ISBN', key: 'isbn', render: (b) => fmtText(b.isbn), overridable: true },
     { label: 'Éditeur', key: 'publisher', render: (b) => fmtText(b.publisher), overridable: true },
     { label: 'Pages', key: 'pageCount', render: (b) => fmtText(b.pageCount), overridable: true },

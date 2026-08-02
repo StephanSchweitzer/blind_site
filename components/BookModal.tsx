@@ -7,6 +7,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Volume2, Filter, Clock, Calendar, User, X } from 'lucide-react';
+import { formatCalendarDate } from '@/lib/calendar-date';
 
 interface BookModalProps {
     book: BookWithGenres | null;
@@ -217,7 +218,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                                     <div>
                                         <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-0.5">Date de publication</p>
                                         <p className="text-gray-900 dark:text-gray-100 font-medium">
-                                            {new Date(book.publishedDate).toLocaleDateString('fr-FR')}
+                                            {formatCalendarDate(book.publishedDate)}
                                         </p>
                                     </div>
                                 </div>

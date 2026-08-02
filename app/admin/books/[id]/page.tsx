@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
 import YearCommandSelect from "@/components/ui/year-select";
+import { calendarMonth, calendarYear } from '@/lib/calendar-date';
 import DurationInputs from "@/components/ui/duration-inputs";
 
 
@@ -83,12 +84,14 @@ export default function EditionLivre() {
                 const res = await fetch(`/api/books/${id}`);
                 if (res.ok) {
                     const donnees = await res.json();
-                    const date = new Date(donnees.publishedDate);
 
                     setFormData({
                         ...donnees,
-                        publishedMonth: (date.getMonth() + 1).toString().padStart(2, '0'),
-                        publishedYear: date.getFullYear().toString(),
+                        // Lu en UTC : ce champ est réenregistré tel quel, et une
+                        // lecture en heure locale décale l'année à chaque
+                        // modification depuis un fuseau en retard sur UTC.
+                        publishedMonth: calendarMonth(donnees.publishedDate),
+                        publishedYear: (calendarYear(donnees.publishedDate) ?? '').toString(),
                     });
                     setGenresSelectionnes(donnees.genres.map((g: { genre: Genre }) => g.genre.id));
                 } else {

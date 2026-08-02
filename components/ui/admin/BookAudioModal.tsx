@@ -11,10 +11,12 @@ import {
 import { Button } from '@/components/ui/button';
 import {
     AlertTriangle,
+    CloudUpload,
     Download,
     FolderArchive,
     FolderPlus,
     Loader2,
+    Lock,
     Pause,
     Play,
     RotateCcw,
@@ -23,7 +25,7 @@ import {
     X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAudioUpload } from '@/hooks/useAudioUpload';
+import { useAudioUpload, type FileProgress, type UploadPhase } from '@/hooks/useAudioUpload';
 import { safeZipName, useAudioFolderZip, type ZipEntry } from '@/hooks/useAudioFolderZip';
 import {
     getAudioLinkStatusColor,
@@ -92,6 +94,88 @@ const formatDate = (iso: string) =>
 
 const personLabel = (p: { name: string | null; email: string | null } | null) =>
     p?.name || p?.email || 'inconnu';
+
+/** Seconds since this component mounted, ticking once a second. */
+function useElapsedSeconds(): number {
+    const [seconds, setSeconds] = useState(0);
+    useEffect(() => {
+        const started = Date.now();
+        const id = setInterval(() => setSeconds(Math.round((Date.now() - started) / 1000)), 1000);
+        return () => clearInterval(id);
+    }, []);
+    return seconds;
+}
+
+const formatElapsed = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+/**
+ * The second half of an upload, which used to be invisible.
+ *
+ * The green bars measure bytes leaving the machine and nothing else. Once the
+ * last one is sent there is a second wait — B2 acknowledging the object, then
+ * the server verifying it — that is silent, unbounded, and on a large track far
+ * longer than the transfer itself. Left unexplained it reads as a freeze, and a
+ * permanent closes the tab in the middle of it.
+ *
+ * So it gets its own indicator. The part that can be counted (files the storage
+ * has acknowledged) is a real bar; the verification round-trip that follows is
+ * an indeterminate one, because inventing a percentage for it would be a lie.
+ * The elapsed clock is there purely so a long wait still looks alive.
+ */
+function CloudFinalisingPanel({ phase, progress }: { phase: UploadPhase; progress: FileProgress[] }) {
+    const elapsed = useElapsedSeconds();
+    const total = progress.length;
+    const acknowledged = progress.filter(
+        (p) => p.status === 'terminé' || p.status === 'échec',
+    ).length;
+    const verifying = phase === 'finalising';
+    const percent = total ? Math.round((acknowledged / total) * 100) : 0;
+
+    return (
+        <div
+            className="flex-shrink-0 rounded-md border border-blue-500/40 bg-blue-500/10 p-3"
+            role="status"
+            aria-live="polite"
+        >
+            <div className="flex items-start gap-2">
+                <CloudUpload className="mt-0.5 h-4 w-4 flex-shrink-0 animate-pulse text-blue-600 dark:text-blue-300" />
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">
+                        Préparation de l’audio dans le cloud…
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Vos fichiers ont quitté votre ordinateur. Le stockage termine maintenant de
+                        les enregistrer : cette étape est silencieuse et peut durer plusieurs
+                        minutes pour un fichier volumineux. Merci de patienter sans fermer cette
+                        fenêtre ni quitter la page.
+                    </p>
+
+                    <div className="mt-2 flex justify-between gap-2 text-xs">
+                        <span className="text-foreground">
+                            {verifying
+                                ? 'Vérification des fichiers enregistrés…'
+                                : `${acknowledged} / ${total} fichier${total > 1 ? 's' : ''} enregistré${acknowledged > 1 ? 's' : ''} par le stockage`}
+                        </span>
+                        <span className="whitespace-nowrap text-muted-foreground">
+                            {formatElapsed(elapsed)}
+                        </span>
+                    </div>
+
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-muted">
+                        {verifying ? (
+                            <div className="h-full w-1/4 animate-indeterminate-bar rounded bg-blue-500" />
+                        ) : (
+                            <div
+                                className="h-full bg-blue-500 transition-all"
+                                style={{ width: `${percent}%` }}
+                            />
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 /**
  * Archive entries for a folder. The path is the key relative to the book
@@ -201,7 +285,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const handleFilesChosen = async (files: File[], createFolder = false) => {
         if (!files.length) return;
         setPendingFiles(files);
-        const ok = await upload(files, createFolder);
+        const { ok, becameAvailable } = await upload(files, createFolder);
         if (ok) {
             toast({
                 // @ts-expect-error jsx in toast
@@ -210,6 +294,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                     <span className="text-xl mt-2">
                         {files.length} fichier{files.length > 1 ? 's' : ''} ajouté
                         {files.length > 1 ? 's' : ''} au dossier.
+                        {becameAvailable && ' Le livre est désormais marqué « Disponible ».'}
                     </span>
                 ),
                 className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
@@ -252,6 +337,23 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const zipping = zip.phase === 'running';
 
     /**
+     * The bytes go browser → B2 directly, so leaving the page IS the abort:
+     * there is no server-side job to pick the transfer back up. The dialogue is
+     * sealed below (no Escape, no click-outside, no close button); this covers
+     * the exits the app doesn't own — reload, back, closing the tab.
+     */
+    useEffect(() => {
+        if (!busy) return;
+        const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+        window.addEventListener('beforeunload', warn);
+        return () => window.removeEventListener('beforeunload', warn);
+    }, [busy]);
+
+    /** Second phase: bytes sent, storage not done. See CloudFinalisingPanel. */
+    const finalising =
+        phase === 'finalising' || progress.some((p) => p.status === 'finalisation');
+
+    /**
      * Zip the whole folder. Nobody wants to click Download forty times.
      *
      * The archive is built in the browser from the same presigned URLs the
@@ -284,8 +386,17 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
      * Closing mid-archive would leave the download running with nothing left to
      * show its progress or stop it — the dialogue owns that state. So make the
      * choice explicit rather than silent.
+     *
+     * An upload in flight is not offered that choice at all: it cannot be
+     * resumed, and a half-written folder is worse than a slow one.
      */
     const handleOpenChange = (open: boolean) => {
+        if (!open && busy) {
+            notifyError(
+                'Un envoi est en cours. Attendez la fin de la préparation dans le cloud avant de fermer cette fenêtre.',
+            );
+            return;
+        }
         if (!open && zipping) {
             const stop = window.confirm(
                 'Une archive est en cours de préparation. La fermeture annulera le téléchargement.\n\nFermer quand même ?',
@@ -299,7 +410,19 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     return (
         <>
             <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-                <DialogContent className="max-w-4xl max-h-[88dvh] flex flex-col overflow-hidden bg-card border-border [&>button>svg]:text-white">
+                <DialogContent
+                    aria-busy={busy}
+                    // While an upload is in flight the dialogue is sealed: the
+                    // close button is hidden and both escape hatches Radix
+                    // offers are refused. The modal overlay already blocks the
+                    // page behind it, so this is what "locked" means here.
+                    onEscapeKeyDown={(e) => busy && e.preventDefault()}
+                    onPointerDownOutside={(e) => busy && e.preventDefault()}
+                    onInteractOutside={(e) => busy && e.preventDefault()}
+                    className={`max-w-4xl max-h-[88dvh] flex flex-col overflow-hidden bg-card border-border [&>button>svg]:text-white ${
+                        busy ? '[&>button]:hidden' : ''
+                    }`}
+                >
                     <DialogHeader className="flex-shrink-0">
                         <DialogTitle className="text-foreground">
                             Fichiers audio {data ? `— ${data.title}` : ''}
@@ -308,6 +431,16 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             {data?.author}
                         </DialogDescription>
                     </DialogHeader>
+
+                    {busy && (
+                        <div className="flex-shrink-0 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
+                            <Lock className="h-4 w-4 flex-shrink-0" />
+                            <span>
+                                Envoi en cours — cette fenêtre reste verrouillée jusqu’à la fin.
+                                Ne quittez pas la page.
+                            </span>
+                        </div>
+                    )}
 
                     {/* --- Folder state ------------------------------------------------ */}
                     {data && (
@@ -340,6 +473,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             type="button"
                             variant={tab === 'pistes' ? 'default' : 'outline'}
                             size="sm"
+                            disabled={busy}
                             onClick={() => setTab('pistes')}
                             className={tab === 'pistes' ? '' : 'bg-field border-border text-foreground hover:bg-muted'}
                         >
@@ -349,6 +483,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             type="button"
                             variant={tab === 'corbeille' ? 'default' : 'outline'}
                             size="sm"
+                            disabled={busy}
                             onClick={() => setTab('corbeille')}
                             className={tab === 'corbeille' ? '' : 'bg-field border-border text-foreground hover:bg-muted'}
                         >
@@ -361,6 +496,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                disabled={busy}
                                 onClick={zipping ? zip.cancel : handleDownloadFolder}
                                 className="ml-auto bg-field border-border text-foreground hover:bg-muted"
                             >
@@ -433,6 +569,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                         </div>
                     )}
 
+                    {/* --- Cloud finalisation ------------------------------------------ */}
+                    {finalising && <CloudFinalisingPanel phase={phase} progress={progress} />}
+
                     <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1 py-3">
                         {loading && (
                             <div className="flex items-center gap-2 text-muted-foreground">
@@ -501,6 +640,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             type="button"
                                             variant="outline"
                                             size="icon"
+                                            disabled={busy}
                                             onClick={() => {
                                                 setTarget(t);
                                                 setDeleteOpen(true);
@@ -538,7 +678,11 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             {busy ? (
                                                 <span className="flex items-center gap-2">
                                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                                    {phase === 'finalising' ? 'Vérification…' : 'Envoi…'}
+                                                    {phase === 'finalising'
+                                                        ? 'Vérification…'
+                                                        : finalising
+                                                          ? 'Enregistrement…'
+                                                          : 'Envoi…'}
                                                 </span>
                                             ) : (
                                                 <span className="flex items-center gap-2">
@@ -591,15 +735,27 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                             className={
                                                                 p.status === 'échec'
                                                                     ? 'text-red-500'
-                                                                    : 'text-muted-foreground'
+                                                                    : p.status === 'finalisation'
+                                                                      ? 'text-blue-600 dark:text-blue-300'
+                                                                      : 'text-muted-foreground'
                                                             }
                                                         >
-                                                            {p.status}
+                                                            {/* The green bar is full at this point but
+                                                                nothing has been stored yet — say which. */}
+                                                            {p.status === 'finalisation'
+                                                                ? 'envoyé, enregistrement en cours…'
+                                                                : p.status}
                                                         </span>
                                                     </div>
                                                     <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-muted">
                                                         <div
-                                                            className={`h-full ${p.status === 'échec' ? 'bg-red-500' : 'bg-green-500'}`}
+                                                            className={`h-full ${
+                                                                p.status === 'échec'
+                                                                    ? 'bg-red-500'
+                                                                    : p.status === 'finalisation'
+                                                                      ? 'bg-blue-500'
+                                                                      : 'bg-green-500'
+                                                            }`}
                                                             style={{
                                                                 width: `${p.total ? Math.round((p.loaded / p.total) * 100) : 0}%`,
                                                             }}

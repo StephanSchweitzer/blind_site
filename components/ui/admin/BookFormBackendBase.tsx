@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,6 +47,21 @@ interface BookSearchData {
     estimatedReadingTime?: string;
 }
 
+/** Seed for a brand-new book, and the baseline the add form is compared against. */
+const EMPTY_FORM: BookFormData = {
+    title: '',
+    subtitle: '',
+    author: '',
+    publisher: '',
+    publishedYear: '',
+    genres: [],
+    isbn: '',
+    description: '',
+    available: false,
+    readingDurationMinutes: 0,
+    pageCount: undefined,
+};
+
 interface BookFormBackendBaseProps {
     initialData?: BookFormData;
     onSubmit: (formData: BookFormData) => Promise<number>;
@@ -58,6 +73,16 @@ interface BookFormBackendBaseProps {
     showDelete?: boolean;
     /** Existing book — enables the audio editor. Absent while creating one. */
     audioBookId?: number;
+    /**
+     * Written by the form, read by whoever owns the dialogue around it: true
+     * while the fields differ from what they were seeded with.
+     *
+     * A ref rather than a callback on purpose. Dirtiness changes on every
+     * keystroke but is only ever *read* at the moment someone tries to close,
+     * so pushing it into parent state would re-render the whole dialogue per
+     * character to answer a question nobody is asking yet.
+     */
+    dirtyRef?: React.RefObject<boolean>;
 }
 
 export function BookFormBackendBase({
@@ -69,21 +94,35 @@ export function BookFormBackendBase({
                                         onSuccess,
                                         onDelete,
                                         showDelete,
-                                        audioBookId
+                                        audioBookId,
+                                        dirtyRef
                                     }: BookFormBackendBaseProps) {
-    const [formData, setFormData] = useState<BookFormData>(initialData || {
-        title: '',
-        subtitle: '',
-        author: '',
-        publisher: '',
-        publishedYear: '',
-        genres: [],
-        isbn: '',
-        description: '',
-        available: false,
-        readingDurationMinutes: 0,
-        pageCount: undefined,
-    });
+    const [formData, setFormDataState] = useState<BookFormData>(initialData || EMPTY_FORM);
+
+    /**
+     * What the form was seeded with, and the live value beside it.
+     *
+     * The component is mounted fresh for each opening (the callers key it), so
+     * this snapshot is taken once and stays the right baseline for its whole
+     * life — « modifié » means "differs from the book as it was loaded", not
+     * "someone touched a key", so typing a character and deleting it again
+     * leaves the form clean and closes without a prompt.
+     */
+    const pristineRef = useRef(JSON.stringify(initialData || EMPTY_FORM));
+    const formDataRef = useRef(formData);
+
+    /**
+     * The single write path for the form. Recomputing dirtiness here — in the
+     * event handler, on a value derived from a ref — keeps React's updater
+     * pure: it receives a finished object rather than a function that also has
+     * to record a side effect on the way through.
+     */
+    const setFormData = (update: (prev: BookFormData) => BookFormData) => {
+        const next = update(formDataRef.current);
+        formDataRef.current = next;
+        if (dirtyRef) dirtyRef.current = JSON.stringify(next) !== pristineRef.current;
+        setFormDataState(next);
+    };
 
     const [genres, setGenres] = useState<Genre[]>([]);
     const [open, setOpen] = useState(false);
@@ -190,6 +229,8 @@ export function BookFormBackendBase({
 
         try {
             const newBookId = await onSubmit(formData);
+            // Saved: there is nothing left to lose, so closing must not prompt.
+            if (dirtyRef) dirtyRef.current = false;
             if (onSuccess) {
                 onSuccess(newBookId);
             }
@@ -208,6 +249,8 @@ export function BookFormBackendBase({
 
         if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
             setIsLoading(true);
+            // The book is going away; unsaved edits to it are moot.
+            if (dirtyRef) dirtyRef.current = false;
             try {
                 await onDelete();
             } catch (err) {
@@ -515,7 +558,10 @@ export function BookFormBackendBase({
     );
 }
 
-export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number) => void }) {
+export function AddBookFormBackend({ onSuccess, dirtyRef }: {
+    onSuccess?: (bookId: number) => void,
+    dirtyRef?: React.RefObject<boolean>
+}) {
     const { toast } = useToast();
 
     const handleSubmit = async (formData: BookFormData): Promise<number> => {
@@ -577,14 +623,16 @@ export function AddBookFormBackend({ onSuccess }: { onSuccess?: (bookId: number)
             loadingText="En ajoutant..."
             title="Ajouter un nouveau livre"
             onSuccess={onSuccess}
+            dirtyRef={dirtyRef}
         />
     );
 }
 
-export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
+export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }: {
     bookId: string,
     initialData: BookFormData,
-    onSuccess?: (bookId: number, isDeleted?: boolean) => void
+    onSuccess?: (bookId: number, isDeleted?: boolean) => void,
+    dirtyRef?: React.RefObject<boolean>
 }) {
     const { toast } = useToast();
 
@@ -692,6 +740,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess }: {
             title="Modifier le livre"
             onSuccess={onSuccess}
             audioBookId={Number.isInteger(Number(bookId)) ? Number(bookId) : undefined}
+            dirtyRef={dirtyRef}
         />
     );
 }

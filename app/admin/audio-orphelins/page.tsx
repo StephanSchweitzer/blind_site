@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { Prisma } from '@prisma/client';
 import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
+import { calendarYear } from '@/lib/calendar-date';
 import OrphansClient, {
     type OrphanRow,
     type SuggestedBook,
@@ -76,10 +77,16 @@ function normalise(v: string): string {
         .trim();
 }
 
+// Subtitle and year are what actually separate two candidates here: books
+// recorded in parts share a title *and* an author, and differ only by
+// « CD 1 et 2 » / « CD 2 et 3 ». Offering a suggestion without them asks the
+// permanent to pick blind.
 const bookSelect = {
     id: true,
     title: true,
+    subtitle: true,
     author: true,
+    publishedDate: true,
     audio_filepath: true,
     audioLinkStatus: true,
     audioTrackCount: true,
@@ -91,7 +98,9 @@ type BookRow = Prisma.BookGetPayload<{ select: typeof bookSelect }>;
 const toSuggestion = (b: BookRow, reason: SuggestedBook['reason']): SuggestedBook => ({
     id: b.id,
     title: b.title,
+    subtitle: b.subtitle,
     author: b.author,
+    year: calendarYear(b.publishedDate),
     audioFilepath: b.audio_filepath,
     audioLinkStatus: b.audioLinkStatus,
     audioTrackCount: b.audioTrackCount,
@@ -130,7 +139,9 @@ export default async function AudioOrphansPage({ searchParams }: PageProps) {
             orderBy: [{ bytes: 'desc' }, { id: 'asc' }],
             skip: (page - 1) * PER_PAGE,
             take: PER_PAGE,
-            include: { linkedBook: { select: { id: true, title: true, author: true } } },
+            include: {
+                linkedBook: { select: { id: true, title: true, subtitle: true, author: true } },
+            },
         }),
         prisma.orphanAudioFolder.count({ where }),
         Promise.all(

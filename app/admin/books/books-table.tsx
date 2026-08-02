@@ -16,15 +16,28 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
 import { BookAudioModal } from '@/admin/BookAudioModal';
 import {
     AudioLinkStatus,
+    audioLinkStatusHasAudio,
     audioLinkStatusIsMissing,
     getAudioLinkStatusButtonColor,
+    getAudioLinkStatusColor,
     getAudioLinkStatusHint,
     getAudioLinkStatusLabel,
 } from '@/lib/audio-enums';
+import { calendarYear } from '@/lib/calendar-date';
 import { toast } from "@/hooks/use-toast";
 
 const ITEMS_PER_PAGE = 10;
@@ -71,10 +84,17 @@ interface Book {
     createdAt: Date | null;
     /** Health of the link to the audio folder, refreshed by the sync script. */
     audioLinkStatus?: AudioLinkStatus;
+    /** Tracks counted at the last check; null when there is nothing to count. */
+    audioTrackCount?: number | null;
 }
 
 interface BookWithFormData extends Book {
     formData: BookFormData;
+    /**
+     * Which opening of the dialogue this is. Used as the form's React key so
+     * every open starts from the details just fetched — see the edit modal.
+     */
+    openSeq: number;
 }
 
 interface SearchResult {
@@ -91,6 +111,31 @@ interface BooksTableProps {
     totalPages: number;
     availableGenres?: { id: number; name: string; }[];
     initialTotalBooks: number;
+}
+
+/**
+ * The audio state of a row, in words.
+ *
+ * The editor button beside it is colour-coded for the same thing, but colour
+ * and a crossed-out icon are a hint you have to already know how to read — and
+ * the only way to be *sure* was to open the dialogue. This column says it
+ * outright, which is the whole point: "no recording" is a fact about the book,
+ * as much as its author, not a detail of the audio tool.
+ */
+function AudioStatusCell({ book }: { book: Book }) {
+    const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
+    const count = book.audioTrackCount ?? 0;
+    const hasAudio = audioLinkStatusHasAudio(status) && count > 0;
+
+    return (
+        <span
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-xs ${getAudioLinkStatusColor(status)}`}
+            title={getAudioLinkStatusHint(status)}
+        >
+            {hasAudio ? <FileAudio className="h-3 w-3" /> : <FileX2 className="h-3 w-3" />}
+            {hasAudio ? `${count} piste${count > 1 ? 's' : ''}` : getAudioLinkStatusLabel(status)}
+        </span>
+    );
 }
 
 /**
@@ -149,7 +194,17 @@ export default function BooksTable({
     const [genreSearchQuery, setGenreSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    /** Bumped on every opening so the add form is always a blank one. */
+    const [addSeq, setAddSeq] = useState(0);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    /**
+     * Which dialogue is asking to discard unsaved work, if any.
+     *
+     * Closing is refused while the form is dirty and this is set instead — the
+     * two dialogues are dismissable by Escape and by a click outside, so
+     * without it a stray click silently throws away a typed description.
+     */
+    const [discarding, setDiscarding] = useState<'add' | 'edit' | null>(null);
     const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
     /** Book whose audio folder is open in the management dialogue. */
     const [audioBook, setAudioBook] = useState<{ id: number; title: string } | null>(null);
@@ -180,6 +235,13 @@ export default function BooksTable({
     // Guards the ?book=<id> deep-link so it opens the modal once per id, not on
     // every re-render / router.refresh().
     const openedBookRef = useRef<string | null>(null);
+
+    /** Counts openings of the edit dialogue; see BookWithFormData.openSeq. */
+    const openSeqRef = useRef(0);
+
+    // Written by the forms, read only when something tries to close them.
+    const addDirtyRef = useRef(false);
+    const editDirtyRef = useRef(false);
 
     // Track if initial load had any filters
     const initialHadFilters = useRef(
@@ -391,9 +453,11 @@ export default function BooksTable({
                 subtitle: bookDetails.subtitle,
                 author: bookDetails.author,
                 publisher: bookDetails.publisher || undefined,
-                publishedYear: bookDetails.publishedDate ?
-                    new Date(bookDetails.publishedDate).getFullYear().toString() :
-                    new Date().getFullYear().toString(),
+                // UTC year, not local: what this field shows is what the save
+                // writes back, so reading it in the viewer's timezone moves the
+                // date every time a book is edited west of Greenwich.
+                publishedYear: (calendarYear(bookDetails.publishedDate) ?? new Date().getFullYear())
+                    .toString(),
                 genres: genreIds.map(String),
                 isbn: bookDetails.isbn || undefined,
                 description: bookDetails.description || undefined,
@@ -404,9 +468,12 @@ export default function BooksTable({
 
             const selectedBookWithForm: BookWithFormData = {
                 ...bookDetails,
-                formData
+                formData,
+                openSeq: ++openSeqRef.current,
             };
 
+            // The form below is about to mount fresh from these values.
+            editDirtyRef.current = false;
             setSelectedBook(selectedBookWithForm);
             setIsEditModalOpen(true);
         } catch (error) {
@@ -442,6 +509,50 @@ export default function BooksTable({
         params.delete('book');
         const qs = params.toString();
         window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
+    };
+
+    /**
+     * Radix reports Escape, an outside click and the ✕ through the same
+     * onOpenChange, so one interception point covers all three: keep `open`
+     * true and raise the question instead. Programmatic closes (a successful
+     * save) don't come through here at all, and clear the flag anyway.
+     */
+    const requestCloseAdd = (open: boolean) => {
+        if (!open && addDirtyRef.current) {
+            setDiscarding('add');
+            return;
+        }
+        setIsAddModalOpen(open);
+    };
+
+    const requestCloseEdit = (open: boolean) => {
+        if (!open && editDirtyRef.current) {
+            setDiscarding('edit');
+            return;
+        }
+        setIsEditModalOpen(open);
+        if (!open) clearBookParam();
+    };
+
+    const confirmDiscard = () => {
+        if (discarding === 'add') {
+            addDirtyRef.current = false;
+            setIsAddModalOpen(false);
+        } else if (discarding === 'edit') {
+            editDirtyRef.current = false;
+            setIsEditModalOpen(false);
+            clearBookParam();
+        }
+        setDiscarding(null);
+    };
+
+    const openAddModal = () => {
+        // Fresh form every time: with the discard guard above, nothing reaches
+        // this point unsaved by accident, so carrying values over from a
+        // previous book would only ever be a way to create a duplicate of it.
+        setAddSeq((n) => n + 1);
+        addDirtyRef.current = false;
+        setIsAddModalOpen(true);
     };
 
     const handleBookEdited = async (bookId: number, isDeleted = false) => {
@@ -503,7 +614,7 @@ export default function BooksTable({
                 </div>
                 <Button
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-                    onClick={() => setIsAddModalOpen(true)}
+                    onClick={openAddModal}
                 >
                     <Plus className="mr-2 h-4 w-4" />
                     Ajouter un livre
@@ -648,6 +759,7 @@ export default function BooksTable({
                                             <TableHead className="text-foreground font-medium">Auteur</TableHead>
                                             <TableHead className="text-foreground font-medium">Genres</TableHead>
                                             <TableHead className="text-foreground font-medium">Durée de lecture</TableHead>
+                                            <TableHead className="text-foreground font-medium">Audio</TableHead>
                                             <TableHead className="text-foreground font-medium">Disponible</TableHead>
                                             <TableHead className="text-foreground font-medium">Actions</TableHead>
                                         </TableRow>
@@ -690,6 +802,9 @@ export default function BooksTable({
                                                         ? `${Math.floor(book.readingDurationMinutes / 60)}h ${book.readingDurationMinutes % 60}min`
                                                         : 'N/D'
                                                     }
+                                                </TableCell>
+                                                <TableCell className="text-foreground">
+                                                    <AudioStatusCell book={book} />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
@@ -795,40 +910,78 @@ export default function BooksTable({
             )}
 
             {/* Add Book Modal */}
-            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+            <Dialog open={isAddModalOpen} onOpenChange={requestCloseAdd}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Ajouter un nouveau livre</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
-                        <AddBookFormBackend onSuccess={handleBookAdded} />
+                        <AddBookFormBackend
+                            key={addSeq}
+                            onSuccess={handleBookAdded}
+                            dirtyRef={addDirtyRef}
+                        />
                     </div>
                 </DialogContent>
             </Dialog>
 
             {/* Edit Book Modal */}
             {selectedBook && (
-                <Dialog
-                    open={isEditModalOpen}
-                    onOpenChange={(open) => {
-                        setIsEditModalOpen(open);
-                        if (!open) clearBookParam();
-                    }}
-                >
+                <Dialog open={isEditModalOpen} onOpenChange={requestCloseEdit}>
                     <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
                             <DialogTitle className="text-foreground">Modifier le livre</DialogTitle>
                         </DialogHeader>
                         <div className="overflow-y-auto px-1">
+                            {/* key: the form seeds its state from initialData on
+                                mount only, and closing the dialogue leaves
+                                selectedBook set. Without a fresh identity per
+                                opening React reuses the instance, so the next
+                                book opens showing the previous one's values
+                                while the save targets the new book's id —
+                                overwriting one book with another's data. Keyed
+                                on the opening rather than the book id so that
+                                reopening the *same* book also discards fields
+                                abandoned last time and shows what was just
+                                refetched. */}
                             <EditBookFormBackend
+                                key={selectedBook.openSeq}
                                 bookId={selectedBook.id.toString()}
                                 initialData={selectedBook.formData}
                                 onSuccess={handleBookEdited}
+                                dirtyRef={editDirtyRef}
                             />
                         </div>
                     </DialogContent>
                 </Dialog>
             )}
+
+            {/* Discard unsaved changes? */}
+            <AlertDialog open={discarding !== null} onOpenChange={(open) => !open && setDiscarding(null)}>
+                <AlertDialogContent className="bg-card border-border">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-foreground">
+                            Abandonner les modifications ?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
+                            {discarding === 'add'
+                                ? 'Ce livre n’a pas encore été créé. En fermant, tout ce qui a été saisi sera perdu.'
+                                : 'Les modifications apportées à ce livre n’ont pas été enregistrées. En fermant, elles seront perdues.'}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-muted text-foreground border-border hover:bg-muted">
+                            Continuer la saisie
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDiscard}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            Abandonner
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Audio folder management */}
             {audioBook && (

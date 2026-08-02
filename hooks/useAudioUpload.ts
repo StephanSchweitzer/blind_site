@@ -22,15 +22,38 @@ import { useCallback, useRef, useState } from 'react';
 
 export type UploadPhase = 'idle' | 'preparing' | 'uploading' | 'finalising' | 'done' | 'error';
 
+/**
+ * `finalisation` is the phase the green bar cannot show.
+ *
+ * `xhr.upload` finishes when the last byte leaves the machine, but B2 only
+ * answers once it has written the object — for a 50 MB track that gap is
+ * minutes of apparent silence with a bar sitting at 100 %. Marking the row as
+ * `finalisation` at that exact moment is what lets the UI say the wait is
+ * expected instead of looking hung.
+ */
 export interface FileProgress {
     name: string;
     /** Name the server assigned in the bucket, once known. */
     assignedName?: string;
     loaded: number;
     total: number;
-    status: 'en attente' | 'en cours' | 'terminé' | 'échec';
+    status: 'en attente' | 'en cours' | 'finalisation' | 'terminé' | 'échec';
     error?: string;
 }
+
+export interface UploadOutcome {
+    /** Every file in the batch landed and was verified. */
+    ok: boolean;
+    /**
+     * The commit published the book (it was « en attente » and now has audio).
+     * Returned rather than exposed as state: the caller reads it right after
+     * awaiting `upload`, before React has re-rendered with a new state value.
+     */
+    becameAvailable: boolean;
+}
+
+/** Nothing landed — every early exit from `upload` returns this. */
+const FAILED: UploadOutcome = { ok: false, becameAvailable: false };
 
 interface SignedFile {
     originalName: string;
@@ -47,6 +70,7 @@ function putWithProgress(
     file: File,
     signed: SignedFile,
     onProgress: (loaded: number, total: number) => void,
+    onSent: () => void,
 ): Promise<void> {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -57,6 +81,9 @@ function putWithProgress(
         xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) onProgress(e.loaded, e.total);
         };
+        // Last byte handed to the network — B2 has not acknowledged anything
+        // yet. Everything from here to `onload` is the silent wait.
+        xhr.upload.onload = () => onSent();
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) resolve();
             else reject(new Error(`Le stockage a refusé l’envoi (HTTP ${xhr.status})`));
@@ -101,8 +128,8 @@ export function useAudioUpload(bookId: number) {
      *        after the admin has confirmed the proposed prefix.
      */
     const upload = useCallback(
-        async (files: File[], createFolder = false): Promise<boolean> => {
-            if (!files.length) return false;
+        async (files: File[], createFolder = false): Promise<UploadOutcome> => {
+            if (!files.length) return FAILED;
 
             setError(null);
             setNeedsFolder(null);
@@ -132,14 +159,14 @@ export function useAudioUpload(bookId: number) {
                 if (res.status === 409 && data?.needsFolder) {
                     setNeedsFolder(data.proposedPrefix ?? '');
                     setPhase('idle');
-                    return false;
+                    return FAILED;
                 }
                 if (!res.ok) throw new Error(data?.message || 'Préparation de l’envoi impossible');
                 signed = data.files as SignedFile[];
             } catch (e) {
                 setError(e instanceof Error ? e.message : 'Erreur inattendue');
                 setPhase('error');
-                return false;
+                return FAILED;
             }
 
             // Pair each File with its signature by the name we sent.
@@ -167,11 +194,19 @@ export function useAudioUpload(bookId: number) {
                     row.status = 'en cours';
                     publish();
                     try {
-                        await putWithProgress(file, s, (loaded, total) => {
-                            row.loaded = loaded;
-                            row.total = total;
-                            publish();
-                        });
+                        await putWithProgress(
+                            file,
+                            s,
+                            (loaded, total) => {
+                                row.loaded = loaded;
+                                row.total = total;
+                                publish();
+                            },
+                            () => {
+                                row.status = 'finalisation';
+                                publish();
+                            },
+                        );
                         row.status = 'terminé';
                         row.loaded = row.total;
                         succeeded.push({ key: s.key, size: file.size });
@@ -189,6 +224,7 @@ export function useAudioUpload(bookId: number) {
 
             // --- 3. Let the server verify and refresh the cached counters -----
             setPhase('finalising');
+            let becameAvailable = false;
             try {
                 const res = await fetch(`/api/books/${bookId}/audio/commit`, {
                     method: 'POST',
@@ -197,6 +233,8 @@ export function useAudioUpload(bookId: number) {
                 });
                 const data = await res.json().catch(() => null);
                 if (!res.ok) throw new Error(data?.message || 'Vérification impossible');
+
+                becameAvailable = data?.becameAvailable === true;
 
                 for (const f of (data?.failed ?? []) as { key: string; reason: string }[]) {
                     const name = f.key.split('/').pop();
@@ -210,13 +248,13 @@ export function useAudioUpload(bookId: number) {
             } catch (e) {
                 setError(e instanceof Error ? e.message : 'Vérification impossible');
                 setPhase('error');
-                return false;
+                return FAILED;
             }
 
             const anyFailed = progressRef.current.some((p) => p.status === 'échec');
             setPhase(anyFailed ? 'error' : 'done');
             if (anyFailed) setError('Certains fichiers n’ont pas pu être envoyés.');
-            return !anyFailed;
+            return { ok: !anyFailed, becameAvailable };
         },
         [bookId, publish],
     );
