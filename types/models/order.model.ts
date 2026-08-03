@@ -221,11 +221,13 @@ export const orderIncludeConfigs = {
                 name: true,
             },
         },
-        select: {
-            id: true,
-            state: true,
-            issueDate: true,
-            invoiceAmount: true,
+        bill: {
+            select: {
+                id: true,
+                state: true,
+                issueDate: true,
+                invoiceAmount: true,
+            },
         },
         assignments: {
             include: {
@@ -252,7 +254,10 @@ export const orderIncludeConfigs = {
                 },
             },
         },
-    },
+        // `satisfies` on purpose: without it a mistyped relation key is just an extra
+        // property and Prisma only rejects it at runtime — that is how a bare `select`
+        // once stood in for `bill` here and made ?include=all a 500.
+    } satisfies Prisma.OrdersInclude,
 } as const;
 
 // ============================================================================

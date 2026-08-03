@@ -123,11 +123,19 @@ export const GET = withAdmin(async (request, { params }) => {
             }
         }
 
-        const order = await prisma.orders.findUnique({
-            where: { id: orderId },
-            ...(select && { select }),
-            ...(Object.keys(include).length > 0 && { include }),
-        });
+        // Prisma rejects `select` and `include` as siblings. A relation nested INSIDE a
+        // select carries its own select/include though, and every orderIncludeConfigs
+        // entry is already shaped that way — so the relations are folded into the select
+        // rather than passed alongside it. `mode: 'full'` leaves select null and keeps
+        // passing include on its own.
+        const hasIncludes = Object.keys(include).length > 0;
+        const relationArgs: Prisma.OrdersFindUniqueArgs = select
+            ? { where: { id: orderId }, select: { ...select, ...include } }
+            : hasIncludes
+                ? { where: { id: orderId }, include }
+                : { where: { id: orderId } };
+
+        const order = await prisma.orders.findUnique(relationArgs);
 
         if (!order) {
             return NextResponse.json(
