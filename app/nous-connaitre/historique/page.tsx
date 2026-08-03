@@ -14,8 +14,8 @@ export default async function HistoriquePage() {
                     <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Notre Histoire</h1>
                     <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-6"></div>
                     <p className="text-lg text-gray-700 dark:text-gray-100 max-w-2xl mx-auto">
-                        Depuis 40 ans, ECA s&apos;engage pour rendre la lecture accessible
-                        aux personnes déficientes visuelles. Découvrez les moments clés de son parcours.
+                        Depuis 40 ans, les ECA s&apos;engagent pour rendre la lecture accessible
+                        aux personnes déficientes visuelles. Découvrez les moments clés de leur parcours.
                     </p>
                 </section>
 
@@ -72,7 +72,7 @@ export default async function HistoriquePage() {
                 <section className="glass-card-lg p-8 text-center bg-gradient-to-r from-blue-500/10 to-indigo-500/10">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">L&apos;histoire continue...</h2>
                     <p className="text-gray-700 dark:text-gray-100 mb-6 max-w-lg mx-auto">
-                        Aujourd&apos;hui, ECA poursuit sa mission avec le même engagement et enthousiasme qu&apos;à ses débuts.
+                        Aujourd&apos;hui, les ECA poursuivent leur mission avec le même engagement et enthousiasme qu&apos;à leurs débuts.
                         Nous continuons à évoluer et à nous adapter pour rendre la culture et l&apos;information
                         toujours plus accessibles.
                     </p>

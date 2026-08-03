@@ -86,7 +86,7 @@ export default async function EquipePage() {
                 <section className="glass-card p-6 border-l-4 border-yellow-500">
                     <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Notre Engagement</h2>
                     <p className="text-gray-700 dark:text-gray-100">
-                        L&apos;équipe d&apos;ECA s&apos;engage quotidiennement pour faciliter l&apos;accès à la lecture pour les personnes déficientes visuelles. Nos membres, bénévoles passionnés, travaillent ensemble pour coordonner les enregistrements, former de nouveaux lecteurs, et assurer un service personnalisé et chaleureux.
+                        L&apos;équipe des ECA s&apos;engage quotidiennement pour faciliter l&apos;accès à la lecture pour les personnes déficientes visuelles. Nos membres, bénévoles passionnés, travaillent ensemble pour coordonner les enregistrements, former de nouveaux lecteurs, et assurer un service personnalisé et chaleureux.
                     </p>
                 </section>
 

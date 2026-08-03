@@ -882,7 +882,7 @@ export function AssignmentFormBackendBase({
                     />
 
                     <DatePicker
-                        label="Date de retour à l'ECA"
+                        label="Date de retour aux ECA"
                         placeholder="Sélectionner une date..."
                         value={formData.returnedToECADate}
                         onChange={(date) => setFormData({ ...formData, returnedToECADate: date })}

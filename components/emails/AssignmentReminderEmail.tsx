@@ -64,19 +64,19 @@ export const AssignmentReminderEmail = ({
     const intro = isPickup
         ? (variant === 'sent'
             ? (displayDate
-                ? `L'ouvrage qui vous a été confié est disponible au retrait auprès de l'ECA depuis le ${displayDate}. Vous pouvez désormais en commencer l'enregistrement.`
-                : "L'ouvrage qui vous a été confié est disponible au retrait auprès de l'ECA. Vous pouvez désormais en commencer l'enregistrement.")
+                ? `L'ouvrage qui vous a été confié est disponible au retrait auprès des ECA depuis le ${displayDate}. Vous pouvez désormais en commencer l'enregistrement.`
+                : "L'ouvrage qui vous a été confié est disponible au retrait auprès des ECA. Vous pouvez désormais en commencer l'enregistrement.")
             : variant === 'reassigned_active'
-                ? "Une lecture en cours vous a été réassignée afin que vous puissiez en terminer l'enregistrement. L'ouvrage sera mis à votre disposition pour retrait auprès de l'ECA."
+                ? "Une lecture en cours vous a été réassignée afin que vous puissiez en terminer l'enregistrement. L'ouvrage sera mis à votre disposition pour retrait auprès des ECA."
                 : variant === 'reassigned_pending'
-                    ? "Une lecture vous a été réassignée. Vous pourrez retirer l'ouvrage auprès de l'ECA : vous recevrez un message vous confirmant sa mise à disposition."
-                    : "Une nouvelle lecture vous a été assignée. Vous pourrez retirer l'ouvrage auprès de l'ECA : vous recevrez un message vous confirmant sa mise à disposition.")
+                    ? "Une lecture vous a été réassignée. Vous pourrez retirer l'ouvrage auprès des ECA : vous recevrez un message vous confirmant sa mise à disposition."
+                    : "Une nouvelle lecture vous a été assignée. Vous pourrez retirer l'ouvrage auprès des ECA : vous recevrez un message vous confirmant sa mise à disposition.")
         : (variant === 'sent'
             ? (displayDate
                 ? `L'ouvrage qui vous a été confié vous a été expédié le ${displayDate}. Vous pouvez désormais en commencer l'enregistrement.`
                 : "L'ouvrage qui vous a été confié vous a été expédié. Vous pouvez désormais en commencer l'enregistrement.")
             : variant === 'reassigned_active'
-                ? "Une lecture en cours vous a été réassignée afin que vous puissiez en terminer l'enregistrement. L'ECA ou le lecteur précédent vous fera parvenir l'ouvrage dans les meilleurs délais."
+                ? "Une lecture en cours vous a été réassignée afin que vous puissiez en terminer l'enregistrement. Les ECA ou le lecteur précédent vous feront parvenir l'ouvrage dans les meilleurs délais."
                 : variant === 'reassigned_pending'
                     ? "Une lecture vous a été réassignée. L'ouvrage ne vous a pas encore été envoyé : vous recevrez un message vous le confirmant dès son expédition."
                     : "Une nouvelle lecture vous a été assignée. L'ouvrage ne vous a pas encore été envoyé : vous recevrez un message vous le confirmant dès son expédition.");

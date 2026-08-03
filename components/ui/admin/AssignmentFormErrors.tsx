@@ -12,7 +12,7 @@ const FIELD_LABELS: Record<string, string> = {
     statusId: 'Statut',
     receptionDate: 'Date de réception',
     sentToReaderDate: 'Date d\'envoi au lecteur',
-    returnedToECADate: 'Date de retour à l\'ECA',
+    returnedToECADate: 'Date de retour aux ECA',
     notes: 'Notes',
     processedByStaffId: 'Traité par',
 };

@@ -17,7 +17,7 @@ export default async function NousRejoindre() {
                     <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Nous rejoindre</h1>
                     <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-6"></div>
                     <p className="text-lg text-gray-700 dark:text-gray-100 max-w-2xl mx-auto">
-                        Adhérer à ECA, c&apos;est s&apos;engager dans une association qui croit au partage
+                        Adhérer aux ECA, c&apos;est s&apos;engager dans une association qui croit au partage
                         de la culture et à l&apos;échange entre voyants et malvoyants.
                     </p>
                 </section>

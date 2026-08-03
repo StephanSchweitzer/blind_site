@@ -264,7 +264,7 @@ export function guardAssignmentConsistency(args: {
                 return fail(400, "Le statut « En cours » nécessite une date d'envoi au lecteur.");
             }
             if (returned) {
-                return fail(400, "Une attribution « En cours » ne peut pas avoir de date de retour. Passez-la « Terminé » si le livre est revenu à l'ECA.");
+                return fail(400, "Une attribution « En cours » ne peut pas avoir de date de retour. Passez-la « Terminé » si le livre est revenu aux ECA.");
             }
             return OK;
         case STATUS.TERMINE:
@@ -275,7 +275,7 @@ export function guardAssignmentConsistency(args: {
                 return fail(400, "Le statut « Terminé » nécessite une date d'envoi au lecteur.");
             }
             if (!returned) {
-                return fail(400, "Le statut « Terminé » nécessite une date de retour à l'ECA.");
+                return fail(400, "Le statut « Terminé » nécessite une date de retour aux ECA.");
             }
             return OK;
         case STATUS.SOLDE:

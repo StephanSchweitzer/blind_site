@@ -271,7 +271,7 @@ export default function AssignmentsTable({
             'Réceptionné': 'Réceptionné',
             'Envoyé au lecteur': 'Envoyé',
             'Chez le lecteur': 'Chez lecteur',
-            'Retourné à l\'ECA': 'Retourné',
+            'Retourné aux ECA': 'Retourné',
             'Attribution terminée': 'Terminée',
             'Attribution annulée': 'Annulée',
         };
@@ -285,7 +285,7 @@ export default function AssignmentsTable({
             'Réceptionné': 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
             'Envoyé au lecteur': 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800',
             'Chez le lecteur': 'bg-indigo-100 text-indigo-800 border border-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800',
-            'Retourné à l\'ECA': 'bg-teal-100 text-teal-800 border border-teal-300 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-800',
+            'Retourné aux ECA': 'bg-teal-100 text-teal-800 border border-teal-300 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-800',
             'Attribution terminée': 'bg-green-100 text-green-800 border border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800',
             'Attribution annulée': 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800',
         };

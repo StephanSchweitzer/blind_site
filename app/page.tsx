@@ -34,19 +34,19 @@ export default async function Home() {
                 {/* Content Sections */}
                 <section className="glass-card p-8 group hover:scale-[1.02] transition-transform duration-300">
                     <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed">
-                        ECA (Enregistrement à la Carte pour les Aveugles) propose à ses auditeurs un service personnalisé d&apos;enregistrement des livres et documents de leurs choix.
+                        Les ECA (Enregistrements à la Carte pour les Aveugles) proposent à leurs auditeurs un service personnalisé d&apos;enregistrement des livres et documents de leurs choix.
                     </p>
                 </section>
 
                 <section className="glass-card p-8 group hover:scale-[1.02] transition-transform duration-300">
                     <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed">
-                        ECA met en contact des lecteurs bénévoles formés par l&apos;association et des auditeurs déficients visuels qui accèdent ainsi au plaisir de l&apos;écoute des textes qu&apos;ils ont choisis. ECA met aussi à leur disposition les titres de son catalogue. Ainsi se met en place une passerelle humaine et chaleureuse entre voyants et malvoyants.
+                        Les ECA mettent en contact des lecteurs bénévoles formés par l&apos;association et des auditeurs déficients visuels qui accèdent ainsi au plaisir de l&apos;écoute des textes qu&apos;ils ont choisis. Les ECA mettent aussi à leur disposition les titres du catalogue. Ainsi se met en place une passerelle humaine et chaleureuse entre voyants et malvoyants.
                     </p>
                 </section>
 
                 <section className="glass-card p-8 group hover:scale-[1.02] transition-transform duration-300">
                     <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed">
-                        C&apos;est donc un service à la carte qui est proposé. Les auditeurs peuvent faire parvenir à ECA tous livres ou documents dont ils souhaitent l&apos;enregistrement vocal que ce soit pour leur divertissement, leurs besoins professionnels ou de formation.
+                        C&apos;est donc un service à la carte qui est proposé. Les auditeurs peuvent faire parvenir aux ECA tous livres ou documents dont ils souhaitent l&apos;enregistrement vocal que ce soit pour leur divertissement, leurs besoins professionnels ou de formation.
                     </p>
                 </section>
             </div>
