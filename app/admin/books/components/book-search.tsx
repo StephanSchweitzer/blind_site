@@ -135,11 +135,10 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                     };
                 });
                 setResults(formattedResults);
-                if (formattedResults.length === 0) {
-                    setSearchError('No books found');
-                }
             } else {
-                setSearchError('No results found');
+                // No match is not an error: leave searchError unset so the
+                // « Aucun résultat trouvé » empty state below renders, instead
+                // of a red banner that suppresses it.
                 setResults([]);
             }
         } catch (error) {
