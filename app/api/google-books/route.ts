@@ -8,11 +8,40 @@ import { withAdmin } from '@/lib/auth/guards';
 const MAX_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 150;
 const REQUEST_TIMEOUT_MS = 3000;
-// Stop retrying past this point so we always answer well inside the function
-// timeout — a gateway timeout would be a worse symptom than the 503 itself.
+// Deliberately far tighter than Google's own backoff guidance, which tops out
+// around 32-64s over ~5 attempts. That budget suits a background job; here a
+// permanent is waiting on the search popover, so failing fast beats grinding.
+// This is a UX bound, not a platform one — Vercel allows far longer.
 const TOTAL_BUDGET_MS = 7000;
 
-const isRetryable = (status: number) => status === 429 || status >= 500;
+/** Google's retryable set for its APIs: 408, 429 and 5xx. */
+const isRetryable = (status: number) => status === 408 || status === 429 || status >= 500;
+
+interface GoogleApiError {
+    error?: {
+        message?: string;
+        details?: { metadata?: { quota_limit?: string } }[];
+    };
+}
+
+/**
+ * A 429 is normally worth retrying, but a *daily* quota won't clear in a few
+ * hundred milliseconds — retrying only spends more of a quota that is already
+ * gone. Google names the limit it hit in the error details.
+ */
+const isDailyQuotaExhausted = (status: number, body: GoogleApiError | null) =>
+    status === 429 &&
+    (body?.error?.details ?? []).some((d) => /perday/i.test(d?.metadata?.quota_limit ?? ''));
+
+/** Honour an upstream Retry-After (delta-seconds or HTTP-date) over our own backoff. */
+const retryAfterMs = (res: Response): number | null => {
+    const header = res.headers.get('retry-after');
+    if (!header) return null;
+    const seconds = Number(header);
+    if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+    const at = Date.parse(header);
+    return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
+};
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -45,26 +74,44 @@ export const GET = withAdmin(async (request) => {
     url.searchParams.set('key', key);
 
     const startedAt = Date.now();
+    // Set when the upstream told us how long to wait; otherwise we back off.
+    let upstreamDelayMs: number | null = null;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         if (attempt > 1) {
             // Exponential backoff, jittered so concurrent searches don't retry
             // in lockstep.
             const backoff = BASE_BACKOFF_MS * 2 ** (attempt - 2);
-            await sleep(backoff + Math.random() * backoff);
+            const delay = upstreamDelayMs ?? backoff + Math.random() * backoff;
+            // Give up now rather than answer late: a Retry-After can easily be
+            // longer than the whole budget.
+            if (Date.now() - startedAt + delay > TOTAL_BUDGET_MS) break;
+            await sleep(delay);
         }
 
         try {
             const res = await fetch(url.toString(), {
                 signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
             });
-            const data = await res.json().catch(() => null);
+            const data: GoogleApiError | null = await res.json().catch(() => null);
 
             if (res.ok && data) {
                 return NextResponse.json(data);
             }
 
             const reason = data?.error?.message ?? `HTTP ${res.status}`;
+
+            if (isDailyQuotaExhausted(res.status, data)) {
+                console.error(`Google Books daily quota exhausted: ${reason}`);
+                return NextResponse.json(
+                    {
+                        error:
+                            'Le quota de recherche Google Books est épuisé pour ' +
+                            'aujourd’hui. Réessayez demain.',
+                    },
+                    { status: 429 }
+                );
+            }
 
             if (!res.ok && !isRetryable(res.status)) {
                 // A bad key or a malformed query won't fix itself — don't burn
@@ -77,18 +124,18 @@ export const GET = withAdmin(async (request) => {
                 );
             }
 
+            upstreamDelayMs = retryAfterMs(res);
             console.warn(
                 `Google Books attempt ${attempt}/${MAX_ATTEMPTS} failed: ${reason}`
             );
         } catch (error) {
             // Timeout or network failure — same treatment as a transient 5xx.
+            upstreamDelayMs = null;
             console.warn(
                 `Google Books attempt ${attempt}/${MAX_ATTEMPTS} errored:`,
                 error
             );
         }
-
-        if (Date.now() - startedAt > TOTAL_BUDGET_MS) break;
     }
 
     return NextResponse.json(
