@@ -44,6 +44,7 @@ interface BookItem {
 
 interface GoogleBooksResponse {
     items?: BookItem[];
+    error?: string;
 }
 
 interface BookResult {
@@ -103,13 +104,16 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
 
         try {
             const response = await fetch(`/api/google-books?q=${encodeURIComponent(searchQuery)}`);
+            const data: GoogleBooksResponse | null = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(`API request failed with status ${response.status}`);
+                // The route already phrases its failures in French; only fall
+                // back if the body didn't survive.
+                throw new Error(
+                    data?.error || 'La recherche Google Books a échoué. Réessayez dans quelques instants.'
+                );
             }
 
-            const data: GoogleBooksResponse = await response.json();
-
-            if (data.items) {
+            if (data?.items) {
                 const formattedResults: BookResult[] = data.items.map(item => {
                     const volumeInfo = item.volumeInfo;
                     // Join all authors with commas
@@ -140,7 +144,11 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
             }
         } catch (error) {
             console.error('Error searching books:', error);
-            setSearchError(error instanceof Error ? error.message : 'Failed to search books');
+            setSearchError(
+                error instanceof Error
+                    ? error.message
+                    : 'La recherche Google Books a échoué. Réessayez dans quelques instants.'
+            );
             setResults([]);
         } finally {
             setIsLoading(false);
