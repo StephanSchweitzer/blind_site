@@ -261,7 +261,9 @@ export const orderIncludeConfigs = {
 
 export const ordersTableInclude = {
     aveugle: { select: { name: true, email: true } },
-    catalogue: { select: { title: true, author: true } },
+    // audio_filepath drives the « en attente d'enregistrement » badge: a duplication
+    // whose book already has audio is never blocked (lib/orders/duplicationBlocked.ts).
+    catalogue: { select: { title: true, author: true, audio_filepath: true } },
     status: { select: { name: true } },
     mediaFormat: { select: { name: true } },
     bill: { select: { id: true, state: true } },

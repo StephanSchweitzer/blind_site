@@ -33,6 +33,7 @@ import {
     OrderSummary,
     AssignmentWithCurrentReader,
 } from '@/types';
+import { STATUS } from '@/lib/statusSync';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -392,15 +393,20 @@ export default function AssignmentsTable({
                                     <SelectItem value="all" className="text-foreground">
                                         Tous les statuts
                                     </SelectItem>
-                                    {availableStatuses.map((status) => (
-                                        <SelectItem
-                                            key={status.id}
-                                            value={status.id.toString()}
-                                            className="text-foreground"
-                                        >
-                                            {status.name}
-                                        </SelectItem>
-                                    ))}
+                                    {/* No attribution can hold « Soldé » (facture-only) or
+                                        « À faire » (duplication-only), so filtering by either
+                                        always returns nothing — don't offer them. */}
+                                    {availableStatuses
+                                        .filter((status) => status.id !== STATUS.SOLDE && status.id !== STATUS.A_FAIRE)
+                                        .map((status) => (
+                                            <SelectItem
+                                                key={status.id}
+                                                value={status.id.toString()}
+                                                className="text-foreground"
+                                            >
+                                                {status.name}
+                                            </SelectItem>
+                                        ))}
                                 </SelectContent>
                             </Select>
                         </div>

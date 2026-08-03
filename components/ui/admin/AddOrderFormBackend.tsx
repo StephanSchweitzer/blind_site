@@ -31,9 +31,9 @@ import {
     formatEuro2,
     type User,
     type Book,
-    type Status,
     type MediaFormat,
 } from '@/admin/OrderFormBackendBase';
+import { STATUS } from '@/lib/statusSync';
 
 // N3 — required fields, visual top→bottom.
 const CREATE_FIELD_ORDER = ['aveugleId', 'deliveryMethod', 'mediaFormatId', 'lines'];
@@ -118,7 +118,6 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     } = useUserActivityGuard();
 
     // Options
-    const [statuses, setStatuses] = useState<Status[]>([]);
     const [mediaFormats, setMediaFormats] = useState<MediaFormat[]>([]);
 
     // Header (shared across every book)
@@ -147,11 +146,9 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     useEffect(() => {
         const fetchOptions = async () => {
             try {
-                const [statusesRes, formatsRes] = await Promise.all([
-                    fetch('/api/statuses'),
-                    fetch('/api/media-formats'),
-                ]);
-                if (statusesRes.ok) setStatuses(await statusesRes.json());
+                // Statuses aren't fetched: a line's statut is derived from its type
+                // via the STATUS constants, not looked up by name.
+                const formatsRes = await fetch('/api/media-formats');
                 if (formatsRes.ok) setMediaFormats(await formatsRes.json());
             } catch (err) {
                 console.error('Error fetching options:', err);
@@ -179,13 +176,12 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
         }
     };
 
-    // Derive a line's status from its type (same rule as the single-order form)
-    const statusForType = (type: OrderLineType): number | null => {
-        const find = (pred: (s: Status) => boolean) => statuses.find(pred)?.id ?? null;
-        return type === 'DUPLICATION'
-            ? find(s => s.name.toLowerCase().includes('en cours'))
-            : find(s => s.name.toLowerCase().includes('attente') && s.name.toLowerCase().includes('lecteur'));
-    };
+    // Derive a line's status from its type (same rule as the single-order form).
+    // A duplication is « À faire »: it never goes to a lecteur, so the recording
+    // statuses say nothing true about it — « En cours », which this used to pick,
+    // read as though the book were being recorded. See guardDuplicationStatus.
+    const statusForType = (type: OrderLineType): number =>
+        type === 'DUPLICATION' ? STATUS.A_FAIRE : STATUS.ATTENTE;
 
     const updateLine = (key: string, patch: Partial<OrderBookLine>) =>
         setLines(prev => prev.map(l => (l.key === key ? { ...l, ...patch } : l)));
@@ -236,14 +232,6 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             mediaFormatId: l.mediaFormatId ?? mediaFormatId,
             cost: l.cost || defaultCost,
         }));
-
-        if (books.some(b => !b.statusId)) {
-            const msg = "Statut introuvable pour un type d'ouvrage. Vérifiez la table des statuts.";
-            setError(msg);
-            toastError(msg);
-            setIsLoading(false);
-            return;
-        }
 
         // Guard: warn before creating recording demande(s) for book(s) that already
         // have an active recording demande. One confirm covers all offending lines.

@@ -97,11 +97,20 @@ const GENRES: { name: string; description: string | null }[] = [
 ];
 
 // Assignment/Order statuses (Status model). sortOrder drives selector ordering.
+//
+// The ids are EXPLICIT and must not drift: lib/statusSync.ts's STATUS constants
+// hardcode them, and deleteMany() above doesn't reset the identity sequence — a
+// re-seed would otherwise hand out 6,7,8… and silently break every guard. The
+// sequence is realigned right after the insert.
+//
+// « À faire » is duplication-only (sortOrder 0 — it's the earliest state); a
+// demande d'enregistrement starts at « Attente envoi vers lecteur » instead.
 const STATUSES = [
-    { name: "Attente envoi vers lecteur", description: "En attente d'envoi vers le lecteur", sortOrder: 1 },
-    { name: "En cours", description: "Demande en cours de traitement", sortOrder: 2 },
-    { name: "Terminé", description: "Demande terminée", sortOrder: 3 },
-    { name: "Soldé", description: "Soldé", sortOrder: 4 },
+    { id: 1, name: "Attente envoi vers lecteur", description: "En attente d'envoi vers le lecteur", sortOrder: 1 },
+    { id: 2, name: "En cours", description: "Demande en cours de traitement", sortOrder: 2 },
+    { id: 3, name: "Terminé", description: "Demande terminée", sortOrder: 3 },
+    { id: 4, name: "Soldé", description: "Soldé", sortOrder: 4 },
+    { id: 5, name: "À faire", description: "Duplication à effectuer", sortOrder: 0 },
 ];
 
 const MEDIA_FORMATS = [
@@ -261,6 +270,11 @@ async function main() {
     console.log('📚 Reference data (genres, statuses, media formats, civilities)…');
     await prisma.genre.createMany({ data: GENRES });
     await prisma.status.createMany({ data: STATUSES });
+    // Inserting explicit ids doesn't advance the identity sequence — realign it
+    // or the next auto-generated Status id collides with an existing row.
+    await prisma.$executeRawUnsafe(
+        `SELECT setval(pg_get_serial_sequence('"Status"', 'id'), (SELECT MAX(id) FROM "Status"))`
+    );
     await prisma.mediaFormat.createMany({ data: MEDIA_FORMATS });
     await prisma.civility.createMany({ data: CIVILITIES });
 
@@ -277,6 +291,7 @@ async function main() {
     const ST_ENCOURS = statusId.get('En cours')!;
     const ST_TERMINE = statusId.get('Terminé')!;
     const ST_SOLDE = statusId.get('Soldé')!;
+    const ST_A_FAIRE = statusId.get('À faire')!;
 
     // ── users ───────────────────────────────────────────────────────────────
     console.log('👤 Users (every member type & access level)…');
@@ -535,14 +550,20 @@ async function main() {
     for (let i = 0; i < 14; i++) {
         const listener = listeners[i % listeners.length];
         const book = books[i % books.length];
-        const st = orderStatuses[i % orderStatuses.length];
+        const isDuplication = i % 5 === 0;
+        // A duplication has a two-state lifecycle, « À faire » → « Terminé »
+        // (guardDuplicationStatus): it never goes to a lecteur, so the recording
+        // statuses would be meaningless on it.
+        const st = isDuplication
+            ? (i % 2 === 0 ? ST_A_FAIRE : ST_TERMINE)
+            : orderStatuses[i % orderStatuses.length];
         const done = st === ST_TERMINE || st === ST_SOLDE;
         const created = await prisma.orders.create({
             data: {
                 aveugleId: listener.id, catalogueId: book.id,
                 requestReceivedDate: daysAgo(50 - i), createdDate: daysAgo(48 - i),
                 closureDate: done ? daysAgo(20 - (i % 15)) : null,
-                statusId: st, isDuplication: i % 5 === 0,
+                statusId: st, isDuplication,
                 mediaFormatId: mediaId.get(mediaNames[i % mediaNames.length])!,
                 deliveryMethod: deliveryMethods[i % deliveryMethods.length],
                 processedByStaffId: staff[i % staff.length].id,
@@ -557,6 +578,8 @@ async function main() {
     console.log('📤 Attributions (assignments)…');
     for (let i = 0; i < 9; i++) {
         const order = orders[i];
+        // A duplication never receives an attribution (guardNotDuplication).
+        if (order.isDuplication) continue;
         const reader = [reader1, reader2, reader3][i % 3];
         const st = orderStatuses[i % orderStatuses.length];
         const sent = st !== ST_ATTENTE;

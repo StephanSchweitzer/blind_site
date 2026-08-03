@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus, BillingStatus } from '@prisma/client';
 import { ordersTableInclude } from '@/types/models/order.model';
+import {
+    blockedDuplicationWhere,
+    findBlockedDuplications,
+    serializeBlockedDuplications,
+} from '@/lib/orders/duplicationBlocked';
 
 // ⚠️ ADJUST this import to wherever your orders-table.tsx actually lives.
 import OrdersTable from '@/app/admin/orders/orders-table';
@@ -72,6 +77,8 @@ export default async function CommandesTab({ params, searchParams }: PageProps) 
 
     if (isDuplication === 'true') whereClause.isDuplication = true;
     else if (isDuplication === 'false') whereClause.isDuplication = false;
+    // Duplications that can't start yet — the book is still being recorded.
+    else if (isDuplication === 'blocked') Object.assign(whereClause, blockedDuplicationWhere);
 
     if (retard === 'true') {
         const existing = Array.isArray(whereClause.AND)
@@ -117,6 +124,9 @@ export default async function CommandesTab({ params, searchParams }: PageProps) 
     });
     const presetClient = client ? { ...client, email: client.email ?? '' } : null;
 
+    // Derived on read, one query for the page — see lib/orders/duplicationBlocked.ts.
+    const blockedDuplications = await findBlockedDuplications(orders);
+
     const serializedOrders = orders.map((order) => ({
         ...order,
         cost: order.cost ? Number(order.cost) : null,
@@ -134,6 +144,7 @@ export default async function CommandesTab({ params, searchParams }: PageProps) 
             totalPages={Math.ceil(totalOrders / ORDERS_PER_PAGE)}
             availableStatuses={statuses}
             initialTotalOrders={totalOrders}
+            blockedDuplications={serializeBlockedDuplications(blockedDuplications)}
             hideSearch
             presetClient={presetClient}
         />

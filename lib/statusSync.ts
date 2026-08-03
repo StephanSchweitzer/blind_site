@@ -12,12 +12,23 @@ type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0
  * because the Status row still exists and the guards below still have to
  * recognise it — but neither a demande nor an attribution may be set to it.
  * See guardOrderStatus / guardAssignmentStatus.
+ *
+ * A_FAIRE is DUPLICATION-ONLY. A duplication owns no attribution, so the
+ * recording statuses say nothing true about it — « En cours » in particular
+ * used to be set automatically and read as though the book were being
+ * recorded. A duplication therefore has a two-state lifecycle,
+ * « À faire » → « Terminé », enforced by guardDuplicationStatus.
+ *
+ * These ids are fixed, not discovered: the Status rows are reference data
+ * inserted with explicit ids so dev and prod agree. Keep the seed's STATUSES
+ * array in the same order.
  */
 export const STATUS = {
     ATTENTE: 1, // Attente envoi vers lecteur
     EN_COURS: 2, // En cours
     TERMINE: 3, // Terminé
     SOLDE: 4, // Soldé — retired, facture-only (see above)
+    A_FAIRE: 5, // À faire — duplications only (see above)
 } as const;
 
 export type GuardResult =
@@ -31,12 +42,50 @@ const fail = (httpStatus: number, message: string): GuardResult => ({
     message,
 });
 
-/** An assignment can never hold the SOLDE status. */
+/** An assignment can never hold the SOLDE or A_FAIRE status. */
 export function guardAssignmentStatus(statusId: number): GuardResult {
     if (statusId === STATUS.SOLDE) {
         return fail(
             400,
             'Une attribution ne peut pas avoir le statut « Soldé » : ce statut est réservé aux demandes.'
+        );
+    }
+    if (statusId === STATUS.A_FAIRE) {
+        return fail(
+            400,
+            'Une attribution ne peut pas avoir le statut « À faire » : ce statut est réservé aux duplications.'
+        );
+    }
+    return OK;
+}
+
+/**
+ * « À faire » and the recording statuses are mutually exclusive.
+ *
+ * A duplication has no attribution, so it can only be « À faire » or « Terminé » —
+ * « Attente envoi vers lecteur » and « En cours » both describe a book that is
+ * with a lecteur, which a duplication never is. Conversely « À faire » is
+ * duplication-only: a demande d'enregistrement starts at « Attente envoi vers
+ * lecteur », which already means "à faire" *and* says what the action is.
+ *
+ * Rejects outright rather than grandfathering, matching guardOrderStatus's
+ * handling of SOLDE. Safe because no duplication holds a recording status:
+ * the team cleared « En cours » duplications before this shipped.
+ */
+export function guardDuplicationStatus(isDuplication: boolean, statusId: number): GuardResult {
+    if (isDuplication) {
+        if (statusId !== STATUS.A_FAIRE && statusId !== STATUS.TERMINE) {
+            return fail(
+                400,
+                "Une duplication ne peut être qu'« À faire » ou « Terminé » : elle ne passe pas par un lecteur."
+            );
+        }
+        return OK;
+    }
+    if (statusId === STATUS.A_FAIRE) {
+        return fail(
+            400,
+            "« À faire » est réservé aux duplications. Une demande d'enregistrement commence en « Attente envoi vers lecteur »."
         );
     }
     return OK;
@@ -231,6 +280,11 @@ export function guardAssignmentConsistency(args: {
             return OK;
         case STATUS.SOLDE:
             return fail(400, "Une attribution ne peut pas avoir le statut « Soldé ».");
+        case STATUS.A_FAIRE:
+            // Explicit, not left to `default` — falling through would silently
+            // pass every reader/date rule below and let an attribution sit on a
+            // duplication-only status with no consistency checks at all.
+            return fail(400, "Une attribution ne peut pas avoir le statut « À faire » : ce statut est réservé aux duplications.");
         default:
             return OK;
     }

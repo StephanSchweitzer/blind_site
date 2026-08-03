@@ -4,6 +4,11 @@ import { buildUserNameSearch } from '@/lib/search';
 import OrdersTable from './orders-table';
 import { notFound } from 'next/navigation';
 import { ordersTableInclude } from '@/types/models/order.model';
+import {
+    blockedDuplicationWhere,
+    findBlockedDuplications,
+    serializeBlockedDuplications,
+} from '@/lib/orders/duplicationBlocked';
 
 interface PageProps {
     searchParams: Promise<{
@@ -95,6 +100,9 @@ async function getOrders(
         whereClause.isDuplication = true;
     } else if (isDuplication === 'false') {
         whereClause.isDuplication = false;
+    } else if (isDuplication === 'blocked') {
+        // Duplications that can't start yet — the book is still being recorded.
+        Object.assign(whereClause, blockedDuplicationWhere);
     }
 
     if (retard === 'true') {
@@ -154,11 +162,15 @@ async function getOrders(
             }),
         ]);
 
+        // Derived on read, one query for the page — see lib/orders/duplicationBlocked.ts.
+        const blockedDuplications = await findBlockedDuplications(orders);
+
         return {
             orders,
             totalOrders,
             totalPages: Math.ceil(totalOrders / ordersPerPage),
             availableStatuses: statuses,
+            blockedDuplications: serializeBlockedDuplications(blockedDuplications),
         };
     } catch (error) {
         console.error('Error fetching orders:', error);
@@ -186,9 +198,9 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
         : params.isDuplication;
     const retard = Array.isArray(params.retard) ? params.retard[0] : params.retard;
 
-    let orders, totalOrders, totalPages, availableStatuses;
+    let orders, totalOrders, totalPages, availableStatuses, blockedDuplications;
     try {
-        ({ orders, totalOrders, totalPages, availableStatuses } = await getOrders(
+        ({ orders, totalOrders, totalPages, availableStatuses, blockedDuplications } = await getOrders(
             page,
             searchTerm,
             filter,
@@ -220,6 +232,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                 totalPages={totalPages!}
                 availableStatuses={availableStatuses!}
                 initialTotalOrders={totalOrders!}
+                blockedDuplications={blockedDuplications!}
             />
         </div>
     );

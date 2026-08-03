@@ -903,10 +903,12 @@ export function AssignmentFormBackendBase({
                                 <SelectValue placeholder="Sélectionner un statut" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
-                                {/* #7a — an assignment can never hold "Soldé" (order-only status);
-                                    filter it out so it isn't offered. Uses STATUS.SOLDE, not a literal. */}
+                                {/* #7a — an assignment can never hold "Soldé" (order-only status)
+                                    nor "À faire" (duplication-only, and a duplication has no
+                                    attribution); filter both out so they aren't offered. Uses the
+                                    STATUS constants, not literals. */}
                                 {statuses
-                                    .filter((status) => status.id !== STATUS.SOLDE)
+                                    .filter((status) => status.id !== STATUS.SOLDE && status.id !== STATUS.A_FAIRE)
                                     .map((status) => (
                                         <SelectItem key={status.id} value={status.id.toString()} className="text-foreground">
                                             {status.name}

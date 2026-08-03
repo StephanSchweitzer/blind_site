@@ -17,6 +17,7 @@ import {
     guardOrderStatus,
     guardOrderCompletion,
     guardDuplicationFlip,
+    guardDuplicationStatus,
     guardDemandeStatusSync,
     resolveClosureDate,
     syncAssignmentToStatus,
@@ -226,6 +227,27 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             const orderStatusGuard = guardOrderStatus(data.statusId);
             if (!orderStatusGuard.ok) {
                 return NextResponse.json({ message: orderStatusGuard.message }, { status: orderStatusGuard.httpStatus });
+            }
+        }
+
+        // « À faire » is duplication-only, and a duplication can hold nothing else
+        // (bar « Terminé »). Guard the RESULTING combination — the statut and the
+        // duplication flag can each change on their own.
+        //
+        // Only when one of them ACTUALLY changes: a legacy duplication that still
+        // holds a recording statut stays editable (notes, coût…) instead of being
+        // held hostage by its history. Any real change must still land on a valid pair.
+        const statusIsChanging =
+            data.statusId !== undefined && data.statusId !== existingOrder.statusId;
+        const duplicationIsChanging =
+            data.isDuplication !== undefined && data.isDuplication !== existingOrder.isDuplication;
+        if (statusIsChanging || duplicationIsChanging) {
+            const duplicationStatusGuard = guardDuplicationStatus(
+                data.isDuplication ?? existingOrder.isDuplication,
+                data.statusId ?? existingOrder.statusId
+            );
+            if (!duplicationStatusGuard.ok) {
+                return NextResponse.json({ message: duplicationStatusGuard.message }, { status: duplicationStatusGuard.httpStatus });
             }
         }
 
@@ -464,6 +486,27 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             const orderStatusGuard = guardOrderStatus(body.statusId);
             if (!orderStatusGuard.ok) {
                 return NextResponse.json({ message: orderStatusGuard.message }, { status: orderStatusGuard.httpStatus });
+            }
+        }
+
+        // « À faire » is duplication-only, and a duplication can hold nothing else
+        // (bar « Terminé »). Guard the RESULTING combination — the statut and the
+        // duplication flag can each change on their own.
+        //
+        // Only when one of them ACTUALLY changes: a legacy duplication that still
+        // holds a recording statut stays editable (notes, coût…) instead of being
+        // held hostage by its history. Any real change must still land on a valid pair.
+        const statusIsChanging =
+            body.statusId !== undefined && body.statusId !== existingOrder.statusId;
+        const duplicationIsChanging =
+            body.isDuplication !== undefined && body.isDuplication !== existingOrder.isDuplication;
+        if (statusIsChanging || duplicationIsChanging) {
+            const duplicationStatusGuard = guardDuplicationStatus(
+                body.isDuplication ?? existingOrder.isDuplication,
+                body.statusId ?? existingOrder.statusId
+            );
+            if (!duplicationStatusGuard.ok) {
+                return NextResponse.json({ message: duplicationStatusGuard.message }, { status: duplicationStatusGuard.httpStatus });
             }
         }
 

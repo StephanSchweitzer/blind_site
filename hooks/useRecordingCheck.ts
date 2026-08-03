@@ -9,6 +9,11 @@ export interface RecordingCheckResult {
         aveugle: { name: string | null } | null;
         status: { name: string } | null;
     }[];
+    /** Attribution still in flight for this book, if any — blocks a duplication. */
+    blockingRecording: {
+        readerName: string | null;
+        sentToReaderDate: string | null;
+    } | null;
 }
 
 /**

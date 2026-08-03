@@ -3,7 +3,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
-import { guardOrderStatus, resolveClosureDate } from '@/lib/statusSync';
+import { guardOrderStatus, guardDuplicationStatus, resolveClosureDate } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -310,6 +310,16 @@ export const POST = withAdmin(async (request, { me }) => {
                     );
                 }
 
+                // « À faire » is duplication-only, and a duplication can hold nothing else
+                // (bar « Terminé ») — it never goes to a lecteur.
+                const lineDuplicationGuard = guardDuplicationStatus(!!b.isDuplication, lineStatusId);
+                if (!lineDuplicationGuard.ok) {
+                    return NextResponse.json(
+                        { error: 'Invalid status', message: lineDuplicationGuard.message, field: 'statusId' },
+                        { status: lineDuplicationGuard.httpStatus }
+                    );
+                }
+
                 let lineCost: Prisma.Decimal | null = null;
                 if (b.cost !== null && b.cost !== undefined && b.cost !== '') {
                     try {
@@ -424,6 +434,16 @@ export const POST = withAdmin(async (request, { me }) => {
             return NextResponse.json(
                 { error: 'Invalid status', message: orderStatusGuard.message, field: 'statusId' },
                 { status: orderStatusGuard.httpStatus }
+            );
+        }
+
+        // « À faire » is duplication-only, and a duplication can hold nothing else
+        // (bar « Terminé ») — it never goes to a lecteur.
+        const duplicationStatusGuard = guardDuplicationStatus(!!isDuplication, parsedStatusId);
+        if (!duplicationStatusGuard.ok) {
+            return NextResponse.json(
+                { error: 'Invalid status', message: duplicationStatusGuard.message, field: 'statusId' },
+                { status: duplicationStatusGuard.httpStatus }
             );
         }
 

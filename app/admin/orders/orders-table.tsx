@@ -37,6 +37,7 @@ import type {
     OrderUserOption,
     OrderBookOption,
 } from '@/types/models/order.model';
+import type { SerializedBlockingRecording } from '@/lib/orders/duplicationBlocked';
 
 type OrdersTableProps = {
     initialOrders: SerializedOrderTableRow[];
@@ -45,6 +46,8 @@ type OrdersTableProps = {
     totalPages: number;
     availableStatuses: { id: number; name: string }[];
     initialTotalOrders: number;
+    /** Duplications that can't start yet, keyed by demande id. Derived server-side. */
+    blockedDuplications?: Record<number, SerializedBlockingRecording>;
     hideSearch?: boolean;
     presetClient?: { id: number; name: string | null; email: string } | null;
 };
@@ -55,6 +58,7 @@ export default function OrdersTable({
                                         initialSearch,
                                         totalPages,
                                         availableStatuses,
+                                        blockedDuplications = {},
                                         hideSearch = false,
                                         presetClient = null,
                                     }: OrdersTableProps) {
@@ -279,6 +283,19 @@ export default function OrdersTable({
         return new Date(dateString).toLocaleDateString('fr-FR');
     };
 
+    // Tooltip behind the « En attente d'enregistrement » badge — names the lecteur
+    // and the date d'envoi when known, so the admin can see what's holding it up.
+    const blockedRecordingLabel = (recording: SerializedBlockingRecording) => {
+        const details = [
+            recording.readerName ? `lecteur ${recording.readerName}` : null,
+            recording.sentToReaderDate ? `envoyé le ${formatDate(recording.sentToReaderDate)}` : null,
+        ].filter(Boolean);
+
+        return details.length
+            ? `Duplication en attente : un enregistrement de cet ouvrage est en cours (${details.join(', ')}).`
+            : "Duplication en attente : un enregistrement de cet ouvrage est en cours.";
+    };
+
     const getBillingStatusLabel = (status: string) => {
         const labels: Record<string, string> = {
             UNBILLED: 'Non facturé',
@@ -288,13 +305,14 @@ export default function OrdersTable({
         return labels[status] || status;
     };
 
+    // Keys are the real Status.name values (see prisma/seed.ts STATUSES) — the map
+    // shortens them for the table and puts « Terminé »/« Soldé » in the feminine,
+    // since a *demande* is what's being described.
     const getStatusDisplayName = (statusName: string) => {
         const displayMap: Record<string, string> = {
             'Attente envoi vers lecteur': 'À envoyer',
-            'En cours de traitement': 'En cours',
-            'Demande terminée': 'Terminée',
-            'En attente de validation': 'À valider',
-            'Demande annulée': 'Annulée',
+            'Terminé': 'Terminée',
+            'Soldé': 'Soldée',
         };
         return displayMap[statusName] || statusName;
     };
@@ -471,6 +489,8 @@ export default function OrdersTable({
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="all" className="text-foreground">Tous</SelectItem>
                                     <SelectItem value="true" className="text-foreground">Duplication</SelectItem>
+                                    {/* Duplications held up by an enregistrement still in flight. */}
+                                    <SelectItem value="blocked" className="text-foreground">Duplication en attente</SelectItem>
                                     <SelectItem value="false" className="text-foreground">Enregistrement</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -530,6 +550,7 @@ export default function OrdersTable({
                                     <TableBody>
                                         {initialOrders.map((order) => {
                                             const isOverdue = isOrderOverdue(order);
+                                            const blockedBy = blockedDuplications[order.id];
                                             return (
                                                 <TableRow
                                                     key={order.id}
@@ -565,13 +586,25 @@ export default function OrdersTable({
                                                         {formatDate(order.requestReceivedDate)}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                                            isOverdue
-                                                                ? 'bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300'
-                                                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                                                        }`}>
-                                                            {getStatusDisplayName(order.status.name)}
-                                                        </span>
+                                                        {/* A duplication waiting on an in-flight enregistrement is
+                                                            « À faire » in the DB but can't actually be started yet.
+                                                            Derived, never stored — see lib/orders/duplicationBlocked.ts. */}
+                                                        {blockedBy ? (
+                                                            <span
+                                                                title={blockedRecordingLabel(blockedBy)}
+                                                                className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
+                                                            >
+                                                                En attente d&apos;enregistrement
+                                                            </span>
+                                                        ) : (
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                                                isOverdue
+                                                                    ? 'bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300'
+                                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                                                            }`}>
+                                                                {getStatusDisplayName(order.status.name)}
+                                                            </span>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell>
                                                         <span

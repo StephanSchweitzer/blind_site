@@ -330,18 +330,21 @@ export function OrderFormBackendBase({
         // The admin is now deciding manually — the auto-check banner no longer applies.
         setDupAutoChecked(false);
         setFormData(prev => {
-            // Check if current status is "Terminé"
-            const currentStatus = statuses.find(s => s.id === prev.statusId);
-            const isTerminated = currentStatus?.name.toLowerCase().includes('terminé');
+            // An already-finished demande keeps « Terminé » whichever way this goes.
+            const isTermine = prev.statusId === STATUS.TERMINE;
 
             return {
                 ...prev,
                 isDuplication: checked,
                 lentPhysicalBook: checked ? false : prev.lentPhysicalBook,
-                // Set status to "en cours" when duplication is selected, but only if not already "Terminé"
-                statusId: (checked && !isTerminated)
-                    ? statuses.find(s => s.name.toLowerCase().includes('en cours'))?.id || prev.statusId
-                    : prev.statusId
+                // A duplication is « À faire » until it's done — it never goes to a
+                // lecteur, so « En cours » (which used to be set here) said something
+                // untrue about it. Un-ticking the box drops back to the recording
+                // workflow's first state, since « À faire » is duplication-only and
+                // the server would otherwise reject the save.
+                statusId: isTermine
+                    ? prev.statusId
+                    : (checked ? STATUS.A_FAIRE : STATUS.ATTENTE),
             };
         });
     };
@@ -351,18 +354,15 @@ export function OrderFormBackendBase({
         setDupAutoChecked(false);
         setRecordingTouched(true);
         setFormData(prev => {
-            // Check if current status is "Terminé"
-            const currentStatus = statuses.find(s => s.id === prev.statusId);
-            const isTerminated = currentStatus?.name.toLowerCase().includes('terminé');
+            // An already-finished demande keeps « Terminé » whichever way this goes.
+            const isTermine = prev.statusId === STATUS.TERMINE;
 
             return {
                 ...prev,
                 lentPhysicalBook: checked,
                 isDuplication: checked ? false : prev.isDuplication,
-                // Set status to "attente d'envoie vers lecteur" when recording is selected, but only if not already "Terminé"
-                statusId: (checked && !isTerminated)
-                    ? statuses.find(s => s.name.toLowerCase().includes('attente') && s.name.toLowerCase().includes('lecteur'))?.id || prev.statusId
-                    : prev.statusId
+                // A demande d'enregistrement starts at « Attente envoi vers lecteur ».
+                statusId: (checked && !isTermine) ? STATUS.ATTENTE : prev.statusId,
             };
         });
     };
@@ -477,18 +477,32 @@ export function OrderFormBackendBase({
     const audioAlreadyExists = Boolean(selectedBook?.audio_filepath);
 
     // Active "enregistrement nécessaire" already exists for this book (excluding
-    // the order being edited). Checked whenever the book or the recording flag
-    // changes; result drives an inline warning + a submit-time confirm.
+    // the order being edited). Checked whenever the book or either type flag
+    // changes; result drives an inline warning + a submit-time confirm. The same
+    // call answers the duplication side (is a lecteur still holding this book?),
+    // hence the isDuplication trigger.
     useEffect(() => {
-        if (formData.catalogueId && formData.lentPhysicalBook) {
+        if (formData.catalogueId && (formData.lentPhysicalBook || formData.isDuplication)) {
             void checkRecording(formData.catalogueId, currentOrderId);
         }
-    }, [formData.catalogueId, formData.lentPhysicalBook, currentOrderId, checkRecording]);
+    }, [formData.catalogueId, formData.lentPhysicalBook, formData.isDuplication, currentOrderId, checkRecording]);
 
     const recordingDup = formData.lentPhysicalBook
         ? getRecordingFor(formData.catalogueId)
         : null;
     const hasRecordingDup = (recordingDup?.activeRecordingCount ?? 0) > 0;
+
+    // A duplication is normally « À faire » — do it now. The exception is a book
+    // with no audio yet because a lecteur is still recording it: nothing can be
+    // copied until that comes back. A closed demande is excluded — it waits for
+    // nothing. Same rule as the list badge (lib/orders/duplicationBlocked.ts);
+    // derived, never stored.
+    const demandeIsClosed =
+        formData.statusId === STATUS.TERMINE || formData.statusId === STATUS.SOLDE;
+    const blockingRecording =
+        formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
+            ? getRecordingFor(formData.catalogueId)?.blockingRecording ?? null
+            : null;
 
     return (
         <>
@@ -628,6 +642,18 @@ export function OrderFormBackendBase({
                                         Duplication
                                     </label>
                                 </div>
+                                {blockingRecording && (
+                                    <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
+                                        En attente d&apos;enregistrement : cet ouvrage n&apos;a pas encore
+                                        de fichier audio et un enregistrement est en cours
+                                        {blockingRecording.readerName ? ` (lecteur ${blockingRecording.readerName}` : ''}
+                                        {blockingRecording.readerName && blockingRecording.sentToReaderDate
+                                            ? `, envoyé le ${new Date(blockingRecording.sentToReaderDate).toLocaleDateString('fr-FR')}`
+                                            : ''}
+                                        {blockingRecording.readerName ? ')' : ''}. La duplication ne pourra
+                                        être faite qu&apos;au retour de l&apos;enregistrement.
+                                    </p>
+                                )}
                             </div>
 
                             <div className="bg-card/50 p-4 rounded-lg border border-border">
@@ -680,9 +706,24 @@ export function OrderFormBackendBase({
                                 <div className="py-1">
                                     {/* « Soldé » is a facture status, not a demande status — never offer
                                         it. A legacy demande that still holds it keeps its option so
-                                        editing it doesn't show an empty required field. */}
+                                        editing it doesn't show an empty required field.
+
+                                        A duplication has a two-state lifecycle, « À faire » → « Terminé »:
+                                        it owns no attribution, so the statuts that describe a book sitting
+                                        with a lecteur are never offered on one. Conversely « À faire » is
+                                        duplication-only — an enregistrement starts at « Attente envoi vers
+                                        lecteur », which already means "à faire" and names the action. */}
                                     {statuses
-                                        .filter((status) => status.id !== STATUS.SOLDE || formData.statusId === STATUS.SOLDE)
+                                        .filter((status) => {
+                                            // Whatever the demande already holds stays visible, so a
+                                            // legacy row never opens on a blank required field.
+                                            if (status.id === formData.statusId) return true;
+                                            if (status.id === STATUS.SOLDE) return false;
+                                            if (formData.isDuplication) {
+                                                return status.id === STATUS.A_FAIRE || status.id === STATUS.TERMINE;
+                                            }
+                                            return status.id !== STATUS.A_FAIRE;
+                                        })
                                         .map((status) => (
                                             <SelectItem
                                                 key={status.id}

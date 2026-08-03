@@ -50,6 +50,10 @@ public/coup_descriptions/
 # migration.sql out of the repo, which is a large part of why the migration
 # history drifted from the databases.
 !prisma/migrations/**/*.sql
+# Same reasoning for hand-run reference-data scripts (prisma/sql): they're source
+# that has to reach prod, not dumps. Losing them to the blanket rule is how you
+# end up with a schema nobody can reproduce.
+!prisma/sql/*.sql
 passStuff.txt
 data_to_convert_and_upload/wc-product-export-15-11-2024-1731676285314.csv*
 

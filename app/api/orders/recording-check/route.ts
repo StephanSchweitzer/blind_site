@@ -41,8 +41,36 @@ export const GET = withAdmin(async (req: NextRequest) => {
         take: 10,
     });
 
+    // An attribution still in flight for this book. A duplication of a book that
+    // has no audio yet can't be done until this enregistrement comes back, so the
+    // demande form warns instead of letting it look immediately actionable.
+    // Same rule as lib/orders/duplicationBlocked.ts, which drives the list badge.
+    const inFlight = await prisma.assignment.findFirst({
+        where: {
+            catalogueId: bookId,
+            statusId: { in: [STATUS.ATTENTE, STATUS.EN_COURS] },
+        },
+        orderBy: { id: 'desc' },
+        select: {
+            sentToReaderDate: true,
+            readerHistory: {
+                orderBy: { assignedDate: 'desc' },
+                take: 1,
+                select: { reader: { select: { name: true } } },
+            },
+        },
+    });
+
     return NextResponse.json({
         activeRecordingCount: orders.length,
         orders,
+        blockingRecording: inFlight
+            ? {
+                readerName: inFlight.readerHistory[0]?.reader?.name ?? null,
+                sentToReaderDate: inFlight.sentToReaderDate
+                    ? inFlight.sentToReaderDate.toISOString()
+                    : null,
+            }
+            : null,
     });
 });
