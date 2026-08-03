@@ -20,6 +20,7 @@ import {
     guardDuplicationStatus,
     guardDemandeStatusSync,
     resolveClosureDate,
+    guardClosureDateRequiresTermine,
     syncAssignmentToStatus,
 } from '@/lib/statusSync';
 import { recomputeBillTotal, accrueOrderToOpenDraft, issueDraftIfOverThreshold, logBillEvent } from '@/lib/billing';
@@ -178,6 +179,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 cost: true,
                 catalogueId: true,
                 requestReceivedDate: true,
+                closureDate: true,
                 assignments: {
                     select: {
                         id: true,
@@ -324,6 +326,17 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 data.closureDate === undefined ? undefined : data.closureDate ? new Date(data.closureDate) : null,
         });
 
+        // …and only « Terminé » may carry one. Legacy pairs round-tripped unchanged pass.
+        const closureGuard = guardClosureDateRequiresTermine({
+            statusId: data.statusId ?? existingOrder.statusId,
+            closureDate,
+            previousStatusId: existingOrder.statusId,
+            previousClosureDate: existingOrder.closureDate,
+        });
+        if (!closureGuard.ok) {
+            return NextResponse.json({ message: closureGuard.message }, { status: closureGuard.httpStatus });
+        }
+
         const updateData: Prisma.OrdersUncheckedUpdateInput = {
             aveugleId: data.aveugleId,
             catalogueId: data.catalogueId,
@@ -439,6 +452,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 cost: true,
                 catalogueId: true,
                 requestReceivedDate: true,
+                closureDate: true,
                 assignments: {
                     select: {
                         id: true,
@@ -593,6 +607,16 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             explicitClosureDate:
                 body.closureDate === undefined ? undefined : body.closureDate ? new Date(body.closureDate) : null,
         });
+        // …and only « Terminé » may carry one. Legacy pairs round-tripped unchanged pass.
+        const closureGuard = guardClosureDateRequiresTermine({
+            statusId: body.statusId ?? existingOrder.statusId,
+            closureDate,
+            previousStatusId: existingOrder.statusId,
+            previousClosureDate: existingOrder.closureDate,
+        });
+        if (!closureGuard.ok) {
+            return NextResponse.json({ message: closureGuard.message }, { status: closureGuard.httpStatus });
+        }
         if (closureDate !== undefined) updateData.closureDate = closureDate;
         if (body.cost !== undefined) updateData.cost = newCost;
         if (body.billingStatus !== undefined) updateData.billingStatus = body.billingStatus;

@@ -217,6 +217,65 @@ export function resolveClosureDate(args: {
     return explicitClosureDate;
 }
 
+/** Same local calendar day? closureDate is a date, not a timestamp (see startOfToday). */
+function isSameDay(a: Date, b: Date): boolean {
+    return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+    );
+}
+
+/**
+ * A date de clôture only makes sense on a demande « Terminé » — it IS the day the
+ * demande was closed. resolveClosureDate stamps it on entering « Terminé », but an
+ * explicit date always wins there, so nothing stopped a date being put on an
+ * « En cours » demande through the form or the API. This closes that direction.
+ *
+ * Rejects ONLY when the request actually sets or moves the date. The demandes
+ * imported from Access carry whatever pair Access had, so an unrelated edit
+ * (notes, coût…) that round-trips an ALREADY inconsistent date unchanged stays
+ * allowed — a legacy row must not be held hostage by its history. Comparison is by
+ * calendar day, so re-picking the same day through the date picker (local midnight)
+ * doesn't read as a change against a stored timestamp.
+ *
+ * That escape hatch is deliberately narrow: it needs the demande to have been
+ * non-« Terminé » ALREADY. A demande leaving « Terminé » can't keep its date by
+ * re-sending it — that would break a consistent pair rather than preserve a broken one.
+ *
+ * Pass the RESULTING status, and `previousStatusId`/`previousClosureDate` as `null`
+ * when creating.
+ */
+export function guardClosureDateRequiresTermine(args: {
+    statusId: number;
+    /** Resolved value: `undefined` = column untouched, `null` = cleared. */
+    closureDate: Date | null | undefined;
+    previousStatusId: number | null;
+    previousClosureDate: Date | null;
+}): GuardResult {
+    const { statusId, closureDate, previousStatusId, previousClosureDate } = args;
+
+    // Untouched or cleared — nothing being set, nothing to reject.
+    if (!closureDate) return OK;
+    if (statusId === STATUS.TERMINE) return OK;
+
+    // An already-inconsistent legacy pair, re-saved as-is on the same day.
+    if (
+        previousStatusId !== null &&
+        previousStatusId !== STATUS.TERMINE &&
+        previousClosureDate &&
+        isSameDay(closureDate, previousClosureDate)
+    ) {
+        return OK;
+    }
+
+    return fail(
+        400,
+        'Une date de clôture ne peut être renseignée que sur une demande « Terminé ». ' +
+        'Passez la demande « Terminé » — la date est alors renseignée automatiquement.'
+    );
+}
+
 export async function syncOrderToStatus(
     tx: TransactionClient,
     orderId: number,

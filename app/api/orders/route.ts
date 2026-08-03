@@ -3,7 +3,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
-import { guardOrderStatus, guardDuplicationStatus, resolveClosureDate } from '@/lib/statusSync';
+import { guardOrderStatus, guardDuplicationStatus, resolveClosureDate, guardClosureDateRequiresTermine } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -527,6 +527,27 @@ export const POST = withAdmin(async (request, { me }) => {
         const createdDate: Date = new Date();
         const staffId = me.id;
 
+        // A date de clôture only belongs on a demande « Terminé ». Nothing is
+        // grandfathered on create — there is no history to protect.
+        const resolvedClosureDate =
+            resolveClosureDate({
+                previousStatusId: null,
+                nextStatusId: parsedStatusId,
+                explicitClosureDate: parsedClosureDate,
+            }) ?? null;
+        const closureGuard = guardClosureDateRequiresTermine({
+            statusId: parsedStatusId,
+            closureDate: resolvedClosureDate,
+            previousStatusId: null,
+            previousClosureDate: null,
+        });
+        if (!closureGuard.ok) {
+            return NextResponse.json(
+                { error: 'Invalid closureDate', message: closureGuard.message, field: 'closureDate' },
+                { status: closureGuard.httpStatus }
+            );
+        }
+
         const orderData = {
             aveugleId: parseInt(aveugleId),
             catalogueId: parseInt(catalogueId),
@@ -538,13 +559,8 @@ export const POST = withAdmin(async (request, { me }) => {
             processedByStaffId: staffId,
             createdDate,
             // A demande created straight into « Terminé » is closed today,
-            // unless the admin supplied a date explicitly.
-            closureDate:
-                resolveClosureDate({
-                    previousStatusId: null,
-                    nextStatusId: parsedStatusId,
-                    explicitClosureDate: parsedClosureDate,
-                }) ?? null,
+            // unless the admin supplied a date explicitly (guarded above).
+            closureDate: resolvedClosureDate,
             updatedAt: new Date(),
             cost: parsedCost,
             billingStatus: finalBillingStatus,

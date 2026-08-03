@@ -499,6 +499,11 @@ export function OrderFormBackendBase({
     // derived, never stored.
     const demandeIsClosed =
         formData.statusId === STATUS.TERMINE || formData.statusId === STATUS.SOLDE;
+
+    // Only « Terminé » carries a date de clôture, so only « Terminé » lets you pick one.
+    // A legacy demande that holds an inconsistent date still displays it (read-only) —
+    // the server accepts that pair round-tripped unchanged (guardClosureDateRequiresTermine).
+    const isTermine = formData.statusId === STATUS.TERMINE;
     const blockingRecording =
         formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
             ? getRecordingFor(formData.catalogueId)?.blockingRecording ?? null
@@ -590,12 +595,14 @@ export function OrderFormBackendBase({
                             Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).
                             Renseignée automatiquement au passage au statut « Terminé » et effacée si la
                             demande en ressort — modifiez-la seulement pour corriger le jour.
+                            {!isTermine && ' Seule une demande « Terminé » peut porter une date de clôture.'}
                         </p>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
+                                    disabled={!isTermine}
+                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
                                     {formData.closureDate ? (

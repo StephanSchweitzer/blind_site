@@ -3,6 +3,12 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
+import {
+    guardOrderStatus,
+    guardDuplicationStatus,
+    resolveClosureDate,
+    guardClosureDateRequiresTermine,
+} from '@/lib/statusSync';
 import { withAdmin } from '@/lib/auth/guards';
 
 export const GET = withAdmin(async (request) => {
@@ -254,6 +260,7 @@ export const POST = withAdmin(async (request, { me }) => {
                 isDuplication: boolean;
                 lentPhysicalBook: boolean;
                 cost: Prisma.Decimal | null;
+                closureDate: Date | null;
             }[] = [];
 
             for (const b of books) {
@@ -261,6 +268,25 @@ export const POST = withAdmin(async (request, { me }) => {
                     return NextResponse.json(
                         { error: 'Missing fields in book line', message: 'Chaque ouvrage doit comporter un livre, un statut et un format média' },
                         { status: 400 }
+                    );
+                }
+
+                const lineStatusId = parseInt(String(b.statusId));
+
+                // Same status rules as POST /api/orders — this route creates demandes too.
+                const lineStatusGuard = guardOrderStatus(lineStatusId);
+                if (!lineStatusGuard.ok) {
+                    return NextResponse.json(
+                        { error: 'Invalid status', message: lineStatusGuard.message, field: 'statusId' },
+                        { status: lineStatusGuard.httpStatus }
+                    );
+                }
+
+                const lineDuplicationGuard = guardDuplicationStatus(!!b.isDuplication, lineStatusId);
+                if (!lineDuplicationGuard.ok) {
+                    return NextResponse.json(
+                        { error: 'Invalid status', message: lineDuplicationGuard.message, field: 'statusId' },
+                        { status: lineDuplicationGuard.httpStatus }
                     );
                 }
 
@@ -281,11 +307,19 @@ export const POST = withAdmin(async (request, { me }) => {
 
                 preparedLines.push({
                     catalogueId: parseInt(String(b.catalogueId)),
-                    statusId: parseInt(String(b.statusId)),
+                    statusId: lineStatusId,
                     mediaFormatId: parseInt(String(b.mediaFormatId)),
                     isDuplication: !!b.isDuplication,
                     lentPhysicalBook: !!b.lentPhysicalBook,
                     cost: lineCost,
+                    // A line created straight into « Terminé » is closed today. Derived
+                    // from the statut only, so it can never contradict it.
+                    closureDate:
+                        resolveClosureDate({
+                            previousStatusId: null,
+                            nextStatusId: lineStatusId,
+                            explicitClosureDate: undefined,
+                        }) ?? null,
                 });
             }
 
@@ -308,6 +342,7 @@ export const POST = withAdmin(async (request, { me }) => {
                             processedByStaffId: batchStaffId,
                             createdDate: batchNow,
                             updatedAt: batchNow,
+                            closureDate: l.closureDate,
                             cost: l.cost,
                             billingStatus: batchBillingStatus,
                             lentPhysicalBook: l.lentPhysicalBook,
@@ -431,18 +466,58 @@ export const POST = withAdmin(async (request, { me }) => {
 
         const createdDate: Date = new Date();
         const staffId = me.id;
+        const parsedStatusId = parseInt(statusId);
+
+        // Same status rules as POST /api/orders — this route creates demandes too.
+        // « Soldé » is a facture status; « À faire » is duplication-only.
+        const orderStatusGuard = guardOrderStatus(parsedStatusId);
+        if (!orderStatusGuard.ok) {
+            return NextResponse.json(
+                { error: 'Invalid status', message: orderStatusGuard.message, field: 'statusId' },
+                { status: orderStatusGuard.httpStatus }
+            );
+        }
+
+        const duplicationStatusGuard = guardDuplicationStatus(!!isDuplication, parsedStatusId);
+        if (!duplicationStatusGuard.ok) {
+            return NextResponse.json(
+                { error: 'Invalid status', message: duplicationStatusGuard.message, field: 'statusId' },
+                { status: duplicationStatusGuard.httpStatus }
+            );
+        }
+
+        // A demande created straight into « Terminé » is closed today, unless the
+        // admin supplied a date explicitly — and only « Terminé » may carry one.
+        const resolvedClosureDate =
+            resolveClosureDate({
+                previousStatusId: null,
+                nextStatusId: parsedStatusId,
+                explicitClosureDate: parsedClosureDate,
+            }) ?? null;
+        const closureGuard = guardClosureDateRequiresTermine({
+            statusId: parsedStatusId,
+            closureDate: resolvedClosureDate,
+            previousStatusId: null,
+            previousClosureDate: null,
+        });
+        if (!closureGuard.ok) {
+            return NextResponse.json(
+                { error: 'Invalid closureDate', message: closureGuard.message, field: 'closureDate' },
+                { status: closureGuard.httpStatus }
+            );
+        }
 
         const orderData = {
             aveugleId: parseInt(aveugleId),
             catalogueId: parseInt(catalogueId),
             requestReceivedDate: parsedRequestReceivedDate,
-            statusId: parseInt(statusId),
+            statusId: parsedStatusId,
             isDuplication: isDuplication || false,
             mediaFormatId: parseInt(mediaFormatId),
             deliveryMethod: deliveryMethod as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE',
             processedByStaffId: staffId,
             createdDate,
-            closureDate: parsedClosureDate,
+            closureDate: resolvedClosureDate,
             updatedAt: new Date(),
             cost: parsedCost,
             billingStatus: finalBillingStatus,
