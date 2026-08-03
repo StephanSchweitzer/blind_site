@@ -24,6 +24,8 @@ import { formatPhone } from '@/lib/utils';
 import {
     MEMBER_TYPE_VALUES,
     getMemberTypeLabel,
+    ACCESS_LEVEL_VALUES,
+    getAccessLevelLabel,
     SAVE_TYPE_VALUES,
     getSaveTypeLabel,
     LANGUAGE_VALUES,
@@ -148,12 +150,12 @@ export function UserFormBackendBase({
         userType === 'auditeurs' ? 'auditeur' :
             userType === 'bienfaiteurs' ? 'bienfaiteur' :
                 'lecteur';
-    // The access level is no longer editable from this form (it is an internal
-    // permission, not something to arbitrate while filling in a member's file),
-    // so it has to be derived correctly here: the tab the person is created from
-    // decides it. Only the "permanents" tab creates a permanent, and only a super
-    // admin may — everyone else is a plain member. On edit the stored level is
-    // carried through untouched by sanitizeInitialData.
+    // Starting point for the access level, still derived from the tab the person
+    // is created from: only the "permanents" tab creates a permanent, and only a
+    // super admin may — everyone else starts as a plain member. The field itself
+    // is editable again below (except on an auditeur, who never gets a back-office
+    // permission). On edit the stored level is carried through untouched by
+    // sanitizeInitialData.
     const defaultAccessLevel: UserFormData['accessLevel'] =
         userType === 'permanents' && currentUserAccessLevel === 'super_admin'
             ? 'admin'
@@ -350,6 +352,22 @@ export function UserFormBackendBase({
         }
     };
 
+    // An auditeur never holds a back-office permission, so the field is hidden on
+    // their fiche only — every other type (lecteur, permanent, bienfaiteur,
+    // administration…) keeps it visible.
+    const showAccessLevel = formData.memberType !== 'auditeur';
+
+    // Visible but not editable: a plain permanent may not hand out access levels,
+    // and a super admin's level can only be changed by another super admin.
+    const isAccessLevelLocked =
+        (initialData?.accessLevel === 'super_admin' && currentUserAccessLevel !== 'super_admin') ||
+        currentUserAccessLevel === 'admin';
+
+    const getLockedReason = (): string =>
+        currentUserAccessLevel === 'admin'
+            ? 'Seuls les super administrateurs peuvent modifier les niveaux d\'accès'
+            : 'Verrouillé';
+
     const selectedCivility = civilities.find((c) => c.id === formData.civilityId);
     const showCivilityOther = selectedCivility?.name === 'Autre';
 
@@ -453,9 +471,7 @@ export function UserFormBackendBase({
                             )}
                         </div>
 
-                        {/* Type de membre. The access level is deliberately absent:
-                            it is a back-office permission, derived from the tab on
-                            creation and left untouched here on edit. */}
+                        {/* Type de membre + Niveau d'accès (hidden on an auditeur). */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Type de membre</label>
@@ -477,6 +493,37 @@ export function UserFormBackendBase({
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {showAccessLevel && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">
+                                        Niveau d&apos;accès {isAccessLevelLocked && <span className="text-xs text-muted-foreground">({getLockedReason()})</span>}
+                                    </label>
+                                    {isAccessLevelLocked ? (
+                                        <div className="bg-card/50 border border-border rounded-md px-3 py-2 text-sm text-foreground">
+                                            {getAccessLevelLabel(formData.accessLevel)}
+                                        </div>
+                                    ) : (
+                                        <Select
+                                            value={formData.accessLevel}
+                                            onValueChange={(value) => setFormData({ ...formData, accessLevel: value as UserFormData['accessLevel'] })}
+                                        >
+                                            <SelectTrigger className="bg-field border-border text-foreground">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-card border-border">
+                                                {ACCESS_LEVEL_VALUES
+                                                    .filter((level) => level !== 'super_admin' || currentUserAccessLevel === 'super_admin')
+                                                    .map((level) => (
+                                                        <SelectItem key={level} value={level} className="text-foreground">
+                                                            {getAccessLevelLabel(level)}
+                                                        </SelectItem>
+                                                    ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
