@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import DossierTabs from './dossier-tabs';
 import { MEMBER_TYPE_LABELS, getMemberTypeColor } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
-import { computeCotisationStatus, formatCotisationDate } from '@/lib/cotisation';
+import { computeCotisationStatus, formatCotisationDate, isCotisationExempt } from '@/lib/cotisation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -70,11 +70,13 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                                         Inactif
                                     </span>
                                 )}
-                                {cotisation.isPaid ? (
+                                {cotisation.isPaid && (
                                     <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 px-2.5 py-1 text-xs font-medium">
                                         Cotisation à jour · expire le {formatCotisationDate(cotisation.expiresAt)}
                                     </span>
-                                ) : (
+                                )}
+                                {/* A Donateur owes no cotisation — never badge them as unpaid or expired. */}
+                                {!cotisation.isPaid && !isCotisationExempt(user.memberType) && (
                                     <span className="inline-flex items-center rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2.5 py-1 text-xs font-medium">
                                         {cotisation.expiresAt
                                             ? `Cotisation expirée le ${formatCotisationDate(cotisation.expiresAt)}`

@@ -134,6 +134,19 @@ export function cotisationCoverageQuery(now: Date = new Date()): {
     return { currentYear: now.getFullYear(), legacyCutoff };
 }
 
+/**
+ * Member types that are never asked for a cotisation. A Donateur
+ * (`bienfaiteur`) gives freely, so the portal must never report their
+ * cotisation as missing or expired — no "Aucune cotisation enregistrée", no
+ * "Cotisation non payée" badge. A cotisation that IS recorded on such a member
+ * still shows as "à jour": exemption silences the nag, not the fact.
+ */
+export const COTISATION_EXEMPT_MEMBER_TYPES = ['bienfaiteur'] as const;
+
+export function isCotisationExempt(memberType: string | null | undefined): boolean {
+    return !!memberType && (COTISATION_EXEMPT_MEMBER_TYPES as readonly string[]).includes(memberType);
+}
+
 /** Shared French date formatter so the form and the dossier render expiry
  *  identically. */
 export function formatCotisationDate(date: Date | string | null | undefined): string {

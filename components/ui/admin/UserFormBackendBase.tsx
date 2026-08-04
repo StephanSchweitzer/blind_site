@@ -377,7 +377,9 @@ export function UserFormBackendBase({
                 <CardTitle className="text-foreground">{title}</CardTitle>
             </CardHeader>
             <CardContent>
-                {userId && <CotisationStatusBanner userId={userId} />}
+                {userId && (
+                    <CotisationStatusBanner userId={userId} memberType={formData.memberType} />
+                )}
 
                 {error && (
                     <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
