@@ -76,7 +76,7 @@ export default function CoupsDeCoeurClient({
                         <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mx-auto mb-6"></div>
                         <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed max-w-2xl mx-auto">
                             <span className="text-base">
-                                A commander au{' '}
+                                À demander au{' '}
                                 <span className="font-semibold whitespace-nowrap">01 88 32 31 47</span> ou 48
                             </span>
                             <br />

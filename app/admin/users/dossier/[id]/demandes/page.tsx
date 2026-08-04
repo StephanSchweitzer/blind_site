@@ -20,7 +20,7 @@ interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function CommandesTab({ params, searchParams }: PageProps) {
+export default async function DemandesTab({ params, searchParams }: PageProps) {
     const { id } = await params;
     const sp = await searchParams;
     const aveugleId = parseInt(id);

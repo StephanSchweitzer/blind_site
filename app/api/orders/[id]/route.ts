@@ -139,7 +139,7 @@ export const GET = withAdmin(async (request, { params }) => {
 
         if (!order) {
             return NextResponse.json(
-                { message: 'Commande non trouvée' },
+                { message: 'Demande non trouvée' },
                 { status: 404 }
             );
         }
@@ -203,7 +203,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         });
 
         if (!existingOrder) {
-            return NextResponse.json({ message: 'Commande non trouvée' }, { status: 404 });
+            return NextResponse.json({ message: 'Demande non trouvée' }, { status: 404 });
         }
 
         const data = validation.data;
@@ -425,7 +425,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             }
         }
 
-        return NextResponse.json({ message: 'Commande mise à jour avec succès', order, billNotice });
+        return NextResponse.json({ message: 'Demande mise à jour avec succès', order, billNotice });
     } catch (error) {
         console.error('Error updating order:', error);
         return NextResponse.json(
@@ -476,7 +476,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         });
 
         if (!existingOrder) {
-            return NextResponse.json({ message: 'Commande non trouvée' }, { status: 404 });
+            return NextResponse.json({ message: 'Demande non trouvée' }, { status: 404 });
         }
 
         const assignment = existingOrder.assignments[0] ?? null;
@@ -692,7 +692,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             }
         }
 
-        return NextResponse.json({ message: 'Commande mise à jour avec succès', order, billNotice });
+        return NextResponse.json({ message: 'Demande mise à jour avec succès', order, billNotice });
     } catch (error) {
         console.error('Error patching order:', error);
         return NextResponse.json(
@@ -723,7 +723,7 @@ export const DELETE = withAdmin(async (_request, { params }) => {
         });
 
         if (!existingOrder) {
-            return NextResponse.json({ message: 'Commande non trouvée' }, { status: 404 });
+            return NextResponse.json({ message: 'Demande non trouvée' }, { status: 404 });
         }
 
         // Can't delete an order off an issued bill — it would silently alter the invoice.
@@ -756,7 +756,7 @@ export const DELETE = withAdmin(async (_request, { params }) => {
         });
 
         return NextResponse.json({
-            message: 'Commande supprimée avec succès',
+            message: 'Demande supprimée avec succès',
             deletedId: orderId,
         });
     } catch (error) {

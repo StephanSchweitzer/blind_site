@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
  * Usage:
  *   const { toastError, toastSuccess } = useFormToast();
  *   toastError("Veuillez sélectionner un auditeur.");
- *   toastSuccess("Commande enregistrée.");
+ *   toastSuccess("Demande enregistrée.");
  */
 export function useFormToast() {
     const { toast } = useToast();

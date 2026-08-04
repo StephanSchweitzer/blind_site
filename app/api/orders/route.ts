@@ -611,7 +611,7 @@ export const POST = withAdmin(async (request, { me }) => {
         });
 
         return NextResponse.json(
-            { order, message: 'Commande créée avec succès', autoBill },
+            { order, message: 'Demande créée avec succès', autoBill },
             { status: 201 }
         );
     } catch (error) {

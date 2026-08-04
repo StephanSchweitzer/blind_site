@@ -60,7 +60,7 @@ export default async function BooksPage() {
                             <br />
                             <span className="text-base mt-2 block">
                                 Consultez-nous si vous avez une recherche particulière,
-                                et commandez au <span className="font-semibold whitespace-nowrap">01 88 32 31 47</span> ou 48
+                                et faites votre demande au <span className="font-semibold whitespace-nowrap">01 88 32 31 47</span> ou 48
                             </span>
                             <br />
                             <span className="text-base">

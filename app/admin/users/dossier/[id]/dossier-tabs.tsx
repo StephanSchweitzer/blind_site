@@ -8,7 +8,7 @@ interface DossierTabsProps {
 }
 
 const TABS = [
-    { slug: 'commandes', label: 'Demandes' },
+    { slug: 'demandes', label: 'Demandes' },
     { slug: 'factures', label: 'Factures' },
     { slug: 'paiements', label: 'Paiements' },
     { slug: 'affectations', label: 'Attributions' },

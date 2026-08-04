@@ -175,7 +175,7 @@ export const POST = withAdmin(async (request: NextRequest) => {
 
             if (!order) {
                 return NextResponse.json(
-                    { error: 'Commande non trouvée' },
+                    { error: 'Demande non trouvée' },
                     { status: 404 }
                 );
             }

@@ -81,7 +81,7 @@ export const CoupDeCoeurPDF = ({ content }: { content: CoupDeCoeur[] }) => {
                 })}
 
                 <Text style={s.contact}>
-                    À commander au 01 88 32 31 47 ou 48  ·  ecapermanence@gmail.com
+                    À demander au 01 88 32 31 47 ou 48  ·  ecapermanence@gmail.com
                 </Text>
             </Page>
         </Document>

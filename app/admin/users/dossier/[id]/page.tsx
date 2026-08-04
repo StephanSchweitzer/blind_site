@@ -23,7 +23,7 @@ export default async function DossierIndex({
     // Anyone else keeps the attributions default.
     const tab =
         user?.memberType === 'auditeur' || user?.memberType === 'ecouteur'
-            ? 'commandes'
+            ? 'demandes'
             : 'affectations';
 
     redirect(`/admin/users/dossier/${id}/${tab}`);

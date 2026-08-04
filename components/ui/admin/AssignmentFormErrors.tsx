@@ -8,7 +8,7 @@
 
 const FIELD_LABELS: Record<string, string> = {
     catalogueId: 'Livre',
-    orderId: 'Commande',
+    orderId: 'Demande',
     statusId: 'Statut',
     receptionDate: 'Date de réception',
     sentToReaderDate: 'Date d\'envoi au lecteur',

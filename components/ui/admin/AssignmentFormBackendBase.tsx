@@ -709,7 +709,7 @@ export function AssignmentFormBackendBase({
 
                     {/* Order Selection - NOW SECOND */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Commande</label>
+                        <label className="text-sm font-medium text-foreground">Demande</label>
                         <Popover open={orderPopoverOpen} onOpenChange={setOrderPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
@@ -725,7 +725,7 @@ export function AssignmentFormBackendBase({
                                                 {(selectedOrder.requestReceivedDate || selectedOrder.createdDate) && (
                                                     <> · {format(new Date(selectedOrder.requestReceivedDate || selectedOrder.createdDate!), 'dd/MM/yyyy', { locale: fr })}</>
                                                 )}
-                                                <span className="text-muted-foreground"> (Cmd&nbsp;#{selectedOrder.id})</span>
+                                                <span className="text-muted-foreground"> (Demande&nbsp;#{selectedOrder.id})</span>
                                             </span>
                                         </div>
                                     ) : (
@@ -806,7 +806,7 @@ export function AssignmentFormBackendBase({
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Cmd&nbsp;#{order.id}</span>
+                                                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Demande&nbsp;#{order.id}</span>
                                                     </div>
                                                 </div>
                                             );
@@ -814,7 +814,7 @@ export function AssignmentFormBackendBase({
                                     ) : (
                                         <div className="p-4 text-center text-muted-foreground">
                                             {isOrderSearchMode
-                                                ? "Aucune commande trouvée"
+                                                ? "Aucune demande trouvée"
                                                 : "Aucune demande récente attribuable — utilisez la recherche pour voir toutes les demandes."}
                                         </div>
                                     )}
@@ -853,7 +853,7 @@ export function AssignmentFormBackendBase({
                             )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Le livre est repris de la commande. Pour le modifier, changez la commande ci-dessus.
+                            Le livre est repris de la demande. Pour le modifier, changez la demande ci-dessus.
                         </p>
                         {/* The book is read-only here, but its recordings are the whole
                             point of the attribution — reach them without leaving. */}
