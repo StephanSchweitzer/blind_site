@@ -22,6 +22,7 @@ import { fr } from 'date-fns/locale';
 import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
+import { getUserDisplayName } from '@/lib/users/displayName';
 
 // N3 — required fields top→bottom.
 const FIELD_ORDER = ['client', 'orders'];
@@ -205,12 +206,7 @@ export function BillFormBackendBase({
         }
     };
 
-    const getReaderDisplayName = (
-        user: User
-    ) => {
-        if (!user) return null;
-        return user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-    };
+    const getReaderDisplayName = (user: User) => (user ? getUserDisplayName(user) : null);
 
     return (
         <Card className="bg-card border-border">
@@ -240,7 +236,7 @@ export function BillFormBackendBase({
                                     className="w-full justify-between bg-field border-border text-foreground hover:bg-muted transition-colors"
                                 >
                                     {selectedClient ? (
-                                        <span className="truncate">{selectedClient.name || selectedClient.email}</span>
+                                        <span className="truncate">{getUserDisplayName(selectedClient)}</span>
                                     ) : (
                                         <span className="text-muted-foreground">Rechercher un auditeur ...</span>
                                     )}

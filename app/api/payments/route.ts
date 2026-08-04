@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import { PaymentCreateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
+import { buildUserNameSearch } from '@/lib/search';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true };
@@ -36,12 +37,10 @@ export const GET = withAdmin(async (request) => {
         if (clientId) whereClause.clientId = clientId;
 
         if (searchTerm) {
-            whereClause.client = {
-                OR: [
-                    { name: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                    { email: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                ],
-            };
+            // Tokenized across firstName / lastName / name / email — same as the
+            // /admin/payments page, so both entry points match the same clients.
+            const clientSearch = buildUserNameSearch(searchTerm);
+            if (clientSearch) whereClause.client = clientSearch;
         }
 
         const [payments, totalPayments] = await Promise.all([

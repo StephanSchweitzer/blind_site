@@ -38,6 +38,7 @@ import { AddBillFormBackend } from '@/admin/BillFormBackendBase';
 import { EditBillModal } from '@/admin/EditBillModal';
 import { DeleteBillModal } from '@/admin/DeleteBillModal';
 import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 interface BillsTableProps {
     initialBills: Bill[];
@@ -322,7 +323,7 @@ export default function BillsTable({
                                                     </TableCell>
                                                     <TableCell className="text-foreground">
                                                         <div>
-                                                            <div className="font-medium">{bill.client.name || 'N/A'}</div>
+                                                            <div className="font-medium">{getUserNameOnly(bill.client) || 'N/A'}</div>
                                                             <div className="text-sm text-muted-foreground">{bill.client.email}</div>
                                                         </div>
                                                     </TableCell>

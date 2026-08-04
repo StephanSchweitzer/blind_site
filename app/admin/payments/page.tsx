@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import PaymentsTable from './payments-table';
+import { buildUserNameSearch } from '@/lib/search';
+import { paymentsTableInclude } from '@/types/models/payment.model';
 import { notFound } from 'next/navigation';
 
 interface PageProps {
@@ -23,14 +25,10 @@ async function getPayments(
     // Hide soft-deleted payments from the listing.
     const whereClause: Prisma.PaymentWhereInput = { isActive: true };
 
-    if (searchTerm) {
-        whereClause.client = {
-            OR: [
-                { name: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                { email: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-            ],
-        };
-    }
+    // Tokenized search across firstName / lastName / name / email, so a full-name
+    // query matches even when the words live in different columns.
+    const clientSearch = searchTerm ? buildUserNameSearch(searchTerm) : null;
+    if (clientSearch) whereClause.client = clientSearch;
 
     if (type) whereClause.type = type;
     if (paymentMethod) whereClause.paymentMethod = paymentMethod;
@@ -42,9 +40,7 @@ async function getPayments(
                 orderBy: { creationDate: 'desc' },
                 skip: Math.max(0, (page - 1) * paymentsPerPage),
                 take: paymentsPerPage,
-                include: {
-                    client: { select: { name: true, email: true } },
-                },
+                include: paymentsTableInclude,
             }),
             prisma.payment.count({ where: whereClause }),
         ]);

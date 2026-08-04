@@ -133,7 +133,9 @@ export const billIncludeConfigs = {
 // ============================================================================
 
 export const billsTableInclude = {
-    client: { select: { name: true, email: true } },
+    // firstName/lastName are what the row displays (getUserNameOnly); `name` is
+    // the legacy column and only a fallback.
+    client: { select: { name: true, email: true, firstName: true, lastName: true } },
 } as const satisfies Prisma.BillInclude;
 
 type BillsTableRowRaw = Prisma.BillGetPayload<{ include: typeof billsTableInclude }>;

@@ -15,6 +15,7 @@ import {
     getBillingStatusColor,
     getBillingStatusLabel,
 } from '@/lib/billing-enums';
+import { getUserNameOnly } from '@/lib/users/displayName';
 import { BillPDFButton } from './BillPDFButton';
 import { BillHistory, BillEventDTO } from './BillHistory';
 
@@ -372,7 +373,7 @@ export function EditBillModal({
                         <div className="grid grid-cols-2 gap-4">
                             <div className="min-w-0">
                                 <div className="text-xs text-muted-foreground uppercase tracking-wide">Auditeur</div>
-                                <div className="text-foreground font-medium break-words">{bill.client.name || 'N/A'}</div>
+                                <div className="text-foreground font-medium break-words">{getUserNameOnly(bill.client) || 'N/A'}</div>
                                 <div className="text-muted-foreground text-sm break-words">{bill.client.email}</div>
                                 {bill.client.address && bill.client.address.filter(Boolean).length > 0 && (
                                     <div className="text-muted-foreground text-sm mt-1 leading-snug break-words">

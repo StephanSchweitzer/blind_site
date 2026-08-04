@@ -40,6 +40,7 @@ import { AddPaymentFormBackend } from '@/admin/PaymentFormBackendBase';
 import { EditPaymentModal } from '@/admin/EditPaymentModal';
 import { DeletePaymentModal } from '@/admin/DeletePaymentModal';
 import type { SerializedPaymentTableRow as Payment } from '@/types/models/payment.model';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 interface PaymentsTableProps {
     initialPayments: Payment[];
@@ -250,7 +251,7 @@ export default function PaymentsTable({
                                                 <TableCell className="text-foreground">
                                                     {payment.client ? (
                                                         <div>
-                                                            <div className="font-medium">{payment.client.name || 'N/A'}</div>
+                                                            <div className="font-medium">{getUserNameOnly(payment.client) || 'N/A'}</div>
                                                             <div className="text-sm text-muted-foreground">{payment.client.email}</div>
                                                         </div>
                                                     ) : (

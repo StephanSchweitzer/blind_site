@@ -1,6 +1,7 @@
 import { render } from '@react-email/render';
 import AssignmentReminderEmail, { ReminderVariant } from '@/components/emails/AssignmentReminderEmail';
 import { sendEmail, SendEmailResult } from './sendEmail';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 interface SendAssignmentReminderParams {
     reader: {
@@ -37,7 +38,8 @@ export async function sendAssignmentReminder({
                                                  variant = 'assigned',
                                                  deliveryMethod = null,
                                              }: SendAssignmentReminderParams): Promise<SendEmailResult> {
-    const displayName = reader.name || reader.firstName || '';
+    // firstName/lastName first — the legacy `name` column can be stale or empty.
+    const displayName = getUserNameOnly(reader);
     const displayDate = date ? new Date(date).toLocaleDateString('fr-FR') : null;
 
     const appName = process.env.APP_NAME || 'ECA Aveugles';

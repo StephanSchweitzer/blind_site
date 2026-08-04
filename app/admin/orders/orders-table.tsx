@@ -32,6 +32,7 @@ import { EditOrderModal } from '@/admin/EditOrderModal';
 import { OrderFormData } from '@/admin/OrderFormBackendBase';
 import { useToast } from '@/hooks/use-toast';
 import { STATUS } from '@/lib/statusSync';
+import { getUserNameOnly } from '@/lib/users/displayName';
 import type {
     SerializedOrderTableRow,
     OrderUserOption,
@@ -551,6 +552,7 @@ export default function OrdersTable({
                                         {initialOrders.map((order) => {
                                             const isOverdue = isOrderOverdue(order);
                                             const blockedBy = blockedDuplications[order.id];
+                                            const aveugleName = getUserNameOnly(order.aveugle);
                                             return (
                                                 <TableRow
                                                     key={order.id}
@@ -565,9 +567,9 @@ export default function OrdersTable({
                                                     <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
                                                         <div>
                                                             <div className="font-medium">
-                                                                {order.aveugle.name || order.aveugle.email}
+                                                                {aveugleName || order.aveugle.email}
                                                             </div>
-                                                            {order.aveugle.name && (
+                                                            {aveugleName && (
                                                                 <div className={`text-sm ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
                                                                     {order.aveugle.email}
                                                                 </div>

@@ -6,6 +6,7 @@ import { render } from '@react-email/render';
 import PasswordChangedEmail from '@/components/emails/PasswordChangedEmail';
 import { sendEmail } from '@/lib/email/sendEmail';
 import { withAuth } from '@/lib/auth/guards';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 export const POST = withAuth(async (req, { me }) => {
     try {
@@ -27,7 +28,7 @@ export const POST = withAuth(async (req, { me }) => {
 
         const user = await prisma.user.findUnique({
             where: { email: me.email },
-            select: { id: true, password: true, email: true, name: true, firstName: true },
+            select: { id: true, password: true, email: true, name: true, firstName: true, lastName: true },
         });
 
         if (!user || !user.password) {
@@ -69,7 +70,7 @@ export const POST = withAuth(async (req, { me }) => {
             const baseUrl = process.env.APP_URL || 'https://eca-aveugles.com';
             const html = await render(
                 PasswordChangedEmail({
-                    name: user.name || user.firstName || '',
+                    name: getUserNameOnly(user),
                     appName,
                     changedAt: new Date().toLocaleString('fr-FR'),
                     logoUrl: `${baseUrl}/eca_logo.png`,

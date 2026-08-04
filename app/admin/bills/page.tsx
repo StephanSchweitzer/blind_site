@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { BillingStatus, Prisma } from '@prisma/client';
 import BillsTable from './bills-table';
+import { buildUserNameSearch } from '@/lib/search';
+import { billsTableInclude } from '@/types/models/bill.model';
 import { notFound } from 'next/navigation';
 
 interface PageProps {
@@ -23,14 +25,10 @@ async function getBills(
     // Hide soft-deleted bills from the listing.
     const whereClause: Prisma.BillWhereInput = { isActive: true };
 
-    if (searchTerm) {
-        whereClause.client = {
-            OR: [
-                { name: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                { email: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-            ],
-        };
-    }
+    // Tokenized search across firstName / lastName / name / email, so a full-name
+    // query matches even when the words live in different columns.
+    const clientSearch = searchTerm ? buildUserNameSearch(searchTerm) : null;
+    if (clientSearch) whereClause.client = clientSearch;
 
     if (showLate) {
         const thirtyDaysAgo = new Date();
@@ -48,11 +46,7 @@ async function getBills(
                 orderBy: { creationDate: 'desc' },
                 skip: Math.max(0, (page - 1) * billsPerPage),
                 take: billsPerPage,
-                include: {
-                    client: {
-                        select: { name: true, email: true },
-                    },
-                },
+                include: billsTableInclude,
             }),
             prisma.bill.count({ where: whereClause }),
         ]);

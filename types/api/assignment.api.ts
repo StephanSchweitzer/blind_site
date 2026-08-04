@@ -152,11 +152,16 @@ export { assignmentIncludeConfigs };
 // Assignment with Current Reader Types
 // ============================================================================
 
-// Type for the current reader extracted from readerHistory
+// Type for the current reader extracted from readerHistory.
+// firstName/lastName are the source of truth for display — `name` is the legacy
+// column and can be stale (old casing/accents) or empty. Render with
+// getUserDisplayName(), never `name` alone.
 export type CurrentReaderInfo = {
     id: number;
     name: string | null;
     email: string | null;
+    firstName: string | null;
+    lastName: string | null;
 } | null;
 
 // Type for assignment with current reader (used in tables/forms)

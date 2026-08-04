@@ -34,6 +34,7 @@ import {
     AssignmentWithCurrentReader,
 } from '@/types';
 import { STATUS } from '@/lib/statusSync';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -452,7 +453,7 @@ export default function AssignmentsTable({
                                                 <TableCell className="text-foreground">
                                                     {assignment.currentReader ? (
                                                         <div>
-                                                            <div className="font-medium">{assignment.currentReader.name || 'Sans nom'}</div>
+                                                            <div className="font-medium">{getUserNameOnly(assignment.currentReader) || 'Sans nom'}</div>
                                                             <div className="text-sm text-muted-foreground">
                                                                 {assignment.currentReader.email}
                                                             </div>

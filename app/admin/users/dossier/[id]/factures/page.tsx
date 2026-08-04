@@ -4,6 +4,7 @@ import { BillingStatus, Prisma } from '@prisma/client';
 // ⚠️ ADJUST this import to wherever your bills-table.tsx actually lives.
 // Your bills page imports it as `./bills-table`; from here it needs a path/alias.
 import BillsTable from '@/app/admin/bills/bills-table';
+import { billsTableInclude } from '@/types/models/bill.model';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -51,7 +52,7 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
             orderBy: { creationDate: 'desc' },
             skip: Math.max(0, (page - 1) * BILLS_PER_PAGE),
             take: BILLS_PER_PAGE,
-            include: { client: { select: { name: true, email: true } } },
+            include: billsTableInclude,
         }),
         prisma.bill.count({ where: whereClause }),
     ]);

@@ -885,7 +885,7 @@ export function OrderFormBackendBase({
                                         <div>
                                             <span className="text-foreground">{initialAssignment.statusName}</span>
                                             {initialAssignment.reader && (
-                                                <span> — Lecteur : <span className="text-foreground">{initialAssignment.reader.name ?? 'Sans nom'}</span></span>
+                                                <span> — Lecteur : <span className="text-foreground">{initialAssignment.reader.name || 'Sans nom'}</span></span>
                                             )}
                                         </div>
                                         {initialAssignment.sentToReaderDate && (

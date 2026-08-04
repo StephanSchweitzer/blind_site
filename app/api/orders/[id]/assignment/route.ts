@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
+import { getUserDisplayName } from '@/lib/users/displayName';
 
 /**
  * GET /api/orders/[id]/assignment
@@ -31,7 +32,7 @@ export const GET = withAdmin(async (_request, { params }) => {
                     take: 1,
                     select: {
                         reader: {
-                            select: { id: true, name: true, firstName: true, lastName: true },
+                            select: { id: true, name: true, firstName: true, lastName: true, email: true },
                         },
                     },
                 },
@@ -41,9 +42,9 @@ export const GET = withAdmin(async (_request, { params }) => {
         if (!a) return NextResponse.json(null);
 
         const r = a.readerHistory[0]?.reader ?? null;
-        const readerName = r
-            ? r.name || [r.firstName, r.lastName].filter(Boolean).join(' ').trim() || null
-            : null;
+        // firstName/lastName first: the legacy `name` column is often stale
+        // (old casing, missing accents) or empty, so it is only a fallback.
+        const readerName = r ? getUserDisplayName(r) : null;
 
         return NextResponse.json({
             id: a.id,

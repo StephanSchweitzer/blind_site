@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { buildUserNameSearch } from '@/lib/search';
 
 // ⚠️ ADJUST this import to wherever your assignments-table.tsx actually lives.
 import AssignmentsTable from '@/app/admin/assignments/assignments-table';
@@ -42,19 +43,11 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
         : { order: { is: { aveugleId: userId } } };
 
     if (searchTerm) {
+        // Same tokenized search as /admin/assignments: matches firstName/lastName
+        // too, not just the legacy `name` column.
+        const readerSearch = buildUserNameSearch(searchTerm);
         whereClause.OR = [
-            {
-                readerHistory: {
-                    some: {
-                        reader: {
-                            OR: [
-                                { name: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                                { email: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                            ],
-                        },
-                    },
-                },
-            },
+            ...(readerSearch ? [{ readerHistory: { some: { reader: readerSearch } } }] : []),
             {
                 catalogue: {
                     OR: [
@@ -78,7 +71,11 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
                 readerHistory: {
                     orderBy: { assignedDate: 'desc' },
                     take: 1,
-                    include: { reader: { select: { id: true, name: true, email: true } } },
+                    include: {
+                        reader: {
+                            select: { id: true, name: true, email: true, firstName: true, lastName: true },
+                        },
+                    },
                 },
                 catalogue: { select: { id: true, title: true, author: true } },
                 order: { select: { id: true } },
@@ -105,7 +102,13 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
             notes: assignment.notes,
             deliveryMethod: assignment.deliveryMethod,
             currentReader: currentReader
-                ? { id: currentReader.id, name: currentReader.name, email: currentReader.email }
+                ? {
+                      id: currentReader.id,
+                      name: currentReader.name,
+                      email: currentReader.email,
+                      firstName: currentReader.firstName,
+                      lastName: currentReader.lastName,
+                  }
                 : null,
             catalogue: assignment.catalogue,
             order: assignment.order,

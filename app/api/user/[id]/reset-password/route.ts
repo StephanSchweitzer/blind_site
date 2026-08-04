@@ -7,6 +7,7 @@ import { render } from '@react-email/render';
 import PasswordResetEmail from '@/components/emails/PasswordResetEmail';
 import { sendEmail, isSendableEmail } from '@/lib/email/sendEmail';
 import { withSuperAdmin } from '@/lib/auth/guards';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 export const POST = withSuperAdmin(async (_req, { params }) => {
     try {
@@ -52,7 +53,7 @@ export const POST = withSuperAdmin(async (_req, { params }) => {
         const baseUrl = process.env.APP_URL;
         const html = await render(
             PasswordResetEmail({
-                name: targetUser.name || targetUser.firstName || '',
+                name: getUserNameOnly(targetUser),
                 email: targetUser.email!,
                 temporaryPassword,
                 appName,

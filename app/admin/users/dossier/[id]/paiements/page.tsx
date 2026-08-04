@@ -3,6 +3,7 @@ import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 
 // ⚠️ ADJUST this import to wherever your payments-table.tsx actually lives.
 import PaymentsTable from '@/app/admin/payments/payments-table';
+import { paymentsTableInclude } from '@/types/models/payment.model';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,7 +45,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
             orderBy: { creationDate: 'desc' },
             skip: Math.max(0, (page - 1) * PAYMENTS_PER_PAGE),
             take: PAYMENTS_PER_PAGE,
-            include: { client: { select: { name: true, email: true } } },
+            include: paymentsTableInclude,
         }),
         prisma.payment.count({ where: whereClause }),
     ]);
