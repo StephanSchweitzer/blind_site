@@ -14,6 +14,7 @@ import {
     CloudUpload,
     Download,
     FolderArchive,
+    FolderOpen,
     FolderPlus,
     Loader2,
     Lock,
@@ -27,6 +28,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAudioUpload, type FileProgress, type UploadPhase } from '@/hooks/useAudioUpload';
 import { safeZipName, useAudioFolderZip, type ZipEntry } from '@/hooks/useAudioFolderZip';
+import {
+    REJECT_LABELS,
+    selectFolderAudio,
+    type FolderSelection,
+    type RejectReason,
+} from '@/lib/audio/folder-selection';
 import {
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
@@ -178,6 +185,77 @@ function CloudFinalisingPanel({ phase, progress }: { phase: UploadPhase; progres
 }
 
 /**
+ * Where the batch as a whole has got to.
+ *
+ * The per-file rows answer "what is this file doing"; on a sixty-track folder
+ * nobody can answer "how far along am I" from sixty bars. This is the one line
+ * that says it, and it counts bytes rather than files so a folder of mixed sizes
+ * doesn't jump from 10 % to 80 % on one large track.
+ */
+function BatchProgressPanel({ phase, progress }: { phase: UploadPhase; progress: FileProgress[] }) {
+    const total = progress.length;
+    const done = progress.filter((p) => p.status === 'terminé').length;
+    const failed = progress.filter((p) => p.status === 'échec').length;
+    const retrying = progress.filter(
+        (p) => p.status === 'nouvelle tentative' || p.attempts > 1,
+    ).length;
+
+    const bytesTotal = progress.reduce((s, p) => s + p.total, 0);
+    const bytesSent = progress.reduce(
+        (s, p) => s + (p.status === 'terminé' ? p.total : p.loaded),
+        0,
+    );
+    const percent = bytesTotal ? Math.round((bytesSent / bytesTotal) * 100) : 0;
+
+    return (
+        <div
+            className="flex-shrink-0 rounded-md border border-border bg-field p-3"
+            role="status"
+            aria-live="polite"
+        >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-sm font-medium text-foreground">
+                    {phase === 'preparing'
+                        ? 'Préparation…'
+                        : phase === 'finalising'
+                          ? 'Vérification des fichiers enregistrés…'
+                          : `Envoi en cours — ${done} / ${total} fichier${total > 1 ? 's' : ''}`}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                    {formatSize(bytesSent)} / {formatSize(bytesTotal)} · {percent} %
+                </span>
+            </div>
+
+            <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
+                <div
+                    className="h-full bg-green-500 transition-all"
+                    style={{ width: `${percent}%` }}
+                />
+            </div>
+
+            {/* Retries are normal here, so they are reported as routine rather
+                than as alarm — but never hidden. */}
+            {(retrying > 0 || failed > 0) && (
+                <p className="mt-2 text-xs">
+                    {retrying > 0 && (
+                        <span className="text-amber-700 dark:text-amber-300">
+                            {retrying} fichier{retrying > 1 ? 's' : ''} en nouvelle tentative
+                            (incident passager du stockage, repris automatiquement)
+                        </span>
+                    )}
+                    {retrying > 0 && failed > 0 && ' · '}
+                    {failed > 0 && (
+                        <span className="text-red-500">
+                            {failed} en échec pour l’instant
+                        </span>
+                    )}
+                </p>
+            )}
+        </div>
+    );
+}
+
+/**
  * Archive entries for a folder. The path is the key relative to the book
  * folder, which keeps any sub-folder structure and guarantees unique entry
  * names even if two sub-folders happen to share a filename.
@@ -201,11 +279,22 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [restoringId, setRestoringId] = useState<number | null>(null);
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+    /** A picked folder, awaiting the admin's confirmation. See the panel below. */
+    const [selection, setSelection] = useState<FolderSelection | null>(null);
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const folderInputRef = useRef<HTMLInputElement | null>(null);
 
-    const { phase, progress, error: uploadError, needsFolder, upload, reset } = useAudioUpload(bookId);
+    const {
+        phase,
+        progress,
+        error: uploadError,
+        needsFolder,
+        failedFiles,
+        upload,
+        reset,
+    } = useAudioUpload(bookId);
     const zip = useAudioFolderZip();
 
     const notifyError = useCallback(
@@ -282,10 +371,34 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         setPlayingKey(track.key);
     };
 
+    /**
+     * A folder was picked. Nothing is sent yet.
+     *
+     * The browser has handed over its whole recursive walk of that folder, so
+     * the batch is narrowed down first (`selectFolderAudio`) and then shown for
+     * confirmation. Picking a container is not the same act as picking files:
+     * the admin has to see what is actually going to be uploaded, and what was
+     * left out, before any of it is signed.
+     */
+    const handleFolderChosen = (raw: File[]) => {
+        if (!raw.length) return;
+        const chosen = selectFolderAudio(raw);
+        if (!chosen.files.length) {
+            notifyError(
+                'Aucun fichier audio directement dans ce dossier. ' +
+                    'Les sous-dossiers ne sont pas parcourus.',
+            );
+            return;
+        }
+        reset();
+        setSelection(chosen);
+    };
+
     const handleFilesChosen = async (files: File[], createFolder = false) => {
         if (!files.length) return;
+        setSelection(null);
         setPendingFiles(files);
-        const { ok, becameAvailable } = await upload(files, createFolder);
+        const { ok, becameAvailable, recovered } = await upload(files, createFolder);
         if (ok) {
             toast({
                 // @ts-expect-error jsx in toast
@@ -294,6 +407,11 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                     <span className="text-xl mt-2">
                         {files.length} fichier{files.length > 1 ? 's' : ''} ajouté
                         {files.length > 1 ? 's' : ''} au dossier.
+                        {/* Say it out loud: the admin saw bars restart and
+                            deserves to know it was handled, not glossed over. */}
+                        {recovered > 0 &&
+                            ` ${recovered} ${recovered > 1 ? 'ont' : 'a'} nécessité une nouvelle tentative, ` +
+                                'automatiquement résolue.'}
                         {becameAvailable && ' Le livre est désormais marqué « Disponible ».'}
                     </span>
                 ),
@@ -404,6 +522,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             if (!stop) return;
             zip.cancel();
         }
+        // An unconfirmed folder selection is scoped to the session that picked
+        // it — reopening on another book must not inherit it.
+        if (!open) setSelection(null);
         onOpenChange(open);
     };
 
@@ -667,6 +788,26 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             void handleFilesChosen(files);
                                         }}
                                     />
+                                    {/* Folder picker. `webkitdirectory` has no React
+                                        typing and `accept` is ignored in directory
+                                        mode, so the attribute is set on the node and
+                                        the filtering happens in JS — see
+                                        lib/audio/folder-selection.ts. */}
+                                    <input
+                                        ref={(el) => {
+                                            folderInputRef.current = el;
+                                            el?.setAttribute('webkitdirectory', '');
+                                            el?.setAttribute('directory', '');
+                                        }}
+                                        type="file"
+                                        multiple
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const files = Array.from(e.target.files ?? []);
+                                            e.target.value = '';
+                                            handleFolderChosen(files);
+                                        }}
+                                    />
                                     <div className="flex flex-wrap items-center gap-3">
                                         <Button
                                             type="button"
@@ -690,11 +831,105 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                 </span>
                                             )}
                                         </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => folderInputRef.current?.click()}
+                                            disabled={busy}
+                                            className="bg-field border-border text-foreground hover:bg-muted"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <FolderOpen className="h-4 w-4" /> Ajouter un dossier
+                                            </span>
+                                        </Button>
                                         <span className="text-xs text-muted-foreground">
                                             Les fichiers sont envoyés directement au stockage. 500 Mo maximum par
-                                            fichier.
+                                            fichier. Un dossier n’envoie que les fichiers audio qu’il contient
+                                            directement, jamais ses sous-dossiers.
                                         </span>
                                     </div>
+
+                                    {/* A folder was picked — show the batch before signing anything. */}
+                                    {selection && !busy && (
+                                        <div className="mt-3 rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm">
+                                            <p className="text-foreground">
+                                                Dossier{' '}
+                                                <span className="font-mono break-all">
+                                                    {selection.rootName || '—'}
+                                                </span>{' '}
+                                                :{' '}
+                                                <strong>
+                                                    {selection.files.length} fichier
+                                                    {selection.files.length > 1 ? 's' : ''} audio
+                                                </strong>{' '}
+                                                ({formatSize(selection.totalBytes)}) seront envoyés dans
+                                                l’ordre de lecture.
+                                            </p>
+
+                                            {selection.rejected.length > 0 && (
+                                                <div className="mt-2">
+                                                    <p className="text-amber-700 dark:text-amber-300">
+                                                        {selection.rejected.length} fichier
+                                                        {selection.rejected.length > 1 ? 's' : ''} ignoré
+                                                        {selection.rejected.length > 1 ? 's' : ''} :{' '}
+                                                        {(Object.keys(REJECT_LABELS) as RejectReason[])
+                                                            .map((reason) => ({
+                                                                reason,
+                                                                count: selection.rejected.filter(
+                                                                    (r) => r.reason === reason,
+                                                                ).length,
+                                                            }))
+                                                            .filter((g) => g.count > 0)
+                                                            .map(
+                                                                (g) =>
+                                                                    `${g.count} ${REJECT_LABELS[g.reason]}`,
+                                                            )
+                                                            .join(', ')}
+                                                    </p>
+                                                    <details className="mt-1">
+                                                        <summary className="cursor-pointer text-xs text-muted-foreground">
+                                                            Voir le détail
+                                                        </summary>
+                                                        <ul className="mt-1 space-y-0.5">
+                                                            {selection.rejected.map((r) => (
+                                                                <li
+                                                                    key={r.path}
+                                                                    className="font-mono text-xs break-all text-muted-foreground"
+                                                                >
+                                                                    {r.path} — {REJECT_LABELS[r.reason]}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </details>
+                                                </div>
+                                            )}
+
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        void handleFilesChosen(selection.files)
+                                                    }
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <Upload className="h-4 w-4" /> Envoyer{' '}
+                                                        {selection.files.length} fichier
+                                                        {selection.files.length > 1 ? 's' : ''}
+                                                    </span>
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => setSelection(null)}
+                                                    className="bg-field border-border text-foreground hover:bg-muted"
+                                                >
+                                                    Annuler
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* The book has no folder — creating one is an explicit decision. */}
                                     {needsFolder !== null && (
@@ -723,6 +958,67 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         <p className="mt-3 text-sm text-red-500">{uploadError}</p>
                                     )}
 
+                                    {/* The one-click way out of a partial failure.
+                                        Re-picking the folder would re-send every file
+                                        that already landed; this sends only what is
+                                        missing, and the naming logic slots them into
+                                        the gaps left behind. */}
+                                    {!busy && failedFiles.length > 0 && (
+                                        <div className="mt-3 rounded-md border border-red-500/50 bg-red-500/10 p-3">
+                                            <p className="text-sm font-medium text-foreground">
+                                                {failedFiles.length} fichier
+                                                {failedFiles.length > 1 ? 's' : ''} à renvoyer
+                                            </p>
+                                            <p className="mt-1 text-xs text-muted-foreground">
+                                                Les autres fichiers sont bien en ligne : ce bouton ne
+                                                renvoie que ceux qui manquent, sans créer de doublon.
+                                            </p>
+                                            <ul className="mt-2 space-y-1">
+                                                {progress
+                                                    .filter((p) => p.status === 'échec')
+                                                    .map((p) => (
+                                                        <li key={p.name} className="text-xs">
+                                                            {/* The name on their disk — that is what
+                                                                they have to go and find. */}
+                                                            <span className="font-mono break-all text-foreground">
+                                                                {p.name}
+                                                            </span>
+                                                            {p.error && (
+                                                                <span className="text-red-500">
+                                                                    {' '}
+                                                                    — {p.error}
+                                                                </span>
+                                                            )}
+                                                            {p.hint && (
+                                                                <span className="block text-muted-foreground">
+                                                                    → {p.hint}
+                                                                </span>
+                                                            )}
+                                                        </li>
+                                                    ))}
+                                            </ul>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                onClick={() => void handleFilesChosen(failedFiles)}
+                                                className="mt-3"
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <RotateCcw className="h-4 w-4" />
+                                                    {failedFiles.length > 1
+                                                        ? `Renvoyer ces ${failedFiles.length} fichiers`
+                                                        : 'Renvoyer ce fichier'}
+                                                </span>
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {busy && progress.length > 0 && (
+                                        <div className="mt-3">
+                                            <BatchProgressPanel phase={phase} progress={progress} />
+                                        </div>
+                                    )}
+
                                     {progress.length > 0 && (
                                         <div className="mt-3 space-y-2">
                                             {progress.map((p) => (
@@ -737,14 +1033,31 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                                     ? 'text-red-500'
                                                                     : p.status === 'finalisation'
                                                                       ? 'text-blue-600 dark:text-blue-300'
-                                                                      : 'text-muted-foreground'
+                                                                      : p.status === 'nouvelle tentative'
+                                                                        ? 'text-amber-700 dark:text-amber-300'
+                                                                        : 'text-muted-foreground'
                                                             }
                                                         >
                                                             {/* The green bar is full at this point but
                                                                 nothing has been stored yet — say which. */}
                                                             {p.status === 'finalisation'
                                                                 ? 'envoyé, enregistrement en cours…'
-                                                                : p.status}
+                                                                : p.status === 'nouvelle tentative'
+                                                                  ? 'incident du stockage, nouvel essai…'
+                                                                  : p.status}
+                                                            {/* A retry is not a failure, but it is not
+                                                                nothing either: say it happened rather
+                                                                than let the bar restart unexplained. */}
+                                                            {p.attempts > 1 && (
+                                                                <span className="ml-1 text-amber-700 dark:text-amber-300">
+                                                                    · tentative {p.attempts}/3
+                                                                </span>
+                                                            )}
+                                                            {p.pass > 1 && (
+                                                                <span className="ml-1 text-amber-700 dark:text-amber-300">
+                                                                    · {p.pass}ᵉ passe
+                                                                </span>
+                                                            )}
                                                         </span>
                                                     </div>
                                                     <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-muted">
@@ -754,7 +1067,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                                     ? 'bg-red-500'
                                                                     : p.status === 'finalisation'
                                                                       ? 'bg-blue-500'
-                                                                      : 'bg-green-500'
+                                                                      : p.status === 'nouvelle tentative'
+                                                                        ? 'bg-amber-500'
+                                                                        : 'bg-green-500'
                                                             }`}
                                                             style={{
                                                                 width: `${p.total ? Math.round((p.loaded / p.total) * 100) : 0}%`,
