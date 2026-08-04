@@ -92,3 +92,34 @@ export function withSuperAdmin(handler: GuardedHandler): RouteHandler {
         return runAttributed(me, handler, req, ctx);
     };
 }
+
+/**
+ * `withAdmin` for a **server action**: runs `body` only for an admin, and inside
+ * the audit-actor scope so its writes carry a name.
+ *
+ * Server actions are not wrapped by the guards above, so they used to
+ * authenticate with a bare `getCurrentUser()` and lean on the `enterWith`
+ * fallback in setAuditActor to attribute what followed. That fallback does not
+ * survive the function it is called in once Node runs AsyncLocalStorage on
+ * AsyncContextFrame — the default from Node 24 — because the caller resumes from
+ * a frame captured before the call. The store is silently empty from there on,
+ * and every write landed in the trail as « Système »: 29 % of it in production,
+ * including all twelve book deletions and every doublon fusion.
+ *
+ * `runWithAuditActor` wraps the body instead of mutating an ambient store, so it
+ * holds on either implementation. Actions must go through here rather than call
+ * getCurrentUser() themselves.
+ *
+ * `onDenied` is what the action returns when the caller is not an admin — each
+ * action has its own result shape, so it supplies its own refusal.
+ */
+export async function asAdmin<T>(
+    onDenied: T,
+    body: (me: CurrentUser) => Promise<T>
+): Promise<T> {
+    const me = await getCurrentUser();
+    if (!me || !isAdmin(me.accessLevel)) return onDenied;
+    // The await is load-bearing, as in withoutAudit: it keeps the scope open
+    // until the body's lazy PrismaPromises have actually run.
+    return runWithAuditActor({ actorId: me.id, actorEmail: me.email }, async () => await body(me));
+}

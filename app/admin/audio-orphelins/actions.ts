@@ -2,7 +2,7 @@
 
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
+import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { listRawObjects } from '@/lib/audio/bucket';
@@ -21,11 +21,13 @@ export type ActionResult = { ok: true; message: string } | { ok: false; message:
 
 const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
-async function requireAdmin() {
-    const me = await getCurrentUser();
-    if (!me || !isAdmin(me.accessLevel)) return null;
-    return me;
-}
+const DENIED: ActionResult = { ok: false, message: 'Permissions insuffisantes' };
+
+/**
+ * Runs the action as the signed-in permanent, inside the audit-actor scope, so
+ * the Book writes below carry their name. See asAdmin in lib/auth/guards.ts.
+ */
+const asAdminAction = (body: (me: CurrentUser) => Promise<ActionResult>) => asAdmin(DENIED, body);
 
 /**
  * Is this folder genuinely spoken for?
@@ -79,88 +81,88 @@ export async function linkOrphanToBook(
     bookId: number,
     options: LinkOptions = {},
 ): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(orphanId) || !Number.isInteger(bookId)) {
-        return { ok: false, message: 'Identifiants invalides' };
-    }
-
-    try {
-        const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
-        if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
-        if (isLinked(orphan)) {
-            return { ok: false, message: 'Ce dossier est déjà rattaché à un livre' };
+    return asAdminAction(async (me) => {
+        if (!Number.isInteger(orphanId) || !Number.isInteger(bookId)) {
+            return { ok: false, message: 'Identifiants invalides' };
         }
 
-        const book = await prisma.book.findUnique({
-            where: { id: bookId },
-            select: { id: true, title: true, audio_filepath: true },
-        });
-        if (!book) return { ok: false, message: 'Livre introuvable' };
+        try {
+            const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
+            if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
+            if (isLinked(orphan)) {
+                return { ok: false, message: 'Ce dossier est déjà rattaché à un livre' };
+            }
 
-        // Two books sharing one folder means deleting a track from one silently
-        // empties the other. Catch it here rather than discovering it later.
-        const holder = await prisma.book.findFirst({
-            where: { id: { not: bookId }, audio_filepath: orphan.prefix },
-            select: { id: true, title: true },
-        });
-        if (holder) {
+            const book = await prisma.book.findUnique({
+                where: { id: bookId },
+                select: { id: true, title: true, audio_filepath: true },
+            });
+            if (!book) return { ok: false, message: 'Livre introuvable' };
+
+            // Two books sharing one folder means deleting a track from one silently
+            // empties the other. Catch it here rather than discovering it later.
+            const holder = await prisma.book.findFirst({
+                where: { id: { not: bookId }, audio_filepath: orphan.prefix },
+                select: { id: true, title: true },
+            });
+            if (holder) {
+                return {
+                    ok: false,
+                    message: `Ce dossier est déjà utilisé par « ${holder.title} » (#${holder.id}). Un dossier ne peut appartenir qu'à un seul livre.`,
+                };
+            }
+
+            const existing = book.audio_filepath?.trim() ?? '';
+            let note = orphan.note;
+
+            if (existing && existing !== orphan.prefix) {
+                const count = await folderAudioCount(existing);
+                if (count > 0) {
+                    return {
+                        ok: false,
+                        message:
+                            `« ${book.title} » possède déjà un dossier audio contenant ${count} piste${count > 1 ? 's' : ''}. ` +
+                            `Si ce dossier orphelin en est une copie (corbeille du NAS), écartez-le plutôt que de le rattacher.`,
+                    };
+                }
+                if (!options.confirmReplace) {
+                    return {
+                        ok: false,
+                        message: `CONFIRM_REPLACE:${existing}`,
+                    };
+                }
+                note = appendNote(note, `ancien chemin du livre #${book.id} remplacé (dossier vide) : ${existing}`);
+            }
+
+            await prisma.book.update({
+                where: { id: bookId },
+                data: { audio_filepath: orphan.prefix },
+            });
+            // Recount from the bucket so audioLinkStatus/audioTrackCount are right
+            // immediately, instead of waiting for the next sync run.
+            const state = await refreshBookAudioState(bookId);
+
+            await prisma.orphanAudioFolder.update({
+                where: { id: orphanId },
+                data: {
+                    linkedBookId: bookId,
+                    resolvedAt: new Date(),
+                    dismissedAt: null,
+                    note: appendNote(note, `rattaché au livre #${bookId} par ${me.email ?? `#${me.id}`}`),
+                },
+            });
+
+            revalidateAdmin();
+            revalidateCatalogue();
             return {
-                ok: false,
-                message: `Ce dossier est déjà utilisé par « ${holder.title} » (#${holder.id}). Un dossier ne peut appartenir qu'à un seul livre.`,
+                ok: true,
+                message: `Dossier rattaché à « ${book.title} » — ${state.trackCount ?? 0} piste${(state.trackCount ?? 0) > 1 ? 's' : ''}.`,
             };
+        } catch (error) {
+            console.error('linkOrphanToBook error:', error);
+            return { ok: false, message: 'Échec du rattachement. Aucune modification enregistrée.' };
         }
-
-        const existing = book.audio_filepath?.trim() ?? '';
-        let note = orphan.note;
-
-        if (existing && existing !== orphan.prefix) {
-            const count = await folderAudioCount(existing);
-            if (count > 0) {
-                return {
-                    ok: false,
-                    message:
-                        `« ${book.title} » possède déjà un dossier audio contenant ${count} piste${count > 1 ? 's' : ''}. ` +
-                        `Si ce dossier orphelin en est une copie (corbeille du NAS), écartez-le plutôt que de le rattacher.`,
-                };
-            }
-            if (!options.confirmReplace) {
-                return {
-                    ok: false,
-                    message: `CONFIRM_REPLACE:${existing}`,
-                };
-            }
-            note = appendNote(note, `ancien chemin du livre #${book.id} remplacé (dossier vide) : ${existing}`);
-        }
-
-        await prisma.book.update({
-            where: { id: bookId },
-            data: { audio_filepath: orphan.prefix },
-        });
-        // Recount from the bucket so audioLinkStatus/audioTrackCount are right
-        // immediately, instead of waiting for the next sync run.
-        const state = await refreshBookAudioState(bookId);
-
-        await prisma.orphanAudioFolder.update({
-            where: { id: orphanId },
-            data: {
-                linkedBookId: bookId,
-                resolvedAt: new Date(),
-                dismissedAt: null,
-                note: appendNote(note, `rattaché au livre #${bookId} par ${me.email ?? `#${me.id}`}`),
-            },
-        });
-
-        revalidateAdmin();
-        revalidateCatalogue();
-        return {
-            ok: true,
-            message: `Dossier rattaché à « ${book.title} » — ${state.trackCount ?? 0} piste${(state.trackCount ?? 0) > 1 ? 's' : ''}.`,
-        };
-    } catch (error) {
-        console.error('linkOrphanToBook error:', error);
-        return { ok: false, message: 'Échec du rattachement. Aucune modification enregistrée.' };
-    }
+    });
 }
 
 export interface NewBookInput {
@@ -182,86 +184,86 @@ export async function createBookForOrphan(
     orphanId: number,
     input: NewBookInput,
 ): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(orphanId)) return { ok: false, message: 'Identifiant invalide' };
+    return asAdminAction(async (me) => {
+        if (!Number.isInteger(orphanId)) return { ok: false, message: 'Identifiant invalide' };
 
-    const title = input.title?.trim();
-    const author = input.author?.trim();
-    if (!title) return { ok: false, message: 'Le titre est obligatoire' };
-    if (!author) return { ok: false, message: "L'auteur est obligatoire" };
+        const title = input.title?.trim();
+        const author = input.author?.trim();
+        if (!title) return { ok: false, message: 'Le titre est obligatoire' };
+        if (!author) return { ok: false, message: "L'auteur est obligatoire" };
 
-    try {
-        const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
-        if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
-        if (isLinked(orphan)) {
-            return { ok: false, message: 'Ce dossier est déjà rattaché à un livre' };
-        }
+        try {
+            const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
+            if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
+            if (isLinked(orphan)) {
+                return { ok: false, message: 'Ce dossier est déjà rattaché à un livre' };
+            }
 
-        const holder = await prisma.book.findFirst({
-            where: { audio_filepath: orphan.prefix },
-            select: { id: true, title: true },
-        });
-        if (holder) {
+            const holder = await prisma.book.findFirst({
+                where: { audio_filepath: orphan.prefix },
+                select: { id: true, title: true },
+            });
+            if (holder) {
+                return {
+                    ok: false,
+                    message: `Ce dossier est déjà utilisé par « ${holder.title} » (#${holder.id}).`,
+                };
+            }
+
+            // Only claim the folder number if no other book carries it — it is not
+            // unique in the schema, but two rows sharing one would break the
+            // suggestion lookup for both.
+            const numberTaken =
+                orphan.folderNum != null &&
+                (await prisma.book.count({ where: { source_access_id: orphan.folderNum } })) > 0;
+
+            const duration = Number(input.readingDurationMinutes);
+            const published = input.publishedDate ? new Date(input.publishedDate) : null;
+
+            const book = await prisma.book.create({
+                data: {
+                    title,
+                    author,
+                    publishedDate: published && !isNaN(published.getTime()) ? published : null,
+                    readingDurationMinutes: Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null,
+                    available: true,
+                    addedById: me.id,
+                    audio_filepath: orphan.prefix,
+                    source_access_id: !numberTaken ? orphan.folderNum : null,
+                },
+                select: { id: true, title: true },
+            });
+
+            const state = await refreshBookAudioState(book.id);
+
+            await prisma.orphanAudioFolder.update({
+                where: { id: orphanId },
+                data: {
+                    linkedBookId: book.id,
+                    resolvedAt: new Date(),
+                    dismissedAt: null,
+                    note: appendNote(
+                        orphan.note,
+                        `livre #${book.id} créé pour ce dossier par ${me.email ?? `#${me.id}`}` +
+                            (numberTaken ? ` (n° ${orphan.folderNum} déjà pris, non repris)` : ''),
+                    ),
+                },
+            });
+
+            revalidateAdmin();
+            revalidateCatalogue();
             return {
-                ok: false,
-                message: `Ce dossier est déjà utilisé par « ${holder.title} » (#${holder.id}).`,
+                ok: true,
+                message: `Livre « ${book.title} » (#${book.id}) créé et rattaché — ${state.trackCount ?? 0} piste${(state.trackCount ?? 0) > 1 ? 's' : ''}.`,
             };
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                return { ok: false, message: 'Un livre avec cet ISBN existe déjà' };
+            }
+            console.error('createBookForOrphan error:', error);
+            return { ok: false, message: 'Échec de la création. Aucune modification enregistrée.' };
         }
-
-        // Only claim the folder number if no other book carries it — it is not
-        // unique in the schema, but two rows sharing one would break the
-        // suggestion lookup for both.
-        const numberTaken =
-            orphan.folderNum != null &&
-            (await prisma.book.count({ where: { source_access_id: orphan.folderNum } })) > 0;
-
-        const duration = Number(input.readingDurationMinutes);
-        const published = input.publishedDate ? new Date(input.publishedDate) : null;
-
-        const book = await prisma.book.create({
-            data: {
-                title,
-                author,
-                publishedDate: published && !isNaN(published.getTime()) ? published : null,
-                readingDurationMinutes: Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null,
-                available: true,
-                addedById: me.id,
-                audio_filepath: orphan.prefix,
-                source_access_id: !numberTaken ? orphan.folderNum : null,
-            },
-            select: { id: true, title: true },
-        });
-
-        const state = await refreshBookAudioState(book.id);
-
-        await prisma.orphanAudioFolder.update({
-            where: { id: orphanId },
-            data: {
-                linkedBookId: book.id,
-                resolvedAt: new Date(),
-                dismissedAt: null,
-                note: appendNote(
-                    orphan.note,
-                    `livre #${book.id} créé pour ce dossier par ${me.email ?? `#${me.id}`}` +
-                        (numberTaken ? ` (n° ${orphan.folderNum} déjà pris, non repris)` : ''),
-                ),
-            },
-        });
-
-        revalidateAdmin();
-        revalidateCatalogue();
-        return {
-            ok: true,
-            message: `Livre « ${book.title} » (#${book.id}) créé et rattaché — ${state.trackCount ?? 0} piste${(state.trackCount ?? 0) > 1 ? 's' : ''}.`,
-        };
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            return { ok: false, message: 'Un livre avec cet ISBN existe déjà' };
-        }
-        console.error('createBookForOrphan error:', error);
-        return { ok: false, message: 'Échec de la création. Aucune modification enregistrée.' };
-    }
+    });
 }
 
 /**
@@ -272,46 +274,46 @@ export async function createBookForOrphan(
  * which is deliberate: this is a correction path, not a full history.
  */
 export async function unlinkOrphan(orphanId: number): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(orphanId)) return { ok: false, message: 'Identifiant invalide' };
+    return asAdminAction(async (me) => {
+        if (!Number.isInteger(orphanId)) return { ok: false, message: 'Identifiant invalide' };
 
-    try {
-        const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
-        if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
-        if (!orphan.linkedBookId) return { ok: false, message: "Ce dossier n'est rattaché à aucun livre" };
+        try {
+            const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
+            if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
+            if (!orphan.linkedBookId) return { ok: false, message: "Ce dossier n'est rattaché à aucun livre" };
 
-        const book = await prisma.book.findUnique({
-            where: { id: orphan.linkedBookId },
-            select: { id: true, audio_filepath: true },
-        });
+            const book = await prisma.book.findUnique({
+                where: { id: orphan.linkedBookId },
+                select: { id: true, audio_filepath: true },
+            });
 
-        // Only clear the path if it still points here: the book may have been
-        // re-pointed elsewhere since, and that newer decision wins.
-        if (book && book.audio_filepath?.trim() === orphan.prefix) {
-            await prisma.book.update({ where: { id: book.id }, data: { audio_filepath: null } });
-            await refreshBookAudioState(book.id);
+            // Only clear the path if it still points here: the book may have been
+            // re-pointed elsewhere since, and that newer decision wins.
+            if (book && book.audio_filepath?.trim() === orphan.prefix) {
+                await prisma.book.update({ where: { id: book.id }, data: { audio_filepath: null } });
+                await refreshBookAudioState(book.id);
+            }
+
+            await prisma.orphanAudioFolder.update({
+                where: { id: orphanId },
+                data: {
+                    linkedBookId: null,
+                    resolvedAt: null,
+                    note: appendNote(
+                        orphan.note,
+                        `rattachement au livre #${orphan.linkedBookId} annulé par ${me.email ?? `#${me.id}`}`,
+                    ),
+                },
+            });
+
+            revalidateAdmin();
+            revalidateCatalogue();
+            return { ok: true, message: 'Rattachement annulé — le dossier est de nouveau orphelin.' };
+        } catch (error) {
+            console.error('unlinkOrphan error:', error);
+            return { ok: false, message: "Échec de l'annulation" };
         }
-
-        await prisma.orphanAudioFolder.update({
-            where: { id: orphanId },
-            data: {
-                linkedBookId: null,
-                resolvedAt: null,
-                note: appendNote(
-                    orphan.note,
-                    `rattachement au livre #${orphan.linkedBookId} annulé par ${me.email ?? `#${me.id}`}`,
-                ),
-            },
-        });
-
-        revalidateAdmin();
-        revalidateCatalogue();
-        return { ok: true, message: 'Rattachement annulé — le dossier est de nouveau orphelin.' };
-    } catch (error) {
-        console.error('unlinkOrphan error:', error);
-        return { ok: false, message: "Échec de l'annulation" };
-    }
+    });
 }
 
 /**
@@ -323,58 +325,58 @@ export async function unlinkOrphan(orphanId: number): Promise<ActionResult> {
  * re-queueing the folder on every run.
  */
 export async function dismissOrphan(orphanId: number, reason: string): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(orphanId)) return { ok: false, message: 'Identifiant invalide' };
+    return asAdminAction(async (me) => {
+        if (!Number.isInteger(orphanId)) return { ok: false, message: 'Identifiant invalide' };
 
-    const motif = reason?.trim();
-    if (!motif) return { ok: false, message: 'Indiquez pourquoi ce dossier est écarté' };
+        const motif = reason?.trim();
+        if (!motif) return { ok: false, message: 'Indiquez pourquoi ce dossier est écarté' };
 
-    try {
-        const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
-        if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
-        if (isLinked(orphan)) {
-            return { ok: false, message: 'Ce dossier est rattaché à un livre — annulez le rattachement d\'abord' };
+        try {
+            const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
+            if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
+            if (isLinked(orphan)) {
+                return { ok: false, message: 'Ce dossier est rattaché à un livre — annulez le rattachement d\'abord' };
+            }
+
+            await prisma.orphanAudioFolder.update({
+                where: { id: orphanId },
+                data: {
+                    dismissedAt: new Date(),
+                    note: appendNote(orphan.note, `écarté par ${me.email ?? `#${me.id}`} : ${motif}`),
+                },
+            });
+
+            revalidateAdmin();
+            return { ok: true, message: 'Dossier écarté. Rien n’a été supprimé du stockage.' };
+        } catch (error) {
+            console.error('dismissOrphan error:', error);
+            return { ok: false, message: "Échec de la mise à l'écart" };
         }
-
-        await prisma.orphanAudioFolder.update({
-            where: { id: orphanId },
-            data: {
-                dismissedAt: new Date(),
-                note: appendNote(orphan.note, `écarté par ${me.email ?? `#${me.id}`} : ${motif}`),
-            },
-        });
-
-        revalidateAdmin();
-        return { ok: true, message: 'Dossier écarté. Rien n’a été supprimé du stockage.' };
-    } catch (error) {
-        console.error('dismissOrphan error:', error);
-        return { ok: false, message: "Échec de la mise à l'écart" };
-    }
+    });
 }
 
 /** UNDO DISMISS: put an écarté folder back in the queue. */
 export async function restoreOrphan(orphanId: number): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(orphanId)) return { ok: false, message: 'Identifiant invalide' };
+    return asAdminAction(async (me) => {
+        if (!Number.isInteger(orphanId)) return { ok: false, message: 'Identifiant invalide' };
 
-    try {
-        const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
-        if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
+        try {
+            const orphan = await prisma.orphanAudioFolder.findUnique({ where: { id: orphanId } });
+            if (!orphan) return { ok: false, message: 'Dossier orphelin introuvable' };
 
-        await prisma.orphanAudioFolder.update({
-            where: { id: orphanId },
-            data: {
-                dismissedAt: null,
-                note: appendNote(orphan.note, `remis dans la file par ${me.email ?? `#${me.id}`}`),
-            },
-        });
+            await prisma.orphanAudioFolder.update({
+                where: { id: orphanId },
+                data: {
+                    dismissedAt: null,
+                    note: appendNote(orphan.note, `remis dans la file par ${me.email ?? `#${me.id}`}`),
+                },
+            });
 
-        revalidateAdmin();
-        return { ok: true, message: 'Dossier remis dans la file à traiter.' };
-    } catch (error) {
-        console.error('restoreOrphan error:', error);
-        return { ok: false, message: 'Échec de la restauration' };
-    }
+            revalidateAdmin();
+            return { ok: true, message: 'Dossier remis dans la file à traiter.' };
+        } catch (error) {
+            console.error('restoreOrphan error:', error);
+            return { ok: false, message: 'Échec de la restauration' };
+        }
+    });
 }

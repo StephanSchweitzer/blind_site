@@ -5,7 +5,9 @@ import bcrypt from 'bcrypt';
 import { generatePassword } from '@/lib/utils';
 import { isSendableEmail } from '@/lib/email/sendEmail';
 import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
-import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
+// GET keeps getCurrentUser: it is a read (no audit event to attribute) and its
+// rule is mixed — admins see anyone, a member only their own record.
+import { getCurrentUser, isAdmin, withAdmin } from '@/lib/auth/guards';
 import { getUserDeletionBlockers, describeBlockers } from '@/lib/users/deletionGuard';
 import {
     UserQueryModeSchema,
@@ -182,13 +184,16 @@ interface UserUpdateRequestBody extends UserUpdateInput {
     civilityOther?: string | null;
 }
 
-export async function PATCH(
+// withAdmin rather than a hand-rolled getCurrentUser(): the guard runs the whole
+// handler inside the audit-actor scope, which is what puts a name on the writes
+// below. Resolving the session here instead left them attributed to « Système ».
+export const PATCH = withAdmin(async (
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+    { me, params }
+) => {
     revalidateAdmin();
     try {
-        const { id } = await params;
+        const { id } = await params!;
         const userId = parseInt(id);
 
         if (isNaN(userId)) {
@@ -198,14 +203,6 @@ export async function PATCH(
             );
         }
 
-        // Auth: signed in + admin/super_admin to edit users.
-        const me = await getCurrentUser();
-        if (!me) {
-            return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
-        }
-        if (!isAdmin(me.accessLevel)) {
-            return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
-        }
         const actorLevel = me.accessLevel;
 
         const body = await request.json() as UserUpdateRequestBody;
@@ -460,15 +457,16 @@ export async function PATCH(
             { status: 500 }
         );
     }
-}
+});
 
-export async function DELETE(
+// Same reason as PATCH: a soft deletion must be traceable to whoever made it.
+export const DELETE = withAdmin(async (
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+    { me, params }
+) => {
     revalidateAdmin();
     try {
-        const { id } = await params;
+        const { id } = await params!;
         const userId = parseInt(id);
 
         if (isNaN(userId)) {
@@ -476,15 +474,6 @@ export async function DELETE(
                 { message: 'ID de personne invalide' },
                 { status: 400 }
             );
-        }
-
-        // Auth: signed in + admin/super_admin only.
-        const me = await getCurrentUser();
-        if (!me) {
-            return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
-        }
-        if (!isAdmin(me.accessLevel)) {
-            return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
 
         // findUnique is NOT soft-delete-filtered, so this resolves even a row
@@ -541,4 +530,4 @@ export async function DELETE(
             { status: 500 }
         );
     }
-}
+});

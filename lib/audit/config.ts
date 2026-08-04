@@ -101,8 +101,16 @@ export function isSecretField(field: string): boolean {
  * restore needs them). These move on their own — @updatedAt columns and
  * script-maintained timestamps — so listing them would add a line of noise to
  * every single change without ever explaining one.
+ *
+ * `audioCheckedAt` belongs here for the same reason, even though it is not an
+ * @updatedAt: refreshBookAudioState() stamps it on every single call, and every
+ * audio route calls through it. Nobody decides to change it. Left in the diff it
+ * was a quarter of the whole trail — one « Audio vérifié le 07:52 → 07:52 » line
+ * per bucket re-read — and it shredded one admin's workflow on a book into five
+ * or fifteen separate events. The *state* it comes with (audioLinkStatus,
+ * audioTrackCount) is a real reading and stays traced.
  */
-const NOISE_FIELDS = new Set(['updatedAt', 'lastUpdated', 'lastSeenAt']);
+const NOISE_FIELDS = new Set(['updatedAt', 'lastUpdated', 'lastSeenAt', 'audioCheckedAt']);
 
 export function isNoiseField(field: string): boolean {
     return NOISE_FIELDS.has(field);

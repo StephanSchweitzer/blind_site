@@ -73,6 +73,35 @@ function isRelationValue(value: unknown): boolean {
     );
 }
 
+/**
+ * True when both sides are the same decimal amount, written two different ways.
+ *
+ * A Decimal column read back from Postgres arrives as a Prisma.Decimal and
+ * encodes to a string ("21"), while the value the write supplied is usually a
+ * plain number — the user routes build theirs with parseFloat — and encodes to
+ * 21. Encoded, `"21" !== 21`, so the trail recorded « Solde 0 → 0 » and « Seuil
+ * de paiement 21 → 21 » on every save of a form where nobody had touched the
+ * money.
+ *
+ * A Decimal on one of the two sides is what licenses the numeric comparison, so
+ * a genuine string column holding "1" still reads as different from the number 1.
+ */
+function sameDecimalValue(before: unknown, after: unknown): boolean {
+    if (!(before instanceof Prisma.Decimal) && !(after instanceof Prisma.Decimal)) return false;
+    // null/undefined on either side is a real change; booleans are not amounts.
+    for (const side of [before, after]) {
+        if (side === null || side === undefined || typeof side === 'boolean') return false;
+    }
+    try {
+        type DecimalInput = ConstructorParameters<typeof Prisma.Decimal>[0];
+        return new Prisma.Decimal(before as DecimalInput)
+            .equals(new Prisma.Decimal(after as DecimalInput));
+    } catch {
+        // Not a number on one of the sides — treat it as a genuine change.
+        return false;
+    }
+}
+
 /** Field-level diff. Only fields whose value actually moved are included. */
 export function diffRows(
     before: Record<string, unknown>,
@@ -85,7 +114,9 @@ export function diffRows(
 
         const from = encodeValue(before[field]);
         const to = encodeValue(after[field]);
-        if (from !== to) changes[field] = [from, to];
+        if (from !== to && !sameDecimalValue(before[field], after[field])) {
+            changes[field] = [from, to];
+        }
     }
     return changes;
 }

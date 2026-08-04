@@ -31,8 +31,33 @@ interface ActorBox {
     actor: AuditActor | null;
 }
 
-const actorStorage = new AsyncLocalStorage<ActorBox>();
-const bypassStorage = new AsyncLocalStorage<true>();
+/**
+ * Pinned to globalThis, for the same reason the Prisma client is in lib/prisma.ts.
+ *
+ * Next bundles route handlers and server actions into separate server layers, and
+ * a module imported from both is instantiated once per layer. Module-local
+ * storages therefore gave the actions one AsyncLocalStorage and the audit
+ * extension — reading through the client that lib/prisma.ts caches globally —
+ * another. The scope was opened on one and read from the other, so the trail saw
+ * no actor and wrote « Système ». One instance per process fixes that for every
+ * caller at once.
+ */
+const STORAGES = Symbol.for('eca.audit.context');
+
+interface AuditStorages {
+    actor: AsyncLocalStorage<ActorBox>;
+    bypass: AsyncLocalStorage<true>;
+}
+
+const globalForAudit = globalThis as typeof globalThis & { [STORAGES]?: AuditStorages };
+
+const storages: AuditStorages = (globalForAudit[STORAGES] ??= {
+    actor: new AsyncLocalStorage<ActorBox>(),
+    bypass: new AsyncLocalStorage<true>(),
+});
+
+const actorStorage = storages.actor;
+const bypassStorage = storages.bypass;
 
 /** Run `fn` with `actor` attributed to every audited write it performs. */
 export function runWithAuditActor<T>(actor: AuditActor | null, fn: () => T): T {

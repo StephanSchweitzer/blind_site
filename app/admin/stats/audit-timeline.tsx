@@ -41,6 +41,7 @@ import type {
     AuditRestoreResponse,
 } from '@/types';
 import { formatDateTime } from './stats-utils';
+import { type EventGroup, groupEvents, headOf } from './audit-grouping';
 
 /**
  * « Journal des modifications » — the audit trail, read.
@@ -48,6 +49,11 @@ import { formatDateTime } from './stats-utils';
  * Rows are collapsed to one line each; opening one shows the field-level diff in
  * words rather than as JSON. Deletions are set apart visually because they are
  * the only rows that can be acted on, and the only ones whose data is gone.
+ *
+ * One act by one person is often several writes — saving a fiche, then the
+ * bucket re-read that follows it, each landing as its own AuditEvent. Those are
+ * regrouped here, at display time only: the table stays append-only and nothing
+ * is merged, deleted or reordered on the way in.
  */
 
 const OPERATIONS: AuditOperation[] = ['CREATE', 'UPDATE', 'DELETE', 'RESTORE'];
@@ -73,8 +79,9 @@ const selectClass =
     'h-9 rounded-md border border-border bg-field px-2 text-sm text-foreground';
 
 /** "3 champs" / "Instantané conservé" — the one-line gist of a row. */
-function summarize(event: AuditEventItem): string {
-    const count = Object.keys(event.changes).length;
+function summarize(group: EventGroup): string {
+    const event = headOf(group);
+    const count = Object.keys(group.changes).length;
     if (event.operation === 'DELETE') {
         return event.restorable ? 'Instantané conservé' : 'Sans instantané';
     }
@@ -82,14 +89,17 @@ function summarize(event: AuditEventItem): string {
     return count === 1 ? '1 champ' : `${count} champs`;
 }
 
-function DiffTable({ event }: { event: AuditEventItem }) {
-    const entries = Object.entries(event.changes);
+function DiffTable({ group }: { group: EventGroup }) {
+    const event = headOf(group);
+    const entries = Object.entries(group.changes);
     if (entries.length === 0) {
         return (
             <p className="text-sm text-muted-foreground">
                 {event.operation === 'DELETE'
                     ? 'L’enregistrement a été supprimé ; son contenu est conservé hors du journal pour permettre une restauration.'
-                    : 'Aucun champ suivi n’a changé.'}
+                    : group.events.length > 1
+                        ? 'Ces modifications se sont annulées entre elles : l’enregistrement a retrouvé son état de départ.'
+                        : 'Aucun champ suivi n’a changé.'}
             </p>
         );
     }
@@ -125,18 +135,22 @@ function DiffTable({ event }: { event: AuditEventItem }) {
 }
 
 function EventRow({
-    event,
+    group,
     expanded,
     onToggle,
     onRestore,
 }: {
-    event: AuditEventItem;
+    group: EventGroup;
     expanded: boolean;
     onToggle: () => void;
     onRestore: (event: AuditEventItem) => void;
 }) {
+    const event = headOf(group);
     const isDeletion = event.operation === 'DELETE';
     const href = recordHref(event.model, event.recordId);
+    const merged = group.events.length;
+    // The stretch a grouped block covers, oldest → newest.
+    const startedAt = group.events[merged - 1].at;
 
     return (
         <div
@@ -165,6 +179,16 @@ function EventRow({
                     {OPERATION_LABELS[event.operation]}
                 </Badge>
 
+                {merged > 1 && (
+                    <Badge
+                        variant="outline"
+                        className="font-normal text-muted-foreground"
+                        title={`${merged} écritures entre ${formatDateTime(startedAt)} et ${formatDateTime(event.at)}, regroupées`}
+                    >
+                        ×{merged}
+                    </Badge>
+                )}
+
                 <span className="text-sm text-foreground font-medium">
                     {modelLabel(event.model)}
                     {event.recordId !== '*' && (
@@ -188,7 +212,7 @@ function EventRow({
 
                 <span className="text-xs text-muted-foreground">par {event.actorName}</span>
 
-                <span className="text-xs text-muted-foreground ml-auto">{summarize(event)}</span>
+                <span className="text-xs text-muted-foreground ml-auto">{summarize(group)}</span>
 
                 {isDeletion && (
                     <Button
@@ -206,7 +230,14 @@ function EventRow({
 
             {expanded && (
                 <div className="px-3 pb-3 pt-1 border-t border-border/60">
-                    <DiffTable event={event} />
+                    {merged > 1 && (
+                        <p className="text-xs text-muted-foreground mb-2">
+                            {merged} enregistrements successifs entre {formatDateTime(startedAt)} et{' '}
+                            {formatDateTime(event.at)}. Le détail ci-dessous montre l’effet net :
+                            la valeur de départ et la valeur d’arrivée.
+                        </p>
+                    )}
+                    <DiffTable group={group} />
                     {isDeletion && event.restoreBlocker && (
                         <p className="text-xs text-muted-foreground mt-2">{event.restoreBlocker}</p>
                     )}
@@ -271,6 +302,11 @@ export default function AuditTimeline() {
     const current = page?.key === queryKey ? page : null;
     const loading = current === null;
     const events = current?.events ?? [];
+    // Keyed on the loaded page, not on `events`: that fallback builds a fresh []
+    // on every render, which would defeat the memo. Grouping is derived rather
+    // than stored — the page grows by whole pages, and a block never spans a
+    // boundary it could be cut on.
+    const groups = React.useMemo(() => groupEvents(current?.events ?? []), [current]);
     // Facets come from the last successful load, so the filters stay usable
     // while the next one is in flight.
     const data = current?.data ?? page?.data ?? null;
@@ -459,12 +495,12 @@ export default function AuditTimeline() {
 
             {events.length > 0 && (
                 <div className={`space-y-1.5 ${loading ? 'opacity-60' : ''}`}>
-                    {events.map((event) => (
+                    {groups.map((group) => (
                         <EventRow
-                            key={event.id}
-                            event={event}
-                            expanded={expanded === event.id}
-                            onToggle={() => setExpanded(expanded === event.id ? null : event.id)}
+                            key={group.key}
+                            group={group}
+                            expanded={expanded === group.key}
+                            onToggle={() => setExpanded(expanded === group.key ? null : group.key)}
                             onRestore={askRestore}
                         />
                     ))}

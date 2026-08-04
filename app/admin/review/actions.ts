@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
+import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { refreshBookAudioState } from '@/lib/audio/state';
@@ -11,11 +11,15 @@ import { getUserDisplayName } from '@/lib/users/displayName';
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
-async function requireAdmin() {
-    const me = await getCurrentUser();
-    if (!me || !isAdmin(me.accessLevel)) return null;
-    return me;
-}
+const DENIED: ActionResult = { ok: false, message: 'Permissions insuffisantes' };
+
+/**
+ * Every action here runs through this rather than resolving the session itself:
+ * it is what puts the permanent's name on the writes below. A fusion deletes a
+ * book and repoints demandes — « par Système » is not an acceptable trace for
+ * that. See asAdmin in lib/auth/guards.ts for why the ambient variant failed.
+ */
+const asAdminAction = (body: (me: CurrentUser) => Promise<ActionResult>) => asAdmin(DENIED, body);
 
 // Scalars the permanent may choose to pull from the removed book onto the survivor.
 // audio_filepath is deliberately NOT here — it's auto-handled (always kept; a genuine
@@ -46,134 +50,134 @@ export async function fuseBooks(
     removedId: number,
     overrides: string[] = []
 ): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(survivorId) || !Number.isInteger(removedId)) {
-        return { ok: false, message: 'Identifiants invalides' };
-    }
-    if (survivorId === removedId) {
-        return { ok: false, message: 'Un livre ne peut pas être fusionné avec lui-même' };
-    }
-
-    const fields = [...new Set(overrides)].filter((f) => OVERRIDABLE.has(f));
-
-    try {
-        await prisma.$transaction(async (tx) => {
-            const survivor = await tx.book.findUnique({ where: { id: survivorId } });
-            const removed = await tx.book.findUnique({ where: { id: removedId } });
-            if (!survivor) throw new Error('SURVIVOR_NOT_FOUND');
-            if (!removed) throw new Error('REMOVED_NOT_FOUND');
-
-            // Double-audio guard: never delete a distinct recording. If both sides carry a
-            // different audio path, the merge is blocked pending manual review.
-            const sAudio = survivor.audio_filepath?.trim() || null;
-            const rAudio = removed.audio_filepath?.trim() || null;
-            if (sAudio && rAudio && sAudio !== rAudio) throw new Error('AUDIO_CONFLICT');
-
-            // 1. Reassign relations off the removed book onto the survivor.
-            //    Assignment/Orders reference the book via `catalogueId` (no unique constraint).
-            await tx.assignment.updateMany({ where: { catalogueId: removedId }, data: { catalogueId: survivorId } });
-            await tx.orders.updateMany({ where: { catalogueId: removedId }, data: { catalogueId: survivorId } });
-
-            // BookGenre PK is (bookId, genreId): drop removed rows the survivor already has, move the rest.
-            const keepGenres = await tx.bookGenre.findMany({ where: { bookId: survivorId }, select: { genreId: true } });
-            await tx.bookGenre.deleteMany({
-                where: { bookId: removedId, genreId: { in: keepGenres.map((g) => g.genreId) } },
-            });
-            await tx.bookGenre.updateMany({ where: { bookId: removedId }, data: { bookId: survivorId } });
-
-            // CoupsDeCoeurBooks PK is (coupsDeCoeurId, bookId): same de-dup then move.
-            const keepLists = await tx.coupsDeCoeurBooks.findMany({ where: { bookId: survivorId }, select: { coupsDeCoeurId: true } });
-            await tx.coupsDeCoeurBooks.deleteMany({
-                where: { bookId: removedId, coupsDeCoeurId: { in: keepLists.map((c) => c.coupsDeCoeurId) } },
-            });
-            await tx.coupsDeCoeurBooks.updateMany({ where: { bookId: removedId }, data: { bookId: survivorId } });
-
-            // 2. Snapshot + delete the removed book BEFORE writing scalars onto the survivor,
-            //    so pulling the removed book's @unique isbn can't collide with the still-live row.
-            const snapshot = {
-                removedBook: JSON.parse(JSON.stringify(removed)),
-                overrides: fields,
-            } as unknown as Prisma.InputJsonValue;
-            await tx.book.delete({ where: { id: removedId } });
-
-            // 3. Apply the chosen field overrides onto the survivor, always keep an audio
-            //    path (take the removed one if the survivor had none), clear the review flag.
-            const data: Prisma.BookUpdateInput = { needsReview: false, id_arbre: null };
-            for (const f of fields) {
-                (data as Record<string, unknown>)[f] = (removed as Record<string, unknown>)[f];
-            }
-            if (!sAudio && rAudio) {
-                data.audio_filepath = removed.audio_filepath;
-                // audioLinkStatus/audioTrackCount describe the *folder*, so the reading
-                // taken on the removed record is already the right one for the survivor.
-                // Copying it means the fused fiche shows its audio badge as soon as the
-                // page refreshes, instead of keeping the survivor's stale « pas d'audio »
-                // until the bucket re-read below (or the next nightly sync) lands.
-                data.audioLinkStatus = removed.audioLinkStatus;
-                data.audioTrackCount = removed.audioTrackCount;
-                data.audioCheckedAt = removed.audioCheckedAt;
-            }
-
-            await tx.book.update({ where: { id: survivorId }, data });
-
-            // 4. Append-only audit entry.
-            await tx.bookMergeEvent.create({
-                data: { canonicalId: survivorId, duplicateId: removedId, snapshot, performedById: me.id },
-            });
-        });
-
-        // The audio columns are a cache of the bucket, and a fusion can hand the
-        // survivor a folder it never pointed at. Re-read it now so every badge that
-        // reads those columns — la file, le catalogue, l'éditeur audio — is right
-        // immediately rather than after someone opens the editor by hand.
-        // Best effort: the merge is committed, a bucket outage must not report it failed.
-        try {
-            await refreshBookAudioState(survivorId);
-        } catch (error) {
-            console.error('fuseBooks: audio state refresh failed for book', survivorId, error);
+    return asAdminAction(async (me) => {
+        if (!Number.isInteger(survivorId) || !Number.isInteger(removedId)) {
+            return { ok: false, message: 'Identifiants invalides' };
+        }
+        if (survivorId === removedId) {
+            return { ok: false, message: 'Un livre ne peut pas être fusionné avec lui-même' };
         }
 
-        revalidateAdmin();
-        revalidateCatalogue();
-        return { ok: true, message: 'Livres fusionnés avec succès' };
-    } catch (error) {
-        const msg = error instanceof Error ? error.message : '';
-        const map: Record<string, string> = {
-            SURVIVOR_NOT_FOUND: 'Le livre à conserver est introuvable',
-            REMOVED_NOT_FOUND: 'Le doublon est introuvable',
-            AUDIO_CONFLICT:
-                'Double enregistrement audio : la fusion est bloquée. Ce doublon nécessite une vérification manuelle.',
-        };
-        console.error('fuseBooks error:', error);
-        return { ok: false, message: map[msg] ?? 'Échec de la fusion. Aucune modification enregistrée.' };
-    }
+        const fields = [...new Set(overrides)].filter((f) => OVERRIDABLE.has(f));
+
+        try {
+            await prisma.$transaction(async (tx) => {
+                const survivor = await tx.book.findUnique({ where: { id: survivorId } });
+                const removed = await tx.book.findUnique({ where: { id: removedId } });
+                if (!survivor) throw new Error('SURVIVOR_NOT_FOUND');
+                if (!removed) throw new Error('REMOVED_NOT_FOUND');
+
+                // Double-audio guard: never delete a distinct recording. If both sides carry a
+                // different audio path, the merge is blocked pending manual review.
+                const sAudio = survivor.audio_filepath?.trim() || null;
+                const rAudio = removed.audio_filepath?.trim() || null;
+                if (sAudio && rAudio && sAudio !== rAudio) throw new Error('AUDIO_CONFLICT');
+
+                // 1. Reassign relations off the removed book onto the survivor.
+                //    Assignment/Orders reference the book via `catalogueId` (no unique constraint).
+                await tx.assignment.updateMany({ where: { catalogueId: removedId }, data: { catalogueId: survivorId } });
+                await tx.orders.updateMany({ where: { catalogueId: removedId }, data: { catalogueId: survivorId } });
+
+                // BookGenre PK is (bookId, genreId): drop removed rows the survivor already has, move the rest.
+                const keepGenres = await tx.bookGenre.findMany({ where: { bookId: survivorId }, select: { genreId: true } });
+                await tx.bookGenre.deleteMany({
+                    where: { bookId: removedId, genreId: { in: keepGenres.map((g) => g.genreId) } },
+                });
+                await tx.bookGenre.updateMany({ where: { bookId: removedId }, data: { bookId: survivorId } });
+
+                // CoupsDeCoeurBooks PK is (coupsDeCoeurId, bookId): same de-dup then move.
+                const keepLists = await tx.coupsDeCoeurBooks.findMany({ where: { bookId: survivorId }, select: { coupsDeCoeurId: true } });
+                await tx.coupsDeCoeurBooks.deleteMany({
+                    where: { bookId: removedId, coupsDeCoeurId: { in: keepLists.map((c) => c.coupsDeCoeurId) } },
+                });
+                await tx.coupsDeCoeurBooks.updateMany({ where: { bookId: removedId }, data: { bookId: survivorId } });
+
+                // 2. Snapshot + delete the removed book BEFORE writing scalars onto the survivor,
+                //    so pulling the removed book's @unique isbn can't collide with the still-live row.
+                const snapshot = {
+                    removedBook: JSON.parse(JSON.stringify(removed)),
+                    overrides: fields,
+                } as unknown as Prisma.InputJsonValue;
+                await tx.book.delete({ where: { id: removedId } });
+
+                // 3. Apply the chosen field overrides onto the survivor, always keep an audio
+                //    path (take the removed one if the survivor had none), clear the review flag.
+                const data: Prisma.BookUpdateInput = { needsReview: false, id_arbre: null };
+                for (const f of fields) {
+                    (data as Record<string, unknown>)[f] = (removed as Record<string, unknown>)[f];
+                }
+                if (!sAudio && rAudio) {
+                    data.audio_filepath = removed.audio_filepath;
+                    // audioLinkStatus/audioTrackCount describe the *folder*, so the reading
+                    // taken on the removed record is already the right one for the survivor.
+                    // Copying it means the fused fiche shows its audio badge as soon as the
+                    // page refreshes, instead of keeping the survivor's stale « pas d'audio »
+                    // until the bucket re-read below (or the next nightly sync) lands.
+                    data.audioLinkStatus = removed.audioLinkStatus;
+                    data.audioTrackCount = removed.audioTrackCount;
+                    data.audioCheckedAt = removed.audioCheckedAt;
+                }
+
+                await tx.book.update({ where: { id: survivorId }, data });
+
+                // 4. Append-only audit entry.
+                await tx.bookMergeEvent.create({
+                    data: { canonicalId: survivorId, duplicateId: removedId, snapshot, performedById: me.id },
+                });
+            });
+
+            // The audio columns are a cache of the bucket, and a fusion can hand the
+            // survivor a folder it never pointed at. Re-read it now so every badge that
+            // reads those columns — la file, le catalogue, l'éditeur audio — is right
+            // immediately rather than after someone opens the editor by hand.
+            // Best effort: the merge is committed, a bucket outage must not report it failed.
+            try {
+                await refreshBookAudioState(survivorId);
+            } catch (error) {
+                console.error('fuseBooks: audio state refresh failed for book', survivorId, error);
+            }
+
+            revalidateAdmin();
+            revalidateCatalogue();
+            return { ok: true, message: 'Livres fusionnés avec succès' };
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : '';
+            const map: Record<string, string> = {
+                SURVIVOR_NOT_FOUND: 'Le livre à conserver est introuvable',
+                REMOVED_NOT_FOUND: 'Le doublon est introuvable',
+                AUDIO_CONFLICT:
+                    'Double enregistrement audio : la fusion est bloquée. Ce doublon nécessite une vérification manuelle.',
+            };
+            console.error('fuseBooks error:', error);
+            return { ok: false, message: map[msg] ?? 'Échec de la fusion. Aucune modification enregistrée.' };
+        }
+    });
 }
 
 /** DELETE: hard-delete one book. Blocked (with a clear message) if it's referenced by demandes/attributions. */
 export async function deleteBook(bookId: number): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(bookId)) return { ok: false, message: 'Identifiant invalide' };
+    return asAdminAction(async () => {
+        if (!Number.isInteger(bookId)) return { ok: false, message: 'Identifiant invalide' };
 
-    try {
-        await prisma.book.delete({ where: { id: bookId } });
-        revalidateAdmin();
-        revalidateCatalogue();
-        return { ok: true, message: 'Livre supprimé avec succès' };
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2025') return { ok: false, message: 'Livre introuvable' };
-            if (error.code === 'P2003') {
-                return {
-                    ok: false,
-                    message: 'Ce livre est rattaché à des demandes ou attributions. Fusionnez-le plutôt que de le supprimer.',
-                };
+        try {
+            await prisma.book.delete({ where: { id: bookId } });
+            revalidateAdmin();
+            revalidateCatalogue();
+            return { ok: true, message: 'Livre supprimé avec succès' };
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2025') return { ok: false, message: 'Livre introuvable' };
+                if (error.code === 'P2003') {
+                    return {
+                        ok: false,
+                        message: 'Ce livre est rattaché à des demandes ou attributions. Fusionnez-le plutôt que de le supprimer.',
+                    };
+                }
             }
+            console.error('deleteBook error:', error);
+            return { ok: false, message: 'Échec de la suppression' };
         }
-        console.error('deleteBook error:', error);
-        return { ok: false, message: 'Échec de la suppression' };
-    }
+    });
 }
 
 /** Longest note we'll relay. Past this it isn't an escalation note, it's a novel. */
@@ -204,85 +208,85 @@ export async function escalateReview(
     matchedId: number | null,
     note: string = ''
 ): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(flaggedId)) return { ok: false, message: 'Identifiant invalide' };
+    return asAdminAction(async (me) => {
+        if (!Number.isInteger(flaggedId)) return { ok: false, message: 'Identifiant invalide' };
 
-    const comment = note.trim().slice(0, MAX_ESCALATION_NOTE);
+        const comment = note.trim().slice(0, MAX_ESCALATION_NOTE);
 
-    const select = {
-        id: true,
-        title: true,
-        author: true,
-        audio_filepath: true,
-        source_access_id: true,
-    } as const;
+        const select = {
+            id: true,
+            title: true,
+            author: true,
+            audio_filepath: true,
+            source_access_id: true,
+        } as const;
 
-    try {
-        const [flagged, matched, actor] = await Promise.all([
-            prisma.book.findUnique({ where: { id: flaggedId }, select }),
-            matchedId != null && Number.isInteger(matchedId)
-                ? prisma.book.findUnique({ where: { id: matchedId }, select })
-                : Promise.resolve(null),
-            prisma.user.findUnique({
-                where: { id: me.id },
-                select: { name: true, email: true, firstName: true, lastName: true },
-            }),
-        ]);
-        if (!flagged) return { ok: false, message: 'Livre introuvable' };
+        try {
+            const [flagged, matched, actor] = await Promise.all([
+                prisma.book.findUnique({ where: { id: flaggedId }, select }),
+                matchedId != null && Number.isInteger(matchedId)
+                    ? prisma.book.findUnique({ where: { id: matchedId }, select })
+                    : Promise.resolve(null),
+                prisma.user.findUnique({
+                    where: { id: me.id },
+                    select: { name: true, email: true, firstName: true, lastName: true },
+                }),
+            ]);
+            if (!flagged) return { ok: false, message: 'Livre introuvable' };
 
-        // Recomputed here rather than taken from the client: it decides whether the
-        // note may be omitted, and it is what the mail announces as the blocker.
-        const fAudio = flagged.audio_filepath?.trim() || null;
-        const mAudio = matched?.audio_filepath?.trim() || null;
-        const audioConflict = !!fAudio && !!mAudio && fAudio !== mAudio;
+            // Recomputed here rather than taken from the client: it decides whether the
+            // note may be omitted, and it is what the mail announces as the blocker.
+            const fAudio = flagged.audio_filepath?.trim() || null;
+            const mAudio = matched?.audio_filepath?.trim() || null;
+            const audioConflict = !!fAudio && !!mAudio && fAudio !== mAudio;
 
-        if (!audioConflict && !comment) {
-            return { ok: false, message: 'Expliquez en une phrase ce qui bloque sur ce doublon' };
+            if (!audioConflict && !comment) {
+                return { ok: false, message: 'Expliquez en une phrase ce qui bloque sur ce doublon' };
+            }
+
+            const result = await sendReviewEscalation({
+                flagged,
+                matched,
+                audioConflict,
+                note: comment || null,
+                escalatedBy: getUserDisplayName(actor) || me.email || `#${me.id}`,
+            });
+
+            if (!result.sent) {
+                return {
+                    ok: false,
+                    message:
+                        result.reason === 'no-recipient'
+                            ? "Aucune adresse d'escalade configurée. Prévenez Stéphan directement."
+                            : "L'email n'a pas pu être envoyé. Le doublon n'a pas été signalé — prévenez Stéphan directement.",
+                };
+            }
+
+            await prisma.book.update({ where: { id: flaggedId }, data: { escalatedAt: new Date() } });
+            revalidateAdmin();
+            return { ok: true, message: 'Doublon signalé à Stéphan pour traitement manuel' };
+        } catch (error) {
+            console.error('escalateReview error:', error);
+            return { ok: false, message: "Échec de l'envoi. Le doublon n'a pas été signalé." };
         }
-
-        const result = await sendReviewEscalation({
-            flagged,
-            matched,
-            audioConflict,
-            note: comment || null,
-            escalatedBy: getUserDisplayName(actor) || me.email || `#${me.id}`,
-        });
-
-        if (!result.sent) {
-            return {
-                ok: false,
-                message:
-                    result.reason === 'no-recipient'
-                        ? "Aucune adresse d'escalade configurée. Prévenez Stéphan directement."
-                        : "L'email n'a pas pu être envoyé. Le doublon n'a pas été signalé — prévenez Stéphan directement.",
-            };
-        }
-
-        await prisma.book.update({ where: { id: flaggedId }, data: { escalatedAt: new Date() } });
-        revalidateAdmin();
-        return { ok: true, message: 'Doublon signalé à Stéphan pour traitement manuel' };
-    } catch (error) {
-        console.error('escalateReview error:', error);
-        return { ok: false, message: "Échec de l'envoi. Le doublon n'a pas été signalé." };
-    }
+    });
 }
 
 /** NOT A DUP: clear the review flag on the flagged book — no merge, no delete. */
 export async function dismissReview(bookId: number): Promise<ActionResult> {
-    const me = await requireAdmin();
-    if (!me) return { ok: false, message: 'Permissions insuffisantes' };
-    if (!Number.isInteger(bookId)) return { ok: false, message: 'Identifiant invalide' };
+    return asAdminAction(async () => {
+        if (!Number.isInteger(bookId)) return { ok: false, message: 'Identifiant invalide' };
 
-    try {
-        await prisma.book.update({ where: { id: bookId }, data: { needsReview: false } });
-        revalidateAdmin();
-        return { ok: true, message: 'Livre retiré de la file de révision' };
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-            return { ok: false, message: 'Livre introuvable' };
+        try {
+            await prisma.book.update({ where: { id: bookId }, data: { needsReview: false } });
+            revalidateAdmin();
+            return { ok: true, message: 'Livre retiré de la file de révision' };
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                return { ok: false, message: 'Livre introuvable' };
+            }
+            console.error('dismissReview error:', error);
+            return { ok: false, message: 'Échec de la mise à jour' };
         }
-        console.error('dismissReview error:', error);
-        return { ok: false, message: 'Échec de la mise à jour' };
-    }
+    });
 }
