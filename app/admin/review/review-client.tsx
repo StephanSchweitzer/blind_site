@@ -19,8 +19,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -128,10 +138,22 @@ type Pending =
     | { kind: 'delete'; bookId: number; title: string }
     | null;
 
+/** The pair being handed over, while the note is being written. */
+interface EscalationTarget {
+    flaggedId: number;
+    matchedId: number | null;
+    title: string;
+    /** Two different recordings: the note is then optional, the blocker is obvious. */
+    audioConflict: boolean;
+}
+
 export default function ReviewClient({ pairs, page, totalPages, total, queueTotal, search }: Props) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(search);
     const [pending, setPending] = useState<Pending>(null);
+    /** Pair being handed over to Stéphan, and the note that goes with it. */
+    const [escalation, setEscalation] = useState<EscalationTarget | null>(null);
+    const [note, setNote] = useState('');
     /** Book whose audio folder is open for listening. */
     const [audioBook, setAudioBook] = useState<ReviewBook | null>(null);
     const [isPending, startTransition] = useTransition();
@@ -139,7 +161,7 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
     // controls until the next page's data has loaded.
     const [isNavPending, startNav] = useTransition();
 
-    const run = (fn: () => Promise<ActionResult>) => {
+    const run = (fn: () => Promise<ActionResult>, onSuccess?: () => void) => {
         startTransition(async () => {
             const res = await fn();
             toast({
@@ -148,8 +170,31 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
                 variant: res.ok ? undefined : 'destructive',
             });
             setPending(null);
-            if (res.ok) router.refresh();
+            if (res.ok) {
+                onSuccess?.();
+                router.refresh();
+            }
         });
+    };
+
+    const openEscalation = (target: EscalationTarget) => {
+        setNote('');
+        setEscalation(target);
+    };
+
+    // The dialogue stays open when the send fails — the note is the only thing
+    // written by hand here, and losing it would mean writing it twice.
+    const sendEscalation = () => {
+        if (!escalation) return;
+        const { flaggedId, matchedId } = escalation;
+        const text = note;
+        run(
+            () => escalateReview(flaggedId, matchedId, text),
+            () => {
+                setEscalation(null);
+                setNote('');
+            }
+        );
     };
 
     const confirm = () => {
@@ -244,7 +289,7 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
                     onRequestFuse={(p) => setPending({ kind: 'fuse', ...p })}
                     onRequestDelete={(book) => setPending({ kind: 'delete', bookId: book.id, title: book.title })}
                     onDismiss={(bookId) => run(() => dismissReview(bookId))}
-                    onEscalate={(flaggedId, matchedId) => run(() => escalateReview(flaggedId, matchedId))}
+                    onEscalate={openEscalation}
                     onListen={setAudioBook}
                 />
             ))}
@@ -311,6 +356,68 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
                 </AlertDialogContent>
             </AlertDialog>
 
+            {/* The queue can only fuse, supprimer or écarter — a pair the import
+                got wrong fits none of the three, so every card can hand it over
+                instead. The note is what makes the mail actionable. */}
+            <Dialog
+                open={escalation !== null}
+                onOpenChange={(open) => {
+                    if (!open && !isPending) setEscalation(null);
+                }}
+            >
+                <DialogContent className="max-w-lg bg-card border-border [&>button>svg]:text-white">
+                    <DialogHeader>
+                        <DialogTitle>Signaler ce doublon à Stéphan</DialogTitle>
+                        <DialogDescription>
+                            {escalation?.audioConflict
+                                ? 'Les deux fiches portent un enregistrement différent : seule une correction directe dans la base peut trancher. Ajoutez une précision si vous en avez une.'
+                                : `Un mail part avec ${escalation?.matchedId != null ? 'les deux fiches' : 'la fiche'}. Dites ce qui ne va pas — sans cela, le message ne dit rien de plus que « regardez ».`}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {escalation && (
+                        <p className="text-sm text-muted-foreground">
+                            « {escalation.title} » <span className="font-normal">#{escalation.flaggedId}</span>
+                            {escalation.matchedId != null && <> et #{escalation.matchedId}</>}
+                        </p>
+                    )}
+
+                    <div className="space-y-1">
+                        <Label htmlFor="escalation-note">
+                            Ce qui bloque {escalation?.audioConflict ? '(facultatif)' : '*'}
+                        </Label>
+                        <Textarea
+                            id="escalation-note"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Le livre rapproché n’est pas le bon : l’audio proposé est la partie 2, alors que cette fiche est le tome 1…"
+                            rows={4}
+                            disabled={isPending}
+                        />
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" disabled={isPending} onClick={() => setEscalation(null)}>
+                            Annuler
+                        </Button>
+                        <Button
+                            disabled={isPending || (!escalation?.audioConflict && !note.trim())}
+                            onClick={sendEscalation}
+                        >
+                            {isPending ? (
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Envoi…
+                                </span>
+                            ) : (
+                                <>
+                                    <Send className="h-4 w-4" /> Envoyer à Stéphan
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Listening to both folders is often the only way to tell two
                 near-identical fiches apart — so the editor opens right here,
                 without leaving the queue. */}
@@ -351,7 +458,7 @@ function PairCard({
     onRequestFuse: (p: FusePayload) => void;
     onRequestDelete: (book: ReviewBook) => void;
     onDismiss: (bookId: number) => void;
-    onEscalate: (flaggedId: number, matchedId: number | null) => void;
+    onEscalate: (target: EscalationTarget) => void;
     onListen: (book: ReviewBook) => void;
 }) {
     const [mode, setMode] = useState<'collapsed' | 'fuse' | 'distinct'>('collapsed');
@@ -370,18 +477,27 @@ function PairCard({
                     </div>
                     <Badge variant="secondary">Aucun correspondant trouvé</Badge>
                 </CardHeader>
-                <CardContent className="flex justify-end gap-2">
-                    <ListenButton book={flagged} onListen={onListen} />
-                    <Button variant="outline" size="sm" disabled={busy} onClick={() => onDismiss(flagged.id)}>
-                        <Check className="h-4 w-4" /> Pas un doublon
-                    </Button>
+                <CardContent className="space-y-3">
+                    <div className="flex justify-end gap-2">
+                        <ListenButton book={flagged} onListen={onListen} />
+                        <Button variant="outline" size="sm" disabled={busy} onClick={() => onDismiss(flagged.id)}>
+                            <Check className="h-4 w-4" /> Pas un doublon
+                        </Button>
+                    </div>
+                    <EscalateRow
+                        book={flagged}
+                        matchedId={null}
+                        audioConflict={false}
+                        busy={busy}
+                        onEscalate={onEscalate}
+                        hint="Ce livre est signalé sans qu’aucune fiche ne lui corresponde ?"
+                    />
                 </CardContent>
             </Card>
         );
     }
 
     const audioConflict = hasAudio(flagged) && hasAudio(matched) && flagged.audio_filepath !== matched.audio_filepath;
-    const escalated = !!flagged.escalatedAt;
     const diffCount = FIELDS.filter((f) => f.overridable && differs(f, flagged, matched)).length;
 
     // Always keep the flagged book — it's the live site catalogue entry that already
@@ -445,25 +561,16 @@ function PairCard({
                         {/* Dead end for the queue: only a direct fix in the database can
                             sort these out, so the card offers the handover instead of
                             leaving the permanent with nothing but disabled buttons. */}
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={busy || escalated}
-                                className="border-amber-500 bg-transparent text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/40"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEscalate(flagged.id, matched.id);
-                                }}
-                            >
-                                <Send className="h-4 w-4" /> Impossible de fusionner, envoyer à Stéphan
-                            </Button>
-                            {escalated && (
-                                <span className="text-xs">
-                                    Signalé le {fmtDate(flagged.escalatedAt ?? null)} — traitement manuel en attente.
-                                </span>
-                            )}
-                        </div>
+                        <EscalateRow
+                            book={flagged}
+                            matchedId={matched.id}
+                            audioConflict
+                            busy={busy}
+                            onEscalate={onEscalate}
+                            label="Impossible de fusionner, envoyer à Stéphan"
+                            className="border-amber-500 bg-transparent text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/40"
+                            stampClassName="text-inherit"
+                        />
                     </div>
                 )}
             </CardHeader>
@@ -665,8 +772,89 @@ function PairCard({
                         )}
                     </div>
                 )}
+
+                {/* The import's suggestion can simply be wrong — the right « pt 2 »
+                    folder rapproché de la fiche du tome 1, par exemple. Fusionner
+                    serait destructeur et « livres distincts » ne ferait qu'effacer
+                    le signalement, donc la sortie de secours est offerte quel que
+                    soit l'état de la carte. Le cas du double audio a déjà la sienne
+                    dans l'encadré ci-dessus. */}
+                {!audioConflict && (
+                    <div className="border-t border-border/60 pt-3">
+                        <EscalateRow
+                            book={flagged}
+                            matchedId={matched.id}
+                            audioConflict={false}
+                            busy={busy}
+                            onEscalate={onEscalate}
+                            hint="Ce rapprochement est faux ou le cas ne se règle pas ici ?"
+                        />
+                    </div>
+                )}
             </CardContent>
         </Card>
+    );
+}
+
+/**
+ * Hand this pair over to Stéphan.
+ *
+ * On every card, not just on the double-recording dead end: the queue only
+ * knows how to fusionner, supprimer or écarter, and a pair the import got wrong
+ * fits none of the three. Escalating twice sends the same mail twice, so the
+ * button locks once the stamp is there and says when it left.
+ */
+function EscalateRow({
+    book,
+    matchedId,
+    audioConflict,
+    busy,
+    onEscalate,
+    label = 'Signaler à Stéphan',
+    hint,
+    className,
+    /** `text-inherit` inside the amber box, whose own colour already applies. */
+    stampClassName = 'text-muted-foreground',
+}: {
+    book: ReviewBook;
+    matchedId: number | null;
+    audioConflict: boolean;
+    busy: boolean;
+    onEscalate: (target: EscalationTarget) => void;
+    label?: string;
+    hint?: string;
+    className?: string;
+    stampClassName?: string;
+}) {
+    const escalated = !!book.escalatedAt;
+
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            {hint && !escalated && <span className="mr-auto text-xs text-muted-foreground">{hint}</span>}
+            <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || escalated}
+                className={className}
+                // The card behind this row opens the comparison on click.
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onEscalate({
+                        flaggedId: book.id,
+                        matchedId,
+                        title: book.title,
+                        audioConflict,
+                    });
+                }}
+            >
+                <Send className="h-4 w-4" /> {label}
+            </Button>
+            {escalated && (
+                <span className={`text-xs ${stampClassName}`}>
+                    Signalé le {fmtDate(book.escalatedAt ?? null)} — traitement manuel en attente.
+                </span>
+            )}
+        </div>
     );
 }
 

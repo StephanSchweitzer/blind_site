@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { refreshBookAudioState } from '@/lib/audio/state';
 import { sendReviewEscalation } from '@/lib/email/sendReviewEscalation';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
@@ -101,7 +103,17 @@ export async function fuseBooks(
             for (const f of fields) {
                 (data as Record<string, unknown>)[f] = (removed as Record<string, unknown>)[f];
             }
-            if (!sAudio && rAudio) data.audio_filepath = removed.audio_filepath;
+            if (!sAudio && rAudio) {
+                data.audio_filepath = removed.audio_filepath;
+                // audioLinkStatus/audioTrackCount describe the *folder*, so the reading
+                // taken on the removed record is already the right one for the survivor.
+                // Copying it means the fused fiche shows its audio badge as soon as the
+                // page refreshes, instead of keeping the survivor's stale « pas d'audio »
+                // until the bucket re-read below (or the next nightly sync) lands.
+                data.audioLinkStatus = removed.audioLinkStatus;
+                data.audioTrackCount = removed.audioTrackCount;
+                data.audioCheckedAt = removed.audioCheckedAt;
+            }
 
             await tx.book.update({ where: { id: survivorId }, data });
 
@@ -111,7 +123,19 @@ export async function fuseBooks(
             });
         });
 
+        // The audio columns are a cache of the bucket, and a fusion can hand the
+        // survivor a folder it never pointed at. Re-read it now so every badge that
+        // reads those columns — la file, le catalogue, l'éditeur audio — is right
+        // immediately rather than after someone opens the editor by hand.
+        // Best effort: the merge is committed, a bucket outage must not report it failed.
+        try {
+            await refreshBookAudioState(survivorId);
+        } catch (error) {
+            console.error('fuseBooks: audio state refresh failed for book', survivorId, error);
+        }
+
         revalidateAdmin();
+        revalidateCatalogue();
         return { ok: true, message: 'Livres fusionnés avec succès' };
     } catch (error) {
         const msg = error instanceof Error ? error.message : '';
@@ -135,6 +159,7 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
     try {
         await prisma.book.delete({ where: { id: bookId } });
         revalidateAdmin();
+        revalidateCatalogue();
         return { ok: true, message: 'Livre supprimé avec succès' };
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -151,19 +176,39 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
     }
 }
 
+/** Longest note we'll relay. Past this it isn't an escalation note, it's a novel. */
+const MAX_ESCALATION_NOTE = 2000;
+
 /**
- * ESCALATE: hand a pair that can't be merged (two different recordings) over to
- * the person who fixes those by hand in the database.
+ * ESCALATE: hand a doublon the permanent cannot settle over to the person who
+ * fixes those by hand in the database.
+ *
+ * Available on **every** pair, not only on the double-recording dead end. The
+ * import's suggestion can simply be wrong — a « tome 1 » matched against the
+ * « pt 2 » folder of the same title — and there is nothing in the queue that
+ * fixes a bad match: fusing would be destructive, « pas un doublon » would drop
+ * the flag and hide the problem. So whatever the pair looks like, the permanent
+ * can hand it over instead of choosing between two wrong answers.
+ *
+ * `note` says what is wrong. It is required unless the pair carries the audio
+ * conflict, which speaks for itself — a mail saying only "look at this" costs
+ * the recipient the whole investigation.
  *
  * Nothing about the books changes and they stay in the queue — the only trace is
  * `escalatedAt`, which exists so the mail isn't re-sent on every visit. The stamp
  * is written only once the mail has actually left, otherwise the escalation would
  * look done while nobody was told.
  */
-export async function escalateReview(flaggedId: number, matchedId: number | null): Promise<ActionResult> {
+export async function escalateReview(
+    flaggedId: number,
+    matchedId: number | null,
+    note: string = ''
+): Promise<ActionResult> {
     const me = await requireAdmin();
     if (!me) return { ok: false, message: 'Permissions insuffisantes' };
     if (!Number.isInteger(flaggedId)) return { ok: false, message: 'Identifiant invalide' };
+
+    const comment = note.trim().slice(0, MAX_ESCALATION_NOTE);
 
     const select = {
         id: true,
@@ -186,9 +231,21 @@ export async function escalateReview(flaggedId: number, matchedId: number | null
         ]);
         if (!flagged) return { ok: false, message: 'Livre introuvable' };
 
+        // Recomputed here rather than taken from the client: it decides whether the
+        // note may be omitted, and it is what the mail announces as the blocker.
+        const fAudio = flagged.audio_filepath?.trim() || null;
+        const mAudio = matched?.audio_filepath?.trim() || null;
+        const audioConflict = !!fAudio && !!mAudio && fAudio !== mAudio;
+
+        if (!audioConflict && !comment) {
+            return { ok: false, message: 'Expliquez en une phrase ce qui bloque sur ce doublon' };
+        }
+
         const result = await sendReviewEscalation({
             flagged,
             matched,
+            audioConflict,
+            note: comment || null,
             escalatedBy: getUserDisplayName(actor) || me.email || `#${me.id}`,
         });
 

@@ -14,6 +14,14 @@ export interface SendReviewEscalationParams {
     flagged: EscalatedBook;
     /** Its Access-import counterpart, when one was resolved. */
     matched: EscalatedBook | null;
+    /** The pair carries two different recordings — the merge is blocked outright. */
+    audioConflict: boolean;
+    /**
+     * What the permanent says is wrong. Optional only for the audio conflict,
+     * which is self-explanatory; on any other pair this is the whole reason the
+     * mail is worth reading.
+     */
+    note: string | null;
     /** Who pressed the button. */
     escalatedBy: string;
 }
@@ -56,6 +64,8 @@ const bookBlock = (label: string, b: EscalatedBook): string => `
 export async function sendReviewEscalation({
     flagged,
     matched,
+    audioConflict,
+    note,
     escalatedBy,
 }: SendReviewEscalationParams): Promise<SendEmailResult> {
     const to = await escalationRecipient();
@@ -63,13 +73,23 @@ export async function sendReviewEscalation({
 
     const baseUrl = process.env.APP_URL || 'https://eca-aveugles.com';
 
+    // The permanent's own words, kept as typed (line breaks included) — they are
+    // usually the only description of what the import got wrong.
+    const noteBlock = note
+        ? `<blockquote style="margin:16px 0;padding:8px 12px;border-left:3px solid #ccc;font-size:14px;white-space:pre-wrap;">${esc(note)}</blockquote>`
+        : '';
+
     const html = `
     <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#111;">
-      <h2 style="font-size:17px;margin:0 0 8px;">Fusion impossible — vérification manuelle requise</h2>
+      <h2 style="font-size:17px;margin:0 0 8px;">Doublon à traiter manuellement</h2>
       <p style="font-size:14px;margin:0;">
-        ${esc(escalatedBy)} a signalé ce doublon depuis la file de révision : les deux fiches
-        portent un enregistrement audio différent, la fusion est donc bloquée.
+        ${esc(escalatedBy)} a signalé ce doublon depuis la file de révision${
+            audioConflict
+                ? ' : les deux fiches portent un enregistrement audio différent, la fusion est donc bloquée.'
+                : ' — il ne peut pas être réglé depuis la file.'
+        }
       </p>
+      ${noteBlock}
       ${bookBlock('Fiche du catalogue', flagged)}
       ${matched ? bookBlock('Doublon (import Access)', matched) : '<p style="font-size:14px;">Aucun correspondant résolu.</p>'}
       <p style="font-size:14px;margin-top:24px;">
