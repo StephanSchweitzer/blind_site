@@ -1,4 +1,4 @@
-import type { StaffMetric, StatsGranularity } from '@/types';
+import type { MemberGroup, StaffMetric, StatsGranularity, TrendMetric } from '@/types';
 
 // Client-side date helpers for the stats dashboard. Buckets are plain
 // 'YYYY-MM-DD' keys manipulated through UTC arithmetic so no local-timezone
@@ -75,8 +75,63 @@ export function resolveRange(preset: RangePreset): ResolvedRange {
     }
 }
 
-export const METRIC_LABELS: Record<StaffMetric, string> = {
+export const METRIC_LABELS: Record<TrendMetric, string> = {
     books: 'Livres ajoutés',
     billEvents: 'Événements de facturation',
     orders: 'Demandes traitées',
+    assignments: 'Attributions envoyées',
+    coupsDeCoeur: 'Coups de cœur',
+    news: 'Actualités publiées',
+    auditEvents: 'Modifications tracées',
+    payments: 'Paiements enregistrés',
+    bills: 'Factures créées',
+    newMembers: 'Nouveaux membres',
+    activityEvents: 'Changements de statut',
 };
+
+/** Metrics that can be broken down per permanent — mirrors STAFF_METRICS. */
+export const STAFF_METRIC_ORDER: StaffMetric[] = [
+    'books',
+    'billEvents',
+    'orders',
+    'assignments',
+    'coupsDeCoeur',
+    'news',
+    'auditEvents',
+];
+
+/** Trend-card order: the actor-backed series first, then the org-wide ones. */
+export const TREND_METRIC_ORDER: TrendMetric[] = [
+    ...STAFF_METRIC_ORDER,
+    'payments',
+    'bills',
+    'newMembers',
+    'activityEvents',
+];
+
+/**
+ * A one-line caveat under a card, where the number alone would mislead. Only
+ * the metrics that genuinely need one have an entry.
+ */
+export const METRIC_HINTS: Partial<Record<TrendMetric, string>> = {
+    orders: 'Hors demandes importées sans date ni permanent.',
+    assignments: 'Comptées à la date d’envoi au lecteur.',
+    auditEvents: 'Le journal ne conserve que les 14 derniers jours.',
+};
+
+export const MEMBER_GROUP_FILTERS: Array<{ value: MemberGroup | 'all'; label: string }> = [
+    { value: 'all', label: 'Tous' },
+    { value: 'lecteur', label: 'Lecteurs' },
+    { value: 'auditeur', label: 'Auditeurs' },
+    { value: 'autre', label: 'Autres' },
+];
+
+export const MEMBER_GROUP_LABELS: Record<MemberGroup, string> = {
+    lecteur: 'Lecteurs',
+    auditeur: 'Auditeurs',
+    autre: 'Autres',
+};
+
+/** Euros, no cents — the amounts on this page are read, not reconciled. */
+export const formatEuros = (amount: number): string =>
+    amount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });

@@ -350,7 +350,7 @@ model Assignment {
   @@index([catalogueId])
   @@index([orderId])
   @@index([statusId])
-  // Stats dashboard: reader timeline windows on /admin/stats.
+  // Attribution windows: /admin/disponibilites (charge des lecteurs, relances).
   @@index([sentToReaderDate])
   @@index([returnedToECADate])
 }
@@ -553,6 +553,51 @@ model BookMergeEvent {
   @@index([canonicalId])
   @@index([duplicateId])
   @@index([createdAt])
+}
+
+enum AuditOperation {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+}
+
+/// Append-only trace of every write to the audited models (lib/audit/models.ts),
+/// captured automatically by the Prisma client extension in lib/audit/extension.ts —
+/// no route calls it by hand. Never updated; only ever deleted in bulk by the
+/// retention purge.
+///
+/// Storage discipline (Supabase free tier, 500 MB hard cap):
+///   - `changes` holds a FIELD-LEVEL diff only, `{ field: [avant, après] }`.
+///     Never a pair of full row snapshots on an update.
+///   - `snapshot` holds the full row and is populated ONLY on DELETE, because
+///     that is the only case where the data is gone and a restore needs it.
+///   - Secrets (password, tokens…) and long/blob-ish values are dropped or
+///     replaced by a size marker before anything is written — see redact.ts.
+///   - Rows older than the retention window are purged nightly
+///     (/api/cron/purge-audit-events), 14 days normally, 7 when the table
+///     grows past AUDIT_TABLE_SOFT_LIMIT_MB.
+///
+/// actorEmail is denormalized on purpose: the log has to keep naming its author
+/// after that user is deleted, so there is deliberately no FK on actorId.
+model AuditEvent {
+  id         Int            @id @default(autoincrement())
+  /// Prisma model name, e.g. "User", "Bill", "Orders", "Assignment".
+  model      String
+  /// Primary key of the touched row, as text (composite keys join on ":").
+  recordId   String
+  operation  AuditOperation
+  actorId    Int?
+  actorEmail String?
+  /// `{ field: [avant, après] }`. Empty object on DELETE.
+  changes    Json
+  /// Full row, DELETE only — what a restore replays.
+  snapshot   Json?
+  createdAt  DateTime       @default(now())
+
+  @@index([createdAt])
+  @@index([model, recordId])
+  @@index([actorId])
 }
 
 /// Pre-backfill snapshot of Book.audio_filepath.

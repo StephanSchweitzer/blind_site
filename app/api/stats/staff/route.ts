@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { withSuperAdmin } from '@/lib/auth/guards';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import {
+    METRIC_SOURCES,
     bucketExpr,
     isValidRange,
     parisDayStartUtc,
@@ -11,46 +12,12 @@ import {
     parseGranularityParam,
     parseMetricParam,
 } from '@/lib/stats';
-import type { StaffMetric, StaffStatsResponse, StaffStatsRow, StatsActor } from '@/types';
+import type { StaffStatsResponse, StaffStatsRow, StatsActor } from '@/types';
 
 // Module A aggregates: one GROUP BY (bucket, actor[, type]) per request.
 // The result stays tiny (buckets × staff members); rows are never fetched here.
-
-interface MetricSql {
-    table: Prisma.Sql;
-    dateColumn: Prisma.Sql;
-    /** Actor id expression; bill events coalesce NULL performers to 0 ("Système"). */
-    actorExpr: Prisma.Sql;
-    /** Extra WHERE conditions (e.g. exclude orders without staff/date). */
-    extraWhere: Prisma.Sql;
-    /** Whether to also group by BillEventType. */
-    withType: boolean;
-}
-
-const METRIC_SQL: Record<StaffMetric, MetricSql> = {
-    books: {
-        table: Prisma.sql`"Book"`,
-        dateColumn: Prisma.sql`"createdAt"`,
-        actorExpr: Prisma.sql`"addedById"`,
-        extraWhere: Prisma.empty,
-        withType: false,
-    },
-    billEvents: {
-        table: Prisma.sql`"BillEvent"`,
-        dateColumn: Prisma.sql`"createdAt"`,
-        actorExpr: Prisma.sql`COALESCE("performedById", 0)`,
-        extraWhere: Prisma.empty,
-        withType: true,
-    },
-    orders: {
-        table: Prisma.sql`"Orders"`,
-        dateColumn: Prisma.sql`"createdDate"`,
-        actorExpr: Prisma.sql`"processedByStaffId"`,
-        // Legacy imports have no staff/date — they can't be attributed, exclude them.
-        extraWhere: Prisma.sql`AND "processedByStaffId" IS NOT NULL AND "createdDate" IS NOT NULL`,
-        withType: false,
-    },
-};
+// What each metric counts lives in METRIC_SOURCES (lib/stats.ts), shared with
+// the trend cards and the detail drawer.
 
 interface RawUserName {
     id: number;
@@ -89,12 +56,14 @@ export const GET = withSuperAdmin(async (request) => {
         return NextResponse.json({ message: 'Paramètres invalides' }, { status: 400 });
     }
 
-    const m = METRIC_SQL[metric];
+    const m = METRIC_SOURCES[metric];
+    // parseMetricParam only ever returns a metric that carries an actor.
+    const actorExpr = m.actorExpr ?? Prisma.sql`0`;
 
     try {
         const rows = await prisma.$queryRaw<StaffStatsRow[]>`
             SELECT ${bucketExpr(m.dateColumn, granularity)} AS bucket,
-                   ${m.actorExpr}::int AS "actorId",
+                   ${actorExpr}::int AS "actorId",
                    ${m.withType ? Prisma.sql`"type"::text AS type,` : Prisma.empty}
                    COUNT(*)::int AS count
             FROM ${m.table}

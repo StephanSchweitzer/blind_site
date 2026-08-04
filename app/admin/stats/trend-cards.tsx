@@ -2,18 +2,23 @@
 
 import React from 'react';
 import { AdminCard } from '@/components/ui/admin';
-import type { StaffMetric, TrendPoint, TrendsResponse } from '@/types';
-import { METRIC_LABELS, formatDayShort } from './stats-utils';
+import type { TrendMetric, TrendPoint, TrendsResponse } from '@/types';
+import {
+    METRIC_HINTS,
+    METRIC_LABELS,
+    TREND_METRIC_ORDER,
+    formatDayShort,
+} from './stats-utils';
 
-// Org-wide weekly totals per metric, as small sparkline cards above the heatmap.
-
-const ORDERED: StaffMetric[] = ['books', 'billEvents', 'orders'];
+// Org-wide weekly totals, one small sparkline card per tracked series.
+// Eleven of them, so the cards are deliberately compact: a number, a shape, and
+// a line of context — the heatmap below is where a series gets interrogated.
 
 function Sparkline({ points }: { points: TrendPoint[] }) {
     const width = 220;
-    const height = 48;
+    const height = 40;
     if (points.length === 0) {
-        return <div className="h-12 flex items-center text-xs text-muted-foreground">Aucune donnée</div>;
+        return <div className="h-10 flex items-center text-xs text-muted-foreground">Aucune donnée</div>;
     }
     const max = Math.max(...points.map((p) => p.count), 1);
     const stepX = points.length > 1 ? width / (points.length - 1) : 0;
@@ -24,7 +29,7 @@ function Sparkline({ points }: { points: TrendPoint[] }) {
     return (
         <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="w-full h-12"
+            className="w-full h-10"
             preserveAspectRatio="none"
             role="img"
             aria-label="Évolution hebdomadaire"
@@ -40,32 +45,47 @@ function Sparkline({ points }: { points: TrendPoint[] }) {
     );
 }
 
+function TrendCard({ metric, points, loaded }: {
+    metric: TrendMetric;
+    points: TrendPoint[];
+    loaded: boolean;
+}) {
+    const total = points.reduce((sum, p) => sum + p.count, 0);
+    const lastWeek = points.length > 0 ? points[points.length - 1] : null;
+    const hint = METRIC_HINTS[metric];
+
+    return (
+        <AdminCard className="p-3">
+            <div className="flex items-baseline justify-between gap-2">
+                <h3 className="text-xs font-medium text-muted-foreground leading-tight">
+                    {METRIC_LABELS[metric]}
+                </h3>
+                <span className="text-xl font-bold text-foreground tabular-nums">
+                    {loaded ? total : '…'}
+                </span>
+            </div>
+            <Sparkline points={points} />
+            <p className="text-[11px] text-muted-foreground leading-snug">
+                {lastWeek
+                    ? `Semaine du ${formatDayShort(lastWeek.bucket)} : ${lastWeek.count}`
+                    : 'Totaux hebdomadaires sur la période'}
+            </p>
+            {hint && <p className="text-[11px] text-muted-foreground/80 leading-snug mt-0.5">{hint}</p>}
+        </AdminCard>
+    );
+}
+
 export default function TrendCards({ trends }: { trends: TrendsResponse | null }) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {ORDERED.map((metric) => {
-                const points = trends?.[metric] ?? [];
-                const total = points.reduce((sum, p) => sum + p.count, 0);
-                const lastWeek = points.length > 0 ? points[points.length - 1] : null;
-                return (
-                    <AdminCard key={metric} className="p-4">
-                        <div className="flex items-baseline justify-between gap-2">
-                            <h3 className="text-sm font-medium text-muted-foreground">
-                                {METRIC_LABELS[metric]}
-                            </h3>
-                            <span className="text-2xl font-bold text-foreground">
-                                {trends ? total : '…'}
-                            </span>
-                        </div>
-                        <Sparkline points={points} />
-                        <p className="text-xs text-muted-foreground">
-                            {lastWeek
-                                ? `Semaine du ${formatDayShort(lastWeek.bucket)} : ${lastWeek.count}`
-                                : 'Totaux hebdomadaires sur la période'}
-                        </p>
-                    </AdminCard>
-                );
-            })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {TREND_METRIC_ORDER.map((metric) => (
+                <TrendCard
+                    key={metric}
+                    metric={metric}
+                    points={trends?.[metric] ?? []}
+                    loaded={trends !== null}
+                />
+            ))}
         </div>
     );
 }

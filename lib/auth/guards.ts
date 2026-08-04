@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { runWithAuditActor, setAuditActor } from '@/lib/audit/context';
 
 export interface CurrentUser {
     id: number;
@@ -13,14 +14,20 @@ export interface CurrentUser {
  * Resolves the signed-in user authoritatively from the DB (keyed off the session
  * email), so authorization never trusts a stale/forged token field. Returns null
  * when there's no valid session.
+ *
+ * Also stamps the audit actor for the rest of the request, which is what lets
+ * the routes that authenticate by hand (they don't use the guards below) still
+ * attribute their writes — see lib/audit/context.ts.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return null;
-    return prisma.user.findUnique({
+    const me = await prisma.user.findUnique({
         where: { email: session.user.email },
         select: { id: true, email: true, accessLevel: true },
     });
+    if (me) setAuditActor({ actorId: me.id, actorEmail: me.email });
+    return me;
 }
 
 export function isAdmin(level: string | null | undefined): boolean {
@@ -38,12 +45,27 @@ type GuardedHandler = (
 ) => Promise<Response> | Response;
 type RouteHandler = (req: NextRequest, ctx: RouteCtx) => Promise<Response> | Response;
 
+/**
+ * Runs the guarded handler inside the audit-actor scope, so every write it makes
+ * — however deep — is attributed without any call site passing an actorId.
+ */
+function runAttributed(
+    me: CurrentUser,
+    handler: GuardedHandler,
+    req: NextRequest,
+    ctx: RouteCtx
+): Promise<Response> | Response {
+    return runWithAuditActor({ actorId: me.id, actorEmail: me.email }, () =>
+        handler(req, { ...ctx, me })
+    );
+}
+
 /** Wrap a handler to require any authenticated user. Passes `me` through ctx. */
 export function withAuth(handler: GuardedHandler): RouteHandler {
     return async (req, ctx) => {
         const me = await getCurrentUser();
         if (!me) return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
-        return handler(req, { ...ctx, me });
+        return runAttributed(me, handler, req, ctx);
     };
 }
 
@@ -55,7 +77,7 @@ export function withAdmin(handler: GuardedHandler): RouteHandler {
         if (!isAdmin(me.accessLevel)) {
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
-        return handler(req, { ...ctx, me });
+        return runAttributed(me, handler, req, ctx);
     };
 }
 
@@ -67,6 +89,6 @@ export function withSuperAdmin(handler: GuardedHandler): RouteHandler {
         if (!isSuperAdmin(me.accessLevel)) {
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
-        return handler(req, { ...ctx, me });
+        return runAttributed(me, handler, req, ctx);
     };
 }

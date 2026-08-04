@@ -1,19 +1,29 @@
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withSuperAdmin } from '@/lib/auth/guards';
-import { bucketExpr, isValidRange, parisDayStartUtc, parseDateParam } from '@/lib/stats';
-import type { TrendPoint, TrendsResponse } from '@/types';
+import {
+    METRIC_SOURCES,
+    TREND_METRICS,
+    bucketExpr,
+    isValidRange,
+    parisDayStartUtc,
+    parseDateParam,
+} from '@/lib/stats';
+import type { TrendMetric, TrendPoint, TrendsResponse } from '@/types';
 
-// Org-wide weekly totals for the trend cards above the heatmap.
-// Three tiny GROUP BY aggregates, one per metric.
+// Org-wide weekly totals, one small sparkline card per tracked series.
+// Every series — the ones with an actor and the ones without — comes from the
+// same METRIC_SOURCES registry the heatmap uses, so a card and its heatmap can
+// never count different things.
 
-function weeklyTotals(table: Prisma.Sql, dateColumn: Prisma.Sql, start: string, end: string) {
+function weeklyTotals(metric: TrendMetric, start: string, end: string) {
+    const source = METRIC_SOURCES[metric];
     return prisma.$queryRaw<TrendPoint[]>`
-        SELECT ${bucketExpr(dateColumn, 'week')} AS bucket, COUNT(*)::int AS count
-        FROM ${table}
-        WHERE ${dateColumn} >= ${parisDayStartUtc(start)}
-          AND ${dateColumn} < ${parisDayStartUtc(end)}
+        SELECT ${bucketExpr(source.dateColumn, 'week')} AS bucket, COUNT(*)::int AS count
+        FROM ${source.table}
+        WHERE ${source.dateColumn} >= ${parisDayStartUtc(start)}
+          AND ${source.dateColumn} < ${parisDayStartUtc(end)}
+          ${source.extraWhere}
         GROUP BY 1
         ORDER BY 1`;
 }
@@ -28,13 +38,11 @@ export const GET = withSuperAdmin(async (request) => {
     }
 
     try {
-        const [books, billEvents, orders] = await Promise.all([
-            weeklyTotals(Prisma.sql`"Book"`, Prisma.sql`"createdAt"`, start, end),
-            weeklyTotals(Prisma.sql`"BillEvent"`, Prisma.sql`"createdAt"`, start, end),
-            weeklyTotals(Prisma.sql`"Orders"`, Prisma.sql`"createdDate"`, start, end),
-        ]);
+        const series = await Promise.all(
+            TREND_METRICS.map(async (metric) => [metric, await weeklyTotals(metric, start, end)] as const)
+        );
 
-        const response: TrendsResponse = { books, billEvents, orders };
+        const response = Object.fromEntries(series) as TrendsResponse;
         return NextResponse.json(response);
     } catch (error) {
         console.error('Error aggregating trends:', error);

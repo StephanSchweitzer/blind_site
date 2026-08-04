@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from '@/generated/prisma/client';
 import { PrismaPg } from "@prisma/adapter-pg";
+import { auditExtension } from '@/lib/audit/extension';
 
 const getLogConfig = () => {
     if (process.env.NODE_ENV === "development" && process.env.PRISMA_QUERY_LOG === "true") {
@@ -41,26 +42,34 @@ const FILTERED_USER_READS = new Set([
 ]);
 
 function makePrisma() {
-    return new PrismaClient({ adapter, log: getLogConfig() }).$extends({
-        name: 'softDeleteUsers',
-        query: {
-            user: {
-                async $allOperations({ operation, args, query }) {
-                    if (FILTERED_USER_READS.has(operation)) {
-                        const a = (args ?? {}) as { where?: Record<string, unknown> };
-                        const where = a.where ?? {};
-                        // Inject only when the caller hasn't mentioned deletedAt,
-                        // so explicit overrides (fetching deleted users) still work.
-                        if (where.deletedAt === undefined) {
-                            a.where = { ...where, deletedAt: null };
-                            return query(a as Parameters<typeof query>[0]);
+    // The base client is kept out of the chain on purpose: the audit extension
+    // reads "before" rows and writes AuditEvent rows through it, so those reads
+    // see soft-deleted users (a deletion must still be traceable) and those
+    // writes cannot re-enter the extension that produced them.
+    const base = new PrismaClient({ adapter, log: getLogConfig() });
+
+    return base
+        .$extends({
+            name: 'softDeleteUsers',
+            query: {
+                user: {
+                    async $allOperations({ operation, args, query }) {
+                        if (FILTERED_USER_READS.has(operation)) {
+                            const a = (args ?? {}) as { where?: Record<string, unknown> };
+                            const where = a.where ?? {};
+                            // Inject only when the caller hasn't mentioned deletedAt,
+                            // so explicit overrides (fetching deleted users) still work.
+                            if (where.deletedAt === undefined) {
+                                a.where = { ...where, deletedAt: null };
+                                return query(a as Parameters<typeof query>[0]);
+                            }
                         }
-                    }
-                    return query(args);
+                        return query(args);
+                    },
                 },
             },
-        },
-    });
+        })
+        .$extends(auditExtension(base));
 }
 
 // $extends returns a branded extended-client type; let it infer (do NOT annotate

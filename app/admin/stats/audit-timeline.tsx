@@ -1,0 +1,514 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import {
+    AlertTriangle,
+    ChevronDown,
+    ChevronRight,
+    ExternalLink,
+    History,
+    Loader2,
+    RotateCcw,
+} from 'lucide-react';
+import { AdminCard } from '@/components/ui/admin';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
+import {
+    OPERATION_LABELS,
+    fieldLabel,
+    formatAuditValue,
+    isReservedField,
+    modelLabel,
+    recordHref,
+} from '@/lib/audit/labels';
+import type {
+    AuditEventItem,
+    AuditEventsResponse,
+    AuditOperation,
+    AuditRestoreResponse,
+} from '@/types';
+import { formatDateTime } from './stats-utils';
+
+/**
+ * « Journal des modifications » — the audit trail, read.
+ *
+ * Rows are collapsed to one line each; opening one shows the field-level diff in
+ * words rather than as JSON. Deletions are set apart visually because they are
+ * the only rows that can be acted on, and the only ones whose data is gone.
+ */
+
+const OPERATIONS: AuditOperation[] = ['CREATE', 'UPDATE', 'DELETE', 'RESTORE'];
+
+const OPERATION_TINT: Record<AuditOperation, string> = {
+    CREATE: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+    UPDATE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+    DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+    RESTORE: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+};
+
+interface Filters {
+    model: string;
+    actor: string;
+    operation: string;
+    start: string;
+    end: string;
+}
+
+const EMPTY_FILTERS: Filters = { model: '', actor: '', operation: '', start: '', end: '' };
+
+const selectClass =
+    'h-9 rounded-md border border-border bg-field px-2 text-sm text-foreground';
+
+/** "3 champs" / "Instantané conservé" — the one-line gist of a row. */
+function summarize(event: AuditEventItem): string {
+    const count = Object.keys(event.changes).length;
+    if (event.operation === 'DELETE') {
+        return event.restorable ? 'Instantané conservé' : 'Sans instantané';
+    }
+    if (count === 0) return '—';
+    return count === 1 ? '1 champ' : `${count} champs`;
+}
+
+function DiffTable({ event }: { event: AuditEventItem }) {
+    const entries = Object.entries(event.changes);
+    if (entries.length === 0) {
+        return (
+            <p className="text-sm text-muted-foreground">
+                {event.operation === 'DELETE'
+                    ? 'L’enregistrement a été supprimé ; son contenu est conservé hors du journal pour permettre une restauration.'
+                    : 'Aucun champ suivi n’a changé.'}
+            </p>
+        );
+    }
+
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="text-xs text-muted-foreground text-left">
+                        <th className="font-normal py-1 pr-4">Champ</th>
+                        <th className="font-normal py-1 pr-4">Avant</th>
+                        <th className="font-normal py-1">Après</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {entries.map(([field, [before, after]]) => (
+                        <tr key={field} className="border-t border-border/60 align-top">
+                            <td className="py-1.5 pr-4 text-muted-foreground whitespace-nowrap">
+                                {fieldLabel(field)}
+                            </td>
+                            <td className="py-1.5 pr-4 text-foreground/70 break-words max-w-xs">
+                                {isReservedField(field) ? '—' : formatAuditValue(before)}
+                            </td>
+                            <td className="py-1.5 text-foreground break-words max-w-xs">
+                                {formatAuditValue(after)}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function EventRow({
+    event,
+    expanded,
+    onToggle,
+    onRestore,
+}: {
+    event: AuditEventItem;
+    expanded: boolean;
+    onToggle: () => void;
+    onRestore: (event: AuditEventItem) => void;
+}) {
+    const isDeletion = event.operation === 'DELETE';
+    const href = recordHref(event.model, event.recordId);
+
+    return (
+        <div
+            className={`rounded-lg border ${
+                isDeletion
+                    ? 'border-red-300 dark:border-red-900/60 bg-red-50/60 dark:bg-red-950/20'
+                    : 'border-border bg-card'
+            }`}
+        >
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2.5">
+                <button
+                    type="button"
+                    onClick={onToggle}
+                    aria-expanded={expanded}
+                    className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground shrink-0"
+                >
+                    {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                    <span className="sr-only">Voir le détail</span>
+                </button>
+
+                <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                    {formatDateTime(event.at)}
+                </span>
+
+                <Badge className={OPERATION_TINT[event.operation]}>
+                    {OPERATION_LABELS[event.operation]}
+                </Badge>
+
+                <span className="text-sm text-foreground font-medium">
+                    {modelLabel(event.model)}
+                    {event.recordId !== '*' && (
+                        <span className="text-muted-foreground font-normal">
+                            {' '}n°{event.recordId}
+                        </span>
+                    )}
+                </span>
+
+                {href && (
+                    <Link
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={`Ouvrir ${modelLabel(event.model)} n°${event.recordId}`}
+                    >
+                        <ExternalLink size={13} />
+                    </Link>
+                )}
+
+                <span className="text-xs text-muted-foreground">par {event.actorName}</span>
+
+                <span className="text-xs text-muted-foreground ml-auto">{summarize(event)}</span>
+
+                {isDeletion && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!event.restorable}
+                        title={event.restoreBlocker ?? 'Recréer cet enregistrement'}
+                        onClick={() => onRestore(event)}
+                    >
+                        <RotateCcw size={13} className="mr-1.5" />
+                        Restaurer
+                    </Button>
+                )}
+            </div>
+
+            {expanded && (
+                <div className="px-3 pb-3 pt-1 border-t border-border/60">
+                    <DiffTable event={event} />
+                    {isDeletion && event.restoreBlocker && (
+                        <p className="text-xs text-muted-foreground mt-2">{event.restoreBlocker}</p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** A page of the journal, tagged with the query it answers. */
+interface LoadedPage {
+    key: string;
+    data: AuditEventsResponse;
+    events: AuditEventItem[];
+}
+
+export default function AuditTimeline() {
+    const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+    const [reloadToken, setReloadToken] = useState(0);
+    const [page, setPage] = useState<LoadedPage | null>(null);
+    const [expanded, setExpanded] = useState<number | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loadingMore, setLoadingMore] = useState(false);
+    // `pending` is only ever replaced, never cleared: Radix keeps the content
+    // mounted while it animates out, and clearing it would flash "n° ?" on the
+    // way. `dialogOpen` is what actually opens and closes it.
+    const [pending, setPending] = useState<AuditEventItem | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [restoring, setRestoring] = useState(false);
+
+    const query = new URLSearchParams(
+        Object.entries(filters).filter(([, value]) => value !== '')
+    ).toString();
+    // The token forces a reload after a restore, which adds a RESTORE row.
+    const queryKey = `${query}|${reloadToken}`;
+
+    // Like the rest of the dashboard: results carry the key they answer, so
+    // "loading" is derived rather than set inside the effect
+    // (react-hooks/set-state-in-effect).
+    useEffect(() => {
+        let cancelled = false;
+        fetch(`/api/stats/audit?${query}`)
+            .then((res) => {
+                if (!res.ok) throw new Error(`${res.status}`);
+                return res.json();
+            })
+            .then((data: AuditEventsResponse) => {
+                if (!cancelled) { setPage({ key: queryKey, data, events: data.events }); setError(null); }
+            })
+            .catch(() => { if (!cancelled) setError('Impossible de charger le journal.'); });
+        return () => { cancelled = true; };
+    }, [queryKey, query]);
+
+    // Collapse the open row when the query changes — adjusted during render,
+    // the pattern used by the disponibilités tables.
+    const [syncedKey, setSyncedKey] = useState(queryKey);
+    if (queryKey !== syncedKey) {
+        setSyncedKey(queryKey);
+        setExpanded(null);
+    }
+
+    const current = page?.key === queryKey ? page : null;
+    const loading = current === null;
+    const events = current?.events ?? [];
+    // Facets come from the last successful load, so the filters stay usable
+    // while the next one is in flight.
+    const data = current?.data ?? page?.data ?? null;
+
+    const loadMore = async () => {
+        const cursor = current?.data.nextCursor;
+        if (cursor === null || cursor === undefined) return;
+        setLoadingMore(true);
+        try {
+            const res = await fetch(`/api/stats/audit?${query}&before=${cursor}`);
+            if (!res.ok) throw new Error(`${res.status}`);
+            const next: AuditEventsResponse = await res.json();
+            setPage((previous) =>
+                previous && previous.key === queryKey
+                    ? { key: previous.key, data: next, events: [...previous.events, ...next.events] }
+                    : previous
+            );
+        } catch {
+            setError('Impossible de charger la suite du journal.');
+        } finally {
+            setLoadingMore(false);
+        }
+    };
+
+    const confirmRestore = async () => {
+        if (!pending) return;
+        setRestoring(true);
+        try {
+            const res = await fetch(`/api/stats/audit/${pending.id}/restore`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirm: true }),
+            });
+            const payload: AuditRestoreResponse = await res.json();
+            toast({
+                title: payload.success ? 'Enregistrement restauré' : 'Restauration impossible',
+                description: payload.message,
+                variant: payload.success ? undefined : 'destructive',
+            });
+            // The RESTORE event lands in the trail too, so reload either way:
+            // a refusal also means the list on screen may be out of date.
+            setReloadToken((token) => token + 1);
+        } catch {
+            toast({
+                title: 'Restauration impossible',
+                description: 'La requête a échoué.',
+                variant: 'destructive',
+            });
+        } finally {
+            setRestoring(false);
+            setDialogOpen(false);
+        }
+    };
+
+    const askRestore = (event: AuditEventItem) => {
+        setPending(event);
+        setDialogOpen(true);
+    };
+
+    const retention = data?.retention;
+    const set = (key: keyof Filters) => (value: string) =>
+        setFilters((current) => ({ ...current, [key]: value }));
+
+    return (
+        <AdminCard className="p-4 md:p-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-lg font-semibold text-foreground">
+                    Journal des modifications
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                    {retention
+                        ? `${retention.rows} événement(s) conservé(s) · ${retention.retentionDays} derniers jours · ${retention.megabytes} Mo`
+                        : 'Chargement…'}
+                </p>
+            </div>
+
+            {retention?.underPressure && (
+                <div className="mt-3 rounded-lg border border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-foreground flex items-start gap-2">
+                    <AlertTriangle size={16} className="mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>
+                        Le journal occupe {retention.megabytes} Mo et a dépassé le seuil de{' '}
+                        {retention.softLimitMb} Mo : la rétention a été ramenée automatiquement à{' '}
+                        {retention.retentionDays} jours pour protéger la base.
+                    </span>
+                </div>
+            )}
+
+            {/* ── filters ────────────────────────────────────────────────── */}
+            <div className="flex flex-wrap items-end gap-3 mt-4 mb-4">
+                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    Type d’enregistrement
+                    <select
+                        className={selectClass}
+                        value={filters.model}
+                        onChange={(e) => set('model')(e.target.value)}
+                    >
+                        <option value="">Tous</option>
+                        {(data?.models ?? []).map((model) => (
+                            <option key={model} value={model}>{modelLabel(model)}</option>
+                        ))}
+                    </select>
+                </label>
+
+                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    Auteur
+                    <select
+                        className={selectClass}
+                        value={filters.actor}
+                        onChange={(e) => set('actor')(e.target.value)}
+                    >
+                        <option value="">Tous</option>
+                        {(data?.actors ?? []).map((actor) => (
+                            <option key={actor.id} value={actor.id}>{actor.name}</option>
+                        ))}
+                    </select>
+                </label>
+
+                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    Opération
+                    <div className="flex flex-wrap gap-1">
+                        <Button
+                            size="sm"
+                            variant={filters.operation === '' ? 'default' : 'outline'}
+                            onClick={() => set('operation')('')}
+                        >
+                            Toutes
+                        </Button>
+                        {OPERATIONS.map((operation) => (
+                            <Button
+                                key={operation}
+                                size="sm"
+                                variant={filters.operation === operation ? 'default' : 'outline'}
+                                onClick={() => set('operation')(operation)}
+                            >
+                                {OPERATION_LABELS[operation]}
+                            </Button>
+                        ))}
+                    </div>
+                </div>
+
+                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    Du
+                    <Input
+                        type="date"
+                        value={filters.start}
+                        onChange={(e) => set('start')(e.target.value)}
+                        className="h-9 w-40 bg-field border-border text-foreground"
+                    />
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    Au
+                    <Input
+                        type="date"
+                        value={filters.end}
+                        onChange={(e) => set('end')(e.target.value)}
+                        className="h-9 w-40 bg-field border-border text-foreground"
+                    />
+                </label>
+
+                {query !== '' && (
+                    <Button size="sm" variant="ghost" onClick={() => setFilters(EMPTY_FILTERS)}>
+                        Réinitialiser
+                    </Button>
+                )}
+            </div>
+
+            {error && <p className="text-sm text-destructive mb-3" role="alert">{error}</p>}
+
+            {/* ── timeline ───────────────────────────────────────────────── */}
+            {loading && events.length === 0 && (
+                <p className="text-sm text-muted-foreground py-8 text-center">Chargement…</p>
+            )}
+
+            {!loading && events.length === 0 && (
+                <div className="py-10 text-center">
+                    <History size={22} className="mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-foreground">Aucune modification à afficher.</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                        Le journal ne conserve que les{' '}
+                        <strong>{retention?.retentionDays ?? 14} derniers jours</strong> : au-delà,
+                        les événements sont purgés automatiquement pour ne pas saturer la base.
+                        {query !== '' && ' Essayez d’élargir les filtres.'}
+                    </p>
+                </div>
+            )}
+
+            {events.length > 0 && (
+                <div className={`space-y-1.5 ${loading ? 'opacity-60' : ''}`}>
+                    {events.map((event) => (
+                        <EventRow
+                            key={event.id}
+                            event={event}
+                            expanded={expanded === event.id}
+                            onToggle={() => setExpanded(expanded === event.id ? null : event.id)}
+                            onRestore={askRestore}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {current?.data.nextCursor !== null && current?.data.nextCursor !== undefined && (
+                <div className="flex justify-center mt-4">
+                    <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
+                        {loadingMore && <Loader2 size={14} className="mr-2 animate-spin" />}
+                        Charger plus
+                    </Button>
+                </div>
+            )}
+
+            <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            Restaurer {pending && modelLabel(pending.model)} n°{pending?.recordId} ?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            L’enregistrement sera recréé tel qu’il était au moment de sa suppression,
+                            avec le même identifiant. Si un enregistrement occupe déjà cet identifiant,
+                            la restauration sera refusée — rien ne sera écrasé.
+                            {pending?.model === 'User' && (
+                                <> Le mot de passe n’est pas conservé par le journal : la personne
+                                devra le réinitialiser.</>
+                            )}{' '}
+                            La restauration est elle-même enregistrée dans le journal.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={restoring}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); void confirmRestore(); }}
+                            disabled={restoring}
+                        >
+                            {restoring && <Loader2 size={14} className="mr-2 animate-spin" />}
+                            Restaurer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </AdminCard>
+    );
+}

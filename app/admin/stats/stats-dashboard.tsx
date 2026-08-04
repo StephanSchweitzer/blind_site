@@ -4,31 +4,35 @@ import React, { useEffect, useState } from 'react';
 import { AdminCard } from '@/components/ui/admin';
 import { Button } from '@/components/ui/button';
 import type {
-    ReaderStatsResponse,
+    MemberStatsResponse,
     StaffMetric,
     StaffStatsResponse,
     TrendsResponse,
 } from '@/types';
 import {
+    METRIC_HINTS,
     METRIC_LABELS,
     RANGE_PRESETS,
     RangePreset,
+    STAFF_METRIC_ORDER,
     resolveRange,
 } from './stats-utils';
 import TrendCards from './trend-cards';
 import StaffHeatmap from './staff-heatmap';
 import DetailDrawer, { DrawerSelection } from './detail-drawer';
-import ReaderTimeline from './reader-timeline';
+import MembersCard from './members-card';
+import AuditTimeline from './audit-timeline';
 
 // Super-admin activity dashboard. All charts consume pre-aggregated data
 // (one GROUP BY per request); record lists are only fetched when a cell is
-// clicked (see DetailDrawer).
+// clicked (see DetailDrawer) or when the journal is paged.
 //
 // Fetched results are tagged with the query key they answer, so "loading" is
 // derived (stored key ≠ current key) instead of set synchronously in effects
 // (react-hooks/set-state-in-effect).
-
-const METRICS: StaffMetric[] = ['books', 'billEvents', 'orders'];
+//
+// The journal keeps its own state: its window is the retention window, not the
+// period presets, so wiring it to them would just promise data it cannot have.
 
 interface Keyed<T> {
     key: string;
@@ -47,7 +51,7 @@ export default function StatsDashboard() {
 
     const [staff, setStaff] = useState<Keyed<StaffStatsResponse> | null>(null);
     const [trends, setTrends] = useState<Keyed<TrendsResponse> | null>(null);
-    const [readers, setReaders] = useState<Keyed<ReaderStatsResponse & { asOf: number }> | null>(null);
+    const [members, setMembers] = useState<Keyed<MemberStatsResponse> | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const [selection, setSelection] = useState<DrawerSelection | null>(null);
@@ -69,22 +73,20 @@ export default function StatsDashboard() {
         return () => { cancelled = true; };
     }, [staffKey, metric, rangeQuery, range.granularity]);
 
-    // Trend cards + reader timeline: refetch on range change only.
+    // Trend cards + Membres: refetch on range change only.
     useEffect(() => {
         let cancelled = false;
         fetchJson<TrendsResponse>(`/api/stats/trends?${rangeQuery}`)
             .then((data) => { if (!cancelled) setTrends({ key: rangeQuery, data }); })
             .catch(() => { if (!cancelled) setError('Impossible de charger les tendances.'); });
-        fetchJson<ReaderStatsResponse>(`/api/stats/readers?${rangeQuery}`)
-            .then((data) => {
-                if (!cancelled) setReaders({ key: rangeQuery, data: { ...data, asOf: Date.now() } });
-            })
-            .catch(() => { if (!cancelled) setError('Impossible de charger les statistiques lecteurs.'); });
+        fetchJson<MemberStatsResponse>(`/api/stats/members?${rangeQuery}`)
+            .then((data) => { if (!cancelled) setMembers({ key: rangeQuery, data }); })
+            .catch(() => { if (!cancelled) setError('Impossible de charger les statistiques membres.'); });
         return () => { cancelled = true; };
     }, [rangeQuery]);
 
     const staffLoading = staff?.key !== staffKey;
-    const readerData = readers?.key === rangeQuery ? readers.data : null;
+    const metricHint = METRIC_HINTS[metric];
 
     return (
         <div className="space-y-6">
@@ -112,12 +114,12 @@ export default function StatsDashboard() {
             <TrendCards trends={trends?.key === rangeQuery ? trends.data : null} />
 
             <AdminCard className="p-4 md:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                     <h2 className="text-lg font-semibold text-foreground">
                         Activité des permanents
                     </h2>
                     <div className="flex flex-wrap gap-1">
-                        {METRICS.map((m) => (
+                        {STAFF_METRIC_ORDER.map((m) => (
                             <Button
                                 key={m}
                                 size="sm"
@@ -129,6 +131,9 @@ export default function StatsDashboard() {
                         ))}
                     </div>
                 </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                    {metricHint ?? 'Cliquez une case pour voir les enregistrements correspondants.'}
+                </p>
                 <StaffHeatmap
                     start={range.start}
                     end={range.end}
@@ -148,14 +153,9 @@ export default function StatsDashboard() {
                 />
             </AdminCard>
 
-            <AdminCard className="p-4 md:p-6">
-                <ReaderTimeline
-                    start={range.start}
-                    end={range.end}
-                    data={readerData}
-                    now={readerData?.asOf ?? 0}
-                />
-            </AdminCard>
+            <MembersCard data={members?.key === rangeQuery ? members.data : null} />
+
+            <AuditTimeline />
 
             {selection && (
                 <DetailDrawer selection={selection} onClose={() => setSelection(null)} />

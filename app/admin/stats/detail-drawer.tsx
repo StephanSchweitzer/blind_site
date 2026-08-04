@@ -93,40 +93,57 @@ export default function DetailDrawer({
                     {items?.length === 0 && (
                         <p className="text-sm text-muted-foreground">Aucun enregistrement.</p>
                     )}
-                    {items?.map((item) => (
-                        <Link
-                            key={item.id}
-                            href={item.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block rounded-lg border border-border p-3 hover:bg-accent transition-colors"
-                        >
-                            <div className="flex items-start justify-between gap-2">
-                                <span className="text-sm font-medium text-foreground">
-                                    {item.title}
-                                </span>
-                                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
-                            </div>
-                            {item.subtitle && (
-                                <p className="text-xs text-muted-foreground mt-0.5">{item.subtitle}</p>
-                            )}
-                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                <span className="text-xs text-muted-foreground">
-                                    {formatDateTime(item.at)}
-                                </span>
-                                {item.type && (
-                                    <Badge className={TYPE_TINT[item.type] ?? 'bg-muted text-foreground'}>
-                                        {TYPE_LABEL[item.type] ?? item.type}
-                                    </Badge>
+                    {items?.map((item) => {
+                        // Some traced records have no edit screen to open (a
+                        // Genre, a CMS block): those rows render flat, not as a
+                        // link that goes nowhere.
+                        const body = (
+                            <>
+                                <div className="flex items-start justify-between gap-2">
+                                    <span className="text-sm font-medium text-foreground">
+                                        {item.title}
+                                    </span>
+                                    {item.href && (
+                                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                                    )}
+                                </div>
+                                {item.subtitle && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">{item.subtitle}</p>
                                 )}
-                                {item.needsReview && (
-                                    <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300">
-                                        à vérifier
-                                    </Badge>
-                                )}
+                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                    <span className="text-xs text-muted-foreground">
+                                        {formatDateTime(item.at)}
+                                    </span>
+                                    {item.type && (
+                                        <Badge className={TYPE_TINT[item.type] ?? 'bg-muted text-foreground'}>
+                                            {TYPE_LABEL[item.type] ?? item.type}
+                                        </Badge>
+                                    )}
+                                    {item.needsReview && (
+                                        <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300">
+                                            à vérifier
+                                        </Badge>
+                                    )}
+                                </div>
+                            </>
+                        );
+
+                        return item.href ? (
+                            <Link
+                                key={item.id}
+                                href={item.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block rounded-lg border border-border p-3 hover:bg-accent transition-colors"
+                            >
+                                {body}
+                            </Link>
+                        ) : (
+                            <div key={item.id} className="rounded-lg border border-border p-3">
+                                {body}
                             </div>
-                        </Link>
-                    ))}
+                        );
+                    })}
                 </div>
             </aside>
         </>
