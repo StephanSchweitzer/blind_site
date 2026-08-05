@@ -100,14 +100,49 @@ export const STAFF_METRIC_ORDER: StaffMetric[] = [
     'auditEvents',
 ];
 
-/** Trend-card order: the actor-backed series first, then the org-wide ones. */
-export const TREND_METRIC_ORDER: TrendMetric[] = [
-    ...STAFF_METRIC_ORDER,
-    'payments',
-    'bills',
-    'newMembers',
-    'activityEvents',
+/**
+ * The trend strip, clustered.
+ *
+ * Eleven cards side by side read as one undifferentiated wall — nothing groups
+ * « Livres ajoutés » with « Événements de facturation » except that both are
+ * counts. Three tabs of two or three cards each give every number a heading that
+ * says what question it answers.
+ *
+ * Two series are deliberately NOT here:
+ *   - newMembers / activityEvents moved into the Membres card, where the
+ *     Lecteurs / Auditeurs / Autres filter makes them say more than a bare total;
+ *   - auditEvents left the strip altogether. The journal is purged after
+ *     AUDIT_RETENTION_DAYS, so on the 3-month and 6-month presets that card
+ *     drew two weeks of real data followed by a long tail of zeros — a decline
+ *     that never happened. « Journal des modifications » states the same thing
+ *     truthfully in its own header (rows kept, window, size on disk).
+ */
+export interface TrendTab {
+    value: string;
+    label: string;
+    metrics: TrendMetric[];
+}
+
+export const TREND_TABS: TrendTab[] = [
+    {
+        value: 'production',
+        label: 'Production',
+        metrics: ['books', 'coupsDeCoeur', 'news'],
+    },
+    {
+        value: 'demandes',
+        label: 'Demandes',
+        metrics: ['orders', 'assignments'],
+    },
+    {
+        value: 'facturation',
+        label: 'Facturation',
+        metrics: ['bills', 'billEvents', 'payments'],
+    },
 ];
+
+/** Every series the strip still shows, in reading order. */
+export const TREND_METRIC_ORDER: TrendMetric[] = TREND_TABS.flatMap((tab) => tab.metrics);
 
 /**
  * A one-line caveat under a card, where the number alone would mislead. Only

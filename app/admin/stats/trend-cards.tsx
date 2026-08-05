@@ -1,18 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { AdminCard } from '@/components/ui/admin';
 import type { TrendMetric, TrendPoint, TrendsResponse } from '@/types';
 import {
     METRIC_HINTS,
     METRIC_LABELS,
-    TREND_METRIC_ORDER,
+    TREND_TABS,
     formatDayShort,
 } from './stats-utils';
 
-// Org-wide weekly totals, one small sparkline card per tracked series.
-// Eleven of them, so the cards are deliberately compact: a number, a shape, and
-// a line of context — the heatmap below is where a series gets interrogated.
+// Org-wide totals, one small sparkline card per tracked series, grouped into
+// tabs (see TREND_TABS for what is clustered with what, and what left the strip).
+//
+// The tabs are presentation only: /api/stats/trends returns every series in one
+// response, so switching tabs costs no request. The period total sits on each
+// tab label so a hidden cluster still announces whether anything happened —
+// otherwise tabbing would trade clutter for a hunt.
+//
+// Built on the page's own pill idiom rather than a new Tabs dependency, but with
+// the tablist semantics pills normally lack: this portal is run by an
+// association serving visually impaired readers, and a control that a screen
+// reader cannot announce or an arrow key cannot reach is not an option here.
 
 function Sparkline({ points }: { points: TrendPoint[] }) {
     const width = 220;
@@ -75,17 +84,85 @@ function TrendCard({ metric, points, loaded }: {
     );
 }
 
+const sumOf = (trends: TrendsResponse | null, metrics: TrendMetric[]): number =>
+    metrics.reduce(
+        (total, metric) => total + (trends?.[metric] ?? []).reduce((sum, p) => sum + p.count, 0),
+        0
+    );
+
 export default function TrendCards({ trends }: { trends: TrendsResponse | null }) {
+    const [active, setActive] = useState(TREND_TABS[0].value);
+    const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+    const activeTab = TREND_TABS.find((tab) => tab.value === active) ?? TREND_TABS[0];
+
+    // Arrow keys move between tabs and activate as they go, which is the
+    // expected behaviour for a tablist whose panels are already loaded.
+    const onKeyDown = (event: React.KeyboardEvent) => {
+        const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+        if (delta === 0) return;
+        event.preventDefault();
+        const index = TREND_TABS.findIndex((tab) => tab.value === active);
+        const next = TREND_TABS[(index + delta + TREND_TABS.length) % TREND_TABS.length];
+        setActive(next.value);
+        tabRefs.current[next.value]?.focus();
+    };
+
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {TREND_METRIC_ORDER.map((metric) => (
-                <TrendCard
-                    key={metric}
-                    metric={metric}
-                    points={trends?.[metric] ?? []}
-                    loaded={trends !== null}
-                />
-            ))}
+        <div>
+            <div
+                role="tablist"
+                aria-label="Séries suivies"
+                onKeyDown={onKeyDown}
+                className="flex flex-wrap gap-1 mb-3"
+            >
+                {TREND_TABS.map((tab) => {
+                    const selected = tab.value === active;
+                    return (
+                        <button
+                            key={tab.value}
+                            ref={(node) => { tabRefs.current[tab.value] = node; }}
+                            type="button"
+                            role="tab"
+                            id={`trend-tab-${tab.value}`}
+                            aria-selected={selected}
+                            aria-controls={`trend-panel-${tab.value}`}
+                            tabIndex={selected ? 0 : -1}
+                            onClick={() => setActive(tab.value)}
+                            className={`h-9 rounded-md px-3 text-sm transition-colors ${
+                                selected
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'border border-border text-foreground hover:bg-muted'
+                            }`}
+                        >
+                            {tab.label}
+                            <span
+                                className={`ml-2 tabular-nums ${
+                                    selected ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                }`}
+                            >
+                                {trends ? sumOf(trends, tab.metrics) : '…'}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div
+                role="tabpanel"
+                id={`trend-panel-${activeTab.value}`}
+                aria-labelledby={`trend-tab-${activeTab.value}`}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+            >
+                {activeTab.metrics.map((metric) => (
+                    <TrendCard
+                        key={metric}
+                        metric={metric}
+                        points={trends?.[metric] ?? []}
+                        loaded={trends !== null}
+                    />
+                ))}
+            </div>
         </div>
     );
 }
