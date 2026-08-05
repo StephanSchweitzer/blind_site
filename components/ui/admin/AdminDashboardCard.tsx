@@ -2,7 +2,29 @@
 
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
-import { BookOpen, Theater, Newspaper, List, ShoppingCart, UserCheck, Headphones, FileText, Mic, Copy, HeartHandshake, LucideIcon } from 'lucide-react';
+import {
+    BookOpen,
+    Theater,
+    Newspaper,
+    List,
+    ShoppingCart,
+    UserCheck,
+    Headphones,
+    FileText,
+    Mic,
+    Copy,
+    HeartHandshake,
+    FolderX,
+    CreditCard,
+    KeyRound,
+    CalendarClock,
+    MapPin,
+    Users,
+    History,
+    Info,
+    Handshake,
+    LucideIcon,
+} from 'lucide-react';
 
 interface AdminDashboardCardProps {
     title: string;
@@ -87,6 +109,15 @@ const iconMap: Record<string, LucideIcon> = {
     'Lecteurs': Mic,
     'Auditeurs': Headphones,
     'Donateurs': HeartHandshake,
+    'Audio orphelin': FolderX,
+    'Paiements': CreditCard,
+    'Permanents': KeyRound,
+    'Disponibilités': CalendarClock,
+    'Contact': MapPin,
+    'Équipe': Users,
+    'Historique': History,
+    'Infos pratiques': Info,
+    'Nous rejoindre': Handshake,
 };
 
 export function AdminDashboardCard({
