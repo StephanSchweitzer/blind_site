@@ -8,6 +8,7 @@
  *
  *   Book.audioLinkStatus  OK | FOLDER_EMPTY | FOLDER_MISSING | NO_PATH
  *   Book.audioTrackCount  number of audio files in the folder (OK only)
+ *   Book.audioSizeKb      weight of those files in Kio (OK only) — drives the tarif
  *   Book.audioCheckedAt   when this ran
  *   OrphanAudioFolder     one row per bucket folder no book points at
  *
@@ -24,6 +25,7 @@ import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { dbPathToPrefix, groupByFolder, parseFolder, inspectFolder } from './audio-match-rules';
+import { bytesToKb } from '../lib/pricing';
 
 const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
@@ -89,12 +91,14 @@ async function main() {
     const ids: number[] = [];
     const statuses: Status[] = [];
     const trackCounts: (number | null)[] = [];
+    const sizesKb: (number | null)[] = [];
     const claimed = new Set<string>();
     const tally: Record<Status, number> = { OK: 0, FOLDER_EMPTY: 0, FOLDER_MISSING: 0, NO_PATH: 0 };
 
     for (const b of books) {
         let status: Status;
         let tracks: number | null = null;
+        let sizeKb: number | null = null;
 
         if (!b.audio_filepath?.trim()) {
             status = 'NO_PATH';
@@ -104,6 +108,9 @@ async function main() {
             if (sections) {
                 status = 'OK';
                 tracks = sections.length;
+                // Weight of exactly the tracks just counted — it is what the CD
+                // tarif is computed from, so it lives and dies with the count.
+                sizeKb = bytesToKb(inspectFolder(sections).bytes);
                 claimed.add(prefix);
             } else {
                 status = allFolders.has(prefix) ? 'FOLDER_EMPTY' : 'FOLDER_MISSING';
@@ -114,6 +121,7 @@ async function main() {
         ids.push(b.id);
         statuses.push(status);
         trackCounts.push(tracks);
+        sizesKb.push(sizeKb);
     }
 
     console.log('Livres');
@@ -134,18 +142,22 @@ async function main() {
         const idChunk = ids.slice(i, i + CHUNK);
         const stChunk = statuses.slice(i, i + CHUNK);
         const tcChunk = trackCounts.slice(i, i + CHUNK);
+        const kbChunk = sizesKb.slice(i, i + CHUNK);
         written += await prisma.$executeRawUnsafe(
             `UPDATE "Book" b
                SET "audioLinkStatus" = v.status::"AudioLinkStatus",
                    "audioTrackCount" = v.tc,
+                   "audioSizeKb"     = v.kb,
                    "audioCheckedAt"  = NOW()
               FROM (SELECT unnest($1::int[])  AS id,
                            unnest($2::text[]) AS status,
-                           unnest($3::int[])  AS tc) v
+                           unnest($3::int[])  AS tc,
+                           unnest($4::int[])  AS kb) v
              WHERE b.id = v.id`,
             idChunk,
             stChunk,
             tcChunk,
+            kbChunk,
         );
         process.stdout.write(`\r  ${written} livres mis à jour…`);
     }

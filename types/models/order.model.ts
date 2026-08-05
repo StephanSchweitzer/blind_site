@@ -293,4 +293,13 @@ export type SerializedOrderTableRow = Omit<
 // Lightweight selection shapes consumed by the order modal selectors
 // (match the /api/user/:id and /api/books/:id payloads)
 export type OrderUserOption = { id: number; name: string | null; email: string };
-export type OrderBookOption = { id: number; title: string; author: string };
+export type OrderBookOption = {
+    id: number;
+    title: string;
+    author: string;
+    // /api/books/:id returns the whole row, so these ride along. Optional because
+    // the same shape is also built from the lighter search results, which have
+    // neither. audioSizeKb is what the tarif conseillé is computed from.
+    audio_filepath?: string | null;
+    audioSizeKb?: number | null;
+};

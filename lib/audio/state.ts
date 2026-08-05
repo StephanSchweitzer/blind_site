@@ -1,11 +1,13 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
+import { bytesToKb } from '@/lib/pricing';
+import { repriceOpenOrdersForBook } from '@/lib/pricing-sync';
 import { listRawObjects } from './bucket';
 
 /**
- * Keeps Book.audioLinkStatus / audioTrackCount / audioCheckedAt honest after the
- * portal changes what is in a folder.
+ * Keeps Book.audioLinkStatus / audioTrackCount / audioSizeKb / audioCheckedAt
+ * honest after the portal changes what is in a folder.
  *
  * These columns are a cache of the bucket, normally refreshed in bulk by
  * scripts/sync-audio-links.ts. Once an admin can upload and delete from the UI
@@ -57,7 +59,11 @@ export function isKeyInsidePrefix(key: string, prefix: string): boolean {
 export interface RefreshResult {
     status: AudioLinkStatusValue;
     trackCount: number | null;
+    /** Weight of those tracks in Kio — null whenever trackCount is. */
+    sizeKb: number | null;
     prefix: string;
+    /** Demandes whose tarif this refresh realigned on the new weight. */
+    repriced: number;
 }
 
 /**
@@ -65,11 +71,24 @@ export interface RefreshResult {
  *
  * Deleting the last track leaves the folder present but audio-free, so the
  * status becomes FOLDER_EMPTY — never OK with a count of zero.
+ *
+ * A changed weight also re-tarifies the book's still-adjustable demandes. That
+ * coupling is deliberate: the tarif is derived from the weight, and this is the
+ * one function every path that can change the weight already goes through — an
+ * upload, a deleted or restored track, an orphan folder relinked, a fusion. Put
+ * the call in the routes instead and the next audio route to be written forgets
+ * it, which is the exact failure the tarif was introduced to stop. See
+ * repriceOpenOrdersForBook for what it will and won't touch.
+ *
+ * `performedById` names who caused the re-read, for the BillEvent it may write.
  */
-export async function refreshBookAudioState(bookId: number): Promise<RefreshResult> {
+export async function refreshBookAudioState(
+    bookId: number,
+    performedById: number | null = null,
+): Promise<RefreshResult> {
     const book = await prisma.book.findUnique({
         where: { id: bookId },
-        select: { audio_filepath: true },
+        select: { audio_filepath: true, audioSizeKb: true },
     });
     if (!book) throw new Error(`Livre ${bookId} introuvable`);
 
@@ -77,6 +96,7 @@ export async function refreshBookAudioState(bookId: number): Promise<RefreshResu
 
     let status: AudioLinkStatusValue;
     let trackCount: number | null = null;
+    let sizeKb: number | null = null;
 
     if (!prefix) {
         status = 'NO_PATH';
@@ -86,6 +106,10 @@ export async function refreshBookAudioState(bookId: number): Promise<RefreshResu
         if (audio.length) {
             status = 'OK';
             trackCount = audio.length;
+            // Tied to trackCount on purpose: the weight describes the tracks we
+            // just counted, so "no count" and "no weight" always travel together
+            // rather than leaving a stale size behind a broken link.
+            sizeKb = bytesToKb(audio.reduce((total, o) => total + o.size, 0));
         } else if (objects.length) {
             // The folder exists — B2's .bzEmpty placeholder or some stray file —
             // but holds no audio.
@@ -100,9 +124,18 @@ export async function refreshBookAudioState(bookId: number): Promise<RefreshResu
         data: {
             audioLinkStatus: status,
             audioTrackCount: trackCount,
+            audioSizeKb: sizeKb,
             audioCheckedAt: new Date(),
         },
     });
 
-    return { status, trackCount, prefix };
+    // Only on a real move. Re-reads are frequent and mostly confirm what was
+    // already stored; repricing on every one would add an AMOUNT_CHANGED row to
+    // the bill history that records nothing having happened.
+    const repriced =
+        sizeKb !== null && sizeKb !== book.audioSizeKb
+            ? (await repriceOpenOrdersForBook(bookId, performedById)).repriced
+            : 0;
+
+    return { status, trackCount, sizeKb, prefix, repriced };
 }

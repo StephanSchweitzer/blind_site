@@ -84,10 +84,18 @@ export interface UploadOutcome {
     becameAvailable: boolean;
     /** Files that needed more than one attempt but did land. For the summary. */
     recovered: number;
+    /**
+     * Demandes whose tarif the commit realigned on the new weight. Reported so
+     * the admin learns money moved from the same toast, rather than discovering
+     * it on a facture later. A batch over MAX_FILES_PER_CHUNK commits more than
+     * once and each commit re-tarifies at the weight known so far; the last
+     * count is the one that matches the finished folder.
+     */
+    repriced: number;
 }
 
 /** Nothing landed — every early exit from `upload` returns this. */
-const FAILED: UploadOutcome = { ok: false, becameAvailable: false, recovered: 0 };
+const FAILED: UploadOutcome = { ok: false, becameAvailable: false, recovered: 0, repriced: 0 };
 
 interface SignedFile {
     originalName: string;
@@ -482,6 +490,7 @@ export function useAudioUpload(bookId: number) {
             };
 
             let becameAvailable = false;
+            let repriced = 0;
             let aborted = false;
             let pending = files;
 
@@ -637,6 +646,11 @@ export function useAudioUpload(bookId: number) {
                         }
 
                         if (data?.becameAvailable === true) becameAvailable = true;
+                        // Overwrite rather than accumulate: each chunk re-tarifies
+                        // the same demandes, so summing would count them twice.
+                        if (typeof data?.repriced === 'number' && data.repriced > 0) {
+                            repriced = data.repriced;
+                        }
 
                         // A file that transferred cleanly can still be absent or
                         // truncated in the bucket. Those are marked recoverable
@@ -716,11 +730,11 @@ export function useAudioUpload(bookId: number) {
                         (stillFailed.length > 1 ? 's' : '') +
                         '. Le détail et la marche à suivre sont indiqués pour chacun ci-dessous.',
                 );
-                return { ok: false, becameAvailable, recovered };
+                return { ok: false, becameAvailable, recovered, repriced };
             }
 
             setPhase('done');
-            return { ok: true, becameAvailable, recovered };
+            return { ok: true, becameAvailable, recovered, repriced };
         },
         [bookId, publish],
     );

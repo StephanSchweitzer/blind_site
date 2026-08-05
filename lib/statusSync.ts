@@ -276,12 +276,56 @@ export function guardClosureDateRequiresTermine(args: {
     );
 }
 
+/**
+ * Pushes an attribution's status onto its demande — and the date de clôture that
+ * goes with it.
+ *
+ * A demande is normally closed through its own route, which stamps the date via
+ * resolveClosureDate. But an attribution passed « Terminé » closes its demande
+ * from here instead, and this used to write nothing but `statusId` — leaving a
+ * demande « Terminé » with no date de clôture, against the promise the form and
+ * guardClosureDateRequiresTermine both make ("la date est alors renseignée
+ * automatiquement").
+ *
+ * Nothing rejected that pair, which is what made it stick: resolveClosureDate
+ * only acts on a crossing, so a demande already sitting on « Terminé » never got
+ * its date filled in by a later edit either. The day it closed was simply lost,
+ * for every demande ever closed through its attribution. Both paths now derive
+ * the date the same way.
+ *
+ * The previous status is read here rather than passed in: this runs inside the
+ * caller's transaction, and it is the *demande's* status — not the attribution's
+ * — that decides whether the date is being stamped or cleared. The stored date
+ * itself is never needed: when nothing is crossing the « Terminé » boundary the
+ * column is left untouched, so whatever is already there survives on its own.
+ *
+ * No explicit date is ever supplied on this path: an attribution has no say over
+ * *which* day the demande closed, only that it did. resolveClosureDate therefore
+ * returns `undefined` whenever the demande isn't crossing into or out of
+ * « Terminé », which Prisma reads as "leave this column alone" — that is what
+ * keeps the 19 000+ legacy « Terminé » demandes from being back-stamped with
+ * today's date when an attribution moves between two non-final statuses.
+ *
+ * The result needs no guardClosureDateRequiresTermine check: it is a date only
+ * when the demande lands on « Terminé », and null when it leaves it.
+ */
 export async function syncOrderToStatus(
     tx: TransactionClient,
     orderId: number,
     statusId: number
 ): Promise<void> {
-    await tx.orders.update({ where: { id: orderId }, data: { statusId } });
+    const previous = await tx.orders.findUnique({
+        where: { id: orderId },
+        select: { statusId: true },
+    });
+
+    const closureDate = resolveClosureDate({
+        previousStatusId: previous?.statusId ?? null,
+        nextStatusId: statusId,
+        explicitClosureDate: undefined,
+    });
+
+    await tx.orders.update({ where: { id: orderId }, data: { statusId, closureDate } });
 }
 
 export async function syncAssignmentToStatus(

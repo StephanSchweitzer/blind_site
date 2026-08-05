@@ -108,13 +108,14 @@ export async function fuseBooks(
                 }
                 if (!sAudio && rAudio) {
                     data.audio_filepath = removed.audio_filepath;
-                    // audioLinkStatus/audioTrackCount describe the *folder*, so the reading
+                    // audioLinkStatus/audioTrackCount/audioSizeKb describe the *folder*, so the reading
                     // taken on the removed record is already the right one for the survivor.
                     // Copying it means the fused fiche shows its audio badge as soon as the
                     // page refreshes, instead of keeping the survivor's stale « pas d'audio »
                     // until the bucket re-read below (or the next nightly sync) lands.
                     data.audioLinkStatus = removed.audioLinkStatus;
                     data.audioTrackCount = removed.audioTrackCount;
+                    data.audioSizeKb = removed.audioSizeKb;
                     data.audioCheckedAt = removed.audioCheckedAt;
                 }
 

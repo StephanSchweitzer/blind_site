@@ -21,7 +21,7 @@ const SIZE_TOLERANCE_BYTES = 0;
  * size is reported back, and a wrong-size one is removed: a truncated upload is
  * a corrupt recording, and leaving it in place would make it look like a track.
  */
-export const POST = withAdmin(async (req, { params }) => {
+export const POST = withAdmin(async (req, { params, me }) => {
     const { id } = (await params) ?? {};
     const bookId = Number(id);
     if (!Number.isInteger(bookId)) {
@@ -72,7 +72,10 @@ export const POST = withAdmin(async (req, { params }) => {
         confirmed.push(key);
     }
 
-    const state = await refreshBookAudioState(bookId);
+    // This is where the weight of a recording finally becomes known, so it is
+    // also where the demandes still waiting on a tarif get theirs — the reader
+    // returned the book long before, and the demande is already « Terminé ».
+    const state = await refreshBookAudioState(bookId, me.id);
 
     // A book left « en attente » only because nobody had recorded it yet. Now
     // that a track has landed, the reason is gone: publish it rather than make
@@ -93,5 +96,6 @@ export const POST = withAdmin(async (req, { params }) => {
         status: state.status,
         trackCount: state.trackCount,
         becameAvailable,
+        repriced: state.repriced,
     });
 });

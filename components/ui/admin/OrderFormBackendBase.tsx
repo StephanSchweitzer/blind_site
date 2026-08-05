@@ -32,6 +32,7 @@ import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { STATUS } from '@/lib/statusSync';
+import { costSuggestion } from '@/lib/pricing';
 
 // N3 — required fields, visual top→bottom.
 const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'statusId', 'mediaFormatId', 'deliveryMethod'];
@@ -52,6 +53,8 @@ export interface Book {
     title: string;
     author: string;
     audio_filepath?: string | null;
+    /** Weight of the recording in Kio — drives the tarif conseillé. */
+    audioSizeKb?: number | null;
 }
 
 export interface Status {
@@ -316,12 +319,18 @@ export function OrderFormBackendBase({
         // Only when we actually auto-check duplication here should the
         // "cochée automatiquement" banner show.
         setDupAutoChecked(hasAudio);
+        // Le tarif dépend du poids de l'enregistrement : en changeant de livre on
+        // l'aligne sur le nouveau, sinon le coût du livre précédent resterait là
+        // sans que personne le remarque. Ça reste une proposition — le champ est
+        // libre juste en dessous, et une facture verrouillée n'est jamais touchée.
+        const suggested = costSuggestion(full.audioSizeKb);
         setFormData(prev => ({
             ...prev,
             catalogueId: full.id,
             // Audio already exists -> default this to a duplication (not forced;
             // the admin can uncheck it, e.g. for a re-recording / re-read).
             ...(hasAudio ? { isDuplication: true, lentPhysicalBook: false } : {}),
+            ...(suggested && !costLocked ? { cost: suggested.value } : {}),
         }));
     };
 
@@ -475,6 +484,15 @@ export function OrderFormBackendBase({
     };
 
     const audioAlreadyExists = Boolean(selectedBook?.audio_filepath);
+
+    // Tarif conseillé : 3 € par tranche de 700 Mio entamée (lib/pricing.ts). Null
+    // tant que le poids du livre est inconnu — mieux vaut ne rien annoncer qu'un
+    // tarif fondé sur un dossier jamais synchronisé.
+    const tarif = costSuggestion(selectedBook?.audioSizeKb);
+    // On ne signale l'écart que s'il est réel : le champ est saisi à la main, donc
+    // « 6 » et « 6.00 » sont le même montant et ne doivent pas déclencher l'alerte.
+    const costDiffersFromTarif =
+        tarif != null && !costLocked && formatEuro2(formData.cost) !== tarif.value;
 
     // Active "enregistrement nécessaire" already exists for this book (excluding
     // the order being edited). Checked whenever the book or either type flag
@@ -931,6 +949,23 @@ export function OrderFormBackendBase({
                             <p className="text-xs text-amber-700 dark:text-amber-400">
                                 Coût verrouillé : la facture #{initialBill?.id} est {initialBill?.state === 'PAID' ? 'payée' : 'soldée'}. Rouvrez-la pour le modifier.
                             </p>
+                        )}
+                        {tarif && !costLocked && (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                                <span className="text-muted-foreground">
+                                    Tarif conseillé : <span className="font-medium text-foreground">{tarif.value} €</span>
+                                    {' '}({tarif.label})
+                                </span>
+                                {costDiffersFromTarif && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, cost: tarif.value })}
+                                        className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                    >
+                                        Appliquer
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
 

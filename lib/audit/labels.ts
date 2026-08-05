@@ -132,6 +132,7 @@ const FIELD_LABELS: Record<string, string> = {
     audioLinkStatus: 'État du lien audio',
     audioCheckedAt: 'Audio vérifié le',
     audioTrackCount: 'Nombre de pistes',
+    audioSizeKb: 'Poids de l’audio (Kio)',
     polly_audio_url: 'Audio de synthèse',
     stock_date: 'Date de stock',
     last_downloaded_date: 'Dernier téléchargement',

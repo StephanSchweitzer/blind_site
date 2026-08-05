@@ -398,7 +398,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         if (!files.length) return;
         setSelection(null);
         setPendingFiles(files);
-        const { ok, becameAvailable, recovered } = await upload(files, createFolder);
+        const { ok, becameAvailable, recovered, repriced } = await upload(files, createFolder);
         if (ok) {
             toast({
                 // @ts-expect-error jsx in toast
@@ -413,6 +413,12 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             ` ${recovered} ${recovered > 1 ? 'ont' : 'a'} nécessité une nouvelle tentative, ` +
                                 'automatiquement résolue.'}
                         {becameAvailable && ' Le livre est désormais marqué « Disponible ».'}
+                        {/* Money moved: say so here rather than let it be
+                            discovered sur une facture. Seules les demandes non
+                            facturées ou en brouillon sont concernées. */}
+                        {repriced > 0 &&
+                            ` Le tarif de ${repriced} demande${repriced > 1 ? 's' : ''} non facturée${repriced > 1 ? 's' : ''} ` +
+                                `a été recalculé d'après le poids de l'enregistrement.`}
                     </span>
                 ),
                 className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',

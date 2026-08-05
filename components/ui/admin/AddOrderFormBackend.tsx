@@ -34,6 +34,7 @@ import {
     type MediaFormat,
 } from '@/admin/OrderFormBackendBase';
 import { STATUS } from '@/lib/statusSync';
+import { costSuggestion } from '@/lib/pricing';
 
 // N3 — required fields, visual top→bottom.
 const CREATE_FIELD_ORDER = ['aveugleId', 'deliveryMethod', 'mediaFormatId', 'lines'];
@@ -188,6 +189,15 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     const removeLine = (key: string) =>
         setLines(prev => (prev.length > 1 ? prev.filter(l => l.key !== key) : prev));
     const addLine = () => setLines(prev => [...prev, makeLine(defaultCost)]);
+
+    // Picking a book also sets that line's tarif from the weight of its recording
+    // (lib/pricing.ts). This is where adjustments go missing: ten ouvrages saisis
+    // d'affilée, un seul coût recopié partout. Le champ « Coût » de la ligne reste
+    // libre juste en dessous, et un livre au poids inconnu garde le coût en place.
+    const selectBookForLine = (key: string, book: Book | null) => {
+        const suggested = book ? costSuggestion(book.audioSizeKb) : null;
+        updateLine(key, { book, ...(suggested ? { cost: suggested.value } : {}) });
+    };
     const handleDefaultCostChange = (value: string) => {
         setDefaultCost(value);
         setLines(prev => prev.map(l => ({ ...l, cost: value })));
@@ -412,12 +422,12 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                     <div className="flex-1 min-w-0">
                                         <BookSearchCombobox<Book>
                                             value={line.book}
-                                            onSelect={(b) => updateLine(line.key, { book: b })}
+                                            onSelect={(b) => selectBookForLine(line.key, b)}
                                             placeholder="Rechercher un livre existant ..."
                                             renderValue={(b) => clip(`${b.title} — ${b.author}`)}
                                         />
                                     </div>
-                                    <CreateBookDialog onCreated={(b) => updateLine(line.key, { book: b })} />
+                                    <CreateBookDialog onCreated={(b) => selectBookForLine(line.key, b)} />
                                 </div>
 
                                 {/* Type — per book */}
@@ -474,6 +484,25 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                                    className="bg-card border-border text-foreground h-9 pr-8" placeholder={defaultCost} />
                                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">€</span>
                                         </div>
+                                        {(() => {
+                                            const tarif = costSuggestion(line.book?.audioSizeKb);
+                                            if (!tarif) return null;
+                                            const differs = formatEuro2(line.cost) !== tarif.value;
+                                            return (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Conseillé : {tarif.value} € ({tarif.label})
+                                                    {differs && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateLine(line.key, { cost: tarif.value })}
+                                                            className="ml-2 font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                                        >
+                                                            Appliquer
+                                                        </button>
+                                                    )}
+                                                </p>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </div>
