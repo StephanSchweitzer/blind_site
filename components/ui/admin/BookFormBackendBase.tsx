@@ -303,7 +303,7 @@ export function BookFormBackendBase({
                                 required
                                 value={formData.title}
                                 onChange={handleChange}
-                                className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
+                                className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 placeholder="Indiquer le titre du livre"
                             />
                         </div>
@@ -318,7 +318,7 @@ export function BookFormBackendBase({
                                 id="subtitle"
                                 value={formData.subtitle || ''}
                                 onChange={handleChange}
-                                className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
+                                className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 placeholder="Indiquer le sous-titre du livre"
                             />
                         </div>
@@ -334,7 +334,7 @@ export function BookFormBackendBase({
                                 required
                                 value={formData.author}
                                 onChange={handleChange}
-                                className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
+                                className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 placeholder="Indiquer l'auteur du livre"
                             />
                         </div>
@@ -349,7 +349,7 @@ export function BookFormBackendBase({
                                 id="publisher"
                                 value={formData.publisher || ''}
                                 onChange={handleChange}
-                                className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
+                                className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 placeholder="Indiquer l'éditeur du livre"
                             />
                         </div>
@@ -368,7 +368,7 @@ export function BookFormBackendBase({
                                     max={new Date().getFullYear()}
                                     value={formData.publishedYear || ''}
                                     onChange={handleChange}
-                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
+                                    className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Année de publication"
                                 />
                             </div>
@@ -383,7 +383,7 @@ export function BookFormBackendBase({
                                     min="1"
                                     value={formData.pageCount || ''}
                                     onChange={handleChange}
-                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
+                                    className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Nombre de pages"
                                 />
                             </div>
@@ -491,7 +491,7 @@ export function BookFormBackendBase({
                                 id="isbn"
                                 value={formData.isbn || ''}
                                 onChange={handleChange}
-                                className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
+                                className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                 placeholder="Indiquer le numéro ISBN du livre (facultatif)"
                             />
                         </div>
@@ -507,7 +507,7 @@ export function BookFormBackendBase({
                                 id="description"
                                 value={formData.description}
                                 onChange={handleChange}
-                                className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground min-h-[150px]"
+                                className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground min-h-[150px]"
                                 placeholder="Décrire le livre pour aider les personnes à comprendre de quoi il s'agit."
                             />
                         </div>
