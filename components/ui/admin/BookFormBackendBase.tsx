@@ -399,7 +399,7 @@ export function BookFormBackendBase({
                                     return genre ? (
                                         <div
                                             key={genre.id}
-                                            className="bg-blue-200 text-muted-foreground rounded-full px-3 py-1 text-sm flex items-center border border-border"
+                                            className="bg-blue-100 dark:bg-blue-900/70 text-blue-900 dark:text-blue-50 rounded-full px-3 py-1 text-sm flex items-center border border-blue-300 dark:border-blue-600/60"
                                         >
                                             {genre.name}
                                             <button

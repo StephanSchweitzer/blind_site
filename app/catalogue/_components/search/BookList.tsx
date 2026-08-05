@@ -69,11 +69,11 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 {book.genres.slice(0, 3).map(({ genre }) => (
                                     <span
                                         key={genre.id}
-                                        className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-indigo-900/30 dark:to-purple-900/30
-                                            text-blue-700 dark:text-indigo-300
+                                        className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-600 dark:to-indigo-600
+                                            text-blue-700 dark:text-white
                                             text-xs font-medium px-2.5 py-1 rounded-full
-                                            border border-blue-200/50 dark:border-indigo-700/50
-                                            shadow-sm
+                                            border border-blue-200/50 dark:border-blue-400/50
+                                            shadow-sm dark:shadow-blue-900/40
                                             transition-all duration-300
                                             group-hover:shadow-md group-hover:scale-105"
                                     >

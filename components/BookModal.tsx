@@ -194,7 +194,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                                                     shadow-sm
                                                     ${isSelected
                                                     ? 'bg-gradient-to-r from-emerald-400 to-green-500 dark:from-emerald-600 dark:to-green-700 text-white cursor-not-allowed shadow-emerald-500/30'
-                                                    : 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 hover:shadow-md hover:scale-105 cursor-pointer border border-blue-200/50 dark:border-blue-700/50'
+                                                    : 'bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-600 dark:to-indigo-600 text-blue-900 dark:text-white hover:shadow-md hover:scale-105 cursor-pointer border border-blue-300 dark:border-blue-400/50 dark:shadow-blue-900/40'
                                                 }
                                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1
                                                 `}
