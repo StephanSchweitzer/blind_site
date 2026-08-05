@@ -108,12 +108,72 @@ export function isSecretField(field: string): boolean {
  * was a quarter of the whole trail — one « Audio vérifié le 07:52 → 07:52 » line
  * per bucket re-read — and it shredded one admin's workflow on a book into five
  * or fifteen separate events. The *state* it comes with (audioLinkStatus,
- * audioTrackCount) is a real reading and stays traced.
+ * audioTrackCount, audioSizeKb) is handled one step further down, by
+ * DERIVED_FIELDS: it stays readable next to a real edit, but can no longer put a
+ * row in the journal by itself.
  */
 const NOISE_FIELDS = new Set(['updatedAt', 'lastUpdated', 'lastSeenAt', 'audioCheckedAt']);
 
 export function isNoiseField(field: string): boolean {
     return NOISE_FIELDS.has(field);
+}
+
+/**
+ * DERIVED columns: machine-computed caches and bookkeeping stamps. The trail
+ * records *decisions*, not *observations* — and nobody decides these. They are
+ * recomputed from somewhere else (the bucket, a SUM over other rows) whenever
+ * something happens to look.
+ *
+ * Unlike NOISE_FIELDS they are NOT stripped from a diff. They still travel, and
+ * still read usefully, when they move alongside a field a human did change — an
+ * admin who edits `audio_filepath` gets one event showing the path AND the state
+ * it produced. What they cannot do is justify an event on their own: a diff made
+ * of nothing but derived fields is a re-read, and is dropped (see
+ * changesAreAllDerived).
+ *
+ * Model-scoped rather than global, because these are far more specific than an
+ * @updatedAt: `invoiceAmount` is derived on Bill, but nothing stops a future
+ * model from having a column of the same name that someone types by hand.
+ *
+ * Why each one is here:
+ *   Book.audioLinkStatus / audioTrackCount / audioSizeKb
+ *       refreshBookAudioState() rewrites all three on every bucket re-read, and
+ *       GET /api/books/[id]/audio/manage calls it just to open the dialogue.
+ *       Merely LOOKING at a book's audio was writing « État du lien audio
+ *       UNVERIFIED → NO_PATH » to the journal under the reader's name.
+ *   Book.escalatedAt
+ *       stamped so the signalement mail isn't re-sent on the next visit
+ *       (app/admin/review/actions.ts). Bookkeeping for a mail, not an edit.
+ *   Bill.invoiceAmount
+ *       recomputeBillTotal() sums the linked orders' costs. Those costs are
+ *       themselves traced, so the total restates what the journal already says —
+ *       and BillEvent is the bill's real, append-only history.
+ *
+ * Deliberately NOT here, though both were considered:
+ *   Orders.cost — repriced automatically by audio weight, but also editable by
+ *       hand, and it is money. A cost that moves is worth a line either way.
+ *   User.currentBalance — looks derived, is actually typed in the user form.
+ */
+const DERIVED_FIELDS: Record<string, Set<string>> = {
+    Book: new Set(['audioLinkStatus', 'audioTrackCount', 'audioSizeKb', 'escalatedAt']),
+    Bill: new Set(['invoiceAmount']),
+};
+
+export function isDerivedField(model: string, field: string): boolean {
+    return DERIVED_FIELDS[model]?.has(field) ?? false;
+}
+
+/**
+ * True when a diff says nothing a human decided — so the write behind it was an
+ * observation and does not belong in the journal.
+ *
+ * An empty diff is not "all derived": that case is already handled upstream (a
+ * write that moved nothing produces no event) and a DELETE legitimately carries
+ * no changes at all.
+ */
+export function changesAreAllDerived(model: string, changes: Record<string, unknown>): boolean {
+    const fields = Object.keys(changes);
+    return fields.length > 0 && fields.every((field) => isDerivedField(model, field));
 }
 
 /**

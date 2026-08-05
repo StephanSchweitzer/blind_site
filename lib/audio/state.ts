@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
+import { withoutAudit } from '@/lib/audit/context';
 import { bytesToKb } from '@/lib/pricing';
 import { repriceOpenOrdersForBook } from '@/lib/pricing-sync';
 import { listRawObjects } from './bucket';
@@ -119,15 +120,25 @@ export async function refreshBookAudioState(
         }
     }
 
-    await prisma.book.update({
-        where: { id: bookId },
-        data: {
-            audioLinkStatus: status,
-            audioTrackCount: trackCount,
-            audioSizeKb: sizeKb,
-            audioCheckedAt: new Date(),
-        },
-    });
+    // Outside the audit trail, and provably lossless: this statement writes only
+    // the four cache columns, and the trail already refuses all four — the three
+    // states are DERIVED_FIELDS, audioCheckedAt is a NOISE_FIELD — so it could
+    // never produce a surviving event. Saying so here also spares the audit
+    // extension its "before" read on a path that runs on every dialogue open.
+    //
+    // Scoped to this one statement on purpose: the reprice below moves
+    // Orders.cost, which IS a decision worth tracing, and must stay audited.
+    await withoutAudit(() =>
+        prisma.book.update({
+            where: { id: bookId },
+            data: {
+                audioLinkStatus: status,
+                audioTrackCount: trackCount,
+                audioSizeKb: sizeKb,
+                audioCheckedAt: new Date(),
+            },
+        })
+    );
 
     // Only on a real move. Re-reads are frequent and mostly confirm what was
     // already stored; repricing on every one would add an AMOUNT_CHANGED row to

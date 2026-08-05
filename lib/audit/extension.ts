@@ -5,6 +5,7 @@ import {
     BULK_COUNT_KEY,
     BULK_RECORD_ID,
     BULK_ROW_LIMIT,
+    changesAreAllDerived,
     isAuditedModel,
     primaryKeyFields,
     recordIdOf,
@@ -280,8 +281,10 @@ async function buildEvents({
                 : (await reread(base, model, [prior])).get(recordId) ?? projected.after;
 
         const changes = diffRows(prior, after);
-        // A write that moved nothing is not a change worth a row.
-        if (Object.keys(changes).length === 0) return [];
+        // A write that moved nothing is not a change worth a row — and neither is
+        // one that only moved machine-derived columns: that is a re-read, not a
+        // decision.
+        if (Object.keys(changes).length === 0 || changesAreAllDerived(model, changes)) return [];
         return [{ model, recordId, operation: 'UPDATE', changes }];
     }
 
@@ -325,7 +328,7 @@ async function buildEvents({
             if (!recordId) return [];
             const resolved = exact ? after : fresh.get(recordId) ?? after;
             const changes = diffRows(row, resolved);
-            if (Object.keys(changes).length === 0) return [];
+            if (Object.keys(changes).length === 0 || changesAreAllDerived(model, changes)) return [];
             return [{ model, recordId, operation: 'UPDATE' as const, changes }];
         });
     }
