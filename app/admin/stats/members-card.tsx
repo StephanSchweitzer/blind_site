@@ -113,7 +113,7 @@ function MemberChart({ buckets }: { buckets: Bucket[] }) {
             </figcaption>
 
             <div className="overflow-x-auto">
-                <div className="flex gap-2 min-w-[320px]">
+                <div className="flex gap-2 min-w-[320px] pt-3">
                     {/* Y axis: the scale the bars are drawn against. */}
                     <div
                         className="relative h-32 w-7 shrink-0 text-[10px] text-muted-foreground tabular-nums"
