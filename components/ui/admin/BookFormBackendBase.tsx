@@ -289,7 +289,7 @@ export function BookFormBackendBase({
                         </Alert>
                     )}
 
-                    <BookSearch onBookSelect={handleBookSelect}/>
+                    {!initialData && <BookSearch onBookSelect={handleBookSelect}/>}
 
                     <div className="grid gap-6">
                         <div className="space-y-2">
