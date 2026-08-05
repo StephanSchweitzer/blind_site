@@ -99,6 +99,17 @@ export type AuditFieldValue = string | number | boolean | null;
 /** `{ champ: [avant, après] }` — never a pair of full snapshots. */
 export type AuditChangeMap = Record<string, [AuditFieldValue, AuditFieldValue]>;
 
+/**
+ * What a traced record IS, so a journal line can be read without opening it:
+ * « Livre n°4549 » becomes « Le Ventre de Paris » / « Émile Zola ».
+ */
+export interface AuditRecordLabel {
+    /** The record's own name: a title, a person, an amount. */
+    title: string;
+    /** Disambiguator, shown muted beside it: the author, the client, the auditeur. */
+    subtitle: string | null;
+}
+
 export interface AuditEventItem {
     id: number;
     at: string; // ISO datetime
@@ -108,6 +119,12 @@ export interface AuditEventItem {
     actorId: number | null;
     /** Display name, falling back to the denormalized e-mail, then "Système". */
     actorName: string;
+    /**
+     * Resolved from the record itself, or from the snapshot when it has been
+     * deleted. Null when the model has no name to give (bulk events, join rows,
+     * a record deleted without a usable snapshot) — the id alone is then shown.
+     */
+    recordLabel: AuditRecordLabel | null;
     changes: AuditChangeMap;
     /**
      * True when this deletion can be replayed: a snapshot is present and none of

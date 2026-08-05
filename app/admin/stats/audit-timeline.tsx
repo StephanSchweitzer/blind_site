@@ -10,11 +10,14 @@ import {
     History,
     Loader2,
     RotateCcw,
+    Search,
+    X,
 } from 'lucide-react';
 import { AdminCard } from '@/components/ui/admin';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -39,6 +42,7 @@ import type {
     AuditEventsResponse,
     AuditOperation,
     AuditRestoreResponse,
+    StatsActor,
 } from '@/types';
 import { formatDateTime } from './stats-utils';
 import { type EventGroup, groupEvents, headOf } from './audit-grouping';
@@ -69,14 +73,142 @@ interface Filters {
     model: string;
     actor: string;
     operation: string;
+    subject: string;
     start: string;
     end: string;
 }
 
-const EMPTY_FILTERS: Filters = { model: '', actor: '', operation: '', start: '', end: '' };
+const EMPTY_FILTERS: Filters = {
+    model: '', actor: '', operation: '', subject: '', start: '', end: '',
+};
+
+/** Below this the « Enregistrement » term matches too much to be worth a query. */
+const MIN_SUBJECT_CHARS = 2;
+
+/** Typing pause before the subject search is sent. */
+const SUBJECT_DEBOUNCE_MS = 350;
 
 const selectClass =
     'h-9 rounded-md border border-border bg-field px-2 text-sm text-foreground';
+
+/**
+ * Accent- and case-insensitive contains, so « andree » finds « Andrée HORDE ».
+ * Names in this base carry their accents; the people typing them often don't.
+ */
+const foldAccents = (value: string): string =>
+    value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+/**
+ * « Auteur » filter as a typeahead rather than a <select>.
+ *
+ * Purely local: the actors present in the window already travel with every page
+ * of the journal, so filtering them costs no request at all — which is also why
+ * this doesn't reuse EntitySearchCombobox, whose whole job is debouncing a
+ * fetch, and which cannot show a list before the first keystroke.
+ */
+function ActorFilter({
+    actors,
+    value,
+    onChange,
+}: {
+    actors: StatsActor[];
+    value: string;
+    onChange: (value: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+
+    const selected = actors.find((actor) => String(actor.id) === value) ?? null;
+    const shown = React.useMemo(() => {
+        const term = foldAccents(query.trim());
+        return term ? actors.filter((actor) => foldAccents(actor.name).includes(term)) : actors;
+    }, [actors, query]);
+
+    const pick = (next: string) => {
+        onChange(next);
+        setOpen(false);
+        setQuery('');
+    };
+
+    return (
+        <Popover
+            open={open}
+            onOpenChange={(next) => { setOpen(next); if (!next) setQuery(''); }}
+        >
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="h-9 w-56 justify-between bg-field border-border font-normal"
+                >
+                    <span className={selected ? 'truncate' : 'truncate text-muted-foreground'}>
+                        {selected?.name ?? 'Tous'}
+                    </span>
+                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent
+                className="w-[min(320px,calc(100vw-2rem))] p-0 bg-card border-border"
+                align="start"
+                collisionPadding={16}
+            >
+                <div className="p-2">
+                    <Input
+                        autoFocus
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Rechercher un auteur…"
+                        aria-label="Rechercher un auteur"
+                        className="h-8 bg-field border-border text-foreground"
+                    />
+                </div>
+                <div className="max-h-[220px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        onClick={() => pick('')}
+                        className={`w-full text-left px-3 py-1.5 text-sm hover:bg-muted ${
+                            value === '' ? 'bg-muted text-foreground' : 'text-muted-foreground'
+                        }`}
+                    >
+                        Tous
+                    </button>
+                    {shown.map((actor) => (
+                        <button
+                            key={actor.id}
+                            type="button"
+                            onClick={() => pick(String(actor.id))}
+                            className={`w-full text-left px-3 py-1.5 text-sm text-foreground hover:bg-muted ${
+                                String(actor.id) === value ? 'bg-muted' : ''
+                            }`}
+                        >
+                            {actor.name}
+                        </button>
+                    ))}
+                    {shown.length === 0 && (
+                        <p className="px-3 py-4 text-center text-sm text-muted-foreground">
+                            Aucun auteur ne correspond.
+                        </p>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+/**
+ * « Livre n°4549, Le Ventre de Paris — Émile Zola » — the record in full, for
+ * the tooltip and the link's accessible name, where the visible label truncates.
+ */
+function describeRecord(event: AuditEventItem): string {
+    const identity = event.recordId === '*'
+        ? modelLabel(event.model)
+        : `${modelLabel(event.model)} n°${event.recordId}`;
+    if (!event.recordLabel) return identity;
+    const { title, subtitle } = event.recordLabel;
+    return `${identity}, ${title}${subtitle ? ` — ${subtitle}` : ''}`;
+}
 
 /** "3 champs" / "Instantané conservé" — the one-line gist of a row. */
 function summarize(group: EventGroup): string {
@@ -189,7 +321,7 @@ function EventRow({
                     </Badge>
                 )}
 
-                <span className="text-sm text-foreground font-medium">
+                <span className="text-sm text-foreground font-medium whitespace-nowrap">
                     {modelLabel(event.model)}
                     {event.recordId !== '*' && (
                         <span className="text-muted-foreground font-normal">
@@ -198,13 +330,30 @@ function EventRow({
                     )}
                 </span>
 
+                {/* What the record actually is. The id stays — it is the link
+                    target and the vocabulary of the fiches — but it is the name
+                    that makes the line readable. */}
+                {event.recordLabel && (
+                    <span
+                        className="text-sm text-foreground truncate max-w-[22rem]"
+                        title={describeRecord(event)}
+                    >
+                        {event.recordLabel.title}
+                        {event.recordLabel.subtitle && (
+                            <span className="text-muted-foreground font-normal">
+                                {' — '}{event.recordLabel.subtitle}
+                            </span>
+                        )}
+                    </span>
+                )}
+
                 {href && (
                     <Link
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground"
-                        aria-label={`Ouvrir ${modelLabel(event.model)} n°${event.recordId}`}
+                        className="text-muted-foreground hover:text-foreground shrink-0"
+                        aria-label={`Ouvrir ${describeRecord(event)}`}
                     >
                         <ExternalLink size={13} />
                     </Link>
@@ -256,6 +405,10 @@ interface LoadedPage {
 
 export default function AuditTimeline() {
     const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+    // What is typed, kept apart from what is queried: the input must stay
+    // responsive while the search behind it waits for a pause.
+    const [subjectInput, setSubjectInput] = useState('');
+    const subjectTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const [reloadToken, setReloadToken] = useState(0);
     const [page, setPage] = useState<LoadedPage | null>(null);
     const [expanded, setExpanded] = useState<number | null>(null);
@@ -370,6 +523,33 @@ export default function AuditTimeline() {
     const set = (key: keyof Filters) => (value: string) =>
         setFilters((current) => ({ ...current, [key]: value }));
 
+    // Debounced from the change handler rather than an effect, the same shape
+    // useEntitySearch uses — no setState inside an effect.
+    const changeSubject = (value: string) => {
+        setSubjectInput(value);
+        if (subjectTimer.current) clearTimeout(subjectTimer.current);
+        const trimmed = value.trim();
+        // Under the minimum the filter is simply off, which is also what
+        // clearing the field means.
+        const next = trimmed.length >= MIN_SUBJECT_CHARS ? trimmed : '';
+        subjectTimer.current = setTimeout(() => {
+            setFilters((current) =>
+                current.subject === next ? current : { ...current, subject: next }
+            );
+        }, SUBJECT_DEBOUNCE_MS);
+    };
+
+    const resetFilters = () => {
+        if (subjectTimer.current) clearTimeout(subjectTimer.current);
+        setSubjectInput('');
+        setFilters(EMPTY_FILTERS);
+    };
+
+    // Drop a pending debounce on unmount so it cannot fire into a dead component.
+    useEffect(() => () => {
+        if (subjectTimer.current) clearTimeout(subjectTimer.current);
+    }, []);
+
     return (
         <AdminCard className="p-4 md:p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -397,6 +577,33 @@ export default function AuditTimeline() {
             {/* ── filters ────────────────────────────────────────────────── */}
             <div className="flex flex-wrap items-end gap-3 mt-4 mb-4">
                 <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    Enregistrement
+                    <span className="relative">
+                        <Search
+                            size={14}
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                        />
+                        <Input
+                            type="search"
+                            value={subjectInput}
+                            onChange={(e) => changeSubject(e.target.value)}
+                            placeholder="Titre, auteur, nom, e-mail…"
+                            className="h-9 w-64 pl-8 pr-8 bg-field border-border text-foreground"
+                        />
+                        {subjectInput !== '' && (
+                            <button
+                                type="button"
+                                onClick={() => changeSubject('')}
+                                aria-label="Effacer la recherche"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </span>
+                </label>
+
+                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                     Type d’enregistrement
                     <select
                         className={selectClass}
@@ -410,19 +617,14 @@ export default function AuditTimeline() {
                     </select>
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                     Auteur
-                    <select
-                        className={selectClass}
+                    <ActorFilter
+                        actors={data?.actors ?? []}
                         value={filters.actor}
-                        onChange={(e) => set('actor')(e.target.value)}
-                    >
-                        <option value="">Tous</option>
-                        {(data?.actors ?? []).map((actor) => (
-                            <option key={actor.id} value={actor.id}>{actor.name}</option>
-                        ))}
-                    </select>
-                </label>
+                        onChange={set('actor')}
+                    />
+                </div>
 
                 <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                     Opération
@@ -466,8 +668,8 @@ export default function AuditTimeline() {
                     />
                 </label>
 
-                {query !== '' && (
-                    <Button size="sm" variant="ghost" onClick={() => setFilters(EMPTY_FILTERS)}>
+                {(query !== '' || subjectInput !== '') && (
+                    <Button size="sm" variant="ghost" onClick={resetFilters}>
                         Réinitialiser
                     </Button>
                 )}
@@ -520,7 +722,7 @@ export default function AuditTimeline() {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Restaurer {pending && modelLabel(pending.model)} n°{pending?.recordId} ?
+                            Restaurer {pending ? describeRecord(pending) : ''} ?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             L’enregistrement sera recréé tel qu’il était au moment de sa suppression,

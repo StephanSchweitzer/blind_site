@@ -5,6 +5,7 @@ import { withSuperAdmin } from '@/lib/auth/guards';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { AUDIT_TABLE_SOFT_LIMIT_MB, isAuditedModel } from '@/lib/audit/config';
 import { TRUNCATION_MARKER_RE } from '@/lib/audit/labels';
+import { findRecordsByTerm, labelKey, resolveRecordLabels } from '@/lib/audit/record-labels';
 import { measureAuditTable } from '@/lib/audit/retention';
 import { isoUtc, parisDayStartUtc, parseDateParam } from '@/lib/stats';
 import type {
@@ -34,7 +35,11 @@ interface AuditRaw {
     actorEmail: string | null;
     changes: AuditChangeMap;
     hasSnapshot: boolean;
-    /** Whether any snapshot value was replaced by a size marker on the way in. */
+    /**
+     * The DELETE snapshot as raw JSON, for two server-side questions only: can
+     * this deletion be replayed, and what was the record called. It is parsed
+     * here and never forwarded to the client.
+     */
     snapshotText: string | null;
 }
 
@@ -52,7 +57,7 @@ interface RawUserName {
  * A snapshot whose values were truncated would restore a size marker into a real
  * column, which is worse than refusing — so it refuses, and says which is which.
  */
-function restoreBlockerOf(row: AuditRaw): string | null {
+function restoreBlockerOf(row: AuditRaw, snapshot: Record<string, unknown> | null): string | null {
     if (row.operation !== 'DELETE') return null;
     if (!row.hasSnapshot) {
         return row.recordId === '*'
@@ -62,22 +67,38 @@ function restoreBlockerOf(row: AuditRaw): string | null {
     if (!isAuditedModel(row.model)) {
         return 'Ce modèle n’est plus suivi par le journal.';
     }
-    if (row.snapshotText && hasTruncatedValue(row.snapshotText)) {
+    if (hasTruncatedValue(snapshot)) {
         return 'L’instantané contient des valeurs trop longues pour avoir été conservées.';
     }
     return null;
 }
 
-function hasTruncatedValue(snapshotJson: string): boolean {
+function hasTruncatedValue(snapshot: Record<string, unknown> | null): boolean {
+    if (snapshot === null) return true;
+    return Object.values(snapshot).some(
+        (value) => typeof value === 'string' && TRUNCATION_MARKER_RE.test(value)
+    );
+}
+
+/**
+ * The snapshot, parsed once per row: both the restorability check and the
+ * display label read it, and it is the only way to name a deleted record.
+ * Nothing of it is ever sent to the client — only the two answers drawn from it.
+ */
+function parseSnapshot(json: string | null): Record<string, unknown> | null {
+    if (!json) return null;
     try {
-        const snapshot = JSON.parse(snapshotJson) as Record<string, unknown>;
-        return Object.values(snapshot).some(
-            (value) => typeof value === 'string' && TRUNCATION_MARKER_RE.test(value)
-        );
+        const parsed: unknown = JSON.parse(json);
+        return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+            ? (parsed as Record<string, unknown>)
+            : null;
     } catch {
-        return true;
+        return null;
     }
 }
+
+/** Longest « Enregistrement » term accepted — a filter, not a full-text engine. */
+const MAX_SUBJECT_CHARS = 80;
 
 export const GET = withSuperAdmin(async (request) => {
     const params = request.nextUrl.searchParams;
@@ -85,6 +106,7 @@ export const GET = withSuperAdmin(async (request) => {
     const model = params.get('model');
     const operation = params.get('operation');
     const actorRaw = params.get('actor');
+    const subject = params.get('subject')?.trim() ?? '';
     const start = parseDateParam(params.get('start'));
     const end = parseDateParam(params.get('end'));
     const cursorRaw = params.get('before');
@@ -100,6 +122,9 @@ export const GET = withSuperAdmin(async (request) => {
     }
     if (cursorRaw !== null && !/^\d+$/.test(cursorRaw)) {
         return NextResponse.json({ message: 'Curseur invalide' }, { status: 400 });
+    }
+    if (subject.length > MAX_SUBJECT_CHARS) {
+        return NextResponse.json({ message: 'Recherche trop longue' }, { status: 400 });
     }
 
     try {
@@ -119,6 +144,23 @@ export const GET = withSuperAdmin(async (request) => {
                 actorId === 0
                     ? Prisma.sql`e."actorId" IS NULL`
                     : Prisma.sql`e."actorId" = ${actorId}`
+            );
+        }
+        if (subject) {
+            // Resolved against the real tables first (that is where titles and
+            // names are indexed), then applied here as (model, recordId) pairs —
+            // which is exactly what @@index([model, recordId]) serves. A term
+            // that matches nothing must return nothing, not everything.
+            const matches = await findRecordsByTerm(subject);
+            filters.push(
+                matches.length === 0
+                    ? Prisma.sql`false`
+                    : Prisma.sql`(${Prisma.join(
+                          matches.map(
+                              (match) => Prisma.sql`(e.model = ${match.model} AND e."recordId" IN (${Prisma.join(match.recordIds)}))`
+                          ),
+                          ' OR '
+                      )})`
             );
         }
 
@@ -169,21 +211,37 @@ export const GET = withSuperAdmin(async (request) => {
             .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
         if (actorIds.some((a) => a.actorId === null)) actors.unshift({ id: 0, name: 'Système' });
 
-        const events: AuditEventItem[] = page.map((row) => ({
-            id: row.id,
-            at: row.at,
-            model: row.model,
-            recordId: row.recordId,
-            operation: row.operation,
-            actorId: row.actorId,
-            actorName:
-                (row.actorId !== null ? nameById.get(row.actorId) : null) ??
-                row.actorEmail ??
-                'Système',
-            changes: row.changes ?? {},
-            restorable: row.operation === 'DELETE' && restoreBlockerOf(row) === null,
-            restoreBlocker: restoreBlockerOf(row),
-        }));
+        // Parsed once per row and kept server-side: the restore check reads it,
+        // and it is the only place a deleted record's name still exists.
+        const snapshots = new Map(page.map((row) => [row.id, parseSnapshot(row.snapshotText)]));
+
+        const labels = await resolveRecordLabels(
+            page.map((row) => ({
+                model: row.model,
+                recordId: row.recordId,
+                snapshot: snapshots.get(row.id) ?? null,
+            }))
+        );
+
+        const events: AuditEventItem[] = page.map((row) => {
+            const blocker = restoreBlockerOf(row, snapshots.get(row.id) ?? null);
+            return {
+                id: row.id,
+                at: row.at,
+                model: row.model,
+                recordId: row.recordId,
+                operation: row.operation,
+                actorId: row.actorId,
+                actorName:
+                    (row.actorId !== null ? nameById.get(row.actorId) : null) ??
+                    row.actorEmail ??
+                    'Système',
+                recordLabel: labels.get(labelKey(row.model, row.recordId)) ?? null,
+                changes: row.changes ?? {},
+                restorable: row.operation === 'DELETE' && blocker === null,
+                restoreBlocker: blocker,
+            };
+        });
 
         const response: AuditEventsResponse = {
             events,
