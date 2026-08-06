@@ -56,12 +56,33 @@ export function netChanges(events: AuditEventItem[]): AuditChangeMap {
 }
 
 /**
+ * A burst of AudioTrackEvent creations behind one bulk action — a folder
+ * upload, or a "vider la corbeille" pass over every track in a book. Each row
+ * is its own AudioTrackEvent, so recordId differs on every one of them and
+ * could never match the way an UPDATE burst's does; the burst is instead the
+ * same actor doing the same action (upload / rename / delete / restore) to
+ * the same book, back to back.
+ */
+function sameAudioBurst(previous: AuditEventItem, event: AuditEventItem): boolean {
+    if (previous.model !== 'AudioTrackEvent' || previous.operation !== 'CREATE' || event.operation !== 'CREATE') {
+        return false;
+    }
+    return (
+        previous.changes.action?.[1] === event.changes.action?.[1] &&
+        previous.changes.bookId?.[1] === event.changes.bookId?.[1]
+    );
+}
+
+/**
  * Fold the timeline into display rows.
  *
- * Only *adjacent* events join, and only UPDATEs: a creation, a deletion and a
- * restoration are each a single act worth its own line, and a deletion also
- * carries the restore button. Staying adjacent means the visible order is never
- * rearranged — a block always covers one uninterrupted stretch of the journal.
+ * Only *adjacent* events join. Two shapes of burst are recognised: several
+ * UPDATEs of the same record (a creation, a deletion and a restoration are
+ * each a single act worth its own line, and a deletion also carries the
+ * restore button), and several AudioTrackEvent creations from the same bulk
+ * action (see sameAudioBurst). Staying adjacent means the visible order is
+ * never rearranged — a block always covers one uninterrupted stretch of the
+ * journal.
  */
 export function groupEvents(events: AuditEventItem[]): EventGroup[] {
     const groups: AuditEventItem[][] = [];
@@ -71,13 +92,16 @@ export function groupEvents(events: AuditEventItem[]): EventGroup[] {
         const previous = current?.[current.length - 1];
         const joins =
             previous !== undefined &&
-            previous.operation === 'UPDATE' &&
-            event.operation === 'UPDATE' &&
-            previous.model === event.model &&
-            previous.recordId === event.recordId &&
             previous.actorId === event.actorId &&
+            previous.model === event.model &&
             // Newest first, so `previous` is the later of the two.
-            new Date(previous.at).getTime() - new Date(event.at).getTime() <= GROUP_WINDOW_MS;
+            new Date(previous.at).getTime() - new Date(event.at).getTime() <= GROUP_WINDOW_MS &&
+            (
+                (previous.operation === 'UPDATE' &&
+                    event.operation === 'UPDATE' &&
+                    previous.recordId === event.recordId) ||
+                sameAudioBurst(previous, event)
+            );
 
         if (joins) current.push(event);
         else groups.push([event]);
@@ -86,6 +110,22 @@ export function groupEvents(events: AuditEventItem[]): EventGroup[] {
     return groups.map((events) => ({
         key: events[0].id,
         events,
-        changes: events.length === 1 ? events[0].changes : netChanges(events),
+        // An audio burst's fields are each event's own filename and size, not
+        // one value that moved across writes — netChanges would garble N
+        // filenames into one bogus « avant / après » pair, so the head event's
+        // own changes are kept instead and the timeline renders the burst as a
+        // file list (see isAudioBurst).
+        changes: events.length === 1 || events[0].model === 'AudioTrackEvent'
+            ? events[0].changes
+            : netChanges(events),
     }));
+}
+
+/**
+ * True when `group` is a folded burst of AudioTrackEvent creations rather
+ * than a single event or an UPDATE burst on one record — the timeline shows
+ * these as a list of files, not a field-level diff.
+ */
+export function isAudioBurst(group: EventGroup): boolean {
+    return group.events.length > 1 && headOf(group).model === 'AudioTrackEvent';
 }

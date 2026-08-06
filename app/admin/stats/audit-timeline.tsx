@@ -44,8 +44,8 @@ import type {
     AuditRestoreResponse,
     StatsActor,
 } from '@/types';
-import { formatDateTime } from './stats-utils';
-import { type EventGroup, groupEvents, headOf } from './audit-grouping';
+import { AUDIO_ACTION_LABEL, formatDateTime } from './stats-utils';
+import { type EventGroup, groupEvents, headOf, isAudioBurst } from './audit-grouping';
 
 /**
  * « Journal des modifications » — the audit trail, read.
@@ -210,8 +210,9 @@ function describeRecord(event: AuditEventItem): string {
     return `${identity}, ${title}${subtitle ? ` — ${subtitle}` : ''}`;
 }
 
-/** "3 champs" / "Instantané conservé" — the one-line gist of a row. */
+/** "3 champs" / "Instantané conservé" / "12 pistes" — the one-line gist of a row. */
 function summarize(group: EventGroup): string {
+    if (isAudioBurst(group)) return `${group.events.length} pistes`;
     const event = headOf(group);
     const count = Object.keys(group.changes).length;
     if (event.operation === 'DELETE') {
@@ -219,6 +220,40 @@ function summarize(group: EventGroup): string {
     }
     if (count === 0) return '—';
     return count === 1 ? '1 champ' : `${count} champs`;
+}
+
+/**
+ * File-by-file detail for a folded audio burst. What differs between the
+ * merged events is each event's own filename, not a field whose value moved —
+ * so this lists them rather than reusing DiffTable's before/after columns.
+ */
+function AudioBurstList({ group }: { group: EventGroup }) {
+    const action = headOf(group).changes.action?.[1];
+    const label = typeof action === 'string' ? AUDIO_ACTION_LABEL[action] ?? action : null;
+
+    return (
+        <div>
+            {label && (
+                <p className="text-xs text-muted-foreground mb-1.5">
+                    {group.events.length} fichiers — {label}
+                </p>
+            )}
+            <ul className="text-sm space-y-0.5 max-h-64 overflow-y-auto">
+                {[...group.events].reverse().map((event) => {
+                    const filename = event.changes.filename?.[1];
+                    const newFilename = event.changes.newFilename?.[1];
+                    return (
+                        <li key={event.id} className="text-foreground/80 truncate">
+                            {typeof filename === 'string' ? filename : '—'}
+                            {typeof newFilename === 'string' && (
+                                <span className="text-muted-foreground"> → {newFilename}</span>
+                            )}
+                        </li>
+                    );
+                })}
+            </ul>
+        </div>
+    );
 }
 
 function DiffTable({ group }: { group: EventGroup }) {
@@ -379,14 +414,20 @@ function EventRow({
 
             {expanded && (
                 <div className="px-3 pb-3 pt-1 border-t border-border/60">
-                    {merged > 1 && (
+                    {merged > 1 && !isAudioBurst(group) && (
                         <p className="text-xs text-muted-foreground mb-2">
                             {merged} enregistrements successifs entre {formatDateTime(startedAt)} et{' '}
                             {formatDateTime(event.at)}. Le détail ci-dessous montre l’effet net :
                             la valeur de départ et la valeur d’arrivée.
                         </p>
                     )}
-                    <DiffTable group={group} />
+                    {merged > 1 && isAudioBurst(group) && (
+                        <p className="text-xs text-muted-foreground mb-2">
+                            {merged} pistes traitées entre {formatDateTime(startedAt)} et{' '}
+                            {formatDateTime(event.at)}, dans la même action groupée.
+                        </p>
+                    )}
+                    {isAudioBurst(group) ? <AudioBurstList group={group} /> : <DiffTable group={group} />}
                     {isDeletion && event.restoreBlocker && (
                         <p className="text-xs text-muted-foreground mt-2">{event.restoreBlocker}</p>
                     )}
