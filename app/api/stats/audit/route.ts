@@ -25,6 +25,23 @@ import type {
 const PAGE_SIZE = 50;
 const OPERATIONS: AuditOperation[] = ['CREATE', 'UPDATE', 'DELETE', 'RESTORE'];
 
+/**
+ * What the « Opération » filter means for an AudioTrackEvent row.
+ *
+ * Every such row is stored as a CREATE — it's a log entry being inserted,
+ * never the entity itself touched in place (see AUDITED_MODELS in
+ * lib/audit/config.ts) — with the operation it actually represents carried in
+ * changes.action instead. Filtering on the stored column alone would put
+ * every audio row under Création regardless of what happened, and
+ * Suppression / Modification / Restauration would never match one.
+ */
+const AUDIO_ACTION_FOR_OPERATION: Record<AuditOperation, string> = {
+    CREATE: 'UPLOAD',
+    UPDATE: 'RENAME',
+    DELETE: 'DELETE',
+    RESTORE: 'RESTORE',
+};
+
 interface AuditRaw {
     id: number;
     at: string;
@@ -137,7 +154,13 @@ export const GET = withSuperAdmin(async (request) => {
         if (start) filters.push(Prisma.sql`e."createdAt" >= ${parisDayStartUtc(start)}`);
         if (end) filters.push(Prisma.sql`e."createdAt" < ${parisDayStartUtc(end)}`);
         if (model) filters.push(Prisma.sql`e.model = ${model}`);
-        if (operation) filters.push(Prisma.sql`e.operation = ${operation}::"AuditOperation"`);
+        if (operation) {
+            const op = operation as AuditOperation;
+            filters.push(Prisma.sql`(
+                (e.model <> 'AudioTrackEvent' AND e.operation = ${op}::"AuditOperation")
+                OR (e.model = 'AudioTrackEvent' AND (e.changes #>> '{action,1}') = ${AUDIO_ACTION_FOR_OPERATION[op]})
+            )`);
+        }
         if (actorRaw) {
             const actorId = Number(actorRaw);
             filters.push(
