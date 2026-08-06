@@ -572,6 +572,20 @@ async function main() {
             },
         });
         orders.push(created);
+        await prisma.orderEvent.create({
+            data: {
+                orderId: created.id, type: 'CREATED', toStatusId: st,
+                performedById: staff[i % staff.length].id, createdAt: daysAgo(48 - i),
+            },
+        });
+        if (done) {
+            await prisma.orderEvent.create({
+                data: {
+                    orderId: created.id, type: 'CLOSED', fromStatusId: ST_ENCOURS, toStatusId: st,
+                    performedById: staff[i % staff.length].id, createdAt: daysAgo(20 - (i % 15)),
+                },
+            });
+        }
     }
 
     // ── assignments (attributions) + reader history ────────────────────────────

@@ -22,6 +22,8 @@ import {
     resolveClosureDate,
     guardClosureDateRequiresTermine,
     syncAssignmentToStatus,
+    classifyOrderEventType,
+    logOrderEvent,
 } from '@/lib/statusSync';
 import { recomputeBillTotal, accrueOrderToOpenDraft, issueDraftIfOverThreshold, logBillEvent } from '@/lib/billing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
@@ -379,6 +381,19 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
             let newTotal: Prisma.Decimal | null = null;
 
+            // Track the demande's processing history — creation is logged where the
+            // order is created; this is every status transition after that, however
+            // it was made (directly here, or pushed up from its attribution).
+            if (statusIsChanging) {
+                await logOrderEvent(tx, {
+                    orderId,
+                    type: classifyOrderEventType(existingOrder.statusId, data.statusId!),
+                    fromStatusId: existingOrder.statusId,
+                    toStatusId: data.statusId,
+                    performedById,
+                });
+            }
+
             // Cost changed on a billed order → keep the bill total in sync + audit it.
             if (costChanged && existingOrder.billId != null) {
                 newTotal = await recomputeBillTotal(tx, existingOrder.billId);
@@ -649,6 +664,19 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             });
 
             let newTotal: Prisma.Decimal | null = null;
+
+            // Track the demande's processing history — creation is logged where the
+            // order is created; this is every status transition after that, however
+            // it was made (directly here, or pushed up from its attribution).
+            if (statusIsChanging) {
+                await logOrderEvent(tx, {
+                    orderId,
+                    type: classifyOrderEventType(existingOrder.statusId, body.statusId!),
+                    fromStatusId: existingOrder.statusId,
+                    toStatusId: body.statusId,
+                    performedById,
+                });
+            }
 
             // Cost changed on a billed order → keep the bill total in sync + audit it.
             if (costChanged && existingOrder.billId != null) {

@@ -154,10 +154,25 @@ export const TREND_METRIC_ORDER: TrendMetric[] = TREND_TABS.flatMap((tab) => tab
  * the metrics that genuinely need one have an entry.
  */
 export const METRIC_HINTS: Partial<Record<TrendMetric, string>> = {
-    orders: 'Hors demandes importées sans date ni permanent.',
+    orders: 'Création, clôture, réouverture et changements de statut — quel que soit le chemin emprunté.',
     assignments: 'Comptées à la date d’envoi au lecteur.',
     audioEvents: 'Envoi, renommage, suppression et restauration de pistes.',
     auditEvents: 'Le journal ne conserve que les 14 derniers jours.',
+};
+
+/** OrderEventType → French label, for the badge on an orders detail row. */
+export const ORDER_EVENT_TYPE_LABEL: Record<string, string> = {
+    CREATED: 'Créée',
+    CLOSED: 'Clôturée',
+    REOPENED: 'Réouverte',
+    STATUS_CHANGED: 'Statut modifié',
+};
+
+export const ORDER_EVENT_TYPE_TINT: Record<string, string> = {
+    CREATED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200',
+    CLOSED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200',
+    REOPENED: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200',
+    STATUS_CHANGED: 'bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200',
 };
 
 /** AudioTrackAction → French label, for the badge on an audioEvents detail row. */

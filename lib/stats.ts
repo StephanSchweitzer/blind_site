@@ -61,12 +61,16 @@ export const METRIC_SOURCES: Record<TrendMetric, MetricSource> = {
         typeColumn: Prisma.sql`"type"`,
     },
     orders: {
-        table: Prisma.sql`"Orders"`,
-        dateColumn: Prisma.sql`"createdDate"`,
-        actorExpr: Prisma.sql`"processedByStaffId"`,
-        // Legacy imports have no staff/date — they can't be attributed, exclude them.
-        extraWhere: Prisma.sql`AND "processedByStaffId" IS NOT NULL AND "createdDate" IS NOT NULL`,
-        typeColumn: null,
+        // Every creation and status transition (however it happened — edited
+        // directly, or pushed up from the attribution via syncOrderToStatus), not
+        // just the row's own createdDate/processedByStaffId — those only ever
+        // reflected creation, so closing a demande through its attribution never
+        // moved them and vanished from this metric. See lib/statusSync.ts.
+        table: Prisma.sql`"OrderEvent"`,
+        dateColumn: Prisma.sql`"createdAt"`,
+        actorExpr: orSystem(Prisma.sql`"performedById"`),
+        extraWhere: Prisma.empty,
+        typeColumn: Prisma.sql`"type"`,
     },
     assignments: {
         table: Prisma.sql`"Assignment"`,

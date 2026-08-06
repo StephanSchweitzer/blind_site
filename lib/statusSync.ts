@@ -1,3 +1,4 @@
+import type { OrderEventType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -217,6 +218,53 @@ export function resolveClosureDate(args: {
     return explicitClosureDate;
 }
 
+/**
+ * Append an immutable entry to a demande's processing history. Call inside the
+ * same transaction as the status/creation write it describes.
+ *
+ * This is what /admin/stats's « Demandes traitées » reads (lib/stats.ts) —
+ * unlike Orders.createdDate/processedByStaffId (which only ever reflect
+ * creation), every status transition gets its own row here, however it
+ * happened: edited directly on the order, or pushed up from its attribution
+ * via syncOrderToStatus below.
+ */
+export async function logOrderEvent(
+    tx: TransactionClient,
+    params: {
+        orderId: number;
+        type: OrderEventType;
+        fromStatusId?: number | null;
+        toStatusId?: number | null;
+        performedById?: number | null;
+    }
+): Promise<void> {
+    await tx.orderEvent.create({
+        data: {
+            orderId: params.orderId,
+            type: params.type,
+            fromStatusId: params.fromStatusId ?? null,
+            toStatusId: params.toStatusId ?? null,
+            performedById: params.performedById ?? null,
+        },
+    });
+}
+
+/**
+ * Classifies a demande's status transition for the processing history: entering
+ * « Terminé » reads as a closure, leaving it as a reopening, anything else as a
+ * plain status change. Mirrors the TERMINE-boundary logic in resolveClosureDate.
+ */
+export function classifyOrderEventType(
+    previousStatusId: number | null,
+    nextStatusId: number
+): OrderEventType {
+    const wasTermine = previousStatusId === STATUS.TERMINE;
+    const isTermine = nextStatusId === STATUS.TERMINE;
+    if (isTermine && !wasTermine) return 'CLOSED';
+    if (wasTermine && !isTermine) return 'REOPENED';
+    return 'STATUS_CHANGED';
+}
+
 /** Same local calendar day? closureDate is a date, not a timestamp (see startOfToday). */
 function isSameDay(a: Date, b: Date): boolean {
     return (
@@ -312,7 +360,8 @@ export function guardClosureDateRequiresTermine(args: {
 export async function syncOrderToStatus(
     tx: TransactionClient,
     orderId: number,
-    statusId: number
+    statusId: number,
+    performedById?: number | null
 ): Promise<void> {
     const previous = await tx.orders.findUnique({
         where: { id: orderId },
@@ -326,6 +375,18 @@ export async function syncOrderToStatus(
     });
 
     await tx.orders.update({ where: { id: orderId }, data: { statusId, closureDate } });
+
+    // Only a real transition is worth a row — a demande created straight into
+    // its attribution's initial status hasn't "changed" anything yet.
+    if (previous && previous.statusId !== statusId) {
+        await logOrderEvent(tx, {
+            orderId,
+            type: classifyOrderEventType(previous.statusId, statusId),
+            fromStatusId: previous.statusId,
+            toStatusId: statusId,
+            performedById,
+        });
+    }
 }
 
 export async function syncAssignmentToStatus(

@@ -10,8 +10,8 @@
  *
  * Not audited, on purpose:
  *   - AuditEvent itself (it would audit its own writes forever);
- *   - the other append-only logs — BillEvent, UserActivityEvent, BookMergeEvent,
- *     DeletedAudioTrack — which already are their own history;
+ *   - the other append-only logs — BillEvent, OrderEvent, UserActivityEvent,
+ *     BookMergeEvent, DeletedAudioTrack — which already are their own history;
  *   - machine-written tables rewritten wholesale by scripts (OrphanAudioFolder,
  *     AudioFilepathBackup): pure churn, no human decision behind them;
  *   - the pure join tables (BookGenre, CoupsDeCoeurBooks): they only ever move

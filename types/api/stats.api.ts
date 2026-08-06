@@ -25,12 +25,13 @@ export interface StatsActor {
     name: string;
 }
 
-/** One aggregate cell: (bucket, actor[, bill-event type]) → count. */
+/** One aggregate cell: (bucket, actor[, sub-type]) → count. */
 export interface StaffStatsRow {
     bucket: string; // 'YYYY-MM-DD' (Paris-local day, or ISO-Monday of the week)
     actorId: number;
     count: number;
-    type?: string; // BillEventType, only for metric=billEvents
+    /** BillEventType / AudioTrackAction / OrderEventType, per METRIC_SOURCES.typeColumn. */
+    type?: string;
 }
 
 export interface StaffStatsResponse {
@@ -53,7 +54,8 @@ export interface StaffDetailItem {
     subtitle: string | null;
     href: string | null; // deep link to the matching admin screen
     needsReview?: boolean; // books only — "à vérifier"
-    type?: string; // BillEventType, bill events only
+    /** BillEventType / AudioTrackAction / OrderEventType, per metric. */
+    type?: string;
 }
 
 export interface StaffDetailsResponse {

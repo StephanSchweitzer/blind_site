@@ -261,7 +261,7 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
 
             // Align the linked order to the new assignment's status.
             if (parsedOrderId) {
-                await syncOrderToStatus(tx, parsedOrderId, parsedStatusId);
+                await syncOrderToStatus(tx, parsedOrderId, parsedStatusId, performedById);
 
                 // An assignment can be logged as already « Terminé » (reader + dates
                 // supplied up front) — that finishes the service immediately, so the

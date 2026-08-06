@@ -220,7 +220,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 existingAssignment.orderId &&
                 newStatusId !== existingAssignment.statusId
             ) {
-                await syncOrderToStatus(tx, existingAssignment.orderId, newStatusId);
+                await syncOrderToStatus(tx, existingAssignment.orderId, newStatusId, performedById);
 
                 // The recording just finished — this is when the service is rendered,
                 // so the order accrues onto a brouillon now (using its cost as it

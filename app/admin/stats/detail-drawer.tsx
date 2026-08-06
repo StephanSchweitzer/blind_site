@@ -10,16 +10,23 @@ import type { StaffDetailItem, StaffDetailsResponse, StaffMetric, StatsGranulari
 import {
     AUDIO_ACTION_LABEL,
     AUDIO_ACTION_TINT,
+    ORDER_EVENT_TYPE_LABEL,
+    ORDER_EVENT_TYPE_TINT,
     METRIC_LABELS,
     formatBucketLabel,
     formatDateTime,
 } from './stats-utils';
 
-// AudioTrackAction and BillEventType share the `type` field on a detail item
-// but never share a key, so one merged lookup serves both without a switch
-// on `metric`.
-const BADGE_LABEL: Record<string, string> = { ...TYPE_LABEL, ...AUDIO_ACTION_LABEL };
-const BADGE_TINT: Record<string, string> = { ...TYPE_TINT, ...AUDIO_ACTION_TINT };
+// AudioTrackAction, BillEventType and OrderEventType share the `type` field on
+// a detail item, but their values are NOT disjoint (both BillEventType and
+// OrderEventType have a CREATED and a REOPENED) — so the lookup is scoped per
+// metric rather than merged into one flat dict, which would let one clobber
+// the other's label/tint.
+const BADGE_MAPS: Partial<Record<StaffMetric, [Record<string, string>, Record<string, string>]>> = {
+    billEvents: [TYPE_LABEL, TYPE_TINT],
+    audioEvents: [AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT],
+    orders: [ORDER_EVENT_TYPE_LABEL, ORDER_EVENT_TYPE_TINT],
+};
 
 // Side drawer behind a heatmap cell: the person's records for that bucket,
 // fetched lazily on open, each deep-linking to its admin edit screen.
@@ -70,6 +77,7 @@ export default function DetailDrawer({
     const current = result?.key === key ? result : null;
     const items = current ? current.items : undefined; // undefined = loading
     const error = current !== null && current.items === null;
+    const [badgeLabel, badgeTint] = BADGE_MAPS[metric] ?? [{}, {}];
 
     return (
         <>
@@ -127,8 +135,8 @@ export default function DetailDrawer({
                                         {formatDateTime(item.at)}
                                     </span>
                                     {item.type && (
-                                        <Badge className={BADGE_TINT[item.type] ?? 'bg-muted text-foreground'}>
-                                            {BADGE_LABEL[item.type] ?? item.type}
+                                        <Badge className={badgeTint[item.type] ?? 'bg-muted text-foreground'}>
+                                            {badgeLabel[item.type] ?? item.type}
                                         </Badge>
                                     )}
                                     {item.needsReview && (

@@ -3,7 +3,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
-import { STATUS, guardOrderStatus, guardDuplicationStatus, resolveClosureDate, guardClosureDateRequiresTermine } from '@/lib/statusSync';
+import { STATUS, guardOrderStatus, guardDuplicationStatus, resolveClosureDate, guardClosureDateRequiresTermine, logOrderEvent } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -381,6 +381,12 @@ export const POST = withAdmin(async (request, { me }) => {
                         select: { id: true },
                     });
                     createdOrders.push(o);
+                    await logOrderEvent(tx, {
+                        orderId: o.id,
+                        type: 'CREATED',
+                        toStatusId: l.statusId,
+                        performedById: batchStaffId,
+                    });
                     // Billing happens when the service is rendered, not on creation — a
                     // line only accrues here if it's created straight into « Terminé »
                     // (e.g. a duplication handled on the spot).
@@ -609,6 +615,13 @@ export const POST = withAdmin(async (request, { me }) => {
                         select: { name: true },
                     },
                 },
+            });
+
+            await logOrderEvent(tx, {
+                orderId: created.id,
+                type: 'CREATED',
+                toStatusId: created.statusId,
+                performedById: staffId,
             });
 
             // Billing happens when the service is rendered, not on creation — this

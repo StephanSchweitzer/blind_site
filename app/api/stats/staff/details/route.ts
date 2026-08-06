@@ -82,23 +82,28 @@ async function loadItems(
 
         case 'orders': {
             const rows = await prisma.$queryRaw<Array<{
-                id: number; bookTitle: string; at: string;
+                id: number; orderId: number; bookTitle: string; type: string;
+                statusName: string | null; at: string;
             } & NameParts>>`
-                SELECT o.id, bk.title AS "bookTitle", ${isoUtc(Prisma.sql`o."createdDate"`)} AS at,
+                SELECT e.id, e."orderId", bk.title AS "bookTitle", e.type::text AS type,
+                       st.name AS "statusName", ${isoUtc(Prisma.sql`e."createdAt"`)} AS at,
                        u.name, u."firstName", u."lastName", u.email
-                FROM "Orders" o
+                FROM "OrderEvent" e
+                JOIN "Orders" o ON o.id = e."orderId"
                 JOIN "Book" bk ON bk.id = o."catalogueId"
                 JOIN "User" u ON u.id = o."aveugleId"
-                WHERE o."processedByStaffId" = ${actorId}
-                  AND o."createdDate" >= ${from} AND o."createdDate" < ${to}
-                ORDER BY o."createdDate" ASC
+                LEFT JOIN "Status" st ON st.id = e."toStatusId"
+                WHERE ${actorCondition(Prisma.sql`e."performedById"`, actorId)}
+                  AND e."createdAt" >= ${from} AND e."createdAt" < ${to}
+                ORDER BY e."createdAt" ASC
                 LIMIT ${DETAILS_LIMIT}`;
             return rows.map((r) => ({
                 id: r.id,
                 at: r.at,
-                title: `Demande n°${r.id} — ${r.bookTitle}`,
-                subtitle: getUserDisplayName(r),
-                href: `/admin/orders?order=${r.id}`,
+                title: `Demande n°${r.orderId} — ${r.bookTitle}`,
+                subtitle: r.statusName ? `${getUserDisplayName(r)} — ${r.statusName}` : getUserDisplayName(r),
+                type: r.type,
+                href: `/admin/orders?order=${r.orderId}`,
             }));
         }
 
