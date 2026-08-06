@@ -390,15 +390,18 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 });
             }
 
-            // Invariant: a non-UNBILLABLE order must sit on a brouillon. Heals any orphan
-            // (legacy row, UNBILLABLE→UNBILLED, cost set after creation). No-op otherwise.
-            if (existingOrder.billId == null) {
+            // Billing happens when the service is rendered: an order only accrues onto
+            // a brouillon once it reaches (or already sits at) « Terminé », using
+            // whatever cost is on it at that point — never at creation or mid-recording.
+            const resultingStatusId = data.statusId ?? existingOrder.statusId;
+            const justCompletedAndUnbilled = existingOrder.billId == null && resultingStatusId === STATUS.TERMINE;
+            if (justCompletedAndUnbilled) {
                 await accrueOrderToOpenDraft(tx, orderId, performedById);
             }
 
             // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
             // Skip issued bills (BILLED/PAID/SOLDE) — those go through the reprint path below.
-            if (existingOrder.billId == null || billState === BillingStatus.DRAFT) {
+            if (justCompletedAndUnbilled || billState === BillingStatus.DRAFT) {
                 await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
@@ -658,15 +661,18 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 });
             }
 
-            // Invariant: a non-UNBILLABLE order must sit on a brouillon. Heals any orphan
-            // (legacy row, UNBILLABLE→UNBILLED, cost set after creation). No-op otherwise.
-            if (existingOrder.billId == null) {
+            // Billing happens when the service is rendered: an order only accrues onto
+            // a brouillon once it reaches (or already sits at) « Terminé », using
+            // whatever cost is on it at that point — never at creation or mid-recording.
+            const resultingStatusId = body.statusId ?? existingOrder.statusId;
+            const justCompletedAndUnbilled = existingOrder.billId == null && resultingStatusId === STATUS.TERMINE;
+            if (justCompletedAndUnbilled) {
                 await accrueOrderToOpenDraft(tx, orderId, performedById);
             }
 
             // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
             // Skip issued bills (BILLED/PAID/SOLDE) — those go through the reprint path below.
-            if (existingOrder.billId == null || billState === BillingStatus.DRAFT) {
+            if (justCompletedAndUnbilled || billState === BillingStatus.DRAFT) {
                 await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 

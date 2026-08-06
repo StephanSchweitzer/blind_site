@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
+    STATUS,
     guardAssignmentStatus,
     guardAssignmentHasReader,
     guardAssignmentConsistency,
@@ -12,6 +13,7 @@ import {
     guardReaderEligible,
     syncOrderToStatus,
 } from '@/lib/statusSync';
+import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
@@ -93,9 +95,11 @@ export const GET = withAdmin(async (request: NextRequest) => {
     }
 });
 
-export const POST = withAdmin(async (request: NextRequest) => {
+export const POST = withAdmin(async (request: NextRequest, { me }) => {
     revalidateAdmin();
     try {
+        const performedById = me.id;
+
         const body = await request.json();
         const {
             readerId,
@@ -258,6 +262,20 @@ export const POST = withAdmin(async (request: NextRequest) => {
             // Align the linked order to the new assignment's status.
             if (parsedOrderId) {
                 await syncOrderToStatus(tx, parsedOrderId, parsedStatusId);
+
+                // An assignment can be logged as already « Terminé » (reader + dates
+                // supplied up front) — that finishes the service immediately, so the
+                // order accrues onto a brouillon now, same as reaching Terminé later.
+                if (parsedStatusId === STATUS.TERMINE) {
+                    const linkedOrder = await tx.orders.findUnique({
+                        where: { id: parsedOrderId },
+                        select: { id: true, aveugleId: true, billId: true },
+                    });
+                    if (linkedOrder && linkedOrder.billId == null) {
+                        await accrueOrderToOpenDraft(tx, linkedOrder.id, performedById);
+                        await issueDraftIfOverThreshold(tx, linkedOrder.aveugleId, performedById);
+                    }
+                }
             }
 
             if (readerId) {

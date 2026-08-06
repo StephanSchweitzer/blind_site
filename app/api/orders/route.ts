@@ -3,7 +3,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
-import { guardOrderStatus, guardDuplicationStatus, resolveClosureDate, guardClosureDateRequiresTermine } from '@/lib/statusSync';
+import { STATUS, guardOrderStatus, guardDuplicationStatus, resolveClosureDate, guardClosureDateRequiresTermine } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -358,6 +358,7 @@ export const POST = withAdmin(async (request, { me }) => {
 
             const { created, autoBill } = await prisma.$transaction(async (tx) => {
                 const createdOrders: { id: number }[] = [];
+                let anyAccrued = false;
                 for (const l of preparedLines) {
                     const o = await tx.orders.create({
                         data: {
@@ -380,12 +381,19 @@ export const POST = withAdmin(async (request, { me }) => {
                         select: { id: true },
                     });
                     createdOrders.push(o);
-                    // Every new order lands on the client's open brouillon immediately.
-                    await accrueOrderToOpenDraft(tx, o.id, batchStaffId);
+                    // Billing happens when the service is rendered, not on creation — a
+                    // line only accrues here if it's created straight into « Terminé »
+                    // (e.g. a duplication handled on the spot).
+                    if (l.statusId === STATUS.TERMINE) {
+                        await accrueOrderToOpenDraft(tx, o.id, batchStaffId);
+                        anyAccrued = true;
+                    }
                 }
 
                 // Issue the open draft once if the batch pushed it over the seuil.
-                const auto = await issueDraftIfOverThreshold(tx, batchAveugleId, batchStaffId);
+                const auto = anyAccrued
+                    ? await issueDraftIfOverThreshold(tx, batchAveugleId, batchStaffId)
+                    : null;
                 return { created: createdOrders, autoBill: auto };
             });
 
@@ -603,10 +611,14 @@ export const POST = withAdmin(async (request, { me }) => {
                 },
             });
 
-            // Every new order lands on the client's open brouillon immediately,
-            // then the draft is issued if this pushed it over the seuil.
-            await accrueOrderToOpenDraft(tx, created.id, staffId);
-            const auto = await issueDraftIfOverThreshold(tx, created.aveugleId, staffId);
+            // Billing happens when the service is rendered, not on creation — this
+            // order only accrues here if it's created straight into « Terminé »
+            // (e.g. a duplication handled on the spot).
+            let auto = null;
+            if (parsedStatusId === STATUS.TERMINE) {
+                await accrueOrderToOpenDraft(tx, created.id, staffId);
+                auto = await issueDraftIfOverThreshold(tx, created.aveugleId, staffId);
+            }
             return { order: created, autoBill: auto };
         });
 

@@ -101,10 +101,13 @@ export async function getOrCreateOpenDraft(
 }
 
 /**
- * Invariant guarantee: a non-UNBILLABLE order must sit on a brouillon. Attaches the
- * order to the client's open DRAFT (creating one if needed). No-op if the order is
- * already on a bill, is UNBILLABLE, or is inactive — so it's safe to call on every
- * create/edit/completion.
+ * Attaches an order to the client's open DRAFT (creating one if needed), recomputing
+ * the total off whatever cost is on the order right now. No-op if the order is already
+ * on a bill, is UNBILLABLE, or is inactive.
+ *
+ * Callers gate this on the order reaching (or already sitting at) « Terminé » — a
+ * demande is only billed once the service is rendered, so its price has had a chance
+ * to be finalized first. Don't call this at order creation.
  */
 export async function accrueOrderToOpenDraft(
     tx: TransactionClient,
@@ -193,3 +196,7 @@ export const INVOICE_VISIBLE_ORDER_FIELDS = [
     'isDuplication',
     'cost',
 ] as const;
+
+/** An order is BILLED once its bill is issued (anything past DRAFT); a draft (brouillon) leaves it UNBILLED. */
+export const orderBillingForBillState = (state: string): 'BILLED' | 'UNBILLED' =>
+    state === 'DRAFT' ? 'UNBILLED' : 'BILLED';

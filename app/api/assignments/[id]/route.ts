@@ -7,12 +7,14 @@ import {
 } from '@/types/api';
 import { assignmentIncludeConfigs } from '@/types/models';
 import {
+    STATUS,
     guardAssignmentStatus,
     guardAssignmentConsistency,
     guardAssignmentMatchesOrder,
     guardOrderNotSettled,
     syncOrderToStatus,
 } from '@/lib/statusSync';
+import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
 
 /**
@@ -57,9 +59,11 @@ export const GET = withAdmin(async (_request, { params }) => {
  * A status change (1–3) propagates up to the linked order.
  * Reader assignments are managed via POST /api/assignments/[id]/readers.
  */
-export const PUT = withAdmin(async (request, { params }) => {
+export const PUT = withAdmin(async (request, { me, params }) => {
     revalidateAdmin();
     try {
+        const performedById = me.id;
+
         const { id } = (await params) ?? {};
         const assignmentId = Number(id);
 
@@ -217,6 +221,20 @@ export const PUT = withAdmin(async (request, { params }) => {
                 newStatusId !== existingAssignment.statusId
             ) {
                 await syncOrderToStatus(tx, existingAssignment.orderId, newStatusId);
+
+                // The recording just finished — this is when the service is rendered,
+                // so the order accrues onto a brouillon now (using its cost as it
+                // stands at this moment), rather than back when it was created.
+                if (newStatusId === STATUS.TERMINE) {
+                    const order = await tx.orders.findUnique({
+                        where: { id: existingAssignment.orderId },
+                        select: { id: true, aveugleId: true, billId: true },
+                    });
+                    if (order && order.billId == null) {
+                        await accrueOrderToOpenDraft(tx, order.id, performedById);
+                        await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
+                    }
+                }
             }
 
             return assignment;
