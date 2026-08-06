@@ -99,7 +99,7 @@ const extensionOf = (name: string): string => {
  * cosmetic, it could drop the file out of the AUDIO_EXT filter that decides
  * whether it counts as a track at all.
  */
-export const PATCH = withAdmin(async (req, { params }) => {
+export const PATCH = withAdmin(async (req, { params, me }) => {
     const { id } = (await params) ?? {};
     const bookId = Number(id);
     if (!Number.isInteger(bookId)) {
@@ -156,7 +156,7 @@ export const PATCH = withAdmin(async (req, { params }) => {
     const newKey = `${prefix}${newName}`;
 
     try {
-        const result = await renameTrack({ bookId, oldKey: key, newKey });
+        const result = await renameTrack({ bookId, oldKey: key, newKey, userId: me.id });
         return NextResponse.json({
             message: `« ${filename} » a été renommé en « ${newName} ».`,
             key: newKey,

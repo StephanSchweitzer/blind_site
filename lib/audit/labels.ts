@@ -40,6 +40,7 @@ export const MODEL_LABELS: Record<string, string> = {
     HistoryEvent: 'Événement de l’historique',
     PracticalInfo: 'Information pratique',
     MembershipOption: 'Option d’adhésion',
+    AudioTrackEvent: 'Piste audio',
 };
 
 export const modelLabel = (model: string): string => MODEL_LABELS[model] ?? model;
@@ -64,6 +65,9 @@ export function recordHref(model: string, recordId: string): string | null {
             return `/admin/manage_coups_de_coeur`;
         case 'News':
             return `/admin/news?news=${recordId}`;
+        // No standalone screen for one AudioTrackEvent row — the timeline label
+        // already names the book; the audio itself is managed from the book's
+        // own dialogue, not from a URL this recordId could point at.
         default:
             return null;
     }
@@ -141,6 +145,14 @@ const FIELD_LABELS: Record<string, string> = {
     addedById: 'Ajouté par',
     source_access_id: 'Identifiant Access',
     id_arbre: 'Identifiant arbre',
+    bookId: 'Livre',
+
+    // audio track events
+    action: 'Action',
+    filename: 'Nom du fichier',
+    newFilename: 'Nouveau nom',
+    sizeBytes: 'Taille (octets)',
+    performedById: 'Effectué par',
 
     // demandes / attributions
     aveugleId: 'Auditeur',

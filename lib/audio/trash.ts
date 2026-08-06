@@ -94,6 +94,16 @@ export async function softDeleteTrack(opts: {
 
     await refreshBookAudioState(bookId);
 
+    await prisma.audioTrackEvent.create({
+        data: {
+            bookId,
+            action: 'DELETE',
+            filename,
+            sizeBytes: BigInt(head.sizeBytes),
+            performedById: userId,
+        },
+    });
+
     return { trashId: row.id, trashKey, sizeBytes: head.sizeBytes };
 }
 
@@ -139,6 +149,16 @@ export async function restoreTrack(opts: {
     await deleteTrack(row.trashKey);
 
     if (row.bookId) await refreshBookAudioState(row.bookId);
+
+    await prisma.audioTrackEvent.create({
+        data: {
+            bookId: row.bookId,
+            action: 'RESTORE',
+            filename: row.filename,
+            sizeBytes: row.sizeBytes,
+            performedById: userId,
+        },
+    });
 
     return { bookId: row.bookId, originalKey: row.originalKey };
 }

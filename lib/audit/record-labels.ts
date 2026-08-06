@@ -178,6 +178,17 @@ const SOURCES: Record<string, LabelSource> = {
         fromSnapshot: (snap) => label(str(snap.title)),
     },
 
+    // No fromSnapshot: AudioTrackEvent rows are create-only, so a DELETE
+    // snapshot never happens — the live join is the only path this ever takes.
+    AudioTrackEvent: {
+        query: (ids) => Prisma.sql`
+            SELECT e.id::text AS key, b.title, b.author
+            FROM "AudioTrackEvent" e
+            LEFT JOIN "Book" b ON b.id = e."bookId"
+            WHERE e.id IN (${Prisma.join(ids)})`,
+        build: (row) => label(str(row.title), str(row.author)),
+    },
+
     // The small reference tables all name themselves the same way.
     ...Object.fromEntries(
         (['Genre', 'Status', 'MediaFormat', 'Civility', 'TeamMember'] as const).map((model) => [

@@ -16,6 +16,15 @@
  *     AudioFilepathBackup): pure churn, no human decision behind them;
  *   - the pure join tables (BookGenre, CoupsDeCoeurBooks): they only ever move
  *     with the Book / CoupsDeCoeur row that owns them, which IS audited.
+ *
+ * AudioTrackEvent is the one deliberate exception to the "event logs aren't
+ * audited" rule above: upload/rename/delete/restore on a book's audio
+ * otherwise touch no audited row at all (refreshBookAudioState() writes are
+ * wrapped in withoutAudit(), see lib/audio/state.ts), so it exists specifically
+ * to give those four actions a row this extension can see. It is create-only —
+ * nothing ever updates or deletes an AudioTrackEvent — so it can never produce
+ * a DELETE-shaped AuditEvent and never surfaces the generic, bucket-unaware
+ * restore button on /admin/stats.
  */
 export const AUDITED_MODELS = new Set([
     'User',
@@ -38,6 +47,7 @@ export const AUDITED_MODELS = new Set([
     'HistoryEvent',
     'PracticalInfo',
     'MembershipOption',
+    'AudioTrackEvent',
 ]);
 
 export function isAuditedModel(model: string | undefined): boolean {

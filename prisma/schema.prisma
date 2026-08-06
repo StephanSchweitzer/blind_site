@@ -83,6 +83,7 @@ model User {
   activityEventsPerformed  UserActivityEvent[] @relation("UserActivityEventsBy")
   audioTracksDeleted       DeletedAudioTrack[] @relation("AudioTracksDeletedBy")
   audioTracksRestored      DeletedAudioTrack[] @relation("AudioTracksRestoredBy")
+  audioTrackEvents         AudioTrackEvent[]   @relation("AudioTrackEventsPerformedBy")
   languages                ReaderLanguage[]
   civility                 Civility?           @relation(fields: [civilityId], references: [id])
 
@@ -138,9 +139,9 @@ model Book {
   /// State of the link between audio_filepath and the storage bucket, refreshed
   /// by scripts/sync-audio-links.ts. Deliberately NOT `needsReview` — that flag
   /// belongs to the duplicate-fusion queue on /admin/review.
-  audioLinkStatus        AudioLinkStatus     @default(UNVERIFIED)
-  audioCheckedAt         DateTime?
-  audioTrackCount        Int?
+  audioLinkStatus AudioLinkStatus @default(UNVERIFIED)
+  audioCheckedAt  DateTime?
+  audioTrackCount Int?
 
   /// Total weight of the book's audio folder, in kibioctets (1 Kio = 1024 o),
   /// refreshed alongside audioTrackCount. Feeds the CD-based tarif in
@@ -151,15 +152,16 @@ model Book {
   /// boundary can serialize — and a raw Book row crosses both (app/catalogue/data.ts,
   /// app/admin/books/page.tsx, /api/books/[id]). Kio keeps it a plain number up to
   /// 2 Tio, and 1 Kio of precision is nothing next to a 700 Mio block.
-  audioSizeKb            Int?
+  audioSizeKb Int?
 
   /// Set when a permanent hits "Impossible de fusionner" on /admin/review: the
   /// pair carries two different recordings, so it can only be sorted out by hand
   /// in the database. Stamping the date keeps the escalation mail from being
   /// re-sent on every visit; the book stays in the review queue either way.
-  escalatedAt            DateTime?
-  orphanAudioFolders     OrphanAudioFolder[]
-  deletedAudioTracks     DeletedAudioTrack[] @relation("BookDeletedAudioTracks")
+  escalatedAt        DateTime?
+  orphanAudioFolders OrphanAudioFolder[]
+  deletedAudioTracks DeletedAudioTrack[] @relation("BookDeletedAudioTracks")
+  audioTrackEvents   AudioTrackEvent[]   @relation("BookAudioTrackEvents")
 
   @@index([audioLinkStatus])
   @@index([createdAt(sort: Desc)])
@@ -529,20 +531,20 @@ enum UserActivityStatus {
 
 /// Append-only history of a member's activity-status changes (who/what/when/why).
 model UserActivityEvent {
-  id          Int                 @id @default(autoincrement())
-  userId      Int
-  fromStatus  UserActivityStatus?
-  toStatus    UserActivityStatus
-  reason      String?
-  comment     String?
+  id               Int                 @id @default(autoincrement())
+  userId           Int
+  fromStatus       UserActivityStatus?
+  toStatus         UserActivityStatus
+  reason           String?
+  comment          String?
   /// Window recorded with the change when toStatus is UNAVAILABLE, so the
   /// history keeps showing the dates that were set even after they change.
   unavailableFrom  DateTime?
   unavailableUntil DateTime?
-  changedById Int?
-  changedAt   DateTime            @default(now())
-  user        User                @relation("UserActivityEvents", fields: [userId], references: [id])
-  changedBy   User?               @relation("UserActivityEventsBy", fields: [changedById], references: [id])
+  changedById      Int?
+  changedAt        DateTime            @default(now())
+  user             User                @relation("UserActivityEvents", fields: [userId], references: [id])
+  changedBy        User?               @relation("UserActivityEventsBy", fields: [changedById], references: [id])
 
   @@index([userId])
   @@index([changedAt])
@@ -647,24 +649,24 @@ enum AudioLinkStatus {
 /// Refreshed by scripts/sync-audio-links.ts: folders still orphaned get their
 /// lastSeenAt bumped, folders that stopped being orphaned are deleted.
 model OrphanAudioFolder {
-  id          Int       @id @default(autoincrement())
-  prefix      String    @unique
-  year        Int?
+  id           Int       @id @default(autoincrement())
+  prefix       String    @unique
+  year         Int?
   /// Leading number in the folder name — matches Book.source_access_id, which is
   /// what lets the relink screen suggest a book instead of making admins search.
-  folderNum   Int?
-  title       String
-  trackCount  Int
-  bytes       BigInt
-  firstSeenAt DateTime  @default(now())
-  lastSeenAt  DateTime  @updatedAt
+  folderNum    Int?
+  title        String
+  trackCount   Int
+  bytes        BigInt
+  firstSeenAt  DateTime  @default(now())
+  lastSeenAt   DateTime  @updatedAt
   /// Set when an admin relinks the folder to a book.
   linkedBookId Int?
-  linkedBook  Book?     @relation(fields: [linkedBookId], references: [id], onDelete: SetNull)
-  resolvedAt  DateTime?
+  linkedBook   Book?     @relation(fields: [linkedBookId], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
   /// Set when an admin decides the folder is junk (recycle bin, stray upload).
-  dismissedAt DateTime?
-  note        String?
+  dismissedAt  DateTime?
+  note         String?
 
   @@index([folderNum])
   @@index([year])
@@ -719,6 +721,40 @@ model DeletedAudioTrack {
   @@index([purgedAt])
 }
 
+enum AudioTrackAction {
+  UPLOAD
+  RENAME
+  DELETE
+  RESTORE
+}
+
+/// Append-only log of audio track actions (upload/rename/delete/restore), one
+/// row per file per action. Unlike DeletedAudioTrack and the other event logs,
+/// this one IS an audited model (see lib/audit/config.ts): it exists
+/// specifically so these actions — otherwise invisible to the trail, since
+/// refreshBookAudioState() writes are wrapped in withoutAudit() — get an
+/// automatic AuditEvent through the same Prisma-extension mechanism as
+/// everything else. Rows are only ever created, never updated or deleted, so
+/// it never produces a DELETE-shaped AuditEvent and never surfaces the
+/// generic (bucket-unaware) restore button on /admin/stats.
+model AudioTrackEvent {
+  id            Int              @id @default(autoincrement())
+  /// Nullable + SetNull so the log outlives the book it came from.
+  bookId        Int?
+  action        AudioTrackAction
+  filename      String
+  /// Only set for RENAME.
+  newFilename   String?
+  sizeBytes     BigInt?
+  performedById Int?
+  createdAt     DateTime         @default(now())
+  book          Book?            @relation("BookAudioTrackEvents", fields: [bookId], references: [id], onDelete: SetNull)
+  performedBy   User?            @relation("AudioTrackEventsPerformedBy", fields: [performedById], references: [id], onDelete: SetNull)
+
+  @@index([bookId])
+  @@index([createdAt])
+}
+
 /// Singleton (id = 1) holding the editable content of the public Contact page.
 model SiteContact {
   id           Int      @id @default(1)
@@ -771,7 +807,7 @@ model PracticalInfo {
   iconKey    String
   colorTheme String   @default("blue")
   question   String
-  body       String   // markdown
+  body       String // markdown
   sortOrder  Int      @default(0)
   active     Boolean  @default(true)
   updatedAt  DateTime @updatedAt
@@ -785,10 +821,10 @@ model MembershipOption {
   iconKey        String
   colorTheme     String   @default("blue")
   title          String
-  body           String   // markdown
+  body           String // markdown
   highlightLabel String?
   highlightValue String?
-  bullets        String?  // one bullet per line
+  bullets        String? // one bullet per line
   ctaLabel       String?
   ctaHref        String?
   sortOrder      Int      @default(0)

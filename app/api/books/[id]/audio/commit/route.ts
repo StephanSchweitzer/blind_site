@@ -70,6 +70,15 @@ export const POST = withAdmin(async (req, { params, me }) => {
             continue;
         }
         confirmed.push(key);
+        await prisma.audioTrackEvent.create({
+            data: {
+                bookId,
+                action: 'UPLOAD',
+                filename: key.slice(prefix.length),
+                sizeBytes: BigInt(head.sizeBytes),
+                performedById: me.id,
+            },
+        });
     }
 
     // This is where the weight of a recording finally becomes known, so it is

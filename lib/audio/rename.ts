@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { prisma } from '@/lib/prisma';
 import { copyTrack, deleteTrack, headTrack } from './bucket';
 import { refreshBookAudioState } from './state';
 
@@ -23,8 +24,9 @@ export async function renameTrack(opts: {
     bookId: number;
     oldKey: string;
     newKey: string;
+    userId: number | null;
 }): Promise<{ newKey: string; sizeBytes: number }> {
-    const { bookId, oldKey, newKey } = opts;
+    const { bookId, oldKey, newKey, userId } = opts;
 
     if (newKey === oldKey) {
         throw new AudioRenameError('Le nouveau nom est identique à l’actuel.');
@@ -61,6 +63,17 @@ export async function renameTrack(opts: {
     await deleteTrack(oldKey);
 
     await refreshBookAudioState(bookId);
+
+    await prisma.audioTrackEvent.create({
+        data: {
+            bookId,
+            action: 'RENAME',
+            filename: oldKey.slice(oldKey.lastIndexOf('/') + 1),
+            newFilename: newKey.slice(newKey.lastIndexOf('/') + 1),
+            sizeBytes: BigInt(head.sizeBytes),
+            performedById: userId,
+        },
+    });
 
     return { newKey, sizeBytes: head.sizeBytes };
 }
