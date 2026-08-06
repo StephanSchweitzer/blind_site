@@ -4,12 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus } from '@prisma/client';
 import { userAddressLines } from '@/lib/users/formatAddress';
 import { STATUS } from '@/lib/statusSync';
-import { recomputeBillTotal, logBillEvent, transitionEventType } from '@/lib/billing';
+import { recomputeBillTotal, logBillEvent, transitionEventType, orderBillingForBillState } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
-
-// An order is BILLED once its bill is issued (anything past DRAFT); a draft (brouillon) leaves it UNBILLED.
-const orderBillingForBillState = (state: string): 'BILLED' | 'UNBILLED' =>
-    state === 'DRAFT' ? 'UNBILLED' : 'BILLED';
 
 export const GET = withAdmin(async (_request, context) => {
     try {
