@@ -19,7 +19,9 @@ import {
     Loader2,
     Lock,
     Pause,
+    Pencil,
     Play,
+    RefreshCw,
     RotateCcw,
     Trash2,
     Upload,
@@ -41,6 +43,8 @@ import {
     type AudioLinkStatus,
 } from '@/lib/audio-enums';
 import { DeleteAudioTrackModal, type AudioTrackTarget } from '@/admin/DeleteAudioTrackModal';
+import { DeleteAllAudioTracksModal } from '@/admin/DeleteAllAudioTracksModal';
+import { RenameAudioTrackModal, type AudioTrackRenameTarget } from '@/admin/RenameAudioTrackModal';
 
 interface Track {
     order: number;
@@ -277,6 +281,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const [playingKey, setPlayingKey] = useState<string | null>(null);
     const [target, setTarget] = useState<AudioTrackTarget | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+    const [renameTarget, setRenameTarget] = useState<AudioTrackRenameTarget | null>(null);
+    const [renameOpen, setRenameOpen] = useState(false);
     const [restoringId, setRestoringId] = useState<number | null>(null);
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     /** A picked folder, awaiting the admin's confirmation. See the panel below. */
@@ -617,6 +624,24 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             Corbeille ({activeTrash.length})
                         </Button>
 
+                        {/* Re-fetches the folder listing. Order itself is never cached —
+                            it's recomputed from the current filenames on every load — so
+                            this can't reorder anything; it exists for admins who want to
+                            confirm the list in front of them is the bucket's current state. */}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={busy || loading}
+                            onClick={() => void load()}
+                            className="bg-field border-border text-foreground hover:bg-muted"
+                        >
+                            <span className="flex items-center gap-2">
+                                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                Actualiser
+                            </span>
+                        </Button>
+
                         {/* Whole-folder download — the alternative is one click per chapter. */}
                         {tab === 'pistes' && (data?.trackCount ?? 0) > 0 && (
                             <Button
@@ -642,6 +667,23 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         )}
                                     </span>
                                 )}
+                            </Button>
+                        )}
+
+                        {/* Bulk delete — a loop over the same reversible corbeille
+                            path as a single delete, see the /audio/tracks route. */}
+                        {tab === 'pistes' && (data?.trackCount ?? 0) > 0 && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={busy}
+                                onClick={() => setDeleteAllOpen(true)}
+                                className="border-red-500/50 bg-card text-red-500 hover:bg-red-500/10"
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Trash2 className="h-4 w-4" /> Tout supprimer
+                                </span>
                             </Button>
                         )}
                     </div>
@@ -763,6 +805,20 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         >
                                             <Download className="h-4 w-4" />
                                         </a>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            disabled={busy}
+                                            onClick={() => {
+                                                setRenameTarget(t);
+                                                setRenameOpen(true);
+                                            }}
+                                            aria-label={`Renommer ${t.name}`}
+                                            className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
                                         <Button
                                             type="button"
                                             variant="outline"
@@ -1165,6 +1221,22 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                 bookId={bookId}
                 track={target}
                 onDeleted={() => void refreshAll()}
+            />
+
+            <DeleteAllAudioTracksModal
+                isOpen={deleteAllOpen}
+                onOpenChange={setDeleteAllOpen}
+                bookId={bookId}
+                trackCount={data?.trackCount ?? 0}
+                onDeleted={() => void refreshAll()}
+            />
+
+            <RenameAudioTrackModal
+                isOpen={renameOpen}
+                onOpenChange={setRenameOpen}
+                bookId={bookId}
+                track={renameTarget}
+                onRenamed={() => void refreshAll()}
             />
         </>
     );
