@@ -24,6 +24,7 @@ import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
 import YearCommandSelect from "@/components/ui/year-select";
 import { calendarMonth, calendarYear } from '@/lib/calendar-date';
 import DurationInputs from "@/components/ui/duration-inputs";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface Genre {
@@ -43,6 +44,8 @@ interface Livre {
     description?: string;
     readingDurationMinutes?: number;
     available: boolean;
+    audio_filepath?: string | null;
+    audioTrackCount?: number | null;
 }
 
 
@@ -50,6 +53,7 @@ export default function EditionLivre() {
     const router = useRouter();
     const params = useParams();
     const {id} = params;
+    const { toast } = useToast();
 
     const [formData, setFormData] = useState<Livre | null>(null);
     const [genresDisponibles, setGenresDisponibles] = useState<Genre[]>([]);
@@ -186,9 +190,32 @@ export default function EditionLivre() {
                 method: 'DELETE',
             });
 
+            const data = await res.json().catch(() => null);
+
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Échec de la suppression du livre');
+                throw new Error(data?.error || 'Échec de la suppression du livre');
+            }
+
+            const audioFailures = (data?.audioFailures ?? []) as string[];
+            if (audioFailures.length > 0) {
+                // The book is gone regardless — these specific files just
+                // couldn't be moved to the corbeille and stay in the bucket,
+                // where the orphan-folder scan will surface them for review.
+                toast({
+                    variant: 'destructive',
+                    // @ts-expect-error jsx in toast
+                    title: <span className="text-2xl font-bold">Livre supprimé, audio incomplet</span>,
+                    description: (
+                        <span className="text-xl mt-2">
+                            {audioFailures.length} fichier{audioFailures.length > 1 ? 's' : ''} n’
+                            {audioFailures.length > 1 ? 'ont' : 'a'} pas pu être déplacé
+                            {audioFailures.length > 1 ? 's' : ''} vers la corbeille et
+                            reste{audioFailures.length > 1 ? 'nt' : ''} dans le bucket : à retrouver
+                            dans /admin/audio-orphelins.
+                        </span>
+                    ),
+                    className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
+                });
             }
 
             router.push('/admin/books');
@@ -432,9 +459,27 @@ export default function EditionLivre() {
                                             <AlertDialogTitle className="text-foreground">
                                                 Confirmer la suppression
                                             </AlertDialogTitle>
-                                            <AlertDialogDescription className="text-muted-foreground">
-                                                Êtes-vous sûr de vouloir supprimer ce livre ? Cette action est
-                                                irréversible.
+                                            <AlertDialogDescription className="text-muted-foreground" asChild>
+                                                <div className="space-y-2">
+                                                    <p>
+                                                        Êtes-vous sûr de vouloir supprimer ce livre ? Cette action
+                                                        est irréversible.
+                                                    </p>
+                                                    {formData.audio_filepath && (
+                                                        <p className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-red-600 dark:text-red-300">
+                                                            Le dossier audio associé{' '}
+                                                            <span className="font-mono break-all">
+                                                                « {formData.audio_filepath} »
+                                                            </span>
+                                                            {typeof formData.audioTrackCount === 'number' &&
+                                                                formData.audioTrackCount > 0 &&
+                                                                ` (${formData.audioTrackCount} piste${formData.audioTrackCount > 1 ? 's' : ''})`}{' '}
+                                                            est lié à ce livre et sera déplacé vers la corbeille
+                                                            audio, puis supprimé définitivement du stockage sous 14
+                                                            jours. Êtes-vous sûr ?
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>

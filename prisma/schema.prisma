@@ -681,31 +681,42 @@ model OrphanAudioFolder {
 /// portal user deleted a track — neither is good enough for recordings that are
 /// often the only copy in existence.
 ///
-/// A row is written on delete and updated only to record a restore. There is
-/// deliberately no purge operation: nothing in this feature can permanently
-/// destroy a recording.
+/// A row is written on delete and updated to record a restore or a purge.
+/// Purging is a real, nightly, 14-day sweep (lib/audio/purge.ts) — this used to
+/// say no such thing existed. Every row that predates that sweep shipping has
+/// `retainForever = true`, set in the migration that added the column, so the
+/// "restorable at any time" promise already shown for those specific rows
+/// keeps holding; only deletions made after the sweep shipped are ever subject
+/// to the 14-day window.
 model DeletedAudioTrack {
-  id           Int       @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   /// Nullable + SetNull so the corbeille outlives the book it came from.
-  bookId       Int?
+  bookId        Int?
   /// Key the object lived at, verbatim — restoring writes it back here.
-  originalKey  String
+  originalKey   String
   /// Key it was copied to under `corbeille/`. Unique: two rows must never
   /// claim the same object, or restoring one would delete the other's copy.
-  trashKey     String    @unique
-  filename     String
-  sizeBytes    BigInt
-  deletedAt    DateTime  @default(now())
-  deletedById  Int?
-  restoredAt   DateTime?
-  restoredById Int?
-  book         Book?     @relation("BookDeletedAudioTracks", fields: [bookId], references: [id], onDelete: SetNull)
-  deletedBy    User?     @relation("AudioTracksDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
-  restoredBy   User?     @relation("AudioTracksRestoredBy", fields: [restoredById], references: [id], onDelete: SetNull)
+  trashKey      String    @unique
+  filename      String
+  sizeBytes     BigInt
+  deletedAt     DateTime  @default(now())
+  deletedById   Int?
+  restoredAt    DateTime?
+  restoredById  Int?
+  /// Set by the nightly purge once the bucket object is actually gone.
+  purgedAt      DateTime?
+  /// Exempts a row from the 14-day purge forever. Backfilled true for every
+  /// row that existed when the purge feature shipped; defaults false for
+  /// everything soft-deleted afterwards.
+  retainForever Boolean   @default(false)
+  book          Book?     @relation("BookDeletedAudioTracks", fields: [bookId], references: [id], onDelete: SetNull)
+  deletedBy     User?     @relation("AudioTracksDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy    User?     @relation("AudioTracksRestoredBy", fields: [restoredById], references: [id], onDelete: SetNull)
 
   @@index([bookId])
   @@index([deletedAt])
   @@index([restoredAt])
+  @@index([purgedAt])
 }
 
 /// Singleton (id = 1) holding the editable content of the public Contact page.

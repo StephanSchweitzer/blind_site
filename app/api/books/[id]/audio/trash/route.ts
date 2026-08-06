@@ -2,13 +2,17 @@ import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { restoreTrack, AudioTrashError } from '@/lib/audio/trash';
+import { AUDIO_TRASH_RETENTION_DAYS } from '@/lib/audio/purge';
 
 /**
  * The corbeille for one book: what was deleted, by whom, and when.
  *
- * Nothing here expires. B2's own versioning would drop a deleted object after
- * 30 days, which is far too short for a catalogue where a missing recording is
- * typically noticed only when a listener asks for that book.
+ * A row deleted before the nightly purge shipped is exempt (`retainForever`)
+ * and never expires. Anything deleted after that is swept once it passes
+ * AUDIO_TRASH_RETENTION_DAYS — see lib/audio/purge.ts. `purgeEligibleAt` and
+ * `retainForever` are handed to the client so the dialogue can say so, rather
+ * than repeating the old "restorable at any time" promise for rows that no
+ * longer have one.
  */
 export const GET = withAdmin(async (_req, { params }) => {
     const { id } = (await params) ?? {};
@@ -27,6 +31,8 @@ export const GET = withAdmin(async (_req, { params }) => {
             sizeBytes: true,
             deletedAt: true,
             restoredAt: true,
+            purgedAt: true,
+            retainForever: true,
             deletedBy: { select: { id: true, name: true, email: true } },
             restoredBy: { select: { id: true, name: true, email: true } },
         },
@@ -34,10 +40,14 @@ export const GET = withAdmin(async (_req, { params }) => {
 
     return NextResponse.json({
         bookId,
+        retentionDays: AUDIO_TRASH_RETENTION_DAYS,
         items: rows.map((r) => ({
             ...r,
             // BigInt doesn't survive JSON.stringify.
             sizeBytes: Number(r.sizeBytes),
+            purgeEligibleAt: r.retainForever
+                ? null
+                : new Date(r.deletedAt.getTime() + AUDIO_TRASH_RETENTION_DAYS * 86_400_000).toISOString(),
         })),
     });
 });

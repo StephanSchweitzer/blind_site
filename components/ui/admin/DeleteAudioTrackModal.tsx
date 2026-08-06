@@ -113,7 +113,8 @@ export function DeleteAudioTrackModal({
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground pt-2">
                         Cette piste sera déplacée dans la corbeille du livre. Elle n’est pas effacée
-                        du stockage et peut être restaurée à tout moment.
+                        du stockage immédiatement : une purge automatique la supprime définitivement
+                        14 jours après la suppression, sauf restauration entre-temps.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -133,8 +134,8 @@ export function DeleteAudioTrackModal({
                         <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
                             <Undo2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
                             <span>
-                                Réversible : le fichier est copié dans la corbeille avant d’être
-                                retiré du dossier, et la copie est vérifiée.
+                                Réversible pendant 14 jours : le fichier est copié dans la corbeille
+                                avant d’être retiré du dossier, et la copie est vérifiée.
                             </span>
                         </div>
 

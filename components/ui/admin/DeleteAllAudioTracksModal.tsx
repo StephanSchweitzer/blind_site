@@ -106,8 +106,8 @@ export function DeleteAllAudioTracksModal({
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground pt-2">
                         {trackCount > 1
-                            ? `Les ${trackCount} pistes de ce dossier seront déplacées dans la corbeille du livre, une par une. Elles ne sont pas effacées du stockage et peuvent être restaurées individuellement à tout moment.`
-                            : 'L’unique piste de ce dossier sera déplacée dans la corbeille du livre. Elle n’est pas effacée du stockage et peut être restaurée à tout moment.'}
+                            ? `Les ${trackCount} pistes de ce dossier seront déplacées dans la corbeille du livre, une par une. Une purge automatique les supprimera définitivement 14 jours après leur suppression, sauf restauration individuelle entre-temps.`
+                            : 'L’unique piste de ce dossier sera déplacée dans la corbeille du livre. Une purge automatique la supprimera définitivement 14 jours après sa suppression, sauf restauration entre-temps.'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -115,8 +115,8 @@ export function DeleteAllAudioTracksModal({
                     <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
                         <Undo2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
                         <span>
-                            Réversible : chaque fichier est copié dans la corbeille avant d’être
-                            retiré du dossier, et la copie est vérifiée avant suppression.
+                            Réversible pendant 14 jours : chaque fichier est copié dans la corbeille
+                            avant d’être retiré du dossier, et la copie est vérifiée avant suppression.
                         </span>
                     </div>
 

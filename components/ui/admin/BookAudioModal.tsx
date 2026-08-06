@@ -75,6 +75,10 @@ interface TrashItem {
     sizeBytes: number;
     deletedAt: string;
     restoredAt: string | null;
+    purgedAt: string | null;
+    retainForever: boolean;
+    /** null when retainForever — otherwise deletedAt + the retention window. */
+    purgeEligibleAt: string | null;
     deletedBy: { id: number; name: string | null; email: string | null } | null;
     restoredBy: { id: number; name: string | null; email: string | null } | null;
 }
@@ -105,6 +109,18 @@ const formatDate = (iso: string) =>
 
 const personLabel = (p: { name: string | null; email: string | null } | null) =>
     p?.name || p?.email || 'inconnu';
+
+/** Retention line for an active (not restored, not purged) corbeille row. */
+const retentionLabel = (item: TrashItem): string => {
+    if (item.retainForever || !item.purgeEligibleAt) {
+        return 'conservé indéfiniment (supprimé avant la mise en place de la purge automatique)';
+    }
+    const daysLeft = Math.ceil(
+        (new Date(item.purgeEligibleAt).getTime() - Date.now()) / 86_400_000,
+    );
+    if (daysLeft <= 0) return 'purge automatique imminente';
+    return `purge automatique dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''} (${formatDate(item.purgeEligibleAt)})`;
+};
 
 /** Seconds since this component mounted, ticking once a second. */
 function useElapsedSeconds(): number {
@@ -1174,10 +1190,18 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                         {personLabel(item.restoredBy)}
                                                     </>
                                                 )}
+                                                {item.purgedAt && (
+                                                    <> · supprimé définitivement du stockage le {formatDate(item.purgedAt)}</>
+                                                )}
+                                                {!item.restoredAt && !item.purgedAt && (
+                                                    <> · {retentionLabel(item)}</>
+                                                )}
                                             </div>
                                         </div>
                                         {item.restoredAt ? (
                                             <span className="text-xs text-muted-foreground">Restauré</span>
+                                        ) : item.purgedAt ? (
+                                            <span className="text-xs text-red-500">Purgé</span>
                                         ) : (
                                             <Button
                                                 type="button"
