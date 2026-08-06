@@ -163,6 +163,31 @@ async function loadItems(
             }));
         }
 
+        case 'audioEvents': {
+            const rows = await prisma.$queryRaw<Array<{
+                id: number; bookId: number | null; bookTitle: string | null; action: string;
+                filename: string; newFilename: string | null; at: string;
+            }>>`
+                SELECT e.id, e."bookId", b.title AS "bookTitle", e.action::text AS action,
+                       e.filename, e."newFilename", ${isoUtc(Prisma.sql`e."createdAt"`)} AS at
+                FROM "AudioTrackEvent" e
+                LEFT JOIN "Book" b ON b.id = e."bookId"
+                WHERE ${actorCondition(Prisma.sql`e."performedById"`, actorId)}
+                  AND e."createdAt" >= ${from} AND e."createdAt" < ${to}
+                ORDER BY e."createdAt" ASC
+                LIMIT ${DETAILS_LIMIT}`;
+            return rows.map((r) => ({
+                id: r.id,
+                at: r.at,
+                title: r.bookTitle ?? 'Livre supprimé',
+                subtitle: r.action === 'RENAME' && r.newFilename
+                    ? `${r.filename} → ${r.newFilename}`
+                    : r.filename,
+                type: r.action,
+                href: r.bookId ? `/admin/books?book=${r.bookId}` : null,
+            }));
+        }
+
         case 'auditEvents': {
             const rows = await prisma.$queryRaw<Array<{
                 id: number; model: string; recordId: string; operation: AuditOperation; at: string;

@@ -64,13 +64,13 @@ export const GET = withSuperAdmin(async (request) => {
         const rows = await prisma.$queryRaw<StaffStatsRow[]>`
             SELECT ${bucketExpr(m.dateColumn, granularity)} AS bucket,
                    ${actorExpr}::int AS "actorId",
-                   ${m.withType ? Prisma.sql`"type"::text AS type,` : Prisma.empty}
+                   ${m.typeColumn ? Prisma.sql`${m.typeColumn}::text AS type,` : Prisma.empty}
                    COUNT(*)::int AS count
             FROM ${m.table}
             WHERE ${m.dateColumn} >= ${parisDayStartUtc(start)}
               AND ${m.dateColumn} < ${parisDayStartUtc(end)}
               ${m.extraWhere}
-            GROUP BY ${m.withType ? Prisma.sql`1, 2, 3` : Prisma.sql`1, 2`}`;
+            GROUP BY ${m.typeColumn ? Prisma.sql`1, 2, 3` : Prisma.sql`1, 2`}`;
 
         const actors = await resolveActors([...new Set(rows.map((r) => r.actorId))]);
 

@@ -10,6 +10,7 @@ export type StaffMetric =
     | 'assignments'
     | 'coupsDeCoeur'
     | 'news'
+    | 'audioEvents'
     | 'auditEvents';
 
 /** Org-wide series with no actor to attribute them to — trend cards only. */

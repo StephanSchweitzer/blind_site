@@ -82,6 +82,7 @@ export const METRIC_LABELS: Record<TrendMetric, string> = {
     assignments: 'Attributions envoyées',
     coupsDeCoeur: 'Coups de cœur',
     news: 'Actualités publiées',
+    audioEvents: 'Pistes audio modifiées',
     auditEvents: 'Modifications tracées',
     payments: 'Paiements enregistrés',
     bills: 'Factures créées',
@@ -97,6 +98,7 @@ export const STAFF_METRIC_ORDER: StaffMetric[] = [
     'assignments',
     'coupsDeCoeur',
     'news',
+    'audioEvents',
     'auditEvents',
 ];
 
@@ -127,7 +129,7 @@ export const TREND_TABS: TrendTab[] = [
     {
         value: 'production',
         label: 'Production',
-        metrics: ['books', 'coupsDeCoeur', 'news'],
+        metrics: ['books', 'coupsDeCoeur', 'news', 'audioEvents'],
     },
     {
         value: 'demandes',
@@ -151,7 +153,23 @@ export const TREND_METRIC_ORDER: TrendMetric[] = TREND_TABS.flatMap((tab) => tab
 export const METRIC_HINTS: Partial<Record<TrendMetric, string>> = {
     orders: 'Hors demandes importées sans date ni permanent.',
     assignments: 'Comptées à la date d’envoi au lecteur.',
+    audioEvents: 'Envoi, renommage, suppression et restauration de pistes.',
     auditEvents: 'Le journal ne conserve que les 14 derniers jours.',
+};
+
+/** AudioTrackAction → French label, for the badge on an audioEvents detail row. */
+export const AUDIO_ACTION_LABEL: Record<string, string> = {
+    UPLOAD: 'Envoi',
+    RENAME: 'Renommage',
+    DELETE: 'Suppression',
+    RESTORE: 'Restauration',
+};
+
+export const AUDIO_ACTION_TINT: Record<string, string> = {
+    UPLOAD: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200',
+    RENAME: 'bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200',
+    DELETE: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200',
+    RESTORE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200',
 };
 
 export const MEMBER_GROUP_FILTERS: Array<{ value: MemberGroup | 'all'; label: string }> = [

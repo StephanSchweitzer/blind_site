@@ -7,7 +7,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TYPE_LABEL, TYPE_TINT } from '@/components/ui/admin/BillHistory';
 import type { StaffDetailItem, StaffDetailsResponse, StaffMetric, StatsGranularity } from '@/types';
-import { METRIC_LABELS, formatBucketLabel, formatDateTime } from './stats-utils';
+import {
+    AUDIO_ACTION_LABEL,
+    AUDIO_ACTION_TINT,
+    METRIC_LABELS,
+    formatBucketLabel,
+    formatDateTime,
+} from './stats-utils';
+
+// AudioTrackAction and BillEventType share the `type` field on a detail item
+// but never share a key, so one merged lookup serves both without a switch
+// on `metric`.
+const BADGE_LABEL: Record<string, string> = { ...TYPE_LABEL, ...AUDIO_ACTION_LABEL };
+const BADGE_TINT: Record<string, string> = { ...TYPE_TINT, ...AUDIO_ACTION_TINT };
 
 // Side drawer behind a heatmap cell: the person's records for that bucket,
 // fetched lazily on open, each deep-linking to its admin edit screen.
@@ -115,8 +127,8 @@ export default function DetailDrawer({
                                         {formatDateTime(item.at)}
                                     </span>
                                     {item.type && (
-                                        <Badge className={TYPE_TINT[item.type] ?? 'bg-muted text-foreground'}>
-                                            {TYPE_LABEL[item.type] ?? item.type}
+                                        <Badge className={BADGE_TINT[item.type] ?? 'bg-muted text-foreground'}>
+                                            {BADGE_LABEL[item.type] ?? item.type}
                                         </Badge>
                                     )}
                                     {item.needsReview && (

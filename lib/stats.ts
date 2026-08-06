@@ -34,8 +34,12 @@ export interface MetricSource {
     actorExpr: Prisma.Sql | null;
     /** Rows the metric cannot honestly attribute (legacy imports, missing dates). */
     extraWhere: Prisma.Sql;
-    /** Whether to also group by BillEventType. */
-    withType: boolean;
+    /**
+     * Column to also group by, when the metric's rows carry a sub-type worth
+     * breaking out (BillEvent.type, AudioTrackEvent.action). Null for metrics
+     * with nothing to distinguish.
+     */
+    typeColumn: Prisma.Sql | null;
 }
 
 /** NULL performer → actor 0, rendered as "Système". */
@@ -47,14 +51,14 @@ export const METRIC_SOURCES: Record<TrendMetric, MetricSource> = {
         dateColumn: Prisma.sql`"createdAt"`,
         actorExpr: Prisma.sql`"addedById"`,
         extraWhere: Prisma.empty,
-        withType: false,
+        typeColumn: null,
     },
     billEvents: {
         table: Prisma.sql`"BillEvent"`,
         dateColumn: Prisma.sql`"createdAt"`,
         actorExpr: orSystem(Prisma.sql`"performedById"`),
         extraWhere: Prisma.empty,
-        withType: true,
+        typeColumn: Prisma.sql`"type"`,
     },
     orders: {
         table: Prisma.sql`"Orders"`,
@@ -62,7 +66,7 @@ export const METRIC_SOURCES: Record<TrendMetric, MetricSource> = {
         actorExpr: Prisma.sql`"processedByStaffId"`,
         // Legacy imports have no staff/date — they can't be attributed, exclude them.
         extraWhere: Prisma.sql`AND "processedByStaffId" IS NOT NULL AND "createdDate" IS NOT NULL`,
-        withType: false,
+        typeColumn: null,
     },
     assignments: {
         table: Prisma.sql`"Assignment"`,
@@ -70,42 +74,49 @@ export const METRIC_SOURCES: Record<TrendMetric, MetricSource> = {
         dateColumn: Prisma.sql`"sentToReaderDate"`,
         actorExpr: orSystem(Prisma.sql`"processedByStaffId"`),
         extraWhere: Prisma.sql`AND "sentToReaderDate" IS NOT NULL`,
-        withType: false,
+        typeColumn: null,
     },
     coupsDeCoeur: {
         table: Prisma.sql`"CoupsDeCoeur"`,
         dateColumn: Prisma.sql`"createdAt"`,
         actorExpr: Prisma.sql`"addedById"`,
         extraWhere: Prisma.empty,
-        withType: false,
+        typeColumn: null,
     },
     news: {
         table: Prisma.sql`"News"`,
         dateColumn: Prisma.sql`"publishedAt"`,
         actorExpr: Prisma.sql`"authorId"`,
         extraWhere: Prisma.empty,
-        withType: false,
+        typeColumn: null,
+    },
+    audioEvents: {
+        table: Prisma.sql`"AudioTrackEvent"`,
+        dateColumn: Prisma.sql`"createdAt"`,
+        actorExpr: orSystem(Prisma.sql`"performedById"`),
+        extraWhere: Prisma.empty,
+        typeColumn: Prisma.sql`"action"`,
     },
     auditEvents: {
         table: Prisma.sql`"AuditEvent"`,
         dateColumn: Prisma.sql`"createdAt"`,
         actorExpr: orSystem(Prisma.sql`"actorId"`),
         extraWhere: Prisma.empty,
-        withType: false,
+        typeColumn: null,
     },
     payments: {
         table: Prisma.sql`"Payment"`,
         dateColumn: Prisma.sql`"creationDate"`,
         actorExpr: null,
         extraWhere: Prisma.sql`AND "isActive" = true`,
-        withType: false,
+        typeColumn: null,
     },
     bills: {
         table: Prisma.sql`"Bill"`,
         dateColumn: Prisma.sql`"creationDate"`,
         actorExpr: null,
         extraWhere: Prisma.sql`AND "isActive" = true`,
-        withType: false,
+        typeColumn: null,
     },
     newMembers: {
         table: Prisma.sql`"User"`,
@@ -113,14 +124,14 @@ export const METRIC_SOURCES: Record<TrendMetric, MetricSource> = {
         actorExpr: null,
         // Raw SQL bypasses the soft-delete extension, so exclude them here.
         extraWhere: Prisma.sql`AND "deletedAt" IS NULL`,
-        withType: false,
+        typeColumn: null,
     },
     activityEvents: {
         table: Prisma.sql`"UserActivityEvent"`,
         dateColumn: Prisma.sql`"changedAt"`,
         actorExpr: null,
         extraWhere: Prisma.empty,
-        withType: false,
+        typeColumn: null,
     },
 };
 
