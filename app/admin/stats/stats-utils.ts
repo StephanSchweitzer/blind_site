@@ -3,16 +3,17 @@ import type { MemberGroup, StaffMetric, StatsGranularity, TrendMetric } from '@/
 // Client-side date helpers for the stats dashboard. Buckets are plain
 // 'YYYY-MM-DD' keys manipulated through UTC arithmetic so no local-timezone
 // parsing can shift a day; they must line up with the server's Paris-day
-// buckets, which they do for a viewer on French time.
+// buckets (see PARIS_TODAY in app/api/stats/members/route.ts), so "today" is
+// always read off the Europe/Paris calendar, not the viewer's local one —
+// otherwise a viewer behind Paris would have today's bucket missing entirely.
 
 const DAY_MS = 86_400_000;
 
 const keyFromMs = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
 
-export const todayKey = (): string => {
-    const now = new Date();
-    return keyFromMs(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-};
+const parisDayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' });
+
+export const todayKey = (): string => parisDayFormatter.format(new Date());
 
 export const addDays = (key: string, days: number): string =>
     keyFromMs(Date.parse(key) + days * DAY_MS);
@@ -47,7 +48,9 @@ export const formatBucketLabel = (key: string, granularity: StatsGranularity): s
     granularity === 'week' ? `Semaine du ${formatDayShort(key)}` : formatDayLong(key);
 
 export const formatDateTime = (iso: string): string =>
-    new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+    new Date(iso).toLocaleString('fr-FR', {
+        dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris',
+    });
 
 // Range presets shared by both modules.
 export type RangePreset = '14d' | '28d' | '12w' | '26w';
