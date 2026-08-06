@@ -80,7 +80,15 @@ export function EntitySearchCombobox<T>({
         // closing mid-flight would abandon the pending onSelect promise.
         if (!next && isSelecting) return;
         setOpen(next);
-        if (!next) {
+        // Reset on OPEN, not on close: Radix keeps the popover mounted and
+        // playing its exit animation for a moment after close, so clearing
+        // query/results here used to wipe the list out from under it —
+        // collapsing to the "type N characters" hint mid-animation instead of
+        // fading out the results (and the just-picked row's spinner) the user
+        // actually saw. Resetting on open instead means the exit animation
+        // plays on whatever was really last shown, and every open still
+        // starts from a blank slate.
+        if (next) {
             reset();
             setActiveIndex(-1);
         }
@@ -160,7 +168,16 @@ export function EntitySearchCombobox<T>({
                         className="bg-field border-border text-foreground pr-8"
                     />
                     {isSearching && (
-                        <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        // Positioning (translate-y, for centering) and the spin animation
+                        // can't share one element: Tailwind's animate-spin keyframe sets
+                        // `transform: rotate(...)` outright, which clobbers a sibling
+                        // -translate-y-1/2 on the same element for as long as it's
+                        // animating — the icon snaps out of its centered position instead
+                        // of rotating in place. Splitting them across a wrapper (position)
+                        // and the icon (rotation) keeps both transforms intact.
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </span>
                     )}
                 </div>
                 <div
