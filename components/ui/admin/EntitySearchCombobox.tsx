@@ -63,12 +63,22 @@ export function EntitySearchCombobox<T>({
     const [activeIndex, setActiveIndex] = useState(-1);
     const listRef = useRef<HTMLDivElement>(null);
 
+    // While `onSelect` is in flight (activity-guard lookup, fetching the full
+    // book record, etc.) the popover would otherwise just sit there with no
+    // feedback until it closes. Track which row was picked so we can spin its
+    // icon and lock the list, instead of a silent freeze.
+    const [selectingKey, setSelectingKey] = useState<React.Key | null>(null);
+    const isSelecting = selectingKey !== null;
+
     const handleQueryChange = (q: string) => {
         setQuery(q);
         setActiveIndex(-1);
     };
 
     const handleOpenChange = (next: boolean) => {
+        // Ignore outside-click/escape while a selection is resolving —
+        // closing mid-flight would abandon the pending onSelect promise.
+        if (!next && isSelecting) return;
         setOpen(next);
         if (!next) {
             reset();
@@ -77,13 +87,19 @@ export function EntitySearchCombobox<T>({
     };
 
     const handleSelect = async (item: T) => {
-        const outcome = await onSelect(item);
-        if (outcome === false) return; // vetoed — keep the popover open
-        handleOpenChange(false);
+        if (isSelecting) return;
+        setSelectingKey(getItemKey(item));
+        try {
+            const outcome = await onSelect(item);
+            if (outcome === false) return; // vetoed — keep the popover open
+            handleOpenChange(false);
+        } finally {
+            setSelectingKey(null);
+        }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (!results.length) return;
+        if (!results.length || isSelecting) return;
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             setActiveIndex((prev) => (prev + 1) % results.length);
@@ -140,6 +156,7 @@ export function EntitySearchCombobox<T>({
                         onChange={(e) => handleQueryChange(e.target.value)}
                         onKeyDown={handleKeyDown}
                         autoFocus
+                        disabled={isSelecting}
                         className="bg-field border-border text-foreground pr-8"
                     />
                     {isSearching && (
@@ -162,21 +179,31 @@ export function EntitySearchCombobox<T>({
                     ) : results.length === 0 && !isSearching ? (
                         <div className="p-4 text-center text-muted-foreground">{emptyMessage}</div>
                     ) : (
-                        results.map((item, index) => (
-                            <button
-                                key={getItemKey(item)}
-                                type="button"
-                                data-index={index}
-                                onClick={() => handleSelect(item)}
-                                onMouseEnter={() => setActiveIndex(index)}
-                                className={cn(
-                                    'w-full text-left px-4 py-2 text-foreground transition-colors',
-                                    index === activeIndex ? 'bg-muted' : 'hover:bg-muted'
-                                )}
-                            >
-                                {renderItem(item)}
-                            </button>
-                        ))
+                        results.map((item, index) => {
+                            const key = getItemKey(item);
+                            const isThisSelecting = selectingKey === key;
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    data-index={index}
+                                    onClick={() => handleSelect(item)}
+                                    onMouseEnter={() => setActiveIndex(index)}
+                                    disabled={isSelecting}
+                                    className={cn(
+                                        'w-full flex items-center gap-2 text-left px-4 py-2 text-foreground transition-colors',
+                                        index === activeIndex && !isSelecting ? 'bg-muted' : 'hover:bg-muted',
+                                        isSelecting && !isThisSelecting && 'opacity-50',
+                                        isSelecting && 'cursor-not-allowed'
+                                    )}
+                                >
+                                    <span className="min-w-0 flex-1">{renderItem(item)}</span>
+                                    {isThisSelecting && (
+                                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                                    )}
+                                </button>
+                            );
+                        })
                     )}
                 </div>
             </PopoverContent>
