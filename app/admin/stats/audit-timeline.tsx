@@ -44,7 +44,7 @@ import type {
     AuditRestoreResponse,
     StatsActor,
 } from '@/types';
-import { AUDIO_ACTION_LABEL, formatDateTime } from './stats-utils';
+import { AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT, formatDateTime } from './stats-utils';
 import { type EventGroup, groupEvents, headOf, isAudioBurst } from './audit-grouping';
 
 /**
@@ -68,6 +68,22 @@ const OPERATION_TINT: Record<AuditOperation, string> = {
     DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
     RESTORE: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
 };
+
+/**
+ * What to badge a row with. An AudioTrackEvent row is always a CREATE at the
+ * storage level — it's a log entry being inserted, never the track itself
+ * being deleted in place — so `event.operation` alone would badge a deletion
+ * burst « Création ». The action the row actually describes (upload / rename
+ * / delete / restore) lives in `changes.action` instead; that's what a reader
+ * needs to see.
+ */
+function operationBadge(event: AuditEventItem): { label: string; tint: string } {
+    const action = event.model === 'AudioTrackEvent' ? event.changes.action?.[1] : null;
+    if (typeof action === 'string' && action in AUDIO_ACTION_LABEL) {
+        return { label: AUDIO_ACTION_LABEL[action], tint: AUDIO_ACTION_TINT[action] };
+    }
+    return { label: OPERATION_LABELS[event.operation], tint: OPERATION_TINT[event.operation] };
+}
 
 interface Filters {
     model: string;
@@ -314,6 +330,7 @@ function EventRow({
 }) {
     const event = headOf(group);
     const isDeletion = event.operation === 'DELETE';
+    const badge = operationBadge(event);
     const href = recordHref(event.model, event.recordId);
     const merged = group.events.length;
     // The stretch a grouped block covers, oldest → newest.
@@ -342,8 +359,8 @@ function EventRow({
                     {formatDateTime(event.at)}
                 </span>
 
-                <Badge className={OPERATION_TINT[event.operation]}>
-                    {OPERATION_LABELS[event.operation]}
+                <Badge className={badge.tint}>
+                    {badge.label}
                 </Badge>
 
                 {merged > 1 && (
