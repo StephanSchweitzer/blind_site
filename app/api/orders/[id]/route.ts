@@ -357,7 +357,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             deliveryMethod: data.deliveryMethod,
             lentPhysicalBook: data.lentPhysicalBook,
             processedByStaffId: data.processedByStaffId || null,
-            createdDate: data.createdDate ? new Date(data.createdDate) : null,
+            createdDate: data.createdDate === undefined ? undefined : (data.createdDate ? new Date(data.createdDate) : null),
             closureDate,
             cost: data.cost !== undefined ? newCost : undefined,
             billingStatus: data.billingStatus,
