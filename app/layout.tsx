@@ -2,10 +2,33 @@ import './globals.css'
 import { Providers } from './providers'
 import React from "react";
 import { Toaster } from "@/components/ui/toaster"
+import type { Metadata } from "next";
 
-export const metadata = {
-    title: 'ECA Aveugles',
-    description: 'ECA: Enregistrements à la Carte pour les Aveugles'
+const siteUrl = 'https://eca-aveugles.fr';
+const description = "Les ECA (Enregistrements à la Carte pour les Aveugles) proposent aux personnes aveugles et malvoyantes un service gratuit d'enregistrement de livres et documents sur mesure, lus par des bénévoles.";
+
+export const metadata: Metadata = {
+    metadataBase: new URL(siteUrl),
+    title: {
+        default: 'ECA - Enregistrements à la Carte pour les Aveugles',
+        template: '%s | ECA Aveugles',
+    },
+    description,
+    openGraph: {
+        type: 'website',
+        locale: 'fr_FR',
+        siteName: 'ECA Aveugles',
+        title: 'ECA - Enregistrements à la Carte pour les Aveugles',
+        description,
+        url: siteUrl,
+        images: [{ url: '/eca_logo.png', width: 1024, height: 168, alt: 'ECA - Enregistrements à la Carte pour les Aveugles' }],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'ECA - Enregistrements à la Carte pour les Aveugles',
+        description,
+        images: ['/eca_logo.png'],
+    },
 }
 
 export default function RootLayout({

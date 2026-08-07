@@ -1,9 +1,32 @@
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import Image from "next/image";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: 'ECA - Enregistrements à la Carte pour les Aveugles',
+    description: "Les ECA proposent aux personnes aveugles et malvoyantes un service gratuit d'enregistrement à la carte de livres et documents, lus par des bénévoles.",
+    alternates: { canonical: '/' },
+};
+
+const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NGO',
+    name: 'ECA - Enregistrements à la Carte pour les Aveugles',
+    alternateName: 'Délégation des Auxiliaires des Aveugles',
+    url: 'https://eca-aveugles.fr',
+    logo: 'https://eca-aveugles.fr/eca_logo.png',
+    description: "Service gratuit d'enregistrement à la carte de livres et documents pour les personnes aveugles et malvoyantes, réalisé par des lecteurs bénévoles.",
+    areaServed: 'FR',
+    availableLanguage: 'fr',
+};
 
 export default async function Home() {
     return (
         <main className="min-h-screen relative">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+            />
             <FrontendNavbar />
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8">

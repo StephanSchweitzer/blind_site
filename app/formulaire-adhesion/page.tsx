@@ -1,6 +1,12 @@
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { Construction, Home } from "lucide-react";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: 'Formulaire d\'adhésion',
+    robots: { index: false, follow: false },
+};
 
 export default function UnderDevelopmentPage() {
     return (

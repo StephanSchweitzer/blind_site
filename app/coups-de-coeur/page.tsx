@@ -1,6 +1,13 @@
 import CoupsDeCoeurClient from './CoupsDeCoeurClient';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import { getCoupsDeCoeurPage } from './data';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Coups de cœur',
+    description: 'Découvrez les coups de cœur et recommandations de lecture sélectionnés par les ECA.',
+    alternates: { canonical: '/coups-de-coeur' },
+};
 
 const LIMIT = 1;
 

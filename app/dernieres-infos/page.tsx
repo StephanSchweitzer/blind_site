@@ -4,7 +4,8 @@ import { DernieresInfosClient } from './DernieresInfosClient';
 
 export const metadata = {
     title: 'Dernières Informations',
-    description: 'Restez informé des actualités et des événements',
+    description: 'Actualités, événements et informations récentes des ECA - Enregistrements à la Carte pour les Aveugles.',
+    alternates: { canonical: '/dernieres-infos' },
 };
 
 export default async function DernieresInfoPage() {

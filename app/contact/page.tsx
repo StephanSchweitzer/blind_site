@@ -1,6 +1,13 @@
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { MapPin, Phone, Mail, Clock, Train, Bus } from "lucide-react";
 import { getSiteContact } from "./data";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: 'Coordonnées',
+    description: 'Adresse, horaires et moyens de contact des ECA - Enregistrements à la Carte pour les Aveugles.',
+    alternates: { canonical: '/contact' },
+};
 
 function MultiLine({ text }: { text: string }) {
     return (

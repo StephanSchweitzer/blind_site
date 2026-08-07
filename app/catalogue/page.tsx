@@ -92,5 +92,6 @@ export default async function BooksPage() {
 
 export const metadata = {
     title: 'Catalogue des livres',
-    description: 'Consultez notre catalogue de livres disponibles',
+    description: 'Consultez le catalogue des livres audio disponibles aux ECA pour les auditeurs aveugles et malvoyants.',
+    alternates: { canonical: '/catalogue' },
 };

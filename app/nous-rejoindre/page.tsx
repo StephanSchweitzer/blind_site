@@ -3,6 +3,13 @@ import { resolveIcon } from "@/lib/icons";
 import { MEMBERSHIP_THEME, asTheme } from "@/lib/color-themes";
 import { Markdown } from "@/components/Markdown";
 import { getMembershipOptions } from "./data";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: 'Nous rejoindre',
+    description: "Devenez lecteur bénévole ou adhérez aux ECA pour soutenir l'accès à la lecture des personnes aveugles et malvoyantes.",
+    alternates: { canonical: '/nous-rejoindre' },
+};
 
 export default async function NousRejoindre() {
     const options = await getMembershipOptions();
