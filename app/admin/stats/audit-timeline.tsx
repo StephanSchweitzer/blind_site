@@ -614,10 +614,10 @@ export default function AuditTimeline() {
                 <h2 className="text-lg font-semibold text-foreground">
                     Journal des modifications
                 </h2>
-                <p className="text-xs text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     {retention
                         ? `${retention.rows} événement(s) conservé(s) · ${retention.retentionDays} derniers jours · ${retention.megabytes} Mo`
-                        : 'Chargement…'}
+                        : <><Loader2 size={12} className="animate-spin" />Chargement…</>}
                 </p>
             </div>
 
@@ -737,7 +737,10 @@ export default function AuditTimeline() {
 
             {/* ── timeline ───────────────────────────────────────────────── */}
             {loading && events.length === 0 && (
-                <p className="text-sm text-muted-foreground py-8 text-center">Chargement…</p>
+                <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-8">
+                    <Loader2 size={16} className="animate-spin" />
+                    Chargement…
+                </p>
             )}
 
             {!loading && events.length === 0 && (

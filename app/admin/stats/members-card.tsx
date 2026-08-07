@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { AdminCard } from '@/components/ui/admin';
 import { Button } from '@/components/ui/button';
 import type { MemberGroup, MemberSeriesRow, MemberStatsResponse } from '@/types';
@@ -313,7 +314,10 @@ export default function MembersCard({ data }: { data: MemberStatsResponse | null
             </div>
 
             {!data ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">Chargement…</p>
+                <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-8">
+                    <Loader2 size={16} className="animate-spin" />
+                    Chargement…
+                </p>
             ) : (
                 <>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { AdminCard } from '@/components/ui/admin';
 import type { TrendMetric, TrendPoint, TrendsResponse } from '@/types';
 import {
@@ -23,9 +24,16 @@ import {
 // association serving visually impaired readers, and a control that a screen
 // reader cannot announce or an arrow key cannot reach is not an option here.
 
-function Sparkline({ points }: { points: TrendPoint[] }) {
+function Sparkline({ points, loaded }: { points: TrendPoint[]; loaded: boolean }) {
     const width = 220;
     const height = 40;
+    if (!loaded) {
+        return (
+            <div className="h-10 flex items-center justify-center text-muted-foreground">
+                <Loader2 size={16} className="animate-spin" aria-label="Chargement…" />
+            </div>
+        );
+    }
     if (points.length === 0) {
         return <div className="h-10 flex items-center text-xs text-muted-foreground">Aucune donnée</div>;
     }
@@ -70,10 +78,10 @@ function TrendCard({ metric, points, loaded }: {
                     {METRIC_LABELS[metric]}
                 </h3>
                 <span className="text-xl font-bold text-foreground tabular-nums">
-                    {loaded ? total : '…'}
+                    {loaded ? total : <Loader2 size={16} className="animate-spin text-muted-foreground" aria-label="Chargement…" />}
                 </span>
             </div>
-            <Sparkline points={points} />
+            <Sparkline points={points} loaded={loaded} />
             <p className="text-[11px] text-muted-foreground leading-snug">
                 {lastWeek
                     ? `Semaine du ${formatDayShort(lastWeek.bucket)} : ${lastWeek.count}`
@@ -141,7 +149,9 @@ export default function TrendCards({ trends }: { trends: TrendsResponse | null }
                                     selected ? 'text-primary-foreground/70' : 'text-muted-foreground'
                                 }`}
                             >
-                                {trends ? sumOf(trends, tab.metrics) : '…'}
+                                {trends
+                                    ? sumOf(trends, tab.metrics)
+                                    : <Loader2 size={12} className="inline-block animate-spin" aria-label="Chargement…" />}
                             </span>
                         </button>
                     );

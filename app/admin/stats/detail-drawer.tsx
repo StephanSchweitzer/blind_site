@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { X, ExternalLink } from 'lucide-react';
+import { X, ExternalLink, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { billEventLabel, billEventTint } from '@/components/ui/admin/BillHistory';
@@ -110,7 +110,10 @@ export default function DetailDrawer({
                         <p className="text-sm text-destructive">Impossible de charger le détail.</p>
                     )}
                     {!error && items === undefined && (
-                        <p className="text-sm text-muted-foreground">Chargement…</p>
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 size={16} className="animate-spin" />
+                            Chargement…
+                        </p>
                     )}
                     {items?.length === 0 && (
                         <p className="text-sm text-muted-foreground">Aucun enregistrement.</p>

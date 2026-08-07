@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import type { StaffStatsResponse, StatsGranularity } from '@/types';
 import type { DrawerSelection } from './detail-drawer';
 import { buildBuckets, formatBucketLabel, formatDayShort } from './stats-utils';
@@ -54,7 +55,12 @@ export default function StaffHeatmap({
     }, [data]);
 
     if (loading && !data) {
-        return <p className="text-sm text-muted-foreground py-8 text-center">Chargement…</p>;
+        return (
+            <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-8">
+                <Loader2 size={16} className="animate-spin" />
+                Chargement…
+            </p>
+        );
     }
     if (actors.length === 0) {
         return (
