@@ -7,8 +7,10 @@ import type { MemberGroup, MemberSeriesRow, MemberStatsResponse } from '@/types'
 import {
     MEMBER_GROUP_FILTERS,
     MEMBER_GROUP_LABELS,
+    addDays,
     formatDayShort,
     formatEuros,
+    todayKey,
 } from './stats-utils';
 
 /**
@@ -34,8 +36,14 @@ import {
  * counts nothing, so the bars are side by side now, and the axis is drawn and
  * labelled rather than left to be guessed at.
  *
- * Buckets are always ISO weeks — /api/stats/members hardcodes date_trunc('week')
- * whatever preset is selected — which is why the labels say « semaine » outright.
+ * The chart always shows a fixed trailing 7 calendar days (today and the 6
+ * before it), independent of the period preset in the page header — that
+ * preset only scopes the stat tiles and the table above. Anchoring the chart
+ * to "the current ISO week" instead used to make its last column look
+ * complete or short purely depending on which weekday "today" happened to
+ * be; a fixed 7-day window can't do that. /api/stats/members buckets by day
+ * for exactly this reason, and every one of the 7 days is rendered even when
+ * it has no data, so the window is always a clean 7 columns.
  */
 
 const SERIES = [
@@ -91,7 +99,7 @@ function StatTile({ value, label, hint }: { value: string; label: string; hint?:
     );
 }
 
-/** Grouped bars, two series, one column per week. */
+/** Grouped bars, two series, one column per day, always the last 7 days. */
 function MemberChart({ buckets }: { buckets: Bucket[] }) {
     const max = niceMax(
         Math.max(1, ...buckets.flatMap((b) => [b.newMembers, b.statusChanges]))
@@ -102,13 +110,13 @@ function MemberChart({ buckets }: { buckets: Bucket[] }) {
         ? `du ${formatDayShort(buckets[0].bucket)} au ${formatDayShort(buckets[buckets.length - 1].bucket)}`
         : '';
 
-    // Enough room for a label every N columns without them colliding.
-    const labelEvery = Math.max(1, Math.ceil(buckets.length / 8));
+    // Always exactly 7 columns, so every one gets its own label.
+    const labelEvery = 1;
 
     return (
         <figure className="mt-1">
             <figcaption className="text-xs text-muted-foreground mb-2">
-                Totaux par semaine {period}. Chaque colonne est une semaine ; les deux
+                7 derniers jours ({period}). Chaque colonne est un jour ; les deux
                 barres sont comptées séparément.
             </figcaption>
 
@@ -145,7 +153,7 @@ function MemberChart({ buckets }: { buckets: Bucket[] }) {
                             <div className="absolute inset-0 flex items-end gap-1 px-0.5">
                                 {buckets.map((bucket) => {
                                     const description =
-                                        `Semaine du ${formatDayShort(bucket.bucket)} : ` +
+                                        `${formatDayShort(bucket.bucket)} : ` +
                                         `${bucket.newMembers} inscription(s), ` +
                                         `${bucket.statusChanges} changement(s) de statut`;
                                     return (
@@ -163,7 +171,7 @@ function MemberChart({ buckets }: { buckets: Bucket[] }) {
                                                         className={`w-1/2 max-w-3 rounded-t-sm ${
                                                             count > 0 ? series.bar : 'bg-border'
                                                         }`}
-                                                        // A zero week keeps a hairline, so the
+                                                        // A zero day keeps a hairline, so the
                                                         // column reads as "nothing happened"
                                                         // rather than as missing data.
                                                         style={{
@@ -198,7 +206,7 @@ function MemberChart({ buckets }: { buckets: Bucket[] }) {
                             })}
                         </div>
                         <p className="text-[10px] text-muted-foreground text-center mt-0.5">
-                            Semaine (début)
+                            Jour
                         </p>
                     </div>
                 </div>
@@ -215,16 +223,25 @@ export default function MembersCard({ data }: { data: MemberStatsResponse | null
         const rows = (data?.series ?? []).filter(inGroup);
         const roster = (data?.roster ?? []).filter(inGroup);
 
-        // One entry per bucket, groups folded together when the filter is "Tous".
+        // Fixed trailing 7-day window (today and the 6 before it), regardless
+        // of the period preset — see the chart comment above for why.
+        const today = todayKey();
+        const last7Days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
+
+        // One entry per day, groups folded together when the filter is "Tous",
+        // every day present even with no data so the window is always 7 columns.
         const byBucket = new Map<string, Bucket>();
         for (const row of rows) {
+            if (!last7Days.includes(row.bucket)) continue;
             const entry = byBucket.get(row.bucket)
                 ?? { bucket: row.bucket, newMembers: 0, statusChanges: 0 };
             entry.newMembers += row.newMembers;
             entry.statusChanges += row.statusChanges;
             byBucket.set(row.bucket, entry);
         }
-        const buckets = [...byBucket.values()].sort((a, b) => a.bucket.localeCompare(b.bucket));
+        const buckets = last7Days.map(
+            (day) => byBucket.get(day) ?? { bucket: day, newMembers: 0, statusChanges: 0 }
+        );
 
         const sum = <K extends keyof MemberSeriesRow>(key: K) =>
             rows.reduce((acc, row) => acc + (row[key] as number), 0);
@@ -392,13 +409,7 @@ export default function MembersCard({ data }: { data: MemberStatsResponse | null
                         ))}
                     </div>
 
-                    {totals.buckets.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-6 text-center">
-                            Aucun mouvement sur la période pour ce type de membre.
-                        </p>
-                    ) : (
-                        <MemberChart buckets={totals.buckets} />
-                    )}
+                    <MemberChart buckets={totals.buckets} />
                 </>
             )}
         </AdminCard>

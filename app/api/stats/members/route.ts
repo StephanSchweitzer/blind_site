@@ -94,7 +94,7 @@ export const GET = withSuperAdmin(async (request) => {
                 GROUP BY 1`,
 
             prisma.$queryRaw<CountRaw[]>`
-                SELECT ${bucketExpr(Prisma.sql`u."createdAt"`, 'week')} AS bucket,
+                SELECT ${bucketExpr(Prisma.sql`u."createdAt"`, 'day')} AS bucket,
                        ${MEMBER_GROUP_EXPR} AS "group",
                        COUNT(*)::int AS count
                 FROM "User" u
@@ -103,7 +103,7 @@ export const GET = withSuperAdmin(async (request) => {
                 GROUP BY 1, 2`,
 
             prisma.$queryRaw<CountRaw[]>`
-                SELECT ${bucketExpr(Prisma.sql`e."changedAt"`, 'week')} AS bucket,
+                SELECT ${bucketExpr(Prisma.sql`e."changedAt"`, 'day')} AS bucket,
                        ${MEMBER_GROUP_EXPR} AS "group",
                        COUNT(*)::int AS count
                 FROM "UserActivityEvent" e
@@ -115,7 +115,7 @@ export const GET = withSuperAdmin(async (request) => {
             // Payments without a client can't be attributed to a group; they
             // land in "Autres" so the totals still add up to what was cashed in.
             prisma.$queryRaw<PaymentRaw[]>`
-                SELECT ${bucketExpr(Prisma.sql`p."creationDate"`, 'week')} AS bucket,
+                SELECT ${bucketExpr(Prisma.sql`p."creationDate"`, 'day')} AS bucket,
                        COALESCE(${MEMBER_GROUP_EXPR}, 'autre') AS "group",
                        COUNT(*)::int AS count,
                        SUM(p.amount)::text AS amount

@@ -79,9 +79,9 @@ export interface MemberRosterRow {
     inactive: number;
 }
 
-/** One weekly bucket of member-side activity, per group. */
+/** One daily bucket of member-side activity, per group. */
 export interface MemberSeriesRow {
-    bucket: string; // ISO Monday, 'YYYY-MM-DD'
+    bucket: string; // Paris-local day, 'YYYY-MM-DD'
     group: MemberGroup;
     newMembers: number;
     statusChanges: number;
