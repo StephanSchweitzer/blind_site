@@ -73,12 +73,15 @@ export const METRIC_SOURCES: Record<TrendMetric, MetricSource> = {
         typeColumn: Prisma.sql`"type"`,
     },
     assignments: {
-        table: Prisma.sql`"Assignment"`,
-        // Attributions have no creation timestamp; the send is the dated act.
-        dateColumn: Prisma.sql`"sentToReaderDate"`,
-        actorExpr: orSystem(Prisma.sql`"processedByStaffId"`),
-        extraWhere: Prisma.sql`AND "sentToReaderDate" IS NOT NULL`,
-        typeColumn: null,
+        // Same fix as orders above, mirrored: every creation and status
+        // transition, not just Assignment.sentToReaderDate (which only ever
+        // reflected the send). A close/reopen made directly, or pushed down
+        // from the demande via syncAssignmentToStatus, now gets its own row.
+        table: Prisma.sql`"AssignmentEvent"`,
+        dateColumn: Prisma.sql`"createdAt"`,
+        actorExpr: orSystem(Prisma.sql`"performedById"`),
+        extraWhere: Prisma.empty,
+        typeColumn: Prisma.sql`"type"`,
     },
     coupsDeCoeur: {
         table: Prisma.sql`"CoupsDeCoeur"`,

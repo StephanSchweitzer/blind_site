@@ -10,22 +10,23 @@ import type { StaffDetailItem, StaffDetailsResponse, StaffMetric, StatsGranulari
 import {
     AUDIO_ACTION_LABEL,
     AUDIO_ACTION_TINT,
-    ORDER_EVENT_TYPE_LABEL,
-    ORDER_EVENT_TYPE_TINT,
+    LIFECYCLE_EVENT_LABEL,
+    LIFECYCLE_EVENT_TINT,
     METRIC_LABELS,
     formatBucketLabel,
     formatDateTime,
 } from './stats-utils';
 
-// AudioTrackAction, BillEventType and OrderEventType share the `type` field on
-// a detail item, but their values are NOT disjoint (both BillEventType and
-// OrderEventType have a CREATED and a REOPENED) — so the lookup is scoped per
-// metric rather than merged into one flat dict, which would let one clobber
-// the other's label/tint.
+// AudioTrackAction, BillEventType and OrderEventType/AssignmentEventType share
+// the `type` field on a detail item, but their values are NOT disjoint (both
+// BillEventType and OrderEventType/AssignmentEventType have a CREATED and a
+// REOPENED) — so the lookup is scoped per metric rather than merged into one
+// flat dict, which would let one clobber the other's label/tint.
 const BADGE_MAPS: Partial<Record<StaffMetric, [Record<string, string>, Record<string, string>]>> = {
     billEvents: [TYPE_LABEL, TYPE_TINT],
     audioEvents: [AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT],
-    orders: [ORDER_EVENT_TYPE_LABEL, ORDER_EVENT_TYPE_TINT],
+    orders: [LIFECYCLE_EVENT_LABEL, LIFECYCLE_EVENT_TINT],
+    assignments: [LIFECYCLE_EVENT_LABEL, LIFECYCLE_EVENT_TINT],
 };
 
 // Side drawer behind a heatmap cell: the person's records for that bucket,

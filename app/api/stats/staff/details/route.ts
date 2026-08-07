@@ -109,23 +109,33 @@ async function loadItems(
 
         case 'assignments': {
             const rows = await prisma.$queryRaw<Array<{
-                id: number; bookTitle: string; at: string; statusName: string;
+                id: number; assignmentId: number; bookTitle: string; type: string;
+                statusName: string | null; readerName: string | null; at: string;
             }>>`
-                SELECT a.id, bk.title AS "bookTitle", s.name AS "statusName",
-                       ${isoUtc(Prisma.sql`a."sentToReaderDate"`)} AS at
-                FROM "Assignment" a
+                SELECT e.id, e."assignmentId", bk.title AS "bookTitle", e.type::text AS type,
+                       st.name AS "statusName", u.name AS "readerName",
+                       ${isoUtc(Prisma.sql`e."createdAt"`)} AS at
+                FROM "AssignmentEvent" e
+                JOIN "Assignment" a ON a.id = e."assignmentId"
                 JOIN "Book" bk ON bk.id = a."catalogueId"
-                JOIN "Status" s ON s.id = a."statusId"
-                WHERE ${actorCondition(Prisma.sql`a."processedByStaffId"`, actorId)}
-                  AND a."sentToReaderDate" >= ${from} AND a."sentToReaderDate" < ${to}
-                ORDER BY a."sentToReaderDate" ASC
+                LEFT JOIN "Status" st ON st.id = e."toStatusId"
+                LEFT JOIN LATERAL (
+                    SELECT ar."readerId" FROM "AssignmentReader" ar
+                    WHERE ar."assignmentId" = a.id
+                    ORDER BY ar."assignedDate" DESC LIMIT 1
+                ) cur ON true
+                LEFT JOIN "User" u ON u.id = cur."readerId"
+                WHERE ${actorCondition(Prisma.sql`e."performedById"`, actorId)}
+                  AND e."createdAt" >= ${from} AND e."createdAt" < ${to}
+                ORDER BY e."createdAt" ASC
                 LIMIT ${DETAILS_LIMIT}`;
             return rows.map((r) => ({
                 id: r.id,
                 at: r.at,
-                title: `Attribution n°${r.id} — ${r.bookTitle}`,
-                subtitle: r.statusName,
-                href: `/admin/assignments?assignment=${r.id}`,
+                title: `Attribution n°${r.assignmentId} — ${r.bookTitle}`,
+                subtitle: [r.readerName, r.statusName].filter(Boolean).join(' — ') || null,
+                type: r.type,
+                href: `/admin/assignments?assignment=${r.assignmentId}`,
             }));
         }
 

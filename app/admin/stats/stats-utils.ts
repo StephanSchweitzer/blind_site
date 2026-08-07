@@ -82,7 +82,7 @@ export const METRIC_LABELS: Record<TrendMetric, string> = {
     books: 'Livres ajoutés',
     billEvents: 'Événements de facturation',
     orders: 'Demandes traitées',
-    assignments: 'Attributions envoyées',
+    assignments: 'Attributions traitées',
     coupsDeCoeur: 'Coups de cœur',
     news: 'Actualités publiées',
     audioEvents: 'Pistes audio modifiées',
@@ -155,20 +155,24 @@ export const TREND_METRIC_ORDER: TrendMetric[] = TREND_TABS.flatMap((tab) => tab
  */
 export const METRIC_HINTS: Partial<Record<TrendMetric, string>> = {
     orders: 'Création, clôture, réouverture et changements de statut — quel que soit le chemin emprunté.',
-    assignments: 'Comptées à la date d’envoi au lecteur.',
+    assignments: 'Création, clôture, réouverture et changements de statut — quel que soit le chemin emprunté.',
     audioEvents: 'Envoi, renommage, suppression et restauration de pistes.',
     auditEvents: 'Le journal ne conserve que les 14 derniers jours.',
 };
 
-/** OrderEventType → French label, for the badge on an orders detail row. */
-export const ORDER_EVENT_TYPE_LABEL: Record<string, string> = {
+/**
+ * OrderEventType / AssignmentEventType → French label, for the badge on an
+ * orders or assignments detail row. Both enums share the same four members
+ * (see lib/statusSync.ts's classifyStatusTransition), so one map serves both.
+ */
+export const LIFECYCLE_EVENT_LABEL: Record<string, string> = {
     CREATED: 'Créée',
     CLOSED: 'Clôturée',
     REOPENED: 'Réouverte',
     STATUS_CHANGED: 'Statut modifié',
 };
 
-export const ORDER_EVENT_TYPE_TINT: Record<string, string> = {
+export const LIFECYCLE_EVENT_TINT: Record<string, string> = {
     CREATED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200',
     CLOSED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200',
     REOPENED: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200',

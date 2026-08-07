@@ -22,7 +22,7 @@ import {
     resolveClosureDate,
     guardClosureDateRequiresTermine,
     syncAssignmentToStatus,
-    classifyOrderEventType,
+    classifyStatusTransition,
     logOrderEvent,
 } from '@/lib/statusSync';
 import { recomputeBillTotal, accrueOrderToOpenDraft, issueDraftIfOverThreshold, logBillEvent } from '@/lib/billing';
@@ -387,7 +387,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             if (statusIsChanging) {
                 await logOrderEvent(tx, {
                     orderId,
-                    type: classifyOrderEventType(existingOrder.statusId, data.statusId!),
+                    type: classifyStatusTransition(existingOrder.statusId, data.statusId!),
                     fromStatusId: existingOrder.statusId,
                     toStatusId: data.statusId,
                     performedById,
@@ -427,7 +427,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 data.statusId !== STATUS.SOLDE &&
                 data.statusId !== assignment.statusId
             ) {
-                await syncAssignmentToStatus(tx, assignment.id, data.statusId);
+                await syncAssignmentToStatus(tx, assignment.id, data.statusId, performedById);
             }
 
             return { order, newTotal };
@@ -671,7 +671,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             if (statusIsChanging) {
                 await logOrderEvent(tx, {
                     orderId,
-                    type: classifyOrderEventType(existingOrder.statusId, body.statusId!),
+                    type: classifyStatusTransition(existingOrder.statusId, body.statusId!),
                     fromStatusId: existingOrder.statusId,
                     toStatusId: body.statusId,
                     performedById,
@@ -711,7 +711,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 body.statusId !== STATUS.SOLDE &&
                 body.statusId !== assignment.statusId
             ) {
-                await syncAssignmentToStatus(tx, assignment.id, body.statusId);
+                await syncAssignmentToStatus(tx, assignment.id, body.statusId, performedById);
             }
 
             return { order, newTotal };

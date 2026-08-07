@@ -12,6 +12,7 @@ import {
     guardOrderHasNoAssignment,
     guardReaderEligible,
     syncOrderToStatus,
+    logAssignmentEvent,
 } from '@/lib/statusSync';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
@@ -257,6 +258,13 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
                     notes: notes || null,
                     deliveryMethod: effectiveDelivery,
                 },
+            });
+
+            await logAssignmentEvent(tx, {
+                assignmentId: assignment.id,
+                type: 'CREATED',
+                toStatusId: parsedStatusId,
+                performedById,
             });
 
             // Align the linked order to the new assignment's status.

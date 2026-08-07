@@ -1,4 +1,4 @@
-import type { OrderEventType } from '@prisma/client';
+import type { AssignmentEventType, OrderEventType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -250,14 +250,44 @@ export async function logOrderEvent(
 }
 
 /**
- * Classifies a demande's status transition for the processing history: entering
+ * Append an immutable entry to an attribution's processing history. Same
+ * rationale as logOrderEvent above, mirrored for /admin/stats's « Attributions
+ * traitées » — call inside the same transaction as the status/creation write.
+ */
+export async function logAssignmentEvent(
+    tx: TransactionClient,
+    params: {
+        assignmentId: number;
+        type: AssignmentEventType;
+        fromStatusId?: number | null;
+        toStatusId?: number | null;
+        performedById?: number | null;
+    }
+): Promise<void> {
+    await tx.assignmentEvent.create({
+        data: {
+            assignmentId: params.assignmentId,
+            type: params.type,
+            fromStatusId: params.fromStatusId ?? null,
+            toStatusId: params.toStatusId ?? null,
+            performedById: params.performedById ?? null,
+        },
+    });
+}
+
+/**
+ * Classifies a status transition for the processing history (demandes and
+ * attributions alike — both share the same Status workflow): entering
  * « Terminé » reads as a closure, leaving it as a reopening, anything else as a
  * plain status change. Mirrors the TERMINE-boundary logic in resolveClosureDate.
+ * The return value is a plain string rather than either Prisma enum type — both
+ * OrderEventType and AssignmentEventType share these three transition members,
+ * so one classifier serves both logOrderEvent and logAssignmentEvent.
  */
-export function classifyOrderEventType(
+export function classifyStatusTransition(
     previousStatusId: number | null,
     nextStatusId: number
-): OrderEventType {
+): 'CLOSED' | 'REOPENED' | 'STATUS_CHANGED' {
     const wasTermine = previousStatusId === STATUS.TERMINE;
     const isTermine = nextStatusId === STATUS.TERMINE;
     if (isTermine && !wasTermine) return 'CLOSED';
@@ -381,7 +411,7 @@ export async function syncOrderToStatus(
     if (previous && previous.statusId !== statusId) {
         await logOrderEvent(tx, {
             orderId,
-            type: classifyOrderEventType(previous.statusId, statusId),
+            type: classifyStatusTransition(previous.statusId, statusId),
             fromStatusId: previous.statusId,
             toStatusId: statusId,
             performedById,
@@ -392,9 +422,26 @@ export async function syncOrderToStatus(
 export async function syncAssignmentToStatus(
     tx: TransactionClient,
     assignmentId: number,
-    statusId: number
+    statusId: number,
+    performedById?: number | null
 ): Promise<void> {
+    const previous = await tx.assignment.findUnique({
+        where: { id: assignmentId },
+        select: { statusId: true },
+    });
+
     await tx.assignment.update({ where: { id: assignmentId }, data: { statusId } });
+
+    // Only a real transition is worth a row — see syncOrderToStatus above.
+    if (previous && previous.statusId !== statusId) {
+        await logAssignmentEvent(tx, {
+            assignmentId,
+            type: classifyStatusTransition(previous.statusId, statusId),
+            fromStatusId: previous.statusId,
+            toStatusId: statusId,
+            performedById,
+        });
+    }
 }
 
 /**

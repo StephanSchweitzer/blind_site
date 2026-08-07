@@ -13,6 +13,8 @@ import {
     guardAssignmentMatchesOrder,
     guardOrderNotSettled,
     syncOrderToStatus,
+    classifyStatusTransition,
+    logAssignmentEvent,
 } from '@/lib/statusSync';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
@@ -213,6 +215,19 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 data: updateData,
                 include: assignmentIncludeConfigs.all,
             });
+
+            // Track the attribution's own processing history — creation is logged
+            // where the assignment is created; this is every status transition
+            // after that, made directly here.
+            if (newStatusId !== undefined && newStatusId !== existingAssignment.statusId) {
+                await logAssignmentEvent(tx, {
+                    assignmentId,
+                    type: classifyStatusTransition(existingAssignment.statusId, newStatusId),
+                    fromStatusId: existingAssignment.statusId,
+                    toStatusId: newStatusId,
+                    performedById,
+                });
+            }
 
             // Propagate the new status (1–3) up to the linked order.
             if (

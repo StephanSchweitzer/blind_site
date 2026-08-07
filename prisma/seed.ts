@@ -612,7 +612,20 @@ async function main() {
                 },
             },
         });
-        void assignment;
+        await prisma.assignmentEvent.create({
+            data: {
+                assignmentId: assignment.id, type: 'CREATED', toStatusId: ST_ATTENTE,
+                performedById: staff[i % staff.length].id, createdAt: daysAgo(47 - i),
+            },
+        });
+        if (returned) {
+            await prisma.assignmentEvent.create({
+                data: {
+                    assignmentId: assignment.id, type: 'CLOSED', fromStatusId: ST_ENCOURS, toStatusId: st,
+                    performedById: staff[i % staff.length].id, createdAt: daysAgo(15 - (i % 12)),
+                },
+            });
+        }
     }
 
     // ── bills (factures) — one per BillingStatus, with audit events ─────────────

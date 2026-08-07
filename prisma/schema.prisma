@@ -18,75 +18,76 @@ model News {
 }
 
 model User {
-  id                       Int                 @id @default(autoincrement())
-  email                    String?             @unique
-  password                 String?
-  name                     String?
-  memberType               MemberType          @default(auditeur)
-  accessLevel              AccessLevel         @default(member)
-  role                     String              @default("user")
-  createdAt                DateTime            @default(now())
-  passwordNeedsChange      Boolean             @default(true)
-  firstName                String?
-  lastName                 String?
-  homePhone                String?
-  cellPhone                String?
-  gestconteNotes           String?
-  gestconteId              Int?
-  nonProfitAffiliation     String?
+  id                        Int                 @id @default(autoincrement())
+  email                     String?             @unique
+  password                  String?
+  name                      String?
+  memberType                MemberType          @default(auditeur)
+  accessLevel               AccessLevel         @default(member)
+  role                      String              @default("user")
+  createdAt                 DateTime            @default(now())
+  passwordNeedsChange       Boolean             @default(true)
+  firstName                 String?
+  lastName                  String?
+  homePhone                 String?
+  cellPhone                 String?
+  gestconteNotes            String?
+  gestconteId               Int?
+  nonProfitAffiliation      String?
   /// LEGACY: replaced by activityStatus + UserActivityEvent. For `db push`: keep
   /// this for the first push, run backfill.sql, THEN delete it and push again.
-  isActive                 Boolean?            @default(true)
-  activityStatus           UserActivityStatus  @default(ACTIVE)
-  activityChangedAt        DateTime?
+  isActive                  Boolean?            @default(true)
+  activityStatus            UserActivityStatus  @default(ACTIVE)
+  activityChangedAt         DateTime?
   /// UNAVAILABLE window, both ends inclusive, stored as UTC-midnight days.
   /// The EFFECTIVE status is computed from these at read time
   /// (lib/users/activityStatus.ts): a window that hasn't started yet, or that
   /// has elapsed, reads as ACTIVE. Nothing rewrites these rows on a schedule.
-  unavailableFrom          DateTime?
-  unavailableUntil         DateTime?
+  unavailableFrom           DateTime?
+  unavailableUntil          DateTime?
   /// LEGACY: superseded by UserActivityEvent history; no longer written. Refactor out.
-  terminationDate          DateTime?
+  terminationDate           DateTime?
   /// LEGACY: superseded by UserActivityEvent.reason; no longer written. Refactor out.
-  terminationReason        String?
-  lastUpdated              DateTime?           @updatedAt
+  terminationReason         String?
+  lastUpdated               DateTime?           @updatedAt
   /// Soft-delete marker. When set, the user is treated as deleted everywhere:
   /// a global Prisma query extension (lib/prisma.ts) excludes rows with a
   /// non-null deletedAt from all user list/search reads.
-  deletedAt                DateTime?
-  preferredDeliveryMethod  DeliveryMethod?
-  paymentThreshold         Decimal?            @default(21.00) @db.Decimal(10, 2)
-  currentBalance           Decimal?            @default(0.00) @db.Decimal(10, 2)
-  preferredMediaFormatId   Int?
-  preferredMediaFormat     MediaFormat?        @relation("UserPreferredMediaFormat", fields: [preferredMediaFormatId], references: [id])
-  isAvailable              Boolean?            @default(true)
-  availabilityNotes        String?
-  specialization           String?
-  saveType                 SaveType?
-  maxConcurrentAssignments Int?                @default(3)
-  notes                    String?
-  civilityId               Int?
-  civilityOther            String?
-  addresses                Address[]
-  assignmentsProcessedBy   Assignment[]        @relation("AssignmentsProcessedBy")
-  assignmentReaders        AssignmentReader[]
-  bills                    Bill[]
-  books                    Book[]
-  CoupsDeCoeur             CoupsDeCoeur[]
-  News                     News[]              @relation("UserNews")
-  ordersAsAveugle          Orders[]            @relation("OrdersAsAveugle")
-  ordersProcessedBy        Orders[]            @relation("OrdersProcessedBy")
-  payments                 Payment[]
-  billEventsPerformed      BillEvent[]         @relation("BillEventsPerformedBy")
-  orderEventsPerformed     OrderEvent[]        @relation("OrderEventsPerformedBy")
-  bookMergeEventsPerformed BookMergeEvent[]    @relation("BookMergeEventsPerformedBy")
-  activityEvents           UserActivityEvent[] @relation("UserActivityEvents")
-  activityEventsPerformed  UserActivityEvent[] @relation("UserActivityEventsBy")
-  audioTracksDeleted       DeletedAudioTrack[] @relation("AudioTracksDeletedBy")
-  audioTracksRestored      DeletedAudioTrack[] @relation("AudioTracksRestoredBy")
-  audioTrackEvents         AudioTrackEvent[]   @relation("AudioTrackEventsPerformedBy")
-  languages                ReaderLanguage[]
-  civility                 Civility?           @relation(fields: [civilityId], references: [id])
+  deletedAt                 DateTime?
+  preferredDeliveryMethod   DeliveryMethod?
+  paymentThreshold          Decimal?            @default(21.00) @db.Decimal(10, 2)
+  currentBalance            Decimal?            @default(0.00) @db.Decimal(10, 2)
+  preferredMediaFormatId    Int?
+  preferredMediaFormat      MediaFormat?        @relation("UserPreferredMediaFormat", fields: [preferredMediaFormatId], references: [id])
+  isAvailable               Boolean?            @default(true)
+  availabilityNotes         String?
+  specialization            String?
+  saveType                  SaveType?
+  maxConcurrentAssignments  Int?                @default(3)
+  notes                     String?
+  civilityId                Int?
+  civilityOther             String?
+  addresses                 Address[]
+  assignmentsProcessedBy    Assignment[]        @relation("AssignmentsProcessedBy")
+  assignmentReaders         AssignmentReader[]
+  bills                     Bill[]
+  books                     Book[]
+  CoupsDeCoeur              CoupsDeCoeur[]
+  News                      News[]              @relation("UserNews")
+  ordersAsAveugle           Orders[]            @relation("OrdersAsAveugle")
+  ordersProcessedBy         Orders[]            @relation("OrdersProcessedBy")
+  payments                  Payment[]
+  billEventsPerformed       BillEvent[]         @relation("BillEventsPerformedBy")
+  orderEventsPerformed      OrderEvent[]        @relation("OrderEventsPerformedBy")
+  assignmentEventsPerformed AssignmentEvent[]   @relation("AssignmentEventsPerformedBy")
+  bookMergeEventsPerformed  BookMergeEvent[]    @relation("BookMergeEventsPerformedBy")
+  activityEvents            UserActivityEvent[] @relation("UserActivityEvents")
+  activityEventsPerformed   UserActivityEvent[] @relation("UserActivityEventsBy")
+  audioTracksDeleted        DeletedAudioTrack[] @relation("AudioTracksDeletedBy")
+  audioTracksRestored       DeletedAudioTrack[] @relation("AudioTracksRestoredBy")
+  audioTrackEvents          AudioTrackEvent[]   @relation("AudioTrackEventsPerformedBy")
+  languages                 ReaderLanguage[]
+  civility                  Civility?           @relation(fields: [civilityId], references: [id])
 
   @@index([deletedAt])
 }
@@ -228,14 +229,16 @@ model BookGenre {
 }
 
 model Status {
-  id                     Int          @id @default(autoincrement())
-  name                   String       @unique
-  description            String?
-  sortOrder              Int?
-  assignments            Assignment[]
-  orders                 Orders[]
-  orderEventsFromStatus  OrderEvent[] @relation("OrderEventsFromStatus")
-  orderEventsToStatus    OrderEvent[] @relation("OrderEventsToStatus")
+  id                         Int               @id @default(autoincrement())
+  name                       String            @unique
+  description                String?
+  sortOrder                  Int?
+  assignments                Assignment[]
+  orders                     Orders[]
+  orderEventsFromStatus      OrderEvent[]      @relation("OrderEventsFromStatus")
+  orderEventsToStatus        OrderEvent[]      @relation("OrderEventsToStatus")
+  assignmentEventsFromStatus AssignmentEvent[] @relation("AssignmentEventsFromStatus")
+  assignmentEventsToStatus   AssignmentEvent[] @relation("AssignmentEventsToStatus")
 
   @@index([name])
 }
@@ -363,6 +366,7 @@ model Assignment {
   processedByStaff   User?              @relation("AssignmentsProcessedBy", fields: [processedByStaffId], references: [id])
   status             Status             @relation(fields: [statusId], references: [id])
   readerHistory      AssignmentReader[]
+  events             AssignmentEvent[]
 
   @@index([catalogueId])
   @@index([orderId])
@@ -549,6 +553,37 @@ model OrderEvent {
   performedBy   User?          @relation("OrderEventsPerformedBy", fields: [performedById], references: [id])
 
   @@index([orderId])
+  @@index([createdAt])
+  // Stats dashboard: per-staff-per-day aggregates on /admin/stats.
+  @@index([performedById, createdAt])
+}
+
+enum AssignmentEventType {
+  CREATED
+  CLOSED
+  REOPENED
+  STATUS_CHANGED
+}
+
+/// Append-only history of an attribution's processing — same rationale as
+/// OrderEvent above, mirrored for the assignment side: creation and every
+/// status transition, however it happened (direct edit, or pushed down from
+/// the demande via syncAssignmentToStatus in lib/statusSync.ts). Not audited
+/// (Assignment already is); not subject to the AuditEvent retention purge.
+model AssignmentEvent {
+  id            Int                 @id @default(autoincrement())
+  assignmentId  Int
+  type          AssignmentEventType
+  fromStatusId  Int?
+  toStatusId    Int?
+  performedById Int?
+  createdAt     DateTime            @default(now())
+  assignment    Assignment          @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  fromStatus    Status?             @relation("AssignmentEventsFromStatus", fields: [fromStatusId], references: [id])
+  toStatus      Status?             @relation("AssignmentEventsToStatus", fields: [toStatusId], references: [id])
+  performedBy   User?               @relation("AssignmentEventsPerformedBy", fields: [performedById], references: [id])
+
+  @@index([assignmentId])
   @@index([createdAt])
   // Stats dashboard: per-staff-per-day aggregates on /admin/stats.
   @@index([performedById, createdAt])
