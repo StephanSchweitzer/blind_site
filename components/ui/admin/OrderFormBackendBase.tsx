@@ -522,6 +522,20 @@ export function OrderFormBackendBase({
     // A legacy demande that holds an inconsistent date still displays it (read-only) —
     // the server accepts that pair round-tripped unchanged (guardClosureDateRequiresTermine).
     const isTermine = formData.statusId === STATUS.TERMINE;
+
+    // « En cours » is attribution-driven and can't be chosen here (see the note by
+    // the select). A demande already sitting on it keeps it selected — the option
+    // is only ever locked *out of*, never *out from under*, the current value.
+    const enCoursIsLocked =
+        !formData.isDuplication && formData.statusId !== STATUS.EN_COURS;
+    // …but only explain it where someone would actually reach for « En cours ».
+    // Once the enregistrement is back (« Attente envoi vers auditeur » / « Terminé »)
+    // the note below about the expédition is the one that matters, and stacking both
+    // just buries it.
+    const showEnCoursHint =
+        enCoursIsLocked &&
+        (formData.statusId === null || formData.statusId === STATUS.ATTENTE);
+    const isAttenteAuditeur = formData.statusId === STATUS.ATTENTE_AUDITEUR;
     const blockingRecording =
         formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
             ? getRecordingFor(formData.catalogueId)?.blockingRecording ?? null
@@ -753,7 +767,8 @@ export function OrderFormBackendBase({
                                             <SelectItem
                                                 key={status.id}
                                                 value={status.id.toString()}
-                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
+                                                disabled={enCoursIsLocked && status.id === STATUS.EN_COURS}
+                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
                                             >
                                                 <span className="font-medium">{status.name}</span>
                                             </SelectItem>
@@ -761,6 +776,25 @@ export function OrderFormBackendBase({
                                 </div>
                             </SelectContent>
                         </Select>
+                        {/* « En cours » décrit un livre parti chez un lecteur : ce sont
+                            l'attribution et sa date d'envoi qui le rendent vrai, pas ce
+                            menu. L'option reste visible mais désactivée — la masquer
+                            laisserait croire à un oubli au lieu d'expliquer la règle.
+                            Le serveur la refuse aussi (guardManualEnCours) : ceci n'est
+                            que le rappel de tous les jours. */}
+                        {showEnCoursHint && (
+                            <p className="text-xs text-muted-foreground">
+                                « En cours » suit l&apos;attribution : renseignez-y le lecteur et la date
+                                d&apos;envoi, la demande passera « En cours » automatiquement.
+                            </p>
+                        )}
+                        {isAttenteAuditeur && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                L&apos;enregistrement est revenu du lecteur mais n&apos;a pas encore été
+                                expédié à l&apos;auditeur. Passez la demande « Terminé » le jour de
+                                l&apos;expédition — c&apos;est ce jour-là qui devient la date de clôture.
+                            </p>
+                        )}
                     </div>
 
                     {/* Media Format */}

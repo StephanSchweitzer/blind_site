@@ -1,7 +1,7 @@
 import type { AssignmentEventType, OrderEventType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
-type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+export type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 /**
  * Workflow statuses (shared Status lookup table).
@@ -20,6 +20,15 @@ type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0
  * recorded. A duplication therefore has a two-state lifecycle,
  * « À faire » → « Terminé », enforced by guardDuplicationStatus.
  *
+ * ATTENTE_AUDITEUR is DEMANDE-ONLY, like SOLDE. It splits an event the system
+ * used to collapse into one: the lecteur bringing the recording back to ECA is
+ * NOT the auditeur receiving it. « Terminé » on an attribution now pushes its
+ * demande to « Attente envoi vers auditeur », never straight to « Terminé »,
+ * so a recording that came back but was never sent out stays visible instead of
+ * closing itself and being forgotten. Closing the demande is a deliberate human
+ * act meaning "l'auditeur a été servi" — which is also what makes its date de
+ * clôture the day of the expédition rather than the day of the retour.
+ *
  * These ids are fixed, not discovered: the Status rows are reference data
  * inserted with explicit ids so dev and prod agree. Keep the seed's STATUSES
  * array in the same order.
@@ -30,7 +39,29 @@ export const STATUS = {
     TERMINE: 3, // Terminé
     SOLDE: 4, // Soldé — retired, facture-only (see above)
     A_FAIRE: 5, // À faire — duplications only (see above)
+    ATTENTE_AUDITEUR: 6, // Attente envoi vers auditeur — demandes only (see above)
 } as const;
+
+/**
+ * Statuses a demande may hold that an attribution never can, so they must not
+ * be pushed down onto one. Callers skip the demande→attribution sync entirely
+ * for these — there is nothing to mirror.
+ */
+export function isOrderOnlyStatus(statusId: number): boolean {
+    return statusId === STATUS.SOLDE || statusId === STATUS.ATTENTE_AUDITEUR;
+}
+
+/**
+ * The demande status an attribution's status pushes up. Identity except at the
+ * top: an attribution « Terminé » means the enregistrement is back at ECA, which
+ * makes its demande « Attente envoi vers auditeur » — not « Terminé ». Only a
+ * human, having actually sent the audio out, closes the demande.
+ */
+export function orderStatusForAssignmentStatus(assignmentStatusId: number): number {
+    return assignmentStatusId === STATUS.TERMINE
+        ? STATUS.ATTENTE_AUDITEUR
+        : assignmentStatusId;
+}
 
 export type GuardResult =
     | { ok: true }
@@ -43,7 +74,7 @@ const fail = (httpStatus: number, message: string): GuardResult => ({
     message,
 });
 
-/** An assignment can never hold the SOLDE or A_FAIRE status. */
+/** An assignment can never hold the SOLDE, A_FAIRE or ATTENTE_AUDITEUR status. */
 export function guardAssignmentStatus(statusId: number): GuardResult {
     if (statusId === STATUS.SOLDE) {
         return fail(
@@ -55,6 +86,12 @@ export function guardAssignmentStatus(statusId: number): GuardResult {
         return fail(
             400,
             'Une attribution ne peut pas avoir le statut « À faire » : ce statut est réservé aux duplications.'
+        );
+    }
+    if (statusId === STATUS.ATTENTE_AUDITEUR) {
+        return fail(
+            400,
+            "Une attribution ne peut pas avoir le statut « Attente envoi vers auditeur » : ce statut décrit la demande, pas l'enregistrement. Une attribution dont l'enregistrement est revenu est « Terminé »."
         );
     }
     return OK;
@@ -90,6 +127,38 @@ export function guardDuplicationStatus(isDuplication: boolean, statusId: number)
         );
     }
     return OK;
+}
+
+/**
+ * « En cours » is attribution-driven, never typed on the demande.
+ *
+ * The statut describes a book physically out with a lecteur, and the facts that
+ * make it true — le lecteur, la date d'envoi — belong to the attribution
+ * (guardAssignmentConsistency). Where an attribution exists,
+ * guardDemandeStatusSync already refuses a demande status its attribution
+ * couldn't legitimately hold. This closes the other half: a demande with NO
+ * attribution could be parked on « En cours » indefinitely, which reads as work
+ * in progress in every list and every statistique while nobody is recording
+ * anything — invisible work wearing the costume of visible work.
+ *
+ * Duplications never reach here (« En cours » is already refused by
+ * guardDuplicationStatus). Call only when the statut is actually CHANGING, so a
+ * legacy row already sitting on « En cours » stays editable for its notes and
+ * son coût rather than being held hostage by its history.
+ */
+export function guardManualEnCours(args: {
+    statusId: number;
+    isDuplication: boolean;
+    hasAssignment: boolean;
+}): GuardResult {
+    if (args.statusId !== STATUS.EN_COURS) return OK;
+    if (args.isDuplication || args.hasAssignment) return OK;
+
+    return fail(
+        409,
+        "Une demande ne peut pas être passée « En cours » manuellement : ce statut suit l'attribution. " +
+        "Créez une attribution et renseignez sa date d'envoi au lecteur — la demande passera « En cours » automatiquement."
+    );
 }
 
 /**
@@ -355,12 +424,13 @@ export function guardClosureDateRequiresTermine(args: {
 }
 
 /**
- * Pushes an attribution's status onto its demande — and the date de clôture that
- * goes with it.
+ * Pushes an attribution's status onto its demande — mapped through
+ * orderStatusForAssignmentStatus — and the date de clôture that goes with it.
  *
- * A demande is normally closed through its own route, which stamps the date via
- * resolveClosureDate. But an attribution passed « Terminé » closes its demande
- * from here instead, and this used to write nothing but `statusId` — leaving a
+ * A demande is closed through its own route, which stamps the date via
+ * resolveClosureDate. An attribution can no longer close one from here (it tops
+ * the demande out at « Attente envoi vers auditeur »), but it can still REOPEN
+ * one, and this used to write nothing but `statusId` — leaving a
  * demande « Terminé » with no date de clôture, against the promise the form and
  * guardClosureDateRequiresTermine both make ("la date est alors renseignée
  * automatiquement").
@@ -378,25 +448,39 @@ export function guardClosureDateRequiresTermine(args: {
  * column is left untouched, so whatever is already there survives on its own.
  *
  * No explicit date is ever supplied on this path: an attribution has no say over
- * *which* day the demande closed, only that it did. resolveClosureDate therefore
- * returns `undefined` whenever the demande isn't crossing into or out of
- * « Terminé », which Prisma reads as "leave this column alone" — that is what
- * keeps the 19 000+ legacy « Terminé » demandes from being back-stamped with
- * today's date when an attribution moves between two non-final statuses.
+ * *which* day a demande was expédiée. resolveClosureDate therefore returns
+ * `undefined` whenever the demande isn't crossing into or out of « Terminé »,
+ * which Prisma reads as "leave this column alone" — that is what keeps the
+ * 19 000+ legacy « Terminé » demandes from being back-stamped with today's date
+ * when an attribution moves between two non-final statuses.
  *
- * The result needs no guardClosureDateRequiresTermine check: it is a date only
- * when the demande lands on « Terminé », and null when it leaves it.
+ * The result needs no guardClosureDateRequiresTermine check: since this path can
+ * no longer land a demande on « Terminé », the date is only ever cleared here —
+ * when a reopened attribution pulls a legacy « Terminé » demande back open.
  */
 export async function syncOrderToStatus(
     tx: TransactionClient,
     orderId: number,
-    statusId: number,
+    assignmentStatusId: number,
     performedById?: number | null
 ): Promise<void> {
     const previous = await tx.orders.findUnique({
         where: { id: orderId },
         select: { statusId: true },
     });
+
+    // An attribution « Terminé » lands the demande on « Attente envoi vers
+    // auditeur », not « Terminé » — the audio is back at ECA, not out the door.
+    const statusId = orderStatusForAssignmentStatus(assignmentStatusId);
+
+    // …unless the demande is ALREADY « Terminé ». Finishing an attribution must
+    // never REOPEN a demande somebody has explicitly closed (and strip its date
+    // de clôture along the way). Normally unreachable — guardOrderCompletion
+    // won't close a demande whose attribution isn't already « Terminé » — but a
+    // legacy row imported from Access can hold any pair at all.
+    if (previous?.statusId === STATUS.TERMINE && statusId === STATUS.ATTENTE_AUDITEUR) {
+        return;
+    }
 
     const closureDate = resolveClosureDate({
         previousStatusId: previous?.statusId ?? null,
@@ -496,6 +580,12 @@ export function guardAssignmentConsistency(args: {
             // pass every reader/date rule below and let an attribution sit on a
             // duplication-only status with no consistency checks at all.
             return fail(400, "Une attribution ne peut pas avoir le statut « À faire » : ce statut est réservé aux duplications.");
+        case STATUS.ATTENTE_AUDITEUR:
+            // Same reasoning as A_FAIRE: demande-only, so never let it reach the
+            // permissive `default`. What the attribution owns stops at the retour
+            // aux ECA — « Terminé ». What happens to the audio afterwards is the
+            // demande's business.
+            return fail(400, "Une attribution ne peut pas avoir le statut « Attente envoi vers auditeur » : une attribution dont l'enregistrement est revenu est « Terminé ».");
         default:
             return OK;
     }
@@ -517,8 +607,8 @@ export function guardDemandeStatusSync(args: {
     sentToReaderDate: Date | string | null | undefined;
     returnedToECADate: Date | string | null | undefined;
 }): GuardResult {
-    // SOLDE is order-only and never propagates to the attribution — nothing to guard.
-    if (args.statusId === STATUS.SOLDE) return OK;
+    // Order-only statuses never propagate to the attribution — nothing to guard.
+    if (isOrderOnlyStatus(args.statusId)) return OK;
 
     if (!guardAssignmentConsistency(args).ok) {
         return fail(
@@ -558,19 +648,28 @@ export function guardDuplicationFlip(setToDuplication: boolean, hasAssignment: b
 /**
  * A NON-duplication order can only reach Terminé/Soldé once its assignment is Terminé.
  * Duplications need no assignment, so they're unaffected.
+ *
+ * « Attente envoi vers auditeur » sits behind the same wall: it asserts that the
+ * enregistrement is back at ECA and waiting to go out, which is exactly what an
+ * attribution « Terminé » means. It is normally reached automatically (see
+ * orderStatusForAssignmentStatus), but it stays selectable so a demande closed
+ * by mistake can be walked back to "pas encore expédiée".
  */
 export function guardOrderCompletion(args: {
     statusId: number;
     isDuplication: boolean;
     assignmentStatusId: number | null; // null = no assignment
 }): GuardResult {
-    const completing = args.statusId === STATUS.TERMINE || args.statusId === STATUS.SOLDE;
-    if (!completing || args.isDuplication) return OK;
+    const needsFinishedRecording =
+        args.statusId === STATUS.TERMINE ||
+        args.statusId === STATUS.SOLDE ||
+        args.statusId === STATUS.ATTENTE_AUDITEUR;
+    if (!needsFinishedRecording || args.isDuplication) return OK;
 
     if (args.assignmentStatusId === null) {
         return fail(
             409,
-            "Cette demande nécessite un enregistrement : créez et terminez l'attribution avant de la passer « Terminé » ou « Soldé »."
+            "Cette demande nécessite un enregistrement : créez et terminez l'attribution avant de la passer « Attente envoi vers auditeur » ou « Terminé »."
         );
     }
     if (args.assignmentStatusId !== STATUS.TERMINE) {

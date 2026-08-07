@@ -906,9 +906,16 @@ export function AssignmentFormBackendBase({
                                 {/* #7a — an assignment can never hold "Soldé" (order-only status)
                                     nor "À faire" (duplication-only, and a duplication has no
                                     attribution); filter both out so they aren't offered. Uses the
-                                    STATUS constants, not literals. */}
+                                    STATUS constants, not literals.
+                                    "Attente envoi vers auditeur" joins them: what an attribution
+                                    owns stops at the retour aux ECA (« Terminé ») — what happens
+                                    to the audio afterwards belongs to the demande. */}
                                 {statuses
-                                    .filter((status) => status.id !== STATUS.SOLDE && status.id !== STATUS.A_FAIRE)
+                                    .filter((status) =>
+                                        status.id !== STATUS.SOLDE &&
+                                        status.id !== STATUS.A_FAIRE &&
+                                        status.id !== STATUS.ATTENTE_AUDITEUR
+                                    )
                                     .map((status) => (
                                         <SelectItem key={status.id} value={status.id.toString()} className="text-foreground">
                                             {status.name}

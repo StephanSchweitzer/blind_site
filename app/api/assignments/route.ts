@@ -267,7 +267,9 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
                 performedById,
             });
 
-            // Align the linked order to the new assignment's status.
+            // Align the linked order to the new assignment's status — mapped, so an
+            // attribution logged straight into « Terminé » leaves its demande
+            // « Attente envoi vers auditeur » rather than closing it outright.
             if (parsedOrderId) {
                 await syncOrderToStatus(tx, parsedOrderId, parsedStatusId, performedById);
 

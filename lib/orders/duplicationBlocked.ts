@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { STATUS } from '@/lib/statusSync';
+import { STATUS, type TransactionClient } from '@/lib/statusSync';
 
 /**
  * A duplication is « À faire » — it's meant to be done straight away. The one
@@ -32,6 +32,39 @@ export const blockedDuplicationWhere: Prisma.OrdersWhereInput = {
         assignments: { some: { statusId: { in: RECORDING_UNDER_WAY } } },
     },
 };
+
+/**
+ * The open duplications of a book that were waiting on a recording which has
+ * just come back — the mirror of the derivation above, taken at the moment the
+ * block lifts rather than on read.
+ *
+ * This is the case that used to disappear silently. A demande d'enregistrement
+ * comes in for a book; while the lecteur has it, a second auditeur asks for the
+ * same book, so that second demande is a duplication with nothing to copy yet.
+ * When the enregistrement finally comes back, the person finishing the
+ * attribution is looking at the FIRST demande and has no reason to suspect the
+ * second exists. Naming them at that exact moment is the only place the two
+ * ever meet.
+ *
+ * Call inside the finishing transaction. `audio_filepath: null` is deliberate:
+ * a book that already had audio was never blocked by this recording.
+ */
+export async function findDuplicationsFreedByRecording(
+    tx: TransactionClient,
+    catalogueId: number
+): Promise<number[]> {
+    const freed = await tx.orders.findMany({
+        where: {
+            isDuplication: true,
+            catalogueId,
+            statusId: { notIn: DEMANDE_CLOSED },
+            catalogue: { audio_filepath: null },
+        },
+        select: { id: true },
+        orderBy: { id: 'asc' },
+    });
+    return freed.map((o) => o.id);
+}
 
 export type BlockingRecording = {
     readerName: string | null;

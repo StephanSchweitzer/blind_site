@@ -3,7 +3,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
-import { STATUS, guardOrderStatus, guardDuplicationStatus, resolveClosureDate, guardClosureDateRequiresTermine, logOrderEvent } from '@/lib/statusSync';
+import { STATUS, guardOrderStatus, guardDuplicationStatus, guardManualEnCours, resolveClosureDate, guardClosureDateRequiresTermine, logOrderEvent } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -320,6 +320,21 @@ export const POST = withAdmin(async (request, { me }) => {
                     );
                 }
 
+                // A demande is created before its attribution exists, so « En cours »
+                // — which describes a livre déjà parti chez un lecteur — can never be
+                // true of a brand-new one.
+                const lineEnCoursGuard = guardManualEnCours({
+                    statusId: lineStatusId,
+                    isDuplication: !!b.isDuplication,
+                    hasAssignment: false,
+                });
+                if (!lineEnCoursGuard.ok) {
+                    return NextResponse.json(
+                        { error: 'Invalid status', message: lineEnCoursGuard.message, field: 'statusId' },
+                        { status: lineEnCoursGuard.httpStatus }
+                    );
+                }
+
                 let lineCost: Prisma.Decimal | null = null;
                 if (b.cost !== null && b.cost !== undefined && b.cost !== '') {
                     try {
@@ -458,6 +473,21 @@ export const POST = withAdmin(async (request, { me }) => {
             return NextResponse.json(
                 { error: 'Invalid status', message: duplicationStatusGuard.message, field: 'statusId' },
                 { status: duplicationStatusGuard.httpStatus }
+            );
+        }
+
+        // A demande is created before its attribution exists, so « En cours » — which
+        // describes a livre déjà parti chez un lecteur — can never be true of a
+        // brand-new one.
+        const enCoursGuard = guardManualEnCours({
+            statusId: parsedStatusId,
+            isDuplication: !!isDuplication,
+            hasAssignment: false,
+        });
+        if (!enCoursGuard.ok) {
+            return NextResponse.json(
+                { error: 'Invalid status', message: enCoursGuard.message, field: 'statusId' },
+                { status: enCoursGuard.httpStatus }
             );
         }
 

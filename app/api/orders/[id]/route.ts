@@ -16,9 +16,11 @@ import {
     STATUS,
     guardOrderStatus,
     guardOrderCompletion,
+    guardManualEnCours,
     guardDuplicationFlip,
     guardDuplicationStatus,
     guardDemandeStatusSync,
+    isOrderOnlyStatus,
     resolveClosureDate,
     guardClosureDateRequiresTermine,
     syncAssignmentToStatus,
@@ -263,7 +265,8 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             }
         }
 
-        // A non-duplication order can't reach Terminé/Soldé without a finished assignment.
+        // A non-duplication order can't reach Attente envoi vers auditeur/Terminé/Soldé
+        // without a finished assignment.
         if (data.statusId !== undefined) {
             const completionGuard = guardOrderCompletion({
                 statusId: data.statusId,
@@ -272,6 +275,19 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             });
             if (!completionGuard.ok) {
                 return NextResponse.json({ message: completionGuard.message }, { status: completionGuard.httpStatus });
+            }
+        }
+
+        // « En cours » is attribution-driven — it can't be typed onto a demande that
+        // has no attribution at all. Only on an actual change, like the guards above.
+        if (statusIsChanging) {
+            const enCoursGuard = guardManualEnCours({
+                statusId: data.statusId!,
+                isDuplication: data.isDuplication ?? existingOrder.isDuplication,
+                hasAssignment: assignment !== null,
+            });
+            if (!enCoursGuard.ok) {
+                return NextResponse.json({ message: enCoursGuard.message }, { status: enCoursGuard.httpStatus });
             }
         }
 
@@ -289,7 +305,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         if (
             assignment &&
             typeof data.statusId === 'number' &&
-            data.statusId !== STATUS.SOLDE &&
+            !isOrderOnlyStatus(data.statusId) &&
             data.statusId !== assignment.statusId
         ) {
             const syncGuard = guardDemandeStatusSync({
@@ -420,11 +436,13 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
-            // Propagate 1–3 down to the assignment; SOLDE stays order-only.
+            // Propagate 1–3 down to the assignment; « Soldé » and « Attente envoi
+            // vers auditeur » stay order-only (isOrderOnlyStatus) — they describe
+            // what happens to the demande after the lecteur is out of the picture.
             if (
                 assignment &&
                 typeof data.statusId === 'number' &&
-                data.statusId !== STATUS.SOLDE &&
+                !isOrderOnlyStatus(data.statusId) &&
                 data.statusId !== assignment.statusId
             ) {
                 await syncAssignmentToStatus(tx, assignment.id, data.statusId, performedById);
@@ -550,7 +568,8 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             }
         }
 
-        // A non-duplication order can't reach Terminé/Soldé without a finished assignment.
+        // A non-duplication order can't reach Attente envoi vers auditeur/Terminé/Soldé
+        // without a finished assignment.
         if (body.statusId !== undefined) {
             const completionGuard = guardOrderCompletion({
                 statusId: body.statusId,
@@ -559,6 +578,19 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             });
             if (!completionGuard.ok) {
                 return NextResponse.json({ message: completionGuard.message }, { status: completionGuard.httpStatus });
+            }
+        }
+
+        // « En cours » is attribution-driven — it can't be typed onto a demande that
+        // has no attribution at all. Only on an actual change, like the guards above.
+        if (statusIsChanging) {
+            const enCoursGuard = guardManualEnCours({
+                statusId: body.statusId!,
+                isDuplication: body.isDuplication ?? existingOrder.isDuplication,
+                hasAssignment: assignment !== null,
+            });
+            if (!enCoursGuard.ok) {
+                return NextResponse.json({ message: enCoursGuard.message }, { status: enCoursGuard.httpStatus });
             }
         }
 
@@ -576,7 +608,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         if (
             assignment &&
             typeof body.statusId === 'number' &&
-            body.statusId !== STATUS.SOLDE &&
+            !isOrderOnlyStatus(body.statusId) &&
             body.statusId !== assignment.statusId
         ) {
             const syncGuard = guardDemandeStatusSync({
@@ -704,11 +736,13 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
-            // Propagate 1–3 down to the assignment; SOLDE stays order-only.
+            // Propagate 1–3 down to the assignment; « Soldé » and « Attente envoi
+            // vers auditeur » stay order-only (isOrderOnlyStatus) — they describe
+            // what happens to the demande after the lecteur is out of the picture.
             if (
                 assignment &&
                 typeof body.statusId === 'number' &&
-                body.statusId !== STATUS.SOLDE &&
+                !isOrderOnlyStatus(body.statusId) &&
                 body.statusId !== assignment.statusId
             ) {
                 await syncAssignmentToStatus(tx, assignment.id, body.statusId, performedById);

@@ -17,6 +17,7 @@ import {
     logAssignmentEvent,
 } from '@/lib/statusSync';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
+import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
 import { withAdmin } from '@/lib/auth/guards';
 
 /**
@@ -209,7 +210,17 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             updateData.deliveryMethod = validation.data.deliveryMethod;
         }
 
-        const updatedAssignment = await prisma.$transaction(async (tx) => {
+        const { assignment: updatedAssignment, orderTransition } = await prisma.$transaction(async (tx) => {
+            // What finishing this attribution did to the demande — reported back so
+            // the toast can say it out loud instead of leaving it to be discovered.
+            let orderTransition: {
+                orderId: number;
+                /** Demande now « Attente envoi vers auditeur »: enregistrement revenu, pas encore expédié. */
+                awaitingShipment: boolean;
+                /** Open duplications of the same book that were waiting on this recording. */
+                freedDuplicationIds: number[];
+            } | null = null;
+
             const assignment = await tx.assignment.update({
                 where: { id: assignmentId },
                 data: updateData,
@@ -229,7 +240,10 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 });
             }
 
-            // Propagate the new status (1–3) up to the linked order.
+            // Propagate the new status up to the linked order. « Terminé » tops the
+            // demande out at « Attente envoi vers auditeur » — the enregistrement is
+            // back at ECA, which is not the same thing as the auditeur having it.
+            // See orderStatusForAssignmentStatus.
             if (
                 newStatusId !== undefined &&
                 existingAssignment.orderId &&
@@ -240,24 +254,38 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 // The recording just finished — this is when the service is rendered,
                 // so the order accrues onto a brouillon now (using its cost as it
                 // stands at this moment), rather than back when it was created.
+                // Billing still keys off the ATTRIBUTION reaching « Terminé »: the work
+                // is done and billable whether or not the audio has gone out yet.
                 if (newStatusId === STATUS.TERMINE) {
                     const order = await tx.orders.findUnique({
                         where: { id: existingAssignment.orderId },
-                        select: { id: true, aveugleId: true, billId: true },
+                        select: { id: true, aveugleId: true, billId: true, statusId: true },
                     });
                     if (order && order.billId == null) {
                         await accrueOrderToOpenDraft(tx, order.id, performedById);
                         await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
                     }
+
+                    if (order) {
+                        orderTransition = {
+                            orderId: order.id,
+                            awaitingShipment: order.statusId === STATUS.ATTENTE_AUDITEUR,
+                            freedDuplicationIds: await findDuplicationsFreedByRecording(
+                                tx,
+                                existingAssignment.catalogueId
+                            ),
+                        };
+                    }
                 }
             }
 
-            return assignment;
+            return { assignment, orderTransition };
         });
 
         return NextResponse.json({
             message: 'Attribution mise à jour avec succès',
             assignment: updatedAssignment,
+            orderTransition,
         });
     } catch (error) {
         console.error('Error updating assignment:', error);

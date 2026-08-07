@@ -394,11 +394,16 @@ export default function AssignmentsTable({
                                     <SelectItem value="all" className="text-foreground">
                                         Tous les statuts
                                     </SelectItem>
-                                    {/* No attribution can hold « Soldé » (facture-only) or
-                                        « À faire » (duplication-only), so filtering by either
+                                    {/* No attribution can hold « Soldé » (facture-only),
+                                        « À faire » (duplication-only) or « Attente envoi vers
+                                        auditeur » (demande-only), so filtering by any of them
                                         always returns nothing — don't offer them. */}
                                     {availableStatuses
-                                        .filter((status) => status.id !== STATUS.SOLDE && status.id !== STATUS.A_FAIRE)
+                                        .filter((status) =>
+                                            status.id !== STATUS.SOLDE &&
+                                            status.id !== STATUS.A_FAIRE &&
+                                            status.id !== STATUS.ATTENTE_AUDITEUR
+                                        )
                                         .map((status) => (
                                             <SelectItem
                                                 key={status.id}

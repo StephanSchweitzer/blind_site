@@ -312,6 +312,7 @@ export default function OrdersTable({
     const getStatusDisplayName = (statusName: string) => {
         const displayMap: Record<string, string> = {
             'Attente envoi vers lecteur': 'À envoyer',
+            'Attente envoi vers auditeur': 'À expédier',
             'Terminé': 'Terminée',
             'Soldé': 'Soldée',
         };

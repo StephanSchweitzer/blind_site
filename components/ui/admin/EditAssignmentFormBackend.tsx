@@ -4,6 +4,13 @@ import { ReaderSummary, BookSummary, OrderSummary, AssignmentFormData } from '@/
 import { AssignmentFormBackendBase } from '@/admin/AssignmentFormBackendBase';
 import { getFieldErrorLines, ErrorToastBody } from '@/admin/AssignmentFormErrors';
 
+/** What finishing this attribution did to its demande — see PUT /api/assignments/[id]. */
+type OrderTransition = {
+    orderId: number;
+    awaitingShipment: boolean;
+    freedDuplicationIds: number[];
+};
+
 // Edit Assignment Form using the base
 export function EditAssignmentFormBackend({
                                               assignmentId,
@@ -79,10 +86,56 @@ export function EditAssignmentFormBackend({
                 return Promise.reject();
             }
 
+            // Finishing an attribution no longer closes its demande — it leaves it
+            // « Attente envoi vers auditeur ». Say so here, with the link that closes
+            // it: the safe state is automatic, the fast path is one click away, and
+            // neither depends on anyone answering a question correctly at 17 h.
+            const orderTransition: OrderTransition | null =
+                (await response.json().catch(() => null))?.orderTransition ?? null;
+
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;attribution a été mise à jour avec succès</span>,
+                description: (
+                    <span className="text-xl mt-2 block">
+                        L&apos;attribution a été mise à jour avec succès
+                        {orderTransition?.awaitingShipment && (
+                            <span className="mt-2 block text-base">
+                                La demande{' '}
+                                <a
+                                    href={`/admin/orders?order=${orderTransition.orderId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold underline underline-offset-2"
+                                >
+                                    #{orderTransition.orderId}
+                                </a>{' '}
+                                passe « Attente envoi vers auditeur » : passez-la « Terminé »
+                                une fois l&apos;audio expédié.
+                            </span>
+                        )}
+                        {!!orderTransition?.freedDuplicationIds.length && (
+                            <span className="mt-2 block text-base">
+                                {orderTransition.freedDuplicationIds.length === 1
+                                    ? 'Une duplication attendait cet enregistrement et devient réalisable : '
+                                    : `${orderTransition.freedDuplicationIds.length} duplications attendaient cet enregistrement et deviennent réalisables : `}
+                                {orderTransition.freedDuplicationIds.map((dupId, i) => (
+                                    <React.Fragment key={dupId}>
+                                        {i > 0 && ', '}
+                                        <a
+                                            href={`/admin/orders?order=${dupId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="font-semibold underline underline-offset-2"
+                                        >
+                                            #{dupId}
+                                        </a>
+                                    </React.Fragment>
+                                ))}
+                            </span>
+                        )}
+                    </span>
+                ),
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
 

@@ -105,12 +105,18 @@ const GENRES: { name: string; description: string | null }[] = [
 //
 // « À faire » is duplication-only (sortOrder 0 — it's the earliest state); a
 // demande d'enregistrement starts at « Attente envoi vers lecteur » instead.
+//
+// « Attente envoi vers auditeur » is demande-only and sits between « En cours »
+// and « Terminé »: l'enregistrement est revenu du lecteur, mais l'auditeur n'a
+// pas encore été servi. sortOrder therefore puts it at 3 and pushes « Terminé »
+// and « Soldé » down one — the lifecycle is bracketed by its two envois.
 const STATUSES = [
     { id: 1, name: "Attente envoi vers lecteur", description: "En attente d'envoi vers le lecteur", sortOrder: 1 },
     { id: 2, name: "En cours", description: "Demande en cours de traitement", sortOrder: 2 },
-    { id: 3, name: "Terminé", description: "Demande terminée", sortOrder: 3 },
-    { id: 4, name: "Soldé", description: "Soldé", sortOrder: 4 },
+    { id: 3, name: "Terminé", description: "Demande terminée", sortOrder: 4 },
+    { id: 4, name: "Soldé", description: "Soldé", sortOrder: 5 },
     { id: 5, name: "À faire", description: "Duplication à effectuer", sortOrder: 0 },
+    { id: 6, name: "Attente envoi vers auditeur", description: "Enregistrement revenu du lecteur, en attente d'envoi vers l'auditeur", sortOrder: 3 },
 ];
 
 const MEDIA_FORMATS = [
