@@ -59,9 +59,9 @@ async function loadItems(
 
         case 'billEvents': {
             const rows = await prisma.$queryRaw<Array<{
-                id: number; billId: number; type: string; at: string;
+                id: number; billId: number; type: string; payload: Record<string, unknown> | null; at: string;
             } & NameParts>>`
-                SELECT e.id, e."billId", e.type::text AS type, ${isoUtc(Prisma.sql`e."createdAt"`)} AS at,
+                SELECT e.id, e."billId", e.type::text AS type, e.payload, ${isoUtc(Prisma.sql`e."createdAt"`)} AS at,
                        u.name, u."firstName", u."lastName", u.email
                 FROM "BillEvent" e
                 JOIN "Bill" bl ON bl.id = e."billId"
@@ -76,6 +76,7 @@ async function loadItems(
                 title: `Facture n°${r.billId}`,
                 subtitle: getUserDisplayName(r),
                 type: r.type,
+                payload: r.payload,
                 href: `/admin/bills?bill=${r.billId}`,
             }));
         }

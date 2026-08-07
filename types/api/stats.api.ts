@@ -56,6 +56,8 @@ export interface StaffDetailItem {
     needsReview?: boolean; // books only — "à vérifier"
     /** BillEventType / AudioTrackAction / OrderEventType, per metric. */
     type?: string;
+    /** billEvents only — carries e.g. { reason: 'accrual' } for auto-attached orders. */
+    payload?: Record<string, unknown> | null;
 }
 
 export interface StaffDetailsResponse {

@@ -34,6 +34,26 @@ export const TYPE_TINT: Record<string, string> = {
     ORDER_DETACHED: 'bg-muted text-foreground',
 };
 
+/**
+ * ORDER_ATTACHED covers two different things behind one BillEventType: an admin
+ * manually picking a demande to attach to a bill, versus `accrueOrderToOpenDraft`
+ * auto-attaching a demande the moment it reaches « Terminé » (see lib/billing.ts).
+ * The latter is tagged `payload.reason === 'accrual'` — surface that as "closed",
+ * not "added", since that's the act a reader (e.g. the stats audit trail) actually
+ * cares about; the underlying event and bill total are unaffected either way.
+ */
+export function billEventLabel(type: string, payload: Record<string, unknown> | null): string {
+    if (type === 'ORDER_ATTACHED' && payload?.reason === 'accrual') return 'Demande clôturée';
+    return TYPE_LABEL[type] ?? type;
+}
+
+export function billEventTint(type: string, payload: Record<string, unknown> | null): string {
+    if (type === 'ORDER_ATTACHED' && payload?.reason === 'accrual') {
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200';
+    }
+    return TYPE_TINT[type] ?? 'bg-muted text-foreground';
+}
+
 const fmtDateTime = (iso: string) =>
     new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -91,8 +111,8 @@ export function BillHistory({ events }: { events: BillEventDTO[] }) {
                     <li key={e.id} className="flex gap-3 border-l-2 border-border pl-3">
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`text-xs font-semibold rounded px-2 py-0.5 ${TYPE_TINT[e.type] ?? 'bg-muted text-foreground'}`}>
-                                    {TYPE_LABEL[e.type] ?? e.type}
+                                <span className={`text-xs font-semibold rounded px-2 py-0.5 ${billEventTint(e.type, e.payload)}`}>
+                                    {billEventLabel(e.type, e.payload)}
                                 </span>
                                 {transition && <span className="text-xs text-muted-foreground">{transition}</span>}
                             </div>

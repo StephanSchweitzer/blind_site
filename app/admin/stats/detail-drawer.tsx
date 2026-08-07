@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { X, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TYPE_LABEL, TYPE_TINT } from '@/components/ui/admin/BillHistory';
+import { billEventLabel, billEventTint } from '@/components/ui/admin/BillHistory';
 import type { StaffDetailItem, StaffDetailsResponse, StaffMetric, StatsGranularity } from '@/types';
 import {
     AUDIO_ACTION_LABEL,
@@ -17,13 +17,14 @@ import {
     formatDateTime,
 } from './stats-utils';
 
-// AudioTrackAction, BillEventType and OrderEventType/AssignmentEventType share
-// the `type` field on a detail item, but their values are NOT disjoint (both
-// BillEventType and OrderEventType/AssignmentEventType have a CREATED and a
-// REOPENED) — so the lookup is scoped per metric rather than merged into one
-// flat dict, which would let one clobber the other's label/tint.
+// AudioTrackAction and OrderEventType/AssignmentEventType share the `type`
+// field on a detail item, but their values are NOT disjoint (both have a
+// CREATED and a REOPENED) — so the lookup is scoped per metric rather than
+// merged into one flat dict, which would let one clobber the other's
+// label/tint. billEvents is handled separately via billEventLabel/billEventTint,
+// which also need the event's payload (ORDER_ATTACHED reads differently
+// depending on whether it was a manual attach or an auto-accrual on closing).
 const BADGE_MAPS: Partial<Record<StaffMetric, [Record<string, string>, Record<string, string>]>> = {
-    billEvents: [TYPE_LABEL, TYPE_TINT],
     audioEvents: [AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT],
     orders: [LIFECYCLE_EVENT_LABEL, LIFECYCLE_EVENT_TINT],
     assignments: [LIFECYCLE_EVENT_LABEL, LIFECYCLE_EVENT_TINT],
@@ -135,7 +136,12 @@ export default function DetailDrawer({
                                     <span className="text-xs text-muted-foreground">
                                         {formatDateTime(item.at)}
                                     </span>
-                                    {item.type && (
+                                    {item.type && metric === 'billEvents' && (
+                                        <Badge className={billEventTint(item.type, item.payload ?? null)}>
+                                            {billEventLabel(item.type, item.payload ?? null)}
+                                        </Badge>
+                                    )}
+                                    {item.type && metric !== 'billEvents' && (
                                         <Badge className={badgeTint[item.type] ?? 'bg-muted text-foreground'}>
                                             {badgeLabel[item.type] ?? item.type}
                                         </Badge>
