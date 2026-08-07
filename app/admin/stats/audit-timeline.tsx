@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
     AlertTriangle,
     ChevronDown,
@@ -429,27 +430,38 @@ function EventRow({
                 )}
             </div>
 
-            {expanded && (
-                <div className="px-3 pb-3 pt-1 border-t border-border/60">
-                    {merged > 1 && !isAudioBurst(group) && (
-                        <p className="text-xs text-muted-foreground mb-2">
-                            {merged} enregistrements successifs entre {formatDateTime(startedAt)} et{' '}
-                            {formatDateTime(event.at)}. Le détail ci-dessous montre l’effet net :
-                            la valeur de départ et la valeur d’arrivée.
-                        </p>
-                    )}
-                    {merged > 1 && isAudioBurst(group) && (
-                        <p className="text-xs text-muted-foreground mb-2">
-                            {merged} pistes traitées entre {formatDateTime(startedAt)} et{' '}
-                            {formatDateTime(event.at)}, dans la même action groupée.
-                        </p>
-                    )}
-                    {isAudioBurst(group) ? <AudioBurstList group={group} /> : <DiffTable group={group} />}
-                    {isDeletion && event.restoreBlocker && (
-                        <p className="text-xs text-muted-foreground mt-2">{event.restoreBlocker}</p>
-                    )}
-                </div>
-            )}
+            <AnimatePresence initial={false}>
+                {expanded && (
+                    <motion.div
+                        key="detail"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="overflow-hidden"
+                    >
+                        <div className="px-3 pb-3 pt-1 border-t border-border/60">
+                            {merged > 1 && !isAudioBurst(group) && (
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    {merged} enregistrements successifs entre {formatDateTime(startedAt)} et{' '}
+                                    {formatDateTime(event.at)}. Le détail ci-dessous montre l’effet net :
+                                    la valeur de départ et la valeur d’arrivée.
+                                </p>
+                            )}
+                            {merged > 1 && isAudioBurst(group) && (
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    {merged} pistes traitées entre {formatDateTime(startedAt)} et{' '}
+                                    {formatDateTime(event.at)}, dans la même action groupée.
+                                </p>
+                            )}
+                            {isAudioBurst(group) ? <AudioBurstList group={group} /> : <DiffTable group={group} />}
+                            {isDeletion && event.restoreBlocker && (
+                                <p className="text-xs text-muted-foreground mt-2">{event.restoreBlocker}</p>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -469,7 +481,7 @@ export default function AuditTimeline() {
     const subjectTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const [reloadToken, setReloadToken] = useState(0);
     const [page, setPage] = useState<LoadedPage | null>(null);
-    const [expanded, setExpanded] = useState<number | null>(null);
+    const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(new Set());
     const [error, setError] = useState<string | null>(null);
     const [loadingMore, setLoadingMore] = useState(false);
     // `pending` is only ever replaced, never cleared: Radix keeps the content
@@ -502,12 +514,12 @@ export default function AuditTimeline() {
         return () => { cancelled = true; };
     }, [queryKey, query]);
 
-    // Collapse the open row when the query changes — adjusted during render,
+    // Collapse open rows when the query changes — adjusted during render,
     // the pattern used by the disponibilités tables.
     const [syncedKey, setSyncedKey] = useState(queryKey);
     if (queryKey !== syncedKey) {
         setSyncedKey(queryKey);
-        setExpanded(null);
+        setExpandedIds(new Set());
     }
 
     const current = page?.key === queryKey ? page : null;
@@ -762,8 +774,15 @@ export default function AuditTimeline() {
                         <EventRow
                             key={group.key}
                             group={group}
-                            expanded={expanded === group.key}
-                            onToggle={() => setExpanded(expanded === group.key ? null : group.key)}
+                            expanded={expandedIds.has(group.key)}
+                            onToggle={() =>
+                                setExpandedIds((previous) => {
+                                    const next = new Set(previous);
+                                    if (next.has(group.key)) next.delete(group.key);
+                                    else next.add(group.key);
+                                    return next;
+                                })
+                            }
                             onRestore={askRestore}
                         />
                     ))}
