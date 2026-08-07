@@ -408,8 +408,10 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         const chosen = selectFolderAudio(raw);
         if (!chosen.files.length) {
             notifyError(
-                'Aucun fichier audio directement dans ce dossier. ' +
-                    'Les sous-dossiers ne sont pas parcourus.',
+                chosen.rootName
+                    ? 'Aucun fichier audio directement dans ce dossier. ' +
+                          'Les sous-dossiers ne sont pas parcourus.'
+                    : 'Aucun fichier audio valide dans cette sélection.',
             );
             return;
         }
@@ -863,7 +865,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         onChange={(e) => {
                                             const files = Array.from(e.target.files ?? []);
                                             e.target.value = '';
-                                            void handleFilesChosen(files);
+                                            handleFolderChosen(files);
                                         }}
                                     />
                                     {/* Folder picker. `webkitdirectory` has no React
@@ -921,9 +923,11 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             </span>
                                         </Button>
                                         <span className="text-xs text-muted-foreground">
-                                            Les fichiers sont envoyés directement au stockage. 500 Mo maximum par
-                                            fichier. Un dossier n’envoie que les fichiers audio qu’il contient
-                                            directement, jamais ses sous-dossiers.
+                                            Les fichiers sont envoyés directement au stockage, autant que
+                                            nécessaire en un seul envoi : au-delà de 50 fichiers, ils partent
+                                            automatiquement par lots, dans l’ordre. 500 Mo maximum par fichier. Un
+                                            dossier n’envoie que les fichiers audio qu’il contient directement,
+                                            jamais ses sous-dossiers.
                                         </span>
                                     </div>
 
@@ -931,11 +935,17 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                     {selection && !busy && (
                                         <div className="mt-3 rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm">
                                             <p className="text-foreground">
-                                                Dossier{' '}
-                                                <span className="font-mono break-all">
-                                                    {selection.rootName || '—'}
-                                                </span>{' '}
-                                                :{' '}
+                                                {selection.rootName ? (
+                                                    <>
+                                                        Dossier{' '}
+                                                        <span className="font-mono break-all">
+                                                            {selection.rootName}
+                                                        </span>{' '}
+                                                        :{' '}
+                                                    </>
+                                                ) : (
+                                                    'Sélection : '
+                                                )}
                                                 <strong>
                                                     {selection.files.length} fichier
                                                     {selection.files.length > 1 ? 's' : ''} audio
