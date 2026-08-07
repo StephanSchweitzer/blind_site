@@ -2,6 +2,13 @@ import FrontendNavbar from "@/components/Frontend-Navbar";
 import { UserIcon } from "lucide-react";
 import type { TeamMember } from "@prisma/client";
 import { getTeam } from "./data";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: 'Notre Équipe',
+    description: "Découvrez les membres de l'équipe qui animent les Enregistrements à la Carte pour les Aveugles et contribuent à la mission de rendre la lecture accessible à tous.",
+    alternates: { canonical: '/nous-connaitre/equipe' },
+};
 
 export default async function EquipePage() {
     const members = await getTeam();

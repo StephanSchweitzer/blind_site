@@ -1,6 +1,13 @@
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { resolveIcon } from "@/lib/icons";
 import { getHistory } from "./data";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: 'Notre Histoire',
+    description: "Depuis 40 ans, les ECA s'engagent pour rendre la lecture accessible aux personnes déficientes visuelles. Découvrez les moments clés de leur parcours.",
+    alternates: { canonical: '/nous-connaitre/historique' },
+};
 
 export default async function HistoriquePage() {
     const historyEvents = await getHistory();

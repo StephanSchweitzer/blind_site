@@ -3,6 +3,13 @@ import { resolveIcon } from "@/lib/icons";
 import { INFO_THEME, asTheme } from "@/lib/color-themes";
 import { Markdown } from "@/components/Markdown";
 import { getPracticalInfo } from "./data";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: 'Informations Pratiques',
+    description: 'Tout ce que vous devez savoir sur les services des ECA : modalités, fonctionnement et réponses aux questions fréquentes.',
+    alternates: { canonical: '/nous-connaitre/informations-pratiques' },
+};
 
 export default async function InformationsPratique() {
     const items = await getPracticalInfo();
