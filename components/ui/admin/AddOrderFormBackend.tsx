@@ -432,13 +432,13 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
                                 {/* Type — per book */}
                                 <div className="grid grid-cols-2 gap-2">
+                                    <button type="button" onClick={() => updateLine(line.key, { type: 'ENREGISTREMENT' })}
+                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-100 border-amber-400 text-amber-900 dark:bg-amber-700/30 dark:border-amber-600 dark:text-amber-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
+                                        Enregistrement
+                                    </button>
                                     <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION' })}
                                             className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-100 border-green-400 text-green-900 dark:bg-green-700/30 dark:border-green-600 dark:text-green-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Duplication
-                                    </button>
-                                    <button type="button" onClick={() => updateLine(line.key, { type: 'ENREGISTREMENT' })}
-                                            className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-100 border-amber-400 text-amber-900 dark:bg-amber-700/30 dark:border-amber-600 dark:text-amber-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
-                                        Enregistrement nécessaire
                                     </button>
                                 </div>
 
