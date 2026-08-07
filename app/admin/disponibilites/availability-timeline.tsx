@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import type { DayKey } from '@/types';
 import {
     addDays,
@@ -65,6 +64,7 @@ export default function AvailabilityTimeline({
     today,
     start,
     end,
+    onSelectPerson,
 }: {
     absences: Absence[];
     people: AvailabilityPerson[];
@@ -72,6 +72,8 @@ export default function AvailabilityTimeline({
     start: DayKey;
     /** Inclusive last day of the period. */
     end: DayKey;
+    /** Opens the availability panel — same gesture as the tables below. */
+    onSelectPerson: (id: number) => void;
 }) {
     const span = Math.max(1, daysBetween(start, end));
     const pct = (day: DayKey) =>
@@ -176,13 +178,14 @@ export default function AvailabilityTimeline({
                             return (
                                 <div key={person.id} className="flex items-center">
                                     <div className="w-56 shrink-0 flex items-center gap-1.5 pr-3">
-                                        <Link
-                                            href={`/admin/users/dossier/${person.id}`}
-                                            className="text-xs font-medium text-foreground truncate hover:underline"
-                                            title={person.name}
+                                        <button
+                                            type="button"
+                                            onClick={() => onSelectPerson(person.id)}
+                                            className="text-xs font-medium text-foreground truncate hover:underline text-left"
+                                            title={`${person.name} — voir et modifier sa disponibilité`}
                                         >
                                             {person.name}
-                                        </Link>
+                                        </button>
                                         <span
                                             className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${getMemberTypeColor(person.memberType)}`}
                                         >

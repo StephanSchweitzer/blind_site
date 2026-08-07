@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useMemo, useState, useTransition } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
     AlertTriangle,
@@ -49,12 +48,14 @@ import {
     overlapsPeriod,
     type Absence,
 } from '@/lib/users/availability';
+import { UserSearchCombobox, type UserSearchResult } from '@/admin/UserSearchCombobox';
 import type { AvailabilityPerson, AvailabilityResponse } from '@/types';
 import AvailabilityTimeline, {
     PERIOD_PRESETS,
     resolvePeriod,
     type PeriodPreset,
 } from './availability-timeline';
+import PersonAvailabilityPanel from './person-availability-panel';
 
 /**
  * /admin/disponibilites — one screen answering "qui est là, qui ne l'est pas,
@@ -214,14 +215,28 @@ function matchesType(person: AvailabilityPerson, filter: TypeFilter): boolean {
     return person.memberType !== 'lecteur' && person.memberType !== 'auditeur' && person.memberType !== 'ecouteur';
 }
 
-function PersonLink({ person }: { person: AvailabilityPerson }) {
+/**
+ * A name on this page opens the availability panel, it does NOT navigate to the
+ * dossier. Sending a permanent away to act on what the screen just told them
+ * lost the whole planning context; the panel keeps them here (the dossier is
+ * one click away from inside it).
+ */
+function PersonButton({
+    person,
+    onOpen,
+}: {
+    person: AvailabilityPerson;
+    onOpen: (id: number) => void;
+}) {
     return (
-        <Link
-            href={`/admin/users/dossier/${person.id}`}
-            className="font-medium text-foreground hover:underline"
+        <button
+            type="button"
+            onClick={() => onOpen(person.id)}
+            className="text-left font-medium text-foreground hover:underline"
+            title="Voir et modifier sa disponibilité"
         >
             {person.name}
-        </Link>
+        </button>
     );
 }
 
@@ -298,11 +313,13 @@ function AlertGroup({
     description,
     tone,
     rows,
+    onOpen,
 }: {
     title: string;
     description: string;
     tone: 'warn' | 'bad' | 'info';
     rows: Array<{ key: number; person: AvailabilityPerson; detail: string }>;
+    onOpen: (id: number) => void;
 }) {
     if (rows.length === 0) return null;
 
@@ -323,7 +340,7 @@ function AlertGroup({
             <ul className="space-y-1">
                 {rows.map((row) => (
                     <li key={row.key} className="text-sm flex flex-wrap items-baseline gap-x-2">
-                        <PersonLink person={row.person} />
+                        <PersonButton person={row.person} onOpen={onOpen} />
                         <TypeBadge person={row.person} />
                         <span className="text-muted-foreground">{row.detail}</span>
                     </li>
@@ -342,6 +359,8 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     const [search, setSearch] = useState('');
     const [onlyDormant, setOnlyDormant] = useState(false);
     const [readerTab, setReaderTab] = useState<ReaderTab>('free');
+    // Who the availability panel is open on. Null = closed.
+    const [openPersonId, setOpenPersonId] = useState<number | null>(null);
 
     const { people, today, warningDays, justClosed } = data;
 
@@ -419,7 +438,18 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         Situation au {formatDayKey(today)}.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Ouvrir n'importe qui, pas seulement les personnes listées.
+                        Le tableau ne porte que les lecteurs et les personnes déjà
+                        indisponibles : déclarer l'absence d'un permanent ou d'un
+                        auditeur actif demande de pouvoir aller le chercher. */}
+                    <UserSearchCombobox<UserSearchResult>
+                        value={null}
+                        onSelect={(user) => setOpenPersonId(user.id)}
+                        placeholder="Gérer la disponibilité de…"
+                        searchPlaceholder="Rechercher par nom ou email…"
+                        triggerClassName="h-9 w-64"
+                    />
                     {/* Filtre de page : il s'applique au calendrier ET aux deux
                         listes de lecteurs, d'où sa place ici plutôt que dans une carte. */}
                     <div className="relative">
@@ -518,6 +548,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Retours prochains"
                         description={`Ces personnes redeviennent actives dans les ${warningDays} prochains jours — de nouveau attribuables.`}
                         tone="info"
+                        onOpen={setOpenPersonId}
                         rows={alerts.endingSoon.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -528,6 +559,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Départs prochains"
                         description={`Indisponibilités qui démarrent dans les ${warningDays} prochains jours — évitez de leur confier un long enregistrement.`}
                         tone="warn"
+                        onOpen={setOpenPersonId}
                         rows={alerts.startingSoon.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -540,6 +572,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Absents avec des attributions en cours"
                         description="Ces personnes sont (ou seront bientôt) indisponibles alors qu'un livre est encore chez elles. À relancer ou à réattribuer."
                         tone="bad"
+                        onOpen={setOpenPersonId}
                         rows={alerts.awayWithAttributions.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -552,6 +585,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Indisponibilités sans date de fin"
                         description="Rien ne les clôturera automatiquement : fixez une date de fin ou changez le statut."
                         tone="warn"
+                        onOpen={setOpenPersonId}
                         rows={alerts.openEnded.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -564,6 +598,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Actifs mais marqués « ne prend pas d'attribution »"
                         description="Leur statut est actif, mais leur fiche indique qu'ils ne prennent pas d'attribution. Ils n'apparaissent pas dans les sélecteurs de lecteur."
                         tone="warn"
+                        onOpen={setOpenPersonId}
                         rows={alerts.flaggedUnavailable.map((p) => ({
                             key: p.id,
                             person: p,
@@ -576,6 +611,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Indisponibilités arrivées à terme"
                         description="Leur date de fin est passée mais le statut n'a pas encore été refermé. Elles se lisent déjà comme « Actif »."
                         tone="bad"
+                        onOpen={setOpenPersonId}
                         rows={alerts.elapsed.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -641,6 +677,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         today={today}
                         start={start}
                         end={end}
+                        onSelectPerson={setOpenPersonId}
                     />
                 </CardContent>
             </Card>
@@ -723,7 +760,8 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                         <TableHead>Lecteur</TableHead>
                                         <TableHead>Dernière attribution</TableHead>
                                         <TableHead>Spécialisation</TableHead>
-                                        <TableHead className="text-right">Capacité</TableHead>
+                                        <TableHead>Capacité</TableHead>
+                                        <TableHead className="text-right">Disponibilité</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -731,7 +769,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                         <TableRow key={person.id}>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
-                                                    <PersonLink person={person} />
+                                                    <PersonButton person={person} onOpen={setOpenPersonId} />
                                                     {dormant && (
                                                         <span
                                                             className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium"
@@ -757,8 +795,17 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                             <TableCell className="text-muted-foreground text-sm">
                                                 {person.specialization || '—'}
                                             </TableCell>
-                                            <TableCell className="text-right text-muted-foreground text-sm">
+                                            <TableCell className="text-muted-foreground text-sm">
                                                 0 / {person.maxConcurrentAssignments ?? 3}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setOpenPersonId(person.id)}
+                                                >
+                                                    Gérer
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -807,7 +854,12 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                     {loadedPage.visible.map(({ person, max, saturated: isSaturated }) => (
                                         <TableRow key={person.id}>
                                             <TableCell>
-                                                <PersonLink person={person} />
+                                                <PersonButton person={person} onOpen={setOpenPersonId} />
+                                                {!person.isAvailable && (
+                                                    <span className="block text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                                                        ne prend pas d&apos;attribution
+                                                    </span>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <span
@@ -838,12 +890,16 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Link
-                                                    href={`/admin/users/dossier/${person.id}/affectations`}
-                                                    className="text-sm text-primary hover:underline"
+                                                {/* Ouvre le panneau plutôt que le dossier : ce qu'on
+                                                    veut ici, c'est voir les livres en cours ET pouvoir
+                                                    ajuster le plafond ou poser une indisponibilité. */}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setOpenPersonId(person.id)}
                                                 >
                                                     Voir les attributions
-                                                </Link>
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -864,11 +920,19 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             </Card>
 
             <p className="text-xs text-muted-foreground">
-                Une indisponibilité repasse automatiquement au statut « Actif » à la fin de sa
-                période : la clôture est faite chaque nuit et à chaque ouverture de cette page, et
-                le retour est tracé dans l&apos;historique de la personne. Une indisponibilité dont
-                la date de début est future laisse la personne active jusque-là.
+                Cliquez sur un nom pour ouvrir sa disponibilité : ses attributions, son statut et
+                son plafond s&apos;y modifient sans quitter cette page. Une indisponibilité repasse
+                automatiquement au statut « Actif » à la fin de sa période : la clôture est faite
+                chaque nuit et à chaque ouverture de cette page, et le retour est tracé dans
+                l&apos;historique de la personne. Une indisponibilité dont la date de début est
+                future laisse la personne active jusque-là.
             </p>
+
+            <PersonAvailabilityPanel
+                personId={openPersonId}
+                onClose={() => setOpenPersonId(null)}
+                onSaved={() => startRefresh(() => router.refresh())}
+            />
         </div>
     );
 }

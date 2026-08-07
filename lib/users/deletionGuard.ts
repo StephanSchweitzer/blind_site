@@ -23,6 +23,18 @@ export interface UserDeletionBlockers {
 }
 
 /**
+ * Is an attribution still open — i.e. does it count against its reader's
+ * charge? Matched on the status NAME (statuses are a table, not an enum), and
+ * exported so every "en cours" reading in the app agrees: the deletion
+ * blockers, the availability counts, and the attribution list of the
+ * disponibilités panel.
+ */
+export function isOpenAssignmentStatusName(name: string | null | undefined): boolean {
+    const status = (name ?? '').toLowerCase();
+    return !status.includes('terminé') && !status.includes('soldé');
+}
+
+/**
  * Active-affectation count per reader, computed from the LATEST AssignmentReader
  * row per assignment (a reader who has since been reassigned is NOT counted) on
  * assignments whose status is open (not Terminé/Soldé).
@@ -58,9 +70,9 @@ export async function getActiveAssignmentCounts(
 
     for (const l of latestPerAssignment) {
         if (l.readerId == null || !counts.has(l.readerId)) continue;
-        const status = (l.assignment.status?.name ?? '').toLowerCase();
-        const open = !status.includes('terminé') && !status.includes('soldé');
-        if (open) counts.set(l.readerId, (counts.get(l.readerId) ?? 0) + 1);
+        if (isOpenAssignmentStatusName(l.assignment.status?.name)) {
+            counts.set(l.readerId, (counts.get(l.readerId) ?? 0) + 1);
+        }
     }
     return counts;
 }

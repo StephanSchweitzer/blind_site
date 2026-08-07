@@ -12,6 +12,7 @@ export type DayKey = string;
 export interface AvailabilityPerson {
     id: number;
     name: string;
+    email: string | null;
     memberType: string;
     accessLevel: string;
     /** Status as STORED on the row. */
@@ -47,4 +48,53 @@ export interface AvailabilityResponse {
      * (see lib/users/expireUnavailability.ts), so the screen can report it.
      */
     justClosed: number;
+}
+
+// ── one person's detail, behind /api/availability/[id] ──────────────────────
+//
+// What the disponibilités screen opens instead of sending a permanent off to
+// the dossier: everything needed to READ a person's situation (their charge,
+// their history) and to CHANGE it (status, window, "prend des attributions",
+// plafond) without leaving the planning view.
+
+/** One attribution this person is (or was) the latest reader on. */
+export interface AvailabilityAssignment {
+    id: number;
+    orderId: number | null;
+    bookTitle: string;
+    bookAuthor: string | null;
+    statusId: number;
+    statusName: string;
+    /** Not Terminé/Soldé — this is what counts against their plafond. */
+    open: boolean;
+    /** Day the book was handed to them. */
+    assignedDate: DayKey | null;
+    sentToReaderDate: DayKey | null;
+    returnedToECADate: DayKey | null;
+}
+
+/** One entry of the append-only UserActivityEvent log, flattened for display. */
+export interface AvailabilityActivityEvent {
+    id: number;
+    fromStatus: string | null;
+    toStatus: string;
+    reason: string | null;
+    comment: string | null;
+    unavailableFrom: DayKey | null;
+    unavailableUntil: DayKey | null;
+    /** ISO timestamp — this one is an instant, not a calendar day. */
+    changedAt: string;
+    /** Display name of the permanent who made the change; null = « Système ». */
+    changedBy: string | null;
+}
+
+export interface PersonAvailabilityDetail {
+    today: DayKey;
+    person: AvailabilityPerson;
+    /** Open attributions first, then the most recent closed ones. */
+    assignments: AvailabilityAssignment[];
+    /** How many of `assignments` are still open (== person.activeAssignments). */
+    openAssignments: number;
+    /** Most recent status changes, newest first. */
+    events: AvailabilityActivityEvent[];
 }

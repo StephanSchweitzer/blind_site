@@ -136,6 +136,7 @@ export const UserUpdateInputSchema = z.object({
     currentBalance: z.number().or(z.string()).optional().nullable(),
     isAvailable: z.boolean().optional(),
     availabilityNotes: z.string().optional(),
+    specialization: z.string().optional(),
     languages: z.array(z.nativeEnum(Language)).optional(),
     saveType: z.nativeEnum(SaveType).optional().nullable(),
     maxConcurrentAssignments: z.number().optional(),
@@ -167,6 +168,7 @@ export type UserUpdateData = {
     currentBalance?: number | null;
     isAvailable?: boolean | null;
     availabilityNotes?: string | null;
+    specialization?: string | null;
     saveType?: SaveType | null;
     maxConcurrentAssignments?: number | null;
     notes?: string | null;

@@ -330,6 +330,9 @@ export const PATCH = withAdmin(async (
         // Reader/staff fields
         if (body.isAvailable !== undefined) updateData.isAvailable = body.isAvailable;
         if (body.availabilityNotes !== undefined) updateData.availabilityNotes = body.availabilityNotes || null;
+        // Free text ("romans policiers", "textes techniques"…) shown on
+        // /admin/disponibilites; editable from the panel there.
+        if (body.specialization !== undefined) updateData.specialization = body.specialization || null;
         if (body.saveType !== undefined) updateData.saveType = body.saveType || null;
         if (body.maxConcurrentAssignments !== undefined) updateData.maxConcurrentAssignments = body.maxConcurrentAssignments || null;
 
