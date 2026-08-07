@@ -140,7 +140,7 @@ function BookTable({
                         <TableCell className="text-foreground">{book.author}</TableCell>
                         <TableCell className="text-foreground">{book.isbn || 'N/A'}</TableCell>
                         <TableCell className="text-foreground">
-                            {new Date(book.createdAt).toLocaleDateString()}
+                            {new Date(book.createdAt).toLocaleDateString('fr-FR')}
                         </TableCell>
                     </TableRow>
                 ))}
