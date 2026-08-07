@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { composeUserDisplayName } from '@/lib/users/activityGuard';
 import { getActiveAssignmentCounts } from '@/lib/users/deletionGuard';
 import {
+    effectivelyActiveWhere,
     parisDayStart,
     resolveEffectiveActivityStatus,
     toDayString,
@@ -103,4 +104,28 @@ export async function getAvailabilityOverview(options?: {
         people,
         justClosed: swept.closed,
     };
+}
+
+/**
+ * Cheap version of freeReaders() from lib/users/availability.ts for the main
+ * dashboard tile: active lecteurs, not flagged unavailable, with no
+ * attribution in progress — the number a permanent actually wants to see
+ * under "Disponibilités" (who can I hand the next demande to), not how many
+ * are away.
+ */
+export async function getFreeReaderCount(now: Date = new Date()): Promise<number> {
+    const candidates = await prisma.user.findMany({
+        where: {
+            memberType: 'lecteur',
+            isAvailable: { not: false },
+            ...effectivelyActiveWhere(now),
+        },
+        select: { id: true },
+    });
+    if (candidates.length === 0) return 0;
+
+    const counts = await getActiveAssignmentCounts(candidates.map((c) => c.id));
+    let free = 0;
+    for (const count of counts.values()) if (count === 0) free += 1;
+    return free;
 }

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { AdminCard } from '@/components/ui/admin';
 import { AdminDashboardCard } from '@/components/ui/admin/AdminDashboardCard';
-import { unavailableNowWhere } from '@/lib/users/activityStatus';
+import { getFreeReaderCount } from '@/lib/users/availabilityData';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,50 +11,54 @@ export default async function Dashboard() {
     const me = await getCurrentUser();
     const isSuper = isSuperAdmin(me?.accessLevel);
     const [
-        bookCount,
-        newsCount,
-        genreCount,
-        coupsDeCoeurCount,
-        reviewCount,
-        orphanAudioCount,
-        lecteursCount,
-        auditeursCount,
-        bienfaiteursCount,
-        permanentsCount,
-        unavailableCount,
-        assignmentCount,
-        orderCount,
-        billCount,
-        paymentCount,
-        siteContactCount,
-        teamMemberCount,
-        historyEventCount,
-        practicalInfoCount,
-        membershipCount,
-    ] = await Promise.all([
-        prisma.book.count(),
-        prisma.news.count(),
-        prisma.genre.count(),
-        prisma.coupsDeCoeur.count(),
-        prisma.book.count({ where: { needsReview: true } }),
-        // Folders in the bucket no book claims, minus those already handled.
-        prisma.orphanAudioFolder.count({ where: { resolvedAt: null, dismissedAt: null } }),
-        prisma.user.count({ where: { memberType: 'lecteur' } }),
-        prisma.user.count({ where: { memberType: 'auditeur' } }),
-        prisma.user.count({ where: { memberType: 'bienfaiteur' } }),
-        prisma.user.count({ where: { accessLevel: { in: ['admin', 'super_admin'] } } }),
-        // Members whose indisponibilité is in force today — the count the
+        [
+            bookCount,
+            newsCount,
+            genreCount,
+            coupsDeCoeurCount,
+            reviewCount,
+            orphanAudioCount,
+            lecteursCount,
+            auditeursCount,
+            bienfaiteursCount,
+            permanentsCount,
+            assignmentCount,
+            orderCount,
+            billCount,
+            paymentCount,
+            siteContactCount,
+            teamMemberCount,
+            historyEventCount,
+            practicalInfoCount,
+            membershipCount,
+        ],
+        // Active lecteurs with no attribution in progress — the count the
         // Disponibilités card leads with.
-        prisma.user.count({ where: unavailableNowWhere() }),
-        prisma.assignment.count(),
-        prisma.orders.count(),
-        prisma.bill.count(),
-        prisma.payment.count(),
-        prisma.siteContact.count(),
-        prisma.teamMember.count(),
-        prisma.historyEvent.count(),
-        prisma.practicalInfo.count(),
-        prisma.membershipOption.count(),
+        freeReaderCount,
+    ] = await Promise.all([
+        Promise.all([
+            prisma.book.count(),
+            prisma.news.count(),
+            prisma.genre.count(),
+            prisma.coupsDeCoeur.count(),
+            prisma.book.count({ where: { needsReview: true } }),
+            // Folders in the bucket no book claims, minus those already handled.
+            prisma.orphanAudioFolder.count({ where: { resolvedAt: null, dismissedAt: null } }),
+            prisma.user.count({ where: { memberType: 'lecteur' } }),
+            prisma.user.count({ where: { memberType: 'auditeur' } }),
+            prisma.user.count({ where: { memberType: 'bienfaiteur' } }),
+            prisma.user.count({ where: { accessLevel: { in: ['admin', 'super_admin'] } } }),
+            prisma.assignment.count(),
+            prisma.orders.count(),
+            prisma.bill.count(),
+            prisma.payment.count(),
+            prisma.siteContact.count(),
+            prisma.teamMember.count(),
+            prisma.historyEvent.count(),
+            prisma.practicalInfo.count(),
+            prisma.membershipOption.count(),
+        ]),
+        getFreeReaderCount(),
     ]);
 
     return (
@@ -170,7 +174,7 @@ export default async function Dashboard() {
                     />
                     <AdminDashboardCard
                         title="Disponibilités"
-                        count={unavailableCount}
+                        count={freeReaderCount}
                         href="/admin/disponibilites"
                         buttonText="Calendrier des indisponibilités et lecteurs libres"
                         accentColor="blue"
