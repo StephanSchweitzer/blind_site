@@ -150,3 +150,62 @@ export async function refreshBookAudioState(
 
     return { status, trackCount, sizeKb, prefix, repriced };
 }
+
+/**
+ * Does this book hold a recording whose poids is KNOWN? The question
+ * guardAssignmentHasAudio needs answered before an attribution may be « Terminé ».
+ *
+ * POURQUOI LE POIDS, ET PAS audioLinkStatus
+ *
+ * Because the guard exists to protect a tarif, and the tarif is computed from
+ * audioSizeKb alone (lib/pricing.ts) — repriceOpenOrdersForBook refuses to move a
+ * price while it is null. « Il y a des fichiers » is not the same claim as « on
+ * sait ce qu'ils pèsent », and only the second one makes a facture correct.
+ *
+ * The distinction is not theoretical: scripts/sync-audio-links.ts sets the status
+ * in raw SQL without ever weighing the folder, and it has stamped OK on 11 528 of
+ * the 11 529 books that carry it. A guard reading the status would therefore pass
+ * essentially the whole catalogue while the price was still unknown — exactly the
+ * failure it is meant to prevent.
+ *
+ * QUAND LE BUCKET EST RELU
+ *
+ * These columns are a CACHE, so a known weight is believed as-is (one indexed
+ * read). Anything else — never verified, verified without weighing, folder
+ * reported empty — is re-read from the bucket before we refuse, because refusing
+ * on a stale cache would block a legitimate attribution over a bookkeeping lag
+ * rather than a missing file. Only the answer we were about to refuse pays for the
+ * round trip, and that refresh repairs the cache and re-tarifies the book's
+ * demandes on the way through. So a refusal here is always about what the bucket
+ * actually holds, never about when it was last read.
+ *
+ * Returns `null` for "je n'ai pas pu vérifier" — the bucket read failed. Callers
+ * must NOT read that as "pas d'audio": this gates a billing decision, so a storage
+ * outage has to say so rather than be reported to the permanent as an empty folder
+ * they will go looking for in vain. It stays a refusal (guardAssignmentHasAudio
+ * fails closed), just an honest one. Swallowed only on this path; every other
+ * caller of refreshBookAudioState still sees the error.
+ *
+ * Call outside a transaction: it reaches S3 and writes through the global client.
+ */
+export async function bookHasWeighedAudio(
+    bookId: number,
+    performedById: number | null = null,
+): Promise<boolean | null> {
+    const book = await prisma.book.findUnique({
+        where: { id: bookId },
+        select: { audioSizeKb: true },
+    });
+    if (!book) return false;
+    // 0 is a real weight (a folder of empty files), and prices at the plancher
+    // like any sub-700-Mio recording. Only null means "not weighed".
+    if (book.audioSizeKb != null) return true;
+
+    try {
+        const state = await refreshBookAudioState(bookId, performedById);
+        return state.sizeKb != null;
+    } catch (error) {
+        console.error(`bookHasWeighedAudio: bucket unreachable for book ${bookId}`, error);
+        return null;
+    }
+}

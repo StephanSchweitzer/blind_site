@@ -421,9 +421,20 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 });
             }
 
-            // Billing happens when the service is rendered: an order only accrues onto
-            // a brouillon once it reaches (or already sits at) « Terminé », using
-            // whatever cost is on it at that point — never at creation or mid-recording.
+            // THE accrual point. A demande joins a brouillon when a permanent closes
+            // it — having actually sent the audio to l'auditeur — never at creation,
+            // mid-recording, or when its attribution came back.
+            //
+            // That late timing is what makes the tarif right. By here the chain
+            // audio déposé → attribution « Terminé » (guardAssignmentHasAudio) →
+            // demande « Terminé » (guardOrderCompletion) has already run, so the
+            // livre has been weighed and repriceOpenOrdersForBook has already
+            // realigned this demande's coût while it was still on no facture at all
+            // (ADJUSTABLE_ORDER_WHERE matches billId: null). The amount attached
+            // below is therefore the settled one — which matters because
+            // issueDraftIfOverThreshold can turn the brouillon into a facture émise
+            // in this same transaction, past the point where the reprice may still
+            // touch it.
             const resultingStatusId = data.statusId ?? existingOrder.statusId;
             const justCompletedAndUnbilled = existingOrder.billId == null && resultingStatusId === STATUS.TERMINE;
             if (justCompletedAndUnbilled) {
@@ -721,9 +732,9 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 });
             }
 
-            // Billing happens when the service is rendered: an order only accrues onto
-            // a brouillon once it reaches (or already sits at) « Terminé », using
-            // whatever cost is on it at that point — never at creation or mid-recording.
+            // Same accrual point as the PUT above — see the long note there for why
+            // « Terminé » on the DEMANDE, and not the attribution coming back, is what
+            // puts a line on a brouillon.
             const resultingStatusId = body.statusId ?? existingOrder.statusId;
             const justCompletedAndUnbilled = existingOrder.billId == null && resultingStatusId === STATUS.TERMINE;
             if (justCompletedAndUnbilled) {

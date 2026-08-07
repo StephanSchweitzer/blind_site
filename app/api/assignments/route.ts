@@ -11,10 +11,11 @@ import {
     guardNotDuplication,
     guardOrderHasNoAssignment,
     guardReaderEligible,
+    guardAssignmentHasAudio,
     syncOrderToStatus,
     logAssignmentEvent,
 } from '@/lib/statusSync';
-import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
+import { bookHasWeighedAudio } from '@/lib/audio/state';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
@@ -210,6 +211,22 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
             }
         }
 
+        // An attribution logged straight into « Terminé » still has to have brought
+        // a weighed enregistrement back. Outside the transaction: this may re-read
+        // the bucket rather than trust a stale cache (bookHasWeighedAudio).
+        if (parsedStatusId === STATUS.TERMINE) {
+            const audioGuard = guardAssignmentHasAudio({
+                statusId: parsedStatusId,
+                hasAudio: await bookHasWeighedAudio(parsedCatalogueId, performedById),
+            });
+            if (!audioGuard.ok) {
+                return NextResponse.json(
+                    { error: audioGuard.message },
+                    { status: audioGuard.httpStatus }
+                );
+            }
+        }
+
         // An auditeur can't be the initial reader.
         let readerPreferredDelivery: DeliveryMethod | null = null;
         if (readerId) {
@@ -273,19 +290,11 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
             if (parsedOrderId) {
                 await syncOrderToStatus(tx, parsedOrderId, parsedStatusId, performedById);
 
-                // An assignment can be logged as already « Terminé » (reader + dates
-                // supplied up front) — that finishes the service immediately, so the
-                // order accrues onto a brouillon now, same as reaching Terminé later.
-                if (parsedStatusId === STATUS.TERMINE) {
-                    const linkedOrder = await tx.orders.findUnique({
-                        where: { id: parsedOrderId },
-                        select: { id: true, aveugleId: true, billId: true },
-                    });
-                    if (linkedOrder && linkedOrder.billId == null) {
-                        await accrueOrderToOpenDraft(tx, linkedOrder.id, performedById);
-                        await issueDraftIfOverThreshold(tx, linkedOrder.aveugleId, performedById);
-                    }
-                }
+                // No accrual here, even when the attribution is logged straight into
+                // « Terminé ». Finishing the recording leaves the demande « Attente
+                // envoi vers auditeur »; it is the permanent closing it, once the
+                // audio has actually gone out, that puts it on a brouillon. See
+                // accrueOrderToOpenDraft.
             }
 
             if (readerId) {

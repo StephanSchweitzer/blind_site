@@ -12,11 +12,12 @@ import {
     guardAssignmentConsistency,
     guardAssignmentMatchesOrder,
     guardOrderNotSettled,
+    guardAssignmentHasAudio,
     syncOrderToStatus,
     classifyStatusTransition,
     logAssignmentEvent,
 } from '@/lib/statusSync';
-import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
+import { bookHasWeighedAudio } from '@/lib/audio/state';
 import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -180,6 +181,32 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             }
         }
 
+        // An attribution can't be finished before the enregistrement is in the
+        // bucket AND weighed — the tarif is derived from that poids, and closing
+        // the demande behind it is what puts the line on a brouillon.
+        //
+        // Only on the actual transition INTO « Terminé ». An attribution already
+        // sitting there stays editable for its notes and ses dates even if the
+        // folder is empty (legacy Access rows, audio archived elsewhere) — same
+        // rule as guardDuplicationStatus: a real change must land on a valid state,
+        // a row must not be held hostage by its history. Outside the transaction:
+        // bookHasWeighedAudio may reach the bucket.
+        if (
+            newStatusId === STATUS.TERMINE &&
+            newStatusId !== existingAssignment.statusId
+        ) {
+            const audioGuard = guardAssignmentHasAudio({
+                statusId: newStatusId,
+                hasAudio: await bookHasWeighedAudio(resultingCatalogueId, performedById),
+            });
+            if (!audioGuard.ok) {
+                return NextResponse.json(
+                    { message: audioGuard.message },
+                    { status: audioGuard.httpStatus }
+                );
+            }
+        }
+
         const updateData: AssignmentUpdateData = {};
 
         if (validation.data.catalogueId !== undefined) {
@@ -251,20 +278,18 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             ) {
                 await syncOrderToStatus(tx, existingAssignment.orderId, newStatusId, performedById);
 
-                // The recording just finished — this is when the service is rendered,
-                // so the order accrues onto a brouillon now (using its cost as it
-                // stands at this moment), rather than back when it was created.
-                // Billing still keys off the ATTRIBUTION reaching « Terminé »: the work
-                // is done and billable whether or not the audio has gone out yet.
+                // The recording just finished — but that does NOT bill anything. The
+                // demande is now « Attente envoi vers auditeur »; it accrues onto a
+                // brouillon when a permanent closes it, having actually sent the audio
+                // out. Deliberate: accruing here would attach a tarif computed before
+                // the enregistrement was weighed, and the seuil could turn it into a
+                // facture émise in this very transaction — past the point where
+                // repriceOpenOrdersForBook is still allowed to correct it.
                 if (newStatusId === STATUS.TERMINE) {
                     const order = await tx.orders.findUnique({
                         where: { id: existingAssignment.orderId },
-                        select: { id: true, aveugleId: true, billId: true, statusId: true },
+                        select: { id: true, statusId: true },
                     });
-                    if (order && order.billId == null) {
-                        await accrueOrderToOpenDraft(tx, order.id, performedById);
-                        await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
-                    }
 
                     if (order) {
                         orderTransition = {

@@ -681,6 +681,61 @@ export function guardOrderCompletion(args: {
     return OK;
 }
 
+/**
+ * An attribution reaches « Terminé » only once the enregistrement is in the bucket.
+ *
+ * « Terminé » asserts that the lecteur brought a recording back, so it should not
+ * be typable while the folder is empty — but the reason this is a hard guard
+ * rather than a nicety is BILLING. The tarif is derived from the poids de
+ * l'enregistrement (lib/pricing.ts), so a demande whose livre has no audio prices
+ * at the plancher d'un CD by default, not because it costs 3 € but because nothing
+ * is known yet. Chaining
+ *
+ *     audio déposé → attribution « Terminé » → demande « Terminé » → accrual
+ *
+ * makes "le prix est connu" true by construction at the only moment it matters:
+ * the demande's accrual onto un brouillon, which the seuil can turn into a facture
+ * émise in the same transaction (lib/billing.ts). Without this link the accrual
+ * can freeze a plancher onto an issued facture, where repriceOpenOrdersForBook is
+ * no longer allowed to correct it.
+ *
+ * Deliberately NOT the reverse: depositing audio never auto-terminates an
+ * attribution. Le retour du lecteur is a fact a permanent asserts, not one a file
+ * upload may assert on their behalf — same reasoning that keeps the demande's
+ * clôture a human act (see ATTENTE_AUDITEUR above).
+ *
+ * Kept out of guardAssignmentConsistency on purpose: that one is pure and is also
+ * reached through guardDemandeStatusSync, where an S3 round trip has no business.
+ * Pass `hasAudio` from lib/audio/state.ts's bookHasWeighedAudio — which asks
+ * whether the enregistrement has been WEIGHED, not merely whether files exist,
+ * and re-reads the bucket rather than refusing on a stale cache. See its docstring
+ * for why audioLinkStatus would be the wrong question.
+ */
+export function guardAssignmentHasAudio(args: {
+    statusId: number;
+    /** `null` = le stockage n'a pas pu être lu (bookHasWeighedAudio), pas « pas d'audio ». */
+    hasAudio: boolean | null;
+}): GuardResult {
+    if (args.statusId !== STATUS.TERMINE) return OK;
+    if (args.hasAudio === true) return OK;
+
+    // Fail closed either way, but never blame an empty folder for an outage: the
+    // permanent would go looking for a file that is exactly where they left it.
+    if (args.hasAudio === null) {
+        return fail(
+            503,
+            "Impossible de vérifier l'enregistrement : le stockage audio est injoignable. " +
+            "L'attribution n'a pas été modifiée — réessayez dans un instant."
+        );
+    }
+
+    return fail(
+        409,
+        "Impossible de terminer l'attribution : aucun enregistrement n'a été déposé pour ce livre. " +
+        "Déposez l'audio dans le dossier du livre, puis repassez l'attribution « Terminé »."
+    );
+}
+
 /** A reader can't be an auditeur (only lecteur / permanent may read). */
 export function guardReaderEligible(memberType: string | null | undefined): GuardResult {
     if ((memberType ?? '').toLowerCase() === 'auditeur') {

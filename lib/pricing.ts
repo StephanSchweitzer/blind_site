@@ -86,9 +86,12 @@ export function bytesToKb(bytes: number): number {
  * la main en rouvrant la facture.
  *
  * Noter que le statut de la demande (« Terminé » compris) n'entre pas en compte :
- * terminer une demande ne fige pas son coût, seule la facture le fait. C'est
- * indispensable ici, parce que l'audio arrive presque toujours APRÈS que
- * l'attribution a terminé la demande — voir repriceOpenOrdersForBook.
+ * terminer une demande ne fige pas son coût, seule la facture le fait.
+ *
+ * `billId: null` est le cas NORMAL ici, pas un repli : une demande est tarifée au
+ * dépôt de l'audio, bien avant d'être rattachée à un brouillon — c'est la clôture
+ * de la demande, plus tard, qui déclenche le rattachement. Voir
+ * repriceOpenOrdersForBook.
  *
  * Partagé entre le recalcul à chaud (lib/pricing-sync.ts) et le rattrapage en
  * masse (scripts/backfill-order-costs.ts) : deux définitions de « ajustable »

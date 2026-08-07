@@ -11,20 +11,21 @@ import { ADJUSTABLE_ORDER_WHERE, suggestedCostEuros } from '@/lib/pricing';
 /**
  * Réaligne le tarif des demandes d'un livre sur le poids de son enregistrement.
  *
- * POURQUOI ICI, ET PAS À LA CLÔTURE DE LA DEMANDE
+ * POURQUOI ICI, ET QUAND PAR RAPPORT À LA FACTURATION
  *
- * Une attribution terminée termine immédiatement la demande qui lui est liée
- * (syncOrderToStatus, app/api/assignments/[id]/route.ts). Mais à cet instant le
- * livre revient tout juste du lecteur : l'audio n'est pas encore dans le bucket,
- * donc son poids est inconnu et le tarif ne peut pas être calculé. Tarifer
- * « avant que la demande passe Terminé » est donc impossible — l'information
- * n'existe pas encore.
- *
- * Le bon moment est celui où le poids devient connu, c'est-à-dire quand le
- * dossier du livre est relu : dépôt de l'enregistrement, suppression ou
+ * Le bon moment pour tarifer est celui où le poids devient connu, c'est-à-dire
+ * quand le dossier du livre est relu : dépôt de l'enregistrement, suppression ou
  * restauration d'une piste, rattachement d'un dossier orphelin, fusion de
  * doublons. Tous passent par refreshBookAudioState, qui appelle cette fonction —
  * un seul point de branchement, pour qu'aucun chemin ne l'oublie.
+ *
+ * Ce moment tombe AVANT le rattachement à une facture, et c'est voulu. La chaîne
+ * est : audio déposé (ici) → attribution « Terminé » (guardAssignmentHasAudio la
+ * refuse sans audio) → demande « Terminé », fermée à la main le jour de l'envoi
+ * à l'auditeur → accrual sur un brouillon. La demande retarifée ci-dessous n'est
+ * donc, le plus souvent, sur AUCUNE facture — d'où le `billId: null` admis par
+ * ADJUSTABLE_ORDER_WHERE, qui n'est pas un cas de repli mais le cas normal.
+ * Quand elle rejoint enfin un brouillon, son coût est déjà le bon.
  *
  * CE QUI EST TOUCHÉ, ET CE QUI NE L'EST PAS
  *

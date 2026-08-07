@@ -3,7 +3,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
-import { STATUS, guardOrderStatus, guardDuplicationStatus, guardManualEnCours, resolveClosureDate, guardClosureDateRequiresTermine, logOrderEvent } from '@/lib/statusSync';
+import { STATUS, guardOrderStatus, guardDuplicationStatus, guardOrderCompletion, guardManualEnCours, resolveClosureDate, guardClosureDateRequiresTermine, logOrderEvent } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -320,6 +320,25 @@ export const POST = withAdmin(async (request, { me }) => {
                     );
                 }
 
+                // A demande d'enregistrement can't be BORN closed. It is created
+                // before its attribution exists, so `assignmentStatusId` is null by
+                // construction here and any non-duplication line asking for
+                // « Terminé » / « Attente envoi vers auditeur » is refused — the same
+                // rule the PUT route enforces, which creation used to slip past. That
+                // gap mattered: such a line accrued straight onto a brouillon at the
+                // tarif plancher, with no attribution and therefore no audio behind it.
+                const lineCompletionGuard = guardOrderCompletion({
+                    statusId: lineStatusId,
+                    isDuplication: !!b.isDuplication,
+                    assignmentStatusId: null,
+                });
+                if (!lineCompletionGuard.ok) {
+                    return NextResponse.json(
+                        { error: 'Invalid status', message: lineCompletionGuard.message, field: 'statusId' },
+                        { status: lineCompletionGuard.httpStatus }
+                    );
+                }
+
                 // A demande is created before its attribution exists, so « En cours »
                 // — which describes a livre déjà parti chez un lecteur — can never be
                 // true of a brand-new one.
@@ -402,9 +421,11 @@ export const POST = withAdmin(async (request, { me }) => {
                         toStatusId: l.statusId,
                         performedById: batchStaffId,
                     });
-                    // Billing happens when the service is rendered, not on creation — a
-                    // line only accrues here if it's created straight into « Terminé »
-                    // (e.g. a duplication handled on the spot).
+                    // Billing happens when the service is rendered, not on creation.
+                    // After guardOrderCompletion above, a line born « Terminé » can
+                    // only be a duplication handled on the spot — its enregistrement
+                    // already exists, so its tarif is already known and accruing it
+                    // now bills the right amount.
                     if (l.statusId === STATUS.TERMINE) {
                         await accrueOrderToOpenDraft(tx, o.id, batchStaffId);
                         anyAccrued = true;
@@ -473,6 +494,21 @@ export const POST = withAdmin(async (request, { me }) => {
             return NextResponse.json(
                 { error: 'Invalid status', message: duplicationStatusGuard.message, field: 'statusId' },
                 { status: duplicationStatusGuard.httpStatus }
+            );
+        }
+
+        // A demande d'enregistrement can't be BORN closed — see the batch path above
+        // for why this matters to billing. No attribution can exist yet at creation,
+        // so `assignmentStatusId` is null by construction.
+        const completionGuard = guardOrderCompletion({
+            statusId: parsedStatusId,
+            isDuplication: !!isDuplication,
+            assignmentStatusId: null,
+        });
+        if (!completionGuard.ok) {
+            return NextResponse.json(
+                { error: 'Invalid status', message: completionGuard.message, field: 'statusId' },
+                { status: completionGuard.httpStatus }
             );
         }
 
@@ -654,9 +690,10 @@ export const POST = withAdmin(async (request, { me }) => {
                 performedById: staffId,
             });
 
-            // Billing happens when the service is rendered, not on creation — this
-            // order only accrues here if it's created straight into « Terminé »
-            // (e.g. a duplication handled on the spot).
+            // Billing happens when the service is rendered, not on creation. After
+            // guardOrderCompletion above, a demande born « Terminé » can only be a
+            // duplication handled on the spot — its enregistrement already exists, so
+            // its tarif is already known and accruing it now bills the right amount.
             let auto = null;
             if (parsedStatusId === STATUS.TERMINE) {
                 await accrueOrderToOpenDraft(tx, created.id, staffId);
