@@ -62,6 +62,7 @@ export const basicBookSelect = {
     author: true,
     isbn: true,
     available: true,
+    hiddenFromCatalogue: true,
 } as const satisfies Prisma.BookSelect;
 
 export const detailedBookSelect = {
@@ -76,6 +77,7 @@ export const detailedBookSelect = {
     isbn: true,
     publisher: true,
     available: true,
+    hiddenFromCatalogue: true,
     createdAt: true,
     updatedAt: true,
     addedById: true,

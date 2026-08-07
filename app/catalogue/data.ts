@@ -26,6 +26,7 @@ export const getCatalogueData = unstable_cache(
     async (): Promise<CatalogueData> => {
         const [initialBooks, genres, totalBooks] = await Promise.all([
             prisma.book.findMany({
+                where: { hiddenFromCatalogue: false },
                 include: {
                     genres: {
                         include: { genre: true },
@@ -37,7 +38,7 @@ export const getCatalogueData = unstable_cache(
             prisma.genre.findMany({
                 orderBy: { name: 'asc' },
             }),
-            prisma.book.count(),
+            prisma.book.count({ where: { hiddenFromCatalogue: false } }),
         ]);
 
         return {

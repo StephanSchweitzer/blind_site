@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
                                     OR: [
                                         { title: { contains: search, mode: 'insensitive' } },
                                         { author: { contains: search, mode: 'insensitive' } }
-                                    ]
+                                    ],
+                                    hiddenFromCatalogue: false
                                 }
                             }
                         }

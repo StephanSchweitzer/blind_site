@@ -14,6 +14,7 @@ export const getCoupsDeCoeurPage = unstable_cache(
                 where: { active: true },
                 include: {
                     books: {
+                        where: { book: { hiddenFromCatalogue: false } },
                         include: {
                             book: {
                                 include: {

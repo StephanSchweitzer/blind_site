@@ -138,6 +138,7 @@ export interface BookFormData {
     pageCount: number | null;
     readingDurationMinutes: number | null;
     available: boolean;
+    hiddenFromCatalogue: boolean;
     genreIds: number[];
 }
 

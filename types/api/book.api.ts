@@ -68,6 +68,7 @@ export interface BookWithGenresResponse {
     isbn: string | null;
     publisher: string | null;
     available: boolean;
+    hiddenFromCatalogue: boolean;
     createdAt: Date;
     updatedAt: Date;
     addedById: number;
@@ -105,6 +106,7 @@ export const BookCreateInputSchema = z.object({
     pageCount: z.number().int().positive().nullable().optional(),
     readingDurationMinutes: z.number().int().positive().nullable().optional(),
     available: z.boolean().default(true),
+    hiddenFromCatalogue: z.boolean().default(false),
     addedById: z.number().int().positive(),
     genreIds: z.array(z.number().int().positive()).optional(),
 });
@@ -122,6 +124,7 @@ export type BookCreateData = {
     pageCount?: number | null;
     readingDurationMinutes?: number | null;
     available?: boolean;
+    hiddenFromCatalogue?: boolean;
     addedById: number;
 };
 
@@ -140,6 +143,7 @@ export const BookUpdateInputSchema = z.object({
     pageCount: z.number().int().positive().nullable().optional(),
     readingDurationMinutes: z.number().int().positive().nullable().optional(),
     available: z.boolean().optional(),
+    hiddenFromCatalogue: z.boolean().optional(),
     genreIds: z.array(z.number().int().positive()).optional(),
 });
 
@@ -156,6 +160,7 @@ export type BookUpdateData = {
     pageCount?: number | null;
     readingDurationMinutes?: number | null;
     available?: boolean;
+    hiddenFromCatalogue?: boolean;
 };
 
 // ============================================================================
@@ -168,6 +173,7 @@ export const BookFilterSchema = z.object({
     isbn: z.string().optional(),
     genreId: z.number().optional(),
     available: z.boolean().optional(),
+    hiddenFromCatalogue: z.boolean().optional(),
     search: z.string().optional(),
 });
 

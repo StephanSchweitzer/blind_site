@@ -53,6 +53,7 @@ interface BookFormData {
     isbn: string | undefined;
     description: string | undefined;
     available: boolean;
+    hiddenFromCatalogue: boolean;
     readingDurationMinutes: number | undefined;
     pageCount: number | undefined;
     [key: string]: string | number | boolean | string[] | undefined;
@@ -67,6 +68,7 @@ interface Book {
     readingDurationMinutes: number | null;
     pageCount: number | null;
     available: boolean;
+    hiddenFromCatalogue: boolean;
     genres: {
         genre: {
             id: number;
@@ -462,6 +464,7 @@ export default function BooksTable({
                 isbn: bookDetails.isbn || undefined,
                 description: bookDetails.description || undefined,
                 available: Boolean(bookDetails.available),
+                hiddenFromCatalogue: Boolean(bookDetails.hiddenFromCatalogue),
                 readingDurationMinutes: bookDetails.readingDurationMinutes || undefined,
                 pageCount: bookDetails.pageCount || undefined,
             };
@@ -807,13 +810,20 @@ export default function BooksTable({
                                                     <AudioStatusCell book={book} />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
-                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                                        book.available
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                        {book.available ? 'Disponible' : 'En attente'}
-                                                    </span>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                                                            book.available
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : 'bg-red-100 text-red-800'
+                                                        }`}>
+                                                            {book.available ? 'Disponible' : 'En attente'}
+                                                        </span>
+                                                        {book.hiddenFromCatalogue && (
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-800 whitespace-nowrap">
+                                                                Masqué
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex gap-2">

@@ -5,7 +5,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { Prisma } from '@prisma/client';
 import { BookWithGenres } from '@/types/book';
-import { withAdmin } from '@/lib/auth/guards';
+import { withAdmin, getCurrentUser, isAdmin } from '@/lib/auth/guards';
 
 // Type definitions for raw SQL queries
 interface CountResult {
@@ -22,6 +22,7 @@ interface RawBookResult {
     isbn: string | null;
     description: string | null;
     available: boolean;
+    hiddenFromCatalogue: boolean;
     readingDurationMinutes: number | null;
     pageCount: number | null;
     addedById: number;
@@ -44,7 +45,8 @@ async function performAccentInsensitiveSearch(
     filter: string,
     genres: number[],
     skip: number,
-    limit: number
+    limit: number,
+    includeHidden: boolean
 ): Promise<{ books: BookWithGenres[]; total: number }> {
     const searchTerm = `%${search.toLowerCase()}%`;
 
@@ -95,6 +97,11 @@ async function performAccentInsensitiveSearch(
         } else {
             whereConditions.push(`LOWER(immutable_unaccent(COALESCE(${column}, ''))) LIKE LOWER(immutable_unaccent($1))`);
         }
+    }
+
+    // Exclude books hidden from the public catalogue, unless the caller is admin
+    if (!includeHidden) {
+        whereConditions.push(`b."hiddenFromCatalogue" = false`);
     }
 
     // Add genre filter if specified
@@ -162,7 +169,7 @@ async function performAccentInsensitiveSearch(
         // If it isn't present in this database it throws here — fall back to a
         // standard Prisma contains search instead of silently returning nothing.
         console.error('Accent-insensitive search failed, falling back to standard search:', error);
-        return fallbackSearch(search, filter, genres, skip, limit);
+        return fallbackSearch(search, filter, genres, skip, limit, includeHidden);
     }
 }
 
@@ -172,7 +179,8 @@ async function fallbackSearch(
     filter: string,
     genres: number[],
     skip: number,
-    limit: number
+    limit: number,
+    includeHidden: boolean
 ): Promise<{ books: BookWithGenres[]; total: number }> {
     const mode = Prisma.QueryMode.insensitive;
 
@@ -198,6 +206,9 @@ async function fallbackSearch(
     const where: Prisma.BookWhereInput = { OR: orConditions };
     if (genres.length > 0) {
         where.AND = [{ genres: { some: { genreId: { in: genres } } } }];
+    }
+    if (!includeHidden) {
+        where.hiddenFromCatalogue = false;
     }
 
     const [books, total] = await Promise.all([
@@ -243,10 +254,19 @@ export async function GET(request: NextRequest): Promise<Response> {
         const ids = searchParams.get('ids')?.split(',').map(Number).filter(id => !isNaN(id));
         const skip = (page - 1) * limit;
 
+        // Hidden books stay out of every public read path here; admins see
+        // everything, since this route also backs the admin book list/search
+        // and the Coup de Cœur book selector.
+        const me = await getCurrentUser();
+        const includeHidden = isAdmin(me?.accessLevel);
+
         // Handle specific IDs request
         if (ids && ids.length > 0) {
             const books = await prisma.book.findMany({
-                where: { id: { in: ids } },
+                where: {
+                    id: { in: ids },
+                    ...(includeHidden ? {} : { hiddenFromCatalogue: false }),
+                },
                 include: {
                     genres: {
                         include: { genre: true }
@@ -261,6 +281,9 @@ export async function GET(request: NextRequest): Promise<Response> {
 
         // Build base where clause
         const whereClause: Prisma.BookWhereInput = {};
+        if (!includeHidden) {
+            whereClause.hiddenFromCatalogue = false;
+        }
 
         // Handle recent books filter
         if (recent) {
@@ -279,7 +302,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 
         if (search) {
             // Always use accent-insensitive search when there's a search term
-            const result = await performAccentInsensitiveSearch(search, filter, genres, skip, limit);
+            const result = await performAccentInsensitiveSearch(search, filter, genres, skip, limit, includeHidden);
             books = result.books;
             total = result.total;
         } else if (genres.length > 0) {
@@ -361,6 +384,7 @@ interface CreateBookRequest {
     isbn?: string;
     description?: string;
     available: boolean;
+    hiddenFromCatalogue?: boolean;
     readingDurationMinutes?: string;
     pageCount?: string;
     genres: number[];
@@ -410,6 +434,7 @@ export const POST = withAdmin(async (req, { me }): Promise<Response> => {
                 isbn: formData.isbn?.trim() || null,
                 description: formData.description,
                 available: formData.available,
+                hiddenFromCatalogue: formData.hiddenFromCatalogue ?? false,
                 readingDurationMinutes: formData.readingDurationMinutes ? parseInt(formData.readingDurationMinutes) : null,
                 pageCount: formData.pageCount ? parseInt(formData.pageCount) : null,
                 addedById: userId,

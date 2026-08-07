@@ -130,6 +130,7 @@ const FIELD_LABELS: Record<string, string> = {
     isbn: 'ISBN',
     description: 'Description',
     available: 'Disponible',
+    hiddenFromCatalogue: 'Masqué du catalogue public',
     pageCount: 'Nombre de pages',
     readingDurationMinutes: 'Durée de lecture (min)',
     audio_filepath: 'Chemin audio',

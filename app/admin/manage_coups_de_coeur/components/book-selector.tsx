@@ -31,6 +31,7 @@ interface Book {
     author: string;
     isbn: string | null;
     createdAt: Date;
+    hiddenFromCatalogue?: boolean;
 }
 
 interface BookSelectorProps {
@@ -121,7 +122,14 @@ function BookTable({
                         </TableCell>
                         <TableCell className="text-foreground">
                             <div className="flex flex-col">
-                                <span>{book.title}</span>
+                                <span>
+                                    {book.title}
+                                    {book.hiddenFromCatalogue && (
+                                        <span className="ml-2 text-xs text-muted-foreground">
+                                            (masqué du catalogue public)
+                                        </span>
+                                    )}
+                                </span>
                                 {isSearchResults && displayedBookIds.includes(book.id) && (
                                     <span className="text-sm text-muted-foreground">
                                         Ce livre appartient déjà à la liste
@@ -370,6 +378,7 @@ export default function BookSelector({
                 isbn: bookDetails.isbn || '',
                 description: bookDetails.description || '',
                 available: Boolean(bookDetails.available),
+                hiddenFromCatalogue: Boolean(bookDetails.hiddenFromCatalogue),
                 readingDurationMinutes: bookDetails.readingDurationMinutes?.toString() || '',
                 pageCount: bookDetails.pageCount
             };

@@ -70,6 +70,7 @@ export const PUT = withAdmin(async (req, { params }) => {
         isbn,
         description,
         available,
+        hiddenFromCatalogue,
         readingDurationMinutes,
         pageCount
     } = await req.json();
@@ -107,6 +108,7 @@ export const PUT = withAdmin(async (req, { params }) => {
                 readingDurationMinutes,
                 pageCount,
                 available,
+                hiddenFromCatalogue,
                 updatedAt: new Date(),
                 // Handle genres relationship
                 genres: {

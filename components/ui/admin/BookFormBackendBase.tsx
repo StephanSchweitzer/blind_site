@@ -28,6 +28,7 @@ export interface BookFormData {
     isbn: string | undefined;
     description: string | undefined;
     available: boolean;
+    hiddenFromCatalogue: boolean;
     readingDurationMinutes: number | undefined;
     pageCount: number | undefined;
     [key: string]: string | number | boolean | string[] | undefined;
@@ -58,6 +59,7 @@ const EMPTY_FORM: BookFormData = {
     isbn: '',
     description: '',
     available: false,
+    hiddenFromCatalogue: false,
     readingDurationMinutes: 0,
     pageCount: undefined,
 };
@@ -529,6 +531,29 @@ export function BookFormBackendBase({
                                 Disponible
                             </label>
                         </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    name="hiddenFromCatalogue"
+                                    id="hiddenFromCatalogue"
+                                    checked={formData.hiddenFromCatalogue}
+                                    onCheckedChange={(checked) => {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            hiddenFromCatalogue: checked as boolean
+                                        }));
+                                    }}
+                                    className="border-2 border-border data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600 data-[state=unchecked]:bg-transparent transition-colors duration-150"
+                                />
+                                <label htmlFor="hiddenFromCatalogue" className="text-sm font-medium text-foreground">
+                                    Masqué du catalogue public
+                                </label>
+                            </div>
+                            <p className="text-xs text-muted-foreground pl-6">
+                                Le livre n&apos;apparaît plus sur le catalogue ni les coups de cœur publics (ex. : livre personnel ou sensible). Reste utilisable normalement en interne.
+                            </p>
+                        </div>
                     </div>
 
                     <div className="space-y-4">
@@ -678,6 +703,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }
                 isbn: formData.isbn || null,
                 description: formData.description || null,
                 available: formData.available,
+                hiddenFromCatalogue: formData.hiddenFromCatalogue,
                 readingDurationMinutes: formData.readingDurationMinutes
                     ? parseInt(formData.readingDurationMinutes.toString())
                     : null,

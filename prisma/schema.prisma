@@ -118,6 +118,10 @@ model Book {
   isbn                   String?             @unique
   description            String?
   available              Boolean             @default(true)
+  /// Excludes the book from the public catalogue and coups de cœur, e.g. for
+  /// personal or sensitive titles. Purely a public-visibility flag — the book
+  /// stays fully usable in the back office (attributions, demandes, search).
+  hiddenFromCatalogue    Boolean             @default(false)
   createdAt              DateTime?           @default(now())
   updatedAt              DateTime            @updatedAt
   addedById              Int
