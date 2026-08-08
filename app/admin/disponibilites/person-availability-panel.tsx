@@ -563,11 +563,11 @@ export default function PersonAvailabilityPanel({
                                             />
                                         </div>
                                         {person.memberType === 'lecteur' && (
-                                            <div className="space-y-1">
+                                            <div className="space-y-1 sm:col-span-2">
                                                 <label className="text-xs font-medium text-foreground">
                                                     Langues
                                                 </label>
-                                                <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1">
                                                     {withCurrentValues(LANGUAGE_VALUES, person.languages).map(
                                                         (lang) => (
                                                             <label
