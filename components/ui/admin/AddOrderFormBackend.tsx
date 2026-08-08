@@ -36,8 +36,9 @@ import {
 import { STATUS } from '@/lib/statusSync';
 import { costSuggestion } from '@/lib/pricing';
 
-// N3 — required fields, visual top→bottom.
-const CREATE_FIELD_ORDER = ['aveugleId', 'deliveryMethod', 'mediaFormatId', 'lines'];
+// N3 — required fields, visual top→bottom. Per-line media format fields are
+// appended dynamically at validation time (one per open line).
+const CREATE_FIELD_ORDER = ['aveugleId', 'deliveryMethod', 'lines'];
 
 // ---------------------------------------------------------------------------
 // Multi-book order creation (fan-out: one order is created per book)
@@ -50,7 +51,7 @@ interface OrderBookLine {
     book: Book | null;
     type: OrderLineType;
     cost: string;
-    mediaFormatId: number | null; // null => use the header default
+    mediaFormatId: number | null; // required per line at submit; null until chosen
 }
 
 let lineKeySeq = 0;
@@ -126,13 +127,15 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     const [selectedUser, setSelectedUser] = useState<User | null>(initialClient ?? null);
     const [requestReceivedDate, setRequestReceivedDate] = useState<Date>(new Date());
     const [deliveryMethod, setDeliveryMethod] = useState<'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE' | null>(null);
-    const [mediaFormatId, setMediaFormatId] = useState<number | null>(null);
     const [billingStatus, setBillingStatus] = useState<'UNBILLED' | 'BILLED' | 'UNBILLABLE'>('UNBILLED');
     const [defaultCost, setDefaultCost] = useState('3.00');
     const [notes, setNotes] = useState('');
 
-    // Book lines
-    const [lines, setLines] = useState<OrderBookLine[]>([makeLine('3.00')]);
+    // Book lines — each carries its own media format, seeded from the auditeur's
+    // preference when known but always overridable per ouvrage.
+    const [lines, setLines] = useState<OrderBookLine[]>([
+        { ...makeLine('3.00'), mediaFormatId: initialClient?.preferredMediaFormatId ?? null },
+    ]);
 
     // For each ENREGISTREMENT line with a book, look up whether the book already
     // has an active recording demande (drives the per-line warning + submit confirm).
@@ -166,10 +169,10 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
         setSelectedUser(user);
         setAveugleId(user.id);
-        // Seed the per-order header default format from the person's preference,
-        // unless a default has already been chosen.
+        // Seed every line still without a format from the person's preference —
+        // lines the user already set explicitly are left alone.
         if (user.preferredMediaFormatId != null) {
-            setMediaFormatId((prev) => (prev == null ? user.preferredMediaFormatId! : prev));
+            setLines((prev) => prev.map((l) => (l.mediaFormatId == null ? { ...l, mediaFormatId: user.preferredMediaFormatId! } : l)));
         }
         // Seed delivery method too (NON_APPLICABLE is no longer a valid option).
         if (user.preferredDeliveryMethod === 'RETRAIT' || user.preferredDeliveryMethod === 'ENVOI') {
@@ -188,7 +191,10 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
         setLines(prev => prev.map(l => (l.key === key ? { ...l, ...patch } : l)));
     const removeLine = (key: string) =>
         setLines(prev => (prev.length > 1 ? prev.filter(l => l.key !== key) : prev));
-    const addLine = () => setLines(prev => [...prev, makeLine(defaultCost)]);
+    const addLine = () => setLines(prev => [
+        ...prev,
+        { ...makeLine(defaultCost), mediaFormatId: selectedUser?.preferredMediaFormatId ?? null },
+    ]);
 
     // Picking a book also sets that line's tarif from the weight of its recording
     // (lib/pricing.ts). This is where adjustments go missing: ten ouvrages saisis
@@ -211,25 +217,31 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
         setIsLoading(true);
         setError(null);
 
-        // N3 — collect failing required fields in visual order.
+        // N3 — collect failing required fields in visual order. Media format is
+        // required per line now, so each open line contributes its own field name.
         const invalid: string[] = [];
         if (!aveugleId) invalid.push('aveugleId');
         if (!deliveryMethod) invalid.push('deliveryMethod');
-        if (!mediaFormatId) invalid.push('mediaFormatId');
         const firstLineMissingBook = lines.findIndex((l) => !l.book);
         if (lines.length === 0 || firstLineMissingBook !== -1) invalid.push('lines');
+        for (const l of lines) {
+            if (l.mediaFormatId == null) invalid.push(`mediaFormatId-${l.key}`);
+        }
 
         if (invalid.length) {
             let msg: string;
-            const firstName = CREATE_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
+            const fieldOrder = [...CREATE_FIELD_ORDER, ...lines.map((l) => `mediaFormatId-${l.key}`)];
+            const firstName = fieldOrder.find((n) => invalid.includes(n)) ?? invalid[0];
             if (firstName === 'aveugleId') msg = 'Veuillez sélectionner un auditeur';
             else if (firstName === 'deliveryMethod') msg = 'Veuillez sélectionner une méthode de livraison';
-            else if (firstName === 'mediaFormatId') msg = 'Veuillez sélectionner un format média par défaut';
-            else if (lines.length === 0) msg = 'Ajoutez au moins un ouvrage';
-            else msg = `La ligne ${firstLineMissingBook + 1} doit comporter un livre`;
+            else if (firstName === 'lines') msg = lines.length === 0 ? 'Ajoutez au moins un ouvrage' : `La ligne ${firstLineMissingBook + 1} doit comporter un livre`;
+            else {
+                const idx = lines.findIndex((l) => `mediaFormatId-${l.key}` === firstName);
+                msg = `La ligne ${idx + 1} doit avoir un format média`;
+            }
             setError(msg);
             toastError(msg);
-            focusFirstInvalid(CREATE_FIELD_ORDER, new Set(invalid));
+            focusFirstInvalid(fieldOrder, new Set(invalid));
             setIsLoading(false);
             return;
         }
@@ -239,7 +251,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             isDuplication: l.type === 'DUPLICATION',
             lentPhysicalBook: l.type === 'ENREGISTREMENT',
             statusId: statusForType(l.type),
-            mediaFormatId: l.mediaFormatId ?? mediaFormatId,
+            mediaFormatId: l.mediaFormatId!,
             cost: l.cost || defaultCost,
         }));
 
@@ -365,17 +377,6 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Format média<span className="text-red-500">*</span></label>
-                            <Select value={mediaFormatId?.toString() || ''} onValueChange={(v) => setMediaFormatId(parseInt(v))}>
-                                <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-                                <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
-                                    {mediaFormats.map((f) => (
-                                        <SelectItem key={f.id} value={f.id.toString()} className="text-foreground">{f.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">État de facturation</label>
                             <Select value={billingStatus} onValueChange={(v) => setBillingStatus(v as 'UNBILLED' | 'BILLED' | 'UNBILLABLE')}>
                                 <SelectTrigger className="bg-field border-border text-foreground"><SelectValue /></SelectTrigger>
@@ -461,13 +462,13 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                     </p>
                                 )}
 
-                                {/* Per-line overrides */}
+                                {/* Per-ouvrage format — required per line, seeded from the auditeur's préférence */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
-                                        <label className="text-xs text-muted-foreground">Format (sinon défaut)</label>
+                                        <label className="text-xs text-muted-foreground">Format média <span className="text-red-500">*</span></label>
                                         <Select value={line.mediaFormatId?.toString() || ''}
                                                 onValueChange={(v) => updateLine(line.key, { mediaFormatId: v ? parseInt(v) : null })}>
-                                            <SelectTrigger className="bg-card border-border text-foreground h-9"><SelectValue placeholder="Format par défaut" /></SelectTrigger>
+                                            <SelectTrigger ref={registerField(`mediaFormatId-${line.key}`)} className="bg-card border-border text-foreground h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                                             <SelectContent className="bg-card border-border max-h-[240px] overflow-y-auto">
                                                 {mediaFormats.map((f) => (
                                                     <SelectItem key={f.id} value={f.id.toString()} className="text-foreground">{f.name}</SelectItem>
