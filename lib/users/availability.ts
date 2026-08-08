@@ -250,45 +250,79 @@ export function loadedReaders(people: AvailabilityPerson[]): LoadedReader[] {
 
 // ── coverage over the period ────────────────────────────────────────────────
 
-export interface CoverageWeek {
-    /** ISO Monday of the week. */
-    week: DayKey;
-    /** Lecteurs away at some point during that week. */
+/**
+ * How many of these absences cover each day of [start, end], inclusive —
+ * index 0 is `start`, index n is `start + n days`.
+ *
+ * Deliberately computed from the absences the CALENDAR IS DRAWING rather than
+ * from the whole roster: the profile is meant to read as the height of the
+ * stack of bars underneath it, which is what makes it need no explaining. A
+ * figure computed over a different population than the rows below it is the
+ * kind of chart people learn to ignore.
+ */
+export function absenceProfile(
+    list: Absence[],
+    start: DayKey,
+    end: DayKey
+): number[] {
+    const days = Math.max(0, daysBetween(start, end));
+    const profile = new Array<number>(days + 1).fill(0);
+
+    for (const absence of list) {
+        // An open start runs from the beginning of the window, an open end to
+        // the end of it — same clamping the bars use.
+        const from = absence.from && absence.from > start ? absence.from : start;
+        const until = absence.until && absence.until < end ? absence.until : end;
+        const first = Math.max(0, daysBetween(start, from));
+        const last = Math.min(days, daysBetween(start, until));
+        for (let day = first; day <= last; day += 1) profile[day] += 1;
+    }
+    return profile;
+}
+
+/** The lecteur roster split on one given day. */
+export interface RosterSnapshot {
+    /** Lecteurs not permanently out — the pool being planned. */
+    roster: number;
+    /** Of those, indisponible on that day. */
     away: number;
-    /** Lecteurs taking attributions and not away that week. */
+    /** Present but flagged « ne prend pas d'attribution ». */
+    notTaking: number;
+    /** The rest: attribuables that day. */
     available: number;
 }
 
 /**
- * Week-by-week reading of how thin the lecteur roster gets — the point being to
- * spot the August dip before the demandes pile up.
+ * The staffing reading behind "1 indisponible, 168 attribuables sur 169".
  *
- * Deliberately pessimistic: a lecteur away for even one day of a week counts as
- * away for that whole week. A permanent planning a hand-off wants the worst
- * case, not an average that hides a five-day gap.
+ * The roster is EVERY lecteur not permanently out — `isAvailable` deliberately
+ * does not restrict it. Declaring an indisponibilité clears that flag (the sync
+ * guard in /api/user/[id]/activity), so filtering on it made the person vanish
+ * from the effectif at the exact moment they should have been counted as away.
+ * They are counted here instead, and a flagged-but-present lecteur lands in
+ * `notTaking`, which is why away + notTaking + available is always `roster`.
  */
-export function weeklyCoverage(
-    people: AvailabilityPerson[],
-    start: DayKey,
-    end: DayKey
-): CoverageWeek[] {
-    const readers = people.filter((p) => isLecteur(p) && p.isAvailable);
+export function rosterSnapshot(people: AvailabilityPerson[], day: DayKey): RosterSnapshot {
     // "Taking attributions" is a today-shaped question; over a future period the
-    // roster is everyone not permanently out (démissionnaire, radié, décédé).
-    const roster = readers.filter(
-        (p) => p.activityStatus === 'ACTIVE' || p.activityStatus === 'UNAVAILABLE'
+    // roster is everyone not permanently out (radié, décédé, inactif).
+    const roster = people.filter(
+        (p) =>
+            isLecteur(p) &&
+            (p.activityStatus === 'ACTIVE' || p.activityStatus === 'UNAVAILABLE')
     );
 
-    const weeks: CoverageWeek[] = [];
-    for (let week = mondayOf(start); week <= end; week = addDays(week, 7)) {
-        const weekEnd = addDays(week, 6);
-        const away = roster.filter((p) => {
-            if (p.activityStatus !== 'UNAVAILABLE') return false;
-            if (p.unavailableFrom && p.unavailableFrom > weekEnd) return false;
-            if (p.unavailableUntil && p.unavailableUntil < week) return false;
-            return true;
-        }).length;
-        weeks.push({ week, away, available: roster.length - away });
-    }
-    return weeks;
+    const away = roster.filter((p) => {
+        if (p.activityStatus !== 'UNAVAILABLE') return false;
+        if (p.unavailableFrom && p.unavailableFrom > day) return false;
+        if (p.unavailableUntil && p.unavailableUntil < day) return false;
+        return true;
+    });
+    const notTaking = roster.filter((p) => !away.includes(p) && !p.isAvailable).length;
+
+    return {
+        roster: roster.length,
+        away: away.length,
+        notTaking,
+        available: roster.length - away.length - notTaking,
+    };
 }

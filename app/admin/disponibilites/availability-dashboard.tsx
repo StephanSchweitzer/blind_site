@@ -4,6 +4,8 @@ import React, { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     AlertTriangle,
+    ArrowDownNarrowWide,
+    ArrowDownWideNarrow,
     BookOpen,
     CalendarClock,
     CalendarOff,
@@ -42,6 +44,7 @@ import {
     alertCount,
     buildAlerts,
     absences as buildAbsences,
+    daysBetween,
     describeDelay,
     formatDayKey,
     freeReaders,
@@ -78,18 +81,52 @@ const TYPE_FILTERS = [
 type TypeFilter = typeof TYPE_FILTERS[number]['value'];
 
 /**
- * Les vues « lecteurs » : qui est libre, qui est déjà chargé, et — parce
- * qu'un lecteur avec une seule attribution reste preneur et que filtrer par
- * nom dans « Sans attribution en cours » ne le trouve pas — tout le monde,
- * indépendamment de sa charge.
+ * UNE table de lecteurs, deux sens de lecture.
+ *
+ * Il y avait trois onglets — « Sans attribution en cours », « Charge des
+ * lecteurs », « Tous les lecteurs » — qui découpaient l'effectif au lieu de le
+ * trier. Un lecteur avec 1 livre sur 3 reste parfaitement preneur, et il était
+ * pourtant invisible depuis l'onglet censé répondre à « à qui je confie
+ * celui-ci ? » ; le troisième onglet n'existait que pour rattraper le fait que
+ * les deux premiers cachaient chacun la moitié des gens.
+ *
+ * La charge est une quantité, pas une catégorie : elle se trie. Le filtre
+ * « attribuables » et le filtre « dormants » restent des filtres, sur un axe
+ * séparé — ce que les onglets confondaient.
  */
-const READER_TABS = [
-    { value: 'free', label: 'Sans attribution en cours' },
-    { value: 'loaded', label: 'Charge des lecteurs' },
-    { value: 'all', label: 'Tous les lecteurs' },
+const READER_SORTS = [
+    { value: 'freest', label: 'Les plus disponibles d’abord' },
+    { value: 'busiest', label: 'Les plus chargés d’abord' },
 ] as const;
 
-type ReaderTab = typeof READER_TABS[number]['value'];
+type ReaderSort = typeof READER_SORTS[number]['value'];
+
+/** Une ligne de la table des lecteurs, tout ce qui s'y lit déjà calculé. */
+interface ReaderRow {
+    person: AvailabilityPerson;
+    /** Plafond d'attributions simultanées de la fiche (3 par défaut). */
+    max: number;
+    /** À son plafond, ou au-delà. */
+    saturated: boolean;
+    /** Jours depuis la dernière attribution ; null s'il n'en a jamais eu. */
+    idleDays: number | null;
+    dormant: boolean;
+    /** Actif, preneur, et encore de la place : on peut lui confier un livre. */
+    assignable: boolean;
+}
+
+/**
+ * Départage deux lecteurs à charge égale : le plus anciennement sollicité
+ * d'abord, « jamais attribué » tout en haut. C'est la règle d'équité que
+ * portait l'ancien onglet « sans attribution en cours » — les bénévoles qu'on
+ * oublie sont précisément ceux qui n'ont rien eu depuis le plus longtemps.
+ */
+function compareIdle(a: ReaderRow, b: ReaderRow): number {
+    if (a.idleDays === null && b.idleDays === null) return 0;
+    if (a.idleDays === null) return -1;
+    if (b.idleDays === null) return 1;
+    return b.idleDays - a.idleDays;
+}
 
 const PAGE_SIZE = 10;
 
@@ -391,10 +428,18 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     const [languageFilter, setLanguageFilter] = useState<string[]>([]);
     const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
     const [onlyDormant, setOnlyDormant] = useState(false);
-    const [onlyWithRoom, setOnlyWithRoom] = useState(false);
-    const [readerTab, setReaderTab] = useState<ReaderTab>('free');
+    const [onlyAssignable, setOnlyAssignable] = useState(true);
+    const [readerSort, setReaderSort] = useState<ReaderSort>('freest');
     // Who the availability panel is open on. Null = closed.
     const [openPersonId, setOpenPersonId] = useState<number | null>(null);
+    // The last person saved from the panel, highlighted in the calendar.
+    const [highlightPersonId, setHighlightPersonId] = useState<number | null>(null);
+
+    /** Opening somebody drops the previous highlight — one at a time. */
+    const openPerson = (id: number) => {
+        setHighlightPersonId(null);
+        setOpenPersonId(id);
+    };
 
     const { people, today, warningDays, justClosed } = data;
 
@@ -432,34 +477,52 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
         [people, today, start, end, typeFilter, nameMatches, languageMatches]
     );
 
-    const free = useMemo(
-        () => freeReaders(people, today).filter((r) => nameMatches(r.person) && languageMatches(r.person)),
-        [people, today, nameMatches, languageMatches]
-    );
-    const loaded = useMemo(
-        () => loadedReaders(people).filter((r) => nameMatches(r.person) && languageMatches(r.person)),
-        [people, nameMatches, languageMatches]
-    );
-    // Every lecteur, whatever their current charge — "loaded" and "free" split
-    // the roster in two, which is fine for triage but useless for "find this
-    // one person by name" when you don't already know which side they're on.
-    const allReaders = useMemo(
+    /**
+     * The person just saved when they DO carry an indisponibilité but the
+     * calendar is not showing it. Undefined when there is nothing to explain —
+     * a row that disappeared because the person went back to Actif is the
+     * change, not a hidden one.
+     */
+    const hiddenHighlight = useMemo(() => {
+        if (highlightPersonId === null) return undefined;
+        if (visibleAbsences.some((a) => a.person.id === highlightPersonId)) return undefined;
+        return buildAbsences(people, today).find((a) => a.person.id === highlightPersonId);
+    }, [highlightPersonId, visibleAbsences, people, today]);
+
+    /** Every lecteur matching the page filters, everything the table shows. */
+    const readerRows: ReaderRow[] = useMemo(
         () =>
             people
                 .filter(isLecteur)
                 .filter((p) => nameMatches(p) && languageMatches(p))
                 .map((person) => {
                     const max = person.maxConcurrentAssignments ?? 3;
-                    return { person, max, saturated: person.activeAssignments >= max };
-                })
-                .sort((a, b) => a.person.name.localeCompare(b.person.name, 'fr')),
-        [people, nameMatches, languageMatches]
+                    const idleDays = person.lastAssignedAt
+                        ? daysBetween(person.lastAssignedAt, today)
+                        : null;
+                    return {
+                        person,
+                        max,
+                        saturated: person.activeAssignments >= max,
+                        idleDays,
+                        dormant: idleDays === null || idleDays >= DORMANT_READER_DAYS,
+                        assignable:
+                            isTakingAttributions(person) && person.activeAssignments < max,
+                    };
+                }),
+        [people, today, nameMatches, languageMatches]
     );
 
     const readerRoster = people.filter(isLecteur);
     const readersTaking = readerRoster.filter(isTakingAttributions);
     const awayToday = people.filter((p) => p.effectiveStatus === 'UNAVAILABLE');
     const saturated = loadedReaders(people).filter((r) => r.saturated);
+    // Tiles read the whole roster, never the name filter: a counter that moves
+    // while you type a name is a counter nobody can trust.
+    const assignableRoster = readerRoster.filter(
+        (p) => isTakingAttributions(p) && p.activeAssignments < (p.maxConcurrentAssignments ?? 3)
+    );
+    const freeRoster = freeReaders(people, today);
 
     const runSweep = async () => {
         setIsSweeping(true);
@@ -483,20 +546,27 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
         }
     };
 
-    const displayedFree = onlyDormant ? free.filter((r) => r.dormant) : free;
-    // "Loaded" already means "carrying at least one book" — this narrows it
-    // further to those NOT yet at their ceiling, i.e. who could still take one
-    // more. Combined with the language filter, that answers "who speaks
-    // German and I could still hand something to" without reading every row.
-    const displayedLoaded = onlyWithRoom ? loaded.filter((r) => !r.saturated) : loaded;
+    const displayedReaders = useMemo(() => {
+        const rows = readerRows.filter(
+            (r) => (!onlyAssignable || r.assignable) && (!onlyDormant || r.dormant)
+        );
+        rows.sort((a, b) =>
+            readerSort === 'freest'
+                ? a.person.activeAssignments - b.person.activeAssignments ||
+                  compareIdle(a, b) ||
+                  a.person.name.localeCompare(b.person.name, 'fr')
+                : b.person.activeAssignments - a.person.activeAssignments ||
+                  a.person.name.localeCompare(b.person.name, 'fr')
+        );
+        return rows;
+    }, [readerRows, onlyAssignable, onlyDormant, readerSort]);
+
     const totalAlerts = alertCount(alerts);
 
-    const freePage = usePagedRows(displayedFree, `${search}|${onlyDormant}|${languageFilter.join(',')}`);
-    const loadedPage = usePagedRows(
-        displayedLoaded,
-        `${search}|${onlyWithRoom}|${languageFilter.join(',')}`
+    const readerPage = usePagedRows(
+        displayedReaders,
+        `${search}|${onlyAssignable}|${onlyDormant}|${readerSort}|${languageFilter.join(',')}`
     );
-    const allPage = usePagedRows(allReaders, `${search}|${languageFilter.join(',')}`);
 
     return (
         <div className="space-y-6">
@@ -617,7 +687,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         auditeur actif demande de pouvoir aller le chercher. */}
                     <UserSearchCombobox<UserSearchResult>
                         value={null}
-                        onSelect={(user) => setOpenPersonId(user.id)}
+                        onSelect={(user) => openPerson(user.id)}
                         placeholder="Gérer la disponibilité de…"
                         searchPlaceholder="Rechercher par nom ou email…"
                         triggerClassName="h-9 w-64 shrink-0"
@@ -639,11 +709,14 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
 
             {/* ── summary ────────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* « Attribuables », pas « libres » : un lecteur qui a 1 livre
+                    sur 3 peut en prendre un autre, et c'est bien à cette
+                    question-là qu'on répond en ouvrant cette page. */}
                 <StatTile
                     icon={<UserCheck size={20} />}
-                    value={free.length}
-                    label="Lecteurs libres"
-                    hint={`sur ${readersTaking.length} lecteurs disponibles`}
+                    value={assignableRoster.length}
+                    label="Lecteurs attribuables"
+                    hint={`dont ${freeRoster.length} sans aucun livre en cours`}
                     tone="good"
                 />
                 <StatTile
@@ -682,7 +755,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Retours prochains"
                         description={`Ces personnes redeviennent actives dans les ${warningDays} prochains jours — de nouveau attribuables.`}
                         tone="info"
-                        onOpen={setOpenPersonId}
+                        onOpen={openPerson}
                         rows={alerts.endingSoon.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -693,7 +766,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Départs prochains"
                         description={`Indisponibilités qui démarrent dans les ${warningDays} prochains jours — évitez de leur confier un long enregistrement.`}
                         tone="warn"
-                        onOpen={setOpenPersonId}
+                        onOpen={openPerson}
                         rows={alerts.startingSoon.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -704,9 +777,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     />
                     <AlertGroup
                         title="Absents avec des attributions en cours"
-                        description="Ces personnes sont (ou seront bientôt) indisponibles alors qu'un livre est encore chez elles. À relancer ou à réattribuer."
+                        description="Ces personnes sont (ou seront bientôt) indisponibles alors qu'un livre est encore chez elles."
                         tone="bad"
-                        onOpen={setOpenPersonId}
+                        onOpen={openPerson}
                         rows={alerts.awayWithAttributions.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -719,7 +792,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Indisponibilités sans date de fin"
                         description="Rien ne les clôturera automatiquement : fixez une date de fin ou changez le statut."
                         tone="warn"
-                        onOpen={setOpenPersonId}
+                        onOpen={openPerson}
                         rows={alerts.openEnded.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -732,7 +805,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Actifs mais marqués « ne prend pas d'attribution »"
                         description="Leur statut est actif, mais leur fiche indique qu'ils ne prennent pas d'attribution. Ils n'apparaissent pas dans les sélecteurs de lecteur."
                         tone="warn"
-                        onOpen={setOpenPersonId}
+                        onOpen={openPerson}
                         rows={alerts.flaggedUnavailable.map((p) => ({
                             key: p.id,
                             person: p,
@@ -745,7 +818,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         title="Indisponibilités arrivées à terme"
                         description="Leur date de fin est passée mais le statut n'a pas encore été refermé. Elles se lisent déjà comme « Actif »."
                         tone="bad"
-                        onOpen={setOpenPersonId}
+                        onOpen={openPerson}
                         rows={alerts.elapsed.map((a) => ({
                             key: a.person.id,
                             person: a.person,
@@ -770,8 +843,17 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             <Card className="border-border bg-card">
                 <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <CardTitle className="text-lg text-foreground">
+                        <CardTitle className="text-lg text-foreground flex items-center gap-2">
                             Calendrier des indisponibilités
+                            {/* The panel writes, then the page re-reads from the
+                                server: without this the calendar simply looks
+                                unchanged for as long as the round-trip takes. */}
+                            {isRefreshing && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground animate-in fade-in duration-200">
+                                    <Loader2 size={11} className="animate-spin" />
+                                    Mise à jour…
+                                </span>
+                            )}
                         </CardTitle>
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="flex items-center gap-1">
@@ -803,288 +885,96 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     <p className="text-xs text-muted-foreground">
                         Du {formatDayKey(start)} au {formatDayKey(end)}.
                     </p>
+                    {/* Saving somebody the current filters exclude used to read
+                        as "my change did nothing" — the row is simply not in
+                        this view. Say so rather than let the calendar look
+                        broken. */}
+                    {hiddenHighlight && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 animate-in fade-in duration-200">
+                            {hiddenHighlight.person.name} vient d&apos;être modifié(e) mais
+                            n&apos;apparaît pas ici : son indisponibilité est hors de la période
+                            affichée ou exclue par les filtres.
+                        </p>
+                    )}
                 </CardHeader>
-                <CardContent>
+                <CardContent
+                    className={`transition-opacity duration-200 ${isRefreshing ? 'opacity-60' : ''}`}
+                >
                     <AvailabilityTimeline
                         absences={visibleAbsences}
                         people={people}
                         today={today}
                         start={start}
                         end={end}
-                        onSelectPerson={setOpenPersonId}
+                        onSelectPerson={openPerson}
+                        highlightPersonId={highlightPersonId}
                     />
                 </CardContent>
             </Card>
 
-            {/* ── readers: free / load ───────────────────────────────────── */}
+            {/* ── lecteurs : une table, deux sens de lecture ─────────────── */}
             <Card className="border-border bg-card">
-                <CardHeader className="pb-0">
+                <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center gap-2">
                         <CardTitle className="text-lg text-foreground">Lecteurs</CardTitle>
+                        <span className="text-sm text-muted-foreground">
+                            {displayedReaders.length} sur {readerRows.length}
+                        </span>
                         <SearchChip search={search} onClear={() => setSearch('')} />
                         <LanguageFilterChip languages={languageFilter} onClear={() => setLanguageFilter([])} />
                     </div>
-                    <div className="border-b border-border">
-                        <nav
-                            role="tablist"
-                            aria-label="Vues lecteurs"
-                            className="-mb-px flex gap-4 sm:gap-8 overflow-x-auto"
-                        >
-                            {READER_TABS.map((tab) => {
-                                const isActive = readerTab === tab.value;
-                                const count =
-                                    tab.value === 'free'
-                                        ? displayedFree.length
-                                        : tab.value === 'loaded'
-                                            ? displayedLoaded.length
-                                            : allReaders.length;
-                                return (
-                                    <button
-                                        key={tab.value}
-                                        type="button"
-                                        role="tab"
-                                        id={`reader-tab-${tab.value}`}
-                                        aria-selected={isActive}
-                                        aria-controls={`reader-panel-${tab.value}`}
-                                        onClick={() => setReaderTab(tab.value)}
-                                        className={`whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium ${
-                                            isActive
-                                                ? 'border-primary text-primary'
-                                                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
-                                        }`}
-                                    >
-                                        {tab.label}
-                                        <span className="ml-2 text-xs font-normal text-muted-foreground">
-                                            ({count})
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </nav>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                        <div className="flex items-center gap-1">
+                            {READER_SORTS.map((sort) => (
+                                <Button
+                                    key={sort.value}
+                                    size="sm"
+                                    variant={sort.value === readerSort ? 'default' : 'outline'}
+                                    onClick={() => setReaderSort(sort.value)}
+                                >
+                                    {sort.value === 'freest' ? (
+                                        <ArrowDownNarrowWide size={14} className="mr-1.5" />
+                                    ) : (
+                                        <ArrowDownWideNarrow size={14} className="mr-1.5" />
+                                    )}
+                                    {sort.label}
+                                </Button>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4">
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={onlyAssignable}
+                                    onChange={(e) => setOnlyAssignable(e.target.checked)}
+                                    className="accent-current"
+                                />
+                                Attribuables seulement
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={onlyDormant}
+                                    onChange={(e) => setOnlyDormant(e.target.checked)}
+                                    className="accent-current"
+                                />
+                                Dormants seulement ({DORMANT_READER_DAYS}+ jours)
+                            </label>
+                        </div>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                        {readerSort === 'freest'
+                            ? "Du moins chargé au plus chargé ; à charge égale, le plus anciennement sollicité d'abord."
+                            : 'Du plus chargé au moins chargé — pour repérer qui est au plafond.'}
+                        {onlyAssignable
+                            ? ' Seuls les lecteurs actifs, preneurs et sous leur plafond sont listés.'
+                            : ' Tous les lecteurs sont listés, y compris ceux qui ne peuvent rien recevoir.'}
+                    </p>
                 </CardHeader>
 
-                {/* ── free readers ───────────────────────────────────────── */}
-                <CardContent
-                    role="tabpanel"
-                    id="reader-panel-free"
-                    aria-labelledby="reader-tab-free"
-                    hidden={readerTab !== 'free'}
-                    className={readerTab === 'free' ? 'pt-4' : 'hidden'}
-                >
-                    <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                        <p className="text-xs text-muted-foreground">
-                            Actifs, disponibles, et aucun livre en cours : les prochains à
-                            solliciter. Les plus anciennement sollicités d&apos;abord.
-                        </p>
-                        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={onlyDormant}
-                                onChange={(e) => setOnlyDormant(e.target.checked)}
-                                className="accent-current"
-                            />
-                            Uniquement les dormants ({DORMANT_READER_DAYS}+ jours)
-                        </label>
-                    </div>
-                    {displayedFree.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-6 text-center">
-                            Aucun lecteur libre ne correspond à ces critères.
-                        </p>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Lecteur</TableHead>
-                                        <TableHead>Dernière attribution</TableHead>
-                                        <TableHead>Langues</TableHead>
-                                        <TableHead>Capacité</TableHead>
-                                        <TableHead className="text-right">Disponibilité</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {freePage.visible.map(({ person, idleDays, dormant }) => (
-                                        <TableRow key={person.id}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <PersonButton person={person} onOpen={setOpenPersonId} />
-                                                    {dormant && (
-                                                        <span
-                                                            className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium"
-                                                            title={`Aucune attribution depuis au moins ${DORMANT_READER_DAYS} jours`}
-                                                        >
-                                                            <Moon size={11} /> Dormant
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground">
-                                                {person.lastAssignedAt ? (
-                                                    <>
-                                                        {formatDayKey(person.lastAssignedAt)}
-                                                        <span className="text-xs ml-1">
-                                                            ({idleDays} j)
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    'Jamais'
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                {person.languages.length > 0
-                                                    ? person.languages.map((lang) => getLanguageLabel(lang)).join(', ')
-                                                    : '—'}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                0 / {person.maxConcurrentAssignments ?? 3}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setOpenPersonId(person.id)}
-                                                >
-                                                    Gérer
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                    <PaginationFooter
-                        page={freePage.page}
-                        totalPages={freePage.totalPages}
-                        from={freePage.from}
-                        to={freePage.to}
-                        total={freePage.total}
-                        unit="lecteurs libres"
-                        onPageChange={freePage.setPage}
-                    />
-                </CardContent>
-
-                {/* ── load ───────────────────────────────────────────────── */}
-                <CardContent
-                    role="tabpanel"
-                    id="reader-panel-loaded"
-                    aria-labelledby="reader-tab-loaded"
-                    hidden={readerTab !== 'loaded'}
-                    className={readerTab === 'loaded' ? 'pt-4' : 'hidden'}
-                >
-                    <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                        <p className="text-xs text-muted-foreground">
-                            Attributions en cours par rapport au maximum simultané de chaque fiche.
-                        </p>
-                        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={onlyWithRoom}
-                                onChange={(e) => setOnlyWithRoom(e.target.checked)}
-                                className="accent-current"
-                            />
-                            Avec de la place seulement
-                        </label>
-                    </div>
-                    {displayedLoaded.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-6 text-center">
-                            {loaded.length === 0
-                                ? 'Aucune attribution en cours.'
-                                : 'Aucun lecteur chargé ne correspond à ces critères.'}
-                        </p>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Lecteur</TableHead>
-                                        <TableHead>Statut</TableHead>
-                                        <TableHead>Charge</TableHead>
-                                        <TableHead className="text-right">En cours</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loadedPage.visible.map(({ person, max, saturated: isSaturated }) => (
-                                        <TableRow key={person.id}>
-                                            <TableCell>
-                                                <PersonButton person={person} onOpen={setOpenPersonId} />
-                                                {!person.isAvailable && (
-                                                    <span className="block text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                                                        ne prend pas d&apos;attribution
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <span
-                                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getUserActivityStatusColor(person.effectiveStatus)}`}
-                                                >
-                                                    {getUserActivityStatusLabel(person.effectiveStatus)}
-                                                </span>
-                                                {person.effectiveStatus === 'UNAVAILABLE' &&
-                                                    person.unavailableUntil && (
-                                                        <span className="block text-xs text-muted-foreground mt-0.5">
-                                                            jusqu&apos;au {formatDayKey(person.unavailableUntil)}
-                                                        </span>
-                                                    )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
-                                                        <div
-                                                            className={`h-full rounded-full ${isSaturated ? 'bg-amber-500' : 'bg-primary'}`}
-                                                            style={{
-                                                                width: `${Math.min(100, (person.activeAssignments / Math.max(1, max)) * 100)}%`,
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {person.activeAssignments} / {max}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {/* Ouvre le panneau plutôt que le dossier : ce qu'on
-                                                    veut ici, c'est voir les livres en cours ET pouvoir
-                                                    ajuster le plafond ou poser une indisponibilité. */}
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setOpenPersonId(person.id)}
-                                                >
-                                                    Voir les attributions
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                    <PaginationFooter
-                        page={loadedPage.page}
-                        totalPages={loadedPage.totalPages}
-                        from={loadedPage.from}
-                        to={loadedPage.to}
-                        total={loadedPage.total}
-                        unit="lecteurs"
-                        onPageChange={loadedPage.setPage}
-                    />
-                </CardContent>
-
-                {/* ── all readers ────────────────────────────────────────── */}
-                <CardContent
-                    role="tabpanel"
-                    id="reader-panel-all"
-                    aria-labelledby="reader-tab-all"
-                    hidden={readerTab !== 'all'}
-                    className={readerTab === 'all' ? 'pt-4' : 'hidden'}
-                >
-                    <p className="text-xs text-muted-foreground mb-3">
-                        Tous les lecteurs, libres ou déjà chargés — pour retrouver quelqu&apos;un
-                        par son nom sans devoir deviner dans quel onglet il se trouve.
-                    </p>
-                    {allReaders.length === 0 ? (
+                <CardContent>
+                    {displayedReaders.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-6 text-center">
                             Aucun lecteur ne correspond à ces critères.
                         </p>
@@ -1095,16 +985,46 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                     <TableRow>
                                         <TableHead>Lecteur</TableHead>
                                         <TableHead>Statut</TableHead>
-                                        <TableHead>Charge</TableHead>
+                                        <TableHead>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setReaderSort(
+                                                        readerSort === 'freest' ? 'busiest' : 'freest'
+                                                    )
+                                                }
+                                                className="inline-flex items-center gap-1 hover:text-foreground"
+                                                aria-label="Inverser le tri par charge"
+                                            >
+                                                Charge
+                                                {readerSort === 'freest' ? (
+                                                    <ArrowDownNarrowWide size={13} />
+                                                ) : (
+                                                    <ArrowDownWideNarrow size={13} />
+                                                )}
+                                            </button>
+                                        </TableHead>
+                                        <TableHead>Dernière attribution</TableHead>
+                                        <TableHead>Langues</TableHead>
                                         <TableHead className="text-right">Disponibilité</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {allPage.visible.map(({ person, max, saturated: isSaturated }) => (
-                                        <TableRow key={person.id}>
+                                    {readerPage.visible.map((row) => (
+                                        <TableRow key={row.person.id}>
                                             <TableCell>
-                                                <PersonButton person={person} onOpen={setOpenPersonId} />
-                                                {!person.isAvailable && (
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <PersonButton person={row.person} onOpen={openPerson} />
+                                                    {row.dormant && (
+                                                        <span
+                                                            className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium"
+                                                            title={`Aucune attribution depuis au moins ${DORMANT_READER_DAYS} jours`}
+                                                        >
+                                                            <Moon size={11} /> Dormant
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {!row.person.isAvailable && (
                                                     <span className="block text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                                                         ne prend pas d&apos;attribution
                                                     </span>
@@ -1112,37 +1032,57 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                             </TableCell>
                                             <TableCell>
                                                 <span
-                                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getUserActivityStatusColor(person.effectiveStatus)}`}
+                                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getUserActivityStatusColor(row.person.effectiveStatus)}`}
                                                 >
-                                                    {getUserActivityStatusLabel(person.effectiveStatus)}
+                                                    {getUserActivityStatusLabel(row.person.effectiveStatus)}
                                                 </span>
-                                                {person.effectiveStatus === 'UNAVAILABLE' &&
-                                                    person.unavailableUntil && (
+                                                {row.person.effectiveStatus === 'UNAVAILABLE' &&
+                                                    row.person.unavailableUntil && (
                                                         <span className="block text-xs text-muted-foreground mt-0.5">
-                                                            jusqu&apos;au {formatDayKey(person.unavailableUntil)}
+                                                            jusqu&apos;au{' '}
+                                                            {formatDayKey(row.person.unavailableUntil)}
                                                         </span>
                                                     )}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
-                                                    <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
+                                                    <div className="h-2 w-20 rounded-full bg-muted overflow-hidden">
                                                         <div
-                                                            className={`h-full rounded-full ${isSaturated ? 'bg-amber-500' : 'bg-primary'}`}
+                                                            className={`h-full rounded-full ${row.saturated ? 'bg-amber-500' : 'bg-primary'}`}
                                                             style={{
-                                                                width: `${Math.min(100, (person.activeAssignments / Math.max(1, max)) * 100)}%`,
+                                                                width: `${Math.min(100, (row.person.activeAssignments / Math.max(1, row.max)) * 100)}%`,
                                                             }}
                                                         />
                                                     </div>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {person.activeAssignments} / {max}
+                                                    <span className="text-xs text-muted-foreground tabular-nums">
+                                                        {row.person.activeAssignments} / {row.max}
                                                     </span>
                                                 </div>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">
+                                                {row.person.lastAssignedAt ? (
+                                                    <>
+                                                        {formatDayKey(row.person.lastAssignedAt)}
+                                                        <span className="text-xs ml-1">
+                                                            ({row.idleDays} j)
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    'Jamais'
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">
+                                                {row.person.languages.length > 0
+                                                    ? row.person.languages
+                                                          .map((lang) => getLanguageLabel(lang))
+                                                          .join(', ')
+                                                    : '—'}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() => setOpenPersonId(person.id)}
+                                                    onClick={() => openPerson(row.person.id)}
                                                 >
                                                     Gérer
                                                 </Button>
@@ -1154,13 +1094,13 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         </div>
                     )}
                     <PaginationFooter
-                        page={allPage.page}
-                        totalPages={allPage.totalPages}
-                        from={allPage.from}
-                        to={allPage.to}
-                        total={allPage.total}
+                        page={readerPage.page}
+                        totalPages={readerPage.totalPages}
+                        from={readerPage.from}
+                        to={readerPage.to}
+                        total={readerPage.total}
                         unit="lecteurs"
-                        onPageChange={allPage.setPage}
+                        onPageChange={readerPage.setPage}
                     />
                 </CardContent>
             </Card>
@@ -1177,7 +1117,13 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             <PersonAvailabilityPanel
                 personId={openPersonId}
                 onClose={() => setOpenPersonId(null)}
-                onSaved={() => startRefresh(() => router.refresh())}
+                onSaved={(savedId) => {
+                    // Ringed in the calendar until somebody else is opened, so
+                    // closing the panel lands on the change instead of on a page
+                    // that looks exactly like it did before.
+                    setHighlightPersonId(savedId);
+                    startRefresh(() => router.refresh());
+                }}
             />
         </div>
     );

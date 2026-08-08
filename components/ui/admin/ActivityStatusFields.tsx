@@ -177,6 +177,46 @@ function DayField({
 }
 
 /**
+ * The Du/Au pair an indisponibilité carries, on its own. Exported because
+ * /admin/disponibilites composes the same window under its own status control
+ * (a segmented one, since choosing a status IS what that screen is for) and
+ * must not grow a second copy of the date handling.
+ */
+export function ActivityWindowFields({
+    draft,
+    hint = true,
+}: {
+    draft: ActivityStatusDraft;
+    /** Set false when the surrounding form already explains the window. */
+    hint?: boolean;
+}) {
+    return (
+        <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <DayField
+                    label="Du"
+                    value={draft.from}
+                    onChange={draft.setFrom}
+                    placeholder="Date de début"
+                />
+                <DayField
+                    label="Au"
+                    value={draft.until}
+                    onChange={draft.setUntil}
+                    placeholder="Date de fin"
+                />
+            </div>
+            {hint && (
+                <p className="text-xs text-muted-foreground">
+                    La personne redevient automatiquement active après cette date. Une date
+                    de début future est possible : elle reste active jusque-là.
+                </p>
+            )}
+        </div>
+    );
+}
+
+/**
  * Status select + the unavailability window it requires. `currentStatus` keeps
  * a person's own status visible even when it is a legacy one no longer
  * offered; `lockCurrent` additionally greys it out (nothing to change).
@@ -221,25 +261,8 @@ export function ActivityStatusFields({
             </Select>
 
             {draft.needsWindow && (
-                <div className="rounded-md border border-border bg-field/40 p-2 space-y-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <DayField
-                            label="Du"
-                            value={draft.from}
-                            onChange={draft.setFrom}
-                            placeholder="Date de début"
-                        />
-                        <DayField
-                            label="Au"
-                            value={draft.until}
-                            onChange={draft.setUntil}
-                            placeholder="Date de fin"
-                        />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        La personne redevient automatiquement active après cette date. Une date
-                        de début future est possible : elle reste active jusque-là.
-                    </p>
+                <div className="rounded-md border border-border bg-field/40 p-2">
+                    <ActivityWindowFields draft={draft} />
                 </div>
             )}
 

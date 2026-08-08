@@ -62,9 +62,20 @@ export const USER_ACTIVITY_STATUS_LABELS: Record<UserActivityStatus, string> = {
 };
 
 // Tailwind badge classes per status (same style as the member-type badges).
+//
+// UNAVAILABLE is violet, not blue: blue reads as "informational, nothing to
+// take into account", which is the opposite of what an indisponibilite means on
+// a planning screen. Red and orange overstate it the other way - an
+// indisponibilite is a normal fact declared in advance, not an incident. The
+// calendrier on /admin/disponibilites draws its bars in the same violet, so the
+// badge and the bar for one person are the same colour.
+//
+// Violet and RADIATION's purple are close in Tailwind, which is why the
+// calendrier moved its own purple state to fuchsia - there, colour is the only
+// cue. Badges carry their label, so the pair stays readable here.
 export const USER_ACTIVITY_STATUS_COLORS: Record<UserActivityStatus, string> = {
     ACTIVE:           'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-    UNAVAILABLE:      'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+    UNAVAILABLE:      'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
     DECEASED:         'bg-gray-200 text-gray-800 dark:bg-gray-800/60 dark:text-gray-300',
     RADIATION:        'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
     INACTIVE:         'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
