@@ -28,12 +28,11 @@ import {
     getAccessLevelLabel,
     SAVE_TYPE_VALUES,
     getSaveTypeLabel,
-    LANGUAGE_VALUES,
-    getLanguageLabel,
     DELIVERY_METHOD_VALUES,
     getDeliveryMethodLabel,
 } from '@/lib/user-enums';
-import { withCurrentValue, withCurrentValues } from '@/lib/select-options';
+import { withCurrentValue } from '@/lib/select-options';
+import { ReaderLanguagesField } from '@/components/ui/admin/ReaderLanguagesField';
 
 interface UserFormBackendBaseProps {
     initialData?: UserFormData;
@@ -889,26 +888,10 @@ export function UserFormBackendBase({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2 md:col-span-2">
                                     <label className="text-sm font-medium text-foreground">Langues (spécialisation)</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                        {/* A retired language already recorded on the reader (Français)
-                                            keeps its box so it stays visible and isn't dropped by the
-                                            replace-all save — unchecking it is the only way to remove it. */}
-                                        {withCurrentValues(LANGUAGE_VALUES, formData.languages).map((lang) => (
-                                            <label key={lang} className="flex items-center gap-2 text-sm text-foreground">
-                                                <Checkbox
-                                                    checked={formData.languages.includes(lang)}
-                                                    onCheckedChange={(checked) => setFormData({
-                                                        ...formData,
-                                                        languages: checked
-                                                            ? [...formData.languages, lang]
-                                                            : formData.languages.filter((l) => l !== lang),
-                                                    })}
-                                                    className="border-border data-[state=checked]:bg-primary"
-                                                />
-                                                {getLanguageLabel(lang)}
-                                            </label>
-                                        ))}
-                                    </div>
+                                    <ReaderLanguagesField
+                                        value={formData.languages}
+                                        onChange={(languages) => setFormData({ ...formData, languages })}
+                                    />
                                 </div>
 
                                 <div className="space-y-2 md:col-span-2">

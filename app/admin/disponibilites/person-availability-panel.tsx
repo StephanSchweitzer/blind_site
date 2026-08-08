@@ -30,19 +30,17 @@ import {
     needsActivityStatusConfirmation,
 } from '@/lib/user-activity-enums';
 import {
-    getLanguageLabel,
     getMemberTypeColor,
     getMemberTypeLabel,
     LANGUAGE_LABELS,
-    LANGUAGE_VALUES,
     type Language,
 } from '@/lib/user-enums';
-import { withCurrentValues } from '@/lib/select-options';
 import {
     ActivityStatusConfirmDialog,
     ActivityStatusFields,
     useActivityStatusDraft,
 } from '@/admin/ActivityStatusFields';
+import { ReaderLanguagesField } from '@/admin/ReaderLanguagesField';
 import {
     describeUnavailability,
     isEffectivelyActive,
@@ -135,8 +133,13 @@ function AssignmentRow({ assignment }: { assignment: AvailabilityAssignment }) {
                 <p className="mt-1 text-xs text-muted-foreground">{dates.join(' · ')}</p>
             )}
             <div className="mt-1 flex items-center gap-3 text-xs">
+                {/* New tab: this popup sits on top of in-progress filter/search
+                    state on the disponibilités page, and navigating away in the
+                    same tab would lose it. */}
                 <Link
                     href={`/admin/assignments?search=${assignment.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-primary hover:underline inline-flex items-center gap-1"
                 >
                     Attribution n°{assignment.id} <ExternalLink size={11} />
@@ -144,6 +147,8 @@ function AssignmentRow({ assignment }: { assignment: AvailabilityAssignment }) {
                 {assignment.orderId && (
                     <Link
                         href={`/admin/orders?search=${assignment.orderId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-muted-foreground hover:text-foreground hover:underline inline-flex items-center gap-1"
                     >
                         Demande n°{assignment.orderId} <ExternalLink size={11} />
@@ -324,7 +329,7 @@ export default function PersonAvailabilityPanel({
                         // would undo that guard.
                         ...(willBeActive ? { isAvailable } : {}),
                         availabilityNotes: notes,
-                        ...(person.memberType === 'lecteur' ? { languages } : {}),
+                        languages,
                         maxConcurrentAssignments: maxConcurrent ? parseInt(maxConcurrent, 10) : null,
                     }),
                 });
@@ -562,36 +567,18 @@ export default function PersonAvailabilityPanel({
                                                 className="bg-field border-border text-foreground"
                                             />
                                         </div>
-                                        {person.memberType === 'lecteur' && (
-                                            <div className="space-y-1 sm:col-span-2">
-                                                <label className="text-xs font-medium text-foreground">
-                                                    Langues
-                                                </label>
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1">
-                                                    {withCurrentValues(LANGUAGE_VALUES, person.languages).map(
-                                                        (lang) => (
-                                                            <label
-                                                                key={lang}
-                                                                className="flex items-center gap-1.5 text-xs text-foreground"
-                                                            >
-                                                                <Checkbox
-                                                                    checked={languages.includes(lang)}
-                                                                    onCheckedChange={(checked) =>
-                                                                        setLanguages(
-                                                                            checked === true
-                                                                                ? [...languages, lang]
-                                                                                : languages.filter((l) => l !== lang)
-                                                                        )
-                                                                    }
-                                                                    className="border-border data-[state=checked]:bg-primary"
-                                                                />
-                                                                {getLanguageLabel(lang)}
-                                                            </label>
-                                                        )
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
+                                        <div className="space-y-1 sm:col-span-2">
+                                            <label className="text-xs font-medium text-foreground">
+                                                Langues
+                                            </label>
+                                            <ReaderLanguagesField
+                                                value={languages}
+                                                onChange={setLanguages}
+                                                currentValue={person.languages}
+                                                labelClassName="text-xs text-foreground"
+                                                gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1"
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="space-y-1">

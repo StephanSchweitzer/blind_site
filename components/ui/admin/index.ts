@@ -4,3 +4,4 @@ export { AdminDashboardCard } from './AdminDashboardCard';
 export { EntitySearchCombobox } from './EntitySearchCombobox';
 export { UserSearchCombobox } from './UserSearchCombobox';
 export { BookSearchCombobox } from './BookSearchCombobox';
+export { ReaderLanguagesField } from './ReaderLanguagesField';

@@ -77,10 +77,16 @@ const TYPE_FILTERS = [
 
 type TypeFilter = typeof TYPE_FILTERS[number]['value'];
 
-/** Les deux vues « lecteurs » : qui est libre, et qui est déjà chargé. */
+/**
+ * Les vues « lecteurs » : qui est libre, qui est déjà chargé, et — parce
+ * qu'un lecteur avec une seule attribution reste preneur et que filtrer par
+ * nom dans « Sans attribution en cours » ne le trouve pas — tout le monde,
+ * indépendamment de sa charge.
+ */
 const READER_TABS = [
     { value: 'free', label: 'Sans attribution en cours' },
     { value: 'loaded', label: 'Charge des lecteurs' },
+    { value: 'all', label: 'Tous les lecteurs' },
 ] as const;
 
 type ReaderTab = typeof READER_TABS[number]['value'];
@@ -434,6 +440,21 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
         () => loadedReaders(people).filter((r) => nameMatches(r.person) && languageMatches(r.person)),
         [people, nameMatches, languageMatches]
     );
+    // Every lecteur, whatever their current charge — "loaded" and "free" split
+    // the roster in two, which is fine for triage but useless for "find this
+    // one person by name" when you don't already know which side they're on.
+    const allReaders = useMemo(
+        () =>
+            people
+                .filter(isLecteur)
+                .filter((p) => nameMatches(p) && languageMatches(p))
+                .map((person) => {
+                    const max = person.maxConcurrentAssignments ?? 3;
+                    return { person, max, saturated: person.activeAssignments >= max };
+                })
+                .sort((a, b) => a.person.name.localeCompare(b.person.name, 'fr')),
+        [people, nameMatches, languageMatches]
+    );
 
     const readerRoster = people.filter(isLecteur);
     const readersTaking = readerRoster.filter(isTakingAttributions);
@@ -475,6 +496,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
         displayedLoaded,
         `${search}|${onlyWithRoom}|${languageFilter.join(',')}`
     );
+    const allPage = usePagedRows(allReaders, `${search}|${languageFilter.join(',')}`);
 
     return (
         <div className="space-y-6">
@@ -487,21 +509,38 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         Situation au {formatDayKey(today)}.
                     </p>
                 </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => startRefresh(() => router.refresh())}
+                    disabled={isRefreshing}
+                >
+                    {isRefreshing ? (
+                        <Loader2 size={15} className="mr-2 animate-spin" />
+                    ) : (
+                        <RefreshCw size={15} className="mr-2" />
+                    )}
+                    Actualiser
+                </Button>
+            </div>
+
+            {/* ── search bar ─────────────────────────────────────────────────
+                The two ways to search this page (filter everyone below by name,
+                or jump straight to one person's card) used to live in the header
+                row, which wraps under the title on anything narrower than a wide
+                desktop — easy to scroll straight past without noticing. Sticky
+                and visually distinct so it reads as "the search" the moment the
+                page opens, and stays reachable while scrolled down into the
+                calendar or the lecteur tables. */}
+            <div className="sticky top-[65px] z-30 rounded-lg border border-border bg-card p-3 shadow-sm">
                 <div className="flex flex-wrap items-center gap-2">
-                    {/* Ouvrir n'importe qui, pas seulement les personnes listées.
-                        Le tableau ne porte que les lecteurs et les personnes déjà
-                        indisponibles : déclarer l'absence d'un permanent ou d'un
-                        auditeur actif demande de pouvoir aller le chercher. */}
-                    <UserSearchCombobox<UserSearchResult>
-                        value={null}
-                        onSelect={(user) => setOpenPersonId(user.id)}
-                        placeholder="Gérer la disponibilité de…"
-                        searchPlaceholder="Rechercher par nom ou email…"
-                        triggerClassName="h-9 w-64"
-                    />
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-foreground pl-1 shrink-0">
+                        <Search size={16} />
+                        Rechercher
+                    </div>
                     {/* Filtre de page : il s'applique au calendrier ET aux deux
                         listes de lecteurs, d'où sa place ici plutôt que dans une carte. */}
-                    <div className="relative">
+                    <div className="relative flex-1 min-w-[220px]">
                         <Search
                             size={14}
                             className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -511,7 +550,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Filtrer toute la page par nom…"
                             aria-label="Filtrer toute la page par nom"
-                            className="h-9 w-64 pl-8 pr-8 bg-field border-border text-foreground"
+                            className="h-9 w-full pl-8 pr-8 bg-field border-border text-foreground"
                         />
                         {search && (
                             <button
@@ -530,7 +569,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         renverra rien — attendu, pas un bug. */}
                     <Popover open={languagePopoverOpen} onOpenChange={setLanguagePopoverOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 gap-2">
+                            <Button variant="outline" size="sm" className="h-9 gap-2 shrink-0">
                                 <Languages size={14} />
                                 {languageFilter.length > 0
                                     ? `${languageFilter.length} langue${languageFilter.length > 1 ? 's' : ''}`
@@ -571,19 +610,18 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             )}
                         </PopoverContent>
                     </Popover>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startRefresh(() => router.refresh())}
-                        disabled={isRefreshing}
-                    >
-                        {isRefreshing ? (
-                            <Loader2 size={15} className="mr-2 animate-spin" />
-                        ) : (
-                            <RefreshCw size={15} className="mr-2" />
-                        )}
-                        Actualiser
-                    </Button>
+                    <div className="w-px self-stretch bg-border shrink-0" aria-hidden />
+                    {/* Ouvrir n'importe qui, pas seulement les personnes listées.
+                        Le tableau ne porte que les lecteurs et les personnes déjà
+                        indisponibles : déclarer l'absence d'un permanent ou d'un
+                        auditeur actif demande de pouvoir aller le chercher. */}
+                    <UserSearchCombobox<UserSearchResult>
+                        value={null}
+                        onSelect={(user) => setOpenPersonId(user.id)}
+                        placeholder="Gérer la disponibilité de…"
+                        searchPlaceholder="Rechercher par nom ou email…"
+                        triggerClassName="h-9 w-64 shrink-0"
+                    />
                 </div>
             </div>
 
@@ -795,7 +833,11 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             {READER_TABS.map((tab) => {
                                 const isActive = readerTab === tab.value;
                                 const count =
-                                    tab.value === 'free' ? displayedFree.length : displayedLoaded.length;
+                                    tab.value === 'free'
+                                        ? displayedFree.length
+                                        : tab.value === 'loaded'
+                                            ? displayedLoaded.length
+                                            : allReaders.length;
                                 return (
                                     <button
                                         key={tab.value}
@@ -1027,6 +1069,98 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         total={loadedPage.total}
                         unit="lecteurs"
                         onPageChange={loadedPage.setPage}
+                    />
+                </CardContent>
+
+                {/* ── all readers ────────────────────────────────────────── */}
+                <CardContent
+                    role="tabpanel"
+                    id="reader-panel-all"
+                    aria-labelledby="reader-tab-all"
+                    hidden={readerTab !== 'all'}
+                    className={readerTab === 'all' ? 'pt-4' : 'hidden'}
+                >
+                    <p className="text-xs text-muted-foreground mb-3">
+                        Tous les lecteurs, libres ou déjà chargés — pour retrouver quelqu&apos;un
+                        par son nom sans devoir deviner dans quel onglet il se trouve.
+                    </p>
+                    {allReaders.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-6 text-center">
+                            Aucun lecteur ne correspond à ces critères.
+                        </p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Lecteur</TableHead>
+                                        <TableHead>Statut</TableHead>
+                                        <TableHead>Charge</TableHead>
+                                        <TableHead className="text-right">Disponibilité</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {allPage.visible.map(({ person, max, saturated: isSaturated }) => (
+                                        <TableRow key={person.id}>
+                                            <TableCell>
+                                                <PersonButton person={person} onOpen={setOpenPersonId} />
+                                                {!person.isAvailable && (
+                                                    <span className="block text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                                                        ne prend pas d&apos;attribution
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <span
+                                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getUserActivityStatusColor(person.effectiveStatus)}`}
+                                                >
+                                                    {getUserActivityStatusLabel(person.effectiveStatus)}
+                                                </span>
+                                                {person.effectiveStatus === 'UNAVAILABLE' &&
+                                                    person.unavailableUntil && (
+                                                        <span className="block text-xs text-muted-foreground mt-0.5">
+                                                            jusqu&apos;au {formatDayKey(person.unavailableUntil)}
+                                                        </span>
+                                                    )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full ${isSaturated ? 'bg-amber-500' : 'bg-primary'}`}
+                                                            style={{
+                                                                width: `${Math.min(100, (person.activeAssignments / Math.max(1, max)) * 100)}%`,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {person.activeAssignments} / {max}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setOpenPersonId(person.id)}
+                                                >
+                                                    Gérer
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                    <PaginationFooter
+                        page={allPage.page}
+                        totalPages={allPage.totalPages}
+                        from={allPage.from}
+                        to={allPage.to}
+                        total={allPage.total}
+                        unit="lecteurs"
+                        onPageChange={allPage.setPage}
                     />
                 </CardContent>
             </Card>
