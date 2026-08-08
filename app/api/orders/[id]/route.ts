@@ -33,9 +33,12 @@ import { withAdmin } from '@/lib/auth/guards';
 
 // Reprint notice returned to the client when an invoice-relevant field changes on a
 // non-DRAFT (issued) bill. COST = total recomputed; VISIBLE = printed field changed.
+// ISSUED = completing this demande accrued it onto its client's brouillon and that
+// crossed the seuil in the same request, so the facture is now émise for the first time.
 type BillNotice =
     | { billId: number; billState: BillingStatus; kind: 'COST'; newTotal: string | null }
-    | { billId: number; billState: BillingStatus; kind: 'VISIBLE' };
+    | { billId: number; billState: BillingStatus; kind: 'VISIBLE' }
+    | { billId: number; billState: BillingStatus; kind: 'ISSUED'; total: string };
 
 // Normalize a cost input to a number or null (treats '' / null / undefined / NaN as null).
 function parseCost(raw: unknown): number | null {
@@ -382,7 +385,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             notes: data.notes || null,
         };
 
-        const { order, newTotal } = await prisma.$transaction(async (tx) => {
+        const { order, newTotal, issued } = await prisma.$transaction(async (tx) => {
             const order = await tx.orders.update({
                 where: { id: orderId },
                 data: updateData,
@@ -443,8 +446,10 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
             // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
             // Skip issued bills (BILLED/PAID/SOLDE) — those go through the reprint path below.
+            // Captured so the client can be told the facture just went out — see billNotice below.
+            let issued: { billId: number; total: number } | null = null;
             if (justCompletedAndUnbilled || billState === BillingStatus.DRAFT) {
-                await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
+                issued = await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
             // Propagate 1–3 down to the assignment; « Soldé » and « Attente envoi
@@ -459,12 +464,16 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 await syncAssignmentToStatus(tx, assignment.id, data.statusId, performedById);
             }
 
-            return { order, newTotal };
+            return { order, newTotal, issued };
         });
 
         // Reprint notice for issued bills (never for DRAFT — nothing has been sent).
         let billNotice: BillNotice | null = null;
-        if (hasBill && existingOrder.billId != null && billState && billState !== BillingStatus.DRAFT) {
+        if (issued) {
+            // The bill this demande just accrued onto tipped over the seuil in this
+            // same request — first time it's ever been émise, so print/send it.
+            billNotice = { billId: issued.billId, billState: BillingStatus.BILLED, kind: 'ISSUED', total: issued.total.toString() };
+        } else if (hasBill && existingOrder.billId != null && billState && billState !== BillingStatus.DRAFT) {
             if (costChanged) {
                 billNotice = { billId: existingOrder.billId, billState, kind: 'COST', newTotal: newTotal?.toString() ?? null };
             } else if (visibleChanged) {
@@ -693,7 +702,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         if (body.lentPhysicalBook !== undefined) updateData.lentPhysicalBook = body.lentPhysicalBook;
         if (body.notes !== undefined) updateData.notes = body.notes || null;
 
-        const { order, newTotal } = await prisma.$transaction(async (tx) => {
+        const { order, newTotal, issued } = await prisma.$transaction(async (tx) => {
             const order = await tx.orders.update({
                 where: { id: orderId },
                 data: updateData,
@@ -743,8 +752,10 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
 
             // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
             // Skip issued bills (BILLED/PAID/SOLDE) — those go through the reprint path below.
+            // Captured so the client can be told the facture just went out — see billNotice below.
+            let issued: { billId: number; total: number } | null = null;
             if (justCompletedAndUnbilled || billState === BillingStatus.DRAFT) {
-                await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
+                issued = await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
             // Propagate 1–3 down to the assignment; « Soldé » and « Attente envoi
@@ -759,11 +770,13 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 await syncAssignmentToStatus(tx, assignment.id, body.statusId, performedById);
             }
 
-            return { order, newTotal };
+            return { order, newTotal, issued };
         });
 
         let billNotice: BillNotice | null = null;
-        if (hasBill && existingOrder.billId != null && billState && billState !== BillingStatus.DRAFT) {
+        if (issued) {
+            billNotice = { billId: issued.billId, billState: BillingStatus.BILLED, kind: 'ISSUED', total: issued.total.toString() };
+        } else if (hasBill && existingOrder.billId != null && billState && billState !== BillingStatus.DRAFT) {
             if (costChanged) {
                 billNotice = { billId: existingOrder.billId, billState, kind: 'COST', newTotal: newTotal?.toString() ?? null };
             } else if (visibleChanged) {

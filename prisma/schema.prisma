@@ -828,6 +828,9 @@ model AudioTrackEvent {
   /// Only set for RENAME.
   newFilename   String?
   sizeBytes     BigInt?
+  /// Only set for UPLOAD, and only when the browser could read it from the
+  /// file. Feeds Book.readingDurationMinutes — see refreshBookAudioState.
+  durationSeconds Int?
   performedById Int?
   createdAt     DateTime         @default(now())
   book          Book?            @relation("BookAudioTrackEvents", fields: [bookId], references: [id], onDelete: SetNull)

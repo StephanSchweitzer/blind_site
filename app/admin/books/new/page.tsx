@@ -312,7 +312,7 @@ export default function AddBook() {
                                 />
                             </div>
 
-                            <DurationInputs formData={formData} handleChange={handleChange}/>
+                            <DurationInputs formData={formData}/>
 
 
                             <div className="space-y-2">

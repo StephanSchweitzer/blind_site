@@ -68,6 +68,40 @@ export interface RefreshResult {
 }
 
 /**
+ * Rebuilds "what is the current duration of the file now sitting at this
+ * filename" from the book's AudioTrackEvent history, without a query per
+ * track.
+ *
+ * Only UPLOAD and RENAME matter: an UPLOAD is the one place a duration is
+ * ever known (read client-side from the file itself — see useAudioUpload),
+ * and a RENAME carries that known duration forward under the new filename so
+ * a cosmetic reorder doesn't erase it. DELETE/RESTORE need no handling at
+ * all: a deleted file simply stops appearing in the current bucket listing
+ * the caller checks this map against, and a restored one reappears under a
+ * filename its original UPLOAD event still names, since the log is
+ * append-only.
+ */
+async function resolveTrackDurations(bookId: number): Promise<Map<string, number | null>> {
+    const events = await prisma.audioTrackEvent.findMany({
+        where: { bookId, action: { in: ['UPLOAD', 'RENAME'] } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: { action: true, filename: true, newFilename: true, durationSeconds: true },
+    });
+
+    const durations = new Map<string, number | null>();
+    for (const e of events) {
+        if (e.action === 'UPLOAD') {
+            durations.set(e.filename, e.durationSeconds);
+        } else if (e.newFilename) {
+            const carried = durations.get(e.filename) ?? null;
+            durations.delete(e.filename);
+            durations.set(e.newFilename, carried);
+        }
+    }
+    return durations;
+}
+
+/**
  * Re-read the folder and persist what we found. Idempotent, safe to call twice.
  *
  * Deleting the last track leaves the folder present but audio-free, so the
@@ -98,6 +132,8 @@ export async function refreshBookAudioState(
     let status: AudioLinkStatusValue;
     let trackCount: number | null = null;
     let sizeKb: number | null = null;
+    /** Set only when every current track's duration is known — see below. */
+    let readingDurationMinutes: number | undefined;
 
     if (!prefix) {
         status = 'NO_PATH';
@@ -111,6 +147,22 @@ export async function refreshBookAudioState(
             // just counted, so "no count" and "no weight" always travel together
             // rather than leaving a stale size behind a broken link.
             sizeKb = bytesToKb(audio.reduce((total, o) => total + o.size, 0));
+
+            // The duration is only trustworthy once every track currently in
+            // the folder resolves to a known value. A book recorded before
+            // this feature shipped (or with even one track that predates it)
+            // has no UPLOAD event to ask, so it fails this check forever —
+            // deliberately: the alternative is silently zeroing out a
+            // hand-entered duration on a book nobody re-uploaded to, which is
+            // worse than leaving a stale-but-correct number in place.
+            const filenames = audio.map((o) => o.key.slice(prefix.length));
+            const durations = await resolveTrackDurations(bookId);
+            const total = filenames.reduce<number | null>((sum, name) => {
+                if (sum === null) return null;
+                const d = durations.get(name);
+                return d == null ? null : sum + d;
+            }, 0);
+            if (total !== null) readingDurationMinutes = Math.round(total / 60);
         } else if (objects.length) {
             // The folder exists — B2's .bzEmpty placeholder or some stray file —
             // but holds no audio.
@@ -121,7 +173,7 @@ export async function refreshBookAudioState(
     }
 
     // Outside the audit trail, and provably lossless: this statement writes only
-    // the four cache columns, and the trail already refuses all four — the three
+    // the cache columns, and the trail already refuses all of them — the
     // states are DERIVED_FIELDS, audioCheckedAt is a NOISE_FIELD — so it could
     // never produce a surviving event. Saying so here also spares the audit
     // extension its "before" read on a path that runs on every dialogue open.
@@ -136,6 +188,7 @@ export async function refreshBookAudioState(
                 audioTrackCount: trackCount,
                 audioSizeKb: sizeKb,
                 audioCheckedAt: new Date(),
+                ...(readingDurationMinutes !== undefined ? { readingDurationMinutes } : {}),
             },
         })
     );

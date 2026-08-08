@@ -164,6 +164,46 @@ const PASS_PAUSE_MS = 2_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** How long to wait for the browser to read a file's own metadata before giving up on it. */
+const DURATION_READ_TIMEOUT_MS = 15_000;
+
+/**
+ * Reads a track's playback length straight from the file the admin picked —
+ * free, local, and exactly what an <audio> element already has to do to play
+ * it. Feeds Book.readingDurationMinutes via the commit call below.
+ *
+ * Best-effort: an unreadable or unsupported file resolves to null rather than
+ * rejecting, so one odd track never blocks or fails the whole batch. The
+ * duration is informational, not billing, so a missing value is a shrug, not
+ * an error.
+ */
+function getAudioDurationSeconds(file: File): Promise<number | null> {
+    return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const audio = document.createElement('audio');
+        let settled = false;
+
+        const finish = (value: number | null) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
+            URL.revokeObjectURL(url);
+            audio.removeAttribute('src');
+            resolve(value);
+        };
+
+        const timeout = setTimeout(() => finish(null), DURATION_READ_TIMEOUT_MS);
+
+        audio.preload = 'metadata';
+        audio.onloadedmetadata = () => {
+            const d = audio.duration;
+            finish(Number.isFinite(d) && d > 0 ? Math.round(d) : null);
+        };
+        audio.onerror = () => finish(null);
+        audio.src = url;
+    });
+}
+
 /**
  * Equal-jitter exponential backoff.
  *
@@ -590,7 +630,7 @@ export function useAudioUpload(bookId: number) {
 
                     // --- 2. PUT straight to the bucket -----------------------
                     setPhase('uploading');
-                    const sent: { key: string; size: number; name: string }[] = [];
+                    const sent: { key: string; size: number; name: string; durationSeconds: number | null }[] = [];
                     let queue = 0;
 
                     const worker = async () => {
@@ -606,7 +646,8 @@ export function useAudioUpload(bookId: number) {
                                 await putWithRetry(file, s, row, publish);
                                 row.status = 'terminé';
                                 row.loaded = row.total;
-                                sent.push({ key: s.key, size: file.size, name: s.originalName });
+                                const durationSeconds = await getAudioDurationSeconds(file);
+                                sent.push({ key: s.key, size: file.size, name: s.originalName, durationSeconds });
                             } catch (e) {
                                 const err = e instanceof PutError ? e : null;
                                 fail(
@@ -637,7 +678,11 @@ export function useAudioUpload(bookId: number) {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    uploaded: sent.map(({ key, size }) => ({ key, size })),
+                                    uploaded: sent.map(({ key, size, durationSeconds }) => ({
+                                        key,
+                                        size,
+                                        durationSeconds,
+                                    })),
                                 }),
                             },
                         );

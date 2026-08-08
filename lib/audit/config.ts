@@ -155,6 +155,11 @@ export function isNoiseField(field: string): boolean {
  *   Book.escalatedAt
  *       stamped so the signalement mail isn't re-sent on the next visit
  *       (app/admin/review/actions.ts). Bookkeeping for a mail, not an edit.
+ *   Book.readingDurationMinutes
+ *       once a book's tracks all carry a known duration (see
+ *       refreshBookAudioState), the total is summed from them rather than
+ *       typed — the same re-read-writes-a-field-nobody-touched situation as
+ *       the other three Book columns above.
  *   Bill.invoiceAmount
  *       recomputeBillTotal() sums the linked orders' costs. Those costs are
  *       themselves traced, so the total restates what the journal already says —
@@ -166,7 +171,7 @@ export function isNoiseField(field: string): boolean {
  *   User.currentBalance — looks derived, is actually typed in the user form.
  */
 const DERIVED_FIELDS: Record<string, Set<string>> = {
-    Book: new Set(['audioLinkStatus', 'audioTrackCount', 'audioSizeKb', 'escalatedAt']),
+    Book: new Set(['audioLinkStatus', 'audioTrackCount', 'audioSizeKb', 'escalatedAt', 'readingDurationMinutes']),
     Bill: new Set(['invoiceAmount']),
 };
 

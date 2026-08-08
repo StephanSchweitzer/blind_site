@@ -394,10 +394,7 @@ export default function EditionLivre() {
                                 />
                             </div>
 
-                            <DurationInputs
-                                formData={formData}
-                                handleChange={gererChangement}  // Using your existing handler name 'gererChangement'
-                            />
+                            <DurationInputs formData={formData} />
 
 
                             <div className="space-y-2">

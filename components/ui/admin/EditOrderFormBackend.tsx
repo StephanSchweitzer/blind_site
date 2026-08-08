@@ -42,7 +42,10 @@ export function EditOrderFormBackend({
             .catch(() => {});
     }, [orderId]);
 
-    type Notice = { billId: number; billState: string; kind: 'COST' | 'VISIBLE'; newTotal?: string | null };
+    type Notice =
+        | { billId: number; billState: string; kind: 'COST'; newTotal?: string | null }
+        | { billId: number; billState: string; kind: 'VISIBLE' }
+        | { billId: number; billState: string; kind: 'ISSUED'; total: string };
     const [notice, setNotice] = useState<Notice | null>(null);
     const resolveRef = useRef<((id: number) => void) | null>(null);
 
@@ -144,22 +147,32 @@ export function EditOrderFormBackend({
                 <DialogContent className="bg-card border-border max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="text-amber-700 dark:text-amber-300">
-                            {notice?.kind === 'COST' ? 'Coût modifié — facture à régénérer' : 'Éléments visibles modifiés'}
+                            {notice?.kind === 'COST' && 'Coût modifié — facture à régénérer'}
+                            {notice?.kind === 'VISIBLE' && 'Éléments visibles modifiés'}
+                            {notice?.kind === 'ISSUED' && 'Facture émise'}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="text-foreground text-sm space-y-3">
-                        {notice?.kind === 'COST' ? (
+                        {notice?.kind === 'COST' && (
                             <p>
                                 Vous avez modifié le coût de cette demande, ce qui a mis à jour le montant total de la
                                 facture #{notice?.billId}{notice?.newTotal ? ` (nouveau total : ${notice.newTotal} €)` : ''}.
                                 Veuillez consulter la facture, la réimprimer et relancer le processus de facturation afin de
                                 conserver des enregistrements corrects.
                             </p>
-                        ) : (
+                        )}
+                        {notice?.kind === 'VISIBLE' && (
                             <p>
                                 Vous avez modifié un élément figurant sur la facture #{notice?.billId} (livre, date ou type).
                                 Le montant total n&apos;a pas changé, mais le document déjà émis n&apos;est plus à jour :
                                 pensez à le réimprimer.
+                            </p>
+                        )}
+                        {notice?.kind === 'ISSUED' && (
+                            <p>
+                                En passant cette demande à « Terminé », elle a été rattachée à la facture #{notice?.billId},
+                                qui a atteint le seuil de facturation du client et vient d&apos;être émise (total : {notice?.total} €).
+                                Pensez à l&apos;imprimer et à l&apos;envoyer.
                             </p>
                         )}
                         {notice && (

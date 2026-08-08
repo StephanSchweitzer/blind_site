@@ -29,7 +29,9 @@ export const POST = withAdmin(async (req, { params, me }) => {
     }
 
     const body = await req.json().catch(() => null);
-    const uploaded: { key?: unknown; size?: unknown }[] = Array.isArray(body?.uploaded)
+    const uploaded: { key?: unknown; size?: unknown; durationSeconds?: unknown }[] = Array.isArray(
+        body?.uploaded,
+    )
         ? body.uploaded
         : [];
 
@@ -70,12 +72,17 @@ export const POST = withAdmin(async (req, { params, me }) => {
             continue;
         }
         confirmed.push(key);
+        const durationSeconds =
+            typeof u.durationSeconds === 'number' && Number.isFinite(u.durationSeconds) && u.durationSeconds > 0
+                ? Math.round(u.durationSeconds)
+                : null;
         await prisma.audioTrackEvent.create({
             data: {
                 bookId,
                 action: 'UPLOAD',
                 filename: key.slice(prefix.length),
                 sizeBytes: BigInt(head.sizeBytes),
+                durationSeconds,
                 performedById: me.id,
             },
         });

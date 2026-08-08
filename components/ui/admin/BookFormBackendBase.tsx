@@ -498,7 +498,7 @@ export function BookFormBackendBase({
                             />
                         </div>
 
-                        <DurationInputs formData={formData} handleChange={handleChange}/>
+                        <DurationInputs formData={formData}/>
 
                         <div className="space-y-2">
                             <label htmlFor="description" className="text-sm font-medium text-foreground">
