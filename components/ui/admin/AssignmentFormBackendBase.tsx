@@ -41,6 +41,7 @@ import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuard
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
+import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
 
 // N3 — required fields, visual top→bottom (book derives from the order picker).
 // `readerId` is required on creation only: an attribution always belongs to a
@@ -188,6 +189,52 @@ export function AssignmentFormBackendBase({
     // Selected display values
     const [selectedBook, setSelectedBook] = useState<BookSummary | null>(initialSelectedBook || null);
     const [selectedOrder, setSelectedOrder] = useState<OrderSummary | null>(initialSelectedOrder || null);
+
+    // Cached audio state of the selected book — read-only, no bucket call (see
+    // GET /api/books/[id]/audio/state). Feeds the « Terminé » lock below
+    // (guardAssignmentHasAudio) and is handed down to BookAudioButton so it
+    // doesn't run its own duplicate fetch for the same book.
+    //
+    // Carries its own bookId rather than being reset to null on every
+    // catalogueId change: nothing needs to setState synchronously inside the
+    // effect below (react-hooks/set-state-in-effect) this way, and a stale
+    // result from the previous book is simply ignored by comparing bookId
+    // against formData.catalogueId wherever this is read, instead of ever
+    // being surfaced as this book's answer.
+    const [bookAudioState, setBookAudioState] = useState<{
+        bookId: number;
+        status: AudioLinkStatus;
+        trackCount: number | null;
+    } | null>(null);
+
+    const loadBookAudioState = useCallback(async (bookId: number) => {
+        try {
+            const res = await fetch(`/api/books/${bookId}/audio/state`);
+            if (!res.ok) return;
+            const d = await res.json();
+            setBookAudioState({
+                bookId,
+                status: d.status as AudioLinkStatus,
+                trackCount: d.trackCount ?? null,
+            });
+        } catch {
+            // Left as-is — the status select simply doesn't lock « Terminé » on
+            // this signal; the server still re-checks authoritatively on submit.
+        }
+    }, []);
+
+    // Ref-guarded, same shape as BookAudioButton's own fetch-once-per-book
+    // effect: a bare `if (x) loadX()` reads as calling setState synchronously
+    // within an effect to the linter even though loadBookAudioState only
+    // resolves after an await. Tracked in a ref, not state — bookkeeping about
+    // whether a fetch was kicked off, not something rendered.
+    const fetchedAudioForRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (!formData.catalogueId) return;
+        if (fetchedAudioForRef.current === formData.catalogueId) return;
+        fetchedAudioForRef.current = formData.catalogueId;
+        void loadBookAudioState(formData.catalogueId);
+    }, [formData.catalogueId, loadBookAudioState]);
 
     // Reader reassignment
     const [isReassigningReader, setIsReassigningReader] = useState(false);
@@ -556,6 +603,60 @@ export function AssignmentFormBackendBase({
     const getReaderDisplayName = (reader: ReaderSummary | null) =>
         reader ? getUserDisplayName(reader) : null;
 
+    // Mirrors guardAssignmentConsistency (lib/statusSync.ts), which the server
+    // re-checks on every save regardless of what actually changed: each status
+    // implies a shape for reader/dates, so offering one the current fields
+    // already contradict would just bounce off the server. Reader/date fields
+    // sit right above this select, so unlike the demande form's equivalent lock
+    // this one needs no explanatory text — the missing field is visible in the
+    // same form. The currently-held status is exempt from its own rule (only
+    // ever locked out of, never out from under) so editing an already-
+    // inconsistent legacy row's notes never gets stuck on the status field.
+    //
+    // Edit mode reads the reader from the fetched history (currentReader), not
+    // selectedReaderId — reassignment happens through its own endpoint
+    // (handleReassignReader), not this form's submit.
+    const hasReader = isEditMode ? currentReader !== null : selectedReaderId !== null;
+    const sentDateSet = !!formData.sentToReaderDate;
+    const returnedDateSet = !!formData.returnedToECADate;
+
+    const attenteLocked =
+        formData.statusId !== STATUS.ATTENTE && (sentDateSet || returnedDateSet);
+    const enCoursLocked =
+        formData.statusId !== STATUS.EN_COURS &&
+        (!hasReader || !sentDateSet || returnedDateSet);
+
+    // guardAssignmentHasAudio: « Terminé » additionally needs the book's
+    // enregistrement deposited. The server's authoritative check is actually
+    // about the recording's WEIGHT being known (bookHasWeighedAudio), not
+    // merely existing — but that cache is stale for nearly the whole
+    // catalogue (a legacy sync script stamped OK on ~11.5k books without ever
+    // weighing them, per lib/audio/state.ts), and a present-but-unweighed
+    // recording is re-weighed transparently by the server's own bucket
+    // fallback at submit time, so it would still succeed. Locking on "not yet
+    // weighed" would therefore false-positive on most of the catalogue.
+    // audioLinkStatusIsMissing is the coarser, stable signal — the same one
+    // BookAudioButton's badge already shows — for "there is nothing to send
+    // at all", which is the case actually worth stopping someone before they
+    // submit. Ignore a stale result left over from a previously selected book
+    // (bookId mismatch) — until the current book's own state has loaded,
+    // this is an unknown, not a lock.
+    const audioMissing =
+        formData.catalogueId != null &&
+        bookAudioState !== null &&
+        bookAudioState.bookId === formData.catalogueId &&
+        audioLinkStatusIsMissing(bookAudioState.status);
+    const termineLocked =
+        formData.statusId !== STATUS.TERMINE &&
+        (!hasReader || !sentDateSet || !returnedDateSet || audioMissing);
+
+    // guardCanReassignReader: a « Terminé » attribution must be reopened before
+    // its reader can change. Read from initialData (the persisted snapshot),
+    // not the live statusId select — reassignment is its own immediate API
+    // call, so what it will actually be checked against is whatever is saved,
+    // not an unsaved edit sitting in the status dropdown.
+    const isAssignmentTermine = initialData?.statusId === STATUS.TERMINE;
+
     return (
         <>
         <Card className="w-full max-w-4xl mx-auto bg-card border-border">
@@ -668,7 +769,17 @@ export function AssignmentFormBackendBase({
                                                 type="button"
                                                 variant="outline"
                                                 onClick={handleReassignReader}
-                                                disabled={isReassigningReader || !selectedReaderId || selectedReaderId === currentReader?.id}
+                                                disabled={
+                                                    isReassigningReader ||
+                                                    !selectedReaderId ||
+                                                    selectedReaderId === currentReader?.id ||
+                                                    isAssignmentTermine
+                                                }
+                                                title={
+                                                    isAssignmentTermine
+                                                        ? 'Attribution terminée : rouvrez-la (statut « En cours ») avant de réattribuer un lecteur.'
+                                                        : undefined
+                                                }
                                                 className="bg-primary hover:bg-primary/90 text-primary-foreground border-primary disabled:opacity-50"
                                             >
                                                 <UserIcon className="mr-2 h-4 w-4" />
@@ -862,6 +973,9 @@ export function AssignmentFormBackendBase({
                                 bookId={selectedBook.id}
                                 bookTitle={selectedBook.title}
                                 size="sm"
+                                audioLinkStatus={bookAudioState?.bookId === selectedBook.id ? bookAudioState.status : undefined}
+                                audioTrackCount={bookAudioState?.bookId === selectedBook.id ? bookAudioState.trackCount : undefined}
+                                onChanged={() => void loadBookAudioState(selectedBook.id)}
                             />
                         )}
                     </div>
@@ -917,12 +1031,32 @@ export function AssignmentFormBackendBase({
                                         status.id !== STATUS.ATTENTE_AUDITEUR
                                     )
                                     .map((status) => (
-                                        <SelectItem key={status.id} value={status.id.toString()} className="text-foreground">
+                                        <SelectItem
+                                            key={status.id}
+                                            value={status.id.toString()}
+                                            disabled={
+                                                (status.id === STATUS.ATTENTE && attenteLocked) ||
+                                                (status.id === STATUS.EN_COURS && enCoursLocked) ||
+                                                (status.id === STATUS.TERMINE && termineLocked)
+                                            }
+                                            className="text-foreground data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                                        >
                                             {status.name}
                                         </SelectItem>
                                     ))}
                             </SelectContent>
                         </Select>
+                        {/* Only the audio reason gets spelled out — it depends on a bucket
+                            state nobody can see from this form, unlike the reader/dates
+                            fields the consistency lock above reacts to (those sit right
+                            here and explain themselves). */}
+                        {termineLocked && audioMissing && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                « Terminé » nécessite un enregistrement pour ce livre, et aucun
+                                n&apos;est associé pour l&apos;instant. Ouvrez « l&apos;éditeur audio »
+                                ci-dessus pour le déposer — cela débloquera « Terminé ».
+                            </p>
+                        )}
                     </div>
 
                     {/* Delivery method */}

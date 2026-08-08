@@ -755,9 +755,10 @@ export function OrderFormBackendBase({
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
                                 <div className="py-1">
-                                    {/* « Soldé » is a facture status, not a demande status — never offer
-                                        it. A legacy demande that still holds it keeps its option so
-                                        editing it doesn't show an empty required field.
+                                    {/* « Soldé » is a facture status, not a demande status — only a
+                                        facture may be soldée. No exception for a legacy demande: no
+                                        demande in production holds it, so it is never offered, full stop
+                                        (guardOrderStatus rejects it server-side too).
 
                                         A duplication has a two-state lifecycle, « À faire » → « Terminé »:
                                         it owns no attribution, so the statuts that describe a book sitting
@@ -766,10 +767,10 @@ export function OrderFormBackendBase({
                                         lecteur », which already means "à faire" and names the action. */}
                                     {statuses
                                         .filter((status) => {
-                                            // Whatever the demande already holds stays visible, so a
+                                            if (status.id === STATUS.SOLDE) return false;
+                                            // Whatever else the demande already holds stays visible, so a
                                             // legacy row never opens on a blank required field.
                                             if (status.id === formData.statusId) return true;
-                                            if (status.id === STATUS.SOLDE) return false;
                                             if (formData.isDuplication) {
                                                 return status.id === STATUS.A_FAIRE || status.id === STATUS.TERMINE;
                                             }
