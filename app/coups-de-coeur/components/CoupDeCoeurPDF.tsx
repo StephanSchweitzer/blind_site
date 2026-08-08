@@ -24,10 +24,23 @@ const s = StyleSheet.create({
     book: { backgroundColor: '#f6f9fd', paddingVertical: 9, paddingHorizontal: 12, marginBottom: 12 },
     bookTitle: { fontSize: 14, fontWeight: 'bold', color: NAVY },
     author: { fontSize: 12, marginTop: 2, color: '#374151' },
+    meta: { fontSize: 10, marginTop: 2, color: '#6b7280' },
     bookDesc: { fontSize: 12, marginTop: 5, lineHeight: 1.55, color: '#374151' },
 
     contact: { fontSize: 11, textAlign: 'center', marginTop: 36, color: NAVY },
 });
+
+const formatBookMeta = (book: BookWithGenres) => {
+    const parts: string[] = [];
+    if (book.publisher) parts.push(book.publisher);
+    if (book.pageCount) parts.push(`${book.pageCount} pages`);
+    if (book.readingDurationMinutes) {
+        const h = Math.floor(book.readingDurationMinutes / 60);
+        const min = book.readingDurationMinutes % 60;
+        parts.push(`${h}h ${min}min`);
+    }
+    return parts.join('  ·  ');
+};
 
 const groupBooksByGenre = (books: { book: BookWithGenres }[]) => {
     const withGenres = books.map(({ book }) => ({
@@ -66,6 +79,7 @@ export const CoupDeCoeurPDF = ({ content }: { content: CoupDeCoeur[] }) => {
                                 <View style={s.book}>
                                     <Text style={s.bookTitle}>{firstBook.title}</Text>
                                     <Text style={s.author}>{firstBook.author}</Text>
+                                    {formatBookMeta(firstBook) && <Text style={s.meta}>{formatBookMeta(firstBook)}</Text>}
                                     {firstBook.description && <Text style={s.bookDesc}>{firstBook.description}</Text>}
                                 </View>
                             )}
@@ -74,6 +88,7 @@ export const CoupDeCoeurPDF = ({ content }: { content: CoupDeCoeur[] }) => {
                             <View key={book.id} style={s.book} wrap={false}>
                                 <Text style={s.bookTitle}>{book.title}</Text>
                                 <Text style={s.author}>{book.author}</Text>
+                                {formatBookMeta(book) && <Text style={s.meta}>{formatBookMeta(book)}</Text>}
                                 {book.description && <Text style={s.bookDesc}>{book.description}</Text>}
                             </View>
                         )),
