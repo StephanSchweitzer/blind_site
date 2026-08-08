@@ -536,6 +536,18 @@ export function OrderFormBackendBase({
         enCoursIsLocked &&
         (formData.statusId === null || formData.statusId === STATUS.ATTENTE);
     const isAttenteAuditeur = formData.statusId === STATUS.ATTENTE_AUDITEUR;
+    // Reaching « Attente envoi vers auditeur » normally means the attribution is
+    // « Terminé » (guardOrderCompletion), carrying a date d'envoi and une date de
+    // retour — walking the demande back to « Attente envoi vers lecteur » would
+    // contradict those attribution-owned dates, and the server refuses it
+    // (guardDemandeStatusSync). That guard only fires when an attribution is
+    // actually linked, so mirror it exactly: a demande with no attribution at all
+    // (data edited outside the guarded API) has nothing to contradict and the
+    // server would accept the change — don't lock it here either.
+    const attenteIsLocked =
+        isAttenteAuditeur &&
+        !!initialAssignment &&
+        (!!initialAssignment.sentToReaderDate || !!initialAssignment.returnedToECADate);
     const blockingRecording =
         formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
             ? getRecordingFor(formData.catalogueId)?.blockingRecording ?? null
@@ -767,7 +779,10 @@ export function OrderFormBackendBase({
                                             <SelectItem
                                                 key={status.id}
                                                 value={status.id.toString()}
-                                                disabled={enCoursIsLocked && status.id === STATUS.EN_COURS}
+                                                disabled={
+                                                    (enCoursIsLocked && status.id === STATUS.EN_COURS) ||
+                                                    (attenteIsLocked && status.id === STATUS.ATTENTE)
+                                                }
                                                 className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
                                             >
                                                 <span className="font-medium">{status.name}</span>
@@ -793,6 +808,10 @@ export function OrderFormBackendBase({
                                 L&apos;enregistrement est revenu du lecteur mais n&apos;a pas encore été
                                 expédié à l&apos;auditeur. Passez la demande « Terminé » le jour de
                                 l&apos;expédition — c&apos;est ce jour-là qui devient la date de clôture.
+                                {attenteIsLocked && (
+                                    <> « Attente envoi vers lecteur » est verrouillé : l&apos;attribution
+                                    est déjà « Terminé », avec sa date d&apos;envoi et sa date de retour.</>
+                                )}
                             </p>
                         )}
                     </div>
