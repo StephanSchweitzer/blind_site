@@ -29,7 +29,15 @@ import {
     getUserActivityStatusLabel,
     needsActivityStatusConfirmation,
 } from '@/lib/user-activity-enums';
-import { getMemberTypeColor, getMemberTypeLabel, LANGUAGE_LABELS, type Language } from '@/lib/user-enums';
+import {
+    getLanguageLabel,
+    getMemberTypeColor,
+    getMemberTypeLabel,
+    LANGUAGE_LABELS,
+    LANGUAGE_VALUES,
+    type Language,
+} from '@/lib/user-enums';
+import { withCurrentValues } from '@/lib/select-options';
 import {
     ActivityStatusConfirmDialog,
     ActivityStatusFields,
@@ -167,7 +175,7 @@ export default function PersonAvailabilityPanel({
     const [isAvailable, setIsAvailable] = useState(true);
     const [notes, setNotes] = useState('');
     const [maxConcurrent, setMaxConcurrent] = useState('');
-    const [specialization, setSpecialization] = useState('');
+    const [languages, setLanguages] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [pendingStatus, setPendingStatus] = useState<string | null>(null);
@@ -189,7 +197,7 @@ export default function PersonAvailabilityPanel({
             setMaxConcurrent(
                 person.maxConcurrentAssignments === null ? '' : String(person.maxConcurrentAssignments)
             );
-            setSpecialization(person.specialization ?? '');
+            setLanguages(person.languages);
             setComment('');
             setSaveError(null);
         },
@@ -261,11 +269,16 @@ export default function PersonAvailabilityPanel({
                 (draft.from !== (person.unavailableFrom ?? '') ||
                     draft.until !== (person.unavailableUntil ?? ''))));
 
+    const languagesDirty =
+        !!person &&
+        (languages.length !== person.languages.length ||
+            [...languages].sort().join() !== [...person.languages].sort().join());
+
     const profileDirty =
         !!person &&
         (isAvailable !== person.isAvailable ||
             notes !== (person.availabilityNotes ?? '') ||
-            specialization !== (person.specialization ?? '') ||
+            languagesDirty ||
             maxConcurrent !==
                 (person.maxConcurrentAssignments === null
                     ? ''
@@ -311,7 +324,7 @@ export default function PersonAvailabilityPanel({
                         // would undo that guard.
                         ...(willBeActive ? { isAvailable } : {}),
                         availabilityNotes: notes,
-                        specialization,
+                        ...(person.memberType === 'lecteur' ? { languages } : {}),
                         maxConcurrentAssignments: maxConcurrent ? parseInt(maxConcurrent, 10) : null,
                     }),
                 });
@@ -549,21 +562,36 @@ export default function PersonAvailabilityPanel({
                                                 className="bg-field border-border text-foreground"
                                             />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label
-                                                htmlFor="dispo-spec"
-                                                className="text-xs font-medium text-foreground"
-                                            >
-                                                Spécialisation
-                                            </label>
-                                            <Input
-                                                id="dispo-spec"
-                                                value={specialization}
-                                                onChange={(e) => setSpecialization(e.target.value)}
-                                                placeholder="Ex. textes scientifiques"
-                                                className="bg-field border-border text-foreground"
-                                            />
-                                        </div>
+                                        {person.memberType === 'lecteur' && (
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-medium text-foreground">
+                                                    Langues
+                                                </label>
+                                                <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                                    {withCurrentValues(LANGUAGE_VALUES, person.languages).map(
+                                                        (lang) => (
+                                                            <label
+                                                                key={lang}
+                                                                className="flex items-center gap-1.5 text-xs text-foreground"
+                                                            >
+                                                                <Checkbox
+                                                                    checked={languages.includes(lang)}
+                                                                    onCheckedChange={(checked) =>
+                                                                        setLanguages(
+                                                                            checked === true
+                                                                                ? [...languages, lang]
+                                                                                : languages.filter((l) => l !== lang)
+                                                                        )
+                                                                    }
+                                                                    className="border-border data-[state=checked]:bg-primary"
+                                                                />
+                                                                {getLanguageLabel(lang)}
+                                                            </label>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="space-y-1">

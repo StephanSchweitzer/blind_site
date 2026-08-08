@@ -10,6 +10,7 @@ import {
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
+    Languages,
     Loader2,
     Moon,
     RefreshCw,
@@ -19,6 +20,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
@@ -33,7 +36,7 @@ import {
     getUserActivityStatusColor,
     getUserActivityStatusLabel,
 } from '@/lib/user-activity-enums';
-import { getMemberTypeColor, getMemberTypeLabel } from '@/lib/user-enums';
+import { getLanguageLabel, getMemberTypeColor, getMemberTypeLabel, LANGUAGE_VALUES } from '@/lib/user-enums';
 import {
     DORMANT_READER_DAYS,
     alertCount,
@@ -69,7 +72,6 @@ import PersonAvailabilityPanel from './person-availability-panel';
 const TYPE_FILTERS = [
     { value: 'all', label: 'Tous' },
     { value: 'lecteur', label: 'Lecteurs' },
-    { value: 'auditeur', label: 'Auditeurs' },
     { value: 'autre', label: 'Autres' },
 ] as const;
 
@@ -208,11 +210,15 @@ function PaginationFooter({
 }
 
 function matchesType(person: AvailabilityPerson, filter: TypeFilter): boolean {
+    // The calendar is a staffing tool: lecteurs whose capacity it tracks, and
+    // everyone else (permanents, techniciens, donateurs…) whose own absence can
+    // still stall something. Auditeurs place demandes themselves — nobody plans
+    // around their indisponibilité here — so they never appear, regardless of
+    // filter. 'ecouteur' is the retired spelling of auditeur — same people.
+    if (person.memberType === 'auditeur' || person.memberType === 'ecouteur') return false;
     if (filter === 'all') return true;
     if (filter === 'lecteur') return person.memberType === 'lecteur';
-    // 'ecouteur' is the retired spelling of auditeur — same people.
-    if (filter === 'auditeur') return person.memberType === 'auditeur' || person.memberType === 'ecouteur';
-    return person.memberType !== 'lecteur' && person.memberType !== 'auditeur' && person.memberType !== 'ecouteur';
+    return person.memberType !== 'lecteur';
 }
 
 /**
@@ -307,6 +313,25 @@ function SearchChip({ search, onClear }: { search: string; onClear: () => void }
     );
 }
 
+/** Same reminder as SearchChip, for the language filter. */
+function LanguageFilterChip({ languages, onClear }: { languages: string[]; onClear: () => void }) {
+    if (languages.length === 0) return null;
+
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            Langue : {languages.map((lang) => getLanguageLabel(lang)).join(', ')}
+            <button
+                type="button"
+                onClick={onClear}
+                aria-label="Effacer le filtre par langue"
+                className="hover:text-foreground"
+            >
+                <X size={11} />
+            </button>
+        </span>
+    );
+}
+
 /** One alert group. Renders nothing at all when it is empty. */
 function AlertGroup({
     title,
@@ -357,7 +382,10 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     const [period, setPeriod] = useState<PeriodPreset>('3m');
     const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
     const [search, setSearch] = useState('');
+    const [languageFilter, setLanguageFilter] = useState<string[]>([]);
+    const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
     const [onlyDormant, setOnlyDormant] = useState(false);
+    const [onlyWithRoom, setOnlyWithRoom] = useState(false);
     const [readerTab, setReaderTab] = useState<ReaderTab>('free');
     // Who the availability panel is open on. Null = closed.
     const [openPersonId, setOpenPersonId] = useState<number | null>(null);
@@ -377,21 +405,34 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             !needle || person.name.toLowerCase().includes(needle);
     }, [search]);
 
+    // Empty selection = no restriction; otherwise the person must carry at
+    // least one of the checked languages.
+    const languageMatches = useMemo(() => {
+        return (person: AvailabilityPerson) =>
+            languageFilter.length === 0 ||
+            person.languages.some((lang) => languageFilter.includes(lang));
+    }, [languageFilter]);
+
     const visibleAbsences: Absence[] = useMemo(
         () =>
             buildAbsences(people, today)
                 .filter((a) => overlapsPeriod(a, start, end))
-                .filter((a) => matchesType(a.person, typeFilter) && nameMatches(a.person)),
-        [people, today, start, end, typeFilter, nameMatches]
+                .filter(
+                    (a) =>
+                        matchesType(a.person, typeFilter) &&
+                        nameMatches(a.person) &&
+                        languageMatches(a.person)
+                ),
+        [people, today, start, end, typeFilter, nameMatches, languageMatches]
     );
 
     const free = useMemo(
-        () => freeReaders(people, today).filter((r) => nameMatches(r.person)),
-        [people, today, nameMatches]
+        () => freeReaders(people, today).filter((r) => nameMatches(r.person) && languageMatches(r.person)),
+        [people, today, nameMatches, languageMatches]
     );
     const loaded = useMemo(
-        () => loadedReaders(people).filter((r) => nameMatches(r.person)),
-        [people, nameMatches]
+        () => loadedReaders(people).filter((r) => nameMatches(r.person) && languageMatches(r.person)),
+        [people, nameMatches, languageMatches]
     );
 
     const readerRoster = people.filter(isLecteur);
@@ -422,10 +463,18 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     };
 
     const displayedFree = onlyDormant ? free.filter((r) => r.dormant) : free;
+    // "Loaded" already means "carrying at least one book" — this narrows it
+    // further to those NOT yet at their ceiling, i.e. who could still take one
+    // more. Combined with the language filter, that answers "who speaks
+    // German and I could still hand something to" without reading every row.
+    const displayedLoaded = onlyWithRoom ? loaded.filter((r) => !r.saturated) : loaded;
     const totalAlerts = alertCount(alerts);
 
-    const freePage = usePagedRows(displayedFree, `${search}|${onlyDormant}`);
-    const loadedPage = usePagedRows(loaded, search);
+    const freePage = usePagedRows(displayedFree, `${search}|${onlyDormant}|${languageFilter.join(',')}`);
+    const loadedPage = usePagedRows(
+        displayedLoaded,
+        `${search}|${onlyWithRoom}|${languageFilter.join(',')}`
+    );
 
     return (
         <div className="space-y-6">
@@ -475,6 +524,53 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             </button>
                         )}
                     </div>
+                    {/* Même portée que le filtre par nom : calendrier + les deux
+                        listes de lecteurs. Seuls les lecteurs ont des langues
+                        enregistrées, donc le combiner avec Auditeurs/Autres ne
+                        renverra rien — attendu, pas un bug. */}
+                    <Popover open={languagePopoverOpen} onOpenChange={setLanguagePopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-9 gap-2">
+                                <Languages size={14} />
+                                {languageFilter.length > 0
+                                    ? `${languageFilter.length} langue${languageFilter.length > 1 ? 's' : ''}`
+                                    : 'Langue'}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-56 p-2 bg-card border-border">
+                            <div className="space-y-0.5 max-h-72 overflow-y-auto">
+                                {LANGUAGE_VALUES.map((lang) => (
+                                    <label
+                                        key={lang}
+                                        className="flex items-center gap-2 rounded px-1.5 py-1 text-sm text-foreground hover:bg-muted cursor-pointer"
+                                    >
+                                        <Checkbox
+                                            checked={languageFilter.includes(lang)}
+                                            onCheckedChange={(checked) =>
+                                                setLanguageFilter(
+                                                    checked
+                                                        ? [...languageFilter, lang]
+                                                        : languageFilter.filter((l) => l !== lang)
+                                                )
+                                            }
+                                            className="border-border data-[state=checked]:bg-primary"
+                                        />
+                                        {getLanguageLabel(lang)}
+                                    </label>
+                                ))}
+                            </div>
+                            {languageFilter.length > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-1 h-7 w-full text-xs text-muted-foreground"
+                                    onClick={() => setLanguageFilter([])}
+                                >
+                                    Effacer
+                                </Button>
+                            )}
+                        </PopoverContent>
+                    </Popover>
                     <Button
                         variant="outline"
                         size="sm"
@@ -688,6 +784,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     <div className="flex flex-wrap items-center gap-2">
                         <CardTitle className="text-lg text-foreground">Lecteurs</CardTitle>
                         <SearchChip search={search} onClear={() => setSearch('')} />
+                        <LanguageFilterChip languages={languageFilter} onClear={() => setLanguageFilter([])} />
                     </div>
                     <div className="border-b border-border">
                         <nav
@@ -698,7 +795,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             {READER_TABS.map((tab) => {
                                 const isActive = readerTab === tab.value;
                                 const count =
-                                    tab.value === 'free' ? displayedFree.length : loaded.length;
+                                    tab.value === 'free' ? displayedFree.length : displayedLoaded.length;
                                 return (
                                     <button
                                         key={tab.value}
@@ -759,7 +856,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                     <TableRow>
                                         <TableHead>Lecteur</TableHead>
                                         <TableHead>Dernière attribution</TableHead>
-                                        <TableHead>Spécialisation</TableHead>
+                                        <TableHead>Langues</TableHead>
                                         <TableHead>Capacité</TableHead>
                                         <TableHead className="text-right">Disponibilité</TableHead>
                                     </TableRow>
@@ -793,7 +890,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-sm">
-                                                {person.specialization || '—'}
+                                                {person.languages.length > 0
+                                                    ? person.languages.map((lang) => getLanguageLabel(lang)).join(', ')
+                                                    : '—'}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-sm">
                                                 0 / {person.maxConcurrentAssignments ?? 3}
@@ -832,12 +931,25 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     hidden={readerTab !== 'loaded'}
                     className={readerTab === 'loaded' ? 'pt-4' : 'hidden'}
                 >
-                    <p className="text-xs text-muted-foreground mb-3">
-                        Attributions en cours par rapport au maximum simultané de chaque fiche.
-                    </p>
-                    {loaded.length === 0 ? (
+                    <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                        <p className="text-xs text-muted-foreground">
+                            Attributions en cours par rapport au maximum simultané de chaque fiche.
+                        </p>
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={onlyWithRoom}
+                                onChange={(e) => setOnlyWithRoom(e.target.checked)}
+                                className="accent-current"
+                            />
+                            Avec de la place seulement
+                        </label>
+                    </div>
+                    {displayedLoaded.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-6 text-center">
-                            Aucune attribution en cours.
+                            {loaded.length === 0
+                                ? 'Aucune attribution en cours.'
+                                : 'Aucun lecteur chargé ne correspond à ces critères.'}
                         </p>
                     ) : (
                         <div className="overflow-x-auto">
