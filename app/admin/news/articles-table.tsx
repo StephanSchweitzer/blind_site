@@ -14,7 +14,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDebounce } from 'use-debounce';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { NewsType } from '@/types/news';
 import NewsTypeBadge from '@/components/NewsTypeBadge';
 import {
@@ -124,6 +124,30 @@ export function ArticlesTable({
     const handleRowClick = useCallback((articleId: number) => {
         void openArticle(articleId);
     }, [openArticle]);
+
+    // Deep-link: open the edit dialogue directly from /admin/news?news=<id>.
+    // openedRef prevents re-firing on router.refresh() / re-render for the same id.
+    const newsParam = searchParams.get('news');
+    const openedNewsRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (newsParam && openedNewsRef.current !== newsParam) {
+            openedNewsRef.current = newsParam;
+            void openArticle(parseInt(newsParam, 10));
+        } else if (!newsParam) {
+            openedNewsRef.current = null;
+        }
+    }, [newsParam, openArticle]);
+
+    // Strip the `news` param so closing/reopening behaves cleanly and the
+    // deep-link state doesn't linger after the dialogue is dismissed.
+    const clearNewsParam = () => {
+        if (!searchParams.get('news')) return;
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('news');
+        const qs = params.toString();
+        window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
+    };
 
     // Handle edit button click with event propagation stop
     const handleEditClick = useCallback((e: React.MouseEvent, articleId: number) => {
@@ -367,7 +391,7 @@ export function ArticlesTable({
 
             {/* Edit */}
             {editing && (
-                <Dialog open onOpenChange={(open) => { if (!open) setEditing(null); }}>
+                <Dialog open onOpenChange={(open) => { if (!open) { setEditing(null); clearNewsParam(); } }}>
                     <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
                             <DialogTitle className="text-foreground flex flex-wrap items-center gap-3">

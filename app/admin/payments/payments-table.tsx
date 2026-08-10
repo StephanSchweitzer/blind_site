@@ -71,7 +71,12 @@ export default function PaymentsTable({
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [viewPaymentId, setViewPaymentId] = useState<number | null>(null);
+    // Deep-link: open the view/edit modal directly from /admin/payments?payment=<id>.
+    const [viewPaymentId, setViewPaymentId] = useState<number | null>(() => {
+        const param = searchParams.get('payment');
+        const id = param ? parseInt(param, 10) : NaN;
+        return Number.isNaN(id) ? null : id;
+    });
     const [paymentToDelete, setPaymentToDelete] = useState<number | null>(null);
 
     const currentPage = initialPage;
@@ -87,6 +92,17 @@ export default function PaymentsTable({
         startTransition(() => {
             router.push(`?${params.toString()}`);
         });
+    };
+
+    // Strip the `payment` param from the URL so closing/reopening behaves
+    // cleanly and the deep-link state doesn't linger after the modal closes.
+    const clearPaymentParam = () => {
+        if (searchParams.get('payment')) {
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('payment');
+            const qs = params.toString();
+            window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
+        }
     };
 
     const handleSearch = () => updateUrl({ search: searchTerm || undefined, page: '1' });
@@ -356,9 +372,9 @@ export default function PaymentsTable({
             {/* View / Edit Payment Modal */}
             <EditPaymentModal
                 isOpen={viewPaymentId !== null}
-                onOpenChange={(open) => { if (!open) setViewPaymentId(null); }}
+                onOpenChange={(open) => { if (!open) { setViewPaymentId(null); clearPaymentParam(); } }}
                 paymentId={viewPaymentId}
-                onRequestDelete={(id) => { setViewPaymentId(null); setPaymentToDelete(id); }}
+                onRequestDelete={(id) => { setViewPaymentId(null); clearPaymentParam(); setPaymentToDelete(id); }}
                 onPaymentUpdated={() => router.refresh()}
             />
 
