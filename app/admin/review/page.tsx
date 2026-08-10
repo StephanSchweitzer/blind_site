@@ -22,6 +22,9 @@ const BOOK_SELECT = {
     readingDurationMinutes: true,
     audio_filepath: true,
     audioLinkStatus: true,
+    // Needed by isDoubleRecording: a path alone does not mean a recording exists,
+    // and that distinction is what decides whether this card is merge-able.
+    audioTrackCount: true,
     source_access_id: true,
     needsReview: true,
     id_arbre: true,

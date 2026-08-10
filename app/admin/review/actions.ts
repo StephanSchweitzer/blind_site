@@ -6,6 +6,7 @@ import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { refreshBookAudioState } from '@/lib/audio/state';
+import { isDoubleRecording } from '@/lib/audio-enums';
 import { sendReviewEscalation } from '@/lib/email/sendReviewEscalation';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
@@ -39,6 +40,81 @@ const OVERRIDABLE_FIELDS = [
 const OVERRIDABLE = new Set<string>(OVERRIDABLE_FIELDS);
 
 /**
+ * Which side's audio folder should the fused record point at — and is this pair
+ * a genuine double recording that must not be merged at all?
+ *
+ * POURQUOI RELIRE LE BUCKET
+ *
+ * The guard exists to protect a recording from being orphaned by a merge, and
+ * the audio columns are only a CACHE of what the bucket holds. Refusing on a
+ * stale cache blocks a legitimate merge over a bookkeeping lag; merging on one
+ * strands a real recording. Neither is acceptable, so both folders are re-read
+ * before the question is answered — and the re-read repairs the cached columns
+ * on the way through, which is what keeps the card the permanent is looking at
+ * honest afterwards.
+ *
+ * The cost is two bucket listings on an action a permanent takes deliberately,
+ * a handful of times a day. That is the right price for a decision that deletes
+ * a row.
+ *
+ * POURQUOI CE N'EST PLUS « DEUX CHEMINS DIFFÉRENTS »
+ *
+ * It used to be. Any two differing path strings counted as two recordings, so an
+ * upload made to the wrong side of a duplicate pair — which creates a folder on
+ * a record that had none — permanently froze the pair: fusion AND both delete
+ * buttons disabled, with nothing in the queue able to resolve it. A path at an
+ * empty or vanished folder is a dead pointer, not a recording, and the merge
+ * should simply keep the live one.
+ *
+ * A bucket that cannot be reached fails CLOSED: unknown is not permission to
+ * delete a row that might be the only record of a recording.
+ */
+async function resolveAudioSide(
+    survivorId: number,
+    removedId: number,
+): Promise<'survivor' | 'removed'> {
+    const [survivor, removed] = await Promise.all([
+        prisma.book.findUnique({
+            where: { id: survivorId },
+            select: { audio_filepath: true },
+        }),
+        prisma.book.findUnique({
+            where: { id: removedId },
+            select: { audio_filepath: true },
+        }),
+    ]);
+
+    const sPath = survivor?.audio_filepath?.trim() || null;
+    const rPath = removed?.audio_filepath?.trim() || null;
+
+    // Nothing to arbitrate, and no reason to pay for two listings: at most one
+    // side points anywhere, or both point at the same folder.
+    if (!rPath) return 'survivor';
+    if (!sPath) return 'removed';
+    if (sPath === rPath) return 'survivor';
+
+    let sState;
+    let rState;
+    try {
+        [sState, rState] = await Promise.all([
+            refreshBookAudioState(survivorId),
+            refreshBookAudioState(removedId),
+        ]);
+    } catch (error) {
+        console.error('resolveAudioSide: bucket unreachable', error);
+        throw new Error('AUDIO_UNVERIFIABLE');
+    }
+
+    const sHolds = (sState.trackCount ?? 0) > 0;
+    const rHolds = (rState.trackCount ?? 0) > 0;
+
+    if (sHolds && rHolds) throw new Error('AUDIO_CONFLICT');
+    // One live folder and one dead pointer: keep the live one. If neither holds
+    // anything, both paths are dead and the survivor's is as good as the other.
+    return rHolds ? 'removed' : 'survivor';
+}
+
+/**
  * FUSE: merge the removed book into the survivor, in a single transaction.
  * `overrides` lists the fields whose value should be taken FROM the removed book
  * (everything else keeps the survivor's value). Reassigns relations, applies the
@@ -61,17 +137,15 @@ export async function fuseBooks(
         const fields = [...new Set(overrides)].filter((f) => OVERRIDABLE.has(f));
 
         try {
+            // Settled BEFORE the transaction, because deciding it reaches the
+            // bucket and refreshBookAudioState must not run inside one.
+            const keepAudioFrom = await resolveAudioSide(survivorId, removedId);
+
             await prisma.$transaction(async (tx) => {
                 const survivor = await tx.book.findUnique({ where: { id: survivorId } });
                 const removed = await tx.book.findUnique({ where: { id: removedId } });
                 if (!survivor) throw new Error('SURVIVOR_NOT_FOUND');
                 if (!removed) throw new Error('REMOVED_NOT_FOUND');
-
-                // Double-audio guard: never delete a distinct recording. If both sides carry a
-                // different audio path, the merge is blocked pending manual review.
-                const sAudio = survivor.audio_filepath?.trim() || null;
-                const rAudio = removed.audio_filepath?.trim() || null;
-                if (sAudio && rAudio && sAudio !== rAudio) throw new Error('AUDIO_CONFLICT');
 
                 // 1. Reassign relations off the removed book onto the survivor.
                 //    Assignment/Orders reference the book via `catalogueId` (no unique constraint).
@@ -100,13 +174,13 @@ export async function fuseBooks(
                 } as unknown as Prisma.InputJsonValue;
                 await tx.book.delete({ where: { id: removedId } });
 
-                // 3. Apply the chosen field overrides onto the survivor, always keep an audio
-                //    path (take the removed one if the survivor had none), clear the review flag.
+                // 3. Apply the chosen field overrides onto the survivor, keep whichever
+                //    folder actually holds the recording, clear the review flag.
                 const data: Prisma.BookUpdateInput = { needsReview: false, id_arbre: null };
                 for (const f of fields) {
                     (data as Record<string, unknown>)[f] = (removed as Record<string, unknown>)[f];
                 }
-                if (!sAudio && rAudio) {
+                if (keepAudioFrom === 'removed') {
                     data.audio_filepath = removed.audio_filepath;
                     // audioLinkStatus/audioTrackCount/audioSizeKb describe the *folder*, so the reading
                     // taken on the removed record is already the right one for the survivor.
@@ -148,6 +222,9 @@ export async function fuseBooks(
                 REMOVED_NOT_FOUND: 'Le doublon est introuvable',
                 AUDIO_CONFLICT:
                     'Double enregistrement audio : la fusion est bloquée. Ce doublon nécessite une vérification manuelle.',
+                AUDIO_UNVERIFIABLE:
+                    'Le stockage est injoignable : impossible de vérifier les enregistrements des deux fiches. ' +
+                    'Aucune modification enregistrée — réessayez dans un instant.',
             };
             console.error('fuseBooks error:', error);
             return { ok: false, message: map[msg] ?? 'Échec de la fusion. Aucune modification enregistrée.' };
@@ -219,6 +296,8 @@ export async function escalateReview(
             title: true,
             author: true,
             audio_filepath: true,
+            audioLinkStatus: true,
+            audioTrackCount: true,
             source_access_id: true,
         } as const;
 
@@ -237,9 +316,12 @@ export async function escalateReview(
 
             // Recomputed here rather than taken from the client: it decides whether the
             // note may be omitted, and it is what the mail announces as the blocker.
-            const fAudio = flagged.audio_filepath?.trim() || null;
-            const mAudio = matched?.audio_filepath?.trim() || null;
-            const audioConflict = !!fAudio && !!mAudio && fAudio !== mAudio;
+            //
+            // Reads the cached columns rather than the bucket, unlike the fusion
+            // guard: this only decides whether the permanent must type a sentence,
+            // and making them wait on two listings to send a mail would be a worse
+            // trade than occasionally asking for a note that turns out unnecessary.
+            const audioConflict = !!matched && isDoubleRecording(flagged, matched);
 
             if (!audioConflict && !comment) {
                 return { ok: false, message: 'Expliquez en une phrase ce qui bloque sur ce doublon' };

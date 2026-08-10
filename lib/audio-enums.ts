@@ -89,3 +89,51 @@ export const getAudioLinkStatusColor = (status: AudioLinkStatus): string =>
 
 export const getAudioLinkStatusHint = (status: AudioLinkStatus): string =>
     AUDIO_LINK_STATUS_HINTS[status] ?? '';
+
+/** The shape any caller of the two helpers below needs to supply. */
+export interface AudioBearing {
+    audio_filepath?: string | null;
+    audioLinkStatus?: AudioLinkStatus | null;
+    audioTrackCount?: number | null;
+}
+
+/**
+ * Does this book actually hold a recording?
+ *
+ * Deliberately stricter than "has a path". Book.audio_filepath is a pointer, and
+ * a pointer at an empty or vanished folder is not a recording — the corpus has
+ * plenty, left behind by folders that were emptied, relinked, or created by an
+ * upload that never landed.
+ *
+ * UNVERIFIED counts as holding: the columns are a cache, and "never checked" is
+ * not evidence of absence. Callers that are about to REFUSE something on the
+ * strength of this answer must re-read the bucket first rather than act on a
+ * stale cache — see the audio conflict in app/admin/review/actions.ts.
+ */
+export const bookHoldsTracks = (b: AudioBearing): boolean => {
+    if (!b.audio_filepath?.trim()) return false;
+    const status = b.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
+    if (status === AudioLinkStatus.FOLDER_EMPTY || status === AudioLinkStatus.FOLDER_MISSING) {
+        return false;
+    }
+    if (status === AudioLinkStatus.NO_PATH) return false;
+    // A count of zero alongside an OK status is contradictory, and the honest
+    // reading of the pair is "nothing to listen to".
+    return b.audioTrackCount == null || b.audioTrackCount > 0;
+};
+
+/**
+ * Are these two records a genuine double recording — the one case where merging
+ * them would destroy something irreplaceable?
+ *
+ * The question is asked of the FILES, not of the path strings. Two differing
+ * paths where only one folder holds tracks is not a conflict: it is a live
+ * recording and a dead pointer, and refusing to merge those leaves a permanent
+ * staring at a card with every button disabled and nothing they can do about it.
+ * That is exactly how an upload made to the wrong side of a duplicate pair used
+ * to freeze the pair for good.
+ */
+export const isDoubleRecording = (a: AudioBearing, b: AudioBearing): boolean =>
+    bookHoldsTracks(a) &&
+    bookHoldsTracks(b) &&
+    a.audio_filepath!.trim() !== b.audio_filepath!.trim();

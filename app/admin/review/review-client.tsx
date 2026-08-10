@@ -49,6 +49,8 @@ import {
     getAudioLinkStatusButtonColor,
     getAudioLinkStatusHint,
     getAudioLinkStatusLabel,
+    bookHoldsTracks,
+    isDoubleRecording,
 } from '@/lib/audio-enums';
 import { formatCalendarDate } from '@/lib/calendar-date';
 import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
@@ -66,6 +68,7 @@ export interface ReviewBook {
     readingDurationMinutes: number | null;
     audio_filepath: string | null;
     audioLinkStatus?: AudioLinkStatus;
+    audioTrackCount?: number | null;
     source_access_id: number | null;
     needsReview: boolean;
     id_arbre: number | null;
@@ -497,14 +500,25 @@ function PairCard({
         );
     }
 
-    const audioConflict = hasAudio(flagged) && hasAudio(matched) && flagged.audio_filepath !== matched.audio_filepath;
+    // Asked of the files, not of the path strings: a path at an empty or vanished
+    // folder is a dead pointer, and a pair holding one recording between them is
+    // perfectly merge-able. The server re-reads the bucket before it refuses, so
+    // this can disagree with the outcome only when the cache is stale — in which
+    // case the fusion succeeds and the card was merely pessimistic.
+    const audioConflict = isDoubleRecording(flagged, matched);
     const diffCount = FIELDS.filter((f) => f.overridable && differs(f, flagged, matched)).length;
 
     // Always keep the flagged book — it's the live site catalogue entry that already
     // carries the orders/attributions; the matched record (the Access import) is deleted.
     const survivor = flagged;
     const removed = matched;
-    const resultingAudio = hasAudio(survivor) ? survivor.audio_filepath : removed.audio_filepath;
+    // Mirrors resolveAudioSide: the folder that actually holds tracks is the one
+    // the fused fiche keeps, not simply the survivor's.
+    const resultingAudio = bookHoldsTracks(survivor)
+        ? survivor.audio_filepath
+        : bookHoldsTracks(removed)
+          ? removed.audio_filepath
+          : (survivor.audio_filepath ?? removed.audio_filepath);
 
     const toggleField = (key: string, takeFromRemoved: boolean) => {
         setOverrides((prev) => {
@@ -876,7 +890,10 @@ function BookHead({
             <div
                 className={`mt-1 flex flex-wrap items-center gap-2 ${align === 'right' ? 'sm:justify-end' : ''}`}
             >
-                {hasAudio(book) && (
+                {/* Real tracks, not merely a path: this badge is what tells the
+                    permanent the pair holds two recordings, and it sat next to a
+                    ListenButton already reporting « dossier introuvable ». */}
+                {bookHoldsTracks(book) && (
                     <Badge variant="secondary" className="gap-1">
                         <FileAudio className="h-3 w-3" /> Audio
                     </Badge>
