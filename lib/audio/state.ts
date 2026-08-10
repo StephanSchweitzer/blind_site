@@ -142,10 +142,21 @@ export async function resolveTrackDurations(
  * repriceOpenOrdersForBook for what it will and won't touch.
  *
  * `performedById` names who caused the re-read, for the BillEvent it may write.
+ *
+ * `recomputeDuration` defaults to true. Every caller that can actually change
+ * what readingDurationMinutes should be — upload, delete/restore, rename, a
+ * manual measure, a fusion, an orphan relink — already calls this function at
+ * the point of that change, so the sum it produces is already current by the
+ * time anything merely re-reads the folder. Opening the manage dialogue is
+ * the one caller with nothing that could have moved the figure, so it passes
+ * false: still worth re-reading the bucket for audioLinkStatus/trackCount/
+ * sizeKb (those catch drift from outside the portal), but re-summing and
+ * rewriting a duration that cannot have changed is pure overhead.
  */
 export async function refreshBookAudioState(
     bookId: number,
     performedById: number | null = null,
+    recomputeDuration: boolean = true,
 ): Promise<RefreshResult> {
     const book = await prisma.book.findUnique({
         where: { id: bookId },
@@ -180,14 +191,16 @@ export async function refreshBookAudioState(
             // duration at all — this figure reaches the public catalogue and the
             // Coup de cœur PDF. A book with even one unreadable track therefore
             // keeps whatever was stored rather than being silently shortened.
-            const sizes = new Map(audio.map((o) => [o.key.slice(prefix.length), o.size]));
-            const durations = await resolveTrackDurations(bookId, sizes);
-            const total = [...sizes.keys()].reduce<number | null>((sum, name) => {
-                if (sum === null) return null;
-                const d = durations.get(name);
-                return d == null ? null : sum + d;
-            }, 0);
-            if (total !== null) readingDurationMinutes = Math.round(total / 60);
+            if (recomputeDuration) {
+                const sizes = new Map(audio.map((o) => [o.key.slice(prefix.length), o.size]));
+                const durations = await resolveTrackDurations(bookId, sizes);
+                const total = [...sizes.keys()].reduce<number | null>((sum, name) => {
+                    if (sum === null) return null;
+                    const d = durations.get(name);
+                    return d == null ? null : sum + d;
+                }, 0);
+                if (total !== null) readingDurationMinutes = Math.round(total / 60);
+            }
         } else if (objects.length) {
             // The folder exists — B2's .bzEmpty placeholder or some stray file —
             // but holds no audio.

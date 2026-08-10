@@ -48,8 +48,11 @@ export const GET = withAdmin(async (_req, { params }) => {
     const prefix = resolvePrefix(book.audio_filepath);
 
     // Opening the dialogue is itself a check of the folder, so record it — this
-    // is the cheapest way to keep the cached counters from drifting.
-    const state = await refreshBookAudioState(bookId);
+    // is the cheapest way to keep the cached counters from drifting. The
+    // duration itself is skipped: nothing about opening the dialogue can have
+    // changed it, so re-summing and rewriting it here would just repeat what
+    // the last upload/delete/rename/measure already wrote.
+    const state = await refreshBookAudioState(bookId, null, false);
 
     const tracks = prefix ? await listBookTracks(prefix) : [];
     const durations = tracks.length
