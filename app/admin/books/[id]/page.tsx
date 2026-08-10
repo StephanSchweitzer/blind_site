@@ -394,7 +394,21 @@ export default function EditionLivre() {
                                 />
                             </div>
 
-                            <DurationInputs formData={formData} />
+                            <DurationInputs
+                                formData={formData}
+                                bookId={Number.isInteger(Number(id)) ? Number(id) : undefined}
+                                onMeasured={(readingDurationMinutes) =>
+                                    setFormData(prev =>
+                                        prev
+                                            ? {
+                                                  ...prev,
+                                                  readingDurationMinutes:
+                                                      readingDurationMinutes ?? undefined,
+                                              }
+                                            : prev,
+                                    )
+                                }
+                            />
 
 
                             <div className="space-y-2">

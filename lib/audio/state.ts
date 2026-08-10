@@ -69,24 +69,47 @@ export interface RefreshResult {
 
 /**
  * Rebuilds "what is the current duration of the file now sitting at this
- * filename" from the book's AudioTrackEvent history, without a query per
- * track.
+ * filename", from the two places a length is ever known.
  *
- * Only UPLOAD and RENAME matter: an UPLOAD is the one place a duration is
- * ever known (read client-side from the file itself — see useAudioUpload),
- * and a RENAME carries that known duration forward under the new filename so
- * a cosmetic reorder doesn't erase it. DELETE/RESTORE need no handling at
- * all: a deleted file simply stops appearing in the current bucket listing
- * the caller checks this map against, and a restored one reappears under a
- * filename its original UPLOAD event still names, since the log is
- * append-only.
+ * FROM THE UPLOAD LOG. Only UPLOAD and RENAME matter: an UPLOAD is where the
+ * browser's own reading of the file is recorded (see useAudioUpload), and a
+ * RENAME carries that value forward under the new filename so a cosmetic
+ * reorder doesn't erase it. DELETE/RESTORE need no handling at all: a deleted
+ * file simply stops appearing in the current bucket listing the caller checks
+ * this map against, and a restored one reappears under a filename its original
+ * UPLOAD event still names, since the log is append-only.
+ *
+ * FROM THE MEASUREMENT CACHE, which is consulted second and wins. Both describe
+ * the same file, but a measurement is read from the bytes that are in the bucket
+ * now, while an upload event describes the bytes that were sent then — and the
+ * cache row is only kept while the object's weight still matches (see
+ * measureBookDurations). When they disagree, the fresher and better-evidenced
+ * one should be the answer.
+ *
+ * The cache is also the only source most of the catalogue will ever have: every
+ * book imported from Access has audio but no UPLOAD event, which is precisely
+ * why « Non calculée » used to be permanent for them.
+ *
+ * `currentSizes` is what the bucket holds right now. A cache row whose weight no
+ * longer matches describes a file that has since been replaced under the same
+ * name, so it is discarded rather than believed — the book then reads as
+ * unmeasured until someone presses « Recalculer », which is the honest state.
  */
-async function resolveTrackDurations(bookId: number): Promise<Map<string, number | null>> {
-    const events = await prisma.audioTrackEvent.findMany({
-        where: { bookId, action: { in: ['UPLOAD', 'RENAME'] } },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-        select: { action: true, filename: true, newFilename: true, durationSeconds: true },
-    });
+async function resolveTrackDurations(
+    bookId: number,
+    currentSizes: Map<string, number>,
+): Promise<Map<string, number | null>> {
+    const [events, measured] = await Promise.all([
+        prisma.audioTrackEvent.findMany({
+            where: { bookId, action: { in: ['UPLOAD', 'RENAME'] } },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            select: { action: true, filename: true, newFilename: true, durationSeconds: true },
+        }),
+        prisma.audioTrackDuration.findMany({
+            where: { bookId },
+            select: { filename: true, sizeBytes: true, seconds: true },
+        }),
+    ]);
 
     const durations = new Map<string, number | null>();
     for (const e of events) {
@@ -96,6 +119,11 @@ async function resolveTrackDurations(bookId: number): Promise<Map<string, number
             const carried = durations.get(e.filename) ?? null;
             durations.delete(e.filename);
             durations.set(e.newFilename, carried);
+        }
+    }
+    for (const m of measured) {
+        if (currentSizes.get(m.filename) === Number(m.sizeBytes)) {
+            durations.set(m.filename, m.seconds);
         }
     }
     return durations;
@@ -149,15 +177,14 @@ export async function refreshBookAudioState(
             sizeKb = bytesToKb(audio.reduce((total, o) => total + o.size, 0));
 
             // The duration is only trustworthy once every track currently in
-            // the folder resolves to a known value. A book recorded before
-            // this feature shipped (or with even one track that predates it)
-            // has no UPLOAD event to ask, so it fails this check forever —
-            // deliberately: the alternative is silently zeroing out a
-            // hand-entered duration on a book nobody re-uploaded to, which is
-            // worse than leaving a stale-but-correct number in place.
-            const filenames = audio.map((o) => o.key.slice(prefix.length));
-            const durations = await resolveTrackDurations(bookId);
-            const total = filenames.reduce<number | null>((sum, name) => {
+            // the folder resolves to a known value. A partial sum understates
+            // the recording, and a duration quietly too short is worse than no
+            // duration at all — this figure reaches the public catalogue and the
+            // Coup de cœur PDF. A book with even one unreadable track therefore
+            // keeps whatever was stored rather than being silently shortened.
+            const sizes = new Map(audio.map((o) => [o.key.slice(prefix.length), o.size]));
+            const durations = await resolveTrackDurations(bookId, sizes);
+            const total = [...sizes.keys()].reduce<number | null>((sum, name) => {
                 if (sum === null) return null;
                 const d = durations.get(name);
                 return d == null ? null : sum + d;

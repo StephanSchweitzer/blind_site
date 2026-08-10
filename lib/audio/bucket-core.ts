@@ -197,6 +197,27 @@ export function putTrackUrl(key: string, contentType: string, expiresIn = 3600):
     );
 }
 
+/**
+ * A byte range of one object, read into memory.
+ *
+ * The only path that pulls object bytes through our own server, and deliberately
+ * so: it exists to read headers — a few kilobytes out of a file that may be 50 MB
+ * — which is what lets a recording be measured without transferring it. Callers
+ * must keep the range small; nothing here enforces it, because the sole caller
+ * (lib/audio/measure.ts) states its own bounds and has to be free to widen them
+ * for a file whose header sits further in.
+ */
+export async function getRangeBytes(
+    key: string,
+    start: number,
+    end: number,
+): Promise<Uint8Array> {
+    const res = await getS3().send(
+        new GetObjectCommand({ Bucket: AUDIO_BUCKET, Key: key, Range: `bytes=${start}-${end}` }),
+    );
+    return res.Body!.transformToByteArray();
+}
+
 export interface TrackHead {
     sizeBytes: number;
     contentType: string | null;

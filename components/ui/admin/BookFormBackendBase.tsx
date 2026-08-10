@@ -166,6 +166,19 @@ export function BookFormBackendBase({
         }));
     };
 
+    /**
+     * The « Recalculer » button has already written the duration server-side, so
+     * this only realigns the field the form is displaying. Deliberately NOT
+     * marked dirty: nothing here is an unsaved edit, and prompting the permanent
+     * to save a value the server just stored would be a lie about what happened.
+     */
+    const handleMeasuredDuration = (readingDurationMinutes: number | null) => {
+        setFormData(prev => ({
+            ...prev,
+            readingDurationMinutes: readingDurationMinutes ?? undefined,
+        }));
+    };
+
     const handleBookSelect = (bookData: BookSearchData) => {
         // Convert estimated reading time to minutes if available
         let readingDurationMinutes = undefined;
@@ -498,7 +511,11 @@ export function BookFormBackendBase({
                             />
                         </div>
 
-                        <DurationInputs formData={formData}/>
+                        <DurationInputs
+                            formData={formData}
+                            bookId={audioBookId}
+                            onMeasured={handleMeasuredDuration}
+                        />
 
                         <div className="space-y-2">
                             <label htmlFor="description" className="text-sm font-medium text-foreground">

@@ -168,6 +168,7 @@ model Book {
   orphanAudioFolders OrphanAudioFolder[]
   deletedAudioTracks DeletedAudioTrack[] @relation("BookDeletedAudioTracks")
   audioTrackEvents   AudioTrackEvent[]   @relation("BookAudioTrackEvents")
+  audioTrackDurations AudioTrackDuration[] @relation("BookAudioTrackDurations")
 
   @@index([audioLinkStatus])
   @@index([createdAt(sort: Desc)])
@@ -838,6 +839,38 @@ model AudioTrackEvent {
 
   @@index([bookId])
   @@index([createdAt])
+}
+
+/// Playback length measured from a track's own header bytes, cached per file.
+///
+/// NOT an event log — it is a cache of a fact about an object in the bucket, and
+/// rows are updated in place. That is what makes the « Recalculer » button cheap
+/// to press twice: measuring a folder costs one ranged GET per track, and a row
+/// here means the next press pays nothing for that track.
+///
+/// `sizeBytes` is what makes the cache honest. A filename is not a stable
+/// identity in this corpus — a track can be replaced by a re-recording under the
+/// same name — so a row is only believed while the object still weighs what it
+/// weighed when measured. A replaced file simply misses the cache and is
+/// re-measured.
+model AudioTrackDuration {
+  id        Int      @id @default(autoincrement())
+  /// Nullable + SetNull so a measurement outlives the book, like the other logs.
+  bookId    Int?
+  filename  String
+  sizeBytes BigInt
+  seconds   Int
+  /// How it was read — XING, VBRI, MPEG_CBR, MP4, WAV, FLAC. Kept so a future
+  /// parser fix can invalidate exactly the rows it affects.
+  method    String
+  /// False for a bitrate estimate, true for an encoder-stated count. Estimates
+  /// are only ever recorded once the file has been confirmed constant-bitrate.
+  exact     Boolean
+  measuredAt DateTime @default(now()) @updatedAt
+  book      Book?    @relation("BookAudioTrackDurations", fields: [bookId], references: [id], onDelete: SetNull)
+
+  @@unique([bookId, filename])
+  @@index([bookId])
 }
 
 /// Singleton (id = 1) holding the editable content of the public Contact page.
