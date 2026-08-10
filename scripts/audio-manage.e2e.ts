@@ -14,7 +14,7 @@ import 'dotenv/config';
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getS3, AUDIO_BUCKET, listBookTracks, listRawObjects, headTrack } from '../lib/audio/bucket';
 import { refreshBookAudioState, isKeyInsidePrefix, resolvePrefix } from '../lib/audio/state';
-import { softDeleteTrack, restoreTrack } from '../lib/audio/trash';
+import { softDeleteTrack, softDeleteTracks, restoreTrack } from '../lib/audio/trash';
 import { prisma } from '../lib/prisma';
 
 const SCRATCH = '2022/_eca-test-audio/';
@@ -135,6 +135,55 @@ async function main() {
         select: { restoredAt: true },
     });
     check('toutes les entrées marquées restaurées', rows.every((r) => r.restoredAt !== null), true);
+
+    // --- bulk soft delete --------------------------------------------------
+    // The path book deletion and « vider le dossier » both take. It must reach
+    // the same end state as the loop it replaced, and — unlike that loop — be
+    // safe to run twice, because that is what makes a timeout survivable.
+    const bulkTracks = (await listBookTracks(SCRATCH)).map((t) => ({
+        key: t.key,
+        name: t.name,
+        sizeBytes: t.sizeBytes,
+    }));
+    const bulk = await softDeleteTracks({ bookId, prefix: SCRATCH, tracks: bulkTracks, userId: 1 });
+    check('suppression groupée : 3 pistes déplacées', bulk.moved, 3);
+    check('suppression groupée : aucun échec', bulk.failed.length, 0);
+    check('dossier vidé', (await listBookTracks(SCRATCH)).length, 0);
+
+    state = await refreshBookAudioState(bookId);
+    check('FOLDER_EMPTY après suppression groupée', state.status, 'FOLDER_EMPTY');
+    check('compteur nul après suppression groupée', state.trackCount, null);
+
+    const parked = await prisma.deletedAudioTrack.findMany({
+        where: { bookId, restoredAt: null },
+        select: { id: true, trashKey: true, sizeBytes: true },
+    });
+    check('une entrée de corbeille par piste', parked.length, 3);
+    check(
+        'copies réellement présentes dans la corbeille',
+        (await Promise.all(parked.map((p) => headTrack(p.trashKey)))).every((h) => h !== null),
+        true,
+    );
+
+    // Re-running the identical call must be a no-op rather than a second set of
+    // copies — this is the resume path after a timeout.
+    const bulkAgain = await softDeleteTracks({
+        bookId,
+        prefix: SCRATCH,
+        tracks: bulkTracks,
+        userId: 1,
+    });
+    check('reprise : rien de redéplacé', bulkAgain.moved, 0);
+    check('reprise : tout reconnu comme déjà en corbeille', bulkAgain.skipped, 3);
+    check('reprise : aucun échec', bulkAgain.failed.length, 0);
+    check(
+        'reprise : aucune copie en double',
+        await prisma.deletedAudioTrack.count({ where: { bookId, restoredAt: null } }),
+        3,
+    );
+
+    for (const p of parked) await restoreTrack({ trashId: p.id, userId: 1 });
+    check('restaurées après suppression groupée', (await listBookTracks(SCRATCH)).length, 3);
 
     // --- restore refuses to overwrite --------------------------------------
     const again = await softDeleteTrack({

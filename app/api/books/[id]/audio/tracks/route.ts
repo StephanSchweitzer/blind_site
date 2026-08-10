@@ -3,15 +3,15 @@ import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { resolvePrefix } from '@/lib/audio/state';
 import { listBookTracks } from '@/lib/audio/bucket';
-import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
+import { softDeleteTracks } from '@/lib/audio/trash';
 
 /**
  * Move every track in a book's folder to the corbeille, in one action.
  *
- * This is a loop over the same reviewed, reversible path as the single-track
- * delete (softDeleteTrack) — not a bucket-level folder delete — so every
- * track still gets its own copy-verify-then-remove sequence and its own
- * DeletedAudioTrack row, and one failed copy doesn't take the rest with it.
+ * Still the same reviewed, reversible path as the single-track delete — not a
+ * bucket-level folder delete — so every track gets its own copy-verify-then-
+ * remove sequence and its own DeletedAudioTrack row, and one failed copy does
+ * not take the rest with it.
  *
  * The caller must echo back the current track count, re-checked here against
  * a fresh listing: a stale dialogue must not be able to wipe more (or fewer)
@@ -52,30 +52,20 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
         );
     }
 
-    const deleted: string[] = [];
-    const failed: { name: string; message: string }[] = [];
+    // The per-track cached-state refresh used to force this loop to be
+    // sequential; softDeleteTracks does that refresh once at the end instead, so
+    // the copies can run in parallel and the removals collapse into a single
+    // DeleteObjects call. Already-parked tracks are skipped, so a run that timed
+    // out half way is finished simply by confirming again.
+    const result = await softDeleteTracks({
+        bookId,
+        prefix,
+        tracks: tracks.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes })),
+        userId: me.id,
+    });
 
-    // Sequential on purpose: each softDeleteTrack ends with a refresh of the
-    // book's cached audio state, and running those concurrently would race on
-    // the same row.
-    for (const track of tracks) {
-        try {
-            await softDeleteTrack({
-                bookId,
-                key: track.key,
-                filename: track.name,
-                userId: me.id,
-            });
-            deleted.push(track.name);
-        } catch (e) {
-            if (e instanceof AudioTrashError) {
-                failed.push({ name: track.name, message: e.message });
-            } else {
-                console.error('Suppression groupée audio échouée', track.key, e);
-                failed.push({ name: track.name, message: 'Erreur inattendue.' });
-            }
-        }
-    }
+    const deleted = { length: result.moved + result.skipped };
+    const failed = result.failed.map((f) => ({ name: f.filename, message: f.reason }));
 
     return NextResponse.json({
         message:

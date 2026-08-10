@@ -6,6 +6,7 @@ import {
     HeadObjectCommand,
     CopyObjectCommand,
     DeleteObjectCommand,
+    DeleteObjectsCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -274,6 +275,44 @@ export async function copyTrack(fromKey: string, toKey: string): Promise<void> {
  */
 export async function deleteTrack(key: string): Promise<void> {
     await getS3().send(new DeleteObjectCommand({ Bucket: AUDIO_BUCKET, Key: key }));
+}
+
+/** DeleteObjects accepts at most this many keys per call. */
+const DELETE_BATCH = 1000;
+
+/**
+ * Remove many objects in as few requests as possible.
+ *
+ * One DeleteObjects call carries up to a thousand keys, which is the difference
+ * between emptying a 77-track folder in one round trip and in seventy-seven.
+ * Verified against this bucket before being relied on — B2 implements a subset
+ * of the S3 API and batch delete is not part of the subset everywhere.
+ *
+ * Returns the keys the service reported it could NOT delete, so a caller can
+ * tell "all gone" from "mostly gone" instead of assuming. A partial failure is
+ * not an exception here: the operation genuinely half-succeeded, and the caller
+ * is the only one that knows whether that is recoverable.
+ */
+export async function deleteTracks(keys: string[]): Promise<{ failed: string[] }> {
+    if (!keys.length) return { failed: [] };
+    const s3 = getS3();
+    const failed: string[] = [];
+
+    for (let i = 0; i < keys.length; i += DELETE_BATCH) {
+        const chunk = keys.slice(i, i + DELETE_BATCH);
+        const res = await s3.send(
+            new DeleteObjectsCommand({
+                Bucket: AUDIO_BUCKET,
+                // Quiet: false so the response names what was actually removed;
+                // a silent success is indistinguishable from a silent no-op.
+                Delete: { Objects: chunk.map((Key) => ({ Key })), Quiet: false },
+            }),
+        );
+        const deleted = new Set((res.Deleted ?? []).map((d) => d.Key));
+        for (const key of chunk) if (!deleted.has(key)) failed.push(key);
+    }
+
+    return { failed };
 }
 
 /**

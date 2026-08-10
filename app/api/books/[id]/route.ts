@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 import { resolvePrefix } from '@/lib/audio/state';
 import { listBookTracks } from '@/lib/audio/bucket';
-import { softDeleteTrack } from '@/lib/audio/trash';
+import { softDeleteTracks } from '@/lib/audio/trash';
 
 const invalidId = () => NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
 
@@ -199,18 +199,37 @@ export const DELETE = withAdmin(async (_request, { params, me }) => {
         const prefix = resolvePrefix(book.audio_filepath);
         if (prefix) {
             const tracks = await listBookTracks(prefix);
-            for (const track of tracks) {
-                try {
-                    await softDeleteTrack({
-                        bookId,
-                        key: track.key,
-                        filename: track.name,
-                        userId: me.id,
-                    });
-                } catch (e) {
-                    console.error('Échec du déplacement audio avant suppression du livre', track.key, e);
-                    audioFailures.push(track.name);
-                }
+            const result = await softDeleteTracks({
+                bookId,
+                prefix,
+                tracks: tracks.map((t) => ({
+                    key: t.key,
+                    name: t.name,
+                    sizeBytes: t.sizeBytes,
+                })),
+                userId: me.id,
+                // Nothing will be left to hold a placeholder for, or to describe.
+                bookIsBeingDeleted: true,
+            });
+            audioFailures.push(...result.failed.map((f) => f.filename));
+
+            // Refuse rather than delete the book over the top of tracks still in
+            // its folder. Doing so used to leave the recording stranded under a
+            // prefix no record pointed at, and no way to tell how far the move
+            // had got. The move is resumable, so the honest answer is to say
+            // what is stuck and let the permanent press Supprimer again.
+            if (result.failed.length) {
+                return NextResponse.json(
+                    {
+                        error:
+                            `${result.failed.length} fichier(s) audio n’ont pas pu être déplacés ` +
+                            'vers la corbeille. Le livre n’a pas été supprimé. Relancez la ' +
+                            'suppression : les fichiers déjà déplacés ne le seront pas deux fois.',
+                        audioFailures,
+                        details: result.failed,
+                    },
+                    { status: 502 },
+                );
             }
         }
 

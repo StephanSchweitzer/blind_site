@@ -93,25 +93,12 @@ async function readWithRetry(
     throw last;
 }
 
-/** Run `worker` over `items` with a bounded number in flight. */
-export async function pool<T, R>(
-    items: T[],
-    limit: number,
-    worker: (item: T) => Promise<R>,
-): Promise<R[]> {
-    const out: R[] = new Array(items.length);
-    let next = 0;
-    await Promise.all(
-        Array.from({ length: Math.min(limit, items.length) }, async () => {
-            for (;;) {
-                const i = next++;
-                if (i >= items.length) return;
-                out[i] = await worker(items[i]);
-            }
-        }),
-    );
-    return out;
-}
+/**
+ * Re-exported so existing callers (the route, the backfill script) keep their
+ * import; the implementation moved to lib/concurrency once the bulk corbeille
+ * path needed the same bound.
+ */
+export { pool } from '../concurrency';
 
 /**
  * Is this untagged MPEG file really constant-bitrate?
