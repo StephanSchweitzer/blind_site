@@ -48,6 +48,51 @@ export const PROBLEM_LABEL: Record<string, string> = {
 /** Reads `[start, end]` inclusive of one object. */
 export type ReadRange = (key: string, start: number, end: number) => Promise<Uint8Array>;
 
+/** Attempts per range read, including the first. */
+const READ_ATTEMPTS = 3;
+const RETRY_BASE_MS = 400;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * A range read that survives B2 shedding load.
+ *
+ * B2 answers a share of requests with 500/503 **by design** — a dispatching
+ * server hands each request to a storage vault, and a full or offline vault
+ * replies 5xx to mean "ask for another one". The AWS SDK retries some of this
+ * itself, but not reliably enough at the concurrency the backfill runs at, and
+ * the cost of giving up is disproportionate: one transient 503 marks a track
+ * unreadable, which costs its whole book a duration, because the total is
+ * all-or-nothing. Ten thousand books make that a certainty rather than a risk.
+ *
+ * Equal-jitter backoff, so parallel workers tripping over the same hiccup do not
+ * retry in lockstep and collide again.
+ */
+async function readWithRetry(
+    read: ReadRange,
+    key: string,
+    start: number,
+    end: number,
+): Promise<Uint8Array> {
+    let last: unknown;
+    for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
+        try {
+            return await read(key, start, end);
+        } catch (e) {
+            last = e;
+            // A missing object or a refused key will be just as missing next
+            // time; only server-side and transport failures are worth repeating.
+            const status = (e as { $metadata?: { httpStatusCode?: number } })?.$metadata
+                ?.httpStatusCode;
+            const retryable = status === undefined || status >= 500 || status === 429;
+            if (!retryable || attempt === READ_ATTEMPTS) break;
+            const base = RETRY_BASE_MS * 2 ** (attempt - 1);
+            await sleep(base / 2 + Math.random() * (base / 2));
+        }
+    }
+    throw last;
+}
+
 /** Run `worker` over `items` with a bounded number in flight. */
 export async function pool<T, R>(
     items: T[],
@@ -86,7 +131,7 @@ async function confirmConstantBitrate(
         // this small is seconds long, so a wrong reading cannot move the total.
         return true;
     }
-    const chunk = await read(key, start, start + PROBE_BYTES - 1);
+    const chunk = await readWithRetry(read, key, start, start + PROBE_BYTES - 1);
     const mid = summariseMpeg(chunk);
     // An unreadable slice is not evidence of variability — mid-file bytes can
     // land inside a frame we cannot resynchronise on. Absence of contradiction
@@ -118,19 +163,24 @@ export async function measureTrackBytes(
     };
 
     try {
-        let head = await read(track.key, 0, Math.min(HEAD_BYTES, track.sizeBytes) - 1);
+        let head = await readWithRetry(read, track.key, 0, Math.min(HEAD_BYTES, track.sizeBytes) - 1);
         let result = probeAudioDuration(track.name, head, track.sizeBytes);
 
         // A big ID3v2 block — cover art, usually — can push the first frame past
         // the small read. Pay for the larger one only on the files that need it.
         if (!result.ok && result.reason === 'NO_FRAME' && track.sizeBytes > HEAD_BYTES) {
-            head = await read(track.key, 0, Math.min(HEAD_BYTES_RETRY, track.sizeBytes) - 1);
+            head = await readWithRetry(
+                read,
+                track.key,
+                0,
+                Math.min(HEAD_BYTES_RETRY, track.sizeBytes) - 1,
+            );
             result = probeAudioDuration(track.name, head, track.sizeBytes);
         }
 
         if (!result.ok && result.reason === 'NEED_MORE_BYTES' && mayNeedTail(track.name)) {
             const start = Math.max(0, track.sizeBytes - TAIL_BYTES);
-            const tail = await read(track.key, start, track.sizeBytes - 1);
+            const tail = await readWithRetry(read, track.key, start, track.sizeBytes - 1);
             result = probeAudioDuration(track.name, head, track.sizeBytes, tail);
         }
 
