@@ -55,6 +55,7 @@ const num = (n: string, d: number) => {
 const CENSUS = !args.includes('--no-census');
 const VALIDATE = args.includes('--validate');
 const AUDIT = args.includes('--audit-estimate');
+const SHORTCUT = args.includes('--audit-folder');
 const SAMPLE = num('sample', 12);
 const MAX_TRACKS = num('max-tracks', 40);
 const HEAD_BYTES = num('head-kb', 64) * 1024;
@@ -63,7 +64,7 @@ const ROOT = arg('root') ?? 'dirt/';
 const ONLY_BOOK = arg('book') ? Number(arg('book')) : undefined;
 const TITLE = arg('title');
 /** Parallel ranged GETs. Bounded so a big folder can't open 40 sockets at B2. */
-const CONCURRENCY = 6;
+const CONCURRENCY = num('concurrency', 6);
 
 const BUCKET = process.env.S3_AUDIO_BUCKET!;
 
@@ -215,9 +216,14 @@ interface BookProbe {
     tracks: TrackProbe[];
     /** Tracks in the folder beyond --max-tracks, not probed. */
     skipped: number;
+    /** Wall clock for the whole folder, listing included — what a click would cost. */
+    elapsedMs: number;
+    /** Bytes pulled out of the bucket to answer. */
+    bytesRead: number;
 }
 
 async function probeBook(book: { id: number; title: string; audio_filepath: string | null }) {
+    const started = Date.now();
     const raw = book.audio_filepath?.trim() ?? '';
     const prefix = raw.endsWith('/') ? raw : `${raw}/`;
     const objects = await listPrefix(prefix);
@@ -234,6 +240,8 @@ async function probeBook(book: { id: number; title: string; audio_filepath: stri
         prefix,
         tracks,
         skipped: audio.length - take.length,
+        elapsedMs: Date.now() - started,
+        bytesRead: take.reduce((s, t) => s + Math.min(HEAD_BYTES, t.size), 0),
     } satisfies BookProbe;
 }
 
@@ -262,6 +270,11 @@ function reportBook(b: BookProbe) {
                 (estimated ? `  dont ${estimated} estimée(s)` : ''),
         );
     }
+    console.log(
+        `  coût      ${(b.elapsedMs / 1000).toFixed(2)} s, ` +
+            `${b.tracks.length + 1} requêtes, ` +
+            `${(b.bytesRead / 1024 / 1024).toFixed(2)} Mio lus`,
+    );
     for (const t of b.tracks.filter((t) => t.seconds === null)) {
         console.log(`  ✗ ${t.name} — ${t.problem}${t.detail ? ` : ${t.detail}` : ''}`);
     }
@@ -598,6 +611,102 @@ async function auditEstimate() {
     }
 }
 
+// --- folder shortcut -------------------------------------------------------
+
+/**
+ * Could one header answer for a whole folder?
+ *
+ * Reading every track costs one ranged GET each. If a folder's tracks all share
+ * a bitrate — plausible, since a folder is one recording session through one
+ * encoder — then the folder's total duration is its total BYTE count divided by
+ * that single bitrate, and the listing already reports every size. That would be
+ * two requests per book instead of one per track, independent of folder size.
+ *
+ * The claim is testable, so test it: measure each track properly, then compare
+ * against what the shortcut would have said. Reported separately for folders
+ * that carry VBR tags, where the shortcut cannot apply at all — a variable-rate
+ * track's bytes say nothing about its length.
+ */
+async function auditFolderShortcut() {
+    console.log(bar('4. Raccourci « un seul en-tête par dossier »'));
+
+    const books = await prisma.book.findMany({
+        where: ONLY_BOOK
+            ? { id: ONLY_BOOK }
+            : { audioLinkStatus: 'OK', audio_filepath: { not: null } },
+        select: { id: true, title: true, audio_filepath: true },
+        orderBy: { id: 'asc' },
+    });
+    const chosen = ONLY_BOOK ? books : spread(books, SAMPLE);
+    console.log(`  ${books.length} livres avec audio — échantillon de ${chosen.length}`);
+
+    let cbrFolders = 0;
+    let taggedFolders = 0;
+    let mixedRate = 0;
+    const errors: { pctErr: number; label: string; secs: number }[] = [];
+
+    for (const book of chosen) {
+        const b = await probeBook(book);
+        if (!b.tracks.length || b.tracks.some((t) => t.seconds === null)) continue;
+
+        const raw = book.audio_filepath!.trim();
+        const prefix = raw.endsWith('/') ? raw : `${raw}/`;
+        const audio = (await listPrefix(prefix))
+            .filter((o) => AUDIO_EXT.test(o.key))
+            .sort((a, b) => a.key.localeCompare(b.key, 'fr'))
+            .slice(0, MAX_TRACKS);
+        if (audio.length !== b.tracks.length) continue;
+
+        if (b.tracks.some((t) => t.method === 'XING' || t.method === 'VBRI')) {
+            taggedFolders++;
+            continue;
+        }
+
+        // The shortcut as it would actually be implemented: one header read.
+        const first = await getRange(audio[0].key, 0, Math.min(16 * 1024, audio[0].size) - 1);
+        const s = summariseMpeg(first);
+        if (!s) continue;
+
+        const totalBytes = audio.reduce((sum, o) => sum + o.size, 0);
+        const shortcut = (totalBytes * 8) / (s.bitrateKbps * 1000);
+        const truth = b.tracks.reduce((sum, t) => sum + t.seconds!, 0);
+
+        cbrFolders++;
+        const pctErr = ((shortcut - truth) / truth) * 100;
+        if (Math.abs(pctErr) > 1) mixedRate++;
+        errors.push({
+            pctErr,
+            secs: shortcut - truth,
+            label: `#${book.id} ${book.title}`.slice(0, 52),
+        });
+
+        process.stdout.write(`\r  sondé jusqu’à #${book.id}…                    `);
+    }
+    process.stdout.write('\r');
+
+    console.log(bar('Bilan du raccourci'));
+    console.log(`  Dossiers testables (tout CBR)      ${cbrFolders}`);
+    console.log(`  Dossiers à tag VBR (non testables) ${taggedFolders}`);
+    if (!errors.length) {
+        console.log('  Rien à comparer.');
+        return;
+    }
+    const abs = errors.map((e) => Math.abs(e.pctErr)).sort((a, b) => a - b);
+    console.log(`  Erreur médiane                     ${abs[Math.floor(abs.length / 2)].toFixed(3)} %`);
+    console.log(`  Erreur maximale                    ${abs[abs.length - 1].toFixed(3)} %`);
+    console.log(`  Dossiers à plus d’1 % d’erreur     ${mixedRate}`);
+    console.log('\n  Pires cas');
+    errors
+        .sort((a, b) => Math.abs(b.pctErr) - Math.abs(a.pctErr))
+        .slice(0, 8)
+        .forEach((e) =>
+            console.log(
+                `    ${e.label.padEnd(54)} ${e.pctErr > 0 ? '+' : ''}${e.pctErr.toFixed(3)} % ` +
+                    `(${e.secs > 0 ? '+' : ''}${e.secs.toFixed(0)} s)`,
+            ),
+        );
+}
+
 // --- main ------------------------------------------------------------------
 
 async function main() {
@@ -614,7 +723,8 @@ async function main() {
     console.log(`  entête ${HEAD_BYTES / 1024} Kio par piste`);
 
     if (CENSUS) await census();
-    if (AUDIT) await auditEstimate();
+    if (SHORTCUT) await auditFolderShortcut();
+    else if (AUDIT) await auditEstimate();
     else if (VALIDATE) await validate();
     else await sampleUndated();
 }
