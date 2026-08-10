@@ -1,9 +1,8 @@
 // app/admin/books/page.tsx
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
 import BooksTable from './books-table';
 import { notFound } from 'next/navigation';
-import { audioMissingWhere, audioPresentWhere } from '@/lib/books/audioFilter';
+import { buildBookScopeWhere, AudioFilter } from '@/lib/books/searchWhere';
 
 interface PageProps {
     searchParams: Promise<{
@@ -13,8 +12,6 @@ interface PageProps {
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-type AudioFilter = 'missing' | 'present' | undefined;
 
 async function getBooks(
     page: number,
@@ -27,147 +24,25 @@ async function getBooks(
 ) {
     const booksPerPage = 10;
 
-    let whereClause: Prisma.BookWhereInput = {};
-
-    if (searchTerm) {
-        switch (filter) {
-            case 'title':
-                whereClause = {
-                    title: {
-                        contains: searchTerm,
-                        mode: Prisma.QueryMode.insensitive
-                    }
-                };
-                break;
-            case 'author':
-                whereClause = {
-                    author: {
-                        contains: searchTerm,
-                        mode: Prisma.QueryMode.insensitive
-                    }
-                };
-                break;
-            case 'description':
-                whereClause = {
-                    description: {
-                        contains: searchTerm,
-                        mode: Prisma.QueryMode.insensitive
-                    }
-                };
-                break;
-            case 'genre':
-                whereClause = {
-                    genres: {
-                        some: {
-                            genre: {
-                                name: {
-                                    contains: searchTerm,
-                                    mode: Prisma.QueryMode.insensitive
-                                }
-                            }
-                        }
-                    }
-                };
-                break;
-            default:
-                whereClause = {
-                    OR: [
-                        {
-                            title: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive
-                            }
-                        },
-                        {
-                            author: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive
-                            }
-                        },
-                        {
-                            description: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive
-                            }
-                        },
-                        {
-                            genres: {
-                                some: {
-                                    genre: {
-                                        name: {
-                                            contains: searchTerm,
-                                            mode: Prisma.QueryMode.insensitive
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                };
-        }
-    }
-
-    // Add genre filter if genreIds are provided
-    if (genreIds.length > 0) {
-        const genreFilter = {
-            genres: {
-                some: {
-                    genreId: {
-                        in: genreIds
-                    }
-                }
-            }
-        };
-
-        if (Object.keys(whereClause).length > 0) {
-            whereClause = {
-                AND: [whereClause, genreFilter]
-            };
-        } else {
-            whereClause = genreFilter;
-        }
-    }
-
-    if (available !== undefined) {
-        const availableFilter = { available };
-
-        if (Object.keys(whereClause).length > 0) {
-            whereClause = {
-                AND: [whereClause, availableFilter]
-            };
-        } else {
-            whereClause = availableFilter;
-        }
-    }
-
-    if (hidden !== undefined) {
-        const hiddenFilter = { hiddenFromCatalogue: hidden };
-
-        if (Object.keys(whereClause).length > 0) {
-            whereClause = {
-                AND: [whereClause, hiddenFilter]
-            };
-        } else {
-            whereClause = hiddenFilter;
-        }
-    }
-
-    if (audio === 'missing' || audio === 'present') {
-        const audioFilter = audio === 'missing' ? audioMissingWhere() : audioPresentWhere();
-
-        if (Object.keys(whereClause).length > 0) {
-            whereClause = {
-                AND: [whereClause, audioFilter]
-            };
-        } else {
-            whereClause = audioFilter;
-        }
-    }
+    // Every filter except availability, so the disponible/en attente counts
+    // reflect the rest of the current filter set without being gated by the
+    // availability filter itself.
+    const scopedWhere = buildBookScopeWhere({
+        searchTerm,
+        filter,
+        genreIds,
+        includeHidden: true,
+        hidden,
+        audio,
+    });
+    const listWhere = available !== undefined
+        ? { AND: [scopedWhere, { available }] }
+        : scopedWhere;
 
     try {
-        const [books, totalBooks, genres] = await Promise.all([
+        const [books, totalBooks, availableCount, unavailableCount, genres] = await Promise.all([
             prisma.book.findMany({
-                where: whereClause,
+                where: listWhere,
                 orderBy: { createdAt: 'desc' },
                 skip: Math.max(0, (page - 1) * booksPerPage),
                 take: booksPerPage,
@@ -190,7 +65,9 @@ async function getBooks(
                     },
                 },
             }),
-            prisma.book.count({ where: whereClause }),
+            prisma.book.count({ where: listWhere }),
+            prisma.book.count({ where: { AND: [scopedWhere, { available: true }] } }),
+            prisma.book.count({ where: { AND: [scopedWhere, { available: false }] } }),
             prisma.genre.findMany({
                 select: {
                     id: true,
@@ -207,6 +84,8 @@ async function getBooks(
             totalBooks,
             totalPages: Math.ceil(totalBooks / booksPerPage),
             availableGenres: genres,
+            availableCount,
+            unavailableCount,
         };
     } catch (error) {
         console.error('Error fetching books:', error);
@@ -244,7 +123,7 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
         notFound();
     }
 
-    const { books, totalBooks, totalPages, availableGenres } = data;
+    const { books, totalBooks, totalPages, availableGenres, availableCount, unavailableCount } = data;
 
     return (
         <div className="space-y-4">
@@ -255,6 +134,8 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
                 totalPages={totalPages}
                 availableGenres={availableGenres}
                 initialTotalBooks={totalBooks}
+                initialAvailableCount={availableCount}
+                initialUnavailableCount={unavailableCount}
             />
         </div>
     );

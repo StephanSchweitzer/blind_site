@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2 } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -104,6 +104,8 @@ interface SearchResult {
     total: number;
     totalPages: number;
     page: number;
+    availableCount: number;
+    unavailableCount: number;
 }
 
 interface BooksTableProps {
@@ -113,6 +115,8 @@ interface BooksTableProps {
     totalPages: number;
     availableGenres?: { id: number; name: string; }[];
     initialTotalBooks: number;
+    initialAvailableCount: number;
+    initialUnavailableCount: number;
 }
 
 /**
@@ -178,7 +182,9 @@ export default function BooksTable({
                                        initialSearch = '',
                                        totalPages: initialTotalPages = 1,
                                        availableGenres = [],
-                                       initialTotalBooks = 0
+                                       initialTotalBooks = 0,
+                                       initialAvailableCount = 0,
+                                       initialUnavailableCount = 0
                                    }: BooksTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -198,6 +204,7 @@ export default function BooksTable({
     // UI state
     const [genreSearchQuery, setGenreSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     /** Bumped on every opening so the add form is always a blank one. */
     const [addSeq, setAddSeq] = useState(0);
@@ -222,7 +229,9 @@ export default function BooksTable({
         books: initialBooks,
         total: initialTotalBooks,
         page: parseInt(searchParams?.get('page') || '1'),
-        totalPages: initialTotalPages
+        totalPages: initialTotalPages,
+        availableCount: initialAvailableCount,
+        unavailableCount: initialUnavailableCount
     }));
 
     // Refs for debouncing, request cancellation, and caching
@@ -231,7 +240,9 @@ export default function BooksTable({
     const initialDataRef = useRef({
         books: initialBooks,
         total: initialTotalBooks,
-        totalPages: initialTotalPages
+        totalPages: initialTotalPages,
+        availableCount: initialAvailableCount,
+        unavailableCount: initialUnavailableCount
     });
 
     // Track if we need to invalidate cache after mutations
@@ -320,7 +331,9 @@ export default function BooksTable({
                 books: initialDataRef.current.books,
                 total: initialDataRef.current.total,
                 page: 1,
-                totalPages: initialDataRef.current.totalPages
+                totalPages: initialDataRef.current.totalPages,
+                availableCount: initialDataRef.current.availableCount,
+                unavailableCount: initialDataRef.current.unavailableCount
             });
             setIsSearching(false);
             return;
@@ -370,7 +383,9 @@ export default function BooksTable({
                 initialDataRef.current = {
                     books: data.books,
                     total: data.total,
-                    totalPages: data.totalPages
+                    totalPages: data.totalPages,
+                    availableCount: data.availableCount,
+                    unavailableCount: data.unavailableCount
                 };
                 cacheInvalidatedRef.current = false;
             }
@@ -434,6 +449,12 @@ export default function BooksTable({
         setSelectedAvailable(available);
         setCurrentPage(1);
     }, []);
+
+    // The disponible/en attente counters double as toggle chips: clicking the
+    // one already selected clears the filter instead of doing nothing.
+    const handleAvailablePillClick = useCallback((value: 'true' | 'false') => {
+        handleAvailableChange(selectedAvailable === value ? 'all' : value);
+    }, [selectedAvailable, handleAvailableChange]);
 
     const handleHiddenChange = useCallback((hidden: string) => {
         setSelectedHidden(hidden);
@@ -643,14 +664,52 @@ export default function BooksTable({
         return availableGenres?.find(g => g.id === genreId)?.name || '';
     };
 
+    // Which availability segment (if any) the current filter is showing — the
+    // disponible/en attente figures double as toggle chips, mirroring the
+    // actif/inactif chips on the users page.
+    const availableSelected = selectedAvailable === 'true';
+    const unavailableSelected = selectedAvailable === 'false';
+    const activeFilterCount = (selectedAudio !== 'all' ? 1 : 0) + (selectedHidden !== 'all' ? 1 : 0);
+
     return (
         <Card className="bg-card border-border">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <CardTitle className="text-foreground">Gestion des livres</CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                        {searchResults.total} livre{searchResults.total !== 1 ? 's' : ''} au total
-                    </CardDescription>
+                    <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
+                        <span>
+                            {searchResults.total} livre{searchResults.total !== 1 ? 's' : ''} au total
+                        </span>
+                        <span aria-hidden className="text-muted-foreground/50">&#8226;</span>
+                        <button
+                            type="button"
+                            aria-pressed={availableSelected}
+                            onClick={() => handleAvailablePillClick('true')}
+                            title={availableSelected ? 'Retirer le filtre' : 'Afficher uniquement les disponibles'}
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
+                                availableSelected
+                                    ? 'bg-emerald-950 text-emerald-300 ring-1 ring-inset ring-emerald-800'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                        >
+                            <span className={`h-1.5 w-1.5 rounded-full ${availableSelected ? 'bg-emerald-400' : 'bg-emerald-500/50'}`} />
+                            {searchResults.availableCount} disponible{searchResults.availableCount > 1 ? 's' : ''}
+                        </button>
+                        <button
+                            type="button"
+                            aria-pressed={unavailableSelected}
+                            onClick={() => handleAvailablePillClick('false')}
+                            title={unavailableSelected ? 'Retirer le filtre' : 'Afficher uniquement les livres en attente'}
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
+                                unavailableSelected
+                                    ? 'bg-amber-950 text-amber-300 ring-1 ring-inset ring-amber-800'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                        >
+                            <span className={`h-1.5 w-1.5 rounded-full ${unavailableSelected ? 'bg-amber-400' : 'bg-amber-500/50'}`} />
+                            {searchResults.unavailableCount} en attente
+                        </button>
+                    </div>
                 </div>
                 <Button
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90"
@@ -662,7 +721,7 @@ export default function BooksTable({
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:items-center">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:items-end">
                         <div className="relative w-full sm:flex-1 sm:min-w-[220px]">
                             <Input
                                 value={searchTerm}
@@ -676,51 +735,100 @@ export default function BooksTable({
                             )}
                         </div>
 
-                        <select
-                            value={selectedFilter}
-                            onChange={(e) => handleFilterChange(e.target.value)}
-                            className="w-full sm:w-44 px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
-                        >
-                            <option value="all">Tous</option>
-                            <option value="title">Titre</option>
-                            <option value="author">Auteur</option>
-                            <option value="isbn">ISBN</option>
-                            <option value="description">Description</option>
-                            <option value="genre">Genre</option>
-                        </select>
+                        <div className="flex flex-col gap-1 w-full sm:w-44">
+                            <label htmlFor="book-search-field" className="text-xs font-medium text-muted-foreground">
+                                Rechercher dans
+                            </label>
+                            <select
+                                id="book-search-field"
+                                value={selectedFilter}
+                                onChange={(e) => handleFilterChange(e.target.value)}
+                                className="w-full px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
+                            >
+                                <option value="all">Tous les champs</option>
+                                <option value="title">Titre</option>
+                                <option value="author">Auteur</option>
+                                <option value="isbn">ISBN</option>
+                                <option value="description">Description</option>
+                                <option value="genre">Genre</option>
+                            </select>
+                        </div>
 
-                        <select
-                            value={selectedAvailable}
-                            onChange={(e) => handleAvailableChange(e.target.value)}
-                            className="w-full sm:w-44 px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
-                        >
-                            <option value="all">Tous</option>
-                            <option value="true">Disponible</option>
-                            <option value="false">En attente</option>
-                        </select>
-
-                        <select
-                            value={selectedAudio}
-                            onChange={(e) => handleAudioChange(e.target.value)}
-                            className="w-full sm:w-44 px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
-                        >
-                            <option value="all">Tous (audio)</option>
-                            <option value="missing">Sans audio</option>
-                            <option value="present">Avec audio</option>
-                        </select>
-
-                        <select
-                            value={selectedHidden}
-                            onChange={(e) => handleHiddenChange(e.target.value)}
-                            className="w-full sm:w-44 px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
-                        >
-                            <option value="all">Tous (catalogue)</option>
-                            <option value="false">Visible</option>
-                            <option value="true">Masqué</option>
-                        </select>
+                        <div className="flex flex-col gap-1 w-full sm:w-auto">
+                            <span className="text-xs font-medium text-muted-foreground">Filtres</span>
+                            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full sm:w-auto justify-between gap-2 bg-card text-foreground border-border"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <SlidersHorizontal className="h-4 w-4" />
+                                            Audio &amp; catalogue
+                                        </span>
+                                        {activeFilterCount > 0 && (
+                                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                                                {activeFilterCount}
+                                            </span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent align="start" collisionPadding={16} className="w-72 space-y-4 bg-card border-border">
+                                    <div className="space-y-1.5">
+                                        <span className="text-xs font-medium text-muted-foreground">Audio</span>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {[
+                                                { value: 'all', label: 'Tous' },
+                                                { value: 'present', label: 'Avec' },
+                                                { value: 'missing', label: 'Sans' },
+                                            ].map((opt) => (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    aria-pressed={selectedAudio === opt.value}
+                                                    onClick={() => handleAudioChange(opt.value)}
+                                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                                                        selectedAudio === opt.value
+                                                            ? 'bg-primary text-primary-foreground border-primary'
+                                                            : 'bg-card text-foreground border-border hover:bg-muted'
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <span className="text-xs font-medium text-muted-foreground">Visibilité dans le catalogue</span>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {[
+                                                { value: 'all', label: 'Toutes' },
+                                                { value: 'false', label: 'Visible' },
+                                                { value: 'true', label: 'Masqué' },
+                                            ].map((opt) => (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    aria-pressed={selectedHidden === opt.value}
+                                                    onClick={() => handleHiddenChange(opt.value)}
+                                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                                                        selectedHidden === opt.value
+                                                            ? 'bg-primary text-primary-foreground border-primary'
+                                                            : 'bg-card text-foreground border-border hover:bg-muted'
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
 
                         {availableGenres && availableGenres.length > 0 && (
-                            <div className="w-full sm:w-64">
+                            <div className="flex flex-col gap-1 w-full sm:w-64">
+                                <span className="text-xs font-medium text-muted-foreground">Genres</span>
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
                                         <Button

@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 import { BookWithGenres } from '@/types/book';
 import { withAdmin, getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { audioMissingWhere, audioPresentWhere, AUDIO_MISSING_STATUSES } from '@/lib/books/audioFilter';
+import { buildBookScopeWhere } from '@/lib/books/searchWhere';
 
 type AudioFilter = 'missing' | 'present' | undefined;
 
@@ -268,6 +269,8 @@ interface BooksApiResponse {
     total: number;
     page: number;
     totalPages: number;
+    availableCount: number;
+    unavailableCount: number;
 }
 
 interface BooksApiError {
@@ -277,6 +280,8 @@ interface BooksApiError {
     total: number;
     page: number;
     totalPages: number;
+    availableCount: number;
+    unavailableCount: number;
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
@@ -394,11 +399,29 @@ export async function GET(request: NextRequest): Promise<Response> {
             ]);
         }
 
+        // Scoped to every filter except availability, so these counts always
+        // reflect the current search/genre/hidden/audio filters without being
+        // gated by the availability filter they're meant to summarize.
+        const scopedWhere = buildBookScopeWhere({
+            searchTerm: search,
+            filter,
+            genreIds: genres,
+            includeHidden,
+            hidden: hiddenFilter,
+            audio,
+        });
+        const [availableCount, unavailableCount] = await Promise.all([
+            prisma.book.count({ where: { AND: [scopedWhere, { available: true }] } }),
+            prisma.book.count({ where: { AND: [scopedWhere, { available: false }] } }),
+        ]);
+
         const response: BooksApiResponse = {
             books,
             total,
             page,
-            totalPages: Math.ceil(total / limit)
+            totalPages: Math.ceil(total / limit),
+            availableCount,
+            unavailableCount,
         };
 
         return new Response(JSON.stringify(response), {
@@ -416,7 +439,9 @@ export async function GET(request: NextRequest): Promise<Response> {
             books: [],
             total: 0,
             page: 1,
-            totalPages: 0
+            totalPages: 0,
+            availableCount: 0,
+            unavailableCount: 0,
         };
 
         return new Response(JSON.stringify(errorResponse), {
