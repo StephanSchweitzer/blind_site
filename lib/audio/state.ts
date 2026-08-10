@@ -93,7 +93,7 @@ export interface RefreshResult {
  * name, so it is discarded rather than believed — the book then reads as
  * unmeasured until someone presses « Recalculer », which is the honest state.
  */
-async function resolveTrackDurations(
+export async function resolveTrackDurations(
     bookId: number,
     currentSizes: Map<string, number>,
 ): Promise<Map<string, number | null>> {

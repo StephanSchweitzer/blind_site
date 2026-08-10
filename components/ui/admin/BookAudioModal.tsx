@@ -51,6 +51,7 @@ interface Track {
     key: string;
     name: string;
     sizeBytes: number;
+    durationSeconds: number | null;
     url: string;
     downloadUrl: string;
 }
@@ -97,6 +98,15 @@ const formatSize = (bytes: number) =>
         : bytes >= 1e6
           ? `${(bytes / 1e6).toFixed(1)} Mo`
           : `${Math.max(1, Math.round(bytes / 1e3))} Ko`;
+
+const formatDuration = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    return h > 0
+        ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+        : `${m}:${String(s).padStart(2, '0')}`;
+};
 
 const formatDate = (iso: string) =>
     new Date(iso).toLocaleString('fr-FR', {
@@ -816,6 +826,16 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                 {formatSize(t.sizeBytes)}
                                             </div>
                                         </div>
+                                        <span
+                                            className="w-16 flex-shrink-0 text-right font-mono text-sm tabular-nums text-foreground"
+                                            aria-label={
+                                                t.durationSeconds != null
+                                                    ? `Durée : ${formatDuration(t.durationSeconds)}`
+                                                    : 'Durée non mesurée'
+                                            }
+                                        >
+                                            {t.durationSeconds != null ? formatDuration(t.durationSeconds) : '—'}
+                                        </span>
                                         <a
                                             href={t.downloadUrl}
                                             className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { listBookTracks, getTrackUrl } from '@/lib/audio/bucket';
-import { refreshBookAudioState, resolvePrefix } from '@/lib/audio/state';
+import { refreshBookAudioState, resolvePrefix, resolveTrackDurations } from '@/lib/audio/state';
 
 /** Management links are short-lived; the dialogue refetches rather than caching. */
 const URL_TTL_SECONDS = 3600;
@@ -52,9 +52,13 @@ export const GET = withAdmin(async (_req, { params }) => {
     const state = await refreshBookAudioState(bookId);
 
     const tracks = prefix ? await listBookTracks(prefix) : [];
+    const durations = tracks.length
+        ? await resolveTrackDurations(bookId, new Map(tracks.map((t) => [t.name, t.sizeBytes])))
+        : new Map<string, number | null>();
     const signed = await Promise.all(
         tracks.map(async (t) => ({
             ...t,
+            durationSeconds: durations.get(t.name) ?? null,
             url: await getTrackUrl(t.key, URL_TTL_SECONDS),
             downloadUrl: await getTrackUrl(t.key, URL_TTL_SECONDS, t.name),
         })),
