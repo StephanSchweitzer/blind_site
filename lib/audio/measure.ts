@@ -2,7 +2,7 @@ import 'server-only';
 
 import { prisma } from '@/lib/prisma';
 import { getRangeBytes, listBookTracks } from './bucket';
-import { probeAudioDuration, summariseMpeg, mayNeedTail } from './duration-probe';
+import { measureTrackBytes, pool, type TrackMeasure } from './measure-core';
 import { resolvePrefix } from './state';
 
 /**
@@ -19,38 +19,19 @@ import { resolvePrefix } from './state';
  *
  * ## What it costs
  *
- * One ranged GET per track, of HEAD_BYTES. There is no bulk read in the S3 API,
- * and the obvious way around it — divide the folder's total weight by one
- * track's bitrate — was measured and rejected: it is right to 0.01 % on uniform
- * folders and out by ten minutes on a folder whose last track was encoded at a
- * different rate, which nothing but reading the headers reveals. So the cost is
- * paid once per track and cached in AudioTrackDuration; a second press pays only
- * for tracks whose weight moved.
+ * One ranged GET per track. There is no bulk read in the S3 API, and the obvious
+ * way around it — divide the folder's total weight by one track's bitrate — was
+ * measured and rejected: it is right to 0.01 % on uniform folders and out by ten
+ * minutes on a folder whose last track was encoded at a different rate, which
+ * nothing but reading the headers reveals. So the cost is paid once per track
+ * and cached in AudioTrackDuration; a second press pays only for tracks whose
+ * weight moved.
  *
- * ## Why an estimate is confirmed before it is believed
- *
- * A file with no Xing/VBRI tag has no stated length, so its duration is bytes ÷
- * bitrate — exact for a constant-bitrate file and wrong by a third for a
- * variable-bitrate one. The error is not a tolerance question: measured across
- * the corpus it is either under a second or over ten minutes, nothing between.
- * So an untagged file gets ONE extra read from its middle, and the estimate is
- * only recorded if the bitrate there matches the first frame's. A file that
- * fails is reported unmeasurable rather than guessed at — this number is printed
- * in the Coup de cœur PDF and shown in the public catalogue.
+ * The per-track measurement itself lives in ./measure-core, shared verbatim with
+ * scripts/backfill-audio-durations.ts.
  */
 
-/**
- * Enough for the first frame plus a Xing tag in every file sampled from the
- * corpus. A 64 Kio read returned byte-identical answers for four times the data,
- * so the larger read is kept only as the escalation below.
- */
-const HEAD_BYTES = 16 * 1024;
-/** Second attempt, for a file whose ID3v2 block (cover art, mostly) buries the first frame. */
-const HEAD_BYTES_RETRY = 64 * 1024;
-/** Tail read, for an MP4 that keeps `moov` at the end. */
-const TAIL_BYTES = 256 * 1024;
-/** Slice read from mid-file to confirm a constant bitrate. */
-const PROBE_BYTES = 16 * 1024;
+export type { TrackMeasure } from './measure-core';
 
 /**
  * Parallel ranged GETs. Measured: a 26-track folder takes 14.7 s serially, 3.7 s
@@ -66,23 +47,11 @@ const CONCURRENCY = 8;
  * Measured cost is roughly 0.15 s per uncached track at the concurrency above,
  * so this is about thirty seconds of work — comfortably inside a serverless
  * function, and far beyond anything in the corpus, whose folders average 28
- * tracks and whose largest sampled folder held 61. A book that trips this is
+ * tracks and whose largest sampled folder held 77. A book that trips this is
  * therefore much more likely to be a mis-linked folder than a real recording,
  * which is why the message asks for a human rather than suggesting a retry.
  */
 const MAX_TRACKS = 200;
-
-export interface TrackMeasure {
-    filename: string;
-    sizeBytes: number;
-    seconds: number | null;
-    method: string | null;
-    exact: boolean;
-    /** Why it could not be measured, in French, for the admin to act on. */
-    problem: string | null;
-    /** True when the value came from the cache rather than a fresh read. */
-    cached: boolean;
-}
 
 export interface MeasureResult {
     tracks: TrackMeasure[];
@@ -92,14 +61,6 @@ export interface MeasureResult {
     failed: number;
     fromCache: number;
 }
-
-const PROBLEM_LABEL: Record<string, string> = {
-    UNSUPPORTED_FORMAT: 'format non pris en charge',
-    NEED_MORE_BYTES: 'en-tête introuvable dans le fichier',
-    NO_FRAME: 'fichier illisible ou endommagé',
-    IMPLAUSIBLE: 'en-tête incohérent',
-    VARIABLE_BITRATE: 'débit variable sans repère de durée — mesure impossible',
-};
 
 /**
  * A refusal this function is sure about, carrying the status it deserves.
@@ -116,111 +77,6 @@ export class MeasureError extends Error {
     ) {
         super(message);
         this.name = 'MeasureError';
-    }
-}
-
-/** Run `worker` over `items` with a bounded number in flight. */
-async function pool<T, R>(items: T[], worker: (item: T) => Promise<R>): Promise<R[]> {
-    const out: R[] = new Array(items.length);
-    let next = 0;
-    await Promise.all(
-        Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
-            for (;;) {
-                const i = next++;
-                if (i >= items.length) return;
-                out[i] = await worker(items[i]);
-            }
-        }),
-    );
-    return out;
-}
-
-/**
- * Is this untagged MPEG file really constant-bitrate?
- *
- * One read from the middle. A folder is not uniform — the corpus holds folders
- * mixing 64 and 128 kbps — so this is asked per file, never per folder.
- */
-async function confirmConstantBitrate(
-    key: string,
-    sizeBytes: number,
-    bitrateKbps: number,
-): Promise<boolean> {
-    const start = Math.floor(sizeBytes / 2);
-    if (start + PROBE_BYTES >= sizeBytes) {
-        // Too short to sample anywhere but the header we already read. A file
-        // this small is seconds long, so a wrong reading cannot move the total.
-        return true;
-    }
-    const chunk = await getRangeBytes(key, start, start + PROBE_BYTES - 1);
-    const mid = summariseMpeg(chunk);
-    // An unreadable slice is not evidence of variability — mid-file bytes can
-    // land inside a frame we cannot resynchronise on. Absence of contradiction
-    // is what is being tested.
-    return !mid || mid.bitrateKbps === bitrateKbps;
-}
-
-async function measureTrack(track: {
-    key: string;
-    name: string;
-    sizeBytes: number;
-}): Promise<TrackMeasure> {
-    const base: TrackMeasure = {
-        filename: track.name,
-        sizeBytes: track.sizeBytes,
-        seconds: null,
-        method: null,
-        exact: false,
-        problem: null,
-        cached: false,
-    };
-
-    try {
-        let head = await getRangeBytes(track.key, 0, Math.min(HEAD_BYTES, track.sizeBytes) - 1);
-        let result = probeAudioDuration(track.name, head, track.sizeBytes);
-
-        // A big ID3v2 block — cover art, usually — can push the first frame past
-        // the small read. Pay for the larger one only on the files that need it.
-        if (!result.ok && result.reason === 'NO_FRAME' && track.sizeBytes > HEAD_BYTES) {
-            head = await getRangeBytes(
-                track.key,
-                0,
-                Math.min(HEAD_BYTES_RETRY, track.sizeBytes) - 1,
-            );
-            result = probeAudioDuration(track.name, head, track.sizeBytes);
-        }
-
-        if (!result.ok && result.reason === 'NEED_MORE_BYTES' && mayNeedTail(track.name)) {
-            const start = Math.max(0, track.sizeBytes - TAIL_BYTES);
-            const tail = await getRangeBytes(track.key, start, track.sizeBytes - 1);
-            result = probeAudioDuration(track.name, head, track.sizeBytes, tail);
-        }
-
-        if (!result.ok) {
-            return { ...base, problem: PROBLEM_LABEL[result.reason] ?? result.reason };
-        }
-
-        // An estimate is the only answer that can be silently wrong, so it is the
-        // only one that has to be earned.
-        if (!result.exact && result.method === 'MPEG_CBR') {
-            const summary = summariseMpeg(head);
-            const constant =
-                !summary ||
-                (await confirmConstantBitrate(track.key, track.sizeBytes, summary.bitrateKbps));
-            if (!constant) {
-                return { ...base, problem: PROBLEM_LABEL.VARIABLE_BITRATE };
-            }
-        }
-
-        return {
-            ...base,
-            seconds: Math.round(result.seconds),
-            method: result.method,
-            exact: result.exact,
-        };
-    } catch (error) {
-        console.error(`measureTrack: lecture impossible pour ${track.key}`, error);
-        return { ...base, problem: 'stockage injoignable' };
     }
 }
 
@@ -261,7 +117,7 @@ export async function measureBookDurations(bookId: number): Promise<MeasureResul
     });
     const cache = new Map(cachedRows.map((r) => [r.filename, r]));
 
-    const results = await pool(tracks, async (track) => {
+    const results = await pool(tracks, CONCURRENCY, async (track) => {
         const hit = cache.get(track.name);
         if (hit && Number(hit.sizeBytes) === track.sizeBytes) {
             return {
@@ -274,14 +130,18 @@ export async function measureBookDurations(bookId: number): Promise<MeasureResul
                 cached: true,
             } satisfies TrackMeasure;
         }
-        return measureTrack(track);
+        return measureTrackBytes(getRangeBytes, {
+            key: track.key,
+            name: track.name,
+            sizeBytes: track.sizeBytes,
+        });
     });
 
     // Persist only what was freshly measured, replacing rather than accumulating:
     // this is a cache of the file as it stands, not a history of what it used to
-    // be. Done as two statements in one transaction rather than an upsert per
-    // track — a folder of forty tracks is forty round trips otherwise, on top of
-    // the forty range reads it already cost.
+    // be. Two statements in one transaction rather than an upsert per track — a
+    // folder of forty tracks is forty round trips otherwise, on top of the forty
+    // range reads it already cost.
     const fresh = results.filter((r) => !r.cached && r.seconds !== null);
     if (fresh.length) {
         await prisma.$transaction([

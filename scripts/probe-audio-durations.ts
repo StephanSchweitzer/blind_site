@@ -41,6 +41,7 @@ import {
     type ProbeMethod,
     type ProbeFailureReason,
 } from '../lib/audio/duration-probe';
+import { scriptDatabaseUrl, describeDatabase } from './db-url';
 
 const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
@@ -86,9 +87,8 @@ const s3 = new S3Client({
     },
 });
 
-const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
-});
+const DB_URL = scriptDatabaseUrl();
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: DB_URL }) });
 
 // --- formatting ------------------------------------------------------------
 
@@ -710,16 +710,9 @@ async function auditFolderShortcut() {
 // --- main ------------------------------------------------------------------
 
 async function main() {
-    const dbHost = (() => {
-        try {
-            return new URL(process.env.DATABASE_URL!).host;
-        } catch {
-            return '(illisible)';
-        }
-    })();
     console.log('SONDE DE DURÉE — lecture seule, aucune écriture');
     console.log(`  bucket ${BUCKET}${endpoint ? ` @ ${endpoint}` : ''}`);
-    console.log(`  base   ${dbHost}`);
+    console.log(`  base   ${describeDatabase(DB_URL)}`);
     console.log(`  entête ${HEAD_BYTES / 1024} Kio par piste`);
 
     if (CENSUS) await census();
