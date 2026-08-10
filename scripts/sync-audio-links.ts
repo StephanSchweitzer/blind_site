@@ -21,6 +21,7 @@
  * rows an admin dismissed — those are kept so the decision isn't lost.
  */
 import 'dotenv/config';
+import { isAudioKey } from "../lib/audio/bucket-core";
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -78,7 +79,7 @@ async function main() {
     } while (token);
     process.stdout.write('\n');
 
-    const audio = objects.filter((o) => AUDIO_EXT.test(o.key));
+    const audio = objects.filter((o) => isAudioKey(o.key));
     const folders = groupByFolder(audio); // folders holding at least one track
     const allFolders = groupByFolder(objects); // including placeholder-only folders
     console.log(`${folders.size} dossiers avec audio, ${audio.length} pistes\n`);

@@ -23,13 +23,13 @@
  * rather than restarts.
  */
 import 'dotenv/config';
+import { isAudioKey } from "../lib/audio/bucket-core";
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { measureTrackBytes, pool, type TrackMeasure } from '../lib/audio/measure-core';
 import { scriptDatabaseUrl, describeDatabase } from './db-url';
 
-const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
 const args = process.argv.slice(2);
 const arg = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -102,7 +102,7 @@ async function listTracks(prefix: string) {
             }),
         );
         for (const o of res.Contents ?? []) {
-            if (o.Key && AUDIO_EXT.test(o.Key)) {
+            if (o.Key && isAudioKey(o.Key)) {
                 out.push({ key: o.Key, name: o.Key.slice(prefix.length), sizeBytes: o.Size ?? 0 });
             }
         }

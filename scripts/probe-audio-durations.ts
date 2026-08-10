@@ -31,6 +31,7 @@
  *                        uploads, i.e. production; the local copy has none.
  */
 import 'dotenv/config';
+import { isAudioKey } from "../lib/audio/bucket-core";
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -43,7 +44,6 @@ import {
 } from '../lib/audio/duration-probe';
 import { scriptDatabaseUrl, describeDatabase } from './db-url';
 
-const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
 const args = process.argv.slice(2);
 const arg = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -228,7 +228,7 @@ async function probeBook(book: { id: number; title: string; audio_filepath: stri
     const prefix = raw.endsWith('/') ? raw : `${raw}/`;
     const objects = await listPrefix(prefix);
     const audio = objects
-        .filter((o) => AUDIO_EXT.test(o.key))
+        .filter((o) => isAudioKey(o.key))
         .sort((a, b) => a.key.localeCompare(b.key, 'fr'));
 
     const take = audio.slice(0, MAX_TRACKS);
@@ -295,7 +295,7 @@ async function census() {
         const ext = o.key.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? '(sans extension)';
         tally(byExt, ext);
         bytesByExt[ext] = (bytesByExt[ext] ?? 0) + o.size;
-        if (AUDIO_EXT.test(o.key)) audioCount++;
+        if (isAudioKey(o.key)) audioCount++;
     }
     console.log(`  ${audioCount} pistes audio\n`);
     console.log('  Extensions');
@@ -536,7 +536,7 @@ async function auditEstimate() {
         const raw = book.audio_filepath!.trim();
         const prefix = raw.endsWith('/') ? raw : `${raw}/`;
         const audio = (await listPrefix(prefix))
-            .filter((o) => AUDIO_EXT.test(o.key) && o.key.toLowerCase().endsWith('.mp3'))
+            .filter((o) => isAudioKey(o.key) && o.key.toLowerCase().endsWith('.mp3'))
             .sort((a, b) => a.key.localeCompare(b.key, 'fr'))
             .slice(0, MAX_TRACKS);
 
@@ -652,7 +652,7 @@ async function auditFolderShortcut() {
         const raw = book.audio_filepath!.trim();
         const prefix = raw.endsWith('/') ? raw : `${raw}/`;
         const audio = (await listPrefix(prefix))
-            .filter((o) => AUDIO_EXT.test(o.key))
+            .filter((o) => isAudioKey(o.key))
             .sort((a, b) => a.key.localeCompare(b.key, 'fr'))
             .slice(0, MAX_TRACKS);
         if (audio.length !== b.tracks.length) continue;

@@ -12,6 +12,7 @@
  * Read-only.
  */
 import 'dotenv/config';
+import { isAudioKey } from "../lib/audio/bucket-core";
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
@@ -81,7 +82,7 @@ async function main() {
 
     // B2 writes a `.bzEmpty` placeholder into empty folders, and the NAS sync
     // carried over stray non-audio files. Neither is a track.
-    const audio = objects.filter((o) => AUDIO_EXT.test(o.key));
+    const audio = objects.filter((o) => isAudioKey(o.key));
     const noise = objects.length - audio.length;
     const folders = groupByFolder(audio);
     // Folders including the non-audio ones, so we can tell "folder is not there"

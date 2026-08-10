@@ -16,12 +16,12 @@
  * sides. Sizes are what survive that.
  */
 import 'dotenv/config';
+import { isAudioKey } from "../lib/audio/bucket-core";
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { scriptDatabaseUrl, describeDatabase } from './db-url';
 
-const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
 const ids = process.argv.slice(2).filter((a) => !a.startsWith('--')).map(Number);
 if (ids.length !== 2 || ids.some((n) => !Number.isInteger(n))) {
@@ -61,7 +61,7 @@ async function listFolder(prefix: string) {
             }),
         );
         for (const o of res.Contents ?? []) {
-            if (o.Key && AUDIO_EXT.test(o.Key)) {
+            if (o.Key && isAudioKey(o.Key)) {
                 out.push({ name: o.Key.slice(prefix.length), size: o.Size ?? 0 });
             }
         }

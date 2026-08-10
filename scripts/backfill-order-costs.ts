@@ -112,6 +112,12 @@ async function main() {
 
     let updated = 0;
     for (const [billId, group] of byBill) {
+        // Prisma's 5 s default is far too short here. The `billId: null` group holds
+        // every demande rattachée à aucune facture — most of the batch — and each
+        // line is a separate round trip to the base. Against a remote Postgres that
+        // blows the default long before the group is done, and the whole transaction
+        // expires mid-flight ("a query cannot be executed on an expired transaction").
+        // Rolls back cleanly when it happens, so the failure is safe — just useless.
         await prisma.$transaction(async (tx) => {
             for (const c of group) {
                 await tx.orders.update({ where: { id: c.order.id }, data: { cost: c.newCost } });
@@ -143,7 +149,7 @@ async function main() {
                     performedById: null,
                 },
             });
-        });
+        }, { timeout: 120_000, maxWait: 20_000 });
         updated += group.length;
         process.stdout.write(`\r  ${updated} demandes mises à jour…`);
     }

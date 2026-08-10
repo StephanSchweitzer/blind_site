@@ -37,6 +37,7 @@
  * ever downloaded, so the bucket's size in bytes is irrelevant to the run.
  */
 import 'dotenv/config';
+import { isAudioKey } from "../lib/audio/bucket-core";
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
@@ -214,7 +215,7 @@ async function main() {
     console.log(`Bucket   : ${BUCKET} (${REGION})${PREFIX ? ` prefix=${PREFIX}` : ''}`);
     console.log('Listing…');
     const objects = await listBucket();
-    const audio = objects.filter((o) => AUDIO_EXT.test(o.key));
+    const audio = objects.filter((o) => isAudioKey(o.key));
 
     // --- 1. Bucket shape -----------------------------------------------------
     const grouped = groupByFolder(audio);

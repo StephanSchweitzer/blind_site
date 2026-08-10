@@ -25,6 +25,40 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
+/**
+ * Is this object a real recording, rather than something that merely ends in
+ * `.mp3`?
+ *
+ * ## AppleDouble
+ *
+ * Copying files from a Mac onto a non-Mac filesystem writes a companion
+ * `._name.ext` beside every `name.ext`, holding resource-fork metadata. They are
+ * a few hundred bytes, contain no audio, and — because the corpus was migrated
+ * through a Mac — there are ~1 856 of them sitting in the catalogue next to the
+ * real tracks.
+ *
+ * Matching on the extension alone counts every one of them as a track. That
+ * DOUBLED the reported track count of every affected book, and made the reading
+ * duration impossible to compute for all of them: the total is refused unless
+ * every track resolves, and a 300-byte metadata stub never will.
+ *
+ * The marker is NOT always at the start of the name. The migration prepended a
+ * folder number to every file, so `._1 Titre.mp3` became `1000 ._1 Titre.mp3` —
+ * which is why matching only on a leading `._` finds none of them in this
+ * corpus. It is matched at the start or after a space instead.
+ *
+ * They are excluded rather than deleted. Deleting anything in the audio tree is
+ * its own decision with its own review; ignoring a file that was never audio
+ * needs neither.
+ */
+const APPLE_DOUBLE = /(^|\s)\._/;
+
+export function isAudioKey(key: string): boolean {
+    if (!AUDIO_EXT.test(key)) return false;
+    const name = key.slice(key.lastIndexOf('/') + 1);
+    return !APPLE_DOUBLE.test(name);
+}
+
 /** B2's console shows a bare host; the SDK needs a URL. */
 function normaliseEndpoint(raw: string | undefined): string | undefined {
     if (!raw) return undefined;
@@ -110,8 +144,9 @@ export async function listBookTracks(prefix: string): Promise<AudioTrack[]> {
             }),
         );
         for (const o of res.Contents ?? []) {
-            // Skip B2's `.bzEmpty` placeholders and any stray non-audio files.
-            if (o.Key && AUDIO_EXT.test(o.Key)) keys.push({ key: o.Key, size: o.Size ?? 0 });
+            // Skip B2's `.bzEmpty` placeholders, AppleDouble stubs, and any
+            // stray non-audio files.
+            if (o.Key && isAudioKey(o.Key)) keys.push({ key: o.Key, size: o.Size ?? 0 });
         }
         token = res.IsTruncated ? res.NextContinuationToken : undefined;
     } while (token);

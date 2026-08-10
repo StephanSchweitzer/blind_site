@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { withoutAudit } from '@/lib/audit/context';
 import { bytesToKb } from '@/lib/pricing';
 import { repriceOpenOrdersForBook } from '@/lib/pricing-sync';
-import { listRawObjects } from './bucket';
+import { listRawObjects, isAudioKey } from './bucket';
 
 /**
  * Keeps Book.audioLinkStatus / audioTrackCount / audioSizeKb / audioCheckedAt
@@ -16,8 +16,6 @@ import { listRawObjects } from './bucket';
  * The status rules deliberately mirror the sync script's, so a UI action and the
  * next nightly run agree rather than flip-flopping.
  */
-
-const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
 export type AudioLinkStatusValue =
     | 'OK'
@@ -167,7 +165,7 @@ export async function refreshBookAudioState(
         status = 'NO_PATH';
     } else {
         const objects = await listRawObjects(prefix);
-        const audio = objects.filter((o) => AUDIO_EXT.test(o.key));
+        const audio = objects.filter((o) => isAudioKey(o.key));
         if (audio.length) {
             status = 'OK';
             trackCount = audio.length;
