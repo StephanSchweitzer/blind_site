@@ -9,6 +9,7 @@ import {
     DeleteObjectsCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { isAppleDoubleName } from './naming';
 
 /**
  * Audio storage access (Backblaze B2 via its S3-compatible API).
@@ -42,21 +43,11 @@ const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
  * duration impossible to compute for all of them: the total is refused unless
  * every track resolves, and a 300-byte metadata stub never will.
  *
- * The marker is NOT always at the start of the name. The migration prepended a
- * folder number to every file, so `._1 Titre.mp3` became `1000 ._1 Titre.mp3` —
- * which is why matching only on a leading `._` finds none of them in this
- * corpus. It is matched at the start or after a space instead.
- *
- * They are excluded rather than deleted. Deleting anything in the audio tree is
- * its own decision with its own review; ignoring a file that was never audio
- * needs neither.
+ * The rule itself lives in ./naming, with the upload side that refuses to let
+ * new ones in — one definition, both directions.
  */
-const APPLE_DOUBLE = /(^|\s)\._/;
-
 export function isAudioKey(key: string): boolean {
-    if (!AUDIO_EXT.test(key)) return false;
-    const name = key.slice(key.lastIndexOf('/') + 1);
-    return !APPLE_DOUBLE.test(name);
+    return AUDIO_EXT.test(key) && !isAppleDoubleName(key);
 }
 
 /** B2's console shows a bare host; the SDK needs a URL. */

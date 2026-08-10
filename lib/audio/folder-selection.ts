@@ -23,12 +23,12 @@
  * Pure logic over `File` metadata — no React, no bucket, no `server-only`.
  */
 
-import { isAllowedAudioExtension, naturalCompare } from './naming';
+import { isAllowedAudioExtension, isAppleDoubleName, naturalCompare } from './naming';
 
 /** Mirrors `MAX_UPLOAD_BYTES` in `app/api/books/[id]/audio/upload-url/route.ts`. */
 export const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 
-export type RejectReason = 'sous-dossier' | 'format' | 'taille' | 'vide';
+export type RejectReason = 'sous-dossier' | 'format' | 'taille' | 'vide' | 'métadonnées';
 
 /** Why a file in the chosen folder is not going to be uploaded. */
 export const REJECT_LABELS: Record<RejectReason, string> = {
@@ -36,6 +36,7 @@ export const REJECT_LABELS: Record<RejectReason, string> = {
     format: 'format non audio',
     taille: 'dépasse 500 Mo',
     vide: 'fichier vide',
+    métadonnées: 'fichier technique macOS (pas un enregistrement)',
 };
 
 export interface RejectedFile {
@@ -81,6 +82,15 @@ export function selectFolderAudio(raw: File[]): FolderSelection {
         // it is sent.
         if (!isAllowedAudioExtension(f.name)) {
             rejected.push({ path, reason: 'format' });
+            continue;
+        }
+        // Carries an audio extension but is macOS resource-fork metadata. Caught
+        // after the extension test on purpose, so it is reported as what it is
+        // rather than as an unsupported format — a lecteur on a Mac will hit
+        // this on every folder they send, and « format non audio » would send
+        // them looking for a problem with their recording.
+        if (isAppleDoubleName(f.name)) {
+            rejected.push({ path, reason: 'métadonnées' });
             continue;
         }
         if (f.size === 0) {

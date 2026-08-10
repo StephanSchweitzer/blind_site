@@ -22,7 +22,8 @@ import { pool } from '@/lib/concurrency';
  * arrive as its own reviewed change, not as a switch inside the delete path.
  */
 
-export const TRASH_PREFIX = 'corbeille/';
+export { TRASH_PREFIX } from './trash-prefix';
+import { TRASH_PREFIX } from './trash-prefix';
 
 /** CopyObject is single-part; beyond this it would need a multipart copy. */
 const MAX_COPY_BYTES = 5 * 1024 * 1024 * 1024;

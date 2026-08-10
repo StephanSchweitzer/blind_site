@@ -61,6 +61,28 @@ export function isAllowedAudioExtension(filename: string): boolean {
 }
 
 /**
+ * AppleDouble metadata stubs — `._piste.mp3` beside `piste.mp3`.
+ *
+ * macOS writes one of these next to every file it copies onto a non-Mac
+ * filesystem, holding the resource fork. They carry the audio extension of the
+ * file they describe and none of its content, which is exactly what makes them
+ * dangerous here: they pass every extension check, then sit in a folder being
+ * counted as tracks. 1 856 of them came in with the migration, doubling the
+ * reported track count of about 160 books and blocking their duration outright.
+ *
+ * The marker is matched at the start of the name OR after a space, because the
+ * migration prepended a folder number: `._1 Titre.mp3` is stored as
+ * `1000 ._1 Titre.mp3`, and a leading-only test finds none of them.
+ *
+ * A lecteur uploading from a Mac will hand us these again on the next folder, so
+ * this is enforced on the way in as well as ignored on the way out.
+ */
+export function isAppleDoubleName(filename: string): boolean {
+    const name = filename.slice(filename.lastIndexOf('/') + 1);
+    return /(^|\s)\._/.test(name);
+}
+
+/**
  * Natural comparison, duplicated from bucket-core so this module stays free of
  * the `server-only` import chain. The two must agree — that is the whole point
  * of the ordering check in `nextTrackName` — so they are covered by the same test.
@@ -138,6 +160,14 @@ export function nextTrackName(existing: string[], originalFilename: string): Nex
     const { base, ext } = splitExtension(originalFilename);
     if (!ALLOWED_EXT.has(ext)) {
         throw new Error(`Extension non autorisée : « ${ext || originalFilename} »`);
+    }
+    // Refused server-side and not merely filtered in the picker: this is the
+    // last gate before a name is minted, and a stub that gets past it becomes a
+    // permanent phantom track in the folder.
+    if (isAppleDoubleName(originalFilename)) {
+        throw new Error(
+            `« ${originalFilename} » est un fichier de métadonnées macOS, pas un enregistrement.`,
+        );
     }
     const title = sanitiseTrackTitle(base) || 'piste';
 
