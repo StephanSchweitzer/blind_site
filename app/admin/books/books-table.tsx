@@ -186,6 +186,9 @@ export default function BooksTable({
     // Search state
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [selectedFilter, setSelectedFilter] = useState(searchParams?.get('filter') || 'all');
+    const [selectedAvailable, setSelectedAvailable] = useState(searchParams?.get('available') || 'all');
+    const [selectedHidden, setSelectedHidden] = useState(searchParams?.get('hidden') || 'all');
+    const [selectedAudio, setSelectedAudio] = useState(searchParams?.get('audio') || 'all');
     const [currentPage, setCurrentPage] = useState(parseInt(searchParams?.get('page') || '1'));
     const [selectedGenres, setSelectedGenres] = useState<number[]>(() => {
         const genresParam = searchParams?.get('genres');
@@ -249,7 +252,10 @@ export default function BooksTable({
     const initialHadFilters = useRef(
         initialSearch ||
         (searchParams?.get('filter') && searchParams?.get('filter') !== 'all') ||
-        (searchParams?.get('genres')?.length || 0) > 0
+        (searchParams?.get('genres')?.length || 0) > 0 ||
+        (searchParams?.get('available') && searchParams?.get('available') !== 'all') ||
+        (searchParams?.get('hidden') && searchParams?.get('hidden') !== 'all') ||
+        (searchParams?.get('audio') && searchParams?.get('audio') !== 'all')
     );
 
     // Update URL without page reload
@@ -257,13 +263,19 @@ export default function BooksTable({
         search: string,
         filter: string,
         genres: number[],
-        page: number
+        page: number,
+        available: string,
+        hidden: string,
+        audio: string
     ) => {
         const params = new URLSearchParams();
 
         if (search) params.set('search', search);
         if (filter !== 'all') params.set('filter', filter);
         if (genres.length > 0) params.set('genres', genres.join(','));
+        if (available !== 'all') params.set('available', available);
+        if (hidden !== 'all') params.set('hidden', hidden);
+        if (audio !== 'all') params.set('audio', audio);
         if (page > 1) params.set('page', page.toString());
 
         const url = `/admin/books${params.toString() ? `?${params.toString()}` : ''}`;
@@ -276,6 +288,9 @@ export default function BooksTable({
         filter: string,
         genreIds: number[],
         page: number,
+        available: string,
+        hidden: string,
+        audio: string,
         forceRefresh = false
     ) => {
         // Cancel any pending search
@@ -287,7 +302,7 @@ export default function BooksTable({
         }
 
         // Update URL
-        updateURL(term, filter, genreIds, page);
+        updateURL(term, filter, genreIds, page, available, hidden, audio);
 
         const shouldUseCache = !forceRefresh &&
             !cacheInvalidatedRef.current &&
@@ -295,6 +310,9 @@ export default function BooksTable({
             genreIds.length === 0 &&
             page === 1 &&
             filter === 'all' &&
+            available === 'all' &&
+            hidden === 'all' &&
+            audio === 'all' &&
             !initialHadFilters.current;
 
         if (shouldUseCache) {
@@ -322,6 +340,10 @@ export default function BooksTable({
                 limit: ITEMS_PER_PAGE.toString(),
             });
 
+            if (available !== 'all') params.set('available', available);
+            if (hidden !== 'all') params.set('hidden', hidden);
+            if (audio !== 'all') params.set('audio', audio);
+
             genreIds.forEach(id => params.append('genres', id.toString()));
 
             if (forceRefresh || cacheInvalidatedRef.current) {
@@ -344,7 +366,7 @@ export default function BooksTable({
             const data = await response.json();
             setSearchResults(data);
 
-            if (forceRefresh && !term && genreIds.length === 0 && page === 1 && filter === 'all') {
+            if (forceRefresh && !term && genreIds.length === 0 && page === 1 && filter === 'all' && available === 'all' && hidden === 'all' && audio === 'all') {
                 initialDataRef.current = {
                     books: data.books,
                     total: data.total,
@@ -369,7 +391,7 @@ export default function BooksTable({
         }
 
         searchTimeoutRef.current = setTimeout(() => {
-            performSearch(searchTerm, selectedFilter, selectedGenres, currentPage);
+            performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio);
         }, searchTerm ? DEBOUNCE_DELAY : 0);
 
         return () => {
@@ -377,7 +399,7 @@ export default function BooksTable({
                 clearTimeout(searchTimeoutRef.current);
             }
         };
-    }, [searchTerm, selectedFilter, selectedGenres, currentPage, performSearch]);
+    }, [searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, performSearch]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -405,6 +427,21 @@ export default function BooksTable({
 
     const handleGenreChange = useCallback((genres: number[]) => {
         setSelectedGenres(genres);
+        setCurrentPage(1);
+    }, []);
+
+    const handleAvailableChange = useCallback((available: string) => {
+        setSelectedAvailable(available);
+        setCurrentPage(1);
+    }, []);
+
+    const handleHiddenChange = useCallback((hidden: string) => {
+        setSelectedHidden(hidden);
+        setCurrentPage(1);
+    }, []);
+
+    const handleAudioChange = useCallback((audio: string) => {
+        setSelectedAudio(audio);
         setCurrentPage(1);
     }, []);
 
@@ -571,20 +608,20 @@ export default function BooksTable({
             setSelectedBook(null);
 
             setTimeout(() => {
-                performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
+                performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
             }, 100);
             return;
         }
 
         setIsEditModalOpen(false);
         setSelectedBook(null);
-        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
+        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
     };
 
     const handleBookAdded = async () => {
         cacheInvalidatedRef.current = true;
         setIsAddModalOpen(false);
-        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
+        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
     };
 
     const getVisiblePages = (current: number, total: number) => {
@@ -625,8 +662,8 @@ export default function BooksTable({
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:items-center">
-                        <div className="relative w-full sm:w-[45%]">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:items-center">
+                        <div className="relative w-full sm:flex-1 sm:min-w-[220px]">
                             <Input
                                 value={searchTerm}
                                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -642,7 +679,7 @@ export default function BooksTable({
                         <select
                             value={selectedFilter}
                             onChange={(e) => handleFilterChange(e.target.value)}
-                            className="w-full sm:w-[20%] px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
+                            className="w-full sm:w-44 px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
                         >
                             <option value="all">Tous</option>
                             <option value="title">Titre</option>
@@ -652,8 +689,38 @@ export default function BooksTable({
                             <option value="genre">Genre</option>
                         </select>
 
+                        <select
+                            value={selectedAvailable}
+                            onChange={(e) => handleAvailableChange(e.target.value)}
+                            className="w-full sm:w-44 px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
+                        >
+                            <option value="all">Tous</option>
+                            <option value="true">Disponible</option>
+                            <option value="false">En attente</option>
+                        </select>
+
+                        <select
+                            value={selectedAudio}
+                            onChange={(e) => handleAudioChange(e.target.value)}
+                            className="w-full sm:w-44 px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
+                        >
+                            <option value="all">Tous (audio)</option>
+                            <option value="missing">Sans audio</option>
+                            <option value="present">Avec audio</option>
+                        </select>
+
+                        <select
+                            value={selectedHidden}
+                            onChange={(e) => handleHiddenChange(e.target.value)}
+                            className="w-full sm:w-44 px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
+                        >
+                            <option value="all">Tous (catalogue)</option>
+                            <option value="false">Visible</option>
+                            <option value="true">Masqué</option>
+                        </select>
+
                         {availableGenres && availableGenres.length > 0 && (
-                            <div className="w-full sm:w-[30%]">
+                            <div className="w-full sm:w-64">
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -1005,7 +1072,7 @@ export default function BooksTable({
                     // with it the colour of the button that opened this dialogue.
                     onChanged={() => {
                         cacheInvalidatedRef.current = true;
-                        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, true);
+                        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
                     }}
                 />
             )}

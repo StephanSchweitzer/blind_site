@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import BooksTable from './books-table';
 import { notFound } from 'next/navigation';
+import { audioMissingWhere, audioPresentWhere } from '@/lib/books/audioFilter';
 
 interface PageProps {
     searchParams: Promise<{
@@ -13,7 +14,17 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function getBooks(page: number, searchTerm: string, filter: string = 'all', genreIds: number[] = []) {
+type AudioFilter = 'missing' | 'present' | undefined;
+
+async function getBooks(
+    page: number,
+    searchTerm: string,
+    filter: string = 'all',
+    genreIds: number[] = [],
+    available?: boolean,
+    hidden?: boolean,
+    audio?: AudioFilter
+) {
     const booksPerPage = 10;
 
     let whereClause: Prisma.BookWhereInput = {};
@@ -117,6 +128,42 @@ async function getBooks(page: number, searchTerm: string, filter: string = 'all'
         }
     }
 
+    if (available !== undefined) {
+        const availableFilter = { available };
+
+        if (Object.keys(whereClause).length > 0) {
+            whereClause = {
+                AND: [whereClause, availableFilter]
+            };
+        } else {
+            whereClause = availableFilter;
+        }
+    }
+
+    if (hidden !== undefined) {
+        const hiddenFilter = { hiddenFromCatalogue: hidden };
+
+        if (Object.keys(whereClause).length > 0) {
+            whereClause = {
+                AND: [whereClause, hiddenFilter]
+            };
+        } else {
+            whereClause = hiddenFilter;
+        }
+    }
+
+    if (audio === 'missing' || audio === 'present') {
+        const audioFilter = audio === 'missing' ? audioMissingWhere() : audioPresentWhere();
+
+        if (Object.keys(whereClause).length > 0) {
+            whereClause = {
+                AND: [whereClause, audioFilter]
+            };
+        } else {
+            whereClause = audioFilter;
+        }
+    }
+
     try {
         const [books, totalBooks, genres] = await Promise.all([
             prisma.book.findMany({
@@ -180,12 +227,18 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
         .filter(Boolean)
         .map(Number)
         .filter(id => !isNaN(id));
+    const availableParam = Array.isArray(params.available) ? params.available[0] : params.available;
+    const available = availableParam === 'true' ? true : availableParam === 'false' ? false : undefined;
+    const hiddenParam = Array.isArray(params.hidden) ? params.hidden[0] : params.hidden;
+    const hidden = hiddenParam === 'true' ? true : hiddenParam === 'false' ? false : undefined;
+    const audioParam = Array.isArray(params.audio) ? params.audio[0] : params.audio;
+    const audio: AudioFilter = audioParam === 'missing' ? 'missing' : audioParam === 'present' ? 'present' : undefined;
 
     // Only the data fetch is guarded; notFound() throws (returns `never`),
     // so `data` is definitely assigned past this point.
     let data: Awaited<ReturnType<typeof getBooks>>;
     try {
-        data = await getBooks(page, searchTerm, filter, genreIds);
+        data = await getBooks(page, searchTerm, filter, genreIds, available, hidden, audio);
     } catch (error) {
         console.error('Error in Admin Books page:', error);
         notFound();

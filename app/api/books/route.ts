@@ -6,6 +6,9 @@ import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { Prisma } from '@prisma/client';
 import { BookWithGenres } from '@/types/book';
 import { withAdmin, getCurrentUser, isAdmin } from '@/lib/auth/guards';
+import { audioMissingWhere, audioPresentWhere, AUDIO_MISSING_STATUSES } from '@/lib/books/audioFilter';
+
+type AudioFilter = 'missing' | 'present' | undefined;
 
 // Type definitions for raw SQL queries
 interface CountResult {
@@ -46,7 +49,10 @@ async function performAccentInsensitiveSearch(
     genres: number[],
     skip: number,
     limit: number,
-    includeHidden: boolean
+    includeHidden: boolean,
+    available?: boolean,
+    hiddenFilter?: boolean,
+    audio?: AudioFilter
 ): Promise<{ books: BookWithGenres[]; total: number }> {
     const searchTerm = `%${search.toLowerCase()}%`;
 
@@ -102,6 +108,25 @@ async function performAccentInsensitiveSearch(
     // Exclude books hidden from the public catalogue, unless the caller is admin
     if (!includeHidden) {
         whereConditions.push(`b."hiddenFromCatalogue" = false`);
+    } else if (hiddenFilter !== undefined) {
+        whereConditions.push(`b."hiddenFromCatalogue" = ${hiddenFilter}`);
+    }
+
+    // available/hiddenFilter/audio are all derived above (never raw user
+    // input), so inlining them is safe and sidesteps $queryRawUnsafe's
+    // boolean-param typing quirks.
+    if (available !== undefined) {
+        whereConditions.push(`b.available = ${available}`);
+    }
+
+    if (audio === 'missing' || audio === 'present') {
+        const missingStatusList = AUDIO_MISSING_STATUSES.map((s) => `'${s}'`).join(',');
+        const missingCondition = `(
+            b.audio_filepath IS NULL OR b.audio_filepath = '' OR
+            b."audioLinkStatus" IN (${missingStatusList}) OR
+            b."audioTrackCount" <= 0
+        )`;
+        whereConditions.push(audio === 'missing' ? missingCondition : `NOT ${missingCondition}`);
     }
 
     // Add genre filter if specified
@@ -169,7 +194,7 @@ async function performAccentInsensitiveSearch(
         // If it isn't present in this database it throws here — fall back to a
         // standard Prisma contains search instead of silently returning nothing.
         console.error('Accent-insensitive search failed, falling back to standard search:', error);
-        return fallbackSearch(search, filter, genres, skip, limit, includeHidden);
+        return fallbackSearch(search, filter, genres, skip, limit, includeHidden, available, hiddenFilter, audio);
     }
 }
 
@@ -180,7 +205,10 @@ async function fallbackSearch(
     genres: number[],
     skip: number,
     limit: number,
-    includeHidden: boolean
+    includeHidden: boolean,
+    available?: boolean,
+    hiddenFilter?: boolean,
+    audio?: AudioFilter
 ): Promise<{ books: BookWithGenres[]; total: number }> {
     const mode = Prisma.QueryMode.insensitive;
 
@@ -209,6 +237,15 @@ async function fallbackSearch(
     }
     if (!includeHidden) {
         where.hiddenFromCatalogue = false;
+    } else if (hiddenFilter !== undefined) {
+        where.hiddenFromCatalogue = hiddenFilter;
+    }
+    if (available !== undefined) {
+        where.available = available;
+    }
+    if (audio === 'missing' || audio === 'present') {
+        const audioCondition = audio === 'missing' ? audioMissingWhere() : audioPresentWhere();
+        where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), audioCondition];
     }
 
     const [books, total] = await Promise.all([
@@ -252,6 +289,12 @@ export async function GET(request: NextRequest): Promise<Response> {
         const genres = searchParams.getAll('genres').map(Number).filter(id => !isNaN(id));
         const recent = searchParams.get('recent') === 'true';
         const ids = searchParams.get('ids')?.split(',').map(Number).filter(id => !isNaN(id));
+        const availableParam = searchParams.get('available');
+        const available = availableParam === 'true' ? true : availableParam === 'false' ? false : undefined;
+        const hiddenParam = searchParams.get('hidden');
+        const hiddenFilter = hiddenParam === 'true' ? true : hiddenParam === 'false' ? false : undefined;
+        const audioParam = searchParams.get('audio');
+        const audio: AudioFilter = audioParam === 'missing' ? 'missing' : audioParam === 'present' ? 'present' : undefined;
         const skip = (page - 1) * limit;
 
         // Hidden books stay out of every public read path here; admins see
@@ -283,6 +326,15 @@ export async function GET(request: NextRequest): Promise<Response> {
         const whereClause: Prisma.BookWhereInput = {};
         if (!includeHidden) {
             whereClause.hiddenFromCatalogue = false;
+        } else if (hiddenFilter !== undefined) {
+            whereClause.hiddenFromCatalogue = hiddenFilter;
+        }
+        if (available !== undefined) {
+            whereClause.available = available;
+        }
+        if (audio === 'missing' || audio === 'present') {
+            const audioCondition = audio === 'missing' ? audioMissingWhere() : audioPresentWhere();
+            whereClause.AND = [...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []), audioCondition];
         }
 
         // Handle recent books filter
@@ -302,7 +354,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 
         if (search) {
             // Always use accent-insensitive search when there's a search term
-            const result = await performAccentInsensitiveSearch(search, filter, genres, skip, limit, includeHidden);
+            const result = await performAccentInsensitiveSearch(search, filter, genres, skip, limit, includeHidden, available, hiddenFilter, audio);
             books = result.books;
             total = result.total;
         } else if (genres.length > 0) {
