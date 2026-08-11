@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { putTrackUrl, headTrack, listBookTracks, listRawObjects } from '@/lib/audio/bucket';
 import { resolvePrefix } from '@/lib/audio/state';
 import { nextTrackName, isAllowedAudioExtension, splitExtension, newBookFolderPrefix } from '@/lib/audio/naming';
+import { pool } from '@/lib/concurrency';
 
 /** Presigned PUTs are short-lived; a stalled upload asks for a fresh URL. */
 const URL_TTL_SECONDS = 3600;
@@ -71,6 +72,42 @@ export const POST = withAdmin(async (req, { params }) => {
         );
     }
 
+    // Structural checks first, before the folder is even looked up: a batch
+    // with one bad file used to fail after possibly already creating the
+    // book's folder for the other 49. None of this needs the bucket.
+    for (const f of files) {
+        const originalName = typeof f.name === 'string' ? f.name : '';
+        const size = typeof f.size === 'number' ? f.size : -1;
+
+        if (!originalName) {
+            return NextResponse.json({ message: 'Nom de fichier manquant' }, { status: 400 });
+        }
+        if (!isAllowedAudioExtension(originalName)) {
+            return NextResponse.json(
+                { message: `« ${originalName} » n’est pas un format audio accepté.` },
+                { status: 400 },
+            );
+        }
+        if (size < 0) {
+            return NextResponse.json(
+                { message: `Taille manquante pour « ${originalName} »` },
+                { status: 400 },
+            );
+        }
+        if (size === 0) {
+            return NextResponse.json(
+                { message: `« ${originalName} » est vide.` },
+                { status: 400 },
+            );
+        }
+        if (size > MAX_UPLOAD_BYTES) {
+            return NextResponse.json(
+                { message: `« ${originalName} » dépasse la taille maximale (500 Mo).` },
+                { status: 400 },
+            );
+        }
+    }
+
     const book = await prisma.book.findUnique({
         where: { id: bookId },
         select: { id: true, title: true, audio_filepath: true, source_access_id: true },
@@ -124,40 +161,20 @@ export const POST = withAdmin(async (req, { params }) => {
     // --- Name each file so it sorts after everything already there ------------
     const existing = await listBookTracks(prefix);
     const names = existing.map((t) => t.name);
+    // `nextTrackName` guarantees each new name sorts after everything so far,
+    // and every assigned name is fed back into `names` before the next file is
+    // numbered — so a collision can only be against something already in this
+    // listing or already assigned earlier in this same batch, both of which
+    // are right here in memory. That used to be re-verified with a `headTrack`
+    // per file (an extra ~50 serial round trips before a single byte moved);
+    // a Set lookup answers the same question for free.
+    const nameSet = new Set(names);
 
     const results: { originalName: string; filename: string; key: string; url: string; contentType: string; strategy: string }[] = [];
 
     for (const f of files) {
-        const originalName = typeof f.name === 'string' ? f.name : '';
-        const size = typeof f.size === 'number' ? f.size : -1;
-
-        if (!originalName) {
-            return NextResponse.json({ message: 'Nom de fichier manquant' }, { status: 400 });
-        }
-        if (!isAllowedAudioExtension(originalName)) {
-            return NextResponse.json(
-                { message: `« ${originalName} » n’est pas un format audio accepté.` },
-                { status: 400 },
-            );
-        }
-        if (size < 0) {
-            return NextResponse.json(
-                { message: `Taille manquante pour « ${originalName} »` },
-                { status: 400 },
-            );
-        }
-        if (size === 0) {
-            return NextResponse.json(
-                { message: `« ${originalName} » est vide.` },
-                { status: 400 },
-            );
-        }
-        if (size > MAX_UPLOAD_BYTES) {
-            return NextResponse.json(
-                { message: `« ${originalName} » dépasse la taille maximale (500 Mo).` },
-                { status: 400 },
-            );
-        }
+        // Already validated above (name present, allowed extension, size in range).
+        const originalName = f.name as string;
 
         let named;
         try {
@@ -166,34 +183,45 @@ export const POST = withAdmin(async (req, { params }) => {
             return NextResponse.json({ message: (e as Error).message }, { status: 409 });
         }
 
-        const key = `${prefix}${named.filename}`;
-
-        // A name collision here means the numbering logic produced something
-        // that already exists. Refuse rather than sign a URL that would
-        // overwrite a recording — with a 30-day version window, an overwrite is
-        // a slow-motion loss.
-        if (await headTrack(key)) {
+        if (nameSet.has(named.filename)) {
             return NextResponse.json(
                 { message: `Un fichier nommé « ${named.filename} » existe déjà dans ce dossier.` },
                 { status: 409 },
             );
         }
 
+        const key = `${prefix}${named.filename}`;
         const ext = splitExtension(named.filename).ext;
         const contentType = MIME[ext] ?? 'application/octet-stream';
 
-        results.push({
-            originalName,
-            filename: named.filename,
-            key,
-            url: await putTrackUrl(key, contentType, URL_TTL_SECONDS),
-            contentType,
-            strategy: named.strategy,
-        });
+        results.push({ originalName, filename: named.filename, key, url: '', contentType, strategy: named.strategy });
 
         // Feed the assigned name back in so the next file in the same batch is
         // numbered after it, not alongside it.
         names.push(named.filename);
+        nameSet.add(named.filename);
+    }
+
+    // One remaining storage-level check, pooled rather than serial: a listing
+    // that went stale in the last few hundred milliseconds — most plausibly a
+    // second admin's batch landing between our listing and this one — could
+    // still make one of these names collide even though nothing in memory
+    // saw it coming. This confirms the whole batch once, in parallel, instead
+    // of gating each name in turn the way the removed per-file HEAD did.
+    const checked = await pool(results, 10, async (r) => ({ key: r.key, taken: (await headTrack(r.key)) !== null }));
+    const clash = checked.find((c) => c.taken);
+    if (clash) {
+        return NextResponse.json(
+            {
+                message: `Un fichier nommé « ${clash.key.slice(prefix.length)} » existe déjà dans ce dossier.`,
+            },
+            { status: 409 },
+        );
+    }
+
+    // Sign only now that every name in the batch is confirmed free.
+    for (const r of results) {
+        r.url = await putTrackUrl(r.key, r.contentType, URL_TTL_SECONDS);
     }
 
     return NextResponse.json({ prefix, expiresIn: URL_TTL_SECONDS, files: results });
