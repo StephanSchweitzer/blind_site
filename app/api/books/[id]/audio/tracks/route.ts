@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { resolvePrefix } from '@/lib/audio/state';
-import { listBookTracks } from '@/lib/audio/bucket';
+import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
 import { softDeleteTracks } from '@/lib/audio/trash';
 
 /**
@@ -36,7 +36,8 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     }
 
     const prefix = resolvePrefix(book.audio_filepath);
-    const tracks = prefix ? await listBookTracks(prefix) : [];
+    const objects = prefix ? await listRawObjects(prefix) : [];
+    const tracks = toOrderedTracks(objects);
 
     if (!tracks.length) {
         return NextResponse.json(
@@ -62,6 +63,9 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
         prefix,
         tracks: tracks.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes })),
         userId: me.id,
+        // The listing above already covers the whole prefix, so the
+        // placeholder check and the final state refresh don't need a second one.
+        priorObjects: objects,
     });
 
     const deleted = { length: result.moved + result.skipped };

@@ -152,11 +152,21 @@ export async function resolveTrackDurations(
  * false: still worth re-reading the bucket for audioLinkStatus/trackCount/
  * sizeKb (those catch drift from outside the portal), but re-summing and
  * rewriting a duration that cannot have changed is pure overhead.
+ *
+ * `objects`, when given, is used instead of listing the prefix again. Several
+ * callers (commit, a bulk delete, the manage dialogue's own GET) already hold
+ * a fresh listing of the same prefix by the time they call this, and re-
+ * listing here was a second full LIST paying for information already in hand.
+ * It MUST be the prefix's complete, unfiltered listing — the same shape
+ * `listRawObjects` returns, not pre-filtered to audio — because telling
+ * FOLDER_EMPTY (a `.bzEmpty` placeholder, no tracks) from FOLDER_MISSING
+ * (nothing at all) depends on seeing the non-audio entries too.
  */
 export async function refreshBookAudioState(
     bookId: number,
     performedById: number | null = null,
     recomputeDuration: boolean = true,
+    objects?: { key: string; size: number }[],
 ): Promise<RefreshResult> {
     const book = await prisma.book.findUnique({
         where: { id: bookId },
@@ -175,8 +185,8 @@ export async function refreshBookAudioState(
     if (!prefix) {
         status = 'NO_PATH';
     } else {
-        const objects = await listRawObjects(prefix);
-        const audio = objects.filter((o) => isAudioKey(o.key));
+        const allObjects = objects ?? (await listRawObjects(prefix));
+        const audio = allObjects.filter((o) => isAudioKey(o.key));
         if (audio.length) {
             status = 'OK';
             trackCount = audio.length;
@@ -201,7 +211,7 @@ export async function refreshBookAudioState(
                 }, 0);
                 if (total !== null) readingDurationMinutes = Math.round(total / 60);
             }
-        } else if (objects.length) {
+        } else if (allObjects.length) {
             // The folder exists — B2's .bzEmpty placeholder or some stray file —
             // but holds no audio.
             status = 'FOLDER_EMPTY';

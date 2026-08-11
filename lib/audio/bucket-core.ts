@@ -9,6 +9,7 @@ import {
     DeleteObjectsCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { isAppleDoubleName } from './naming';
 
 /**
@@ -60,6 +61,22 @@ export const AUDIO_BUCKET = process.env.S3_AUDIO_BUCKET ?? '';
 
 let client: S3Client | null = null;
 
+/**
+ * A socket that opens and then hangs used to consume the entire function
+ * budget — nothing here bounded it. `requestTimeout` is Node's socket
+ * *inactivity* timeout (`socket.setTimeout`), not a hard deadline on the whole
+ * call: every byte received resets it, so a slow-but-flowing range read
+ * (`getRangeBytes`, used by the duration probe) or a large ListObjectsV2 page
+ * is not at risk — only a connection that has genuinely gone silent trips it.
+ * `connectionTimeout` bounds the separate wait for the TCP handshake itself.
+ */
+function getRequestHandler(): NodeHttpHandler {
+    return new NodeHttpHandler({
+        connectionTimeout: 3_000,
+        requestTimeout: 10_000,
+    });
+}
+
 export function getS3(): S3Client {
     if (client) return client;
     client = new S3Client({
@@ -70,6 +87,11 @@ export function getS3(): S3Client {
         // uploads to work against B2 with the same client.
         requestChecksumCalculation: 'WHEN_REQUIRED',
         responseChecksumValidation: 'WHEN_REQUIRED',
+        requestHandler: getRequestHandler(),
+        // Explicit rather than relying on the SDK default: B2 sheds load with
+        // 5xx by design (see hooks/useAudioUpload.ts), so a couple of retries
+        // at this layer too is deliberate, not incidental.
+        maxAttempts: 3,
         credentials: {
             accessKeyId: (process.env.S3_ACCESS_KEY_ID ?? process.env.AWS_ACCESS_KEY_ID)!,
             secretAccessKey: (process.env.S3_SECRET_ACCESS_KEY ??
@@ -115,6 +137,24 @@ export interface AudioTrack {
 }
 
 /**
+ * Filter a raw listing down to audio, in playback order. Split out of
+ * `listBookTracks` so a caller that already holds a raw listing (e.g. from
+ * `listRawObjects`, for the FOLDER_EMPTY/FOLDER_MISSING distinction) can
+ * derive the same ordered track view without a second LIST call.
+ */
+export function toOrderedTracks(objects: { key: string; size: number }[]): AudioTrack[] {
+    return objects
+        .filter((o) => isAudioKey(o.key))
+        .sort((a, b) => naturalCompare(a.key.split('/').pop()!, b.key.split('/').pop()!))
+        .map((o, i) => ({
+            order: i + 1,
+            key: o.key,
+            name: o.key.split('/').pop()!,
+            sizeBytes: o.size,
+        }));
+}
+
+/**
  * Every audio file under a book's folder, in playback order.
  *
  * `prefix` is Book.audio_filepath, which since the backfill holds the bucket key
@@ -122,34 +162,7 @@ export interface AudioTrack {
  */
 export async function listBookTracks(prefix: string): Promise<AudioTrack[]> {
     if (!prefix) return [];
-    const s3 = getS3();
-    const keys: { key: string; size: number }[] = [];
-    let token: string | undefined;
-
-    do {
-        const res = await s3.send(
-            new ListObjectsV2Command({
-                Bucket: AUDIO_BUCKET,
-                Prefix: prefix,
-                ContinuationToken: token,
-            }),
-        );
-        for (const o of res.Contents ?? []) {
-            // Skip B2's `.bzEmpty` placeholders, AppleDouble stubs, and any
-            // stray non-audio files.
-            if (o.Key && isAudioKey(o.Key)) keys.push({ key: o.Key, size: o.Size ?? 0 });
-        }
-        token = res.IsTruncated ? res.NextContinuationToken : undefined;
-    } while (token);
-
-    return keys
-        .sort((a, b) => naturalCompare(a.key.split('/').pop()!, b.key.split('/').pop()!))
-        .map((k, i) => ({
-            order: i + 1,
-            key: k.key,
-            name: k.key.split('/').pop()!,
-            sizeBytes: k.size,
-        }));
+    return toOrderedTracks(await listRawObjects(prefix));
 }
 
 /**
@@ -353,11 +366,18 @@ export async function deleteTracks(keys: string[]): Promise<{ failed: string[] }
  * the status lands on FOLDER_MISSING ("nothing at this path") when the truthful
  * answer is FOLDER_EMPTY ("the folder is there, an admin emptied it"). Those
  * mean very different things to whoever picks the book up next.
+ *
+ * `remaining`, when given, is trusted instead of listing the prefix again —
+ * for a caller (softDeleteTracks) that already knows exactly what it left
+ * behind, from the listing it started the mutation with.
  */
-export async function ensureFolderPlaceholder(prefix: string): Promise<boolean> {
+export async function ensureFolderPlaceholder(
+    prefix: string,
+    remaining?: { key: string; size: number }[],
+): Promise<boolean> {
     if (!prefix) return false;
-    const remaining = await listRawObjects(prefix);
-    if (remaining.length) return false;
+    const objects = remaining ?? (await listRawObjects(prefix));
+    if (objects.length) return false;
     await getS3().send(
         new PutObjectCommand({
             Bucket: AUDIO_BUCKET,

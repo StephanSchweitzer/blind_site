@@ -209,7 +209,7 @@ export const DELETE = withAdmin(async (_request, { params, me }) => {
                 })),
                 userId: me.id,
                 // Nothing will be left to hold a placeholder for, or to describe.
-                bookIsBeingDeleted: true,
+                skipFinalisation: true,
             });
             audioFailures.push(...result.failed.map((f) => f.filename));
 

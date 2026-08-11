@@ -164,13 +164,25 @@ export async function softDeleteTracks(opts: {
     tracks: { key: string; name: string; sizeBytes: number }[];
     userId: number | null;
     /**
-     * Skip the placeholder and the state refresh. Set when the book row is about
-     * to be deleted: there will be no folder to keep alive and no book left to
-     * describe, so both would be writes nobody can read.
+     * Skip the placeholder and the state refresh. Two callers need this:
+     *  - the book row is about to be deleted, so there is no folder left to
+     *    keep alive and no book left to describe;
+     *  - the caller already holds a listing of the prefix and will call
+     *    refreshBookAudioState itself once, with that listing, after this
+     *    returns — doing it here too would be a second, redundant LIST (see
+     *    commit/route.ts, which routes mis-sized uploads through here).
      */
-    bookIsBeingDeleted?: boolean;
+    skipFinalisation?: boolean;
+    /**
+     * The prefix's complete, unfiltered listing from just before this call —
+     * the same shape `listRawObjects` returns. When given, the placeholder
+     * check and the state refresh use it (minus whatever this call actually
+     * removed) instead of listing the prefix again; the caller usually
+     * already has it, from deciding what to pass as `tracks`.
+     */
+    priorObjects?: { key: string; size: number }[];
 }): Promise<BulkTrashResult> {
-    const { bookId, prefix, tracks, userId, bookIsBeingDeleted = false } = opts;
+    const { bookId, prefix, tracks, userId, skipFinalisation = false, priorObjects } = opts;
     if (!tracks.length) return { moved: 0, skipped: 0, failed: [] };
 
     // Resume: anything an earlier attempt already parked is done.
@@ -236,7 +248,8 @@ export async function softDeleteTracks(opts: {
 
     // --- Only now remove the originals, in as few calls as B2 allows.
     const { failed: notDeleted } = await deleteTracks(ok.map((t) => t.key));
-    for (const key of notDeleted) {
+    const notDeletedKeys = new Set(notDeleted);
+    for (const key of notDeletedKeys) {
         const track = ok.find((t) => t.key === key);
         // The copy and the row both exist, so nothing is lost — the original
         // simply outlived the call and will be skipped as already-parked on the
@@ -258,12 +271,20 @@ export async function softDeleteTracks(opts: {
     });
 
     // --- Per-folder work, done once.
-    if (!bookIsBeingDeleted) {
+    if (!skipFinalisation) {
         // Removing the last track would otherwise make the folder itself
         // disappear, turning "an admin emptied this" into "this book's path
         // points nowhere".
-        await ensureFolderPlaceholder(prefix);
-        await refreshBookAudioState(bookId);
+        //
+        // When the caller handed us its pre-mutation listing, the post-
+        // mutation remainder is known exactly — everything that listing held
+        // MINUS the keys just genuinely removed (copied out AND deleted;
+        // `notDeletedKeys` are still sitting in the folder) — so neither call
+        // below needs to list the prefix again.
+        const removedKeys = new Set(ok.filter((t) => !notDeletedKeys.has(t.key)).map((t) => t.key));
+        const remaining = priorObjects?.filter((o) => !removedKeys.has(o.key));
+        await ensureFolderPlaceholder(prefix, remaining);
+        await refreshBookAudioState(bookId, null, true, remaining);
     }
 
     return { moved: ok.length, skipped: done.size, failed };

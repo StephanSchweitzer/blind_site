@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
-import { listBookTracks, getTrackUrl } from '@/lib/audio/bucket';
+import { listRawObjects, toOrderedTracks, getTrackUrl } from '@/lib/audio/bucket';
 import { refreshBookAudioState, resolvePrefix, resolveTrackDurations } from '@/lib/audio/state';
 
 /** Management links are short-lived; the dialogue refetches rather than caching. */
@@ -47,14 +47,20 @@ export const GET = withAdmin(async (_req, { params }) => {
 
     const prefix = resolvePrefix(book.audio_filepath);
 
+    // One listing for both: the state refresh and the track list used to list
+    // the same prefix separately. `objects` is the prefix's full, unfiltered
+    // listing — required for the refresh (see refreshBookAudioState) — and
+    // toOrderedTracks derives the same ordered view listBookTracks would have.
+    const objects = prefix ? await listRawObjects(prefix) : [];
+
     // Opening the dialogue is itself a check of the folder, so record it — this
     // is the cheapest way to keep the cached counters from drifting. The
     // duration itself is skipped: nothing about opening the dialogue can have
     // changed it, so re-summing and rewriting it here would just repeat what
     // the last upload/delete/rename/measure already wrote.
-    const state = await refreshBookAudioState(bookId, null, false);
+    const state = await refreshBookAudioState(bookId, null, false, objects);
 
-    const tracks = prefix ? await listBookTracks(prefix) : [];
+    const tracks = toOrderedTracks(objects);
     const durations = tracks.length
         ? await resolveTrackDurations(bookId, new Map(tracks.map((t) => [t.name, t.sizeBytes])))
         : new Map<string, number | null>();
