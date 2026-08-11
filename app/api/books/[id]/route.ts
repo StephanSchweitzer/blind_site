@@ -8,6 +8,18 @@ import { resolvePrefix } from '@/lib/audio/state';
 import { listBookTracks } from '@/lib/audio/bucket';
 import { softDeleteTracks } from '@/lib/audio/trash';
 
+/**
+ * Applies to every handler in this file (GET/PUT are quick single-row
+ * queries; only DELETE's audio cascade needs headroom). softDeleteTracks
+ * copies 10-wide, and the largest folder sampled in the corpus
+ * (audit-audio-files.ts) held 77 tracks — ~8 pooled batches. 45s keeps real
+ * margin over that for an unusually large folder, while staying inside the
+ * ~60s that's configurable even on the smallest Vercel tier (the repo
+ * doesn't record which plan this project is on; raise this if it turns out
+ * to allow more).
+ */
+export const maxDuration = 45;
+
 const invalidId = () => NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
 
 /** Numeric book id from the route params, or null when it isn't one. */

@@ -7,6 +7,16 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 
 /**
+ * measure.ts reasons its own MAX_TRACKS=200 ceiling as "about thirty seconds
+ * of work" at 8-way concurrency — that was a budget nobody had actually
+ * written down as a function limit. 45s keeps a margin over that reasoned
+ * figure for a folder near the ceiling, while staying inside the ~60s that's
+ * configurable even on the smallest Vercel tier (the repo doesn't record
+ * which plan this project is on; raise this if it turns out to allow more).
+ */
+export const maxDuration = 45;
+
+/**
  * Recompute one book's reading duration from its audio files.
  *
  * The « Recalculer » button behind Durée de la lecture. Before this existed the

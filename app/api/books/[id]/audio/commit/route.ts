@@ -11,6 +11,18 @@ import { revalidateCatalogue } from '@/lib/revalidate-public';
 const SIZE_TOLERANCE_BYTES = 0;
 
 /**
+ * The reworked route runs ~6-7 round trips for a 50-file chunk (see the doc
+ * comment above POST). The one path that can run long is a chunk where
+ * several files land mis-sized: softDeleteTracks copies them to the
+ * corbeille 10-wide, so up to 5 pooled batches on a worst-case all-mis-sized
+ * chunk. 45s keeps real margin over that while staying inside the ~60s
+ * that's configurable even on the smallest Vercel tier (the repo doesn't
+ * record which plan this project is on; raise this if it turns out to allow
+ * more).
+ */
+export const maxDuration = 45;
+
+/**
  * Confirm what a direct-to-B2 upload actually put in the bucket.
  *
  * Because the browser PUTs straight to B2, the server never sees the write and

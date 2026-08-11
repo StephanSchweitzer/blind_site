@@ -15,6 +15,16 @@ import { purgeExpiredAudioTrash } from '@/lib/audio/purge';
  */
 export const dynamic = 'force-dynamic';
 
+/**
+ * One batch is one findMany, one deleteTracks (a single DeleteObjects call —
+ * BATCH_LIMIT=200 is well under its 1000-key ceiling) and one updateMany —
+ * the lightest of the five routes given a maxDuration in this pass. 30s is
+ * generous margin over that, while staying inside the ~60s that's
+ * configurable even on the smallest Vercel tier (the repo doesn't record
+ * which plan this project is on; raise this if it turns out to allow more).
+ */
+export const maxDuration = 30;
+
 async function isAuthorized(request: NextRequest): Promise<boolean> {
     const secret = process.env.CRON_SECRET;
     if (secret && request.headers.get('authorization') === `Bearer ${secret}`) return true;

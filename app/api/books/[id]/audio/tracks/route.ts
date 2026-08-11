@@ -6,6 +6,16 @@ import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
 import { softDeleteTracks } from '@/lib/audio/trash';
 
 /**
+ * softDeleteTracks copies 10-wide; the largest folder sampled in the corpus
+ * (audit-audio-files.ts) held 77 tracks, ~8 pooled copy batches. 45s keeps
+ * real margin over that for an unusually large folder, while staying inside
+ * the ~60s that's configurable even on the smallest Vercel tier (the repo
+ * doesn't record which plan this project is on; raise this if it turns out
+ * to allow more).
+ */
+export const maxDuration = 45;
+
+/**
  * Move every track in a book's folder to the corbeille, in one action.
  *
  * Still the same reviewed, reversible path as the single-track delete — not a
