@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { putTrackUrl, headTrack, listBookTracks, listRawObjects } from '@/lib/audio/bucket';
-import { resolvePrefix } from '@/lib/audio/state';
+import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { nextTrackName, isAllowedAudioExtension, splitExtension, newBookFolderPrefix } from '@/lib/audio/naming';
 import { pool } from '@/lib/concurrency';
 
@@ -38,6 +38,14 @@ const MIME: Record<string, string> = {
 interface RequestedFile {
     name?: unknown;
     size?: unknown;
+    /**
+     * A key this same original file was already assigned by an earlier
+     * signing request (a prior pass, or a "Renvoyer les fichiers en échec"
+     * retry) — see hooks/useAudioUpload.ts's assignedKeysRef. Offering it
+     * back lets a retry re-sign the identical key instead of being renamed
+     * into a fresh slot; see the loop below for when it's honoured.
+     */
+    existingKey?: unknown;
 }
 
 /**
@@ -161,6 +169,7 @@ export const POST = withAdmin(async (req, { params }) => {
     // --- Name each file so it sorts after everything already there ------------
     const existing = await listBookTracks(prefix);
     const names = existing.map((t) => t.name);
+    const sizeByExistingKey = new Map(existing.map((t) => [t.key, t.sizeBytes]));
     // `nextTrackName` guarantees each new name sorts after everything so far,
     // and every assigned name is fed back into `names` before the next file is
     // numbered — so a collision can only be against something already in this
@@ -170,45 +179,102 @@ export const POST = withAdmin(async (req, { params }) => {
     // a Set lookup answers the same question for free.
     const nameSet = new Set(names);
 
-    const results: { originalName: string; filename: string; key: string; url: string; contentType: string; strategy: string }[] = [];
+    const results: {
+        originalName: string;
+        filename: string;
+        key: string;
+        url: string;
+        contentType: string;
+        strategy: string;
+        /** True when `key` was reused via `existingKey`, not freshly minted. */
+        reused: boolean;
+    }[] = [];
 
     for (const f of files) {
         // Already validated above (name present, allowed extension, size in range).
         const originalName = f.name as string;
+        const size = f.size as number;
 
-        let named;
-        try {
-            named = nextTrackName(names, originalName);
-        } catch (e) {
-            return NextResponse.json({ message: (e as Error).message }, { status: 409 });
+        // --- Re-sign an existing key instead of minting a new name ----------
+        //
+        // This is what makes a retry idempotent rather than a duplicate. The
+        // scenario: N files PUT successfully, then the commit call itself
+        // fails (blip, cold start) — hooks/useAudioUpload.ts marks the whole
+        // sent batch recoverable, and a later pass (internal recovery, or a
+        // manual "Renvoyer les fichiers en échec") re-requests a URL for the
+        // same original file. Naming it fresh would land it under a new
+        // number, leaving the first, successful upload in place — silently
+        // doubling the track and its billed weight.
+        //
+        // Honoured only when the key both belongs to this book's folder
+        // (isKeyInsidePrefix — a client-supplied key is not trusted blindly)
+        // and is either absent (the earlier PUT never actually landed) or
+        // already sitting at the announced size (it landed; a retry PUT is
+        // then an idempotent overwrite of identical bytes — see putWithRetry's
+        // doc comment). A key occupied at some OTHER size is not reused: that
+        // is not this file's earlier attempt, so it falls through to a fresh
+        // name below exactly as if no existingKey had been offered.
+        const requestedKey = typeof f.existingKey === 'string' ? f.existingKey : '';
+        let reuseKey: string | null = null;
+        if (requestedKey && isKeyInsidePrefix(requestedKey, prefix)) {
+            const currentSize = sizeByExistingKey.get(requestedKey);
+            if (currentSize === undefined || currentSize === size) {
+                reuseKey = requestedKey;
+            }
         }
 
-        if (nameSet.has(named.filename)) {
-            return NextResponse.json(
-                { message: `Un fichier nommé « ${named.filename} » existe déjà dans ce dossier.` },
-                { status: 409 },
-            );
+        let filename: string;
+        let strategy: string;
+        let key: string;
+
+        if (reuseKey) {
+            key = reuseKey;
+            filename = key.slice(prefix.length);
+            strategy = 'reprise-cle-existante';
+        } else {
+            let named;
+            try {
+                named = nextTrackName(names, originalName);
+            } catch (e) {
+                return NextResponse.json({ message: (e as Error).message }, { status: 409 });
+            }
+
+            if (nameSet.has(named.filename)) {
+                return NextResponse.json(
+                    { message: `Un fichier nommé « ${named.filename} » existe déjà dans ce dossier.` },
+                    { status: 409 },
+                );
+            }
+
+            filename = named.filename;
+            strategy = named.strategy;
+            key = `${prefix}${filename}`;
+
+            // Feed the assigned name back in so the next file in the same
+            // batch is numbered after it, not alongside it.
+            names.push(filename);
+            nameSet.add(filename);
         }
 
-        const key = `${prefix}${named.filename}`;
-        const ext = splitExtension(named.filename).ext;
+        const ext = splitExtension(filename).ext;
         const contentType = MIME[ext] ?? 'application/octet-stream';
 
-        results.push({ originalName, filename: named.filename, key, url: '', contentType, strategy: named.strategy });
-
-        // Feed the assigned name back in so the next file in the same batch is
-        // numbered after it, not alongside it.
-        names.push(named.filename);
-        nameSet.add(named.filename);
+        results.push({ originalName, filename, key, url: '', contentType, strategy, reused: Boolean(reuseKey) });
     }
 
-    // One remaining storage-level check, pooled rather than serial: a listing
-    // that went stale in the last few hundred milliseconds — most plausibly a
-    // second admin's batch landing between our listing and this one — could
-    // still make one of these names collide even though nothing in memory
-    // saw it coming. This confirms the whole batch once, in parallel, instead
-    // of gating each name in turn the way the removed per-file HEAD did.
-    const checked = await pool(results, 10, async (r) => ({ key: r.key, taken: (await headTrack(r.key)) !== null }));
+    // One remaining storage-level check, pooled rather than serial, and only
+    // for freshly-minted names: a listing that went stale in the last few
+    // hundred milliseconds — most plausibly a second admin's batch landing
+    // between our listing and this one — could still make one of them
+    // collide even though nothing in memory saw it coming. A reused key is
+    // deliberately NOT re-checked here: finding it already occupied at the
+    // matching size is the expected, harmless case the whole feature exists
+    // to allow, not a clash to reject.
+    const checked = await pool(
+        results.filter((r) => !r.reused),
+        10,
+        async (r) => ({ key: r.key, taken: (await headTrack(r.key)) !== null }),
+    );
     const clash = checked.find((c) => c.taken);
     if (clash) {
         return NextResponse.json(

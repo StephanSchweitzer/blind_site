@@ -55,6 +55,13 @@ export interface FileProgress {
     name: string;
     /** Name the server assigned in the bucket, once known. */
     assignedName?: string;
+    /**
+     * Full bucket key the server assigned, once known. Offered back as
+     * `existingKey` on any later signing request for this same file — see
+     * `assignedKeysRef` — so a retry re-signs the identical key instead of
+     * being renamed into a fresh slot.
+     */
+    assignedKey?: string;
     loaded: number;
     total: number;
     status: FileStatus;
@@ -360,8 +367,12 @@ function putOnce(file: File, signed: SignedFile, cbs: PutCallbacks): Promise<voi
                     new PutError(
                         'Le stockage n’a pas confirmé l’enregistrement dans le délai imparti.',
                         true,
-                        'Le fichier est peut-être arrivé malgré tout. Rouvrez cette fenêtre ' +
-                            'et vérifiez la liste des pistes avant de le renvoyer, pour ne pas ' +
+                        // A retry re-signs and re-sends to the SAME bucket key
+                        // (see assignedKeysRef) rather than being renamed into
+                        // a new slot, so resending here is a safe overwrite,
+                        // never a duplicate — no manual check needed.
+                        'Le fichier est peut-être arrivé malgré tout. Relancez-le avec le ' +
+                            'bouton ci-dessous : il sera renvoyé au même emplacement, sans ' +
                             'créer de doublon.',
                     ),
                 );
@@ -487,6 +498,16 @@ export function useAudioUpload(bookId: number) {
 
     const progressRef = useRef<FileProgress[]>([]);
     const lastProgressPublishRef = useRef(0);
+    /**
+     * originalName → the key the server assigned it, surviving across both
+     * the internal recovery passes of one `upload()` call AND a later,
+     * separate call from "Renvoyer les fichiers en échec" — `progressRef` is
+     * rebuilt from scratch on every `upload()` invocation, so the mapping
+     * has to live somewhere that isn't. See the upload-url request below and
+     * the naming-collision note in putWithRetry's caller for why this is
+     * what makes a retry idempotent instead of a duplicate.
+     */
+    const assignedKeysRef = useRef<Map<string, string>>(new Map());
 
     const publish = useCallback(() => {
         setProgress([...progressRef.current]);
@@ -515,6 +536,7 @@ export function useAudioUpload(bookId: number) {
 
     const reset = useCallback(() => {
         progressRef.current = [];
+        assignedKeysRef.current = new Map();
         setProgress([]);
         setError(null);
         setNeedsFolder(null);
@@ -601,7 +623,12 @@ export function useAudioUpload(bookId: number) {
                                     // Only the first chunk of the first pass can
                                     // need this; afterwards the folder exists.
                                     createFolder,
-                                    files: chunk.map((f) => ({ name: f.name, size: f.size })),
+                                    files: chunk.map((f) => {
+                                        const existingKey = assignedKeysRef.current.get(f.name);
+                                        return existingKey
+                                            ? { name: f.name, size: f.size, existingKey }
+                                            : { name: f.name, size: f.size };
+                                    }),
                                 }),
                             },
                         );
@@ -641,6 +668,12 @@ export function useAudioUpload(bookId: number) {
                     for (const s of signed) {
                         const row = rowOf(s.originalName);
                         if (row) row.assignedName = s.filename;
+                        // Remembered regardless of which pass this is, so a
+                        // later retry — internal recovery pass or a fresh
+                        // "Renvoyer les fichiers en échec" call — asks the
+                        // server to re-sign this exact key instead of being
+                        // renamed into a new slot.
+                        assignedKeysRef.current.set(s.originalName, s.key);
                     }
                     // A signature the server didn't return for is a file that
                     // would otherwise sit at « en attente » for ever and be
