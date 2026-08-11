@@ -185,6 +185,68 @@ async function main() {
     for (const p of parked) await restoreTrack({ trashId: p.id, userId: 1 });
     check('restaurées après suppression groupée', (await listBookTracks(SCRATCH)).length, 3);
 
+    // --- refreshBookAudioState(objects) — caller-supplied listing ----------
+    // Added so commit/route.ts and the manage dialogue could stop listing the
+    // same prefix a second time. Must agree exactly with the self-listing
+    // path it replaces for those callers.
+    const rawObjects = await listRawObjects(SCRATCH);
+    const selfListed = await refreshBookAudioState(bookId);
+    const callerSupplied = await refreshBookAudioState(bookId, null, true, rawObjects);
+    check('objects fourni : même statut que l’auto-listing', callerSupplied.status, selfListed.status);
+    check('objects fourni : même compteur', callerSupplied.trackCount, selfListed.trackCount);
+    check('objects fourni : même poids', callerSupplied.sizeKb, selfListed.sizeKb);
+
+    // --- softDeleteTracks(priorObjects, skipFinalisation) -------------------
+    // Added so tracks/route.ts (« vider le dossier ») could hand over the
+    // listing it already made instead of paying for ensureFolderPlaceholder's
+    // and refreshBookAudioState's own LISTs. Two things must hold: the
+    // remainder it computes must match reality, and skipFinalisation must
+    // really skip — the cached counters must NOT move until something else
+    // refreshes them.
+    const beforeSkip = await prisma.book.findUnique({
+        where: { id: bookId },
+        select: { audioTrackCount: true },
+    });
+    const preMutationListing = await listRawObjects(SCRATCH);
+    const tracksForPriorTest = (await listBookTracks(SCRATCH)).map((t) => ({
+        key: t.key,
+        name: t.name,
+        sizeBytes: t.sizeBytes,
+    }));
+    const skipResult = await softDeleteTracks({
+        bookId,
+        prefix: SCRATCH,
+        tracks: tracksForPriorTest,
+        userId: 1,
+        priorObjects: preMutationListing,
+        skipFinalisation: true,
+    });
+    check('priorObjects : 3 pistes déplacées', skipResult.moved, 3);
+    check('priorObjects : aucun échec', skipResult.failed.length, 0);
+    const afterSkip = await prisma.book.findUnique({
+        where: { id: bookId },
+        select: { audioTrackCount: true },
+    });
+    check(
+        'skipFinalisation : le compteur en cache n’a pas bougé tout seul',
+        afterSkip?.audioTrackCount,
+        beforeSkip?.audioTrackCount,
+    );
+    // The folder is now actually empty; let a normal refresh (with the
+    // computed remainder, not a fresh list) catch it up.
+    const remainderKeys = new Set(tracksForPriorTest.map((t) => t.key));
+    const remainder = preMutationListing.filter((o) => !remainderKeys.has(o.key));
+    const afterManualRefresh = await refreshBookAudioState(bookId, null, true, remainder);
+    check('remainder calculé : FOLDER_EMPTY', afterManualRefresh.status, 'FOLDER_EMPTY');
+    check('remainder calculé : dossier réellement vide', (await listBookTracks(SCRATCH)).length, 0);
+
+    const parkedAgain = await prisma.deletedAudioTrack.findMany({
+        where: { bookId, restoredAt: null },
+        select: { id: true },
+    });
+    for (const p of parkedAgain) await restoreTrack({ trashId: p.id, userId: 1 });
+    check('restaurées après le test priorObjects', (await listBookTracks(SCRATCH)).length, 3);
+
     // --- restore refuses to overwrite --------------------------------------
     const again = await softDeleteTrack({
         bookId,
