@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
-import { deleteTrack } from './bucket';
+import { deleteTracks } from './bucket';
 
 /**
  * Retention for the audio corbeille.
@@ -46,10 +46,16 @@ const eligibleWhere = (cutoff: Date) => ({
  * retention window, oldest first.
  *
  * Deletion is real here — unlike softDeleteTrack, there is no further copy to
- * fall back on. `deleteTrack` on B2's S3-compatible API succeeds even if the
- * key is already gone, so a row surviving a previous partial run (e.g. the
- * bucket delete landed but the row update didn't) is simply marked purged
- * without erroring.
+ * fall back on. `deleteTracks` (batch DeleteObjects, same one the bulk
+ * corbeille move uses) succeeds on a key that is already gone — S3-style
+ * batch delete is idempotent per key — so a row surviving a previous partial
+ * run (e.g. the bucket delete landed but the row update didn't) is simply
+ * marked purged without erroring.
+ *
+ * This used to be `deleteTrack` then a row `update`, awaited one row at a
+ * time — up to 400 sequential round trips for a full BATCH_LIMIT batch. One
+ * DeleteObjects call (well under its 1000-key ceiling at this batch size) and
+ * one `updateMany` do the same work in about three.
  */
 export async function purgeExpiredAudioTrash(): Promise<AudioPurgeResult> {
     const cutoff = retentionCutoff();
@@ -61,24 +67,27 @@ export async function purgeExpiredAudioTrash(): Promise<AudioPurgeResult> {
         select: { id: true, trashKey: true },
     });
 
-    let purged = 0;
-    let failed = 0;
+    if (!due.length) {
+        return { purged: 0, failed: 0, remaining: 0 };
+    }
 
-    for (const row of due) {
-        try {
-            await deleteTrack(row.trashKey);
-            await prisma.deletedAudioTrack.update({
-                where: { id: row.id },
-                data: { purgedAt: new Date() },
-            });
-            purged++;
-        } catch (e) {
-            failed++;
-            console.error(`[purge-audio-trash] échec sur la ligne id=${row.id}`, e);
-        }
+    const { failed: failedKeys } = await deleteTracks(due.map((r) => r.trashKey));
+    const failedKeySet = new Set(failedKeys);
+
+    const purgedRows = due.filter((r) => !failedKeySet.has(r.trashKey));
+    const failedRows = due.filter((r) => failedKeySet.has(r.trashKey));
+
+    if (purgedRows.length) {
+        await prisma.deletedAudioTrack.updateMany({
+            where: { id: { in: purgedRows.map((r) => r.id) } },
+            data: { purgedAt: new Date() },
+        });
+    }
+    for (const row of failedRows) {
+        console.error(`[purge-audio-trash] échec sur la ligne id=${row.id}`);
     }
 
     const remaining = await prisma.deletedAudioTrack.count({ where: eligibleWhere(cutoff) });
 
-    return { purged, failed, remaining };
+    return { purged: purgedRows.length, failed: failedRows.length, remaining };
 }
