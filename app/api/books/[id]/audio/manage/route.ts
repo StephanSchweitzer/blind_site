@@ -60,7 +60,7 @@ export const GET = withAdmin(async (_req, { params }) => {
     // the last upload/delete/rename/measure already wrote.
     const state = await refreshBookAudioState(bookId, null, false, objects);
 
-    const tracks = toOrderedTracks(objects);
+    const tracks = toOrderedTracks(objects, prefix);
     const durations = tracks.length
         ? await resolveTrackDurations(bookId, new Map(tracks.map((t) => [t.name, t.sizeBytes])))
         : new Map<string, number | null>();

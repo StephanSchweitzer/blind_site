@@ -37,7 +37,7 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
 
     const prefix = resolvePrefix(book.audio_filepath);
     const objects = prefix ? await listRawObjects(prefix) : [];
-    const tracks = toOrderedTracks(objects);
+    const tracks = toOrderedTracks(objects, prefix);
 
     if (!tracks.length) {
         return NextResponse.json(

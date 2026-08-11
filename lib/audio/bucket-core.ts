@@ -141,10 +141,18 @@ export interface AudioTrack {
  * `listBookTracks` so a caller that already holds a raw listing (e.g. from
  * `listRawObjects`, for the FOLDER_EMPTY/FOLDER_MISSING distinction) can
  * derive the same ordered track view without a second LIST call.
+ *
+ * Excludes anything in a sub-folder of `prefix` (an extra `/` past it) —
+ * confirmed against the whole corpus to not currently occur, but
+ * `isKeyInsidePrefix` (lib/audio/state.ts) already refuses to touch such an
+ * object on any write path, so counting, weighing, pricing or playing one
+ * here would have been a book the portal could show and price but never
+ * let an admin delete or rename. This is the one place that rule must agree
+ * with; if either changes, so must the other.
  */
-export function toOrderedTracks(objects: { key: string; size: number }[]): AudioTrack[] {
+export function toOrderedTracks(objects: { key: string; size: number }[], prefix: string): AudioTrack[] {
     return objects
-        .filter((o) => isAudioKey(o.key))
+        .filter((o) => isAudioKey(o.key) && !o.key.slice(prefix.length).includes('/'))
         .sort((a, b) => naturalCompare(a.key.split('/').pop()!, b.key.split('/').pop()!))
         .map((o, i) => ({
             order: i + 1,
@@ -162,7 +170,7 @@ export function toOrderedTracks(objects: { key: string; size: number }[]): Audio
  */
 export async function listBookTracks(prefix: string): Promise<AudioTrack[]> {
     if (!prefix) return [];
-    return toOrderedTracks(await listRawObjects(prefix));
+    return toOrderedTracks(await listRawObjects(prefix), prefix);
 }
 
 /**

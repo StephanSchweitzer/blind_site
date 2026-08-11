@@ -186,7 +186,12 @@ export async function refreshBookAudioState(
         status = 'NO_PATH';
     } else {
         const allObjects = objects ?? (await listRawObjects(prefix));
-        const audio = allObjects.filter((o) => isAudioKey(o.key));
+        // Nested objects are excluded here on purpose, matching
+        // isKeyInsidePrefix below and toOrderedTracks (bucket-core.ts) — see
+        // the comment there. Counting one here that no write path can ever
+        // touch is what made readingDurationMinutes permanently unresolvable
+        // for a book that had one.
+        const audio = allObjects.filter((o) => isAudioKey(o.key) && !o.key.slice(prefix.length).includes('/'));
         if (audio.length) {
             status = 'OK';
             trackCount = audio.length;
