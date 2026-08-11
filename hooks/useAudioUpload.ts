@@ -162,6 +162,9 @@ const RECOVERY_PASSES = 2;
 /** Pause between passes, so whatever was wrong has a moment to clear. */
 const PASS_PAUSE_MS = 2_000;
 
+/** Progress-bar repaints are rate-limited to this — see publishProgress. */
+const PROGRESS_PUBLISH_INTERVAL_MS = 150;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** How long to wait for the browser to read a file's own metadata before giving up on it. */
@@ -386,6 +389,7 @@ async function putWithRetry(
     signed: SignedFile,
     row: FileProgress,
     publish: () => void,
+    publishProgress: () => void,
 ): Promise<void> {
     for (let attempt = 1; ; attempt++) {
         // Each attempt restarts the transfer, so the bar restarts with it —
@@ -400,7 +404,10 @@ async function putWithRetry(
                 onProgress: (loaded, total) => {
                     row.loaded = loaded;
                     row.total = total;
-                    publish();
+                    // Throttled: this fires on the order of 60x/sec across the
+                    // concurrent transfers. Every status change above and
+                    // below still publishes immediately.
+                    publishProgress();
                 },
                 onSent: () => {
                     row.status = 'finalisation';
@@ -479,10 +486,32 @@ export function useAudioUpload(bookId: number) {
     const [failedFiles, setFailedFiles] = useState<File[]>([]);
 
     const progressRef = useRef<FileProgress[]>([]);
+    const lastProgressPublishRef = useRef(0);
 
     const publish = useCallback(() => {
         setProgress([...progressRef.current]);
     }, []);
+
+    /**
+     * Throttled twin of `publish`, for the one genuinely hot path:
+     * xhr.upload.onprogress fires on the order of 60x/sec across the 3
+     * concurrent transfers, and each publish re-renders the whole track list
+     * (rows are not memoised) — visible jank on a large folder that reads to
+     * a permanent as exactly the freeze CloudFinalisingPanel exists to
+     * explain away. The ref is always current; only the repaint is rate-
+     * limited, the same throttle useAudioFolderZip already uses for its own
+     * byte counter. Every other publish() call in this file is already rare
+     * enough to stay immediate, including the one that lands a file's final
+     * "terminé"/"échec" status — so a completed row is never held back by
+     * this throttle.
+     */
+    const publishProgress = useCallback(() => {
+        const now = Date.now();
+        if (now - lastProgressPublishRef.current >= PROGRESS_PUBLISH_INTERVAL_MS) {
+            lastProgressPublishRef.current = now;
+            publish();
+        }
+    }, [publish]);
 
     const reset = useCallback(() => {
         progressRef.current = [];
@@ -630,8 +659,20 @@ export function useAudioUpload(bookId: number) {
 
                     // --- 2. PUT straight to the bucket -----------------------
                     setPhase('uploading');
-                    const sent: { key: string; size: number; name: string; durationSeconds: number | null }[] = [];
+                    const sent: { key: string; size: number; name: string }[] = [];
                     let queue = 0;
+
+                    // Kicked off now, in parallel with signing and every PUT
+                    // below — not awaited per file. Reading a track's own
+                    // metadata is local to the browser and has no business
+                    // gating transfer throughput; awaiting it right after each
+                    // PUT used to stall that worker's slot for up to
+                    // DURATION_READ_TIMEOUT_MS on a file the browser can't
+                    // decode. Collected once, after every PUT in the chunk is
+                    // done, just before the commit call needs them.
+                    const durationPromises = new Map(
+                        chunk.map((f) => [f.name, getAudioDurationSeconds(f)] as const),
+                    );
 
                     const worker = async () => {
                         for (;;) {
@@ -643,11 +684,10 @@ export function useAudioUpload(bookId: number) {
                             if (!file || !row) continue;
 
                             try {
-                                await putWithRetry(file, s, row, publish);
+                                await putWithRetry(file, s, row, publish, publishProgress);
                                 row.status = 'terminé';
                                 row.loaded = row.total;
-                                const durationSeconds = await getAudioDurationSeconds(file);
-                                sent.push({ key: s.key, size: file.size, name: s.originalName, durationSeconds });
+                                sent.push({ key: s.key, size: file.size, name: s.originalName });
                             } catch (e) {
                                 const err = e instanceof PutError ? e : null;
                                 fail(
@@ -669,8 +709,18 @@ export function useAudioUpload(bookId: number) {
                     //
                     // This has to complete before the next chunk is signed: the
                     // names in that chunk are derived from the folder's
-                    // contents, which only now include what just landed.
+                    // contents, which only now include what just landed. The
+                    // duration reads kicked off above have had the whole PUT
+                    // phase to finish in the background; collecting them here,
+                    // once, is the "detached Promise.all" — a slow-to-decode
+                    // file delays this collection, not a transfer worker.
                     setPhase('finalising');
+                    const sentWithDurations = await Promise.all(
+                        sent.map(async (s) => ({
+                            ...s,
+                            durationSeconds: await (durationPromises.get(s.name) ?? Promise.resolve(null)),
+                        })),
+                    );
                     try {
                         const { res, data } = await fetchJsonWithRetry(
                             `/api/books/${bookId}/audio/commit`,
@@ -678,7 +728,7 @@ export function useAudioUpload(bookId: number) {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    uploaded: sent.map(({ key, size, durationSeconds }) => ({
+                                    uploaded: sentWithDurations.map(({ key, size, durationSeconds }) => ({
                                         key,
                                         size,
                                         durationSeconds,
@@ -781,7 +831,7 @@ export function useAudioUpload(bookId: number) {
             setPhase('done');
             return { ok: true, becameAvailable, recovered, repriced };
         },
-        [bookId, publish],
+        [bookId, publish, publishProgress],
     );
 
     return { phase, progress, error, needsFolder, failedFiles, upload, reset };
