@@ -467,6 +467,7 @@ enum MemberType {
   informaticien
   administration
   bienfaiteur
+  tresoriere
 }
 
 enum AccessLevel {

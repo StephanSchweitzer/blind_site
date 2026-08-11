@@ -1,5 +1,5 @@
 // Active member types — drive selectable options in forms (MEMBER_TYPE_VALUES).
-export const MEMBER_TYPE_VALUES = ['auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur'] as const;
+export const MEMBER_TYPE_VALUES = ['auditeur', 'lecteur', 'informaticien', 'administration', 'bienfaiteur', 'tresoriere'] as const;
 
 // LEGACY: retained ONLY so existing database records type-check and render.
 // Deliberately excluded from MEMBER_TYPE_VALUES so it is never offered as a
@@ -28,6 +28,7 @@ export const MEMBER_TYPE_LABELS: Record<MemberType, string> = {
     informaticien: 'Informaticien',
     administration: 'Administrateur',
     bienfaiteur:    'Donateur',
+    tresoriere:    'Trésorière',
     ecouteur:      'Auditeur', // LEGACY: displays as Auditeur; remove with the `ecouteur` value once migrated.
 };
 
@@ -43,6 +44,7 @@ export const MEMBER_TYPE_COLORS: Record<MemberType, string> = {
     informaticien:  'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
     administration: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
     bienfaiteur:    'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+    tresoriere:     'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
     ecouteur:       'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', // LEGACY: mirrors auditeur; remove once migrated.
 };
 
