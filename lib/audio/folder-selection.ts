@@ -25,7 +25,11 @@
 
 import { isAllowedAudioExtension, isAppleDoubleName, naturalCompare } from './naming';
 
-/** Mirrors `MAX_UPLOAD_BYTES` in `app/api/books/[id]/audio/upload-url/route.ts`. */
+/**
+ * Generous next to the ~55 MB the corpus tops out at, while still bounded.
+ * The single source of truth — `app/api/books/[id]/audio/upload-url/route.ts`
+ * imports this rather than keeping its own copy in sync by hand.
+ */
 export const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 
 export type RejectReason = 'sous-dossier' | 'format' | 'taille' | 'vide' | 'métadonnées';

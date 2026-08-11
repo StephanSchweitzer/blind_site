@@ -11,6 +11,11 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { isAppleDoubleName } from './naming';
+import { naturalCompare } from './natural-compare';
+/** Re-exported so existing importers of bucket-core.ts (routes, scripts) keep
+ *  working unchanged; see lib/audio/natural-compare.ts for the definition
+ *  and why it lives in its own file rather than here or in naming.ts. */
+export { naturalCompare };
 
 /**
  * Audio storage access (Backblaze B2 via its S3-compatible API).
@@ -99,33 +104,6 @@ export function getS3(): S3Client {
         },
     });
     return client;
-}
-
-/**
- * Natural ("human") comparison: digit runs compare numerically. Track order is
- * NOT derivable from a track number — folders variously use `1000 12- Titre`,
- * `1000  01 Titre` and date stamps like `1000 141201_1224.MP3` — but natural
- * ordering of the whole filename is correct for all of them.
- *
- * Whitespace runs collapse first: the same folder mixes `1000    01` and
- * `1000   03`, and otherwise the number of spaces would decide the order.
- */
-export function naturalCompare(a: string, b: string): number {
-    const split = (s: string) => s.replace(/\s+/g, ' ').match(/\d+|\D+/g) ?? [];
-    const A = split(a);
-    const B = split(b);
-    for (let i = 0; i < Math.min(A.length, B.length); i++) {
-        const x = A[i];
-        const y = B[i];
-        if (/^\d/.test(x) && /^\d/.test(y)) {
-            const d = Number(x) - Number(y);
-            if (d) return d;
-        } else {
-            const d = x.localeCompare(y, 'fr');
-            if (d) return d;
-        }
-    }
-    return A.length - B.length;
 }
 
 export interface AudioTrack {
@@ -290,6 +268,14 @@ export async function headTrack(key: string): Promise<TrackHead | null> {
         throw e;
     }
 }
+
+/**
+ * CopyObject is single-part; beyond this it would need a multipart copy.
+ * Shared by trash.ts (corbeille moves) and rename.ts, which used to each
+ * declare this same limit — both are copy-verify-then-delete sequences
+ * bounded by the same S3/B2 ceiling.
+ */
+export const MAX_COPY_BYTES = 5 * 1024 * 1024 * 1024;
 
 /**
  * CopySource must be `bucket/key`, percent-encoded but with the path separators

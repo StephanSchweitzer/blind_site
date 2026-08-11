@@ -4,12 +4,11 @@ import { prisma } from '@/lib/prisma';
 import { putTrackUrl, headTrack, listBookTracks, listRawObjects } from '@/lib/audio/bucket';
 import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { nextTrackName, isAllowedAudioExtension, splitExtension, newBookFolderPrefix } from '@/lib/audio/naming';
+import { MAX_UPLOAD_BYTES } from '@/lib/audio/folder-selection';
 import { pool } from '@/lib/concurrency';
 
 /** Presigned PUTs are short-lived; a stalled upload asks for a fresh URL. */
 const URL_TTL_SECONDS = 3600;
-/** Generous next to the ~55 MB the corpus tops out at, while still bounded. */
-const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 /** One dialogue action shouldn't be able to queue an unbounded batch. */
 const MAX_FILES_PER_REQUEST = 50;
 

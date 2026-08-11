@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
-import { copyTrack, deleteTrack, deleteTracks, headTrack, ensureFolderPlaceholder } from './bucket';
+import { copyTrack, deleteTrack, deleteTracks, headTrack, ensureFolderPlaceholder, MAX_COPY_BYTES } from './bucket';
 import { refreshBookAudioState } from './state';
 import { pool } from '@/lib/concurrency';
 
@@ -25,9 +25,6 @@ import { pool } from '@/lib/concurrency';
 export { TRASH_PREFIX } from './trash-prefix';
 import { TRASH_PREFIX } from './trash-prefix';
 
-/** CopyObject is single-part; beyond this it would need a multipart copy. */
-const MAX_COPY_BYTES = 5 * 1024 * 1024 * 1024;
-
 /** Where a deleted object is parked. Timestamped so re-deleting a re-uploaded
  *  file of the same name never collides with the earlier row. */
 export function trashKeyFor(bookId: number, filename: string): string {
@@ -35,79 +32,6 @@ export function trashKeyFor(bookId: number, filename: string): string {
 }
 
 export class AudioTrashError extends Error {}
-
-/**
- * Move one track to the corbeille and record who did it.
- *
- * The caller is responsible for having checked that `key` really belongs to
- * `bookId` (see isKeyInsidePrefix) — this function does not re-derive it.
- */
-export async function softDeleteTrack(opts: {
-    bookId: number;
-    key: string;
-    filename: string;
-    userId: number | null;
-}): Promise<{ trashId: number; trashKey: string; sizeBytes: number }> {
-    const { bookId, key, filename, userId } = opts;
-
-    const head = await headTrack(key);
-    if (!head) throw new AudioTrashError('Ce fichier n’existe plus dans le dossier.');
-    if (head.sizeBytes > MAX_COPY_BYTES) {
-        throw new AudioTrashError(
-            'Fichier trop volumineux pour être déplacé vers la corbeille en une seule opération.',
-        );
-    }
-
-    const trashKey = trashKeyFor(bookId, filename);
-
-    // 1. Copy first. If this throws, nothing has been lost.
-    await copyTrack(key, trashKey);
-
-    // 2. Verify the copy actually landed, and at the right size. Deleting the
-    //    original on the strength of a CopyObject that returned without being
-    //    checked is exactly how irreplaceable files disappear.
-    const copied = await headTrack(trashKey);
-    if (!copied || copied.sizeBytes !== head.sizeBytes) {
-        throw new AudioTrashError(
-            'La copie de sauvegarde n’a pas pu être vérifiée — suppression annulée, le fichier est intact.',
-        );
-    }
-
-    // 3. Record the row BEFORE removing the original, so a crash between the two
-    //    leaves a recoverable trace rather than an orphaned copy nobody can find.
-    const row = await prisma.deletedAudioTrack.create({
-        data: {
-            bookId,
-            originalKey: key,
-            trashKey,
-            filename,
-            sizeBytes: BigInt(head.sizeBytes),
-            deletedById: userId,
-        },
-        select: { id: true },
-    });
-
-    // 4. Only now remove the original.
-    await deleteTrack(key);
-
-    // Removing the last track would otherwise make the folder itself disappear,
-    // turning "an admin emptied this" into "this book's path points nowhere".
-    await ensureFolderPlaceholder(key.slice(0, key.lastIndexOf('/') + 1));
-
-    await refreshBookAudioState(bookId);
-
-    await prisma.audioTrackEvent.create({
-        data: {
-            bookId,
-            action: 'DELETE',
-            filename,
-            sizeBytes: BigInt(head.sizeBytes),
-            performedById: userId,
-        },
-    });
-
-    return { trashId: row.id, trashKey, sizeBytes: head.sizeBytes };
-}
 
 /** Copies run this many at a time. CopyObject has no batch form; everything else here does. */
 const COPY_CONCURRENCY = 10;
@@ -119,6 +43,13 @@ export interface BulkTrashResult {
     skipped: number;
     /** Tracks still sitting in the folder, with why. */
     failed: { filename: string; reason: string }[];
+    /**
+     * Per-track detail for what THIS call actually moved — keyed by the
+     * original key, so a single-track caller (softDeleteTrack) can pull its
+     * own trashId/trashKey back out without a second query. Empty for
+     * tracks skipped as already-parked (`skipped`, not `moved`).
+     */
+    parked: { key: string; trashId: number; trashKey: string; sizeBytes: number }[];
 }
 
 /**
@@ -183,7 +114,7 @@ export async function softDeleteTracks(opts: {
     priorObjects?: { key: string; size: number }[];
 }): Promise<BulkTrashResult> {
     const { bookId, prefix, tracks, userId, skipFinalisation = false, priorObjects } = opts;
-    if (!tracks.length) return { moved: 0, skipped: 0, failed: [] };
+    if (!tracks.length) return { moved: 0, skipped: 0, failed: [], parked: [] };
 
     // Resume: anything an earlier attempt already parked is done.
     const already = await prisma.deletedAudioTrack.findMany({
@@ -196,7 +127,7 @@ export async function softDeleteTracks(opts: {
     });
     const done = new Set(already.map((r) => r.originalKey));
     const todo = tracks.filter((t) => !done.has(t.key));
-    if (!todo.length) return { moved: 0, skipped: done.size, failed: [] };
+    if (!todo.length) return { moved: 0, skipped: done.size, failed: [], parked: [] };
 
     const failed: BulkTrashResult['failed'] = [];
 
@@ -229,13 +160,14 @@ export async function softDeleteTracks(opts: {
     });
 
     const ok = copied.filter((c): c is NonNullable<typeof c> => c !== null);
-    if (!ok.length) return { moved: 0, skipped: done.size, failed };
+    if (!ok.length) return { moved: 0, skipped: done.size, failed, parked: [] };
 
     // --- Record BEFORE removing anything, so a crash between the two leaves a
     //     recoverable trace rather than an orphaned copy nobody can find. Also
     //     required by the foreign key: bookId can only be set while the book row
-    //     still exists.
-    await prisma.deletedAudioTrack.createMany({
+    //     still exists. *AndReturn so a single-track caller (softDeleteTrack)
+    //     can hand back its own trashId without a second query.
+    const createdRows = await prisma.deletedAudioTrack.createManyAndReturn({
         data: ok.map((t) => ({
             bookId,
             originalKey: t.key,
@@ -244,7 +176,9 @@ export async function softDeleteTracks(opts: {
             sizeBytes: BigInt(t.sizeBytes),
             deletedById: userId,
         })),
+        select: { id: true, originalKey: true },
     });
+    const rowIdByKey = new Map(createdRows.map((r) => [r.originalKey, r.id]));
 
     // --- Only now remove the originals, in as few calls as B2 allows.
     const { failed: notDeleted } = await deleteTracks(ok.map((t) => t.key));
@@ -259,6 +193,18 @@ export async function softDeleteTracks(opts: {
             reason: 'original non supprimé du stockage — relancez la suppression',
         });
     }
+
+    // A track only counts as genuinely `parked` once its original is gone —
+    // `notDeletedKeys` is still sitting in the folder, its row and corbeille
+    // copy notwithstanding, so it is reported through `failed` above, not here.
+    const parked = ok
+        .filter((t) => !notDeletedKeys.has(t.key))
+        .map((t) => ({
+            key: t.key,
+            trashId: rowIdByKey.get(t.key)!,
+            trashKey: t.trashKey,
+            sizeBytes: t.sizeBytes,
+        }));
 
     await prisma.audioTrackEvent.createMany({
         data: ok.map((t) => ({
@@ -287,7 +233,53 @@ export async function softDeleteTracks(opts: {
         await refreshBookAudioState(bookId, null, true, remaining);
     }
 
-    return { moved: ok.length, skipped: done.size, failed };
+    return { moved: ok.length, skipped: done.size, failed, parked };
+}
+
+/**
+ * Move one track to the corbeille and record who did it.
+ *
+ * A thin single-track wrapper over softDeleteTracks — same copy-verify-
+ * delete sequence, same corbeille row, same audit event. The bulk path is
+ * the one implementation of that invariant; this just narrates it for the
+ * one-track case the audio dialogue's own delete button uses.
+ *
+ * The caller is responsible for having checked that `key` really belongs to
+ * `bookId` (see isKeyInsidePrefix) — this function does not re-derive it.
+ */
+export async function softDeleteTrack(opts: {
+    bookId: number;
+    key: string;
+    filename: string;
+    userId: number | null;
+}): Promise<{ trashId: number; trashKey: string; sizeBytes: number }> {
+    const { bookId, key, filename, userId } = opts;
+
+    const head = await headTrack(key);
+    if (!head) throw new AudioTrashError('Ce fichier n’existe plus dans le dossier.');
+
+    const result = await softDeleteTracks({
+        bookId,
+        prefix: key.slice(0, key.lastIndexOf('/') + 1),
+        tracks: [{ key, name: filename, sizeBytes: head.sizeBytes }],
+        userId,
+    });
+
+    if (result.failed.length) {
+        throw new AudioTrashError(result.failed[0].reason);
+    }
+    if (!result.parked.length) {
+        // Resumable by design: a track already recorded in the corbeille
+        // (restoredAt: null) is skipped, not re-parked — see the "resume"
+        // note above. This single-track path is always a fresh admin
+        // action, never a retry of a partial bulk run, so landing here means
+        // the file was already moved a moment ago; say so rather than claim
+        // to have just done it again.
+        throw new AudioTrashError('Ce fichier est déjà dans la corbeille.');
+    }
+
+    const { trashId, trashKey, sizeBytes } = result.parked[0];
+    return { trashId, trashKey, sizeBytes };
 }
 
 /** Put a track back where it came from. */

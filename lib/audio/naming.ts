@@ -15,6 +15,11 @@
  * Existing keys are never renamed. These rules apply to new uploads only.
  */
 
+import { naturalCompare } from './natural-compare';
+/** Re-exported so existing importers of naming.ts (folder-selection.ts, the
+ *  naming test) keep working unchanged. */
+export { naturalCompare };
+
 /** Extensions we accept on upload — the write-side twin of bucket-core's AUDIO_EXT. */
 const ALLOWED_EXT = new Set([
     'mp3', 'm4a', 'm4b', 'wav', 'ogg', 'opus', 'flac', 'aac', 'wma', 'aif', 'aiff',
@@ -80,29 +85,6 @@ export function isAllowedAudioExtension(filename: string): boolean {
 export function isAppleDoubleName(filename: string): boolean {
     const name = filename.slice(filename.lastIndexOf('/') + 1);
     return /(^|\s)\._/.test(name);
-}
-
-/**
- * Natural comparison, duplicated from bucket-core so this module stays free of
- * the `server-only` import chain. The two must agree — that is the whole point
- * of the ordering check in `nextTrackName` — so they are covered by the same test.
- */
-export function naturalCompare(a: string, b: string): number {
-    const split = (s: string) => s.replace(/\s+/g, ' ').match(/\d+|\D+/g) ?? [];
-    const A = split(a);
-    const B = split(b);
-    for (let i = 0; i < Math.min(A.length, B.length); i++) {
-        const x = A[i];
-        const y = B[i];
-        if (/^\d/.test(x) && /^\d/.test(y)) {
-            const d = Number(x) - Number(y);
-            if (d) return d;
-        } else {
-            const d = x.localeCompare(y, 'fr');
-            if (d) return d;
-        }
-    }
-    return A.length - B.length;
 }
 
 /**

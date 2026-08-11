@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
-import { copyTrack, deleteTrack, headTrack } from './bucket';
+import { copyTrack, deleteTrack, headTrack, MAX_COPY_BYTES } from './bucket';
 import { refreshBookAudioState } from './state';
 
 /**
@@ -16,9 +16,6 @@ import { refreshBookAudioState } from './state';
  */
 
 export class AudioRenameError extends Error {}
-
-/** CopyObject is single-part; beyond this it would need a multipart copy. */
-const MAX_COPY_BYTES = 5 * 1024 * 1024 * 1024;
 
 export async function renameTrack(opts: {
     bookId: number;

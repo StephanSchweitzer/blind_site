@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
 import { renameTrack, AudioRenameError } from '@/lib/audio/rename';
+import { splitExtension } from '@/lib/audio/naming';
 
 /**
  * Remove one track from a book's folder — into the corbeille, not out of
@@ -84,10 +85,7 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     }
 });
 
-const extensionOf = (name: string): string => {
-    const m = /\.([^.]+)$/.exec(name);
-    return m ? m[1].toLowerCase() : '';
-};
+const extensionOf = (name: string): string => splitExtension(name).ext;
 
 /**
  * Rename one track in place. Fixes the case where a file's own name is what
