@@ -6,7 +6,7 @@ import { PaymentUpdateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
-const billSelect = { id: true, invoiceAmount: true, state: true };
+const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
 
 function serialize(p: {
     amount: Prisma.Decimal;
@@ -16,7 +16,7 @@ function serialize(p: {
     exportDate: Date | null;
     importDate: Date | null;
     allocationDate: Date | null;
-    bill: { invoiceAmount: Prisma.Decimal } | null;
+    bill: { invoiceAmount: Prisma.Decimal; creationDate: Date } | null;
     [k: string]: unknown;
 }) {
     return {
@@ -28,7 +28,7 @@ function serialize(p: {
         exportDate: p.exportDate?.toISOString() ?? null,
         importDate: p.importDate?.toISOString() ?? null,
         allocationDate: p.allocationDate?.toISOString() ?? null,
-        bill: p.bill ? { ...p.bill, invoiceAmount: p.bill.invoiceAmount.toString() } : null,
+        bill: p.bill ? { ...p.bill, invoiceAmount: p.bill.invoiceAmount.toString(), creationDate: p.bill.creationDate.toISOString() } : null,
     };
 }
 

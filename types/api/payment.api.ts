@@ -105,5 +105,5 @@ export interface SerializedPayment {
     billId: number | null;
     isActive: boolean;
     client: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null } | null;
-    bill: { id: number; invoiceAmount: string; state: string } | null;
+    bill: { id: number; invoiceAmount: string; state: string; creationDate: string } | null;
 }

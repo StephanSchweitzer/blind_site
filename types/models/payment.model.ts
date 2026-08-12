@@ -153,4 +153,4 @@ export type SerializedPaymentTableRow = Omit<
 // Lightweight selection shapes consumed by the payment modal selectors
 // (match the /api/user/search and /api/bills?clientId= payloads)
 export type PaymentClientOption = { id: number; name: string | null; email: string };
-export type PaymentBillOption = { id: number; invoiceAmount: string | number; state: string };
+export type PaymentBillOption = { id: number; invoiceAmount: string | number; state: string; creationDate: string };

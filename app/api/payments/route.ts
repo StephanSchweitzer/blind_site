@@ -7,7 +7,7 @@ import { withAdmin } from '@/lib/auth/guards';
 import { buildUserNameSearch } from '@/lib/search';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
-const billSelect = { id: true, invoiceAmount: true, state: true };
+const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
 
 export const GET = withAdmin(async (request) => {
     try {
@@ -63,7 +63,7 @@ export const GET = withAdmin(async (request) => {
             exportDate: p.exportDate?.toISOString() ?? null,
             importDate: p.importDate?.toISOString() ?? null,
             allocationDate: p.allocationDate?.toISOString() ?? null,
-            bill: p.bill ? { ...p.bill, invoiceAmount: p.bill.invoiceAmount.toString() } : null,
+            bill: p.bill ? { ...p.bill, invoiceAmount: p.bill.invoiceAmount.toString(), creationDate: p.bill.creationDate.toISOString() } : null,
         }));
 
         return NextResponse.json({
@@ -158,7 +158,7 @@ export const POST = withAdmin(async (request) => {
                     exportDate: payment.exportDate?.toISOString() ?? null,
                     importDate: payment.importDate?.toISOString() ?? null,
                     allocationDate: payment.allocationDate?.toISOString() ?? null,
-                    bill: payment.bill ? { ...payment.bill, invoiceAmount: payment.bill.invoiceAmount.toString() } : null,
+                    bill: payment.bill ? { ...payment.bill, invoiceAmount: payment.bill.invoiceAmount.toString(), creationDate: payment.bill.creationDate.toISOString() } : null,
                 },
                 message: 'Paiement créé avec succès',
             },
