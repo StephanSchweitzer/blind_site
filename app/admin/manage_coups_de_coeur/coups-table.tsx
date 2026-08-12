@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useDebounce } from 'use-debounce';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
     const urlSearch = searchParams.get('search') || '';
     const [search, setSearch] = useState(initialSearch);
     const [prevUrlSearch, setPrevUrlSearch] = useState(urlSearch);
+    const [debouncedSearch] = useDebounce(search, 300);
     if (urlSearch !== prevUrlSearch) {
         setPrevUrlSearch(urlSearch);
         setSearch(urlSearch);
@@ -43,17 +45,23 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
     // Get current page from URL
     const currentPage = parseInt(searchParams.get('page') || '1');
 
-    const handleSearch = (value: string) => {
-        setSearch(value);
-        const params = new URLSearchParams(searchParams);
-        if (value) {
-            params.set('search', value);
-        } else {
-            params.delete('search');
+    // Navigating on every keystroke raced concurrent requests against each
+    // other — an older, slower response could land after a newer one and
+    // snap the input back to a stale value. Debouncing collapses that to one
+    // navigation per pause in typing.
+    useEffect(() => {
+        const currentSearch = searchParams.get('search') || '';
+        if (debouncedSearch !== currentSearch) {
+            const params = new URLSearchParams(searchParams);
+            if (debouncedSearch) {
+                params.set('search', debouncedSearch);
+            } else {
+                params.delete('search');
+            }
+            params.set('page', '1'); // Reset to first page on search
+            router.push(`?${params.toString()}`, { scroll: false });
         }
-        params.set('page', '1'); // Reset to first page on search
-        router.push(`?${params.toString()}`);
-    };
+    }, [debouncedSearch, router, searchParams]);
 
     const handlePageChange = (newPage: number) => {
         const params = new URLSearchParams(searchParams);
@@ -61,7 +69,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
         if (search) {
             params.set('search', search);
         }
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
     };
 
     return (
@@ -82,9 +90,9 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
             <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-4">
                     <Input
-                        placeholder="Rechercher des listes de livres..."
+                        placeholder="Rechercher des listes de livres ou des livres..."
                         value={search}
-                        onChange={(e) => handleSearch(e.target.value)}
+                        onChange={(e) => setSearch(e.target.value)}
                         className="max-w-sm bg-card border-border text-foreground placeholder:text-muted-foreground"
                     />
                 </div>

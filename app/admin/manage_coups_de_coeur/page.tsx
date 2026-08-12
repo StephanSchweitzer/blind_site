@@ -53,6 +53,18 @@ async function getCoupsDeCoeur(page: number, searchTerm: string) {
                             mode: Prisma.QueryMode.insensitive
                         }
                     }
+                },
+                {
+                    books: {
+                        some: {
+                            book: {
+                                title: {
+                                    contains: searchTerm,
+                                    mode: Prisma.QueryMode.insensitive
+                                }
+                            }
+                        }
+                    }
                 }
             ]
         }
