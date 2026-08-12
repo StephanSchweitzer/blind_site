@@ -103,6 +103,20 @@ function formatCurrency(amount: number) {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
 }
 
+// Client field wording follows the payment type so it stays coherent for admins:
+// a DON comes from a donateur, a DIVERS from anyone — not necessarily an auditeur.
+function getClientFieldLabel(type: PaymentType): string {
+    if (type === PaymentType.DON) return 'Donateur';
+    if (type === PaymentType.DIVERS) return 'Personne';
+    return 'Auditeur';
+}
+
+function getClientSearchPlaceholder(type: PaymentType): string {
+    if (type === PaymentType.DON) return 'Rechercher un donateur ...';
+    if (type === PaymentType.DIVERS) return 'Rechercher une personne ...';
+    return 'Rechercher un auditeur ...';
+}
+
 export function PaymentFormBackendBase({
                                            onSubmit,
                                            submitButtonText,
@@ -303,7 +317,7 @@ export function PaymentFormBackendBase({
                     {/* Client */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
-                            Auditeur
+                            {getClientFieldLabel(type)}
                             {(type === PaymentType.COTISATION || type === PaymentType.ENREGISTREMENT) && (
                                 <span className="text-red-500"> *</span>
                             )}
@@ -317,6 +331,7 @@ export function PaymentFormBackendBase({
                                     value={selectedClient}
                                     onSelect={handleClientSelect}
                                     triggerRef={registerField('client')}
+                                    placeholder={getClientSearchPlaceholder(type)}
                                 />
                             </div>
                             {selectedClient && (
