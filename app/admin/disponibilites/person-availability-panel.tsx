@@ -922,6 +922,8 @@ export default function PersonAvailabilityPanel({
                         <div className="flex items-center gap-3">
                             <Link
                                 href={`/admin/users/dossier/${person.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="text-xs text-muted-foreground hover:text-foreground hover:underline inline-flex items-center gap-1"
                             >
                                 Ouvrir le dossier complet <ExternalLink size={11} />
