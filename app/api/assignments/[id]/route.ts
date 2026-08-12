@@ -10,6 +10,7 @@ import {
     STATUS,
     guardAssignmentStatus,
     guardAssignmentConsistency,
+    guardAssignmentDateSequence,
     guardAssignmentMatchesOrder,
     guardOrderNotSettled,
     guardAssignmentHasAudio,
@@ -99,6 +100,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 statusId: true,
                 catalogueId: true,
                 orderId: true,
+                receptionDate: true,
                 sentToReaderDate: true,
                 returnedToECADate: true,
                 order: { select: { statusId: true } },
@@ -157,6 +159,27 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             return NextResponse.json(
                 { message: consistencyGuard.message },
                 { status: consistencyGuard.httpStatus }
+            );
+        }
+
+        // Réception → envoi → retour. Grandfathered against the record's own
+        // previous dates, so resaving an already-inconsistent legacy row
+        // (imported without a date de réception) unchanged keeps working — only
+        // a date genuinely new in THIS request is checked against its prerequisite.
+        const resultingReceptionDate = validation.data.receptionDate !== undefined
+            ? validation.data.receptionDate
+            : existingAssignment.receptionDate;
+        const dateSequenceGuard = guardAssignmentDateSequence({
+            receptionDate: resultingReceptionDate,
+            sentToReaderDate: resultingSentDate,
+            returnedToECADate: resultingReturnDate,
+            previousSentToReaderDate: existingAssignment.sentToReaderDate,
+            previousReturnedToECADate: existingAssignment.returnedToECADate,
+        });
+        if (!dateSequenceGuard.ok) {
+            return NextResponse.json(
+                { message: dateSequenceGuard.message },
+                { status: dateSequenceGuard.httpStatus }
             );
         }
 

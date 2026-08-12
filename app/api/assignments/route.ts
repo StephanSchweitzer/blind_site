@@ -7,6 +7,7 @@ import {
     guardAssignmentStatus,
     guardAssignmentHasReader,
     guardAssignmentConsistency,
+    guardAssignmentDateSequence,
     guardAssignmentMatchesOrder,
     guardNotDuplication,
     guardOrderHasNoAssignment,
@@ -161,6 +162,20 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
             return NextResponse.json(
                 { error: consistencyGuard.message },
                 { status: consistencyGuard.httpStatus }
+            );
+        }
+
+        // Réception → envoi → retour: on creation every date is new, so the rule
+        // applies in full (no previous* — nothing existed before this).
+        const dateSequenceGuard = guardAssignmentDateSequence({
+            receptionDate,
+            sentToReaderDate,
+            returnedToECADate,
+        });
+        if (!dateSequenceGuard.ok) {
+            return NextResponse.json(
+                { error: dateSequenceGuard.message },
+                { status: dateSequenceGuard.httpStatus }
             );
         }
 

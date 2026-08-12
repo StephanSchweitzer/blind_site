@@ -46,7 +46,10 @@ import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
 // N3 — required fields, visual top→bottom (book derives from the order picker).
 // `readerId` is required on creation only: an attribution always belongs to a
 // lecteur. Existing readerless attributions stay editable so one can be given.
-const ASSIGN_FIELD_ORDER = ['readerId', 'catalogueId', 'statusId'];
+// statusId is derived (see deriveAssignmentStatus), never entered directly, so
+// it isn't a field a submit can fail on — the two date fields below stand in
+// for it since a rejected save is really about their ordering.
+const ASSIGN_FIELD_ORDER = ['readerId', 'catalogueId', 'sentToReaderDate', 'returnedToECADate'];
 
 export interface AssignmentFormBackendBaseProps {
     presetClientId?: number | null;
@@ -88,17 +91,25 @@ function parseDateOnly(value: string | null): Date | undefined {
 }
 
 /**
- * Mirrors guardAssignmentConsistency (lib/statusSync.ts): given a reader and
- * the send/return dates, exactly one status is ever valid, so the admin
- * shouldn't have to pick it by hand. Date de réception plays no part — the
- * guard only ever looks at date d'envoi / date de retour. Falls back to
- * ATTENTE for a combination the guard wouldn't accept anyway (e.g. dates set
- * with no reader yet); guardAssignmentHasReader / guardAssignmentConsistency
- * still reject the submit with an explicit message in that case.
+ * The status is fully determined by which of the three dates are filled in —
+ * team rule, not left to a manual pick: no dates (or just date de réception)
+ * is « Attente envoi vers lecteur »; + date d'envoi is « En cours »; + date de
+ * retour aux ECA is « Terminé ». hasReader is kept as an extra gate on the
+ * last two (an attribution can't be "en cours" with nobody holding the book) —
+ * mirrors guardAssignmentConsistency (lib/statusSync.ts) and guardManualEnCours's
+ * "« En cours » nécessite un lecteur assigné". Falls back to ATTENTE for a
+ * combination that shouldn't be reachable given guardAssignmentDateSequence
+ * (see below) already blocking a later date from being newly entered before
+ * an earlier one.
  */
-function deriveAssignmentStatus(hasReader: boolean, sentSet: boolean, returnedSet: boolean): number {
-    if (sentSet && returnedSet && hasReader) return STATUS.TERMINE;
-    if (sentSet && !returnedSet && hasReader) return STATUS.EN_COURS;
+function deriveAssignmentStatus(
+    hasReader: boolean,
+    receptionSet: boolean,
+    sentSet: boolean,
+    returnedSet: boolean
+): number {
+    if (receptionSet && sentSet && returnedSet && hasReader) return STATUS.TERMINE;
+    if (receptionSet && sentSet && hasReader) return STATUS.EN_COURS;
     return STATUS.ATTENTE;
 }
 
@@ -107,11 +118,15 @@ function DatePicker({
                         onChange,
                         label,
                         placeholder,
+                        triggerRef,
+                        warning,
                     }: {
     value: string | null;
     onChange: (date: string | null) => void;
     label: string;
     placeholder: string;
+    triggerRef?: (el: HTMLElement | null) => void;
+    warning?: string;
 }) {
     const [open, setOpen] = useState(false);
     const date = parseDateOnly(value);
@@ -122,6 +137,7 @@ function DatePicker({
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
+                        ref={triggerRef}
                         variant="outline"
                         className="w-full justify-start text-left font-normal bg-field border-border text-foreground hover:bg-muted"
                     >
@@ -142,6 +158,9 @@ function DatePicker({
                     />
                 </PopoverContent>
             </Popover>
+            {warning && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">{warning}</p>
+            )}
         </div>
     );
 }
@@ -545,13 +564,15 @@ export function AssignmentFormBackendBase({
         const invalid: string[] = [];
         if (!isEditMode && !selectedReaderId) invalid.push('readerId');
         if (!formData.catalogueId) invalid.push('catalogueId');
-        if (!formData.statusId) invalid.push('statusId');
+        if (sentOutOfOrder) invalid.push('sentToReaderDate');
+        if (returnedOutOfOrder) invalid.push('returnedToECADate');
 
         if (invalid.length) {
             const messages: Record<string, string> = {
                 readerId: 'Veuillez sélectionner un lecteur : une attribution ne peut pas être créée sans lecteur',
                 catalogueId: 'Veuillez sélectionner un livre du catalogue',
-                statusId: 'Veuillez sélectionner un statut',
+                sentToReaderDate: "La date de réception doit être renseignée avant la date d'envoi au lecteur.",
+                returnedToECADate: "Les dates de réception et d'envoi au lecteur doivent être renseignées avant la date de retour aux ECA.",
             };
             const firstName = ASSIGN_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
             const msg = messages[firstName];
@@ -561,17 +582,32 @@ export function AssignmentFormBackendBase({
             return;
         }
 
+        // The computed status can read « Terminé » on dates alone — the audio
+        // requirement (guardAssignmentHasAudio) isn't visible from a date, so it
+        // gets its own explicit refusal here instead of a generic server error.
+        if (audioBlocksTermine) {
+            const msg =
+                "« Terminé » nécessite un enregistrement pour ce livre, et aucun n'est associé pour l'instant. " +
+                "Ouvrez « l'éditeur audio » ci-dessus pour le déposer avant de renseigner la date de retour aux ECA.";
+            setError(msg);
+            toastError(msg);
+            return;
+        }
+
         setIsLoading(true);
 
         try {
             // Safety net: force every date field to "YYYY-MM-DD" before it leaves the
             // form, regardless of how it was hydrated. Keeps the wire format consistent
-            // with the strict z.string().date() validators on the server.
+            // with the strict z.string().date() validators on the server. statusId is
+            // never taken from user input — always the value deriveAssignmentStatus
+            // computed from these same dates.
             const normalizedFormData: AssignmentFormData = {
                 ...formData,
                 receptionDate: formData.receptionDate ? formData.receptionDate.slice(0, 10) : null,
                 sentToReaderDate: formData.sentToReaderDate ? formData.sentToReaderDate.slice(0, 10) : null,
                 returnedToECADate: formData.returnedToECADate ? formData.returnedToECADate.slice(0, 10) : null,
+                statusId: derivedStatusId,
             };
 
             // Pass readerId separately for create, not in formData
@@ -620,28 +656,44 @@ export function AssignmentFormBackendBase({
     const getReaderDisplayName = (reader: ReaderSummary | null) =>
         reader ? getUserDisplayName(reader) : null;
 
-    // Mirrors guardAssignmentConsistency (lib/statusSync.ts), which the server
-    // re-checks on every save regardless of what actually changed: each status
-    // implies a shape for reader/dates, so offering one the current fields
-    // already contradict would just bounce off the server. Reader/date fields
-    // sit right above this select, so unlike the demande form's equivalent lock
-    // this one needs no explanatory text — the missing field is visible in the
-    // same form. The currently-held status is exempt from its own rule (only
-    // ever locked out of, never out from under) so editing an already-
-    // inconsistent legacy row's notes never gets stuck on the status field.
-    //
     // Edit mode reads the reader from the fetched history (currentReader), not
     // selectedReaderId — reassignment happens through its own endpoint
     // (handleReassignReader), not this form's submit.
     const hasReader = isEditMode ? currentReader !== null : selectedReaderId !== null;
+    const receptionDateSet = !!formData.receptionDate;
     const sentDateSet = !!formData.sentToReaderDate;
     const returnedDateSet = !!formData.returnedToECADate;
 
-    const attenteLocked =
-        formData.statusId !== STATUS.ATTENTE && (sentDateSet || returnedDateSet);
-    const enCoursLocked =
-        formData.statusId !== STATUS.EN_COURS &&
-        (!hasReader || !sentDateSet || returnedDateSet);
+    // Grandfather: date de réception is a newer field than this attribution's
+    // date d'envoi may be. A record that already had a date d'envoi when the
+    // form opened predates consistent réception tracking — don't retroactively
+    // require it and silently derive a LOWER status than what's actually
+    // persisted (e.g. reading a legacy « Terminé » row back as « Attente »
+    // the moment its edit form opens, and downgrading it for real on save).
+    // Waived only per-record, and only because sentToReaderDate was already
+    // there before this session touched anything; a brand-new attribution
+    // (initialData undefined) always follows the strict order.
+    const receptionRequirementWaived = !!initialData?.sentToReaderDate;
+    const derivedStatusId = deriveAssignmentStatus(
+        hasReader,
+        receptionDateSet || receptionRequirementWaived,
+        sentDateSet,
+        returnedDateSet
+    );
+
+    // guardAssignmentDateSequence (lib/statusSync.ts): a later date can't be
+    // newly entered before the earlier one it depends on. "Newly" is the key
+    // word — compared against initialData (what the record already held when
+    // the form opened), not against the raw current value, so opening an
+    // already-inconsistent legacy attribution (imported without a date de
+    // réception, say) doesn't immediately show a warning or block re-saving
+    // its other fields unchanged. Only an admin actively entering a date out
+    // of order in *this* session trips it. Undefined initialData (create mode)
+    // means every date is inherently new, so the check applies in full there.
+    const sentIsNewEntry = sentDateSet && !initialData?.sentToReaderDate;
+    const returnedIsNewEntry = returnedDateSet && !initialData?.returnedToECADate;
+    const sentOutOfOrder = sentIsNewEntry && !receptionDateSet;
+    const returnedOutOfOrder = returnedIsNewEntry && !(receptionDateSet && sentDateSet);
 
     // guardAssignmentHasAudio: « Terminé » additionally needs the book's
     // enregistrement deposited. The server's authoritative check is actually
@@ -663,9 +715,7 @@ export function AssignmentFormBackendBase({
         bookAudioState !== null &&
         bookAudioState.bookId === formData.catalogueId &&
         audioLinkStatusIsMissing(bookAudioState.status);
-    const termineLocked =
-        formData.statusId !== STATUS.TERMINE &&
-        (!hasReader || !sentDateSet || !returnedDateSet || audioMissing);
+    const audioBlocksTermine = derivedStatusId === STATUS.TERMINE && audioMissing;
 
     // guardCanReassignReader: a « Terminé » attribution must be reopened before
     // its reader can change. Read from initialData (the persisted snapshot),
@@ -997,7 +1047,12 @@ export function AssignmentFormBackendBase({
                         )}
                     </div>
 
-                    {/* Date Fields */}
+                    {/* Date Fields — reception, then envoi, then retour: each later date
+                        implies the book physically passed through the earlier step, so the
+                        form lets them be entered out of order (the admin may be catching up
+                        on paperwork) but warns immediately and refuses at submission — see
+                        sentOutOfOrder / returnedOutOfOrder below and guardAssignmentDateSequence
+                        (lib/statusSync.ts) for the server-side twin of this rule. */}
                     <DatePicker
                         label="Date de réception"
                         placeholder="Sélectionner une date..."
@@ -1009,12 +1064,12 @@ export function AssignmentFormBackendBase({
                         label="Date d'envoi au lecteur"
                         placeholder="Sélectionner une date..."
                         value={formData.sentToReaderDate}
-                        onChange={(date) =>
-                            setFormData((prev) => ({
-                                ...prev,
-                                sentToReaderDate: date,
-                                statusId: deriveAssignmentStatus(hasReader, !!date, !!prev.returnedToECADate),
-                            }))
+                        onChange={(date) => setFormData({ ...formData, sentToReaderDate: date })}
+                        triggerRef={registerField('sentToReaderDate')}
+                        warning={
+                            sentOutOfOrder
+                                ? "La date de réception doit être renseignée avant cette date."
+                                : undefined
                         }
                     />
 
@@ -1022,68 +1077,41 @@ export function AssignmentFormBackendBase({
                         label="Date de retour aux ECA"
                         placeholder="Sélectionner une date..."
                         value={formData.returnedToECADate}
-                        onChange={(date) =>
-                            setFormData((prev) => ({
-                                ...prev,
-                                returnedToECADate: date,
-                                statusId: deriveAssignmentStatus(hasReader, !!prev.sentToReaderDate, !!date),
-                            }))
+                        onChange={(date) => setFormData({ ...formData, returnedToECADate: date })}
+                        triggerRef={registerField('returnedToECADate')}
+                        warning={
+                            returnedOutOfOrder
+                                ? "Les dates de réception et d'envoi au lecteur doivent être renseignées avant cette date."
+                                : undefined
                         }
                     />
 
-                    {/* Status */}
+                    {/* Status — locked, not chosen: fully determined by which of the three
+                        dates above are filled in (deriveAssignmentStatus). Shown the same way
+                        as the read-only Livre field above. */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Statut <span className="text-red-400">*</span>
-                        </label>
-                        <Select
-                            value={formData.statusId?.toString() || ''}
-                            onValueChange={(value) =>
-                                setFormData({ ...formData, statusId: parseInt(value) })
-                            }
+                        <label className="text-sm font-medium text-foreground">Statut</label>
+                        <div
+                            tabIndex={-1}
+                            className="flex items-center w-full rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
+                            aria-readonly="true"
+                            title="Le statut est déterminé automatiquement par les dates de réception, d'envoi au lecteur et de retour aux ECA."
                         >
-                            <SelectTrigger ref={registerField('statusId')} className="bg-field border-border text-foreground">
-                                <SelectValue placeholder="Sélectionner un statut" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border">
-                                {/* #7a — an assignment can never hold "Soldé" (order-only status)
-                                    nor "À faire" (duplication-only, and a duplication has no
-                                    attribution); filter both out so they aren't offered. Uses the
-                                    STATUS constants, not literals.
-                                    "Attente envoi vers auditeur" joins them: what an attribution
-                                    owns stops at the retour aux ECA (« Terminé ») — what happens
-                                    to the audio afterwards belongs to the demande. */}
-                                {statuses
-                                    .filter((status) =>
-                                        status.id !== STATUS.SOLDE &&
-                                        status.id !== STATUS.A_FAIRE &&
-                                        status.id !== STATUS.ATTENTE_AUDITEUR
-                                    )
-                                    .map((status) => (
-                                        <SelectItem
-                                            key={status.id}
-                                            value={status.id.toString()}
-                                            disabled={
-                                                (status.id === STATUS.ATTENTE && attenteLocked) ||
-                                                (status.id === STATUS.EN_COURS && enCoursLocked) ||
-                                                (status.id === STATUS.TERMINE && termineLocked)
-                                            }
-                                            className="text-foreground data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                                        >
-                                            {status.name}
-                                        </SelectItem>
-                                    ))}
-                            </SelectContent>
-                        </Select>
+                            {statuses.find((s) => s.id === derivedStatusId)?.name ?? '—'}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Déterminé automatiquement par les dates ci-dessus.
+                        </p>
                         {/* Only the audio reason gets spelled out — it depends on a bucket
-                            state nobody can see from this form, unlike the reader/dates
-                            fields the consistency lock above reacts to (those sit right
-                            here and explain themselves). */}
-                        {termineLocked && audioMissing && (
+                            state nobody can see from this form, unlike the dates above
+                            (those sit right here and explain themselves). The computed
+                            status can read « Terminé » before this is satisfied — this warns
+                            that the submit will still refuse it. */}
+                        {audioBlocksTermine && (
                             <p className="text-xs text-amber-700 dark:text-amber-400">
                                 « Terminé » nécessite un enregistrement pour ce livre, et aucun
                                 n&apos;est associé pour l&apos;instant. Ouvrez « l&apos;éditeur audio »
-                                ci-dessus pour le déposer — cela débloquera « Terminé ».
+                                ci-dessus pour le déposer avant de renseigner la date de retour aux ECA.
                             </p>
                         )}
                     </div>

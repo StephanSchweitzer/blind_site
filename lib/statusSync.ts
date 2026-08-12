@@ -743,3 +743,50 @@ export function guardReaderEligible(memberType: string | null | undefined): Guar
     }
     return OK;
 }
+
+/**
+ * An attribution's three dates must be filled in order — date de réception,
+ * then date d'envoi au lecteur, then date de retour aux ECA — because each
+ * later date asserts the book physically passed through the earlier step. The
+ * front end (AssignmentFormBackendBase) mirrors this to warn and to derive the
+ * statut in real time; this is the authoritative check a direct API call can't
+ * skip.
+ *
+ * Checked ONLY on a date that is newly being set — `previous*Date` null/absent
+ * and the resulting value non-null. Same "never hold a legacy row hostage"
+ * escape hatch as guardClosureDateRequiresTermine: an attribution imported
+ * without a date de réception (common — the field predates a lot of the
+ * corpus) keeps saving fine as long as its already-set dates aren't the ones
+ * being touched. Pass `previous*Date` as `undefined`/omitted on creation,
+ * where every date is inherently new and the rule applies in full.
+ */
+export function guardAssignmentDateSequence(args: {
+    receptionDate: Date | string | null | undefined;
+    sentToReaderDate: Date | string | null | undefined;
+    returnedToECADate: Date | string | null | undefined;
+    previousSentToReaderDate?: Date | string | null;
+    previousReturnedToECADate?: Date | string | null;
+}): GuardResult {
+    const receptionSet = !!args.receptionDate;
+    const sentSet = !!args.sentToReaderDate;
+    const returnedSet = !!args.returnedToECADate;
+
+    const sentIsNew = sentSet && !args.previousSentToReaderDate;
+    const returnedIsNew = returnedSet && !args.previousReturnedToECADate;
+
+    if (sentIsNew && !receptionSet) {
+        return fail(
+            400,
+            "La date d'envoi au lecteur ne peut pas être renseignée avant la date de réception. " +
+            "Renseignez d'abord la date de réception."
+        );
+    }
+    if (returnedIsNew && !(receptionSet && sentSet)) {
+        return fail(
+            400,
+            "La date de retour aux ECA ne peut pas être renseignée avant les dates de réception " +
+            "et d'envoi au lecteur. Renseignez-les d'abord."
+        );
+    }
+    return OK;
+}
