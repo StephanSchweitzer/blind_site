@@ -25,6 +25,7 @@ import {
     getPaymentTypeLabel,
     getPaymentMethodLabel,
 } from '@/lib/payment-enums';
+import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
@@ -46,6 +47,7 @@ interface BillOption {
     id: number;
     invoiceAmount: string | number;
     state: string;
+    creationDate: string;
 }
 
 export interface PaymentFormData {
@@ -360,7 +362,7 @@ export function PaymentFormBackendBase({
                                                 value={String(b.id)}
                                                 className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer"
                                             >
-                                                Facture #{b.id} — {formatCurrency(parseFloat(String(b.invoiceAmount)))}
+                                                Facture #{b.id} — {format(new Date(b.creationDate), 'PPP', { locale: fr })} — {getBillingStatusLabel(b.state as BillingStatus)} — {formatCurrency(parseFloat(String(b.invoiceAmount)))}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
