@@ -26,3 +26,6 @@ export * from './stats.api';
 
 // Disponibilités API types (/admin/disponibilites)
 export * from './availability.api';
+
+// « Mon compte » API types (self-scoped, /admin/profile)
+export * from './account.api';
