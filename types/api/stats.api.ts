@@ -113,6 +113,13 @@ export interface AuditRecordLabel {
     title: string;
     /** Disambiguator, shown muted beside it: the author, the client, the auditeur. */
     subtitle: string | null;
+    /**
+     * The record this label actually names, when it is NOT the audited row
+     * itself. A piste audio event is a log line with no screen of its own: it
+     * is named by — and opens onto — the book it concerns, which is also the
+     * identity worth showing instead of the log row's own meaningless id.
+     */
+    linked?: { model: string; recordId: string } | null;
 }
 
 export interface AuditEventItem {

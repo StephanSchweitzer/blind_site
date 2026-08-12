@@ -1,3 +1,4 @@
+import { BULK_RECORD_ID } from '@/lib/audit/config';
 import { isReservedField } from '@/lib/audit/labels';
 import type { AuditChangeMap, AuditEventItem } from '@/types';
 
@@ -67,6 +68,10 @@ function sameAudioBurst(previous: AuditEventItem, event: AuditEventItem): boolea
     if (previous.model !== 'AudioTrackEvent' || previous.operation !== 'CREATE' || event.operation !== 'CREATE') {
         return false;
     }
+    // A batch event (recordId '*') already IS a whole operation — two folder
+    // uploads of the same book back to back are two acts, not one burst, and
+    // folding them would report one count for both.
+    if (previous.recordId === BULK_RECORD_ID || event.recordId === BULK_RECORD_ID) return false;
     return (
         previous.changes.action?.[1] === event.changes.action?.[1] &&
         previous.changes.bookId?.[1] === event.changes.bookId?.[1]
@@ -128,4 +133,16 @@ export function groupEvents(events: AuditEventItem[]): EventGroup[] {
  */
 export function isAudioBurst(group: EventGroup): boolean {
     return group.events.length > 1 && headOf(group).model === 'AudioTrackEvent';
+}
+
+/**
+ * True when `group` is a single AudioTrackEvent row standing for a whole BATCH
+ * — a folder upload, a « vider le dossier ». Prisma's createMany returns no
+ * rows, so the trail keeps the count and the fields every insert agreed on
+ * (the book, the action) rather than one event per file: there is a diff table
+ * to avoid rendering here, not a file list to show.
+ */
+export function isBulkAudio(group: EventGroup): boolean {
+    const event = headOf(group);
+    return event.model === 'AudioTrackEvent' && event.recordId === BULK_RECORD_ID;
 }

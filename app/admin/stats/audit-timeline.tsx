@@ -30,6 +30,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import { BULK_COUNT_KEY } from '@/lib/audit/config';
 import {
     OPERATION_LABELS,
     fieldLabel,
@@ -46,7 +47,7 @@ import type {
     StatsActor,
 } from '@/types';
 import { AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT, formatDateTime } from './stats-utils';
-import { type EventGroup, groupEvents, headOf, isAudioBurst } from './audit-grouping';
+import { type EventGroup, groupEvents, headOf, isAudioBurst, isBulkAudio } from './audit-grouping';
 
 /**
  * « Journal des modifications » — the audit trail, read.
@@ -215,22 +216,63 @@ function ActorFilter({
 }
 
 /**
+ * How a row names what it concerns.
+ *
+ * Normally the audited record itself — « Livre n°4549 ». A piste audio event is
+ * a log line with no screen and an id nobody can use, so its label points at
+ * the book instead (`linked`): the identity shown, the tooltip and the link all
+ * follow that, and a reader gets « Piste audio · Livre n°4549 » rather than the
+ * number of a row in a table they will never open.
+ */
+function identityOf(event: AuditEventItem): string {
+    const linked = event.recordLabel?.linked ?? null;
+    if (linked) {
+        return `${modelLabel(event.model)} · ${modelLabel(linked.model)} n°${linked.recordId}`;
+    }
+    return event.recordId === '*'
+        ? modelLabel(event.model)
+        : `${modelLabel(event.model)} n°${event.recordId}`;
+}
+
+/**
  * « Livre n°4549, Le Ventre de Paris — Émile Zola » — the record in full, for
  * the tooltip and the link's accessible name, where the visible label truncates.
  */
 function describeRecord(event: AuditEventItem): string {
-    const identity = event.recordId === '*'
-        ? modelLabel(event.model)
-        : `${modelLabel(event.model)} n°${event.recordId}`;
+    const identity = identityOf(event);
     if (!event.recordLabel) return identity;
     const { title, subtitle } = event.recordLabel;
     return `${identity}, ${title}${subtitle ? ` — ${subtitle}` : ''}`;
 }
 
+/** Where this row's ↗ leads: the linked record when there is one. */
+function hrefOf(event: AuditEventItem): string | null {
+    const linked = event.recordLabel?.linked ?? null;
+    return linked
+        ? recordHref(linked.model, linked.recordId)
+        : recordHref(event.model, event.recordId);
+}
+
+/** The row count a batch event stands for, when it is one. */
+function bulkCount(changes: AuditEventItem['changes']): number | null {
+    const value = changes[BULK_COUNT_KEY]?.[1];
+    return typeof value === 'number' ? value : null;
+}
+
+const plural = (count: number, word: string): string =>
+    `${count} ${word}${count > 1 ? 's' : ''}`;
+
 /** "3 champs" / "Instantané conservé" / "12 pistes" — the one-line gist of a row. */
 function summarize(group: EventGroup): string {
-    if (isAudioBurst(group)) return `${group.events.length} pistes`;
+    if (isAudioBurst(group)) return plural(group.events.length, 'piste');
     const event = headOf(group);
+    // A batch says how many rows it moved, not how many columns it wrote — and
+    // now that the summary also carries what those rows agreed on, counting its
+    // fields would report « 4 champs » for twenty-four pistes.
+    const bulk = bulkCount(group.changes);
+    if (bulk !== null) {
+        return plural(bulk, isBulkAudio(group) ? 'piste' : 'enregistrement');
+    }
     const count = Object.keys(group.changes).length;
     if (event.operation === 'DELETE') {
         return event.restorable ? 'Instantané conservé' : 'Sans instantané';
@@ -269,6 +311,34 @@ function AudioBurstList({ group }: { group: EventGroup }) {
                     );
                 })}
             </ul>
+        </div>
+    );
+}
+
+/**
+ * What a batch of pistes audio has to say for itself.
+ *
+ * createMany hands back no rows, so the trail keeps the count and the fields
+ * every insert agreed on — the book, the action, who did it. Poured into
+ * DiffTable that reads « Action — → DELETE » and « Livre — → 4549 », which is
+ * the raw shape of the storage rather than an account of what happened. This
+ * says it in words, and the header above already names and links the book.
+ */
+function BulkAudioSummary({ event }: { event: AuditEventItem }) {
+    const action = event.changes.action?.[1];
+    const label = typeof action === 'string' ? AUDIO_ACTION_LABEL[action] ?? action : null;
+    const count = bulkCount(event.changes);
+
+    return (
+        <div className="text-sm text-muted-foreground space-y-1">
+            <p>
+                {count === null ? 'Plusieurs pistes' : plural(count, 'piste')}
+                {label ? ` — ${label.toLowerCase()}` : ''}, en une seule opération groupée.
+            </p>
+            <p className="text-xs">
+                Le journal conserve l’opération et le livre concerné, pas la liste des
+                fichiers : les noms restent dans l’historique audio du livre.
+            </p>
         </div>
     );
 }
@@ -332,7 +402,8 @@ function EventRow({
     const event = headOf(group);
     const isDeletion = event.operation === 'DELETE';
     const badge = operationBadge(event);
-    const href = recordHref(event.model, event.recordId);
+    const href = hrefOf(event);
+    const linked = event.recordLabel?.linked ?? null;
     const merged = group.events.length;
     // The stretch a grouped block covers, oldest → newest.
     const startedAt = group.events[merged - 1].at;
@@ -376,7 +447,14 @@ function EventRow({
 
                 <span className="text-sm text-foreground font-medium whitespace-nowrap">
                     {modelLabel(event.model)}
-                    {event.recordId !== '*' && (
+                    {/* A piste audio row carries the id of a log line nobody can
+                        open; the book it concerns is the identity worth showing,
+                        and the one the link below points at. */}
+                    {linked ? (
+                        <span className="text-muted-foreground font-normal">
+                            {' · '}{modelLabel(linked.model)} n°{linked.recordId}
+                        </span>
+                    ) : event.recordId !== '*' && (
                         <span className="text-muted-foreground font-normal">
                             {' '}n°{event.recordId}
                         </span>
@@ -454,7 +532,13 @@ function EventRow({
                                     {formatDateTime(event.at)}, dans la même action groupée.
                                 </p>
                             )}
-                            {isAudioBurst(group) ? <AudioBurstList group={group} /> : <DiffTable group={group} />}
+                            {isAudioBurst(group) ? (
+                                <AudioBurstList group={group} />
+                            ) : isBulkAudio(group) ? (
+                                <BulkAudioSummary event={event} />
+                            ) : (
+                                <DiffTable group={group} />
+                            )}
                             {isDeletion && event.restoreBlocker && (
                                 <p className="text-xs text-muted-foreground mt-2">{event.restoreBlocker}</p>
                             )}

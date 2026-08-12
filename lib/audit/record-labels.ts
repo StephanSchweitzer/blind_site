@@ -3,7 +3,7 @@ import 'server-only';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getUserDisplayName } from '@/lib/users/displayName';
-import type { AuditRecordLabel } from '@/types';
+import type { AuditChangeMap, AuditRecordLabel } from '@/types';
 
 /**
  * Naming the records the journal talks about.
@@ -63,6 +63,25 @@ const userName = (row: Row, prefix = ''): string =>
 const label = (title: string | null, subtitle: string | null = null): AuditRecordLabel | null =>
     title === null ? null : { title, subtitle };
 
+/**
+ * A label that names a BOOK the audited row merely refers to, and carries the
+ * link to it. Used where the row itself has no name and no screen — an audio
+ * track event is « une piste du Ventre de Paris », never a record of its own.
+ */
+const bookLabel = (
+    title: string | null,
+    author: string | null,
+    bookId: unknown
+): AuditRecordLabel | null => {
+    if (title === null) return null;
+    const id = asId(bookId);
+    return {
+        title,
+        subtitle: author,
+        linked: id === null ? null : { model: 'Book', recordId: String(id) },
+    };
+};
+
 interface LabelSource {
     /** One statement per model, ids always parameterized. */
     query: (ids: number[]) => Prisma.Sql;
@@ -81,6 +100,22 @@ interface LabelSource {
      * The id is followed in a second pass (see resolveRecordLabels).
      */
     snapshotBookId?: (snapshot: Row) => number | null;
+    /**
+     * The book a record was about, read out of the event's own diff — the only
+     * trace left when the write was a BATCH.
+     *
+     * Prisma's createMany returns no rows, so such an event is stored under
+     * recordId '*' and there is nothing to join on. What the extension keeps
+     * instead is what every inserted row agreed on (see sharedChanges), and for
+     * a folder upload or a « vider le dossier » that includes the bookId.
+     */
+    changesBookId?: (changes: Row) => number | null;
+    /**
+     * True when a label built from that book should also LINK to it. Set only
+     * where the audited row has no screen of its own: opening the book is then
+     * the only useful destination, and it is the one a reader wants.
+     */
+    linksToBook?: boolean;
 }
 
 const asId = (value: unknown): number | null =>
@@ -179,14 +214,18 @@ const SOURCES: Record<string, LabelSource> = {
     },
 
     // No fromSnapshot: AudioTrackEvent rows are create-only, so a DELETE
-    // snapshot never happens — the live join is the only path this ever takes.
+    // snapshot never happens. The live join names a row inserted one at a time
+    // (a renommage, a restauration); a batch — a folder upload, « vider le
+    // dossier » — has no id to join on and is named from its diff instead.
     AudioTrackEvent: {
         query: (ids) => Prisma.sql`
-            SELECT e.id::text AS key, b.title, b.author
+            SELECT e.id::text AS key, e."bookId", b.title, b.author
             FROM "AudioTrackEvent" e
             LEFT JOIN "Book" b ON b.id = e."bookId"
             WHERE e.id IN (${Prisma.join(ids)})`,
-        build: (row) => label(str(row.title), str(row.author)),
+        build: (row) => bookLabel(str(row.title), str(row.author), row.bookId),
+        changesBookId: (changes) => asId(changes.bookId),
+        linksToBook: true,
     },
 
     // The small reference tables all name themselves the same way.
@@ -208,49 +247,73 @@ const SOURCES: Record<string, LabelSource> = {
 export const isLabelledModel = (model: string): boolean => model in SOURCES;
 
 export interface LabelRequest {
+    /**
+     * The event's own id. Labels come back keyed on THIS rather than on
+     * `model:recordId`, because a batch write is stored under recordId '*' for
+     * every one of them: two folder uploads on one page would otherwise both
+     * wear the name of whichever book was resolved first.
+     */
+    id: number;
     model: string;
     recordId: string;
     /** Parsed DELETE snapshot, when the event carries one. */
     snapshot: Row | null;
+    /** The event's own diff — how a batch event names what it was about. */
+    changes: AuditChangeMap | null;
 }
 
-export const labelKey = (model: string, recordId: string): string => `${model}:${recordId}`;
+const labelKey = (model: string, recordId: string): string => `${model}:${recordId}`;
+
+/** A diff read as a row: only the « après » side names anything. */
+const afterOf = (changes: AuditChangeMap): Row =>
+    Object.fromEntries(Object.entries(changes).map(([field, [, after]]) => [field, after]));
 
 /**
- * Resolve a page of events to display labels, keyed `model:recordId`.
+ * Resolve a page of events to display labels, keyed on the event id.
  *
- * One query per distinct model that still has live rows to look up; a model
- * whose rows are all deletions costs nothing. Bulk events (`recordId = '*'`) and
- * composite keys are skipped — there is no single record to name.
+ * One query per distinct model that still has live rows to look up — several
+ * events on one record share a single lookup, and a model whose rows are all
+ * deletions costs nothing. Composite keys are skipped; a batch event has no
+ * single record to name and is handled by the second pass below.
  */
 export async function resolveRecordLabels(
     requests: LabelRequest[]
-): Promise<Map<string, AuditRecordLabel>> {
-    const labels = new Map<string, AuditRecordLabel>();
+): Promise<Map<number, AuditRecordLabel>> {
+    const labels = new Map<number, AuditRecordLabel>();
+    /** One label per distinct record, so N events on it cost one lookup. */
+    const byRecord = new Map<string, AuditRecordLabel>();
     const pending = new Map<string, Set<number>>();
+    /** Events waiting on a lookup, filled in once it lands. */
+    const waiting: Array<{ id: number; key: string }> = [];
 
-    for (const { model, recordId, snapshot } of requests) {
+    for (const { id, model, recordId, snapshot } of requests) {
         const source = SOURCES[model];
         if (!source) continue;
 
         const key = labelKey(model, recordId);
-        if (labels.has(key)) continue;
+        const known = byRecord.get(key);
+        if (known) {
+            labels.set(id, known);
+            continue;
+        }
 
         // A snapshot is the only way to name a record that no longer exists, and
         // it is also cheaper than a lookup — so it wins whenever it can answer.
         if (snapshot && source.fromSnapshot) {
             const fromSnapshot = source.fromSnapshot(snapshot);
             if (fromSnapshot) {
-                labels.set(key, fromSnapshot);
+                byRecord.set(key, fromSnapshot);
+                labels.set(id, fromSnapshot);
                 continue;
             }
         }
 
-        const id = /^\d+$/.test(recordId) ? Number(recordId) : null;
-        if (id === null) continue;
+        const numericId = /^\d+$/.test(recordId) ? Number(recordId) : null;
+        if (numericId === null) continue;
+        waiting.push({ id, key });
         const ids = pending.get(model);
-        if (ids) ids.add(id);
-        else pending.set(model, new Set([id]));
+        if (ids) ids.add(numericId);
+        else pending.set(model, new Set([numericId]));
     }
 
     await Promise.all(
@@ -261,7 +324,7 @@ export async function resolveRecordLabels(
                 for (const row of rows) {
                     const key = str(row.key);
                     const built = key === null ? null : source.build(row);
-                    if (key !== null && built) labels.set(labelKey(model, key), built);
+                    if (key !== null && built) byRecord.set(labelKey(model, key), built);
                 }
             } catch (error) {
                 // A label is a convenience. Losing one must never cost the journal
@@ -271,45 +334,58 @@ export async function resolveRecordLabels(
         })
     );
 
+    for (const { id, key } of waiting) {
+        const built = byRecord.get(key);
+        if (built) labels.set(id, built);
+    }
+
     await nameByReferencedBook(requests, labels);
     return labels;
 }
 
 /**
- * Second pass, for the records the first one could not name: a deleted demande
- * or attribution, whose own row is gone and whose snapshot holds a `catalogueId`
- * rather than a title.
+ * Second pass, for the events the first one could not name — the two cases
+ * where the record itself cannot answer:
  *
- * Runs at most one extra query, and only when such a deletion is on the page.
+ *   - a deleted demande or attribution, whose own row is gone and whose
+ *     snapshot holds a `catalogueId` rather than a title;
+ *   - a batch of pistes audio, stored under recordId '*' because createMany
+ *     hands back no rows, and whose bookId survives only in its diff.
+ *
+ * Runs at most one extra query, and only when such an event is on the page.
  */
 async function nameByReferencedBook(
     requests: LabelRequest[],
-    labels: Map<string, AuditRecordLabel>
+    labels: Map<number, AuditRecordLabel>
 ): Promise<void> {
-    const wanted = new Map<string, number>();
-    for (const { model, recordId, snapshot } of requests) {
-        const follow = SOURCES[model]?.snapshotBookId;
-        if (!follow || !snapshot) continue;
-        const key = labelKey(model, recordId);
-        if (labels.has(key) || wanted.has(key)) continue;
-        const bookId = follow(snapshot);
-        if (bookId !== null) wanted.set(key, bookId);
+    const wanted = new Map<number, { bookId: number; link: boolean }>();
+    for (const { id, model, snapshot, changes } of requests) {
+        const source = SOURCES[model];
+        if (!source || labels.has(id) || wanted.has(id)) continue;
+
+        const bookId =
+            (snapshot ? source.snapshotBookId?.(snapshot) ?? null : null) ??
+            (changes ? source.changesBookId?.(afterOf(changes)) ?? null : null);
+        if (bookId !== null) wanted.set(id, { bookId, link: source.linksToBook === true });
     }
     if (wanted.size === 0) return;
 
     try {
-        const ids = [...new Set(wanted.values())];
+        const ids = [...new Set([...wanted.values()].map((w) => w.bookId))];
         const rows = await prisma.$queryRaw<Row[]>`
             SELECT id::text AS key, title, author
             FROM "Book" WHERE id IN (${Prisma.join(ids)})`;
         const books = new Map(rows.map((row) => [str(row.key), row]));
 
-        for (const [key, bookId] of wanted) {
+        for (const [id, { bookId, link }] of wanted) {
             const book = books.get(String(bookId));
             const title = book ? str(book.title) : null;
-            // Named after the book it concerned, said plainly — the record itself
-            // is gone, and its title was never its own.
-            if (title) labels.set(key, { title, subtitle: str(book?.author) });
+            if (title === null) continue;
+            // Named after the book it concerned, said plainly — the record
+            // itself is gone (or was never one), and its title was never its own.
+            const author = str(book?.author);
+            const built = link ? bookLabel(title, author, bookId) : { title, subtitle: author };
+            if (built) labels.set(id, built);
         }
     } catch (error) {
         console.error('[audit] libellés par livre référencé — abandon:', error);

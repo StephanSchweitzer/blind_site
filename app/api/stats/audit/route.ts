@@ -5,7 +5,7 @@ import { withSuperAdmin } from '@/lib/auth/guards';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { AUDIT_TABLE_SOFT_LIMIT_MB, isAuditedModel } from '@/lib/audit/config';
 import { TRUNCATION_MARKER_RE } from '@/lib/audit/labels';
-import { findRecordsByTerm, labelKey, resolveRecordLabels } from '@/lib/audit/record-labels';
+import { findRecordsByTerm, resolveRecordLabels } from '@/lib/audit/record-labels';
 import { measureAuditTable } from '@/lib/audit/retention';
 import { isoUtc, parisDayStartUtc, parseDateParam } from '@/lib/stats';
 import type {
@@ -238,11 +238,15 @@ export const GET = withSuperAdmin(async (request) => {
         // and it is the only place a deleted record's name still exists.
         const snapshots = new Map(page.map((row) => [row.id, parseSnapshot(row.snapshotText)]));
 
+        // Keyed on the event id, not on model:recordId — a batch write is stored
+        // under '*' and two of them on one page rarely concern the same book.
         const labels = await resolveRecordLabels(
             page.map((row) => ({
+                id: row.id,
                 model: row.model,
                 recordId: row.recordId,
                 snapshot: snapshots.get(row.id) ?? null,
+                changes: row.changes ?? null,
             }))
         );
 
@@ -259,7 +263,7 @@ export const GET = withSuperAdmin(async (request) => {
                     (row.actorId !== null ? nameById.get(row.actorId) : null) ??
                     row.actorEmail ??
                     'Système',
-                recordLabel: labels.get(labelKey(row.model, row.recordId)) ?? null,
+                recordLabel: labels.get(row.id) ?? null,
                 changes: row.changes ?? {},
                 restorable: row.operation === 'DELETE' && blocker === null,
                 restoreBlocker: blocker,

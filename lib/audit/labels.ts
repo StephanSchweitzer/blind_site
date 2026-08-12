@@ -65,9 +65,10 @@ export function recordHref(model: string, recordId: string): string | null {
             return `/admin/manage_coups_de_coeur`;
         case 'News':
             return `/admin/news?news=${recordId}`;
-        // No standalone screen for one AudioTrackEvent row — the timeline label
-        // already names the book; the audio itself is managed from the book's
-        // own dialogue, not from a URL this recordId could point at.
+        // No standalone screen for one AudioTrackEvent row: it is a log line,
+        // not a record, and this recordId points at nothing a URL can open. The
+        // link comes from its label's `linked` instead, which names the book —
+        // where the audio actually is managed. See lib/audit/record-labels.ts.
         default:
             return null;
     }

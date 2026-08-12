@@ -7,6 +7,8 @@ import {
     BULK_ROW_LIMIT,
     changesAreAllDerived,
     isAuditedModel,
+    isNoiseField,
+    isSecretField,
     primaryKeyFields,
     recordIdOf,
 } from './config';
@@ -174,6 +176,40 @@ async function reread(base: PrismaClient, model: string, rows: Row[]): Promise<M
     return fresh;
 }
 
+/**
+ * The fields every row of a `createMany` agrees on.
+ *
+ * A batch insert hands back no rows, so the trail can never name them one by
+ * one — but what the batch has in COMMON is usually the part that identifies
+ * it. Twenty-four AudioTrackEvent inserts share one bookId and one action, and
+ * a summary carrying those reads as « 24 pistes supprimées sur ce livre »
+ * instead of a bare count nobody can act on; the journal names and links the
+ * book from that bookId (see lib/audit/record-labels.ts).
+ *
+ * Only scalars identical across every row qualify: a field that varies — the
+ * filename, the size — states no single fact about the batch, and writing the
+ * first row's value would be a lie about the other twenty-three.
+ */
+function sharedChanges(data: unknown): AuditChanges {
+    const rows = (Array.isArray(data) ? data : [data]).filter(isWrapperObject);
+    if (rows.length === 0) return {};
+
+    const changes: AuditChanges = {};
+    for (const [field, raw] of Object.entries(rows[0])) {
+        if (isSecretField(field) || isNoiseField(field)) continue;
+        // createMany takes no nested writes; anything object-shaped here is a
+        // Json column, and one of those says nothing about a batch.
+        if (isWrapperObject(raw)) continue;
+
+        const value = encodeValue(raw);
+        // A column left at null adds nothing, exactly as in creationChanges.
+        if (value === null) continue;
+        if (rows.some((row) => encodeValue(row[field]) !== value)) continue;
+        changes[field] = [null, value];
+    }
+    return changes;
+}
+
 /** The `{ champ: [null, valeur] }` shape used by a bulk summary's `data`. */
 function summaryChanges(data: unknown, count: number): AuditChanges {
     const changes: AuditChanges = { [BULK_COUNT_KEY]: [null, count] };
@@ -243,14 +279,16 @@ async function buildEvents({
     }
 
     if (operation === 'createMany') {
-        // No rows come back: the trail records the batch, not its contents.
+        // No rows come back: the trail records the batch, not its contents —
+        // plus whatever every row of it agreed on, which is what tells a reader
+        // WHAT the batch was about (see sharedChanges).
         const count = isWrapperObject(result) && typeof result.count === 'number' ? result.count : 0;
         if (count === 0) return [];
         return [{
             model,
             recordId: BULK_RECORD_ID,
             operation: 'CREATE',
-            changes: { [BULK_COUNT_KEY]: [null, count] },
+            changes: { ...sharedChanges(data), [BULK_COUNT_KEY]: [null, count] },
         }];
     }
 
