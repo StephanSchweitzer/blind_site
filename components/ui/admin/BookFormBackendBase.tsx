@@ -568,7 +568,7 @@ export function BookFormBackendBase({
                                 </label>
                             </div>
                             <p className="text-xs text-muted-foreground pl-6">
-                                Le livre n&apos;apparaît plus sur le catalogue ni les coups de cœur publics (ex. : livre personnel ou sensible). Reste utilisable normalement en interne.
+                                Le livre n&apos;apparait plus dans le Catalogue, ni dans les &quot;Listes de livres&quot; adressées régulièrement aux adhérents  (ex. un livre au sujet sensible ou extrême (religion, politique, moeurs….). Le livre reste cependant accessible aux permanentes.
                             </p>
                         </div>
                     </div>
