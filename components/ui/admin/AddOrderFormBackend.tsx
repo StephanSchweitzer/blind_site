@@ -128,11 +128,11 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     const [requestReceivedDate, setRequestReceivedDate] = useState<Date>(new Date());
     const [deliveryMethod, setDeliveryMethod] = useState<'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE' | null>(null);
     const [billingStatus, setBillingStatus] = useState<'UNBILLED' | 'BILLED' | 'UNBILLABLE'>('UNBILLED');
-    const [defaultCost, setDefaultCost] = useState('3.00');
     const [notes, setNotes] = useState('');
 
-    // Book lines — each carries its own media format, seeded from the auditeur's
-    // preference when known but always overridable per ouvrage.
+    // Book lines — each carries its own media format and cost, seeded from the
+    // auditeur's preference / the book's tarif conseillé when known but always
+    // overridable per ouvrage. Cost is a per-demande value, not shared metadata.
     const [lines, setLines] = useState<OrderBookLine[]>([
         { ...makeLine('3.00'), mediaFormatId: initialClient?.preferredMediaFormatId ?? null },
     ]);
@@ -193,7 +193,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
         setLines(prev => (prev.length > 1 ? prev.filter(l => l.key !== key) : prev));
     const addLine = () => setLines(prev => [
         ...prev,
-        { ...makeLine(defaultCost), mediaFormatId: selectedUser?.preferredMediaFormatId ?? null },
+        { ...makeLine('3.00'), mediaFormatId: selectedUser?.preferredMediaFormatId ?? null },
     ]);
 
     // Picking a book also sets that line's tarif from the weight of its recording
@@ -203,10 +203,6 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     const selectBookForLine = (key: string, book: Book | null) => {
         const suggested = book ? costSuggestion(book.audioSizeKb) : null;
         updateLine(key, { book, ...(suggested ? { cost: suggested.value } : {}) });
-    };
-    const handleDefaultCostChange = (value: string) => {
-        setDefaultCost(value);
-        setLines(prev => prev.map(l => ({ ...l, cost: value })));
     };
 
     const dupCount = lines.filter(l => l.type === 'DUPLICATION').length;
@@ -252,7 +248,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             lentPhysicalBook: l.type === 'ENREGISTREMENT',
             statusId: statusForType(l.type),
             mediaFormatId: l.mediaFormatId!,
-            cost: l.cost || defaultCost,
+            cost: l.cost || '3.00',
         }));
 
         // Guard: warn before creating recording demande(s) for book(s) that already
@@ -388,18 +384,6 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                         </div>
                     </div>
 
-                    {/* Default cost */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Coût par défaut</label>
-                        <div className="relative">
-                            <Input type="text" inputMode="decimal" value={defaultCost}
-                                   onChange={(e) => handleDefaultCostChange(sanitizeDecimal(e.target.value))}
-                                   onBlur={() => handleDefaultCostChange(formatEuro2(defaultCost))}
-                                   className="bg-card border-border text-foreground pr-8" placeholder="0.00" />
-                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">€</span>
-                        </div>
-                    </div>
-
                     {/* Book lines */}
                     <div className="space-y-3 pt-4 border-t border-border">
                         <div className="flex items-center justify-between">
@@ -482,7 +466,7 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                             <Input type="text" inputMode="decimal" value={line.cost}
                                                    onChange={(e) => updateLine(line.key, { cost: sanitizeDecimal(e.target.value) })}
                                                    onBlur={() => updateLine(line.key, { cost: formatEuro2(line.cost) })}
-                                                   className="bg-card border-border text-foreground h-9 pr-8" placeholder={defaultCost} />
+                                                   className="bg-card border-border text-foreground h-9 pr-8" placeholder="0.00" />
                                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">€</span>
                                         </div>
                                         {(() => {
