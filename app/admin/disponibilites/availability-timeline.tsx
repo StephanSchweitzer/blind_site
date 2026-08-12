@@ -75,7 +75,7 @@ const STATE_LABEL: Record<AbsenceState, string> = {
 
 /** Group heading above each block of rows. */
 const STATE_GROUP: Record<AbsenceState, string> = {
-    current: 'En cours',
+    current: 'Indisponibilités en cours',
     openEnded: 'Sans date de fin',
     upcoming: 'À venir',
     elapsed: 'Terminées',
