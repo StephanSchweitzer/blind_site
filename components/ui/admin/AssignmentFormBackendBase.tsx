@@ -87,6 +87,21 @@ function parseDateOnly(value: string | null): Date | undefined {
     return new Date(y, m - 1, d); // local midnight, no TZ shift
 }
 
+/**
+ * Mirrors guardAssignmentConsistency (lib/statusSync.ts): given a reader and
+ * the send/return dates, exactly one status is ever valid, so the admin
+ * shouldn't have to pick it by hand. Date de réception plays no part — the
+ * guard only ever looks at date d'envoi / date de retour. Falls back to
+ * ATTENTE for a combination the guard wouldn't accept anyway (e.g. dates set
+ * with no reader yet); guardAssignmentHasReader / guardAssignmentConsistency
+ * still reject the submit with an explicit message in that case.
+ */
+function deriveAssignmentStatus(hasReader: boolean, sentSet: boolean, returnedSet: boolean): number {
+    if (sentSet && returnedSet && hasReader) return STATUS.TERMINE;
+    if (sentSet && !returnedSet && hasReader) return STATUS.EN_COURS;
+    return STATUS.ATTENTE;
+}
+
 function DatePicker({
                         value,
                         onChange,
@@ -161,7 +176,9 @@ export function AssignmentFormBackendBase({
         receptionDate: null,
         sentToReaderDate: null,
         returnedToECADate: null,
-        statusId: null,
+        // No dates yet — ATTENTE is the only status guardAssignmentConsistency
+        // would accept, so start there instead of leaving the select blank.
+        statusId: STATUS.ATTENTE,
         notes: '',
         deliveryMethod: null,
     });
@@ -992,14 +1009,26 @@ export function AssignmentFormBackendBase({
                         label="Date d'envoi au lecteur"
                         placeholder="Sélectionner une date..."
                         value={formData.sentToReaderDate}
-                        onChange={(date) => setFormData({ ...formData, sentToReaderDate: date })}
+                        onChange={(date) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                sentToReaderDate: date,
+                                statusId: deriveAssignmentStatus(hasReader, !!date, !!prev.returnedToECADate),
+                            }))
+                        }
                     />
 
                     <DatePicker
                         label="Date de retour aux ECA"
                         placeholder="Sélectionner une date..."
                         value={formData.returnedToECADate}
-                        onChange={(date) => setFormData({ ...formData, returnedToECADate: date })}
+                        onChange={(date) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                returnedToECADate: date,
+                                statusId: deriveAssignmentStatus(hasReader, !!prev.sentToReaderDate, !!date),
+                            }))
+                        }
                     />
 
                     {/* Status */}
