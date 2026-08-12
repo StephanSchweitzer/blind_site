@@ -66,6 +66,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
     const [open, setOpen] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
+    const [selectingIndex, setSelectingIndex] = useState<number | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -161,47 +162,54 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
         }
     };
 
-    const handleSelect = async (book: BookResult) => {
-        // Refuse to import a book whose ISBN is already in the catalogue.
-        if (book.isbn) {
-            try {
-                const res = await fetch(`/api/books/check-isbn?isbn=${encodeURIComponent(book.isbn)}`);
-                if (res.ok) {
-                    const data: { exists: boolean } = await res.json();
-                    if (data.exists) {
-                        setSearchError('Un livre avec cet ISBN existe déjà dans le catalogue.');
-                        return;
+    const handleSelect = async (book: BookResult, index: number) => {
+        if (selectingIndex !== null) return;
+        setSelectingIndex(index);
+
+        try {
+            // Refuse to import a book whose ISBN is already in the catalogue.
+            if (book.isbn) {
+                try {
+                    const res = await fetch(`/api/books/check-isbn?isbn=${encodeURIComponent(book.isbn)}`);
+                    if (res.ok) {
+                        const data: { exists: boolean } = await res.json();
+                        if (data.exists) {
+                            setSearchError('Un livre avec cet ISBN existe déjà dans le catalogue.');
+                            return;
+                        }
                     }
+                } catch (error) {
+                    console.error('Error checking ISBN:', error);
+                    // On a check failure, fall through: the book POST still refuses
+                    // duplicate ISBNs server-side, so nothing slips through.
                 }
-            } catch (error) {
-                console.error('Error checking ISBN:', error);
-                // On a check failure, fall through: the book POST still refuses
-                // duplicate ISBNs server-side, so nothing slips through.
             }
+
+            // Google Books answers "2018" or "2018-05-01", which the spec parses as
+            // UTC — so read it back as UTC too, or the prefilled year is one short
+            // for anyone in a timezone behind Greenwich.
+            const month = calendarMonth(book.publishedDate);
+            const year = (calendarYear(book.publishedDate) ?? '').toString();
+
+            onBookSelect({
+                title: book.title,
+                subtitle: book.subtitle,
+                author: book.author,
+                description: book.description,
+                isbn: book.isbn,
+                publishedMonth: month,
+                publishedYear: year,
+                pageCount: book.pageCount,
+                publisher: book.publisher,
+                estimatedReadingTime: book.estimatedReadingTime || '',
+            });
+
+            setOpen(false);
+            setSearchQuery('');
+            setResults([]);
+        } finally {
+            setSelectingIndex(null);
         }
-
-        // Google Books answers "2018" or "2018-05-01", which the spec parses as
-        // UTC — so read it back as UTC too, or the prefilled year is one short
-        // for anyone in a timezone behind Greenwich.
-        const month = calendarMonth(book.publishedDate);
-        const year = (calendarYear(book.publishedDate) ?? '').toString();
-
-        onBookSelect({
-            title: book.title,
-            subtitle: book.subtitle,
-            author: book.author,
-            description: book.description,
-            isbn: book.isbn,
-            publishedMonth: month,
-            publishedYear: year,
-            pageCount: book.pageCount,
-            publisher: book.publisher,
-            estimatedReadingTime: book.estimatedReadingTime || '',
-        });
-
-        setOpen(false);
-        setSearchQuery('');
-        setResults([]);
     };
 
     return (
@@ -263,12 +271,24 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                         {results.map((book, index) => (
                             <Card
                                 key={index}
-                                className="p-3 cursor-pointer bg-muted hover:bg-muted border-border"
+                                className={`relative p-3 bg-muted border-border ${
+                                    selectingIndex !== null
+                                        ? selectingIndex === index
+                                            ? 'cursor-wait'
+                                            : 'cursor-not-allowed opacity-50'
+                                        : 'cursor-pointer hover:bg-muted'
+                                }`}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    handleSelect(book);
+                                    if (selectingIndex !== null) return;
+                                    handleSelect(book, index);
                                 }}
                             >
+                                {selectingIndex === index && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-muted/80 rounded-md">
+                                        <Loader2 className="w-5 h-5 animate-spin text-foreground" />
+                                    </div>
+                                )}
                                 <h3 className="font-semibold text-foreground">{book.title}</h3>
                                 {book.author && (
                                     <p className="text-sm text-foreground">par {book.author}</p>
