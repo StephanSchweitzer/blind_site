@@ -839,20 +839,23 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             <div className="font-mono text-sm text-foreground break-all whitespace-pre-wrap">
                                                 {t.name}
                                             </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {formatSize(t.sizeBytes)}
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                <span>{formatSize(t.sizeBytes)}</span>
+                                                <span aria-hidden="true">·</span>
+                                                <span
+                                                    className="font-mono tabular-nums"
+                                                    aria-label={
+                                                        t.durationSeconds != null
+                                                            ? `Durée : ${formatDuration(t.durationSeconds)}`
+                                                            : 'Durée non mesurée'
+                                                    }
+                                                >
+                                                    {t.durationSeconds != null
+                                                        ? formatDuration(t.durationSeconds)
+                                                        : '—'}
+                                                </span>
                                             </div>
                                         </div>
-                                        <span
-                                            className="w-16 flex-shrink-0 text-right font-mono text-sm tabular-nums text-foreground"
-                                            aria-label={
-                                                t.durationSeconds != null
-                                                    ? `Durée : ${formatDuration(t.durationSeconds)}`
-                                                    : 'Durée non mesurée'
-                                            }
-                                        >
-                                            {t.durationSeconds != null ? formatDuration(t.durationSeconds) : '—'}
-                                        </span>
                                         <a
                                             href={t.downloadUrl}
                                             className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
