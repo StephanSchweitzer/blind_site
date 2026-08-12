@@ -743,6 +743,10 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             </div>
 
             {/* ── alerts ─────────────────────────────────────────────────── */}
+            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                <CalendarClock size={18} className="text-muted-foreground" />
+                Points à surveiller
+            </h2>
             {totalAlerts === 0 ? (
                 <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-green-600 dark:text-green-400" />
