@@ -193,12 +193,22 @@ these mostly kept their original English names even though the French rename hap
   (member type). When the user says **"admins"/"permanents"** they mean `accessLevel: admin`.
 
 Enum-to-label maps live in `lib/user-enums.ts` (member types, access levels, save types,
-languages), `lib/user-activity-enums.ts` (activity status), `lib/payment-enums.ts` (payment
-type/method), `lib/billing-enums.ts` (bill status: `DRAFT`→"Brouillon", `BILLED`→"Émise",
-`PAID`→"Payée", `SOLDE`→"Soldée"), and `lib/audio-enums.ts` (audio link status labels/hints/
-colors, plus `bookHoldsTracks` / `isDoubleRecording`). These are the source of truth for
-French labels — reuse them, don't hardcode French strings. Stats-only labels
-(`AudioTrackAction`, metric names) live in `app/admin/stats/stats-utils.ts`.
+languages, delivery methods), `lib/user-activity-enums.ts` (activity status),
+`lib/payment-enums.ts` (payment type/method), `lib/billing-enums.ts` (bill status:
+`DRAFT`→"Brouillon", `BILLED`→"Émise", `PAID`→"Payée", `SOLDE`→"Soldée", **plus** the
+separate `Orders.billingStatus`: `UNBILLED`→"Non facturé", `BILLED`→"Facturé",
+`UNBILLABLE`→"Non facturable"), and `lib/audio-enums.ts` (audio link status labels/hints/
+colors, `AUDIO_TRACK_ACTION_LABELS`, plus `bookHoldsTracks` / `isDoubleRecording`). These
+are the source of truth for French labels — reuse them, don't hardcode French strings.
+Stats-only labels (metric names) live in `app/admin/stats/stats-utils.ts`, which re-exports
+the audio-action labels as `AUDIO_ACTION_LABEL` for its existing call sites.
+
+**A diff in the journal des modifications words its enum values through the same maps**:
+`ENUM_VALUE_LABELS` in `lib/audit/labels.ts` maps `Model.champ` → label map, and
+`formatAuditValue(value, model, field)` uses it. Keyed on the model as well as the field
+because `type` is a `PaymentType` on a Payment and a `NewsType` on a News. Add an entry
+there whenever you add an enum column to an audited model, or the journal will print the
+raw value.
 
 ## Security conventions (non-negotiable)
 

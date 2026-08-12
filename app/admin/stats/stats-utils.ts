@@ -179,13 +179,12 @@ export const LIFECYCLE_EVENT_TINT: Record<string, string> = {
     STATUS_CHANGED: 'bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200',
 };
 
-/** AudioTrackAction → French label, for the badge on an audioEvents detail row. */
-export const AUDIO_ACTION_LABEL: Record<string, string> = {
-    UPLOAD: 'Envoi',
-    RENAME: 'Renommage',
-    DELETE: 'Suppression',
-    RESTORE: 'Restauration',
-};
+/**
+ * AudioTrackAction → French label, for the badge on an audioEvents detail row.
+ * Re-exported from lib/audio-enums.ts, which the journal des modifications also
+ * reads — this alias keeps the existing call sites unchanged.
+ */
+export { AUDIO_TRACK_ACTION_LABELS as AUDIO_ACTION_LABEL } from '@/lib/audio-enums';
 
 export const AUDIO_ACTION_TINT: Record<string, string> = {
     UPLOAD: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200',

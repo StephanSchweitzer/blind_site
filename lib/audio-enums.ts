@@ -137,3 +137,19 @@ export const isDoubleRecording = (a: AudioBearing, b: AudioBearing): boolean =>
     bookHoldsTracks(a) &&
     bookHoldsTracks(b) &&
     a.audio_filepath!.trim() !== b.audio_filepath!.trim();
+
+/**
+ * AudioTrackAction → French label.
+ *
+ * Lives here rather than next to the stats dashboard's other badge labels
+ * because two unrelated readers need it: the badge on an audio row, and the
+ * `action` field of an AudioTrackEvent diff in the journal des modifications —
+ * and lib/audit/labels.ts cannot import from app/. One definition, so an upload
+ * is never « Envoi » on one screen and « UPLOAD » on the other.
+ */
+export const AUDIO_TRACK_ACTION_LABELS: Record<string, string> = {
+    UPLOAD: 'Envoi',
+    RENAME: 'Renommage',
+    DELETE: 'Suppression',
+    RESTORE: 'Restauration',
+};

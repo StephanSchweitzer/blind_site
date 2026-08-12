@@ -375,10 +375,10 @@ function DiffTable({ group }: { group: EventGroup }) {
                                 {fieldLabel(field)}
                             </td>
                             <td className="py-1.5 pr-4 text-foreground/70 break-words max-w-xs">
-                                {isReservedField(field) ? '—' : formatAuditValue(before)}
+                                {isReservedField(field) ? '—' : formatAuditValue(before, event.model, field)}
                             </td>
                             <td className="py-1.5 text-foreground break-words max-w-xs">
-                                {formatAuditValue(after)}
+                                {formatAuditValue(after, event.model, field)}
                             </td>
                         </tr>
                     ))}

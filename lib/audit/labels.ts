@@ -6,6 +6,20 @@
  * server-only.
  */
 
+import { AUDIO_TRACK_ACTION_LABELS } from '@/lib/audio-enums';
+import { BILLING_STATUS_LABELS, ORDER_BILLING_STATUS_LABELS } from '@/lib/billing-enums';
+import { PAYMENT_METHOD_LABELS, PAYMENT_TYPE_LABELS } from '@/lib/payment-enums';
+import { USER_ACTIVITY_STATUS_LABELS } from '@/lib/user-activity-enums';
+import { AUDIO_LINK_STATUS_LABELS } from '@/lib/audio-enums';
+import {
+    ACCESS_LEVEL_LABELS,
+    DELIVERY_METHOD_LABELS,
+    LANGUAGE_LABELS,
+    MEMBER_TYPE_LABELS,
+    SAVE_TYPE_LABELS,
+} from '@/lib/user-enums';
+import { newsTypeLabels } from '@/types/news';
+
 export type AuditOperationValue = 'CREATE' | 'UPDATE' | 'DELETE' | 'RESTORE';
 
 export const OPERATION_LABELS: Record<AuditOperationValue, string> = {
@@ -251,11 +265,75 @@ export const isReservedField = (field: string): boolean => field in RESERVED_FIE
 /** Marker written in place of a value too long to keep. */
 export const TRUNCATION_MARKER_RE = /^\[(texte de \d+ caractères|binaire|valeur illisible)\]$/;
 
-/** Human rendering of one diff side. */
-export function formatAuditValue(value: string | number | boolean | null): string {
+/**
+ * Enum columns → the label map that words their values, keyed on
+ * `Model.champ`.
+ *
+ * Keyed on the MODEL too, not on the field name alone, because the same column
+ * name carries different enums on different models: `type` is a PaymentType on
+ * a Payment and a NewsType on a News, and a field-keyed lookup would confidently
+ * word a paiement « Annonce ». FIELD_LABELS above can afford to be field-keyed —
+ * it only ever has to say « Type » — but a wrong VALUE is worse than a raw one,
+ * so every entry here names the model it belongs to.
+ *
+ * Only audited models can appear (lib/audit/config.ts); the event logs that
+ * carry their own enums — BillEvent.fromState, UserActivityEvent.toStatus — are
+ * their own history and never produce an AuditEvent.
+ *
+ * Every map is the same one the corresponding screen renders, so the journal
+ * and the fiche can never word a status differently.
+ */
+const ENUM_VALUE_LABELS: Record<string, Record<string, string>> = {
+    'User.memberType':              MEMBER_TYPE_LABELS,
+    'User.accessLevel':             ACCESS_LEVEL_LABELS,
+    'User.activityStatus':          USER_ACTIVITY_STATUS_LABELS,
+    'User.preferredDeliveryMethod': DELIVERY_METHOD_LABELS,
+    'User.saveType':                SAVE_TYPE_LABELS,
+    'Book.audioLinkStatus':         AUDIO_LINK_STATUS_LABELS,
+    'Bill.state':                   BILLING_STATUS_LABELS,
+    'Payment.type':                 PAYMENT_TYPE_LABELS,
+    'Payment.paymentMethod':        PAYMENT_METHOD_LABELS,
+    'Orders.deliveryMethod':        DELIVERY_METHOD_LABELS,
+    'Orders.billingStatus':         ORDER_BILLING_STATUS_LABELS,
+    'Assignment.deliveryMethod':    DELIVERY_METHOD_LABELS,
+    'ReaderLanguage.language':      LANGUAGE_LABELS,
+    'News.type':                    newsTypeLabels,
+    'AudioTrackEvent.action':       AUDIO_TRACK_ACTION_LABELS,
+};
+
+/**
+ * The French wording of an enum value, or null when this column isn't one — or
+ * when it is but the value is unknown to the map. Falling back to null (and so
+ * to the raw value) is deliberate: a row recorded under a since-removed enum
+ * value must keep telling the truth rather than disappear behind a guess.
+ */
+function enumValueLabel(
+    model: string | undefined,
+    field: string | undefined,
+    value: string
+): string | null {
+    if (!model || !field) return null;
+    return ENUM_VALUE_LABELS[`${model}.${field}`]?.[value] ?? null;
+}
+
+/**
+ * Human rendering of one diff side.
+ *
+ * `model` and `field` are what turn a stored enum into words — « Indisponible »
+ * rather than « UNAVAILABLE ». They are optional so an unlabelled call still
+ * renders something truthful, but every journal row should pass them.
+ */
+export function formatAuditValue(
+    value: string | number | boolean | null,
+    model?: string,
+    field?: string
+): string {
     if (value === null) return '—';
     if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
     if (typeof value === 'number') return String(value);
+
+    const asEnum = enumValueLabel(model, field, value);
+    if (asEnum) return asEnum;
     // Timestamps are stored as ISO strings; show them the way the rest of the
     // back office does rather than raw.
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {

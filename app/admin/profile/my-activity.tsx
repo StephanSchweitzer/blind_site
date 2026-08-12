@@ -129,11 +129,11 @@ function ActivityRow({ event }: { event: MyActivityItem }) {
                                             </dt>
                                             <dd className="text-foreground">
                                                 <span className="line-through opacity-60">
-                                                    {formatAuditValue(before)}
+                                                    {formatAuditValue(before, event.model, field)}
                                                 </span>
                                                 {' → '}
                                                 <span className="font-medium">
-                                                    {formatAuditValue(after)}
+                                                    {formatAuditValue(after, event.model, field)}
                                                 </span>
                                             </dd>
                                         </div>

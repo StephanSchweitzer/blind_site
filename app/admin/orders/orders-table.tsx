@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Search, X, Plus, Loader2 } from 'lucide-react';
+import { getOrderBillingStatusLabel } from '@/lib/billing-enums';
 import { AddOrderFormBackend } from '@/admin/AddOrderFormBackend';
 import { EditOrderModal } from '@/admin/EditOrderModal';
 import { OrderFormData } from '@/admin/OrderFormBackendBase';
@@ -297,14 +298,8 @@ export default function OrdersTable({
             : "Duplication en attente : un enregistrement de cet ouvrage est en cours.";
     };
 
-    const getBillingStatusLabel = (status: string) => {
-        const labels: Record<string, string> = {
-            UNBILLED: 'Non facturé',
-            BILLED: 'Facturé',
-            UNBILLABLE: 'Non facturable',
-        };
-        return labels[status] || status;
-    };
+    // Wording lives in lib/billing-enums.ts — the journal des modifications
+    // renders the same column and must not word it differently.
 
     // Keys are the real Status.name values (see prisma/seed.ts STATUSES) — the map
     // shortens them for the table and puts « Terminé »/« Soldé » in the feminine,
@@ -617,7 +612,7 @@ export default function OrdersTable({
                                                                     : 'bg-muted text-muted-foreground'
                                                             }`}
                                                         >
-                                                            {getBillingStatusLabel(order.billingStatus)}
+                                                            {getOrderBillingStatusLabel(order.billingStatus)}
                                                         </span>
                                                     </TableCell>
                                                 </TableRow>

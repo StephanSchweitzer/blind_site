@@ -26,3 +26,26 @@ export const getBillingStatusColor = (status: BillingStatus): string =>
 
 export const getBillingStatusLabel = (status: BillingStatus): string =>
     BILLING_STATUS_LABELS[status] ?? status;
+
+/**
+ * Where a *demande* stands relative to invoicing — `Orders.billingStatus`, a
+ * different enum from the facture's own `Bill.state` above. A demande is not
+ * facturée until the facture carrying it is issued, and UNBILLABLE takes it out
+ * of the billing cycle entirely (see ADJUSTABLE_ORDER_WHERE in lib/billing.ts).
+ */
+export const OrderBillingStatus = {
+    UNBILLED:   'UNBILLED',
+    BILLED:     'BILLED',
+    UNBILLABLE: 'UNBILLABLE',
+} as const;
+
+export type OrderBillingStatus = typeof OrderBillingStatus[keyof typeof OrderBillingStatus];
+
+export const ORDER_BILLING_STATUS_LABELS: Record<OrderBillingStatus, string> = {
+    UNBILLED:   'Non facturé',
+    BILLED:     'Facturé',
+    UNBILLABLE: 'Non facturable',
+};
+
+export const getOrderBillingStatusLabel = (status: string): string =>
+    ORDER_BILLING_STATUS_LABELS[status as OrderBillingStatus] ?? status;
