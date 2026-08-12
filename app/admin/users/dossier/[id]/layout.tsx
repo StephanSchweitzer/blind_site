@@ -3,9 +3,11 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Card, CardContent } from '@/components/ui/card';
 import DossierTabs from './dossier-tabs';
+import DossierHeaderName from './dossier-header-name';
 import { MEMBER_TYPE_LABELS, getMemberTypeColor } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
 import { computeCotisationStatus, formatCotisationDate, isCotisationExempt } from '@/lib/cotisation';
+import { getCurrentUser } from '@/lib/auth/guards';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -45,6 +47,8 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
     });
     if (!user) notFound();
 
+    const me = await getCurrentUser();
+
     const cotisationPayments = await prisma.payment.findMany({
         where: { clientId: userId, type: 'COTISATION', isActive: true },
         select: { cotisationYear: true, paymentDate: true, creationDate: true },
@@ -61,7 +65,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold text-foreground">{fullName}</h1>
+                                <DossierHeaderName userId={user.id} fullName={fullName} currentUserAccessLevel={me?.accessLevel} />
                                 <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
                                     {MEMBER_TYPE_LABELS[user.memberType]}
                                 </span>
