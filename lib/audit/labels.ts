@@ -18,6 +18,7 @@ import {
     MEMBER_TYPE_LABELS,
     SAVE_TYPE_LABELS,
 } from '@/lib/user-enums';
+import { formatDay } from '@/lib/users/activityStatus';
 import { newsTypeLabels } from '@/types/news';
 
 export type AuditOperationValue = 'CREATE' | 'UPDATE' | 'DELETE' | 'RESTORE';
@@ -266,6 +267,40 @@ export const isReservedField = (field: string): boolean => field in RESERVED_FIE
 export const TRUNCATION_MARKER_RE = /^\[(texte de \d+ caractères|binaire|valeur illisible)\]$/;
 
 /**
+ * The zone every moment in the journal is read in — the same one
+ * `formatDateTime` stamps the row's own timestamp with
+ * (app/admin/stats/stats-utils.ts). Declared here rather than imported from
+ * lib/stats.ts, which pulls in the Prisma runtime and would follow this module
+ * into the browser bundle.
+ *
+ * Pinned rather than left to the viewer's locale: this is a French association
+ * whose working day is the Paris day everywhere else in the app, and a row
+ * whose header and whose diff disagreed about the hour would be unreadable.
+ */
+const DISPLAY_TIMEZONE = 'Europe/Paris';
+
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+
+/**
+ * Is this stored value a DAY rather than a moment?
+ *
+ * Day-valued columns — an indisponibilité's two ends, a date d'attribution, une
+ * date de paiement — are normalized to UTC midnight on the way in
+ * (`toDayStart`, lib/users/activityStatus.ts). Rendering one with a time, in the
+ * viewer's zone, does not merely add noise: west of UTC it moves the date, and
+ * the journal reported an indisponibilité declared for the 20th as starting on
+ * the 19th.
+ *
+ * A genuine timestamp landing exactly on UTC midnight is a once-a-day
+ * coincidence and reads here as its bare date — still true, only less precise.
+ */
+const isStoredDay = (date: Date): boolean =>
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0;
+
+/**
  * Enum columns → the label map that words their values, keyed on
  * `Model.champ`.
  *
@@ -334,12 +369,19 @@ export function formatAuditValue(
 
     const asEnum = enumValueLabel(model, field, value);
     if (asEnum) return asEnum;
-    // Timestamps are stored as ISO strings; show them the way the rest of the
-    // back office does rather than raw.
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+
+    // Dates reach the diff as ISO strings (lib/audit/diff.ts serializes every
+    // Date with toISOString, so they always carry a Z).
+    if (ISO_DATETIME_RE.test(value)) {
         const parsed = new Date(value);
         if (!Number.isNaN(parsed.getTime())) {
-            return parsed.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+            return isStoredDay(parsed)
+                ? formatDay(parsed) ?? value
+                : parsed.toLocaleString('fr-FR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                      timeZone: DISPLAY_TIMEZONE,
+                  });
         }
     }
     return value === '' ? '(vide)' : value;
