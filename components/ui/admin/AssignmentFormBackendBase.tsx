@@ -92,24 +92,20 @@ function parseDateOnly(value: string | null): Date | undefined {
 
 /**
  * The status is fully determined by which of the three dates are filled in —
- * team rule, not left to a manual pick: no dates (or just date de réception)
- * is « Attente envoi vers lecteur »; + date d'envoi is « En cours »; + date de
- * retour aux ECA is « Terminé ». hasReader is kept as an extra gate on the
- * last two (an attribution can't be "en cours" with nobody holding the book) —
- * mirrors guardAssignmentConsistency (lib/statusSync.ts) and guardManualEnCours's
- * "« En cours » nécessite un lecteur assigné". Falls back to ATTENTE for a
- * combination that shouldn't be reachable given guardAssignmentDateSequence
- * (see below) already blocking a later date from being newly entered before
- * an earlier one.
+ * team rule, not left to a manual pick, and purely on the dates: no dates (or
+ * just date de réception) is « Attente envoi vers lecteur »; + date d'envoi is
+ * « En cours »; + date de retour aux ECA is « Terminé ». Deliberately NOT
+ * gated on hasReader here — a reader can be picked after the dates (or before
+ * either way), and gating the DISPLAY on it made the status look stuck at
+ * Attente while someone filled in dates first. guardAssignmentConsistency
+ * (lib/statusSync.ts) still requires a reader for En cours/Terminé at the
+ * point that actually matters — submission — enforced separately below
+ * (readerBlocksAdvance) so the message is explicit instead of a generic
+ * server 400.
  */
-function deriveAssignmentStatus(
-    hasReader: boolean,
-    receptionSet: boolean,
-    sentSet: boolean,
-    returnedSet: boolean
-): number {
-    if (receptionSet && sentSet && returnedSet && hasReader) return STATUS.TERMINE;
-    if (receptionSet && sentSet && hasReader) return STATUS.EN_COURS;
+function deriveAssignmentStatus(receptionSet: boolean, sentSet: boolean, returnedSet: boolean): number {
+    if (receptionSet && sentSet && returnedSet) return STATUS.TERMINE;
+    if (receptionSet && sentSet) return STATUS.EN_COURS;
     return STATUS.ATTENTE;
 }
 
@@ -594,6 +590,17 @@ export function AssignmentFormBackendBase({
             return;
         }
 
+        // guardAssignmentConsistency (lib/statusSync.ts): En cours/Terminé need a
+        // reader. Moot on creation (submit is disabled without one already) —
+        // relevant when editing an existing readerless attribution.
+        if (readerBlocksAdvance) {
+            const statusName = statuses.find((s) => s.id === derivedStatusId)?.name ?? 'Ce statut';
+            const msg = `« ${statusName} » nécessite un lecteur assigné. Sélectionnez un lecteur avant de sauvegarder.`;
+            setError(msg);
+            toastError(msg);
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -675,11 +682,18 @@ export function AssignmentFormBackendBase({
     // (initialData undefined) always follows the strict order.
     const receptionRequirementWaived = !!initialData?.sentToReaderDate;
     const derivedStatusId = deriveAssignmentStatus(
-        hasReader,
         receptionDateSet || receptionRequirementWaived,
         sentDateSet,
         returnedDateSet
     );
+
+    // guardAssignmentConsistency (lib/statusSync.ts) requires a reader for En
+    // cours/Terminé — the dates alone (above) don't know that. On creation this
+    // is moot (the submit button is already disabled without a reader), but an
+    // existing readerless attribution stays editable, so an admin progressing
+    // its dates before assigning someone needs the explicit reason, not a bare
+    // server 400.
+    const readerBlocksAdvance = derivedStatusId !== STATUS.ATTENTE && !hasReader;
 
     // guardAssignmentDateSequence (lib/statusSync.ts): a later date can't be
     // newly entered before the earlier one it depends on. "Newly" is the key
@@ -1112,6 +1126,16 @@ export function AssignmentFormBackendBase({
                                 « Terminé » nécessite un enregistrement pour ce livre, et aucun
                                 n&apos;est associé pour l&apos;instant. Ouvrez « l&apos;éditeur audio »
                                 ci-dessus pour le déposer avant de renseigner la date de retour aux ECA.
+                            </p>
+                        )}
+                        {/* Same reasoning as the audio hint above — a reader isn't visible
+                            from the dates, so this spells out why the computed status can't
+                            be saved yet. Moot on creation (submit is already disabled without
+                            a reader); relevant for an existing readerless attribution. */}
+                        {readerBlocksAdvance && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                « {statuses.find((s) => s.id === derivedStatusId)?.name ?? 'Ce statut'} »
+                                nécessite un lecteur assigné. Sélectionnez un lecteur ci-dessus pour valider ce statut.
                             </p>
                         )}
                     </div>
