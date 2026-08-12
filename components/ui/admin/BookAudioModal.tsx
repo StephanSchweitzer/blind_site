@@ -729,13 +729,30 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             {formatSize(zip.written)} / {formatSize(zip.total)}
                                         </span>
                                     </div>
-                                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-muted">
+                                    {/* Two fills, one bar: the pale one is what has come
+                                        down from le stockage, the green one what is
+                                        actually in the archive. Since the tracks are
+                                        fetched ahead of the writer (see useAudioFolderZip)
+                                        the green bar pauses between files while the
+                                        download never does — showing only the green one
+                                        would read as a stall. */}
+                                    <div className="relative mt-2 h-1.5 w-full overflow-hidden rounded bg-muted">
                                         <div
-                                            className="h-full bg-green-500"
+                                            className="absolute inset-y-0 left-0 bg-green-500/30"
+                                            style={{
+                                                width: `${zip.total ? Math.min(100, Math.round((zip.fetched / zip.total) * 100)) : 0}%`,
+                                            }}
+                                        />
+                                        <div
+                                            className="absolute inset-y-0 left-0 bg-green-500"
                                             style={{
                                                 width: `${zip.total ? Math.min(100, Math.round((zip.written / zip.total) * 100)) : 0}%`,
                                             }}
                                         />
+                                    </div>
+                                    <div className="mt-1 text-[11px] text-muted-foreground">
+                                        Téléchargé depuis le stockage : {formatSize(zip.fetched)} /{' '}
+                                        {formatSize(zip.total)}
                                     </div>
                                 </>
                             )}
