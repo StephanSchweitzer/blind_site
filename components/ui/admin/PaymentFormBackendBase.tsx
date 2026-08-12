@@ -155,7 +155,7 @@ export function PaymentFormBackendBase({
             const res = await fetch(`/api/bills?clientId=${selectedClient.id}&limit=100`);
             if (!res.ok) return [];
             const json = await res.json();
-            return json?.data?.bills ?? [];
+            return json?.bills ?? [];
         };
 
         Promise.resolve()

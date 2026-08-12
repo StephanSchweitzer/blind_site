@@ -16,14 +16,21 @@ export const GET = withAdmin(async (request) => {
         const search = searchParams.get('search') || '';
         const rawStatus = searchParams.get('status');
         const late = searchParams.get('late') === 'true';
+        const rawClientId = searchParams.get('clientId');
+        const rawLimit = searchParams.get('limit');
 
-        const billsPerPage = 10;
+        const billsPerPage = rawLimit ? Math.max(1, parseInt(rawLimit)) : 10;
 
         // Hide soft-deleted bills from the listing.
         const whereClause: Prisma.BillWhereInput = { isActive: true };
 
         const clientSearch = search ? buildUserNameSearch(search) : null;
         if (clientSearch) whereClause.client = clientSearch;
+
+        if (rawClientId) {
+            const parsedClientId = parseInt(rawClientId);
+            if (!isNaN(parsedClientId)) whereClause.clientId = parsedClientId;
+        }
 
         if (late) {
             const thirtyDaysAgo = new Date();
