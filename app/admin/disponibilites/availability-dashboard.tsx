@@ -457,21 +457,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             !needle || person.name.toLowerCase().includes(needle);
     }, [search]);
 
-    // Same name filter as the calendar and the lecteur table, applied to the
-    // alert groups: typing a name up top should narrow "Points à surveiller"
-    // too, not just the rows further down the page.
-    const filteredAlerts: AvailabilityAlerts = useMemo(
-        () => ({
-            endingSoon: alerts.endingSoon.filter((a) => nameMatches(a.person)),
-            startingSoon: alerts.startingSoon.filter((a) => nameMatches(a.person)),
-            awayWithAttributions: alerts.awayWithAttributions.filter((a) => nameMatches(a.person)),
-            openEnded: alerts.openEnded.filter((a) => nameMatches(a.person)),
-            elapsed: alerts.elapsed.filter((a) => nameMatches(a.person)),
-            flaggedUnavailable: alerts.flaggedUnavailable.filter(nameMatches),
-        }),
-        [alerts, nameMatches]
-    );
-
     // Empty selection = no restriction; otherwise the person must carry at
     // least one of the checked languages.
     const languageMatches = useMemo(() => {
@@ -479,6 +464,22 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             languageFilter.length === 0 ||
             person.languages.some((lang) => languageFilter.includes(lang));
     }, [languageFilter]);
+
+    // Same name + language filters as the calendar and the lecteur table,
+    // applied to the alert groups: typing a name or checking a language up
+    // top should narrow "Points à surveiller" too, not just the rows further
+    // down the page.
+    const filteredAlerts: AvailabilityAlerts = useMemo(() => {
+        const matches = (p: AvailabilityPerson) => nameMatches(p) && languageMatches(p);
+        return {
+            endingSoon: alerts.endingSoon.filter((a) => matches(a.person)),
+            startingSoon: alerts.startingSoon.filter((a) => matches(a.person)),
+            awayWithAttributions: alerts.awayWithAttributions.filter((a) => matches(a.person)),
+            openEnded: alerts.openEnded.filter((a) => matches(a.person)),
+            elapsed: alerts.elapsed.filter((a) => matches(a.person)),
+            flaggedUnavailable: alerts.flaggedUnavailable.filter(matches),
+        };
+    }, [alerts, nameMatches, languageMatches]);
 
     const visibleAbsences: Absence[] = useMemo(
         () =>
@@ -764,12 +765,13 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                 <CalendarClock size={18} className="text-muted-foreground" />
                 Points à surveiller
                 <SearchChip search={search} onClear={() => setSearch('')} />
+                <LanguageFilterChip languages={languageFilter} onClear={() => setLanguageFilter([])} />
             </h2>
             {totalAlerts === 0 ? (
                 <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-green-600 dark:text-green-400" />
-                    {search.trim() && totalAlertsUnfiltered > 0
-                        ? `Aucun point à surveiller pour « ${search.trim()} » : ${totalAlertsUnfiltered} au total hors filtre par nom.`
+                    {(search.trim() || languageFilter.length > 0) && totalAlertsUnfiltered > 0
+                        ? `Aucun point à surveiller pour ce filtre : ${totalAlertsUnfiltered} au total hors filtre par nom/langue.`
                         : <>Rien à signaler : aucune indisponibilité n&apos;arrive à échéance dans les{' '}
                             {warningDays} prochains jours.</>}
                 </div>
