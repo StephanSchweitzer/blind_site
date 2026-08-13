@@ -53,6 +53,7 @@ import {
     loadedReaders,
     overlapsPeriod,
     type Absence,
+    type AvailabilityAlerts,
 } from '@/lib/users/availability';
 import { UserSearchCombobox, type UserSearchResult } from '@/admin/UserSearchCombobox';
 import type { AvailabilityPerson, AvailabilityResponse } from '@/types';
@@ -456,6 +457,21 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             !needle || person.name.toLowerCase().includes(needle);
     }, [search]);
 
+    // Same name filter as the calendar and the lecteur table, applied to the
+    // alert groups: typing a name up top should narrow "Points à surveiller"
+    // too, not just the rows further down the page.
+    const filteredAlerts: AvailabilityAlerts = useMemo(
+        () => ({
+            endingSoon: alerts.endingSoon.filter((a) => nameMatches(a.person)),
+            startingSoon: alerts.startingSoon.filter((a) => nameMatches(a.person)),
+            awayWithAttributions: alerts.awayWithAttributions.filter((a) => nameMatches(a.person)),
+            openEnded: alerts.openEnded.filter((a) => nameMatches(a.person)),
+            elapsed: alerts.elapsed.filter((a) => nameMatches(a.person)),
+            flaggedUnavailable: alerts.flaggedUnavailable.filter(nameMatches),
+        }),
+        [alerts, nameMatches]
+    );
+
     // Empty selection = no restriction; otherwise the person must carry at
     // least one of the checked languages.
     const languageMatches = useMemo(() => {
@@ -561,7 +577,8 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
         return rows;
     }, [readerRows, onlyAssignable, onlyDormant, readerSort]);
 
-    const totalAlerts = alertCount(alerts);
+    const totalAlerts = alertCount(filteredAlerts);
+    const totalAlertsUnfiltered = alertCount(alerts);
 
     const readerPage = usePagedRows(
         displayedReaders,
@@ -746,12 +763,15 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
                 <CalendarClock size={18} className="text-muted-foreground" />
                 Points à surveiller
+                <SearchChip search={search} onClear={() => setSearch('')} />
             </h2>
             {totalAlerts === 0 ? (
                 <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-green-600 dark:text-green-400" />
-                    Rien à signaler : aucune indisponibilité n&apos;arrive à échéance dans les{' '}
-                    {warningDays} prochains jours.
+                    {search.trim() && totalAlertsUnfiltered > 0
+                        ? `Aucun point à surveiller pour « ${search.trim()} » : ${totalAlertsUnfiltered} au total hors filtre par nom.`
+                        : <>Rien à signaler : aucune indisponibilité n&apos;arrive à échéance dans les{' '}
+                            {warningDays} prochains jours.</>}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -760,7 +780,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         description={`Ces personnes redeviennent actives dans les ${warningDays} prochains jours — de nouveau attribuables.`}
                         tone="info"
                         onOpen={openPerson}
-                        rows={alerts.endingSoon.map((a) => ({
+                        rows={filteredAlerts.endingSoon.map((a) => ({
                             key: a.person.id,
                             person: a.person,
                             detail: `de retour le ${formatDayKey(a.until!)} (${describeDelay(a.daysAway ?? 0)})`,
@@ -771,7 +791,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         description={`Indisponibilités qui démarrent dans les ${warningDays} prochains jours — évitez de leur confier un long enregistrement.`}
                         tone="warn"
                         onOpen={openPerson}
-                        rows={alerts.startingSoon.map((a) => ({
+                        rows={filteredAlerts.startingSoon.map((a) => ({
                             key: a.person.id,
                             person: a.person,
                             detail: `indisponible à partir du ${formatDayKey(a.from!)} (${describeDelay(a.daysAway ?? 0)})${
@@ -784,7 +804,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         description="Ces personnes sont (ou seront bientôt) indisponibles alors qu'un livre est encore chez elles."
                         tone="bad"
                         onOpen={openPerson}
-                        rows={alerts.awayWithAttributions.map((a) => ({
+                        rows={filteredAlerts.awayWithAttributions.map((a) => ({
                             key: a.person.id,
                             person: a.person,
                             detail: `${a.person.activeAssignments} attribution(s) en cours${
@@ -797,7 +817,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         description="Rien ne les clôturera automatiquement : fixez une date de fin ou changez le statut."
                         tone="warn"
                         onOpen={openPerson}
-                        rows={alerts.openEnded.map((a) => ({
+                        rows={filteredAlerts.openEnded.map((a) => ({
                             key: a.person.id,
                             person: a.person,
                             detail: a.from
@@ -810,7 +830,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         description="Leur statut est actif, mais leur fiche indique qu'ils ne prennent pas d'attribution. Ils n'apparaissent pas dans les sélecteurs de lecteur."
                         tone="warn"
                         onOpen={openPerson}
-                        rows={alerts.flaggedUnavailable.map((p) => ({
+                        rows={filteredAlerts.flaggedUnavailable.map((p) => ({
                             key: p.id,
                             person: p,
                             detail: p.availabilityNotes
@@ -823,7 +843,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         description="Leur date de fin est passée mais le statut n'a pas encore été refermé. Elles se lisent déjà comme « Actif »."
                         tone="bad"
                         onOpen={openPerson}
-                        rows={alerts.elapsed.map((a) => ({
+                        rows={filteredAlerts.elapsed.map((a) => ({
                             key: a.person.id,
                             person: a.person,
                             detail: `terminée le ${formatDayKey(a.until!)}`,
@@ -832,6 +852,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                 </div>
             )}
 
+            {/* Sweeps every elapsed indisponibilité server-side, not just the
+                filtered ones on screen, so this stays gated on the unfiltered
+                count. */}
             {alerts.elapsed.length > 0 && (
                 <Button variant="outline" size="sm" onClick={runSweep} disabled={isSweeping}>
                     {isSweeping ? (
