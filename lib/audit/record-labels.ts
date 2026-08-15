@@ -82,6 +82,26 @@ const bookLabel = (
     };
 };
 
+/**
+ * A label that names the ATTRIBUTION (by its book) an AssignmentReader row
+ * belongs to, and carries the link to it. Used the same way as `bookLabel` —
+ * a lecteur d'attribution is a history line on the attribution's timeline,
+ * never a record with a screen of its own.
+ */
+const assignmentLabel = (
+    title: string | null,
+    author: string | null,
+    assignmentId: unknown
+): AuditRecordLabel | null => {
+    if (title === null) return null;
+    const id = asId(assignmentId);
+    return {
+        title,
+        subtitle: author,
+        linked: id === null ? null : { model: 'Assignment', recordId: String(id) },
+    };
+};
+
 interface LabelSource {
     /** One statement per model, ids always parameterized. */
     query: (ids: number[]) => Prisma.Sql;
@@ -226,6 +246,20 @@ const SOURCES: Record<string, LabelSource> = {
         build: (row) => bookLabel(str(row.title), str(row.author), row.bookId),
         changesBookId: (changes) => asId(changes.bookId),
         linksToBook: true,
+    },
+
+    // No fromSnapshot: the snapshot carries only assignmentId/readerId, and a
+    // second join back to Assignment → Book from a plain id would duplicate
+    // the live query for no benefit — a deleted row is left unnamed instead,
+    // same trade-off AssignmentReader accepts everywhere else here.
+    AssignmentReader: {
+        query: (ids) => Prisma.sql`
+            SELECT ar.id::text AS key, ar."assignmentId", b.title, b.author
+            FROM "AssignmentReader" ar
+            JOIN "Assignment" a ON a.id = ar."assignmentId"
+            JOIN "Book" b ON b.id = a."catalogueId"
+            WHERE ar.id IN (${Prisma.join(ids)})`,
+        build: (row) => assignmentLabel(str(row.title), str(row.author), row.assignmentId),
     },
 
     // The small reference tables all name themselves the same way.

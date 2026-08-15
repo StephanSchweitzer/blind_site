@@ -175,6 +175,7 @@ const FIELD_LABELS: Record<string, string> = {
     aveugleId: 'Auditeur',
     catalogueId: 'Livre',
     orderId: 'Demande',
+    assignmentId: 'Attribution',
     statusId: 'Statut',
     processedByStaffId: 'Traité par',
     readerId: 'Lecteur',
