@@ -12,6 +12,7 @@ import {
     parseGranularityParam,
     parseMetricParam,
 } from '@/lib/stats';
+import { newsTypeLabels, type NewsType } from '@/types/news';
 import type { AuditOperation, StaffDetailItem, StaffDetailsResponse, StaffMetric } from '@/types';
 
 // Lazy detail behind one heatmap cell: the records a person touched during a
@@ -174,7 +175,7 @@ async function loadItems(
                 id: r.id,
                 at: r.at,
                 title: r.title,
-                subtitle: r.type,
+                subtitle: newsTypeLabels[r.type as NewsType] ?? r.type,
                 href: `/admin/news?news=${r.id}`,
             }));
         }

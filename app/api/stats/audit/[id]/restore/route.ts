@@ -6,6 +6,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { isAuditedModel } from '@/lib/audit/config';
 import { withoutAudit } from '@/lib/audit/context';
 import { TRUNCATION_MARKER_RE, modelLabel } from '@/lib/audit/labels';
+import { resolveRecordLabels } from '@/lib/audit/record-labels';
 import type { AuditChangeMap, AuditRestoreResponse } from '@/types';
 
 /**
@@ -132,9 +133,19 @@ export const POST = withSuperAdmin(async (request, ctx) => {
         const caveat = event.model === 'User'
             ? ' Le mot de passe n’a pas été conservé : la personne devra le réinitialiser.'
             : '';
+        // The snapshot just written back is exactly what would name this record
+        // in the journal — reused here so the toast reads « Le Ventre de Paris »
+        // rather than the id alone.
+        const labels = await resolveRecordLabels([
+            { id: event.id, model: event.model, recordId: event.recordId, snapshot, changes: null },
+        ]);
+        const label = labels.get(event.id);
+        const named = label
+            ? `${modelLabel(event.model)} n°${recordId} (${label.title}${label.subtitle ? ` — ${label.subtitle}` : ''})`
+            : `${modelLabel(event.model)} n°${recordId}`;
         return NextResponse.json<AuditRestoreResponse>({
             success: true,
-            message: `${modelLabel(event.model)} n°${recordId} restauré.${caveat}`,
+            message: `${named} restauré.${caveat}`,
         });
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
