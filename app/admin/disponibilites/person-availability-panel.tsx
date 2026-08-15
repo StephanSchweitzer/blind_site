@@ -245,9 +245,12 @@ function AssignmentRow({ assignment }: { assignment: AvailabilityAssignment }) {
             <div className="mt-1 flex items-center gap-3 text-xs">
                 {/* New tab: this popup sits on top of in-progress filter/search
                     state on the disponibilités page, and navigating away in the
-                    same tab would lose it. */}
+                    same tab would lose it. The `assignment`/`order` params are
+                    the tables' own deep-link params — they open the edit modal
+                    directly instead of just landing on the page with a search
+                    term typed in. */}
                 <Link
-                    href={`/admin/assignments?search=${assignment.id}`}
+                    href={`/admin/assignments?assignment=${assignment.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline inline-flex items-center gap-1"
@@ -256,7 +259,7 @@ function AssignmentRow({ assignment }: { assignment: AvailabilityAssignment }) {
                 </Link>
                 {assignment.orderId && (
                     <Link
-                        href={`/admin/orders?search=${assignment.orderId}`}
+                        href={`/admin/orders?order=${assignment.orderId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-muted-foreground hover:text-foreground hover:underline inline-flex items-center gap-1"
