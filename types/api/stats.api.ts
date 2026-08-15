@@ -122,6 +122,12 @@ export interface AuditRecordLabel {
     linked?: { model: string; recordId: string } | null;
 }
 
+/** A diff field's before/after, resolved from a foreign-key id to a display name. */
+export interface AuditFieldLabelEntry {
+    before: string | null;
+    after: string | null;
+}
+
 export interface AuditEventItem {
     id: number;
     at: string; // ISO datetime
@@ -138,6 +144,13 @@ export interface AuditEventItem {
      */
     recordLabel: AuditRecordLabel | null;
     changes: AuditChangeMap;
+    /**
+     * Names for the foreign-key ids inside `changes` — e.g. `aveugleId`'s
+     * 12 → 45 becomes « Jeanne Dupont » → « Marc Petit ». Keyed on the same
+     * field names as `changes`; a field absent here (or a side absent within
+     * it) had no id to resolve, and the raw value is shown instead.
+     */
+    fieldLabels?: Record<string, AuditFieldLabelEntry>;
     /**
      * True when this deletion can be replayed: a snapshot is present and none of
      * its values were truncated on the way in. The snapshot itself never leaves

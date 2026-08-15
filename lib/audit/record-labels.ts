@@ -3,7 +3,7 @@ import 'server-only';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getUserDisplayName } from '@/lib/users/displayName';
-import type { AuditChangeMap, AuditRecordLabel } from '@/types';
+import type { AuditChangeMap, AuditFieldLabelEntry, AuditRecordLabel } from '@/types';
 
 /**
  * Naming the records the journal talks about.
@@ -245,6 +245,122 @@ const SOURCES: Record<string, LabelSource> = {
 
 /** Models this module can name at all — the audit route uses it to skip the rest. */
 export const isLabelledModel = (model: string): boolean => model in SOURCES;
+
+/**
+ * Model.field → the model an id-valued diff field points at.
+ *
+ * `recordLabel` above names the audited row itself; this is the analogous map
+ * for the OTHER ids that show up inside a diff — a demande's `statusId`
+ * changing, an attribution's `readerId` moving from one lecteur to another.
+ * Only plain foreign keys belong here, not every Int column (Book.pageCount
+ * is just a count with nothing to join on).
+ */
+const FK_FIELD_TARGETS: Record<string, string> = {
+    'Orders.aveugleId': 'User',
+    'Orders.catalogueId': 'Book',
+    'Orders.statusId': 'Status',
+    'Orders.mediaFormatId': 'MediaFormat',
+    'Orders.processedByStaffId': 'User',
+    'Orders.billId': 'Bill',
+    'Assignment.catalogueId': 'Book',
+    'Assignment.orderId': 'Orders',
+    'Assignment.statusId': 'Status',
+    'Assignment.processedByStaffId': 'User',
+    'AssignmentReader.assignmentId': 'Assignment',
+    'AssignmentReader.readerId': 'User',
+    'User.civilityId': 'Civility',
+    'User.preferredMediaFormatId': 'MediaFormat',
+    'Bill.clientId': 'User',
+    'Payment.clientId': 'User',
+    'Payment.billId': 'Bill',
+    'Book.addedById': 'User',
+    'News.authorId': 'User',
+    'AudioTrackEvent.performedById': 'User',
+    'AudioTrackEvent.bookId': 'Book',
+};
+
+/** Same label a record's own name uses, flattened to one line for a diff cell. */
+const flatten = (built: AuditRecordLabel | null): string | null =>
+    built === null ? null : built.subtitle ? `${built.title} — ${built.subtitle}` : built.title;
+
+/**
+ * Resolve the foreign-key ids inside a page's diffs to display names.
+ *
+ * One query per distinct target model, exactly like `resolveRecordLabels` —
+ * reuses the same `SOURCES` so a book or a person is never named two
+ * different ways depending on which side of the journal is reading it. A
+ * field whose id fails to resolve (the row it pointed at was itself deleted)
+ * is left out of the result; the caller falls back to the raw id, same as
+ * for any other unlabelled value.
+ */
+export async function resolveFieldLabels(
+    requests: Array<Pick<LabelRequest, 'id' | 'model' | 'changes'>>
+): Promise<Map<number, Record<string, AuditFieldLabelEntry>>> {
+    const result = new Map<number, Record<string, AuditFieldLabelEntry>>();
+
+    interface Slot {
+        eventId: number;
+        field: string;
+        side: 'before' | 'after';
+        targetModel: string;
+        id: number;
+    }
+    const slots: Slot[] = [];
+    const pending = new Map<string, Set<number>>();
+
+    const queue = (eventId: number, field: string, side: 'before' | 'after', targetModel: string, value: unknown) => {
+        const id = asId(value);
+        if (id === null) return;
+        slots.push({ eventId, field, side, targetModel, id });
+        const ids = pending.get(targetModel);
+        if (ids) ids.add(id);
+        else pending.set(targetModel, new Set([id]));
+    };
+
+    for (const { id: eventId, model, changes } of requests) {
+        if (!changes) continue;
+        for (const [field, [before, after]] of Object.entries(changes)) {
+            const targetModel = FK_FIELD_TARGETS[`${model}.${field}`];
+            if (!targetModel || !SOURCES[targetModel]) continue;
+            queue(eventId, field, 'before', targetModel, before);
+            queue(eventId, field, 'after', targetModel, after);
+        }
+    }
+    if (slots.length === 0) return result;
+
+    const namesByModel = new Map<string, Map<number, string>>();
+    await Promise.all(
+        [...pending].map(async ([targetModel, ids]) => {
+            const source = SOURCES[targetModel];
+            try {
+                const rows = await prisma.$queryRaw<Row[]>(source.query([...ids]));
+                const names = new Map<number, string>();
+                for (const row of rows) {
+                    const key = str(row.key);
+                    const name = key === null ? null : flatten(source.build(row));
+                    if (key !== null && name !== null) names.set(Number(key), name);
+                }
+                namesByModel.set(targetModel, names);
+            } catch (error) {
+                // Same trade-off as resolveRecordLabels: a name is a convenience,
+                // never worth losing the page it was decorating.
+                console.error(`[audit] libellés de champ ${targetModel} — abandon:`, error);
+            }
+        })
+    );
+
+    for (const { eventId, field, side, targetModel, id } of slots) {
+        const name = namesByModel.get(targetModel)?.get(id);
+        if (name === undefined) continue;
+        const forEvent = result.get(eventId) ?? {};
+        const entry = forEvent[field] ?? { before: null, after: null };
+        entry[side] = name;
+        forEvent[field] = entry;
+        result.set(eventId, forEvent);
+    }
+
+    return result;
+}
 
 export interface LabelRequest {
     /**

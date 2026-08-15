@@ -369,19 +369,28 @@ function DiffTable({ group }: { group: EventGroup }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {entries.map(([field, [before, after]]) => (
-                        <tr key={field} className="border-t border-border/60 align-top">
-                            <td className="py-1.5 pr-4 text-muted-foreground whitespace-nowrap">
-                                {fieldLabel(field)}
-                            </td>
-                            <td className="py-1.5 pr-4 text-foreground/70 break-words max-w-xs">
-                                {isReservedField(field) ? '—' : formatAuditValue(before, event.model, field)}
-                            </td>
-                            <td className="py-1.5 text-foreground break-words max-w-xs">
-                                {formatAuditValue(after, event.model, field)}
-                            </td>
-                        </tr>
-                    ))}
+                    {entries.map(([field, [before, after]]) => {
+                        // A foreign-key field (aveugleId, statusId…) is resolved
+                        // server-side to a name, the same one the collapsed row
+                        // already shows — falls back to the raw id when there was
+                        // nothing to resolve, or the referenced row is itself gone.
+                        const resolved = group.fieldLabels[field];
+                        return (
+                            <tr key={field} className="border-t border-border/60 align-top">
+                                <td className="py-1.5 pr-4 text-muted-foreground whitespace-nowrap">
+                                    {fieldLabel(field)}
+                                </td>
+                                <td className="py-1.5 pr-4 text-foreground/70 break-words max-w-xs">
+                                    {isReservedField(field)
+                                        ? '—'
+                                        : resolved?.before ?? formatAuditValue(before, event.model, field)}
+                                </td>
+                                <td className="py-1.5 text-foreground break-words max-w-xs">
+                                    {resolved?.after ?? formatAuditValue(after, event.model, field)}
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>

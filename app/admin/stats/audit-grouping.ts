@@ -1,6 +1,6 @@
 import { BULK_RECORD_ID } from '@/lib/audit/config';
 import { isReservedField } from '@/lib/audit/labels';
-import type { AuditChangeMap, AuditEventItem } from '@/types';
+import type { AuditChangeMap, AuditEventItem, AuditFieldLabelEntry } from '@/types';
 
 /**
  * Folding the audit trail into readable rows.
@@ -29,6 +29,8 @@ export interface EventGroup {
     events: AuditEventItem[];
     /** Net effect of the whole group: oldest « avant », newest « après ». */
     changes: AuditChangeMap;
+    /** Same net effect, but resolved id → name — see netFieldLabels. */
+    fieldLabels: Record<string, AuditFieldLabelEntry>;
 }
 
 /** The event a single-event group *is*, and the one a group is labelled by. */
@@ -52,6 +54,29 @@ export function netChanges(events: AuditEventItem[]): AuditChangeMap {
     }
     for (const [field, [before, after]] of Object.entries(net)) {
         if (before === after && !isReservedField(field)) delete net[field];
+    }
+    return net;
+}
+
+/**
+ * Net before → after for the resolved names, the same fold `netChanges` does
+ * for raw values — a field touched three times keeps the name it had before
+ * the burst and the one it has after, not the name it briefly held in between.
+ *
+ * Gated on `field in event.changes`, not on whether that event's own id
+ * resolved: an event whose id lookup failed must not silently erase a name
+ * a neighbouring event in the same burst already supplied for the "avant"
+ * side.
+ */
+export function netFieldLabels(events: AuditEventItem[]): Record<string, AuditFieldLabelEntry> {
+    const net: Record<string, AuditFieldLabelEntry> = {};
+    // Oldest first, so each field keeps the earliest « avant » it was seen with.
+    for (const event of [...events].reverse()) {
+        for (const field of Object.keys(event.changes)) {
+            const resolved = event.fieldLabels?.[field] ?? { before: null, after: null };
+            const existing = net[field];
+            net[field] = { before: existing ? existing.before : resolved.before, after: resolved.after };
+        }
     }
     return net;
 }
@@ -112,18 +137,20 @@ export function groupEvents(events: AuditEventItem[]): EventGroup[] {
         else groups.push([event]);
     }
 
-    return groups.map((events) => ({
-        key: events[0].id,
-        events,
+    return groups.map((events) => {
         // An audio burst's fields are each event's own filename and size, not
         // one value that moved across writes — netChanges would garble N
         // filenames into one bogus « avant / après » pair, so the head event's
         // own changes are kept instead and the timeline renders the burst as a
         // file list (see isAudioBurst).
-        changes: events.length === 1 || events[0].model === 'AudioTrackEvent'
-            ? events[0].changes
-            : netChanges(events),
-    }));
+        const single = events.length === 1 || events[0].model === 'AudioTrackEvent';
+        return {
+            key: events[0].id,
+            events,
+            changes: single ? events[0].changes : netChanges(events),
+            fieldLabels: single ? events[0].fieldLabels ?? {} : netFieldLabels(events),
+        };
+    });
 }
 
 /**
