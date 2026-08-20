@@ -5,6 +5,12 @@ import { AssignmentFormBackendBase } from '@/admin/AssignmentFormBackendBase';
 import { getFieldErrorLines, ErrorToastBody } from '@/admin/AssignmentFormErrors';
 
 /** What finishing this attribution did to its demande — see PUT /api/assignments/[id]. */
+type BillDetached = {
+    orderId: number;
+    billId: number;
+    newTotal: string;
+};
+
 type OrderTransition = {
     orderId: number;
     awaitingShipment: boolean;
@@ -90,8 +96,12 @@ export function EditAssignmentFormBackend({
             // « Attente envoi vers auditeur ». Say so here, with the link that closes
             // it: the safe state is automatic, the fast path is one click away, and
             // neither depends on anyone answering a question correctly at 17 h.
-            const orderTransition: OrderTransition | null =
-                (await response.json().catch(() => null))?.orderTransition ?? null;
+            const payload = await response.json().catch(() => null);
+            const orderTransition: OrderTransition | null = payload?.orderTransition ?? null;
+            // Rouvrir une attribution rouvre sa demande : si celle-ci figurait sur un
+            // brouillon, elle vient d'en sortir (une facture émise, elle, aurait fait
+            // échouer la requête plus haut). Le dire ici, pas dans le journal.
+            const billDetached: BillDetached | null = payload?.billDetached ?? null;
 
             toast({
                 // @ts-expect-error jsx in toast
@@ -112,6 +122,22 @@ export function EditAssignmentFormBackend({
                                 </a>{' '}
                                 passe « Attente envoi vers auditeur » : passez-la « Terminé »
                                 une fois l&apos;audio expédié.
+                            </span>
+                        )}
+                        {billDetached && (
+                            <span className="mt-2 block text-base">
+                                La demande{' '}
+                                <a
+                                    href={`/admin/orders?order=${billDetached.orderId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold underline underline-offset-2"
+                                >
+                                    #{billDetached.orderId}
+                                </a>{' '}
+                                a été retirée de la facture #{billDetached.billId} (brouillon), dont le
+                                total est maintenant de {billDetached.newTotal} € : elle n&apos;est plus
+                                terminée. Elle y reviendra le jour où elle le sera.
                             </span>
                         )}
                         {!!orderTransition?.freedDuplicationIds.length && (

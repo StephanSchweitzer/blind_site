@@ -27,7 +27,17 @@ import {
     classifyStatusTransition,
     logOrderEvent,
 } from '@/lib/statusSync';
-import { recomputeBillTotal, accrueOrderToOpenDraft, issueDraftIfOverThreshold, logBillEvent } from '@/lib/billing';
+import {
+    recomputeBillTotal,
+    accrueOrderToOpenDraft,
+    issueDraftIfOverThreshold,
+    logBillEvent,
+    guardOrderClientOnBill,
+    guardOrderUnbillableOnBill,
+    guardOrderLeavingTermineOnBill,
+    leavesTermine,
+    detachOrderFromBill,
+} from '@/lib/billing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -35,10 +45,14 @@ import { withAdmin } from '@/lib/auth/guards';
 // non-DRAFT (issued) bill. COST = total recomputed; VISIBLE = printed field changed.
 // ISSUED = completing this demande accrued it onto its client's brouillon and that
 // crossed the seuil in the same request, so the facture is now émise for the first time.
+// DETACHED is the only one that describes a DRAFT: the demande left « Terminé », so it
+// left the brouillon it had joined by reaching it — nothing to reprint, but the
+// permanent has to be told the line is gone from the total.
 type BillNotice =
     | { billId: number; billState: BillingStatus; kind: 'COST'; newTotal: string | null }
     | { billId: number; billState: BillingStatus; kind: 'VISIBLE' }
-    | { billId: number; billState: BillingStatus; kind: 'ISSUED'; total: string };
+    | { billId: number; billState: BillingStatus; kind: 'ISSUED'; total: string }
+    | { billId: number; billState: BillingStatus; kind: 'DETACHED'; newTotal: string | null };
 
 // Normalize a cost input to a number or null (treats '' / null / undefined / NaN as null).
 function parseCost(raw: unknown): number | null {
@@ -221,8 +235,9 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         // Changing the auditeur to someone inactive isn't allowed — only guard
         // when the field is actually changing, so routine edits of an order
         // that already belongs to a since-deactivated person aren't blocked.
-        if (data.aveugleId !== undefined && data.aveugleId !== existingOrder.aveugleId) {
-            const activityGuard = await guardUserIsActive(data.aveugleId, 'aveugle');
+        const clientIsChanging = data.aveugleId !== undefined && data.aveugleId !== existingOrder.aveugleId;
+        if (clientIsChanging) {
+            const activityGuard = await guardUserIsActive(data.aveugleId!, 'aveugle');
             if (!activityGuard.ok) {
                 return NextResponse.json(
                     { message: activityGuard.message, blocked: activityGuard.blocked },
@@ -231,12 +246,37 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             }
         }
 
+        // L'auditeur décide de quelle facture la demande relève : addOrder refuse déjà
+        // d'attacher une demande dont l'auditeur n'est pas le client de la facture, et
+        // ceci ferme la porte de derrière — sans quoi une facture finissait par porter
+        // le livre d'une personne au débit d'une autre. Verrouillé dès le brouillon.
+        const clientOnBillGuard = guardOrderClientOnBill({
+            changingClient: clientIsChanging,
+            billId: existingOrder.billId,
+            billState,
+        });
+        if (!clientOnBillGuard.ok) {
+            return NextResponse.json({ message: clientOnBillGuard.message }, { status: clientOnBillGuard.httpStatus });
+        }
+
         // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
         if (data.billingStatus === 'BILLED' && existingOrder.billId == null) {
             return NextResponse.json(
                 { message: "Une demande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture." },
                 { status: 400 }
             );
+        }
+
+        // …et « Non facturable » ne peut pas être posé sur une demande rattachée :
+        // recomputeBillTotal somme par billId, pas par billingStatus, donc la ligne
+        // continuerait d'être facturée tout en se déclarant hors du cycle.
+        const unbillableGuard = guardOrderUnbillableOnBill({
+            settingUnbillable: data.billingStatus === 'UNBILLABLE',
+            billId: existingOrder.billId,
+            billState,
+        });
+        if (!unbillableGuard.ok) {
+            return NextResponse.json({ message: unbillableGuard.message }, { status: unbillableGuard.httpStatus });
         }
 
         // « Soldé » is a facture status — a demande can never be set to it.
@@ -346,6 +386,26 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             );
         }
 
+        // ── Retour en arrière du statut sur une facture ──────────────────────────
+        // Sortir de « Terminé » défait exactement ce que l'entrée en « Terminé » avait
+        // fait. Sur un brouillon, la demande se détache donc toute seule (plus bas, dans
+        // la transaction) — le miroir de l'accrual. Sur une facture émise, c'est refusé :
+        // le document annonce une prestation rendue et il est déjà parti chez l'auditeur.
+        const resultingStatusId = data.statusId ?? existingOrder.statusId;
+        const rollbackGuard = guardOrderLeavingTermineOnBill({
+            previousStatusId: existingOrder.statusId,
+            nextStatusId: resultingStatusId,
+            billId: existingOrder.billId,
+            billState,
+        });
+        if (!rollbackGuard.ok) {
+            return NextResponse.json({ message: rollbackGuard.message }, { status: rollbackGuard.httpStatus });
+        }
+        const detachFromDraft =
+            existingOrder.billId != null &&
+            billState === BillingStatus.DRAFT &&
+            leavesTermine(existingOrder.statusId, resultingStatusId);
+
         // Date de clôture follows the status: stamped on entering « Terminé »,
         // cleared on leaving it. An explicit date from the form still wins.
         const closureDate = resolveClosureDate({
@@ -424,6 +484,20 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 });
             }
 
+            // Miroir de l'accrual : la demande quitte « Terminé », donc elle quitte le
+            // brouillon qu'elle n'avait rejoint qu'en l'atteignant. Laisser la ligne sur
+            // le brouillon la ferait facturer alors qu'elle est repartie en production.
+            // Une facture émise ne passe jamais ici — guardOrderLeavingTermineOnBill l'a
+            // déjà refusée plus haut.
+            if (detachFromDraft && existingOrder.billId != null) {
+                newTotal = await detachOrderFromBill(tx, {
+                    orderId,
+                    billId: existingOrder.billId,
+                    reason: 'status-rollback',
+                    performedById,
+                });
+            }
+
             // THE accrual point. A demande joins a brouillon when a permanent closes
             // it — having actually sent the audio to l'auditeur — never at creation,
             // mid-recording, or when its attribution came back.
@@ -438,7 +512,6 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // issueDraftIfOverThreshold can turn the brouillon into a facture émise
             // in this same transaction, past the point where the reprice may still
             // touch it.
-            const resultingStatusId = data.statusId ?? existingOrder.statusId;
             const justCompletedAndUnbilled = existingOrder.billId == null && resultingStatusId === STATUS.TERMINE;
             if (justCompletedAndUnbilled) {
                 await accrueOrderToOpenDraft(tx, orderId, performedById);
@@ -447,8 +520,10 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
             // Skip issued bills (BILLED/PAID/SOLDE) — those go through the reprint path below.
             // Captured so the client can be told the facture just went out — see billNotice below.
+            // Jamais après un détachement : le total vient de BAISSER, émettre la
+            // facture à ce moment-là serait déclencher un envoi sur un retour en arrière.
             let issued: { billId: number; total: number } | null = null;
-            if (justCompletedAndUnbilled || billState === BillingStatus.DRAFT) {
+            if (!detachFromDraft && (justCompletedAndUnbilled || billState === BillingStatus.DRAFT)) {
                 issued = await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
@@ -469,7 +544,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
         // Reprint notice for issued bills (never for DRAFT — nothing has been sent).
         let billNotice: BillNotice | null = null;
-        if (issued) {
+        if (detachFromDraft && existingOrder.billId != null) {
+            billNotice = {
+                billId: existingOrder.billId,
+                billState: BillingStatus.DRAFT,
+                kind: 'DETACHED',
+                newTotal: newTotal?.toString() ?? null,
+            };
+        } else if (issued) {
             // The bill this demande just accrued onto tipped over the seuil in this
             // same request — first time it's ever been émise, so print/send it.
             billNotice = { billId: issued.billId, billState: BillingStatus.BILLED, kind: 'ISSUED', total: issued.total.toString() };
@@ -541,8 +623,9 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
 
         // Changing the auditeur to someone inactive isn't allowed — only guard
         // when the field is actually changing (see PUT above for the rationale).
-        if (body.aveugleId !== undefined && body.aveugleId !== existingOrder.aveugleId) {
-            const activityGuard = await guardUserIsActive(body.aveugleId, 'aveugle');
+        const clientIsChanging = body.aveugleId !== undefined && body.aveugleId !== existingOrder.aveugleId;
+        if (clientIsChanging) {
+            const activityGuard = await guardUserIsActive(body.aveugleId!, 'aveugle');
             if (!activityGuard.ok) {
                 return NextResponse.json(
                     { message: activityGuard.message, blocked: activityGuard.blocked },
@@ -551,12 +634,37 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             }
         }
 
+        // L'auditeur décide de quelle facture la demande relève : addOrder refuse déjà
+        // d'attacher une demande dont l'auditeur n'est pas le client de la facture, et
+        // ceci ferme la porte de derrière — sans quoi une facture finissait par porter
+        // le livre d'une personne au débit d'une autre. Verrouillé dès le brouillon.
+        const clientOnBillGuard = guardOrderClientOnBill({
+            changingClient: clientIsChanging,
+            billId: existingOrder.billId,
+            billState,
+        });
+        if (!clientOnBillGuard.ok) {
+            return NextResponse.json({ message: clientOnBillGuard.message }, { status: clientOnBillGuard.httpStatus });
+        }
+
         // « Facturé » is system-controlled via bills; reject setting it on an order with no bill.
         if (body.billingStatus === 'BILLED' && existingOrder.billId == null) {
             return NextResponse.json(
                 { message: "Une demande ne peut pas être marquée « Facturé » manuellement : ce statut provient d'une facture." },
                 { status: 400 }
             );
+        }
+
+        // …et « Non facturable » ne peut pas être posé sur une demande rattachée :
+        // recomputeBillTotal somme par billId, pas par billingStatus, donc la ligne
+        // continuerait d'être facturée tout en se déclarant hors du cycle.
+        const unbillableGuard = guardOrderUnbillableOnBill({
+            settingUnbillable: body.billingStatus === 'UNBILLABLE',
+            billId: existingOrder.billId,
+            billState,
+        });
+        if (!unbillableGuard.ok) {
+            return NextResponse.json({ message: unbillableGuard.message }, { status: unbillableGuard.httpStatus });
         }
 
         // « Soldé » is a facture status — a demande can never be set to it.
@@ -677,6 +785,26 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         if (body.deliveryMethod !== undefined) updateData.deliveryMethod = body.deliveryMethod;
         if (body.processedByStaffId !== undefined) updateData.processedByStaffId = body.processedByStaffId || null;
         if (body.createdDate !== undefined) updateData.createdDate = body.createdDate ? new Date(body.createdDate) : null;
+        // ── Retour en arrière du statut sur une facture ──────────────────────────
+        // Sortir de « Terminé » défait exactement ce que l'entrée en « Terminé » avait
+        // fait. Sur un brouillon, la demande se détache donc toute seule (plus bas, dans
+        // la transaction) — le miroir de l'accrual. Sur une facture émise, c'est refusé :
+        // le document annonce une prestation rendue et il est déjà parti chez l'auditeur.
+        const resultingStatusId = body.statusId ?? existingOrder.statusId;
+        const rollbackGuard = guardOrderLeavingTermineOnBill({
+            previousStatusId: existingOrder.statusId,
+            nextStatusId: resultingStatusId,
+            billId: existingOrder.billId,
+            billState,
+        });
+        if (!rollbackGuard.ok) {
+            return NextResponse.json({ message: rollbackGuard.message }, { status: rollbackGuard.httpStatus });
+        }
+        const detachFromDraft =
+            existingOrder.billId != null &&
+            billState === BillingStatus.DRAFT &&
+            leavesTermine(existingOrder.statusId, resultingStatusId);
+
         // Date de clôture follows the status: stamped on entering « Terminé »,
         // cleared on leaving it. An explicit date from the caller still wins.
         const closureDate = resolveClosureDate({
@@ -741,10 +869,19 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 });
             }
 
+            // Détachement au retour en arrière — voir la note du PUT ci-dessus.
+            if (detachFromDraft && existingOrder.billId != null) {
+                newTotal = await detachOrderFromBill(tx, {
+                    orderId,
+                    billId: existingOrder.billId,
+                    reason: 'status-rollback',
+                    performedById,
+                });
+            }
+
             // Same accrual point as the PUT above — see the long note there for why
             // « Terminé » on the DEMANDE, and not the attribution coming back, is what
             // puts a line on a brouillon.
-            const resultingStatusId = body.statusId ?? existingOrder.statusId;
             const justCompletedAndUnbilled = existingOrder.billId == null && resultingStatusId === STATUS.TERMINE;
             if (justCompletedAndUnbilled) {
                 await accrueOrderToOpenDraft(tx, orderId, performedById);
@@ -753,8 +890,10 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
             // Skip issued bills (BILLED/PAID/SOLDE) — those go through the reprint path below.
             // Captured so the client can be told the facture just went out — see billNotice below.
+            // Jamais après un détachement : le total vient de BAISSER, émettre la
+            // facture à ce moment-là serait déclencher un envoi sur un retour en arrière.
             let issued: { billId: number; total: number } | null = null;
-            if (justCompletedAndUnbilled || billState === BillingStatus.DRAFT) {
+            if (!detachFromDraft && (justCompletedAndUnbilled || billState === BillingStatus.DRAFT)) {
                 issued = await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
@@ -774,7 +913,14 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         });
 
         let billNotice: BillNotice | null = null;
-        if (issued) {
+        if (detachFromDraft && existingOrder.billId != null) {
+            billNotice = {
+                billId: existingOrder.billId,
+                billState: BillingStatus.DRAFT,
+                kind: 'DETACHED',
+                newTotal: newTotal?.toString() ?? null,
+            };
+        } else if (issued) {
             billNotice = { billId: issued.billId, billState: BillingStatus.BILLED, kind: 'ISSUED', total: issued.total.toString() };
         } else if (hasBill && existingOrder.billId != null && billState && billState !== BillingStatus.DRAFT) {
             if (costChanged) {

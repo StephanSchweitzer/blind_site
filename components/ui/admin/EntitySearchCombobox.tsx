@@ -29,6 +29,11 @@ export interface EntitySearchComboboxProps<T> {
     minLength?: number;
     /** Ref for the trigger button (useInvalidField's registerField). */
     triggerRef?: React.Ref<HTMLButtonElement>;
+    /**
+     * Grey out the trigger. For rules the caller can state BEFORE the user types —
+     * the selected value stays readable, only picking another one is refused.
+     */
+    disabled?: boolean;
     triggerClassName?: string;
     contentClassName?: string;
     listClassName?: string;
@@ -48,6 +53,7 @@ export function EntitySearchCombobox<T>({
     searchPlaceholder,
     emptyMessage,
     minLength = 2,
+    disabled = false,
     triggerRef,
     triggerClassName,
     contentClassName,
@@ -139,7 +145,12 @@ export function EntitySearchCombobox<T>({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className={cn(DEFAULT_TRIGGER, triggerClassName)}
+                    disabled={disabled}
+                    className={cn(
+                        DEFAULT_TRIGGER,
+                        disabled && 'opacity-50 cursor-not-allowed',
+                        triggerClassName
+                    )}
                 >
                     {value ? (
                         <span className="truncate">{renderValue(value)}</span>

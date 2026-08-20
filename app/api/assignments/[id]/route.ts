@@ -15,12 +15,19 @@ import {
     guardOrderNotSettled,
     guardAssignmentHasAudio,
     syncOrderToStatus,
+    assignmentKeepsOrderStatus,
+    orderStatusForAssignmentStatus,
     classifyStatusTransition,
     logAssignmentEvent,
 } from '@/lib/statusSync';
 import { bookHasWeighedAudio } from '@/lib/audio/state';
 import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
 import { withAdmin } from '@/lib/auth/guards';
+import {
+    guardOrderLeavingTermineOnBill,
+    leavesTermine,
+    detachOrderFromBill,
+} from '@/lib/billing';
 
 /**
  * GET /api/assignments/[id] - Get a single assignment by ID
@@ -103,7 +110,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 receptionDate: true,
                 sentToReaderDate: true,
                 returnedToECADate: true,
-                order: { select: { statusId: true } },
+                order: { select: { statusId: true, billId: true, bill: { select: { state: true } } } },
                 _count: { select: { readerHistory: true } },
             },
         });
@@ -127,6 +134,42 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         }
 
         const newStatusId = validation.data.statusId;
+
+        // ── La demande rattachée à une facture, vue depuis l'attribution ─────────
+        // Rouvrir une attribution rouvre sa demande (syncOrderToStatus). Si cette
+        // demande est déjà partie sur une facture, c'est la même règle que sur son
+        // propre formulaire — sinon la porte de derrière annule le verrou de devant :
+        // refusé sur une facture émise, détachement automatique sur un brouillon.
+        const linkedOrderStatusId = existingAssignment.order?.statusId ?? null;
+        const linkedOrderBillId = existingAssignment.order?.billId ?? null;
+        const linkedOrderBillState = existingAssignment.order?.bill?.state ?? null;
+        const nextOrderStatusId =
+            newStatusId !== undefined && linkedOrderStatusId != null &&
+            !assignmentKeepsOrderStatus(linkedOrderStatusId, newStatusId)
+                ? orderStatusForAssignmentStatus(newStatusId)
+                : linkedOrderStatusId;
+
+        if (linkedOrderStatusId != null && nextOrderStatusId != null) {
+            const orderRollbackGuard = guardOrderLeavingTermineOnBill({
+                previousStatusId: linkedOrderStatusId,
+                nextStatusId: nextOrderStatusId,
+                billId: linkedOrderBillId,
+                billState: linkedOrderBillState,
+            });
+            if (!orderRollbackGuard.ok) {
+                return NextResponse.json(
+                    { message: orderRollbackGuard.message },
+                    { status: orderRollbackGuard.httpStatus }
+                );
+            }
+        }
+
+        const detachOrderFromDraft =
+            linkedOrderBillId != null &&
+            linkedOrderBillState === 'DRAFT' &&
+            linkedOrderStatusId != null &&
+            nextOrderStatusId != null &&
+            leavesTermine(linkedOrderStatusId, nextOrderStatusId);
 
         // An assignment can never hold the SOLDE status.
         if (newStatusId !== undefined) {
@@ -260,7 +303,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             updateData.deliveryMethod = validation.data.deliveryMethod;
         }
 
-        const { assignment: updatedAssignment, orderTransition } = await prisma.$transaction(async (tx) => {
+        const { assignment: updatedAssignment, orderTransition, billDetached } = await prisma.$transaction(async (tx) => {
             // What finishing this attribution did to the demande — reported back so
             // the toast can say it out loud instead of leaving it to be discovered.
             let orderTransition: {
@@ -270,6 +313,9 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 /** Open duplications of the same book that were waiting on this recording. */
                 freedDuplicationIds: number[];
             } | null = null;
+
+            // Renseigné quand la réouverture a sorti la demande d'un brouillon.
+            let billDetached: { orderId: number; billId: number; newTotal: string } | null = null;
 
             const assignment = await tx.assignment.update({
                 where: { id: assignmentId },
@@ -301,6 +347,23 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             ) {
                 await syncOrderToStatus(tx, existingAssignment.orderId, newStatusId, performedById);
 
+                // La demande vient de quitter « Terminé » : elle quitte donc le
+                // brouillon qu'elle n'avait rejoint qu'en l'atteignant. Même geste
+                // que sur le formulaire de la demande — une seule règle, deux portes.
+                if (detachOrderFromDraft && linkedOrderBillId != null) {
+                    const total = await detachOrderFromBill(tx, {
+                        orderId: existingAssignment.orderId,
+                        billId: linkedOrderBillId,
+                        reason: 'assignment-status-rollback',
+                        performedById,
+                    });
+                    billDetached = {
+                        orderId: existingAssignment.orderId,
+                        billId: linkedOrderBillId,
+                        newTotal: total.toString(),
+                    };
+                }
+
                 // The recording just finished — but that does NOT bill anything. The
                 // demande is now « Attente envoi vers auditeur »; it accrues onto a
                 // brouillon when a permanent closes it, having actually sent the audio
@@ -327,13 +390,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 }
             }
 
-            return { assignment, orderTransition };
+            return { assignment, orderTransition, billDetached };
         });
 
         return NextResponse.json({
             message: 'Attribution mise à jour avec succès',
             assignment: updatedAssignment,
             orderTransition,
+            billDetached,
         });
     } catch (error) {
         console.error('Error updating assignment:', error);

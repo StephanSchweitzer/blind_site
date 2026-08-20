@@ -158,8 +158,31 @@ export function OrderFormBackendBase({
         resolveAndClose: closeActivityGuard,
     } = useUserActivityGuard();
 
+    // ── Ce que la facture liée verrouille ───────────────────────────────
+    // Le verrou suit l'ÉTAT de la facture, pas le rattachement. Une demande
+    // rejoint le brouillon de son auditeur toute seule dès qu'un permanent la
+    // passe « Terminé », et un brouillon n'a jamais quitté ECA : verrouiller au
+    // rattachement figerait la demande à l'instant même où on la termine. La
+    // frontière est l'émission — sauf pour deux champs qui ne rendent pas le
+    // document périmé mais FAUX sur qui doit quoi, et qui sont donc verrouillés
+    // dès le brouillon : l'auditeur (il décide de quelle facture la demande
+    // relève) et « Non facturable » (le montant resterait compté dans le total).
+    //
+    // Les mêmes règles sont appliquées côté serveur (lib/billing.ts), qui refuse
+    // de toute façon. Ceci n'en est que le rappel de tous les jours — grisé plutôt
+    // qu'annoncé après coup, parce que la règle est connue avant que le permanent
+    // ne remplisse quoi que ce soit.
+    const hasBill = !!initialBill;
+    const billIssued = hasBill && initialBill!.state !== 'DRAFT';
     // Cost is locked while the linked bill is finalized (payée/soldée); reopen to edit.
     const costLocked = initialBill?.state === 'PAID' || initialBill?.state === 'SOLDE';
+    // Le statut ENREGISTRÉ, pas celui en cours de saisie : c'est lui qui dit si la
+    // demande est déjà partie sur une facture en tant que prestation rendue.
+    const savedStatusIsTermine = initialData?.statusId === STATUS.TERMINE;
+    // Revenir en arrière depuis « Terminé » : refusé sur une facture émise…
+    const statusRollbackLocked = savedStatusIsTermine && billIssued;
+    // …et permis sur un brouillon, mais la demande en sort — annoncé avant, pas après.
+    const statusRollbackDetaches = savedStatusIsTermine && hasBill && !billIssued;
 
     // True only right after picking a book that already has audio auto-checks the
     // « Duplication » box — drives the "cochée automatiquement" banner. Reset once
@@ -567,6 +590,25 @@ export function OrderFormBackendBase({
                     </Alert>
                 )}
 
+                {/* Un seul bandeau pour dire pourquoi le formulaire n'est pas tout à fait
+                    le même aujourd'hui ; le détail de chaque verrou reste sous le champ
+                    concerné. Rien pour un brouillon : il n'est jamais sorti d'ECA, et
+                    l'annoncer ferait passer pour une contrainte ce qui n'est qu'un cumul
+                    en cours. */}
+                {billIssued && initialBill && (
+                    <Alert className="mb-4 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
+                        <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                        <AlertDescription className="text-amber-800 dark:text-amber-300">
+                            Cette demande figure sur la facture #{initialBill.id} (
+                            {getBillingStatusLabel(initialBill.state as BillingStatus).toLowerCase()}), déjà
+                            imprimée et envoyée à l&apos;auditeur. Le livre, la date et le coût restent
+                            modifiables — le document devra alors être réimprimé. L&apos;auditeur et le
+                            retour en arrière du statut sont verrouillés : rouvrez la facture et
+                            retirez-en la demande pour y toucher.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* User Search (Aveugle) */}
                     <div className="space-y-2">
@@ -576,8 +618,18 @@ export function OrderFormBackendBase({
                         <UserSearchCombobox<User>
                             value={selectedUser}
                             onSelect={handleUserSelect}
+                            disabled={hasBill}
                             triggerRef={registerField('aveugleId')}
                         />
+                        {hasBill && initialBill && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                Auditeur verrouillé : la demande figure sur la facture #{initialBill.id}, qui
+                                appartient à cet auditeur.{' '}
+                                {billIssued
+                                    ? 'Rouvrez la facture et retirez-en la demande pour le modifier.'
+                                    : 'Retirez-la de la facture pour le modifier.'}
+                            </p>
+                        )}
                     </div>
 
                     {/* Book Search */}
@@ -782,7 +834,8 @@ export function OrderFormBackendBase({
                                                 value={status.id.toString()}
                                                 disabled={
                                                     (enCoursIsLocked && status.id === STATUS.EN_COURS) ||
-                                                    (attenteIsLocked && status.id === STATUS.ATTENTE)
+                                                    (attenteIsLocked && status.id === STATUS.ATTENTE) ||
+                                                    (statusRollbackLocked && status.id !== STATUS.TERMINE)
                                                 }
                                                 className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
                                             >
@@ -798,6 +851,20 @@ export function OrderFormBackendBase({
                             laisserait croire à un oubli au lieu d'expliquer la règle.
                             Le serveur la refuse aussi (guardManualEnCours) : ceci n'est
                             que le rappel de tous les jours. */}
+                        {statusRollbackLocked && initialBill && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                Statut verrouillé : la facture #{initialBill.id} annonce cette prestation
+                                comme rendue et elle est déjà partie. Rouvrez-la et retirez-en la demande
+                                pour la rouvrir à son tour.
+                            </p>
+                        )}
+                        {statusRollbackDetaches && initialBill && (
+                            <p className="text-xs text-muted-foreground">
+                                Sortir de « Terminé » retirera la demande de la facture #{initialBill.id}
+                                {' '}(brouillon) et son montant du total — c&apos;est « Terminé » qui
+                                l&apos;y avait mise.
+                            </p>
+                        )}
                         {showEnCoursHint && (
                             <p className="text-xs text-muted-foreground">
                                 « En cours » suit l&apos;attribution : renseignez-y le lecteur et la date
@@ -912,13 +979,26 @@ export function OrderFormBackendBase({
                                         </SelectItem>
                                         <SelectItem
                                             value="UNBILLABLE"
-                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                            disabled={hasBill}
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
                                         >
                                             <span className="font-medium">Non facturable</span>
                                         </SelectItem>
                                     </div>
                                 </SelectContent>
                             </Select>
+                        )}
+                        {/* Le total d'une facture se calcule par billId, pas par état de
+                            facturation : une ligne « Non facturable » resterait facturée
+                            tout en se déclarant hors du cycle. */}
+                        {hasBill && initialBill && formData.billingStatus !== 'BILLED' && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                « Non facturable » indisponible : la demande figure sur la facture #
+                                {initialBill.id} et son montant y est compté.{' '}
+                                {billIssued
+                                    ? 'Rouvrez la facture et retirez-en la demande d’abord.'
+                                    : 'Retirez-la de la facture d’abord.'}
+                            </p>
                         )}
                     </div>
 

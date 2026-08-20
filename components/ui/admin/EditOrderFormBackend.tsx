@@ -45,7 +45,8 @@ export function EditOrderFormBackend({
     type Notice =
         | { billId: number; billState: string; kind: 'COST'; newTotal?: string | null }
         | { billId: number; billState: string; kind: 'VISIBLE' }
-        | { billId: number; billState: string; kind: 'ISSUED'; total: string };
+        | { billId: number; billState: string; kind: 'ISSUED'; total: string }
+        | { billId: number; billState: string; kind: 'DETACHED'; newTotal?: string | null };
     const [notice, setNotice] = useState<Notice | null>(null);
     const resolveRef = useRef<((id: number) => void) | null>(null);
 
@@ -150,6 +151,7 @@ export function EditOrderFormBackend({
                             {notice?.kind === 'COST' && 'Coût modifié — facture à régénérer'}
                             {notice?.kind === 'VISIBLE' && 'Éléments visibles modifiés'}
                             {notice?.kind === 'ISSUED' && 'Facture émise'}
+                            {notice?.kind === 'DETACHED' && 'Demande retirée du brouillon'}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="text-foreground text-sm space-y-3">
@@ -166,6 +168,15 @@ export function EditOrderFormBackend({
                                 Vous avez modifié un élément figurant sur la facture #{notice?.billId} (livre, date ou type).
                                 Le montant total n&apos;a pas changé, mais le document déjà émis n&apos;est plus à jour :
                                 pensez à le réimprimer.
+                            </p>
+                        )}
+                        {notice?.kind === 'DETACHED' && (
+                            <p>
+                                En sortant cette demande de « Terminé », elle a été retirée de la facture
+                                #{notice?.billId} (brouillon)
+                                {notice?.newTotal ? `, dont le total est maintenant de ${notice.newTotal} €` : ''} :
+                                c&apos;est le passage à « Terminé » qui l&apos;y avait mise. Elle rejoindra un
+                                brouillon à nouveau le jour où elle sera terminée pour de bon.
                             </p>
                         )}
                         {notice?.kind === 'ISSUED' && (

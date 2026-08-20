@@ -458,6 +458,25 @@ export function guardClosureDateRequiresTermine(args: {
  * no longer land a demande on « Terminé », the date is only ever cleared here —
  * when a reopened attribution pulls a legacy « Terminé » demande back open.
  */
+/**
+ * Vrai quand une attribution ne DÉPLACERA PAS sa demande, bien que son propre
+ * statut change : une demande déjà « Terminé » ne redescend pas à « Attente
+ * envoi vers auditeur » parce que son attribution vient d'être terminée.
+ *
+ * Extrait de syncOrderToStatus pour que les gardes qui doivent anticiper le
+ * mouvement (facture rattachée, voir guardOrderLeavingTermineOnBill) lisent la
+ * même règle que le code qui l'exécute, plutôt que d'en tenir une seconde copie.
+ */
+export function assignmentKeepsOrderStatus(
+    previousOrderStatusId: number | null | undefined,
+    assignmentStatusId: number
+): boolean {
+    return (
+        previousOrderStatusId === STATUS.TERMINE &&
+        orderStatusForAssignmentStatus(assignmentStatusId) === STATUS.ATTENTE_AUDITEUR
+    );
+}
+
 export async function syncOrderToStatus(
     tx: TransactionClient,
     orderId: number,
@@ -478,7 +497,7 @@ export async function syncOrderToStatus(
     // de clôture along the way). Normally unreachable — guardOrderCompletion
     // won't close a demande whose attribution isn't already « Terminé » — but a
     // legacy row imported from Access can hold any pair at all.
-    if (previous?.statusId === STATUS.TERMINE && statusId === STATUS.ATTENTE_AUDITEUR) {
+    if (assignmentKeepsOrderStatus(previous?.statusId, assignmentStatusId)) {
         return;
     }
 

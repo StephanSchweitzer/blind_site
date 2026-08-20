@@ -17,6 +17,8 @@ interface UserSearchComboboxProps<T extends UserSearchResult> {
     placeholder?: string;
     searchPlaceholder?: string;
     emptyMessage?: string;
+    /** Grey out the trigger — the current auditeur stays readable, only changing it is refused. */
+    disabled?: boolean;
     triggerRef?: React.Ref<HTMLButtonElement>;
     triggerClassName?: string;
     listClassName?: string;
@@ -29,6 +31,7 @@ export function UserSearchCombobox<T extends UserSearchResult>({
     placeholder = 'Rechercher un auditeur ...',
     searchPlaceholder = 'Rechercher par nom ou email...',
     emptyMessage = 'Aucune personne trouvée',
+    disabled = false,
     triggerRef,
     triggerClassName,
     listClassName,
@@ -57,6 +60,7 @@ export function UserSearchCombobox<T extends UserSearchResult>({
             placeholder={placeholder}
             searchPlaceholder={searchPlaceholder}
             emptyMessage={emptyMessage}
+            disabled={disabled}
             triggerRef={triggerRef}
             triggerClassName={triggerClassName}
             listClassName={listClassName}
