@@ -62,7 +62,7 @@ export function EditUserModal({
                                 size="sm"
                                 className="border-border bg-card text-foreground hover:bg-muted hover:text-white"
                             >
-                                <Link href={`/admin/users/dossier/${userId}`}>
+                                <Link href={`/admin/users/dossier/${userId}`} target="_blank" rel="noopener noreferrer">
                                     <FolderOpen className="h-4 w-4 mr-2" />
                                     Voir le dossier
                                 </Link>
