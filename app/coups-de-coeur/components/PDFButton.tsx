@@ -25,7 +25,7 @@ export const PDFButton: React.FC<PDFButtonProps> = ({ content }) => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `coup-de-coeur-${content[0]?.title ?? 'eca'}.pdf`;
+            a.download = `liste-de-livres-${content[0]?.title ?? 'eca'}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {

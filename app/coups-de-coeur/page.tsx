@@ -4,8 +4,8 @@ import { getCoupsDeCoeurPage } from './data';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Coups de cœur',
-    description: 'Découvrez les coups de cœur et recommandations de lecture sélectionnés par les ECA.',
+    title: 'Listes de livres',
+    description: 'Découvrez les listes de livres et recommandations de lecture sélectionnées par les ECA.',
     alternates: { canonical: '/coups-de-coeur' },
 };
 

@@ -83,7 +83,7 @@ export const METRIC_LABELS: Record<TrendMetric, string> = {
     billEvents: 'Événements de facturation',
     orders: 'Demandes traitées',
     assignments: 'Attributions traitées',
-    coupsDeCoeur: 'Coups de cœur',
+    coupsDeCoeur: 'Listes de livres',
     news: 'Actualités publiées',
     audioEvents: 'Pistes audio modifiées',
     auditEvents: 'Modifications tracées',

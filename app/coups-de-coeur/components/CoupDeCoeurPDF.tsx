@@ -58,11 +58,11 @@ export const CoupDeCoeurPDF = ({ content }: { content: CoupDeCoeur[] }) => {
     if (!cdc) return null;
 
     return (
-        <Document title={`Coup de cœur — ${cdc.title}`}>
+        <Document title={`Liste de livres — ${cdc.title}`}>
             <Page size="A4" style={s.page} wrap>
                 <View style={s.headerCard} wrap={false}>
                     <Text style={s.org}>ECA — Enregistrements à la Carte pour les Aveugles</Text>
-                    <Text style={s.title}>Coup de cœur : {cdc.title}</Text>
+                    <Text style={s.title}>Liste de livres : {cdc.title}</Text>
                 </View>
 
                 {cdc.description && <Text style={s.introText}>{cdc.description}</Text>}

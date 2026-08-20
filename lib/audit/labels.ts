@@ -40,7 +40,7 @@ export const MODEL_LABELS: Record<string, string> = {
     ReaderLanguage: 'Langue de lecteur',
     Book: 'Livre',
     Genre: 'Genre',
-    CoupsDeCoeur: 'Coup de cœur',
+    CoupsDeCoeur: 'Liste de livres',
     Orders: 'Demande',
     Assignment: 'Attribution',
     AssignmentReader: 'Lecteur d’attribution',
