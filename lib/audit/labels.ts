@@ -185,7 +185,7 @@ const FIELD_LABELS: Record<string, string> = {
     closureDate: 'Date de clôture',
     receptionDate: 'Date de réception',
     sentToReaderDate: 'Envoyée au lecteur le',
-    returnedToECADate: 'Rendue à l’ECA le',
+    returnedToECADate: 'Rendue aux ECA le',
     isDuplication: 'Duplication',
     lentPhysicalBook: 'Livre papier prêté',
     mediaFormatId: 'Format de média',
