@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { ADMINS_CAN_CREATE_USERS } from '@/lib/feature-flags';
@@ -197,6 +197,7 @@ export default function UsersTable({
         console.log('User edited:', userId);
         setIsEditModalOpen(false);
         setSelectedUser(null);
+        clearUserParam();
         router.refresh();
     };
 
@@ -204,13 +205,14 @@ export default function UsersTable({
         console.log('User deleted:', userId);
         setIsEditModalOpen(false);
         setSelectedUser(null);
+        clearUserParam();
         router.refresh();
     };
 
-    const handleRowClick = async (user: typeof initialUsers[0]) => {
+    const openUserById = async (userId: number | string) => {
         setIsLoadingUser(true);
         try {
-            const response = await fetch(`/api/user/${user.id}?mode=full&include=addresses`);
+            const response = await fetch(`/api/user/${userId}?mode=full&include=addresses`);
             if (!response.ok) throw new Error('\u00c9chec du chargement des donn\u00e9es');
 
             const userData = await response.json();
@@ -245,7 +247,7 @@ export default function UsersTable({
                 addresses: userData.addresses || [],
             };
 
-            setSelectedUser({ id: user.id.toString(), data: formData });
+            setSelectedUser({ id: userId.toString(), data: formData });
             setIsEditModalOpen(true);
         } catch (error) {
             console.error('Error loading user:', error);
@@ -257,6 +259,34 @@ export default function UsersTable({
         } finally {
             setIsLoadingUser(false);
         }
+    };
+
+    const handleRowClick = (user: typeof initialUsers[0]) => openUserById(user.id);
+
+    // Deep-link: open the edit modal when arriving with ?user=<id>.
+    // openedRef prevents re-firing on router.refresh() / re-render for the same id.
+    const userParam = searchParams.get('user');
+    const openedRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (userParam && openedRef.current !== userParam) {
+            openedRef.current = userParam;
+            openUserById(userParam);
+        } else if (!userParam) {
+            openedRef.current = null;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userParam]);
+
+    const clearUserParam = () => {
+        // No deep-link param to clear (the normal row-click edit case): do nothing.
+        if (!searchParams.get('user')) return;
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('user');
+        // Use the History API, not router.replace(), so dropping the param doesn't
+        // start a navigation that pre-empts the router.refresh() fired right after it.
+        const qs = params.toString();
+        window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
     };
 
     const formatDate = (dateString: string | null) => {
@@ -549,6 +579,7 @@ export default function UsersTable({
                             // the main-form save path doesn't run for a status-only change.
                             // Refresh on close so the new status shows without a hard reload.
                             setSelectedUser(null);
+                            clearUserParam();
                             router.refresh();
                         }
                     }}

@@ -373,7 +373,16 @@ export function EditBillModal({
                         <div className="grid grid-cols-2 gap-4">
                             <div className="min-w-0">
                                 <div className="text-xs text-muted-foreground uppercase tracking-wide">Auditeur</div>
-                                <div className="text-foreground font-medium break-words">{getUserNameOnly(bill.client) || 'N/A'}</div>
+                                <a
+                                    href={`/admin/users/auditeurs?user=${bill.client.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Ouvrir la fiche de l'auditeur dans un nouvel onglet"
+                                    className="text-foreground font-medium break-words hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1"
+                                >
+                                    {getUserNameOnly(bill.client) || 'N/A'}
+                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                </a>
                                 <div className="text-muted-foreground text-sm break-words">{bill.client.email}</div>
                                 {bill.client.address && bill.client.address.filter(Boolean).length > 0 && (
                                     <div className="text-muted-foreground text-sm mt-1 leading-snug break-words">
