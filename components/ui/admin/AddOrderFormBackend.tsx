@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -301,8 +302,23 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             if (data.autoBill) {
                 toast({
                     // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Facture en brouillon créée</span>,
-                    description: <span className="text-xl mt-2">Le seuil de paiement du client est atteint : une facture en brouillon (#{data.autoBill.billId}) regroupant {data.autoBill.orderCount} demande(s) a été créée.</span>,
+                    title: <span className="text-2xl font-bold">Facture émise</span>,
+                    description: (
+                        <span className="text-xl mt-2">
+                            Le seuil de paiement du client est atteint : la facture #{data.autoBill.billId} vient
+                            d&apos;être émise (total : {formatEuro2(String(data.autoBill.total))} €). Pensez à
+                            l&apos;imprimer et à l&apos;envoyer.
+                            <br />
+                            <Link
+                                href={`/admin/bills?bill=${data.autoBill.billId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block mt-1 text-blue-700 hover:text-blue-600 underline underline-offset-2"
+                            >
+                                Voir la facture #{data.autoBill.billId}
+                            </Link>
+                        </span>
+                    ),
                     className: "bg-blue-100 border-2 border-blue-500 text-blue-900 shadow-lg p-6"
                 });
             }
