@@ -6,6 +6,7 @@ import { X, ExternalLink, ChevronDown, ChevronRight, Loader2 } from 'lucide-reac
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { billEventLabel, billEventTint } from '@/components/ui/admin/BillHistory';
+import { OPERATION_LABELS } from '@/lib/audit/labels';
 import type { StaffDetailItem, StaffDetailsResponse, StaffMetric, StatsGranularity } from '@/types';
 import {
     AUDIO_ACTION_LABEL,
@@ -13,10 +14,19 @@ import {
     LIFECYCLE_EVENT_LABEL,
     LIFECYCLE_EVENT_TINT,
     METRIC_LABELS,
+    OPERATION_TINT,
     formatBucketLabel,
     formatDateTime,
 } from './stats-utils';
 import { type DetailGroup, groupDetailItems, headOf } from './detail-grouping';
+
+// An auditEvents row's `type` is either an AuditOperation (CREATE/UPDATE/
+// DELETE/RESTORE) or, for an AudioTrackEvent row, the AudioTrackAction it
+// actually describes — see the server-side twin of this rule in
+// app/api/stats/staff/details/route.ts. The two enums agree on DELETE and
+// RESTORE's wording, so merging them costs nothing.
+const AUDIT_BADGE_LABEL: Record<string, string> = { ...AUDIO_ACTION_LABEL, ...OPERATION_LABELS };
+const AUDIT_BADGE_TINT: Record<string, string> = { ...AUDIO_ACTION_TINT, ...OPERATION_TINT };
 
 // AudioTrackAction and OrderEventType/AssignmentEventType share the `type`
 // field on a detail item, but their values are NOT disjoint (both have a
@@ -29,6 +39,7 @@ const BADGE_MAPS: Partial<Record<StaffMetric, [Record<string, string>, Record<st
     audioEvents: [AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT],
     orders: [LIFECYCLE_EVENT_LABEL, LIFECYCLE_EVENT_TINT],
     assignments: [LIFECYCLE_EVENT_LABEL, LIFECYCLE_EVENT_TINT],
+    auditEvents: [AUDIT_BADGE_LABEL, AUDIT_BADGE_TINT],
 };
 
 /** What a folded burst counts, in words — "12 pistes" reads better than "12 éléments". */

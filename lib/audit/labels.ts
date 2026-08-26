@@ -89,6 +89,34 @@ export function recordHref(model: string, recordId: string): string | null {
     }
 }
 
+/** The bare essentials of `AuditRecordLabel` this module needs — kept structural
+ *  rather than imported from `@/types` so this file stays free of a dependency
+ *  on the DTO barrel. */
+interface LinkedRecord {
+    linked?: { model: string; recordId: string } | null;
+}
+
+/**
+ * How a traced record names itself in a compact line — shared by the journal
+ * and by the per-person detail drawer on /admin/stats, so the two views of the
+ * same events never disagree on wording.
+ *
+ * Normally « Livre n°4549 ». A row that is merely ABOUT another record (a piste
+ * audio event has no screen of its own) names that record instead, via
+ * `recordLabel.linked` — « Piste audio · Livre n°4549 ».
+ */
+export function auditIdentity(model: string, recordId: string, recordLabel?: LinkedRecord | null): string {
+    const linked = recordLabel?.linked ?? null;
+    if (linked) return `${modelLabel(model)} · ${modelLabel(linked.model)} n°${linked.recordId}`;
+    return recordId === '*' ? modelLabel(model) : `${modelLabel(model)} n°${recordId}`;
+}
+
+/** Where a traced record's link should lead: the linked record when there is one. */
+export function auditHref(model: string, recordId: string, recordLabel?: LinkedRecord | null): string | null {
+    const linked = recordLabel?.linked ?? null;
+    return linked ? recordHref(linked.model, linked.recordId) : recordHref(model, recordId);
+}
+
 /**
  * Field → French label. Shared across models, because the same column name means
  * the same thing everywhere in this schema. Unknown fields fall back to their

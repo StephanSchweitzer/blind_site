@@ -3,7 +3,8 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withSuperAdmin } from '@/lib/auth/guards';
 import { getUserDisplayName } from '@/lib/users/displayName';
-import { OPERATION_LABELS, modelLabel, recordHref } from '@/lib/audit/labels';
+import { auditHref, auditIdentity, fieldLabel, formatAuditValue, isReservedField } from '@/lib/audit/labels';
+import { parseAuditSnapshot, resolveFieldLabels, resolveRecordLabels } from '@/lib/audit/record-labels';
 import {
     isoUtc,
     parisDayStartUtc,
@@ -13,7 +14,14 @@ import {
     parseMetricParam,
 } from '@/lib/stats';
 import { newsTypeLabels, type NewsType } from '@/types/news';
-import type { AuditOperation, StaffDetailItem, StaffDetailsResponse, StaffMetric } from '@/types';
+import type {
+    AuditChangeMap,
+    AuditFieldLabelEntry,
+    AuditOperation,
+    StaffDetailItem,
+    StaffDetailsResponse,
+    StaffMetric,
+} from '@/types';
 
 // Lazy detail behind one heatmap cell: the records a person touched during a
 // bucket. Only loaded on click, never as part of the aggregate.
@@ -29,6 +37,34 @@ interface NameParts {
     firstName: string | null;
     lastName: string | null;
     email: string | null;
+}
+
+/** Widest a modification summary in the drawer is allowed to name before it folds the rest into a count. */
+const CHANGE_SUMMARY_FIELD_LIMIT = 2;
+
+/**
+ * « Statut : Attente → Terminé · +2 autre(s) » — an UPDATE's diff, condensed to
+ * one line for the detail drawer. The journal at the bottom of the page shows
+ * the same diff as a full before/after table; this is its one-line summary,
+ * built from the exact same field labels and value formatting so the two never
+ * word a change differently.
+ */
+function summarizeAuditChanges(
+    changes: AuditChangeMap,
+    model: string,
+    fieldLabels?: Record<string, AuditFieldLabelEntry>
+): string | null {
+    const entries = Object.entries(changes).filter(([field]) => !isReservedField(field));
+    if (entries.length === 0) return null;
+
+    const shown = entries.slice(0, CHANGE_SUMMARY_FIELD_LIMIT).map(([field, [before, after]]) => {
+        const resolved = fieldLabels?.[field];
+        const beforeText = resolved?.before ?? formatAuditValue(before, model, field);
+        const afterText = resolved?.after ?? formatAuditValue(after, model, field);
+        return `${fieldLabel(field)} : ${beforeText} → ${afterText}`;
+    });
+    const rest = entries.length - shown.length;
+    return rest > 0 ? `${shown.join(' · ')} · +${rest} autre(s)` : shown.join(' · ');
 }
 
 async function loadItems(
@@ -207,22 +243,54 @@ async function loadItems(
 
         case 'auditEvents': {
             const rows = await prisma.$queryRaw<Array<{
-                id: number; model: string; recordId: string; operation: AuditOperation; at: string;
+                id: number; model: string; recordId: string; operation: AuditOperation;
+                changes: AuditChangeMap; snapshotText: string | null; at: string;
             }>>`
-                SELECT e.id, e.model, e."recordId", e.operation::text AS operation,
+                SELECT e.id, e.model, e."recordId", e.operation::text AS operation, e.changes,
+                       CASE WHEN e.operation = 'DELETE' THEN e.snapshot::text END AS "snapshotText",
                        ${isoUtc(Prisma.sql`e."createdAt"`)} AS at
                 FROM "AuditEvent" e
                 WHERE ${actorCondition(Prisma.sql`e."actorId"`, actorId)}
                   AND e."createdAt" >= ${from} AND e."createdAt" < ${to}
                 ORDER BY e."createdAt" ASC
                 LIMIT ${DETAILS_LIMIT}`;
-            return rows.map((r) => ({
+
+            // Same resolution the journal des modifications runs on its own page —
+            // it names the book/person/etc. a bare "Livre n°4549" would otherwise
+            // leave the reader to look up themselves.
+            const labelRequests = rows.map((r) => ({
                 id: r.id,
-                at: r.at,
-                title: `${modelLabel(r.model)}${r.recordId === '*' ? '' : ` n°${r.recordId}`}`,
-                subtitle: OPERATION_LABELS[r.operation] ?? r.operation,
-                href: recordHref(r.model, r.recordId),
+                model: r.model,
+                recordId: r.recordId,
+                snapshot: parseAuditSnapshot(r.snapshotText),
+                changes: r.changes ?? null,
             }));
+            const [labels, fieldLabels] = await Promise.all([
+                resolveRecordLabels(labelRequests),
+                resolveFieldLabels(labelRequests),
+            ]);
+
+            return rows.map((r) => {
+                const recordLabel = labels.get(r.id) ?? null;
+                const identity = auditIdentity(r.model, r.recordId, recordLabel);
+                // AudioTrackEvent rows are stored as CREATE at the storage level —
+                // the action a reader actually cares about (upload/rename/delete/
+                // restore) travels in changes.action instead. See operationBadge
+                // in audit-timeline.tsx for the client-side twin of this rule.
+                const action = r.model === 'AudioTrackEvent' ? r.changes?.action?.[1] : null;
+                const type = typeof action === 'string' ? action : r.operation;
+                const changeSummary = r.operation === 'UPDATE'
+                    ? summarizeAuditChanges(r.changes, r.model, fieldLabels.get(r.id))
+                    : null;
+                return {
+                    id: r.id,
+                    at: r.at,
+                    title: recordLabel ? `${identity} — ${recordLabel.title}` : identity,
+                    subtitle: [recordLabel?.subtitle, changeSummary].filter(Boolean).join(' — ') || null,
+                    type,
+                    href: auditHref(r.model, r.recordId, recordLabel),
+                };
+            });
         }
     }
 }

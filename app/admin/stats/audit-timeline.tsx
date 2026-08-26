@@ -33,11 +33,12 @@ import { toast } from '@/hooks/use-toast';
 import { BULK_COUNT_KEY } from '@/lib/audit/config';
 import {
     OPERATION_LABELS,
+    auditHref,
+    auditIdentity,
     fieldLabel,
     formatAuditValue,
     isReservedField,
     modelLabel,
-    recordHref,
 } from '@/lib/audit/labels';
 import type {
     AuditEventItem,
@@ -46,7 +47,7 @@ import type {
     AuditRestoreResponse,
     StatsActor,
 } from '@/types';
-import { AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT, formatDateTime } from './stats-utils';
+import { AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT, OPERATION_TINT, formatDateTime } from './stats-utils';
 import { type EventGroup, groupEvents, headOf, isAudioBurst, isBulkAudio } from './audit-grouping';
 
 /**
@@ -63,13 +64,6 @@ import { type EventGroup, groupEvents, headOf, isAudioBurst, isBulkAudio } from 
  */
 
 const OPERATIONS: AuditOperation[] = ['CREATE', 'UPDATE', 'DELETE', 'RESTORE'];
-
-const OPERATION_TINT: Record<AuditOperation, string> = {
-    CREATE: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-    UPDATE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-    DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-    RESTORE: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-};
 
 /**
  * What to badge a row with. An AudioTrackEvent row is always a CREATE at the
@@ -216,30 +210,11 @@ function ActorFilter({
 }
 
 /**
- * How a row names what it concerns.
- *
- * Normally the audited record itself — « Livre n°4549 ». A piste audio event is
- * a log line with no screen and an id nobody can use, so its label points at
- * the book instead (`linked`): the identity shown, the tooltip and the link all
- * follow that, and a reader gets « Piste audio · Livre n°4549 » rather than the
- * number of a row in a table they will never open.
- */
-function identityOf(event: AuditEventItem): string {
-    const linked = event.recordLabel?.linked ?? null;
-    if (linked) {
-        return `${modelLabel(event.model)} · ${modelLabel(linked.model)} n°${linked.recordId}`;
-    }
-    return event.recordId === '*'
-        ? modelLabel(event.model)
-        : `${modelLabel(event.model)} n°${event.recordId}`;
-}
-
-/**
  * « Livre n°4549, Le Ventre de Paris — Émile Zola » — the record in full, for
  * the tooltip and the link's accessible name, where the visible label truncates.
  */
 function describeRecord(event: AuditEventItem): string {
-    const identity = identityOf(event);
+    const identity = auditIdentity(event.model, event.recordId, event.recordLabel);
     if (!event.recordLabel) return identity;
     const { title, subtitle } = event.recordLabel;
     return `${identity}, ${title}${subtitle ? ` — ${subtitle}` : ''}`;
@@ -247,10 +222,7 @@ function describeRecord(event: AuditEventItem): string {
 
 /** Where this row's ↗ leads: the linked record when there is one. */
 function hrefOf(event: AuditEventItem): string | null {
-    const linked = event.recordLabel?.linked ?? null;
-    return linked
-        ? recordHref(linked.model, linked.recordId)
-        : recordHref(event.model, event.recordId);
+    return auditHref(event.model, event.recordId, event.recordLabel);
 }
 
 /** The row count a batch event stands for, when it is one. */

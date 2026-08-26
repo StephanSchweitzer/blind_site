@@ -193,6 +193,18 @@ export const AUDIO_ACTION_TINT: Record<string, string> = {
     RESTORE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200',
 };
 
+/**
+ * AuditOperation → tint, for the badge on a journal row and on an auditEvents
+ * detail row. Shared so the timeline and the per-person drawer color the same
+ * operation the same way.
+ */
+export const OPERATION_TINT: Record<string, string> = {
+    CREATE: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+    UPDATE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+    DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+    RESTORE: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+};
+
 export const MEMBER_GROUP_FILTERS: Array<{ value: MemberGroup | 'all'; label: string }> = [
     { value: 'all', label: 'Tous' },
     { value: 'lecteur', label: 'Lecteurs' },

@@ -30,6 +30,24 @@ import type { AuditChangeMap, AuditFieldLabelEntry, AuditRecordLabel } from '@/t
 
 type Row = Record<string, unknown>;
 
+/**
+ * Parses a raw `AuditEvent.snapshot` JSON string into a plain row, or null when
+ * absent or malformed. The shape `resolveRecordLabels` needs before it can name
+ * a deleted record — shared so the journal and the per-person detail drawer
+ * parse the exact same column the exact same way.
+ */
+export function parseAuditSnapshot(json: string | null): Row | null {
+    if (!json) return null;
+    try {
+        const parsed: unknown = JSON.parse(json);
+        return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+            ? (parsed as Row)
+            : null;
+    } catch {
+        return null;
+    }
+}
+
 const str = (value: unknown): string | null => {
     if (typeof value === 'string') return value.trim() || null;
     if (typeof value === 'number') return String(value);

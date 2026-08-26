@@ -5,7 +5,12 @@ import { withSuperAdmin } from '@/lib/auth/guards';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { AUDIT_TABLE_SOFT_LIMIT_MB, isAuditedModel } from '@/lib/audit/config';
 import { TRUNCATION_MARKER_RE } from '@/lib/audit/labels';
-import { findRecordsByTerm, resolveFieldLabels, resolveRecordLabels } from '@/lib/audit/record-labels';
+import {
+    findRecordsByTerm,
+    parseAuditSnapshot,
+    resolveFieldLabels,
+    resolveRecordLabels,
+} from '@/lib/audit/record-labels';
 import { measureAuditTable } from '@/lib/audit/retention';
 import { isoUtc, parisDayStartUtc, parseDateParam } from '@/lib/stats';
 import type {
@@ -95,23 +100,6 @@ function hasTruncatedValue(snapshot: Record<string, unknown> | null): boolean {
     return Object.values(snapshot).some(
         (value) => typeof value === 'string' && TRUNCATION_MARKER_RE.test(value)
     );
-}
-
-/**
- * The snapshot, parsed once per row: both the restorability check and the
- * display label read it, and it is the only way to name a deleted record.
- * Nothing of it is ever sent to the client — only the two answers drawn from it.
- */
-function parseSnapshot(json: string | null): Record<string, unknown> | null {
-    if (!json) return null;
-    try {
-        const parsed: unknown = JSON.parse(json);
-        return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-            ? (parsed as Record<string, unknown>)
-            : null;
-    } catch {
-        return null;
-    }
 }
 
 /** Longest « Enregistrement » term accepted — a filter, not a full-text engine. */
@@ -236,7 +224,7 @@ export const GET = withSuperAdmin(async (request) => {
 
         // Parsed once per row and kept server-side: the restore check reads it,
         // and it is the only place a deleted record's name still exists.
-        const snapshots = new Map(page.map((row) => [row.id, parseSnapshot(row.snapshotText)]));
+        const snapshots = new Map(page.map((row) => [row.id, parseAuditSnapshot(row.snapshotText)]));
 
         // Keyed on the event id, not on model:recordId — a batch write is stored
         // under '*' and two of them on one page rarely concern the same book.
