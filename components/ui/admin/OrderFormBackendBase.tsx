@@ -28,6 +28,7 @@ import { useRecordingCheck } from '@/hooks/useRecordingCheck';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
 import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
+import { orderLabelReference } from '@/lib/orders/labelReference';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
@@ -637,9 +638,14 @@ export function OrderFormBackendBase({
                         {selectedUser && (
                             <MailingLabelButton
                                 userId={selectedUser.id}
+                                cecogramme
                                 reference={
                                     currentOrderId
-                                        ? `Demande #${currentOrderId}${selectedBook ? ` — ${selectedBook.title}` : ''}`
+                                        ? orderLabelReference({
+                                            orderId: currentOrderId,
+                                            title: selectedBook?.title,
+                                            isDuplication: formData.isDuplication,
+                                        })
                                         : null
                                 }
                                 className="h-8 px-2.5 text-xs"

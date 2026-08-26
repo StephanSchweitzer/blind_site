@@ -36,6 +36,11 @@ export interface MailingLabelButtonProps {
     /** Small reference printed below the cut line, on the scrap half. */
     reference?: string | null;
     /**
+     * Print the « CÉCOGRAMME » postal mention on the label. Set it only where
+     * the envelope is known to carry a recording — never on a generic label.
+     */
+    cecogramme?: boolean;
+    /**
      * Known-empty address book. Only worth passing where the caller already
      * queried addresses — it disables the button without a round trip.
      */
@@ -62,6 +67,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
     label,
     userId,
     reference,
+    cecogramme,
     hasAddress,
     variant = 'button',
     className = '',
@@ -129,6 +135,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
                     recipient: data.recipient,
                     lines: addresses[0].lines,
                     reference,
+                    cecogramme,
                 });
                 return;
             }
@@ -150,6 +157,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
                 recipient: choices.recipient,
                 lines: address.lines,
                 reference,
+                cecogramme,
             });
             setChoices(null);
         } catch (err) {

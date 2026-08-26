@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { MailingLabelButton } from '@/admin/MailingLabelButton';
+import { orderLabelReference } from '@/lib/orders/labelReference';
 import type {
     SerializedOrderTableRow,
     OrderUserOption,
@@ -633,7 +634,12 @@ export default function OrdersTable({
                                                         <MailingLabelButton
                                                             variant="icon"
                                                             userId={order.aveugleId}
-                                                            reference={`Demande #${order.id} — ${order.catalogue.title}`}
+                                                            cecogramme
+                                                            reference={orderLabelReference({
+                                                                orderId: order.id,
+                                                                title: order.catalogue.title,
+                                                                isDuplication: order.isDuplication,
+                                                            })}
                                                         />
                                                     </TableCell>
                                                 </TableRow>

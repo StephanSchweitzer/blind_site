@@ -12,6 +12,7 @@
 // auditeur.
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 import { ORG } from '@/lib/org';
+import { PRINT_CECOGRAMME_MENTION } from '@/lib/feature-flags';
 
 const NAVY = '#15366b';
 
@@ -30,6 +31,14 @@ export interface MailingLabelData {
      * (« Demande #1234 — Titre »). Never part of the address block.
      */
     reference?: string | null;
+    /**
+     * Print the « CÉCOGRAMME » postal mention. Unlike the reference this one is
+     * ABOVE the cut, on the strip that actually reaches La Poste — it is a
+     * franking marking, not a packing note. Only set for an envelope carrying a
+     * recording; a generic label (a facture, a letter to a donateur) must never
+     * claim the franchise. Gated by PRINT_CECOGRAMME_MENTION.
+     */
+    cecogramme?: boolean;
 }
 
 const styles = StyleSheet.create({
@@ -43,6 +52,19 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#9ca3af',
         borderBottomStyle: 'dashed',
+    },
+
+    // Sender left, franking mention right — the corner where a stamp would go.
+    labelHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    cecogramme: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        letterSpacing: 1.5,
+        color: NAVY,
+        borderWidth: 1,
+        borderColor: NAVY,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
     },
 
     // Expéditeur — deliberately small. It is there so an undeliverable envelope
@@ -66,13 +88,18 @@ export const MailingLabelPDF = ({ label }: { label: MailingLabelData }) => (
     <Document title={`Étiquette d'adresse — ${label.recipient}`}>
         <Page size="A4" style={styles.page}>
             <View style={styles.label}>
-                <View>
-                    <Text style={styles.senderName}>{ORG.name}</Text>
-                    <Text style={styles.senderLine}>{ORG.delegation}</Text>
-                    {ORG.addr.map((line, i) => (
-                        <Text key={i} style={styles.senderLine}>{line}</Text>
-                    ))}
-                    <Text style={styles.senderLine}>Tél. {ORG.phone}</Text>
+                <View style={styles.labelHead}>
+                    <View>
+                        <Text style={styles.senderName}>{ORG.name}</Text>
+                        <Text style={styles.senderLine}>{ORG.delegation}</Text>
+                        {ORG.addr.map((line, i) => (
+                            <Text key={i} style={styles.senderLine}>{line}</Text>
+                        ))}
+                        <Text style={styles.senderLine}>Tél. {ORG.phone}</Text>
+                    </View>
+                    {PRINT_CECOGRAMME_MENTION && label.cecogramme ? (
+                        <Text style={styles.cecogramme}>CÉCOGRAMME</Text>
+                    ) : null}
                 </View>
 
                 <View style={styles.recipientBlock}>
