@@ -33,6 +33,9 @@ import {
 } from '@/lib/user-enums';
 import { withCurrentValue } from '@/lib/select-options';
 import { ReaderLanguagesField } from '@/components/ui/admin/ReaderLanguagesField';
+import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
+import { mailingAddressLines } from '@/lib/users/formatAddress';
+import { getPostalName } from '@/lib/users/displayName';
 
 interface UserFormBackendBaseProps {
     initialData?: UserFormData;
@@ -370,6 +373,17 @@ export function UserFormBackendBase({
     const selectedCivility = civilities.find((c) => c.id === formData.civilityId);
     const showCivilityOther = selectedCivility?.name === 'Autre';
 
+    // Name as it will be printed on an étiquette d'adresse. Built from the live
+    // form state rather than the saved row on purpose: correcting a misspelt
+    // name or a wrong door number and printing the envelope straight away is the
+    // usual reason to be on this screen at all.
+    const postalName = getPostalName({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        name: formData.name,
+        civility: showCivilityOther ? formData.civilityOther : selectedCivility?.name,
+    });
+
     return (
         <Card className="bg-card border-border">
             <CardHeader>
@@ -579,15 +593,27 @@ export function UserFormBackendBase({
                             <div key={index} className="bg-card/50 p-4 rounded-lg border border-border space-y-4">
                                 <div className="flex justify-between items-center">
                                     <h4 className="text-sm font-medium text-foreground">Adresse {index + 1}</h4>
-                                    <Button
-                                        type="button"
-                                        onClick={() => handleRemoveAddress(index)}
-                                        size="sm"
-                                        variant="destructive"
-                                        className="bg-red-600 hover:bg-red-700 text-white"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        {/* Prints THIS address, not the default one — which is
+                                            the whole reason the button sits per-card rather
+                                            than once in the section header. */}
+                                        <MailingLabelButton
+                                            variant="icon"
+                                            label={{
+                                                recipient: postalName,
+                                                lines: mailingAddressLines(address),
+                                            }}
+                                        />
+                                        <Button
+                                            type="button"
+                                            onClick={() => handleRemoveAddress(index)}
+                                            size="sm"
+                                            variant="destructive"
+                                            className="bg-red-600 hover:bg-red-700 text-white"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

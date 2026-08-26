@@ -28,3 +28,23 @@ export function getUserDisplayName(user: UserNameParts | null): string {
     if (!user) return '';
     return getUserNameOnly(user) || user.email || 'Sans nom';
 }
+
+/**
+ * Name as it goes on an envelope: « Civilité Prénom NOM ». La Poste's norme
+ * d'adressage wants the patronyme in capitals so sorting machines and postal
+ * workers pick it out of the line. Falls back to the same chain as
+ * getUserNameOnly, so an unnamed user still yields '' rather than a stray
+ * civility on its own.
+ */
+export function getPostalName(user: UserNameParts | null): string {
+    if (!user) return '';
+    const civRaw = user.civility;
+    const civ = typeof civRaw === 'string' ? civRaw : civRaw?.name ?? '';
+    const last = user.lastName?.trim();
+    const full = [user.firstName?.trim(), last ? last.toUpperCase() : null]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+    const composed = [civ, full].filter(Boolean).join(' ').trim();
+    return composed || user.name?.trim() || '';
+}

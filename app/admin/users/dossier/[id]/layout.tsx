@@ -8,6 +8,7 @@ import { MEMBER_TYPE_LABELS, getMemberTypeColor } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
 import { computeCotisationStatus, formatCotisationDate, isCotisationExempt } from '@/lib/cotisation';
 import { getCurrentUser } from '@/lib/auth/guards';
+import { MailingLabelButton } from '@/admin/MailingLabelButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -43,6 +44,9 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
             isActive: true,
             currentBalance: true,
             paymentThreshold: true,
+            // Only to know whether an étiquette d'adresse can be printed — the
+            // address itself is fetched on click, not rendered here.
+            addresses: { select: { id: true }, take: 1 },
         },
     });
     if (!user) notFound();
@@ -93,6 +97,15 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                                 {(user.cellPhone || user.homePhone) && (
                                     <div>{[user.cellPhone, user.homePhone].map((p) => formatPhone(p)).filter(Boolean).join(' · ')}</div>
                                 )}
+                            </div>
+                            {/* Étiquette d'adresse, printable at any time — the point
+                                being that it is never only available in the moment
+                                some other action happens to offer it. */}
+                            <div className="mt-3">
+                                <MailingLabelButton
+                                    userId={user.id}
+                                    hasAddress={user.addresses.length > 0}
+                                />
                             </div>
                         </div>
                         <div className="text-right">

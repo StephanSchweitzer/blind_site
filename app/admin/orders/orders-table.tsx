@@ -34,6 +34,7 @@ import { OrderFormData } from '@/admin/OrderFormBackendBase';
 import { useToast } from '@/hooks/use-toast';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { MailingLabelButton } from '@/admin/MailingLabelButton';
 import type {
     SerializedOrderTableRow,
     OrderUserOption,
@@ -542,6 +543,13 @@ export default function OrdersTable({
                                             <TableHead className="text-foreground font-medium">Date demande</TableHead>
                                             <TableHead className="text-foreground font-medium">Statut</TableHead>
                                             <TableHead className="text-foreground font-medium">Facturation</TableHead>
+                                            {/* Header text is for screen readers only, but the cell
+                                                itself must stay in flow — an sr-only <th> is
+                                                position:absolute and drops out of the column count,
+                                                leaving the header one cell short of every body row. */}
+                                            <TableHead className="text-foreground font-medium w-[1%] whitespace-nowrap">
+                                                <span className="sr-only">Étiquette d&apos;adresse</span>
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -614,6 +622,19 @@ export default function OrdersTable({
                                                         >
                                                             {getOrderBillingStatusLabel(order.billingStatus)}
                                                         </span>
+                                                    </TableCell>
+                                                    {/* Étiquette d'adresse. Offered on every demande rather
+                                                        than only on « Attente envoi vers auditeur » ones: that
+                                                        status IS the shipping worklist (lib/statusSync.ts), but
+                                                        a label also gets reprinted after it has moved on — a
+                                                        torn sleeve, a second parcel — and hiding the button then
+                                                        is exactly the dead end this replaces. */}
+                                                    <TableCell className="w-[1%] whitespace-nowrap text-right">
+                                                        <MailingLabelButton
+                                                            variant="icon"
+                                                            userId={order.aveugleId}
+                                                            reference={`Demande #${order.id} — ${order.catalogue.title}`}
+                                                        />
                                                     </TableCell>
                                                 </TableRow>
                                             );

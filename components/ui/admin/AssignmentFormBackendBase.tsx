@@ -38,6 +38,7 @@ import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
+import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
@@ -1137,6 +1138,21 @@ export function AssignmentFormBackendBase({
                                 « {statuses.find((s) => s.id === derivedStatusId)?.name ?? 'Ce statut'} »
                                 nécessite un lecteur assigné. Sélectionnez un lecteur ci-dessus pour valider ce statut.
                             </p>
+                        )}
+                        {/* The enregistrement is back at ECA, so the next physical act is
+                            posting it to the auditeur — « Terminé » here pushes the demande
+                            to « Attente envoi vers auditeur » (lib/statusSync.ts). Printing
+                            the étiquette right at that moment is the point of the feature;
+                            it stays reachable afterwards from the demande and from the
+                            auditeur's dossier, so missing it here costs nothing. */}
+                        {derivedStatusId === STATUS.TERMINE && selectedOrder?.aveugle?.id && (
+                            <div className="pt-1">
+                                <MailingLabelButton
+                                    userId={selectedOrder.aveugle.id}
+                                    reference={`Demande #${selectedOrder.id}${selectedOrder.catalogue?.title ? ` — ${selectedOrder.catalogue.title}` : ''}`}
+                                    className="h-8 px-2.5 text-xs"
+                                />
+                            </div>
                         )}
                     </div>
 

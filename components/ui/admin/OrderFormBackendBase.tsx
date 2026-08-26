@@ -27,6 +27,7 @@ import { useInvalidField } from '@/hooks/useInvalidField';
 import { useRecordingCheck } from '@/hooks/useRecordingCheck';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
+import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
@@ -629,6 +630,20 @@ export function OrderFormBackendBase({
                                     ? 'Rouvrez la facture et retirez-en la demande pour le modifier.'
                                     : 'Retirez-la de la facture pour le modifier.'}
                             </p>
+                        )}
+                        {/* The envelope this demande will go back in. Sits under the
+                            auditeur — the person being written to — the same way the
+                            audio button sits under the livre. */}
+                        {selectedUser && (
+                            <MailingLabelButton
+                                userId={selectedUser.id}
+                                reference={
+                                    currentOrderId
+                                        ? `Demande #${currentOrderId}${selectedBook ? ` — ${selectedBook.title}` : ''}`
+                                        : null
+                                }
+                                className="h-8 px-2.5 text-xs"
+                            />
                         )}
                     </div>
 

@@ -5,3 +5,5 @@ export { EntitySearchCombobox } from './EntitySearchCombobox';
 export { UserSearchCombobox } from './UserSearchCombobox';
 export { BookSearchCombobox } from './BookSearchCombobox';
 export { ReaderLanguagesField } from './ReaderLanguagesField';
+export { MailingLabelButton } from './MailingLabelButton';
+export type { MailingLabelData } from './MailingLabelPDF';

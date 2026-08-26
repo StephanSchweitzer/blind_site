@@ -166,6 +166,9 @@ export const assignmentIncludeConfigs = {
                 requestReceivedDate: true,
                 aveugle: {
                     select: {
+                        // id: the attribution form prints the auditeur's étiquette
+                        // d'adresse from here, and needs someone to look up.
+                        id: true,
                         name: true,
                         email: true,
                     },

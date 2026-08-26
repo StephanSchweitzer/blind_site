@@ -1,16 +1,11 @@
 // BillPDF.tsx
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 import { BillingStatus } from '@/lib/billing-enums';
+import { ORG } from '@/lib/org';
 
-// ─── Brand / issuer (edit in one place) ─────────────────────────────────────
+// ─── Brand ──────────────────────────────────────────────────────────────────
+// The issuer block itself lives in lib/org.ts — shared with MailingLabelPDF.
 const NAVY = '#15366b';
-const ORG = {
-    name: 'ECA — Enregistrements à la Carte pour les Aveugles',
-    delegation: 'Délégation des Auxiliaires des Aveugles',
-    addr: ['71 avenue de Breteuil', '75015 PARIS'],
-    phone: '01 88 32 31 47 / 48',
-    email: 'ecapermanence@gmail.com',
-};
 
 // ─── Shape this component needs (kept local to stay decoupled) ───────────────
 interface BillOrderLite {
