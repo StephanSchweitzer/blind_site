@@ -11,6 +11,16 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { MailingLabelData } from './MailingLabelPDF';
+import {
+    type ShipmentContents,
+    type ShipmentContext,
+    SHIPMENT_CONTENTS_LABELS,
+    SHIPMENT_CONTENTS_HINTS,
+    proposedShipmentContents,
+    shipmentCarriesRecording,
+    shipmentNeedsNothing,
+    shipmentReference,
+} from '@/lib/orders/labelReference';
 
 /** One address as the lookup route returns it. */
 interface LabelAddress {
@@ -33,13 +43,13 @@ export interface MailingLabelButtonProps {
      * don't carry addresses, so this is the usual path.
      */
     userId?: number;
-    /** Small reference printed below the cut line, on the scrap half. */
-    reference?: string | null;
     /**
-     * Print the « CÉCOGRAMME » postal mention on the label. Set it only where
-     * the envelope is known to carry a recording — never on a generic label.
+     * Set on a label that accompanies a shipment (a demande or an attribution).
+     * It turns on the contents dialog, the reference line below the cut, and
+     * the cécogramme mention. Leaving it off gives a plain address label —
+     * which is what a facture or a letter to a donateur needs.
      */
-    cecogramme?: boolean;
+    shipment?: ShipmentContext | null;
     /**
      * Known-empty address book. Only worth passing where the caller already
      * queried addresses — it disables the button without a round trip.
@@ -52,6 +62,12 @@ export interface MailingLabelButtonProps {
 
 const FULL_TEXT = "Imprimer l'étiquette d'adresse";
 
+const CONTENTS_ORDER: ShipmentContents[] = [
+    'RECORDING_AND_BOOK',
+    'RECORDING_ONLY',
+    'BOOK_ONLY',
+];
+
 /** A filename someone can find again in their Downloads folder. */
 const fileNameFor = (recipient: string) => {
     const slug = recipient
@@ -63,11 +79,16 @@ const fileNameFor = (recipient: string) => {
     return `etiquette-adresse${slug ? `-${slug}` : ''}.pdf`;
 };
 
+/** An address resolved and waiting on the contents question. */
+interface PendingLabel {
+    recipient: string;
+    lines: string[];
+}
+
 export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
     label,
     userId,
-    reference,
-    cecogramme,
+    shipment,
     hasAddress,
     variant = 'button',
     className = '',
@@ -77,6 +98,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
     const [choices, setChoices] = useState<
         { recipient: string; addresses: LabelAddress[] } | null
     >(null);
+    const [pending, setPending] = useState<PendingLabel | null>(null);
 
     const download = async (data: MailingLabelData) => {
         // The PDF library is heavy and only needed on print — load it on demand,
@@ -92,6 +114,19 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
         a.download = fileNameFor(data.recipient);
         a.click();
         URL.revokeObjectURL(url);
+    };
+
+    /**
+     * Address in hand. A shipment still has to say what's in the envelope
+     * before anything is printed — the cécogramme depends on the answer, and
+     * the media format that would settle it is unset on most demandes.
+     */
+    const proceed = async (resolved: PendingLabel) => {
+        if (shipment) {
+            setPending(resolved);
+            return;
+        }
+        await download(resolved);
     };
 
     const handleClick = async (event: React.MouseEvent) => {
@@ -111,7 +146,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
                     );
                     return;
                 }
-                await download(label);
+                await proceed(label);
                 return;
             }
 
@@ -131,12 +166,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
                 return;
             }
             if (addresses.length === 1) {
-                await download({
-                    recipient: data.recipient,
-                    lines: addresses[0].lines,
-                    reference,
-                    cecogramme,
-                });
+                await proceed({ recipient: data.recipient, lines: addresses[0].lines });
                 return;
             }
             // Several on file — ask rather than guess which envelope this is.
@@ -151,15 +181,11 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
 
     const handlePick = async (address: LabelAddress) => {
         if (!choices) return;
+        const resolved = { recipient: choices.recipient, lines: address.lines };
+        setChoices(null);
         setIsWorking(true);
         try {
-            await download({
-                recipient: choices.recipient,
-                lines: address.lines,
-                reference,
-                cecogramme,
-            });
-            setChoices(null);
+            await proceed(resolved);
         } catch (err) {
             console.error('Mailing label export failed:', err);
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
@@ -167,6 +193,27 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
             setIsWorking(false);
         }
     };
+
+    const handleContents = async (contents: ShipmentContents) => {
+        if (!pending || !shipment) return;
+        setIsWorking(true);
+        try {
+            await download({
+                ...pending,
+                reference: shipmentReference(shipment, contents),
+                cecogramme: shipmentCarriesRecording(contents),
+            });
+            setPending(null);
+        } catch (err) {
+            console.error('Mailing label export failed:', err);
+            setError(err instanceof Error ? err.message : 'Erreur inattendue');
+        } finally {
+            setIsWorking(false);
+        }
+    };
+
+    const proposed = shipment ? proposedShipmentContents(shipment) : null;
+    const nothingToSend = shipment ? shipmentNeedsNothing(shipment) : false;
 
     const noAddress = hasAddress === false;
     const disabled = isWorking || noAddress;
@@ -236,6 +283,60 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
                                             Adresse par défaut
                                         </span>
                                     )}
+                                </span>
+                            </Button>
+                        ))}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* What's in the envelope? Decides the contents line AND the cécogramme,
+                so it is asked rather than assumed — see lib/orders/labelReference.ts. */}
+            <Dialog open={!!pending} onOpenChange={(open) => !open && setPending(null)}>
+                <DialogContent className="max-w-lg bg-card border-border [&>button>svg]:text-white">
+                    <DialogHeader>
+                        <DialogTitle className="text-foreground">
+                            Que contient l&apos;enveloppe ?
+                        </DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
+                            Cette réponse détermine la mention « Cécogramme » — la franchise
+                            postale ne couvre qu&apos;un envoi contenant un enregistrement.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {nothingToSend && (
+                        <div className="rounded-md border border-amber-300 bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+                            Cette demande est une duplication dont l&apos;enregistrement a été
+                            transmis par Internet : en principe il n&apos;y a rien à expédier.
+                        </div>
+                    )}
+
+                    <div className="flex flex-col gap-2 pt-1">
+                        {CONTENTS_ORDER.map((option) => (
+                            <Button
+                                key={option}
+                                type="button"
+                                variant="outline"
+                                disabled={isWorking}
+                                onClick={() => handleContents(option)}
+                                className={`h-auto justify-start whitespace-normal px-3 py-2 text-left hover:bg-muted hover:text-white ${
+                                    option === proposed
+                                        ? 'border-primary bg-primary/10 text-foreground'
+                                        : 'border-border bg-card text-foreground'
+                                }`}
+                            >
+                                <span className="flex flex-col items-start gap-0.5">
+                                    <span className="text-sm font-medium">
+                                        {SHIPMENT_CONTENTS_LABELS[option]}
+                                        {option === proposed && (
+                                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                                proposé
+                                            </span>
+                                        )}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {SHIPMENT_CONTENTS_HINTS[option]}
+                                    </span>
                                 </span>
                             </Button>
                         ))}

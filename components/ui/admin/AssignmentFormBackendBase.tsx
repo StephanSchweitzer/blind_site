@@ -39,7 +39,7 @@ import { useInvalidField } from '@/hooks/useInvalidField';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
 import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
-import { orderLabelReference } from '@/lib/orders/labelReference';
+
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
@@ -1150,17 +1150,19 @@ export function AssignmentFormBackendBase({
                             <div className="pt-1">
                                 <MailingLabelButton
                                     userId={selectedOrder.aveugle.id}
-                                    cecogramme
-                                    reference={orderLabelReference({
+                                    shipment={{
                                         orderId: selectedOrder.id,
                                         title: selectedOrder.catalogue?.title,
                                         // An attribution only ever exists for an
                                         // enregistrement — a duplication never gets one
                                         // (guardDuplicationStatus), and the order picker
-                                        // above queries isDuplication=false. So the
-                                        // auditeur's book is always in this envelope.
+                                        // above queries isDuplication=false.
                                         isDuplication: false,
-                                    })}
+                                        // OrderSummary carries no media format, so the
+                                        // dialog opens on « + livre à retourner » and the
+                                        // packer corrects it if the audio went by Internet.
+                                        mediaFormat: null,
+                                    }}
                                     className="h-8 px-2.5 text-xs"
                                 />
                             </div>
