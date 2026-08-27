@@ -2,7 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog';
 import {
     OrderFormBackendBase,
     formatEuro2,
@@ -11,7 +17,7 @@ import {
     type User,
     type Book,
 } from '@/admin/OrderFormBackendBase';
-import { BillIssuedDialog } from '@/admin/BillIssuedDialog';
+import { BillPrintNoticeDialog, type BillPrintNotice } from '@/admin/BillPrintNoticeDialog';
 
 // Edit Order Form using the base
 export function EditOrderFormBackend({
@@ -52,10 +58,77 @@ export function EditOrderFormBackend({
     const [notice, setNotice] = useState<Notice | null>(null);
     const resolveRef = useRef<((id: number) => void) | null>(null);
 
-    // Deux boîtes, une seule à la fois : « facture émise » porte un bouton
-    // d'impression, les autres avis n'ont rien à imprimer sur-le-champ.
-    const issuedNotice = notice?.kind === 'ISSUED' ? notice : null;
-    const otherNotice = notice && notice.kind !== 'ISSUED' ? notice : null;
+    // Deux boîtes, une seule à la fois. Trois des quatre avis se terminent par
+    // « imprimez ce document » — le seuil vient d'émettre la facture, ou une
+    // facture déjà partie n'est plus à jour — et passent donc par la boîte qui
+    // porte le bouton d'impression. « Retirée du brouillon » n'a rien à
+    // imprimer : le brouillon n'est jamais sorti.
+    const printNotice: BillPrintNotice | null = React.useMemo(() => {
+        if (!notice) return null;
+        switch (notice.kind) {
+            case 'ISSUED':
+                return {
+                    billId: notice.billId,
+                    title: `Facture #${notice.billId} émise`,
+                    description: (
+                        <>
+                            En passant cette demande à « Terminé », elle a été rattachée à la facture
+                            #{notice.billId}, qui a atteint le seuil de facturation du client et vient
+                            d&apos;être émise (total : {formatEuro2(notice.total)} €).
+                        </>
+                    ),
+                    footnote: (
+                        <>
+                            Elle est à imprimer et à envoyer au client. Rien n&apos;est perdu si vous fermez :
+                            elle vous attend dans les factures, au statut « Émise ».
+                        </>
+                    ),
+                };
+            case 'COST':
+                return {
+                    billId: notice.billId,
+                    title: 'Coût modifié — facture à réimprimer',
+                    description: (
+                        <>
+                            Vous avez modifié le coût de cette demande, ce qui a mis à jour le montant total
+                            de la facture #{notice.billId}
+                            {notice.newTotal ? ` (nouveau total : ${formatEuro2(notice.newTotal)} €)` : ''}.
+                            Le document déjà émis n&apos;est plus à jour.
+                        </>
+                    ),
+                    footnote: (
+                        <>
+                            Réimprimez-la et relancez le processus de facturation, afin que votre exemplaire
+                            et celui du client concordent. Rien n&apos;est perdu si vous fermez : elle reste
+                            imprimable depuis les factures.
+                        </>
+                    ),
+                    printLabel: 'Réimprimer la facture',
+                };
+            case 'VISIBLE':
+                return {
+                    billId: notice.billId,
+                    title: 'Éléments visibles modifiés',
+                    description: (
+                        <>
+                            Vous avez modifié un élément figurant sur la facture #{notice.billId} (livre, date
+                            ou type). Le montant total n&apos;a pas changé, mais le document déjà émis
+                            n&apos;est plus à jour.
+                        </>
+                    ),
+                    footnote: (
+                        <>
+                            Réimprimez-la pour que l&apos;exemplaire du client corresponde. Rien n&apos;est
+                            perdu si vous fermez : elle reste imprimable depuis les factures.
+                        </>
+                    ),
+                    printLabel: 'Réimprimer la facture',
+                };
+            default:
+                return null;
+        }
+    }, [notice]);
+    const detachedNotice = notice?.kind === 'DETACHED' ? notice : null;
 
     const acknowledgeNotice = () => {
         const resolve = resolveRef.current;
@@ -151,63 +224,33 @@ export function EditOrderFormBackend({
                 initialAssignment={assignment}
             />
 
-            {/* Une facture qui vient d'être émise ne demande pas un accusé de
-                réception mais une impression : elle a sa propre boîte, qui porte
-                le bouton. Les autres avis restent des avis. */}
-            <BillIssuedDialog
-                billId={issuedNotice?.billId ?? null}
-                description={
-                    <>
-                        En passant cette demande à « Terminé », elle a été rattachée à la facture
-                        #{issuedNotice?.billId}, qui a atteint le seuil de facturation du client et vient
-                        d&apos;être émise (total : {formatEuro2(issuedNotice?.total)} €).
-                    </>
-                }
-                onClose={acknowledgeNotice}
-            />
+            {/* Un avis qui se termine par « imprimez ce document » porte le bouton
+                qui l'imprime — sinon il ne fait que renvoyer ailleurs. */}
+            <BillPrintNoticeDialog notice={printNotice} onClose={acknowledgeNotice} />
 
-            <Dialog open={!!otherNotice} onOpenChange={(open) => { if (!open) acknowledgeNotice(); }}>
+            <Dialog open={!!detachedNotice} onOpenChange={(open) => { if (!open) acknowledgeNotice(); }}>
                 <DialogContent className="bg-card border-border max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="text-amber-700 dark:text-amber-300">
-                            {otherNotice?.kind === 'COST' && 'Coût modifié — facture à régénérer'}
-                            {otherNotice?.kind === 'VISIBLE' && 'Éléments visibles modifiés'}
-                            {otherNotice?.kind === 'DETACHED' && 'Demande retirée du brouillon'}
+                            Demande retirée du brouillon
                         </DialogTitle>
                     </DialogHeader>
                     <div className="text-foreground text-sm space-y-3">
-                        {otherNotice?.kind === 'COST' && (
-                            <p>
-                                Vous avez modifié le coût de cette demande, ce qui a mis à jour le montant total de la
-                                facture #{otherNotice?.billId}{otherNotice?.newTotal ? ` (nouveau total : ${otherNotice.newTotal} €)` : ''}.
-                                Veuillez consulter la facture, la réimprimer et relancer le processus de facturation afin de
-                                conserver des enregistrements corrects.
-                            </p>
-                        )}
-                        {otherNotice?.kind === 'VISIBLE' && (
-                            <p>
-                                Vous avez modifié un élément figurant sur la facture #{otherNotice?.billId} (livre, date ou type).
-                                Le montant total n&apos;a pas changé, mais le document déjà émis n&apos;est plus à jour :
-                                pensez à le réimprimer.
-                            </p>
-                        )}
-                        {otherNotice?.kind === 'DETACHED' && (
-                            <p>
-                                En sortant cette demande de « Terminé », elle a été retirée de la facture
-                                #{otherNotice?.billId} (brouillon)
-                                {otherNotice?.newTotal ? `, dont le total est maintenant de ${otherNotice.newTotal} €` : ''} :
-                                c&apos;est le passage à « Terminé » qui l&apos;y avait mise. Elle rejoindra un
-                                brouillon à nouveau le jour où elle sera terminée pour de bon.
-                            </p>
-                        )}
-                        {otherNotice && (
+                        <DialogDescription className="text-foreground text-sm">
+                            En sortant cette demande de « Terminé », elle a été retirée de la facture
+                            #{detachedNotice?.billId} (brouillon)
+                            {detachedNotice?.newTotal ? `, dont le total est maintenant de ${formatEuro2(detachedNotice.newTotal)} €` : ''} :
+                            c&apos;est le passage à « Terminé » qui l&apos;y avait mise. Elle rejoindra un
+                            brouillon à nouveau le jour où elle sera terminée pour de bon.
+                        </DialogDescription>
+                        {detachedNotice && (
                             <Link
-                                href={`/admin/bills?bill=${otherNotice.billId}`}
+                                href={`/admin/bills?bill=${detachedNotice.billId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-block text-blue-400 hover:text-blue-300 underline underline-offset-2"
                             >
-                                Voir la facture #{otherNotice.billId}
+                                Voir la facture #{detachedNotice.billId}
                             </Link>
                         )}
                     </div>

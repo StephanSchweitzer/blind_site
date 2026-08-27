@@ -36,6 +36,11 @@ interface BillPDFButtonProps {
      * sinon on retrouve la boîte de dialogue derrière celle du navigateur.
      */
     onPrinted?: () => void;
+    /**
+     * Libellé du bouton. Un document déjà envoyé au client se *ré*imprime, et
+     * le dire évite de laisser croire qu'on va en émettre un second.
+     */
+    label?: string;
     className?: string;
 }
 
@@ -51,6 +56,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
     variant = 'button',
     onBillUpdated,
     onPrinted,
+    label = FULL_TEXT,
     className = '',
 }) => {
     const [isPrinting, setIsPrinting] = useState(false);
@@ -163,8 +169,8 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                     size="sm"
                     onClick={handleClick}
                     disabled={disabled}
-                    title={FULL_TEXT}
-                    aria-label={FULL_TEXT}
+                    title={label}
+                    aria-label={label}
                     className={`h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 ${className}`}
                 >
                     {busy ? (
@@ -179,11 +185,11 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                     variant="outline"
                     onClick={handleClick}
                     disabled={disabled}
-                    title={FULL_TEXT}
+                    title={label}
                     className={`border-border bg-card text-foreground hover:bg-muted hover:text-white flex items-center gap-2 ${className}`}
                 >
                     {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-                    {isPrinting ? 'Génération…' : FULL_TEXT}
+                    {isPrinting ? 'Génération…' : label}
                 </Button>
             )}
 

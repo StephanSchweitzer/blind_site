@@ -24,7 +24,7 @@ import { useInvalidField } from '@/hooks/useInvalidField';
 import { useRecordingCheck } from '@/hooks/useRecordingCheck';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
-import { BillIssuedDialog } from '@/components/ui/admin/BillIssuedDialog';
+import { BillPrintNoticeDialog } from '@/components/ui/admin/BillPrintNoticeDialog';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import {
@@ -542,13 +542,24 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             role={activityRole}
             onClose={closeActivityGuard}
         />
-        <BillIssuedDialog
-            billId={autoBill?.billId ?? null}
-            description={
-                <>
-                    Le seuil de facturation du client est atteint : la facture #{autoBill?.billId} vient
-                    d&apos;être émise (total : {autoBill?.total} €).
-                </>
+        <BillPrintNoticeDialog
+            notice={
+                autoBill && {
+                    billId: autoBill.billId,
+                    title: `Facture #${autoBill.billId} émise`,
+                    description: (
+                        <>
+                            Le seuil de facturation du client est atteint : la facture #{autoBill.billId}
+                            vient d&apos;être émise (total : {autoBill.total} €).
+                        </>
+                    ),
+                    footnote: (
+                        <>
+                            Elle est à imprimer et à envoyer au client. Rien n&apos;est perdu si vous fermez :
+                            elle vous attend dans les factures, au statut « Émise ».
+                        </>
+                    ),
+                }
             }
             onClose={acknowledgeAutoBill}
         />
