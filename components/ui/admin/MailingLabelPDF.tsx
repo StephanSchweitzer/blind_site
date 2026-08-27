@@ -79,17 +79,29 @@ const styles = StyleSheet.create({
     // where a window envelope expects it and where a sleeve shows it best.
     //
     // The indent is 32%, not the 38% it started at, and the name is 15pt rather
-    // than 16. Both because « Civilité Prénom NOM » is one line under the norme
-    // d'adressage and react-pdf, run out of width, breaks it *inside the word*:
-    // a « Madame Marie-Christine DELAUNAY-BERDAI » came out as « DELAU-NAY-
-    // BERDAI ». These numbers fit ~41 characters, which covers the composite
-    // first names and hyphenated surnames that actually occur. Beyond that it
-    // still hyphenates — the only complete fix is registerHyphenationCallback,
-    // and that is global to react-pdf's Font module, so it would silently
-    // retypeset the facture too depending on which PDF the admin printed first.
+    // than 16, so that « Civilité Prénom NOM » — one line under the norme
+    // d'adressage, which also caps a line at 38 characters — fits on one line
+    // for every name that respects the norm.
     recipientBlock: { marginTop: 34, paddingLeft: '32%' },
-    recipientName: { fontSize: 15, fontWeight: 'bold', lineHeight: 1.5 },
     recipientLine: { fontSize: 14, lineHeight: 1.5 },
+
+    // Ligne 1 is set as a wrapping row of one Text per word, not as a single
+    // Text. Handed a name too long for the width, react-pdf hyphenates it, and
+    // it breaks *inside the word*: « Madame Marie-Christine DELAUNAY-BERDAI »
+    // came out of a test render as « DELAU-NAY-BERDAI ». A patronyme cut in
+    // half is not an address.
+    //
+    // One word per Text makes that structurally impossible — the row can only
+    // ever break between words, which is what a human addressing the envelope
+    // would do. The alternatives were both worse: registerHyphenationCallback
+    // is global to react-pdf's Font module, so it would retypeset the facture
+    // too depending on which PDF the admin printed first, and shrinking the
+    // name to fit would leave line 1 set smaller than the rue below it.
+    //
+    // marginRight replaces the space the split() removed: 4.2pt is Helvetica-
+    // Bold's space at 15pt. Change one and change the other.
+    recipientNameRow: { flexDirection: 'row', flexWrap: 'wrap' },
+    recipientName: { fontSize: 15, fontWeight: 'bold', lineHeight: 1.5, marginRight: 4.2 },
 
     // Everything below is on the scrap.
     scrap: { paddingTop: 8, paddingHorizontal: 46 },
@@ -118,7 +130,11 @@ export const MailingLabelPDF = ({ label }: { label: MailingLabelData }) => (
                 </View>
 
                 <View style={styles.recipientBlock}>
-                    <Text style={styles.recipientName}>{label.recipient}</Text>
+                    <View style={styles.recipientNameRow}>
+                        {label.recipient.split(/\s+/).filter(Boolean).map((word, i) => (
+                            <Text key={i} style={styles.recipientName}>{word}</Text>
+                        ))}
+                    </View>
                     {label.lines.map((line, i) => (
                         <Text key={i} style={styles.recipientLine}>{line}</Text>
                     ))}
