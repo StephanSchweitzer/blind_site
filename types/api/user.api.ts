@@ -71,6 +71,7 @@ export type UserIncludeConfig = {
     CoupsDeCoeur?: boolean | Prisma.CoupsDeCoeurFindManyArgs;
     News?: boolean | Prisma.NewsFindManyArgs;
     _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs;
+    languages?: boolean | Prisma.ReaderLanguageFindManyArgs;
 };
 
 export type FullUserWithIncludesResponse = Prisma.UserGetPayload<{

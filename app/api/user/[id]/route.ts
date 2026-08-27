@@ -138,6 +138,17 @@ export async function GET(
                         break;
                 }
             }
+
+            // `include` replaces `fullUserSelect` wholesale below, and languages
+            // is the one field on that select with no `mode=full`-only bearing —
+            // it's requested by every edit form, not by an explicit include
+            // relation. Without this, any caller that also asks for a relation
+            // (the users-table edit fetch always asks for `addresses`) gets back
+            // a user with no `languages` at all, and the reader-language
+            // checkboxes silently reopen unchecked.
+            if (hasIncludes) {
+                include.languages = { select: { language: true } };
+            }
         }
 
         let user;
