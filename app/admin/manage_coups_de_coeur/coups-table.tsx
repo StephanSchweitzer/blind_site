@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CoupDeCoeurPDFButton } from "@/admin/CoupDeCoeurPDFButton";
 import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
 
 interface CoupsTableProps {
@@ -107,6 +108,13 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                                 <TableHead className="text-foreground font-medium">Livres</TableHead>
                                 <TableHead className="text-foreground font-medium">Créé le</TableHead>
                                 <TableHead className="text-foreground font-medium">Actions</TableHead>
+                                {/* Header text is for screen readers only, but the cell itself
+                                    must stay in flow — an sr-only <th> is position:absolute and
+                                    drops out of the column count, leaving the header one cell
+                                    short of every body row. */}
+                                <TableHead className="text-foreground font-medium w-[1%] whitespace-nowrap">
+                                    <span className="sr-only">Imprimer la liste de livres</span>
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -139,6 +147,10 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                                         >
                                             Modifier
                                         </Button>
+                                    </TableCell>
+                                    {/* Impression directe, sans ouvrir la liste. */}
+                                    <TableCell className="w-[1%] whitespace-nowrap text-right">
+                                        <CoupDeCoeurPDFButton variant="icon" coupDeCoeurId={item.id} />
                                     </TableCell>
                                 </TableRow>
                             ))}

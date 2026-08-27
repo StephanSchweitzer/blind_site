@@ -21,7 +21,9 @@ export const GET = withAdmin(async (_req, { params }) => {
             include: {
                 books: {
                     include: {
-                        book: true
+                        // Genres are needed to group books the same way the public PDF
+                        // export does — see CoupDeCoeurPDFButton.
+                        book: { include: { genres: { include: { genre: true } } } }
                     }
                 }
             }

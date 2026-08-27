@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import BookSelector from '../components/book-selector';
 import AudioRecorder from '@/components/AudioRecorder';
+import { CoupDeCoeurPDFButton } from '@/admin/CoupDeCoeurPDFButton';
 import {useWarnIfUnsavedChanges} from "@/components/userWarnIfUnsavedChanges";
 
 interface BookWithDetails {
@@ -210,13 +211,16 @@ export default function EditCoupDeCoeurPage() {
             <Card className="bg-card border-border">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border">
                     <CardTitle className="text-foreground">Modifier la liste de livres</CardTitle>
-                    <Button
-                        variant="destructive"
-                        onClick={handleDelete}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                        Supprimer
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <CoupDeCoeurPDFButton coupDeCoeurId={formData.id} />
+                        <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            Supprimer
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="pt-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
