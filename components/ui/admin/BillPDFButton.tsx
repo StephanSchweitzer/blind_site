@@ -29,6 +29,13 @@ interface BillPDFButtonProps {
     variant?: 'button' | 'icon';
     /** Called after the bill is issued (DRAFT → BILLED) so the parent can refresh. */
     onBillUpdated?: () => void;
+    /**
+     * Called once the document has actually been handed to the print dialog —
+     * never when printing failed. Pour un appelant dont l'impression est *le*
+     * but (l'avis « facture émise »), c'est le signal qu'il peut se retirer :
+     * sinon on retrouve la boîte de dialogue derrière celle du navigateur.
+     */
+    onPrinted?: () => void;
     className?: string;
 }
 
@@ -43,6 +50,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
     billId,
     variant = 'button',
     onBillUpdated,
+    onPrinted,
     className = '',
 }) => {
     const [isPrinting, setIsPrinting] = useState(false);
@@ -93,6 +101,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                 return;
             }
             await print(data, false);
+            onPrinted?.();
         } catch (err) {
             console.error('Bill print failed:', err);
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
@@ -108,6 +117,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
         try {
             await print(draftBill, true);
             setDraftBill(null);
+            onPrinted?.();
         } catch (err) {
             console.error('Bill print failed:', err);
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
@@ -133,6 +143,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
             await print(await fetchBill(draftBill.id), false);
             setDraftBill(null);
             onBillUpdated?.();
+            onPrinted?.();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
         } finally {

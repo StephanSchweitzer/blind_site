@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +24,7 @@ import { useInvalidField } from '@/hooks/useInvalidField';
 import { useRecordingCheck } from '@/hooks/useRecordingCheck';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
+import { BillIssuedDialog } from '@/components/ui/admin/BillIssuedDialog';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import {
@@ -122,6 +122,18 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
 
     // Options
     const [mediaFormats, setMediaFormats] = useState<MediaFormat[]>([]);
+
+    // Le lot vient de faire franchir le seuil à un brouillon : l'avis d'émission
+    // retient la fermeture du modal, sinon la boîte partirait avec lui.
+    const [autoBill, setAutoBill] = useState<{ billId: number; total: string } | null>(null);
+    const pendingOrderIdRef = useRef<number | null>(null);
+
+    const acknowledgeAutoBill = () => {
+        const orderId = pendingOrderIdRef.current;
+        pendingOrderIdRef.current = null;
+        setAutoBill(null);
+        if (onSuccess && orderId != null) onSuccess(orderId);
+    };
 
     // Header (shared across every book)
     const [aveugleId, setAveugleId] = useState<number | null>(initialClient?.id ?? null);
@@ -299,28 +311,17 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                 description: <span className="text-xl mt-2">{ids.length} demande(s) créée(s){ids.length ? ` : #${ids.join(', #')}` : ''}</span>,
                 className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
             });
+            // Une facture vient de partir en émission : le dire dans un toast, qui
+            // s'efface tout seul, c'est risquer que personne n'imprime jamais le
+            // document. On retient donc onSuccess (qui ferme le modal, et donc
+            // démonterait la boîte) le temps que l'avis soit acquitté.
             if (data.autoBill) {
-                toast({
-                    // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Facture émise</span>,
-                    description: (
-                        <span className="text-xl mt-2">
-                            Le seuil de paiement du client est atteint : la facture #{data.autoBill.billId} vient
-                            d&apos;être émise (total : {formatEuro2(String(data.autoBill.total))} €). Pensez à
-                            l&apos;imprimer et à l&apos;envoyer.
-                            <br />
-                            <Link
-                                href={`/admin/bills?bill=${data.autoBill.billId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-block mt-1 text-blue-700 hover:text-blue-600 underline underline-offset-2"
-                            >
-                                Voir la facture #{data.autoBill.billId}
-                            </Link>
-                        </span>
-                    ),
-                    className: "bg-blue-100 border-2 border-blue-500 text-blue-900 shadow-lg p-6"
+                setAutoBill({
+                    billId: data.autoBill.billId,
+                    total: formatEuro2(String(data.autoBill.total)),
                 });
+                pendingOrderIdRef.current = ids.length ? ids[0] : null;
+                return;
             }
             if (onSuccess && ids.length) onSuccess(ids[0]);
         } catch (err) {
@@ -540,6 +541,16 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             blocked={activityBlocked}
             role={activityRole}
             onClose={closeActivityGuard}
+        />
+        <BillIssuedDialog
+            billId={autoBill?.billId ?? null}
+            description={
+                <>
+                    Le seuil de facturation du client est atteint : la facture #{autoBill?.billId} vient
+                    d&apos;être émise (total : {autoBill?.total} €).
+                </>
+            }
+            onClose={acknowledgeAutoBill}
         />
         </>
     );
