@@ -1,11 +1,21 @@
 // BillPDF.tsx
-import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import { BillingStatus } from '@/lib/billing-enums';
 import { ORG } from '@/lib/org';
 
 // ─── Brand ──────────────────────────────────────────────────────────────────
 // The issuer block itself lives in lib/org.ts — shared with MailingLabelPDF.
 const NAVY = '#15366b';
+
+// Le bloc-marque en tête de facture.
+// PNG et non le JPEG d'origine : celui-ci est encodé en progressif, que le filtre
+// DCTDecode d'un PDF ne sait pas relire — et le PNG évite au passage les artefacts
+// de compression sur les arêtes nettes du logotype. 1000 × 508 px pour une
+// largeur imprimée de 96 à 176 pt, soit 400 à 750 dpi : largement au-dessus des
+// 300 dpi attendus en impression. Le fond est blanc opaque : sur une page
+// blanche, la transparence n'apporterait rien.
+const LOGO_SRC = '/eca_logo_facture.png';
+const LOGO_RATIO = 1000 / 508;
 
 // ─── Shape this component needs (kept local to stay decoupled) ───────────────
 interface BillOrderLite {
@@ -61,6 +71,12 @@ const densityFor = (n: number) => {
     const t = Math.min(1, Math.max(0, (n - COUNT_ROOMY) / (COUNT_TIGHT - COUNT_ROOMY)));
     const L = (roomy: number, tight: number) => roomy + (tight - roomy) * t;
     return {
+        // Le bloc-marque respire quand la facture est courte et se resserre quand
+        // elle se remplit — sans jamais descendre sous une taille où le logotype
+        // resterait lisible à l'impression.
+        logoW: L(176, 96),
+        logoMarB: L(14, 5),
+        titleSize: L(26, 16),
         pageTop: L(34, 28),
         line: L(1.4, 1.3),
         headPadB: L(12, 9),
@@ -87,13 +103,14 @@ type Density = ReturnType<typeof densityFor>;
 const makeStyles = (d: Density) => StyleSheet.create({
     page: { paddingTop: d.pageTop, paddingBottom: d.pageTop, paddingHorizontal: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#111827', lineHeight: d.line },
 
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 2, borderColor: NAVY, paddingBottom: d.headPadB, marginBottom: d.headMarB },
-    headerOrg: { maxWidth: 320 },
-    orgName: { color: NAVY, fontSize: 12, fontWeight: 'bold', marginBottom: 3 },
-    orgLine: { color: '#1f2937', fontSize: 9.5 },
-    headerRight: { alignItems: 'flex-end' },
-    docTitle: { color: NAVY, fontSize: 24, fontWeight: 'bold', letterSpacing: 1 },
-    docNo: { color: '#1f2937', fontSize: 11, marginTop: 12, fontWeight: 'bold' },
+    header: { alignItems: 'center', borderBottomWidth: 2, borderColor: NAVY, paddingBottom: d.headPadB, marginBottom: d.headMarB },
+    logo: { width: d.logoW, height: d.logoW / LOGO_RATIO, marginBottom: d.logoMarB },
+    docTitle: { color: NAVY, fontSize: d.titleSize, fontWeight: 'bold', letterSpacing: 3, textAlign: 'center' },
+    // Les coordonnées de l'émetteur vivent dans la marge basse, répétées sur
+    // chaque page : l'en-tête reste un vrai papier à en-tête (marque + objet du
+    // document), et les ~35 pt ainsi rendus au flux valent deux lignes de
+    // tableau — soit une facture de plus qui tient sur une seule feuille.
+    footer: { position: 'absolute', bottom: 14, left: 48, right: 48, textAlign: 'center', fontSize: 8, color: '#4b5563' },
 
     billRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#9ca3af', paddingVertical: d.billPadY, marginBottom: d.billMarB },
     billToCol: { width: '52%' },
@@ -102,6 +119,7 @@ const makeStyles = (d: Density) => StyleSheet.create({
     alignRight: { textAlign: 'right' },
     metaLabel: { fontSize: 8.5, color: '#4b5563', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, fontWeight: 'bold' },
     metaName: { fontSize: 11, fontWeight: 'bold', color: '#111827', marginBottom: 2 },
+    metaNumber: { fontSize: 13, fontWeight: 'bold', color: NAVY },
     metaLine: { fontSize: 9.5, color: '#1f2937' },
 
     th: { flexDirection: 'row', borderBottomWidth: 1.5, borderColor: NAVY, paddingVertical: d.thPadY, paddingHorizontal: 4 },
@@ -159,19 +177,25 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
             <Page size="A4" style={s.page} wrap>
                 {draft && <Text style={s.watermark} fixed>BROUILLON</Text>}
 
-                {/* Header (sans bandeau) */}
+                {/* Coordonnées de l'émetteur : bas de page, sur chaque feuille. */}
+                <Text style={s.footer} fixed>
+                    {ORG.addr.join(' — ')} — Tél. {ORG.phone} — {ORG.email}
+                </Text>
+
+                {/* En-tête centré : le logotype, puis l'objet du document.
+                    Le logotype porte déjà « enregistrements à la carte pour les
+                    aveugles » et « Délégation des Auxiliaires des Aveugles » :
+                    ORG.name et ORG.delegation seraient redits une deuxième fois,
+                    on ne les répète donc pas ici. Le numéro de facture descend
+                    dans la bande de métadonnées, en face du « Facturé à »,
+                    plutôt que de concurrencer le titre. */}
                 <View style={s.header} wrap={false}>
-                    <View style={s.headerOrg}>
-                        <Text style={s.orgName}>{ORG.name}</Text>
-                        <Text style={s.orgLine}>{ORG.delegation}</Text>
-                        {ORG.addr.map((l, i) => <Text key={i} style={s.orgLine}>{l}</Text>)}
-                        <Text style={s.orgLine}>Tél. {ORG.phone}</Text>
-                        <Text style={s.orgLine}>{ORG.email}</Text>
-                    </View>
-                    <View style={s.headerRight}>
-                        <Text style={s.docTitle}>FACTURE</Text>
-                        <Text style={s.docNo}>N° {bill.id}</Text>
-                    </View>
+                    {/* jsx-a11y voit un <img> ; l'Image de react-pdf n'accepte
+                        pas d'attribut alt — le texte alternatif d'un PDF passe
+                        par sa structure, pas par ce composant. */}
+                    {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                    <Image src={LOGO_SRC} style={s.logo} />
+                    <Text style={s.docTitle}>FACTURE</Text>
                 </View>
 
                 {/* Facturé à (gauche) + méta facture (droite) sur une même bande */}
@@ -187,6 +211,10 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                         })()}
                     </View>
                     <View style={s.billMetaCol}>
+                        <View style={s.metaItem}>
+                            <Text style={[s.metaLabel, s.alignRight]}>Facture n°</Text>
+                            <Text style={[s.metaNumber, s.alignRight]}>{bill.id}</Text>
+                        </View>
                         <View style={s.metaItem}>
                             <Text style={[s.metaLabel, s.alignRight]}>Date de création</Text>
                             <Text style={[s.metaLine, s.alignRight]}>{formatDate(creationDate)}</Text>
