@@ -19,7 +19,7 @@ Server-rendered French pages sharing a common `Frontend-Navbar`, glassmorphism s
 |---|---|
 | `/` | Home. Presents ECA and its à-la-carte recording service — the human bridge between sighted volunteer readers and visually impaired listeners. |
 | `/catalogue` | Public, paginated, searchable browse of the audiobook catalogue, filterable by genre. Server-fetches the first page then hydrates a client component for search/pagination. Books flagged `hiddenFromCatalogue` never appear here. Audio descriptions can be synthesized via AWS Polly. |
-| `/coups-de-coeur` | "Staff picks" (known internally as *Liste des Livres*) — curated book selections with descriptions and an audio player. Paginated one selection at a time, exportable to PDF with editor, page count and duration. |
+| `/listes-de-livres` | "Staff picks" (known internally as *Liste des Livres*) — curated book selections with descriptions and an audio player. Paginated one selection at a time, exportable to PDF with editor, page count and duration. |
 | `/dernieres-infos` | News/announcements feed. Client page querying `/api/news` with search + type filters (Général, Événement, Annonce, Actualité, Programmation). |
 | `/nous-connaitre/equipe` | "Our team" — **DB-backed** (`TeamMember`), edited at `/admin/team`. |
 | `/nous-connaitre/historique` | "Our history" — **DB-backed** timeline (`HistoryEvent`), edited at `/admin/historique`. |
@@ -61,7 +61,7 @@ Isolated from the public layout via its own `layout.tsx` + `Backend-Navbar`, gro
 |---|---|
 | `/admin/books`, `/books/new`, `/books/[id]` | Catalogue CRUD. Search with availability pills, audio-presence and "hidden from catalogue" filters consolidated into a *Filtres* popover; create with ISBN check + Google Books lookup; per-book edit. |
 | `/admin/genres` | Genre taxonomy applied to books. |
-| `/admin/manage_coups_de_coeur` (+ `new`, `[id]`) | Build staff-pick selections: pick books, record a description, reorder, export to PDF. |
+| `/admin/listes-de-livres` (+ `new`, `[id]`) | Build staff-pick selections: pick books, record a description, reorder, export to PDF. |
 | `/admin/review` | **Doublons.** The duplicate-fusion queue, fed by `needsReview` / `id_arbre` from the Access import. Pairs a flagged book with its counterpart, shows the diff, and fuses on confirmation. A pair holding **two different recordings** cannot be fused: it is escalated instead (`escalatedAt` + an email via `lib/email/sendReviewEscalation.ts`) and left for a human. |
 | `/admin/audio-orphelins` | **Audio orphelin.** Bucket folders no book points at, in three tabs — *à traiter*, *rattachés*, *écartés*. A folder can be listened to in place before being relinked, so a recording is never attached to the wrong catalogue entry on the strength of a folder name. Deleting a linked book re-opens its row as *à traiter* rather than letting it drop silently out of the queue. |
 
@@ -225,7 +225,7 @@ Two ways in: Vercel's scheduler with `Authorization: Bearer $CRON_SECRET`, or a 
 
 ## 8. API layer (`app/api`)
 
-Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments`, `bills`, `payments`, `coups-de-coeur`, `user`), plus:
+Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments`, `bills`, `payments`, `listes-de-livres`, `user`), plus:
 
 **Audio**
 - `books/[id]/audio` — ordered tracks with presigned playback URLs (`withAuth`: auditeurs are the audience).
@@ -318,7 +318,7 @@ Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL (Supa
 
 ```
 app/
-  (public pages)/       Home, catalogue, coups-de-coeur, dernieres-infos, nous-connaitre…
+  (public pages)/       Home, catalogue, listes-de-livres, dernieres-infos, nous-connaitre…
   admin/                Authenticated back office
   api/                  Route handlers (REST + audio + stats + cron + Polly/Google Books)
   auth/                 Sign-in and password flows

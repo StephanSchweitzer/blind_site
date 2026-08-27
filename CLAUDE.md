@@ -172,7 +172,7 @@ these mostly kept their original English names even though the French rename hap
 | treasurer | Trésorière | `memberType: tresoriere` |
 | user / person / member | Personne / Membre | `User` model; `/admin/users`; `/api/user` |
 | catalogue / books | Catalogue / Livres | `Book` model; `/admin/books`; `/api/books`; public `/catalogue` |
-| staff picks / book list | Coups de cœur / "Liste des Livres" | `CoupsDeCoeur` model; `/admin/manage_coups_de_coeur`; `/api/coups-de-coeur`; public `/coups-de-coeur` |
+| staff picks / book list | Coups de cœur / "Liste des Livres" | `CoupsDeCoeur` model; `/admin/listes-de-livres`; `/api/listes-de-livres`; public `/listes-de-livres` |
 | orders / requests | Demandes | `Orders` model; `/admin/orders`; `/api/orders` *(formerly `commandes`)* |
 | assignments | Attributions | `Assignment` model; `/admin/assignments`; `/api/assignments` *(formerly `affectations`)* |
 | bill / invoice | Facture | `Bill` model; `/admin/bills`; `/api/bills` |
@@ -378,7 +378,7 @@ doesn't re-tarify), `backfill-audio-durations.ts`, `report-damaged-audio.ts`,
 
 ```
 app/
-  (public pages)/       Home, catalogue, coups-de-coeur, dernieres-infos, nous-connaitre…
+  (public pages)/       Home, catalogue, listes-de-livres, dernieres-infos, nous-connaitre…
   admin/                Back office. Beyond the CRUD screens: review (doublons),
                         audio-orphelins, disponibilites, stats, and the CMS page editors
   api/                  Route handlers — REST CRUD per entity, books/[id]/audio/*,
