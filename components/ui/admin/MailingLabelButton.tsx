@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import type { MailingLabelData } from './MailingLabelPDF';
 import { type ShipmentContext, shipmentReference } from '@/lib/orders/labelReference';
+import { printPdfBlob } from '@/lib/print-pdf';
 
 /** One address as the lookup route returns it. */
 interface LabelAddress {
@@ -53,7 +54,7 @@ export interface MailingLabelButtonProps {
 
 const FULL_TEXT = "Imprimer l'étiquette d'adresse";
 
-/** A filename someone can find again in their Downloads folder. */
+/** Only used by the download fallback in printPdfBlob — see lib/print-pdf.ts. */
 const fileNameFor = (recipient: string) => {
     const slug = recipient
         .toLowerCase()
@@ -84,7 +85,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
         { recipient: string; addresses: LabelAddress[] } | null
     >(null);
 
-    const download = async (data: MailingLabelData) => {
+    const print = async (data: MailingLabelData) => {
         // The PDF library is heavy and only needed on print — load it on demand,
         // same as BillPDFButton.
         const [{ pdf }, { MailingLabelPDF }] = await Promise.all([
@@ -92,17 +93,16 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
             import('./MailingLabelPDF'),
         ]);
         const blob = await pdf(<MailingLabelPDF label={data} />).toBlob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileNameFor(data.recipient);
-        a.click();
-        URL.revokeObjectURL(url);
+        // Straight to the print dialog — an étiquette exists to come out of a
+        // printer, and the detour through Téléchargements only added a step and
+        // a stack of stale PDFs. printPdfBlob falls back to a download where the
+        // browser can't print inline.
+        await printPdfBlob(blob, fileNameFor(data.recipient));
     };
 
     /** Address in hand — attach the shipment's reference note, if any, and print. */
     const proceed = async (resolved: PendingLabel) => {
-        await download({
+        await print({
             ...resolved,
             reference: shipment ? shipmentReference(shipment) : null,
         });
@@ -151,7 +151,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
             // Several on file — ask rather than guess which envelope this is.
             setChoices({ recipient: data.recipient, addresses });
         } catch (err) {
-            console.error('Mailing label export failed:', err);
+            console.error('Mailing label print failed:', err);
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
         } finally {
             setIsWorking(false);
@@ -166,7 +166,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
         try {
             await proceed(resolved);
         } catch (err) {
-            console.error('Mailing label export failed:', err);
+            console.error('Mailing label print failed:', err);
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
         } finally {
             setIsWorking(false);

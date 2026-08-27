@@ -36,6 +36,7 @@ import {
 } from '@/lib/billing-enums';
 import { AddBillFormBackend } from '@/admin/BillFormBackendBase';
 import { EditBillModal } from '@/admin/EditBillModal';
+import { BillPDFButton } from '@/admin/BillPDFButton';
 import { DeleteBillModal } from '@/admin/DeleteBillModal';
 import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
@@ -303,6 +304,13 @@ export default function BillsTable({
                                             <TableHead className="text-foreground font-medium">Date de paiement</TableHead>
                                             <TableHead className="text-foreground font-medium">Montant</TableHead>
                                             <TableHead className="text-foreground font-medium">État</TableHead>
+                                            {/* Header text is for screen readers only, but the cell
+                                                itself must stay in flow — an sr-only <th> is
+                                                position:absolute and drops out of the column count,
+                                                leaving the header one cell short of every body row. */}
+                                            <TableHead className="text-foreground font-medium w-[1%] whitespace-nowrap">
+                                                <span className="sr-only">Imprimer la facture</span>
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -346,6 +354,17 @@ export default function BillsTable({
                                                                 {getBillingStatusLabel(bill.state)}
                                                             </span>
                                                         </div>
+                                                    </TableCell>
+                                                    {/* Impression directe, sans ouvrir la facture.
+                                                        Un brouillon passe quand même par la
+                                                        confirmation d'émission — le raccourci
+                                                        économise un clic, pas une décision. */}
+                                                    <TableCell className="w-[1%] whitespace-nowrap text-right">
+                                                        <BillPDFButton
+                                                            variant="icon"
+                                                            billId={bill.id}
+                                                            onBillUpdated={() => router.refresh()}
+                                                        />
                                                     </TableCell>
                                                 </TableRow>
                                             );
