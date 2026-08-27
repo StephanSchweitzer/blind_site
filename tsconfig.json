@@ -29,8 +29,8 @@
       "@/catalogue/*": [
         "./app/catalogue/_components/*"
       ],
-      "@/coups-de-coeur/*": [
-        "./app/coups-de-coeur/components/*"
+      "@/listes-de-livres/*": [
+        "./app/listes-de-livres/components/*"
       ],
       "@/dernieres-infos/*": [
         "./app/dernieres-infos/components/*"

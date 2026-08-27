@@ -82,7 +82,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                         Gérez et modifiez les listes de livres
                     </CardDescription>
                 </div>
-                <Link href="/admin/manage_coups_de_coeur/new" className="w-full sm:w-auto">
+                <Link href="/admin/listes-de-livres/new" className="w-full sm:w-auto">
                     <Button className="w-full sm:w-auto bg-muted text-foreground border-border hover:bg-muted">
                         Ajouter une liste de livres
                     </Button>
@@ -122,7 +122,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                                 <TableRow
                                     key={item.id}
                                     className="border-b border-border hover:bg-muted cursor-pointer"
-                                    onClick={() => window.location.href = `/admin/manage_coups_de_coeur/${item.id}`}
+                                    onClick={() => window.location.href = `/admin/listes-de-livres/${item.id}`}
                                 >
                                     <TableCell className="text-foreground">{item.title}</TableCell>
                                     <TableCell className="text-foreground">{item.addedBy?.name || 'Inconnu'}</TableCell>
@@ -142,7 +142,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                                             className="bg-muted text-foreground border-border hover:bg-muted"
                                             onClick={(e) => {
                                                 e.stopPropagation(); // Prevent row click when clicking the button
-                                                window.location.href = `/admin/manage_coups_de_coeur/${item.id}`;
+                                                window.location.href = `/admin/listes-de-livres/${item.id}`;
                                             }}
                                         >
                                             Modifier

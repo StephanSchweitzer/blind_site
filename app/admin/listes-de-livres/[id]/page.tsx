@@ -93,7 +93,7 @@ export default function EditCoupDeCoeurPage() {
         if (!id) return;
         let active = true;
 
-        fetch(`/api/coups-de-coeur/${id}`)
+        fetch(`/api/listes-de-livres/${id}`)
             .then(async (res) => {
                 if (!res.ok) throw new Error('LOAD_FAILED');
                 return res.json();
@@ -118,7 +118,7 @@ export default function EditCoupDeCoeurPage() {
                         ? 'Échec du chargement de la liste de livres'
                         : 'Erreur lors du chargement de la liste de livres' + err
                 );
-                router.push('/admin/manage_coups_de_coeur');
+                router.push('/admin/listes-de-livres');
             });
 
         return () => {
@@ -151,7 +151,7 @@ export default function EditCoupDeCoeurPage() {
                 audioPath = filepath;
             }
 
-            const res = await fetch(`/api/coups-de-coeur/${id}`, {
+            const res = await fetch(`/api/listes-de-livres/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -167,7 +167,7 @@ export default function EditCoupDeCoeurPage() {
                 setIsLeaving(true);
                 await new Promise(resolve => requestAnimationFrame(resolve));
 
-                router.push('/admin/manage_coups_de_coeur');
+                router.push('/admin/listes-de-livres');
                 router.refresh();
             } else {
                 throw new Error('Échec de la mise à jour de la liste de livres');
@@ -182,13 +182,13 @@ export default function EditCoupDeCoeurPage() {
     const handleDelete = async () => {
         if (window.confirm('Êtes-vous sûr de vouloir supprimer cette liste de livres ?')) {
             try {
-                const res = await fetch(`/api/coups-de-coeur/${id}`, {
+                const res = await fetch(`/api/listes-de-livres/${id}`, {
                     method: 'DELETE',
                 });
 
                 if (res.ok) {
                     setIsLeaving(true);
-                    router.push('/admin/manage_coups_de_coeur');
+                    router.push('/admin/listes-de-livres');
                     router.refresh();
                 } else {
                     setError('Échec de la suppression de la liste de livres');
@@ -357,7 +357,7 @@ export default function EditCoupDeCoeurPage() {
                                         setIsLeaving(true);
                                         setTimeout(resolve, 0);
                                     });
-                                    router.push('/admin/manage_coups_de_coeur');
+                                    router.push('/admin/listes-de-livres');
                                     router.refresh();
                                 }}
                                 className="bg-field border-border text-foreground hover:bg-muted"

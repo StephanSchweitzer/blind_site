@@ -5,8 +5,8 @@ import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 
-// Back-office only. The public /coups-de-coeur page reads the active list
-// through `/api/coups-de-coeur` (and /preview, /position), which stay open;
+// Back-office only. The public /listes-de-livres page reads the active list
+// through `/api/listes-de-livres` (and /preview, /position), which stay open;
 // this route is the editor's view of a single entry.
 export const GET = withAdmin(async (_req, { params }) => {
     const { id } = (await params) ?? {};
@@ -100,7 +100,7 @@ export const PUT = withAdmin(async (req, { params }) => {
             timeout: 10000 // Increase timeout to 10 seconds just to be safe
         });
 
-        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/listes-de-livres');
 
         return NextResponse.json({
             message: 'Coup de coeur updated successfully',
@@ -132,7 +132,7 @@ export const DELETE = withAdmin(async (_req, { params }) => {
             where: { id: coupId }
         });
 
-        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/listes-de-livres');
 
         return NextResponse.json({ message: 'Coup de coeur deleted successfully' });
     } catch (error) {

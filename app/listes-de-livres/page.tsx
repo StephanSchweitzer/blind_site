@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
     title: 'Listes de livres',
     description: 'Découvrez les listes de livres et recommandations de lecture sélectionnées par les ECA.',
-    alternates: { canonical: '/coups-de-coeur' },
+    alternates: { canonical: '/listes-de-livres' },
 };
 
 const LIMIT = 1;

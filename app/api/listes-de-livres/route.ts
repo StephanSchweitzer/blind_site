@@ -160,7 +160,7 @@ export const POST = withAdmin(async (req, { me }) => {
             }
         });
 
-        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/listes-de-livres');
 
         return NextResponse.json(newCoupDeCoeur, { status: 201 });
     } catch (error) {

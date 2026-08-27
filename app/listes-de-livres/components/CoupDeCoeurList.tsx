@@ -1,6 +1,6 @@
 import React from 'react';
-import { AudioPlayer } from '@/coups-de-coeur/AudioPlayer';
-import { BookList } from '@/coups-de-coeur/BookList';
+import { AudioPlayer } from '@/listes-de-livres/AudioPlayer';
+import { BookList } from '@/listes-de-livres/BookList';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import type { BookWithGenres } from '@/types/book';
 

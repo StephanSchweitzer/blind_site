@@ -84,7 +84,7 @@ export default async function Dashboard() {
                     <AdminDashboardCard
                         title="Listes de livres"
                         count={coupsDeCoeurCount}
-                        href="/admin/manage_coups_de_coeur"
+                        href="/admin/listes-de-livres"
                         buttonText="Gestion des listes de livres (anciennement appelés « coups de cœur »)"
                         accentColor="pink"
                     />

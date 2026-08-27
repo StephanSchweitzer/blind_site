@@ -193,7 +193,7 @@ async function loadItems(
                 at: r.at,
                 title: r.title,
                 subtitle: `${r.bookCount} livre(s)`,
-                href: '/admin/manage_coups_de_coeur',
+                href: '/admin/listes-de-livres',
             }));
         }
 

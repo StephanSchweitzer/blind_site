@@ -40,7 +40,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
             setIsSearching(true);
             try {
-                const response = await fetch(`/api/coups-de-coeur/preview?search=${encodeURIComponent(debouncedValue)}`);
+                const response = await fetch(`/api/listes-de-livres/preview?search=${encodeURIComponent(debouncedValue)}`);
                 if (response.ok) {
                     const data = await response.json();
                     setResults(data);

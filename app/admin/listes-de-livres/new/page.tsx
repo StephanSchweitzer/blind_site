@@ -76,7 +76,7 @@ export default function AddCoupDeCoeur() {
             }
 
 
-            const res = await fetch('/api/coups-de-coeur', {
+            const res = await fetch('/api/listes-de-livres', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -92,7 +92,7 @@ export default function AddCoupDeCoeur() {
             }
 
             console.log('Liste de livres created successfully');
-            router.push('/admin/manage_coups_de_coeur');
+            router.push('/admin/listes-de-livres');
             router.refresh();
         } catch (err) {
             console.error('Error submitting form:', err);

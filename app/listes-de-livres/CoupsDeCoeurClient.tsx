@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { SearchBar } from '@/coups-de-coeur/SearchBar';
-import { CoupDeCoeurList } from '@/coups-de-coeur/CoupDeCoeurList';
+import { SearchBar } from '@/listes-de-livres/SearchBar';
+import { CoupDeCoeurList } from '@/listes-de-livres/CoupDeCoeurList';
 import { BookModal } from '@/components/BookModal';
 import FrontendNavbar from '@/components/Frontend-Navbar';
 import { CustomPagination } from '@/components/ui/custom-pagination';
-import { PDFButton } from '@/coups-de-coeur/PDFButton';
+import { PDFButton } from '@/listes-de-livres/PDFButton';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import type { BookWithGenres } from '@/types/book';
 
@@ -45,7 +45,7 @@ export default function CoupsDeCoeurClient({
 
     const handleResultSelect = async (id: number) => {
         try {
-            const response = await fetch(`/api/coups-de-coeur/position?id=${id}`);
+            const response = await fetch(`/api/listes-de-livres/position?id=${id}`);
             if (response.ok) {
                 const { page } = await response.json();
                 goToPage(page);

@@ -55,14 +55,14 @@ export const CoupDeCoeurPDFButton: React.FC<CoupDeCoeurPDFButtonProps> = ({
         setError(null);
         setIsPrinting(true);
         try {
-            const res = await fetch(`/api/coups-de-coeur/${coupDeCoeurId}`);
+            const res = await fetch(`/api/listes-de-livres/${coupDeCoeurId}`);
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.error || 'Échec du chargement de la liste de livres');
 
             // The PDF library is heavy and only needed on print — load it on demand.
             const [{ pdf }, { CoupDeCoeurPDF }] = await Promise.all([
                 import('@react-pdf/renderer'),
-                import('@/coups-de-coeur/CoupDeCoeurPDF'),
+                import('@/listes-de-livres/CoupDeCoeurPDF'),
             ]);
             const content = [data as CoupDeCoeur];
             const blob = await pdf(<CoupDeCoeurPDF content={content} />).toBlob();

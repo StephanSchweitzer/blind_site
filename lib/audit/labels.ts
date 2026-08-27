@@ -77,7 +77,7 @@ export function recordHref(model: string, recordId: string): string | null {
         case 'Payment':
             return `/admin/payments?payment=${recordId}`;
         case 'CoupsDeCoeur':
-            return `/admin/manage_coups_de_coeur`;
+            return `/admin/listes-de-livres`;
         case 'News':
             return `/admin/news?news=${recordId}`;
         // No standalone screen for one AudioTrackEvent row: it is a log line,

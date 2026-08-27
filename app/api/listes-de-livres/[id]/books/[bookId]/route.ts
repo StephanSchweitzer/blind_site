@@ -48,7 +48,7 @@ export const POST = withAdmin(async (_req, { params }) => {
             data: key
         });
 
-        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/listes-de-livres');
 
         return NextResponse.json({ success: true, data: newRelation });
     } catch (error) {
@@ -69,7 +69,7 @@ export const DELETE = withAdmin(async (_req, { params }) => {
             }
         });
 
-        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
+        revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/listes-de-livres');
 
         return NextResponse.json({ success: true });
     } catch (error) {

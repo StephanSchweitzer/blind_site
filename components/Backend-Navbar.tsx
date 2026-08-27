@@ -23,7 +23,7 @@ const navGroups: NavGroup[] = [
         items: [
             { href: '/admin/books', label: 'Catalogue', icon: '📚' },
             { href: '/admin/genres', label: 'Genres', icon: '🏷️' },
-            { href: '/admin/manage_coups_de_coeur', label: 'Listes de livres', icon: '⭐' },
+            { href: '/admin/listes-de-livres', label: 'Listes de livres', icon: '⭐' },
             { href: '/admin/review', label: 'Doublons', icon: '🔀' },
             { href: '/admin/audio-orphelins', label: 'Audio orphelin', icon: '🎧' },
         ],

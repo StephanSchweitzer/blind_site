@@ -26,5 +26,5 @@ export function revalidatePublic(tag: CacheTag, path: string): void {
  */
 export function revalidateCatalogue(): void {
     revalidatePublic(CACHE_TAGS.catalogue, '/catalogue');
-    revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/coups-de-coeur');
+    revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/listes-de-livres');
 }

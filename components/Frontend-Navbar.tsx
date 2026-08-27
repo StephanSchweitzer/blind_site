@@ -16,7 +16,7 @@ const FrontendNavbar = () => {
     const navLinks = [
         { href: '/', label: 'Accueil' },
         { href: '/catalogue', label: 'Catalogue' },
-        { href: '/coups-de-coeur', label: 'Listes de livres' },
+        { href: '/listes-de-livres', label: 'Listes de livres' },
         { href: '/dernieres-infos', label: 'Dernières infos' },
         { href: '/contact', label: 'Contact' },
         {
