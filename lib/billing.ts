@@ -191,10 +191,13 @@ export async function issueDraftIfOverThreshold(
  * Order fields printed on the invoice (BillPDF): book, date, type, cost.
  * Changing any of these on an order attached to a non-DRAFT bill makes the issued
  * document stale and should warn the admin to reprint.
+ *
+ * La date imprimée est la date de clôture — le jour de l'expédition à l'auditeur
+ * — et non la date de réception de la demande, qui ne figure plus sur le papier.
  */
 export const INVOICE_VISIBLE_ORDER_FIELDS = [
     'catalogueId',
-    'requestReceivedDate',
+    'closureDate',
     'isDuplication',
     'cost',
 ] as const;

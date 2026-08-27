@@ -24,6 +24,9 @@ import { BillHistory, BillEventDTO } from './BillHistory';
 interface BillOrder {
     id: number;
     requestReceivedDate: string;
+    // Imprimés sur la facture — cette modale passe son `bill` tel quel à BillPDF.
+    closureDate: string | null;
+    isDuplication: boolean;
     cost: number | string | null;
     billingStatus: string;
     catalogue: { title: string; author: string };
@@ -547,8 +550,15 @@ export function EditBillModal({
                                                 <div className="text-foreground text-sm font-medium break-words">
                                                     #{o.id} — {o.catalogue.title}
                                                 </div>
+                                                {/* La date de clôture, comme sur la facture imprimée
+                                                    (colonne « Livraison ») : deux dates différentes pour
+                                                    la même ligne, à l'écran et sur le papier, ne peuvent
+                                                    que faire douter de celle qui est partie chez
+                                                    l'auditeur. Le sélecteur ci-dessous garde la date de
+                                                    réception : une demande non facturée n'a pas
+                                                    forcément de date de clôture. */}
                                                 <div className="text-muted-foreground text-xs break-words">
-                                                    {o.catalogue.author} · {formatDate(o.requestReceivedDate)}
+                                                    {o.catalogue.author} · {formatDate(o.closureDate)}
                                                 </div>
                                             </div>
                                             <span className="shrink-0 text-foreground text-sm font-medium whitespace-nowrap">

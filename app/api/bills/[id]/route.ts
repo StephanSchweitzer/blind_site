@@ -44,11 +44,20 @@ export const GET = withAdmin(async (_request, context) => {
                     select: {
                         id: true,
                         requestReceivedDate: true,
+                        // Imprimés sur la facture (BillPDF) : la date de clôture est
+                        // celle de la prestation — le jour où l'enregistrement est
+                        // parti chez l'auditeur — et isDuplication distingue une
+                        // duplication d'un enregistrement dans la colonne « Type ».
+                        closureDate: true,
+                        isDuplication: true,
                         cost: true,
                         billingStatus: true,
                         catalogue: { select: { title: true, author: true } },
                     },
-                    orderBy: { requestReceivedDate: 'desc' },
+                    // Trié sur la date imprimée, sinon la colonne « Livraison » de la
+                    // facture saute d'une ligne à l'autre. Les rares demandes sans date
+                    // de clôture (legacy) ferment la liste plutôt que de l'ouvrir.
+                    orderBy: [{ closureDate: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
                 },
                 events: {
                     orderBy: { createdAt: 'desc' },

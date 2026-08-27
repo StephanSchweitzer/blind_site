@@ -20,16 +20,25 @@ const LOGO_RATIO = 1000 / 508;
 // ─── Shape this component needs (kept local to stay decoupled) ───────────────
 interface BillOrderLite {
     id: number;
-    requestReceivedDate: string;
-    sentDate?: string | null;       // date d'envoi au lecteur
-    isDuplicate?: boolean;          // true => Dupliqué, false/undefined => Enregistré
+    /**
+     * Date de clôture : le jour où l'enregistrement terminé est parti chez
+     * l'auditeur (retrait compris). C'est la date de la prestation, celle que
+     * l'art. 242 nonies A attend sur la ligne — et c'est la même transition,
+     * l'entrée en « Terminé », qui a mis cette ligne sur la facture
+     * (accrueOrderToOpenDraft). Nulle sur les demandes closes avant que la date
+     * ne soit conservée : la ligne imprime « — » plutôt que d'afficher à sa
+     * place une date de réception qui dirait autre chose.
+     */
+    closureDate: string | null;
+    /** Champs requis, jamais optionnels : un select qui les oublie doit casser
+     *  à la compilation, pas imprimer silencieusement une valeur par défaut. */
+    isDuplication: boolean;
     cost: number | string | null;
     catalogue: { title: string; author: string };
 }
 export interface BillPDFData {
     id: number;
     state: BillingStatus;
-    creationDate: string;
     issueDate: string | null;
     paymentDate: string | null;
     paymentReference: string | null;
@@ -57,15 +66,19 @@ const formatCurrency = (a: number | string | null) =>
             typeof a === 'string' ? parseFloat(a) : a
         );
 
-const orderDate = (o: BillOrderLite) => o.sentDate ?? o.requestReceivedDate;
-
 // ─── Adaptive vertical density ───────────────────────────────────────────────
 // Few orders → roomy spacing (fills the page nicely).
 // Many orders → tighter spacing, down to a floor reached at COUNT_TIGHT.
-// The floor is deliberately a touch more generous than a hard squeeze, so at
-// ~10 orders the page is dense but still legible (two pages then being expected).
+// The floor is deliberately a touch more generous than a hard squeeze: the page
+// is dense but stays legible, and the logotype never drops below 96 pt.
+//
+// COUNT_TIGHT est à 8, pas à 10, parce que la facture courante compte sept
+// titres : à ce palier, sept livres tiennent sur une feuille avec ~50 pt de
+// marge — de quoi absorber un titre long qui passe à la ligne. Le plancher
+// atteint plus tard ne laissait que ~12 pt, et un seul titre à rallonge
+// suffisait alors à faire déborder la facture sur une deuxième page.
 const COUNT_ROOMY = 2;
-const COUNT_TIGHT = 10;
+const COUNT_TIGHT = 8;
 
 const densityFor = (n: number) => {
     const t = Math.min(1, Math.max(0, (n - COUNT_ROOMY) / (COUNT_TIGHT - COUNT_ROOMY)));
@@ -128,8 +141,11 @@ const makeStyles = (d: Density) => StyleSheet.create({
 
     cId: { width: 36 },
     cDesc: { flex: 1, paddingRight: 8 },
-    cDate: { width: 92 },
-    cType: { width: 66 },
+    // « Livraison » et une date jj/mm/aaaa tiennent en 74 pt ; les 18 pt rendus
+    // vont à « Type », qui doit loger « Enregistrement » (~64 pt) sans passer à
+    // la ligne — une ligne de plus par titre, c'est la deuxième page.
+    cDate: { width: 74 },
+    cType: { width: 84 },
     cAmt: { width: 70, textAlign: 'right' },
 
     bookTitle: { fontSize: 10, color: '#111827' },
@@ -144,6 +160,11 @@ const makeStyles = (d: Density) => StyleSheet.create({
     grandValue: { fontSize: 14, fontWeight: 'bold', color: NAVY },
 
     payBox: { marginTop: d.payTop, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 4, padding: d.payPad },
+    settledBox: { marginTop: d.payTop, borderWidth: 1.5, borderColor: NAVY, borderRadius: 4, padding: d.payPad },
+    settledTitle: { fontSize: 11, fontWeight: 'bold', color: NAVY, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
+    // Date et référence côte à côte plutôt qu'empilées : deux lignes de moins,
+    // et l'encadré ne pèse alors pas plus qu'une ligne de tableau.
+    payRow: { flexDirection: 'row', justifyContent: 'space-between' },
     payLabel: { fontSize: 8, color: '#4b5563', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3, fontWeight: 'bold' },
     payValue: { fontSize: 10, color: '#111827' },
 
@@ -161,16 +182,13 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
     if (!bill) return null;
     const s = makeStyles(densityFor(bill.orders.length));
 
+    // Facture réglée : plus rien à réclamer, l'encadré IBAN disparaît.
+    const settled = bill.state === BillingStatus.PAID || bill.state === BillingStatus.SOLDE;
+
     const auditeurName =
         [bill.client.civility, bill.client.firstName, bill.client.lastName].filter(Boolean).join(' ')
         || bill.client.name
         || 'Auditeur';
-
-    // Date de création = date du 1er titre (envoi/réception) figurant sur la facture
-    const titleDates = bill.orders.map(orderDate).filter(Boolean) as string[];
-    const creationDate = titleDates.length
-        ? [...titleDates].sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0]
-        : bill.creationDate;
 
     return (
         <Document title={`${draft ? 'Brouillon — ' : ''}Facture n°${bill.id} — ${auditeurName}`}>
@@ -215,10 +233,6 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                             <Text style={[s.metaLabel, s.alignRight]}>Facture n°</Text>
                             <Text style={[s.metaNumber, s.alignRight]}>{bill.id}</Text>
                         </View>
-                        <View style={s.metaItem}>
-                            <Text style={[s.metaLabel, s.alignRight]}>Date de création</Text>
-                            <Text style={[s.metaLine, s.alignRight]}>{formatDate(creationDate)}</Text>
-                        </View>
                         <View>
                             <Text style={[s.metaLabel, s.alignRight]}>Date d&apos;émission</Text>
                             <Text style={[s.metaLine, s.alignRight]}>{formatDate(bill.issueDate)}</Text>
@@ -230,7 +244,7 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                 <View style={s.th} wrap={false}>
                     <Text style={[s.thText, s.cId]}>Réf.</Text>
                     <Text style={[s.thText, s.cDesc]}>Désignation</Text>
-                    <Text style={[s.thText, s.cDate]}>ENVOI LECTEUR</Text>
+                    <Text style={[s.thText, s.cDate]}>Livraison</Text>
                     <Text style={[s.thText, s.cType]}>Type</Text>
                     <Text style={[s.thText, s.cAmt]}>Montant</Text>
                 </View>
@@ -245,8 +259,11 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                                 <Text style={s.bookTitle}>{o.catalogue.title}</Text>
                                 <Text style={s.bookAuthor}>{o.catalogue.author}</Text>
                             </View>
-                            <Text style={[s.metaLine, s.cDate]}>{formatDate(orderDate(o))}</Text>
-                            <Text style={[s.metaLine, s.cType]}>{o.isDuplicate ? 'Dupliqué' : 'Enregistré'}</Text>
+                            <Text style={[s.metaLine, s.cDate]}>{formatDate(o.closureDate)}</Text>
+                            {/* Les noms du portail (filtre des demandes, case du
+                                formulaire), pas des participes : la colonne dit de
+                                quel TYPE de prestation il s'agit, pas où elle en est. */}
+                            <Text style={[s.metaLine, s.cType]}>{o.isDuplication ? 'Duplication' : 'Enregistrement'}</Text>
                             <Text style={[s.bookTitle, s.cAmt]}>{formatCurrency(o.cost)}</Text>
                         </View>
                     ))
@@ -264,21 +281,31 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                     </View>
                 </View>
 
-                {/* Paiement reçu (affiché si pertinent) */}
-                {(bill.paymentReference || bill.paymentDate) && (
-                    <View style={s.payBox} wrap={false}>
-                        {bill.paymentReference && (
-                            <>
-                                <Text style={s.payLabel}>Référence de paiement</Text>
-                                <Text style={s.payValue}>{bill.paymentReference}</Text>
-                            </>
+                {/* Paiement reçu. Une facture réglée le dit d'abord en toutes
+                    lettres — « acquittée » pour un paiement encaissé, « soldée »
+                    pour une facture close autrement — puis donne la date et la
+                    référence sur une seule ligne. */}
+                {(settled || bill.paymentReference || bill.paymentDate) && (
+                    <View style={settled ? s.settledBox : s.payBox} wrap={false}>
+                        {settled && (
+                            <Text style={s.settledTitle}>
+                                {bill.state === BillingStatus.PAID ? 'Facture acquittée' : 'Facture soldée'}
+                            </Text>
                         )}
-                        {bill.paymentDate && (
-                            <>
-                                <Text style={[s.payLabel, { marginTop: bill.paymentReference ? 8 : 0 }]}>Date de paiement</Text>
-                                <Text style={s.payValue}>{formatDate(bill.paymentDate)}</Text>
-                            </>
-                        )}
+                        <View style={s.payRow}>
+                            {bill.paymentDate && (
+                                <View>
+                                    <Text style={s.payLabel}>Date de paiement</Text>
+                                    <Text style={s.payValue}>{formatDate(bill.paymentDate)}</Text>
+                                </View>
+                            )}
+                            {bill.paymentReference && (
+                                <View>
+                                    <Text style={[s.payLabel, s.alignRight]}>Référence de paiement</Text>
+                                    <Text style={[s.payValue, s.alignRight]}>{bill.paymentReference}</Text>
+                                </View>
+                            )}
+                        </View>
                     </View>
                 )}
 
@@ -288,7 +315,12 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                     <Text style={s.legal}>TVA non applicable, art. 293 B du CGI.</Text>
                 )}
 
-                {/* Encadré paiement — une seule fois, en fin de dernière page */}
+                {/* Encadré paiement — une seule fois, en fin de dernière page.
+                    Rien à réclamer sur une facture déjà réglée : redonner l'IBAN
+                    sous un encadré « acquittée » se lit comme une relance, et les
+                    ~110 pt ainsi rendus sont ce qui garde une facture soldée de
+                    sept ou huit titres sur une seule feuille. */}
+                {!settled && (
                 <View style={s.payInfoBox} wrap={false}>
                     <Text style={s.payInfoLine}>Association (loi 1901) non assujettie à la TVA.</Text>
                     <Text style={s.payInfoLine}>Règlement par chèque ou par virement bancaire :</Text>
@@ -296,6 +328,7 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                     <Text style={s.payInfoLine}>BIC : AGRIFRPP882</Text>
                     <Text style={s.payInfoLine}>Merci de reporter le numéro de la facture au dos du chèque ou en référence du virement.</Text>
                 </View>
+                )}
             </Page>
         </Document>
     );

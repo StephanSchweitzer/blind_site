@@ -369,10 +369,9 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
         const catalogueChanged = data.catalogueId !== undefined && data.catalogueId !== existingOrder.catalogueId;
         const dupChanged = data.isDuplication !== undefined && data.isDuplication !== existingOrder.isDuplication;
-        const dateChanged =
-            data.requestReceivedDate !== undefined &&
-            new Date(data.requestReceivedDate).getTime() !== existingOrder.requestReceivedDate.getTime();
-        const visibleChanged = catalogueChanged || dupChanged || dateChanged;
+        // La troisième — la date de clôture — se lit plus bas : elle est dérivée du
+        // statut (resolveClosureDate) et pas seulement reçue, donc la comparaison
+        // n'a de sens qu'une fois cette valeur résolue. Voir closureChanged.
 
         // ── Cost lock: cannot change cost while the bill is PAID or SOLDE ────────
         if (costChanged && hasBill && (billState === BillingStatus.PAID || billState === BillingStatus.SOLDE)) {
@@ -425,6 +424,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         if (!closureGuard.ok) {
             return NextResponse.json({ message: closureGuard.message }, { status: closureGuard.httpStatus });
         }
+
+        // `undefined` = colonne laissée telle quelle, donc rien n'a bougé sur le
+        // papier. Ce qui compte pour la réimpression, c'est la date de clôture :
+        // c'est elle qui est imprimée dans la colonne « Livraison ».
+        const closureChanged =
+            closureDate !== undefined &&
+            (closureDate?.getTime() ?? null) !== (existingOrder.closureDate?.getTime() ?? null);
+        const visibleChanged = catalogueChanged || dupChanged || closureChanged;
 
         const updateData: Prisma.OrdersUncheckedUpdateInput = {
             aveugleId: data.aveugleId,
@@ -757,10 +764,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
 
         const catalogueChanged = body.catalogueId !== undefined && body.catalogueId !== existingOrder.catalogueId;
         const dupChanged = body.isDuplication !== undefined && body.isDuplication !== existingOrder.isDuplication;
-        const dateChanged =
-            body.requestReceivedDate !== undefined &&
-            new Date(body.requestReceivedDate).getTime() !== existingOrder.requestReceivedDate.getTime();
-        const visibleChanged = catalogueChanged || dupChanged || dateChanged;
+        // Idem PUT : la date imprimée est la date de clôture, résolue plus bas.
 
         // ── Cost lock: cannot change cost while the bill is PAID or SOLDE ────────
         if (costChanged && hasBill && (billState === BillingStatus.PAID || billState === BillingStatus.SOLDE)) {
@@ -823,6 +827,15 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         if (!closureGuard.ok) {
             return NextResponse.json({ message: closureGuard.message }, { status: closureGuard.httpStatus });
         }
+
+        // `undefined` = colonne laissée telle quelle, donc rien n'a bougé sur le
+        // papier. Ce qui compte pour la réimpression, c'est la date de clôture :
+        // c'est elle qui est imprimée dans la colonne « Livraison ».
+        const closureChanged =
+            closureDate !== undefined &&
+            (closureDate?.getTime() ?? null) !== (existingOrder.closureDate?.getTime() ?? null);
+        const visibleChanged = catalogueChanged || dupChanged || closureChanged;
+
         if (closureDate !== undefined) updateData.closureDate = closureDate;
         if (body.cost !== undefined) updateData.cost = newCost;
         if (body.billingStatus !== undefined) updateData.billingStatus = body.billingStatus;
