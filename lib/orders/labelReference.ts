@@ -3,22 +3,14 @@
  *
  * The contents line is printed BELOW the cut, on the half of the sheet that
  * gets thrown away, so it reaches whoever is packing and never the auditeur
- * (who reads nothing printed anyway). The « CÉCOGRAMME » mention is the
- * opposite — above the cut, where La Poste sees it — and follows from the same
- * answer, because the franchise is about what is actually inside.
+ * (who reads nothing printed anyway).
  *
- * Why this is asked rather than derived: it very nearly *is* derivable. The
- * demande type says whether a printed book was ever borrowed (an enregistrement
- * is made from the auditeur's own copy; a duplication copies audio ECA already
- * holds), and Orders.mediaFormatId says whether the recording travels on a
- * physical medium or goes out over the internet — « WeTransfer » being the
- * digital one. Together those two determine the answer exactly.
- *
- * Except the media format is « Non défini » on ~90% of demandes. Deriving from
- * a field that empty would confidently stamp a postal franchise on envelopes
- * nobody checked, so the answer is proposed and confirmed instead. If the
- * permanence starts filling the format in, the proposal below becomes right
- * often enough that the confirmation step could be dropped again.
+ * The demande type says whether a printed book was ever borrowed (an
+ * enregistrement is made from the auditeur's own copy; a duplication copies
+ * audio ECA already holds), and Orders.mediaFormatId says whether the
+ * recording travels on a physical medium or goes out over the internet —
+ * « WeTransfer » being the digital one. Together those two propose a guess at
+ * the contents line — see proposedShipmentContents.
  */
 
 export type ShipmentContents =
@@ -35,27 +27,11 @@ export const SHIPMENT_CONTENTS_LABELS: Record<ShipmentContents, string> = {
     BOOK_ONLY: 'Livre seul (enregistrement transmis par Internet)',
 };
 
-/** Short forms for the dialog's buttons, where the sentence above is too long. */
-export const SHIPMENT_CONTENTS_HINTS: Record<ShipmentContents, string> = {
-    RECORDING_AND_BOOK:
-        "L'enregistrement sur support, accompagné du livre que l'auditeur nous avait prêté.",
-    RECORDING_ONLY: "L'enregistrement seul — aucun livre n'a été prêté.",
-    BOOK_ONLY:
-        "Uniquement le livre : l'enregistrement a déjà été transmis par Internet.",
-};
-
-/**
- * Only an envelope actually carrying material for the blind can claim the
- * franchise. A printed book travelling home on its own is ordinary mail.
- */
-export function shipmentCarriesRecording(contents: ShipmentContents): boolean {
-    return contents !== 'BOOK_ONLY';
-}
-
 // MediaFormat is a free-form table (name VarChar(80)) with no admin screen, so
 // rows change rarely and by hand. Matching on the name is therefore safe enough
 // — but anything unrecognised stays 'unknown' rather than being assumed
-// physical, so a format added later can never silently produce a cécogramme.
+// physical, since guessing wrong only means the printed reference note names
+// the wrong contents, not a legal claim.
 const DIGITAL_MEDIA_FORMATS = ['wetransfer'];
 const PHYSICAL_MEDIA_FORMATS = ['k7', 'cdr', 'dvdr', 'md', 'clé usb', 'cle usb'];
 
@@ -78,34 +54,25 @@ export interface ShipmentContext {
     mediaFormat?: string | null;
 }
 
-/** The option the dialog opens on. Always overridable. */
+/**
+ * Best guess at what's in the envelope, printed as the reference note without
+ * asking — it's a packing aid, not a postal claim, so a wrong guess is low
+ * stakes.
+ */
 export function proposedShipmentContents(ctx: ShipmentContext): ShipmentContents {
     if (mediaFormatKind(ctx.mediaFormat) === 'digital') {
         // The audio already went out over the wire. For an enregistrement the
         // book is the only thing left to post; for a duplication there is
-        // nothing at all — see shipmentNeedsNothing.
+        // nothing at all to send.
         return ctx.isDuplication ? 'RECORDING_ONLY' : 'BOOK_ONLY';
     }
     return ctx.isDuplication ? 'RECORDING_ONLY' : 'RECORDING_AND_BOOK';
 }
 
-/**
- * A duplication delivered over the internet posts nothing: no book was ever
- * borrowed and the audio has already arrived. Worth saying out loud on the
- * dialog rather than printing a confident label for an envelope that does not
- * exist.
- */
-export function shipmentNeedsNothing(ctx: ShipmentContext): boolean {
-    return ctx.isDuplication && mediaFormatKind(ctx.mediaFormat) === 'digital';
-}
-
 /** The line printed below the cut. */
-export function shipmentReference(
-    ctx: ShipmentContext,
-    contents: ShipmentContents
-): string {
+export function shipmentReference(ctx: ShipmentContext): string {
     return [
-        SHIPMENT_CONTENTS_LABELS[contents],
+        SHIPMENT_CONTENTS_LABELS[proposedShipmentContents(ctx)],
         `Demande #${ctx.orderId}`,
         ctx.title?.trim() || null,
     ]
