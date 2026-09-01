@@ -402,13 +402,27 @@ export const PATCH = withAdmin(async (
             }
         }
 
-        // Handle languages separately (one-to-many; replace-all)
+        // Handle languages separately (one-to-many; replace-all). The edit form
+        // always submits this field, so comparing against what's already stored
+        // first is what keeps an unrelated edit (e.g. just the phone number) from
+        // deleting and recreating every ReaderLanguage row — noise that used to
+        // show up in the journal des modifications as if languages had changed.
         if (body.languages !== undefined) {
-            await prisma.readerLanguage.deleteMany({ where: { userId } });
-            if (body.languages.length > 0) {
-                await prisma.readerLanguage.createMany({
-                    data: body.languages.map((language: string) => ({ userId, language: language as Language })),
-                });
+            const existingLanguages = await prisma.readerLanguage.findMany({
+                where: { userId },
+                select: { language: true },
+            });
+            const before = new Set(existingLanguages.map((l) => l.language));
+            const after = new Set(body.languages as string[]);
+            const unchanged = before.size === after.size && [...before].every((l) => after.has(l));
+
+            if (!unchanged) {
+                await prisma.readerLanguage.deleteMany({ where: { userId } });
+                if (body.languages.length > 0) {
+                    await prisma.readerLanguage.createMany({
+                        data: body.languages.map((language: string) => ({ userId, language: language as Language })),
+                    });
+                }
             }
         }
 
