@@ -21,7 +21,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AddBookFormBackend } from '@/admin/BookFormBackendBase';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
-import { useRecordingCheck } from '@/hooks/useRecordingCheck';
+import { useRecordingAdvice } from '@/hooks/useRecordingAdvice';
+import { RecordingAdviceNotice, recordingConflictConfirmText } from '@/components/ui/admin/RecordingAdviceNotice';
+import type { RecordingContext } from '@/lib/orders/recordingAdvice';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
 import { BillPrintNoticeDialog } from '@/components/ui/admin/BillPrintNoticeDialog';
@@ -112,7 +114,6 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     const [error, setError] = useState<string | null>(null);
     const { toastError } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
-    const { check: checkRecording, getFor: getRecordingFor } = useRecordingCheck();
     const {
         blocked: activityBlocked,
         role: activityRole,
@@ -150,15 +151,23 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
         { ...makeLine('3.00'), mediaFormatId: initialClient?.preferredMediaFormatId ?? null },
     ]);
 
-    // For each ENREGISTREMENT line with a book, look up whether the book already
-    // has an active recording demande (drives the per-line warning + submit confirm).
-    useEffect(() => {
-        for (const l of lines) {
-            if (l.type === 'ENREGISTREMENT' && l.book) {
-                void checkRecording(l.book.id);
-            }
-        }
-    }, [lines, checkRecording]);
+    // Une décision d'enregistrement par ligne. `saved` est absent : ici tout est
+    // en train d'être décidé, donc la porte de lib/orders/recordingAdvice.ts est
+    // grande ouverte — c'est le formulaire de modification qu'elle referme, pas
+    // celui-ci. Le hook interroge de lui-même, ligne par ligne.
+    const recordingLines = React.useMemo<RecordingContext[]>(
+        () =>
+            lines.map((l) => ({
+                catalogueId: l.book?.id ?? null,
+                lentPhysicalBook: l.type === 'ENREGISTREMENT',
+                isDuplication: l.type === 'DUPLICATION',
+                bookHasAudio: Boolean(l.book?.audio_filepath),
+            })),
+        [lines]
+    );
+    const { adviceFor: recordingAdviceFor, conflicts: recordingConflicts } = useRecordingAdvice({
+        current: recordingLines,
+    });
 
     useEffect(() => {
         const fetchOptions = async () => {
@@ -264,20 +273,14 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
             cost: l.cost || '3.00',
         }));
 
-        // Guard: warn before creating recording demande(s) for book(s) that already
-        // have an active recording demande. One confirm covers all offending lines.
-        const recordingLines = lines.filter((l) => l.type === 'ENREGISTREMENT' && l.book);
-        const dupTitles: string[] = [];
-        for (const l of recordingLines) {
-            const r = await checkRecording(l.book!.id);
-            if (r && r.activeRecordingCount > 0) dupTitles.push(l.book!.title);
-        }
-        if (dupTitles.length > 0) {
-            const confirmed = window.confirm(
-                `Une demande d’enregistrement active existe déjà pour : ${dupTitles.join(', ')}.\n\n` +
-                `Voulez-vous vraiment créer ${dupTitles.length > 1 ? 'ces nouvelles demandes' : 'cette nouvelle demande'} d’enregistrement ?`
+        // Warn before creating recording demande(s) for book(s) that already have
+        // an active one. One confirm covers all offending lines.
+        const conflicts = await recordingConflicts();
+        if (conflicts.length > 0) {
+            const titles = conflicts.map(
+                (c) => lines.find((l) => l.book?.id === c.catalogueId)?.book?.title ?? ''
             );
-            if (!confirmed) {
+            if (!window.confirm(recordingConflictConfirmText(conflicts, titles))) {
                 setIsLoading(false);
                 return;
             }
@@ -444,24 +447,8 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
                                     </button>
                                 </div>
 
-                                {/* #2 — audio already exists for this book */}
-                                {line.type === 'ENREGISTREMENT' && line.book?.audio_filepath && (
-                                    <p className="text-sm text-amber-700 dark:text-amber-400">
-                                        Attention : un enregistrement audio existe déjà pour cet ouvrage.
-                                        Vérifiez qu&apos;un nouvel enregistrement est réellement nécessaire — il
-                                        s&apos;agit peut-être plutôt d&apos;une duplication.
-                                    </p>
-                                )}
-                                {/* Active recording demande already exists for this book */}
-                                {line.type === 'ENREGISTREMENT' && line.book &&
-                                    (getRecordingFor(line.book.id)?.activeRecordingCount ?? 0) > 0 && (
-                                    <p className="text-sm text-amber-700 dark:text-amber-400">
-                                        Il existe déjà une demande d&apos;enregistrement active pour cet
-                                        ouvrage{getRecordingFor(line.book.id)!.orders[0]?.aveugle?.name
-                                            ? ` (ex. ${getRecordingFor(line.book.id)!.orders[0].aveugle!.name})`
-                                            : ''}. Êtes-vous sûr de vouloir en créer une nouvelle&nbsp;?
-                                    </p>
-                                )}
+                                {/* #2 — audio déjà présent / demande d'enregistrement concurrente */}
+                                <RecordingAdviceNotice advice={recordingAdviceFor(recordingLines[idx])} />
 
                                 {/* Per-ouvrage format — required per line, seeded from the auditeur's préférence */}
                                 <div className="grid grid-cols-2 gap-2">

@@ -24,7 +24,9 @@ import { isLegacyValue } from '@/lib/select-options';
 import type { BillingStatus } from '@prisma/client';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
-import { useRecordingCheck } from '@/hooks/useRecordingCheck';
+import { useRecordingAdvice } from '@/hooks/useRecordingAdvice';
+import { RecordingAdviceNotice, recordingConflictConfirmText } from '@/components/ui/admin/RecordingAdviceNotice';
+import type { RecordingContext, RecordingDecision } from '@/lib/orders/recordingAdvice';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
 import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
@@ -152,7 +154,6 @@ export function OrderFormBackendBase({
     const [error, setError] = useState<string | null>(null);
     const { toastError } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
-    const { check: checkRecording, getFor: getRecordingFor } = useRecordingCheck();
     const {
         blocked: activityBlocked,
         role: activityRole,
@@ -192,13 +193,6 @@ export function OrderFormBackendBase({
     // order, so the banner doesn't nag on every (already-duplication) order.
     const [dupAutoChecked, setDupAutoChecked] = useState(false);
 
-    // The « enregistrement audio existe déjà » warning is only meaningful at
-    // decision time: on a new demande, or when the admin actively toggles the
-    // « Enregistrement nécessaire » box on an existing one. An old demande loaded
-    // with the box already checked is usually the very demande that produced the
-    // audio file — warning there is noise, so we wait for an actual interaction.
-    const [recordingTouched, setRecordingTouched] = useState(false);
-
     // Form data state
     const [formData, setFormData] = useState<OrderFormData>(() =>
         initialData
@@ -229,6 +223,48 @@ export function OrderFormBackendBase({
     const [selectedUser, setSelectedUser] = useState<User | null>(initialSelectedUser || null);
     const [selectedBook, setSelectedBook] = useState<Book | null>(initialSelectedBook || null);
     const [selectedStaff, setSelectedStaff] = useState<User | null>(initialSelectedStaff || null);
+
+    const audioAlreadyExists = Boolean(selectedBook?.audio_filepath);
+
+    // ── Mises en garde « enregistrement » ───────────────────────────────
+    // On ne décide plus ici de les montrer ou non : on donne au hook la décision
+    // saisie et la décision ENREGISTRÉE, et il ne fabrique un avis que tant que
+    // la première s'écarte de la seconde. Ouvrir une demande d'enregistrement
+    // pour la modifier ne produit donc aucun avis — c'est elle, l'enregistrement
+    // dont on l'avertirait. Le raisonnement complet est dans
+    // lib/orders/recordingAdvice.ts ; la règle n'existe qu'à cet endroit-là,
+    // pour qu'elle ne puisse plus disparaître d'un coup de ménage dans le JSX.
+    const recordingContext = React.useMemo<RecordingContext>(
+        () => ({
+            catalogueId: formData.catalogueId,
+            lentPhysicalBook: formData.lentPhysicalBook,
+            isDuplication: formData.isDuplication,
+            bookHasAudio: audioAlreadyExists,
+        }),
+        [formData.catalogueId, formData.lentPhysicalBook, formData.isDuplication, audioAlreadyExists]
+    );
+    const savedRecordingDecision = React.useMemo<RecordingDecision | null>(
+        () =>
+            initialData
+                ? {
+                    catalogueId: initialData.catalogueId,
+                    lentPhysicalBook: initialData.lentPhysicalBook,
+                    isDuplication: initialData.isDuplication,
+                }
+                : null,
+        [initialData]
+    );
+    const recordingCurrent = React.useMemo(() => [recordingContext], [recordingContext]);
+    const {
+        adviceFor: recordingAdviceFor,
+        conflicts: recordingConflicts,
+        blockingRecordingFor,
+    } = useRecordingAdvice({
+        current: recordingCurrent,
+        saved: savedRecordingDecision,
+        excludeOrderId: currentOrderId,
+    });
+    const recordingAdvice = recordingAdviceFor(recordingContext);
 
     // Fetch initial data
     useEffect(() => {
@@ -386,7 +422,6 @@ export function OrderFormBackendBase({
     const handleRecordingChange = (checked: boolean) => {
         // The admin is now deciding manually — the auto-check banner no longer applies.
         setDupAutoChecked(false);
-        setRecordingTouched(true);
         setFormData(prev => {
             // An already-finished demande keeps « Terminé » whichever way this goes.
             const isTermine = prev.statusId === STATUS.TERMINE;
@@ -455,21 +490,14 @@ export function OrderFormBackendBase({
             return;
         }
 
-        // Guard: warn before creating a SECOND active recording demande for this book.
-        if (formData.lentPhysicalBook && formData.catalogueId) {
-            const res = await checkRecording(formData.catalogueId, currentOrderId);
-            if (res && res.activeRecordingCount > 0) {
-                const who = res.orders[0]?.aveugle?.name;
-                const confirmed = window.confirm(
-                    `Il existe déjà ${res.activeRecordingCount === 1
-                        ? 'une demande d\u2019enregistrement active'
-                        : `${res.activeRecordingCount} demandes d\u2019enregistrement actives`} pour cet ouvrage${who ? ` (ex. ${who})` : ''}.\n\n` +
-                    `Voulez-vous vraiment créer une nouvelle demande d\u2019enregistrement pour ce livre ?`
-                );
-                if (!confirmed) {
-                    setIsLoading(false);
-                    return;
-                }
+        // Warn before creating a SECOND active recording demande for this book.
+        // Même porte que l'avis affiché dans le formulaire : modifier une demande
+        // sans toucher à sa décision d'enregistrement ne demande rien à personne.
+        const conflicts = await recordingConflicts();
+        if (conflicts.length > 0) {
+            if (!window.confirm(recordingConflictConfirmText(conflicts, []))) {
+                setIsLoading(false);
+                return;
             }
         }
 
@@ -508,8 +536,6 @@ export function OrderFormBackendBase({
         }
     };
 
-    const audioAlreadyExists = Boolean(selectedBook?.audio_filepath);
-
     // Tarif conseillé : 3 € par tranche de 700 Mio entamée (lib/pricing.ts). Null
     // tant que le poids du livre est inconnu — mieux vaut ne rien annoncer qu'un
     // tarif fondé sur un dossier jamais synchronisé.
@@ -518,22 +544,6 @@ export function OrderFormBackendBase({
     // « 6 » et « 6.00 » sont le même montant et ne doivent pas déclencher l'alerte.
     const costDiffersFromTarif =
         tarif != null && !costLocked && formatEuro2(formData.cost) !== tarif.value;
-
-    // Active "enregistrement nécessaire" already exists for this book (excluding
-    // the order being edited). Checked whenever the book or either type flag
-    // changes; result drives an inline warning + a submit-time confirm. The same
-    // call answers the duplication side (is a lecteur still holding this book?),
-    // hence the isDuplication trigger.
-    useEffect(() => {
-        if (formData.catalogueId && (formData.lentPhysicalBook || formData.isDuplication)) {
-            void checkRecording(formData.catalogueId, currentOrderId);
-        }
-    }, [formData.catalogueId, formData.lentPhysicalBook, formData.isDuplication, currentOrderId, checkRecording]);
-
-    const recordingDup = formData.lentPhysicalBook
-        ? getRecordingFor(formData.catalogueId)
-        : null;
-    const hasRecordingDup = (recordingDup?.activeRecordingCount ?? 0) > 0;
 
     // A duplication is normally « À faire » — do it now. The exception is a book
     // with no audio yet because a lecteur is still recording it: nothing can be
@@ -575,7 +585,7 @@ export function OrderFormBackendBase({
         (!!initialAssignment.sentToReaderDate || !!initialAssignment.returnedToECADate);
     const blockingRecording =
         formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
-            ? getRecordingFor(formData.catalogueId)?.blockingRecording ?? null
+            ? blockingRecordingFor(formData.catalogueId)
             : null;
 
     return (
@@ -794,24 +804,7 @@ export function OrderFormBackendBase({
                                         Enregistrement
                                     </label>
                                 </div>
-                                {audioAlreadyExists && formData.lentPhysicalBook && (!currentOrderId || recordingTouched) && (
-                                    <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
-                                        Attention : un enregistrement audio existe déjà pour cet ouvrage.
-                                        Vérifiez qu&apos;un nouvel enregistrement est réellement nécessaire
-                                        avant de poursuivre — il s&apos;agit peut-être plutôt d&apos;une duplication.
-                                    </p>
-                                )}
-                                {hasRecordingDup && (
-                                    <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
-                                        Il existe déjà {recordingDup!.activeRecordingCount === 1
-                                            ? 'une demande d\u2019enregistrement active'
-                                            : `${recordingDup!.activeRecordingCount} demandes d\u2019enregistrement actives`}{' '}
-                                        pour cet ouvrage
-                                        {recordingDup!.orders[0]?.aveugle?.name
-                                            ? ` (ex. ${recordingDup!.orders[0].aveugle!.name})`
-                                            : ''}. Êtes-vous sûr de vouloir en créer une nouvelle&nbsp;?
-                                    </p>
-                                )}
+                                <RecordingAdviceNotice advice={recordingAdvice} className="mt-2 ml-9" />
                             </div>
                         </div>
                     </div>
