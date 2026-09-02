@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { audioMissingWhere, audioPresentWhere } from '@/lib/books/audioFilter';
+import { bookFieldsForToken, searchTokens } from '@/lib/search';
 
 export type AudioFilter = 'missing' | 'present' | undefined;
 
@@ -30,29 +31,39 @@ export function buildBookScopeWhere({
     const mode = Prisma.QueryMode.insensitive;
     const clauses: Prisma.BookWhereInput[] = [];
 
-    if (searchTerm) {
+    // Tokenized: every word must match something, but different words may match
+    // different columns — « camus étranger » is an author and a title, and used
+    // to find nothing because the whole phrase was tested against each column in
+    // turn. A single-word query is unchanged.
+    //
+    // The `default` branch must list exactly the columns the route's raw SQL
+    // searches, or this count and that list disagree; `bookFieldsForToken` is
+    // the shared definition.
+    for (const token of searchTokens(searchTerm ?? '')) {
         switch (filter) {
             case 'title':
-                clauses.push({ title: { contains: searchTerm, mode } });
+                clauses.push({ title: { contains: token, mode } });
                 break;
             case 'author':
-                clauses.push({ author: { contains: searchTerm, mode } });
+                clauses.push({ author: { contains: token, mode } });
                 break;
             case 'description':
-                clauses.push({ description: { contains: searchTerm, mode } });
+                clauses.push({ description: { contains: token, mode } });
+                break;
+            case 'subtitle':
+                clauses.push({ subtitle: { contains: token, mode } });
+                break;
+            case 'publisher':
+                clauses.push({ publisher: { contains: token, mode } });
+                break;
+            case 'isbn':
+                clauses.push({ isbn: { contains: token, mode } });
                 break;
             case 'genre':
-                clauses.push({ genres: { some: { genre: { name: { contains: searchTerm, mode } } } } });
+                clauses.push({ genres: { some: { genre: { name: { contains: token, mode } } } } });
                 break;
             default:
-                clauses.push({
-                    OR: [
-                        { title: { contains: searchTerm, mode } },
-                        { author: { contains: searchTerm, mode } },
-                        { description: { contains: searchTerm, mode } },
-                        { genres: { some: { genre: { name: { contains: searchTerm, mode } } } } },
-                    ],
-                });
+                clauses.push({ OR: bookFieldsForToken(token) });
         }
     }
 

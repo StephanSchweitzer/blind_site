@@ -3,7 +3,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus, OrderBillingStatus } from '@prisma/client';
 import { recomputeBillTotal, logBillEvent, orderBillingForBillState } from '@/lib/billing';
-import { buildUserNameSearch } from '@/lib/search';
+import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -24,8 +24,12 @@ export const GET = withAdmin(async (request) => {
         // Hide soft-deleted bills from the listing.
         const whereClause: Prisma.BillWhereInput = { isActive: true };
 
-        const clientSearch = search ? buildUserNameSearch(search) : null;
-        if (clientSearch) whereClause.client = clientSearch;
+        // One definition, shared with the /admin/bills page — see
+        // buildBillSearchWhere.
+        if (search) {
+            const tokenClauses = buildBillSearchWhere(search);
+            if (tokenClauses) whereClause.AND = tokenClauses;
+        }
 
         if (rawClientId) {
             const parsedClientId = parseInt(rawClientId);

@@ -7,6 +7,7 @@ import { STATUS, guardOrderStatus, guardDuplicationStatus, guardOrderCompletion,
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
+import { buildOrderSearchWhere } from '@/lib/search';
 
 /**
  * Shape of a demande in a list response. Hoisted out of the query so the
@@ -77,32 +78,12 @@ export const GET = withAdmin(async (request) => {
         // exact-match promotion after the query needs it too.
         const entityId = search ? parseEntityId(search) : null;
 
-        // Search filter
+        // Search filter — tokens AND-ed, each satisfiable by the auditeur, the
+        // book, or the number, so « bernard morvan instructions » finds the one
+        // demande naming that person and that title. See buildOrderSearchWhere.
         if (search) {
-            const searchOR: Prisma.OrdersWhereInput[] = [
-                {
-                    aveugle: {
-                        OR: [
-                            { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                            { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                        ],
-                    },
-                },
-                {
-                    catalogue: {
-                        OR: [
-                            { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                            { author: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                        ],
-                    },
-                },
-            ];
-
-            if (entityId !== null) {
-                searchOR.push({ id: entityId });
-            }
-
-            whereClause.OR = searchOR;
+            const tokenClauses = buildOrderSearchWhere(search);
+            if (tokenClauses) whereClause.AND = tokenClauses;
         }
 
         // Special filters

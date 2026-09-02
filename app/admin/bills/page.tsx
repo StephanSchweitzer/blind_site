@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { BillingStatus, Prisma } from '@prisma/client';
 import BillsTable from './bills-table';
-import { buildUserNameSearch } from '@/lib/search';
+import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { notFound } from 'next/navigation';
 
@@ -25,10 +25,13 @@ async function getBills(
     // Hide soft-deleted bills from the listing.
     const whereClause: Prisma.BillWhereInput = { isActive: true };
 
-    // Tokenized search across firstName / lastName / name / email, so a full-name
-    // query matches even when the words live in different columns.
-    const clientSearch = searchTerm ? buildUserNameSearch(searchTerm) : null;
-    if (clientSearch) whereClause.client = clientSearch;
+    // Tokens AND-ed across the auditeur, the books on the demandes this facture
+    // covers, the payment reference and the number — so « morvan instructions »
+    // finds the facture carrying that demande. See buildBillSearchWhere.
+    if (searchTerm) {
+        const tokenClauses = buildBillSearchWhere(searchTerm);
+        if (tokenClauses) whereClause.AND = tokenClauses;
+    }
 
     if (showLate) {
         const thirtyDaysAgo = new Date();

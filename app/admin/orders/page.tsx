@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus, BillingStatus } from '@prisma/client';
-import { buildUserNameSearch } from '@/lib/search';
+import { buildOrderSearchWhere } from '@/lib/search';
 import OrdersTable from './orders-table';
 import { notFound } from 'next/navigation';
 import { ordersTableInclude } from '@/types/models/order.model';
@@ -32,42 +32,11 @@ async function getOrders(
 
     const whereClause: Prisma.OrdersWhereInput = {};
 
+    // One definition, shared with /api/orders — the two used to carry separate
+    // copies of this clause and had already drifted apart.
     if (searchTerm) {
-        const searchOR: Prisma.OrdersWhereInput[] = [
-            {
-                catalogue: {
-                    OR: [
-                        {
-                            title: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive,
-                            },
-                        },
-                        {
-                            author: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive,
-                            },
-                        },
-                    ],
-                },
-            },
-        ];
-
-        // Tokenized name search across firstName / lastName / name / email, so a
-        // full-name query ("steffy ref") matches the auditeur even when the words
-        // live in different columns.
-        const personSearch = buildUserNameSearch(searchTerm);
-        if (personSearch) {
-            searchOR.push({ aveugle: personSearch });
-        }
-
-        const trimmedSearch = searchTerm.trim();
-        if (/^\d+$/.test(trimmedSearch) && Number.isSafeInteger(Number(trimmedSearch))) {
-            searchOR.push({ id: Number(trimmedSearch) });
-        }
-
-        whereClause.OR = searchOR;
+        const tokenClauses = buildOrderSearchWhere(searchTerm);
+        if (tokenClauses) whereClause.AND = tokenClauses;
     }
 
     if (filter === 'needsReturn') {

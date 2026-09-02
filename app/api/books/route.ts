@@ -9,6 +9,7 @@ import { withAdmin, getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { audioMissingWhere, audioPresentWhere, AUDIO_MISSING_STATUSES } from '@/lib/books/audioFilter';
 import { buildBookScopeWhere } from '@/lib/books/searchWhere';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
+import { bookFieldsForToken, searchTokens } from '@/lib/search';
 
 type AudioFilter = 'missing' | 'present' | undefined;
 
@@ -59,75 +60,103 @@ function promoteExactId<T extends { id: number }>(rows: T[], entityId: number | 
     return [rows[index], ...rows.filter((_, i) => i !== index)];
 }
 
-// Perform accent-insensitive search using raw SQL
-async function performAccentInsensitiveSearch(
-    search: string,
-    filter: string,
-    genres: number[],
-    skip: number,
-    limit: number,
-    includeHidden: boolean,
-    available?: boolean,
-    hiddenFilter?: boolean,
-    audio?: AudioFilter
-): Promise<{ books: BookWithGenres[]; total: number }> {
-    const searchTerm = `%${search.toLowerCase()}%`;
+interface RawBookWhereOptions {
+    search: string;
+    filter: string;
+    genres: number[];
+    includeHidden: boolean;
+    available?: boolean;
+    hiddenFilter?: boolean;
+    audio?: AudioFilter;
+}
 
+/**
+ * The accent-insensitive WHERE clause, shared by the book list and by the
+ * availability counts printed beside it.
+ *
+ * Extracted because those two were built by different code — raw SQL through
+ * `immutable_unaccent` for the list, Prisma `contains` for the counts — so an
+ * accented title was counted differently from how it was listed. Searching
+ * « etranger » listed 684 books above a count of 5.
+ *
+ * `available` is optional on purpose: the counts scope themselves by every
+ * other filter and then split ON availability, so they need this same clause
+ * built without it.
+ */
+function buildRawBookWhere({
+    search,
+    filter,
+    genres,
+    includeHidden,
+    available,
+    hiddenFilter,
+    audio,
+}: RawBookWhereOptions): { whereClause: string; params: QueryParam[] } {
     // Build the base query
     const whereConditions: string[] = [];
-    const params: QueryParam[] = [searchTerm];
-    let paramCount = 1;
+    const params: QueryParam[] = [];
+    let paramCount = 0;
 
-    // Staff look books up by the id shown in « Modifier le livre #42 ». It's
-    // inlined rather than parameterised for the same reason the booleans below
-    // are: parseEntityId returns a validated positive int4 or null — never raw
-    // user input — and threading another positional param through this builder
-    // would renumber every $N that follows.
-    const entityId = parseEntityId(search);
-    const idClause = entityId !== null ? `b.id = ${entityId} OR ` : '';
+    // One condition group per token, AND-ed together by the join below — so
+    // « camus étranger » can satisfy one word from the author and the other
+    // from the title. Each token gets its own positional parameter; the
+    // remaining params (genres, skip, limit) are pushed after this loop and
+    // numbered from wherever it left off.
+    for (const token of searchTokens(search)) {
+        paramCount++;
+        params.push(`%${token.toLowerCase()}%`);
+        const p = `$${paramCount}`;
 
-    if (filter === 'all') {
-        whereConditions.push(`(
-            ${idClause}
-            LOWER(immutable_unaccent(b.title)) LIKE LOWER(immutable_unaccent($1)) OR
-            LOWER(immutable_unaccent(COALESCE(b.subtitle, ''))) LIKE LOWER(immutable_unaccent($1)) OR
-            LOWER(immutable_unaccent(b.author)) LIKE LOWER(immutable_unaccent($1)) OR
-            LOWER(immutable_unaccent(COALESCE(b.publisher, ''))) LIKE LOWER(immutable_unaccent($1)) OR
-            (b.isbn IS NOT NULL AND LOWER(b.isbn) LIKE LOWER($1)) OR
-            (b.description IS NOT NULL AND LOWER(b.description) LIKE LOWER($1)) OR
-            EXISTS (
-                SELECT 1 FROM "BookGenre" bg
-                JOIN "Genre" g ON bg."genreId" = g.id
-                WHERE bg."bookId" = b.id AND LOWER(immutable_unaccent(g.name)) LIKE LOWER(immutable_unaccent($1))
-            )
-        )`);
-    } else if (filter === 'genre') {
-        whereConditions.push(`
-            EXISTS (
-                SELECT 1 FROM "BookGenre" bg
-                JOIN "Genre" g ON bg."genreId" = g.id
-                WHERE bg."bookId" = b.id AND LOWER(immutable_unaccent(g.name)) LIKE LOWER(immutable_unaccent($1))
-            )
-        `);
-    } else {
-        const columnMap: Record<string, string> = {
-            'title': 'b.title',
-            'author': 'b.author',
-            'description': 'b.description',
-            'subtitle': 'b.subtitle',
-            'publisher': 'b.publisher',
-            'isbn': 'b.isbn'
-        };
-        const column = columnMap[filter] || 'b.title';
+        // Staff look books up by the id shown in « Modifier le livre #42 ».
+        // Inlined rather than parameterised for the same reason the booleans
+        // below are: parseEntityId returns a validated positive int4 or null,
+        // never raw user input.
+        const tokenId = parseEntityId(token);
+        const idClause = tokenId !== null ? `b.id = ${tokenId} OR ` : '';
 
-        // Special handling for description due to size
-        if (filter === 'description') {
-            whereConditions.push(`LOWER(b.description) LIKE LOWER($1)`);
-        } else if (filter === 'isbn') {
-            // ISBN carries no accents; a plain LIKE is enough (and matches with/without hyphens).
-            whereConditions.push(`(b.isbn IS NOT NULL AND LOWER(b.isbn) LIKE LOWER($1))`);
+        if (filter === 'all') {
+            whereConditions.push(`(
+                ${idClause}
+                LOWER(immutable_unaccent(b.title)) LIKE LOWER(immutable_unaccent(${p})) OR
+                LOWER(immutable_unaccent(COALESCE(b.subtitle, ''))) LIKE LOWER(immutable_unaccent(${p})) OR
+                LOWER(immutable_unaccent(b.author)) LIKE LOWER(immutable_unaccent(${p})) OR
+                LOWER(immutable_unaccent(COALESCE(b.publisher, ''))) LIKE LOWER(immutable_unaccent(${p})) OR
+                (b.isbn IS NOT NULL AND LOWER(b.isbn) LIKE LOWER(${p})) OR
+                (b.description IS NOT NULL AND LOWER(b.description) LIKE LOWER(${p})) OR
+                EXISTS (
+                    SELECT 1 FROM "BookGenre" bg
+                    JOIN "Genre" g ON bg."genreId" = g.id
+                    WHERE bg."bookId" = b.id AND LOWER(immutable_unaccent(g.name)) LIKE LOWER(immutable_unaccent(${p}))
+                )
+            )`);
+        } else if (filter === 'genre') {
+            whereConditions.push(`
+                EXISTS (
+                    SELECT 1 FROM "BookGenre" bg
+                    JOIN "Genre" g ON bg."genreId" = g.id
+                    WHERE bg."bookId" = b.id AND LOWER(immutable_unaccent(g.name)) LIKE LOWER(immutable_unaccent(${p}))
+                )
+            `);
         } else {
-            whereConditions.push(`LOWER(immutable_unaccent(COALESCE(${column}, ''))) LIKE LOWER(immutable_unaccent($1))`);
+            const columnMap: Record<string, string> = {
+                'title': 'b.title',
+                'author': 'b.author',
+                'description': 'b.description',
+                'subtitle': 'b.subtitle',
+                'publisher': 'b.publisher',
+                'isbn': 'b.isbn'
+            };
+            const column = columnMap[filter] || 'b.title';
+
+            // Special handling for description due to size
+            if (filter === 'description') {
+                whereConditions.push(`LOWER(b.description) LIKE LOWER(${p})`);
+            } else if (filter === 'isbn') {
+                // ISBN carries no accents; a plain LIKE is enough (and matches with/without hyphens).
+                whereConditions.push(`(b.isbn IS NOT NULL AND LOWER(b.isbn) LIKE LOWER(${p}))`);
+            } else {
+                whereConditions.push(`LOWER(immutable_unaccent(COALESCE(${column}, ''))) LIKE LOWER(immutable_unaccent(${p}))`);
+            }
         }
     }
 
@@ -168,6 +197,59 @@ async function performAccentInsensitiveSearch(
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    return { whereClause, params };
+}
+
+/**
+ * Availability breakdown for the current search, counted through the SAME
+ * clause the list uses — one query, split with FILTER, scoped by every filter
+ * except availability itself.
+ *
+ * Returns null when the raw path is unavailable (no `immutable_unaccent`), so
+ * the caller can fall back to the Prisma count the way the search does.
+ */
+async function countAvailabilityRaw(
+    options: Omit<RawBookWhereOptions, 'available'>
+): Promise<{ availableCount: number; unavailableCount: number } | null> {
+    const { whereClause, params } = buildRawBookWhere({ ...options, available: undefined });
+    const query = `
+        SELECT
+            COUNT(DISTINCT b.id) FILTER (WHERE b.available) as available,
+            COUNT(DISTINCT b.id) FILTER (WHERE NOT b.available) as unavailable
+        FROM "Book" b
+            ${whereClause}
+    `;
+    try {
+        const rows = await prisma.$queryRawUnsafe<
+            { available: bigint; unavailable: bigint }[]
+        >(query, ...params);
+        return {
+            availableCount: Number(rows[0]?.available ?? 0),
+            unavailableCount: Number(rows[0]?.unavailable ?? 0),
+        };
+    } catch (error) {
+        console.error('Accent-insensitive availability count failed, falling back:', error);
+        return null;
+    }
+}
+
+// Perform accent-insensitive search using raw SQL
+async function performAccentInsensitiveSearch(
+    search: string,
+    filter: string,
+    genres: number[],
+    skip: number,
+    limit: number,
+    includeHidden: boolean,
+    available?: boolean,
+    hiddenFilter?: boolean,
+    audio?: AudioFilter
+): Promise<{ books: BookWithGenres[]; total: number }> {
+    const { whereClause, params } = buildRawBookWhere({
+        search, filter, genres, includeHidden, available, hiddenFilter, audio,
+    });
+    let paramCount = params.length;
 
     // Get count
     const countQuery = `
@@ -241,33 +323,29 @@ async function fallbackSearch(
 ): Promise<{ books: BookWithGenres[]; total: number }> {
     const mode = Prisma.QueryMode.insensitive;
 
-    let orConditions: Prisma.BookWhereInput[];
-    if (filter === 'genre') {
-        orConditions = [{ genres: { some: { genre: { name: { contains: search, mode } } } } }];
-    } else if (filter === 'all') {
-        const entityId = parseEntityId(search);
-        orConditions = [
-            // Mirrors the id clause in the accent-insensitive path above, so a
-            // database without immutable_unaccent doesn't quietly lose id lookup.
-            ...(entityId !== null ? [{ id: entityId }] : []),
-            { title: { contains: search, mode } },
-            { subtitle: { contains: search, mode } },
-            { author: { contains: search, mode } },
-            { publisher: { contains: search, mode } },
-            { isbn: { contains: search, mode } },
-            { description: { contains: search, mode } },
-            { genres: { some: { genre: { name: { contains: search, mode } } } } },
-        ];
-    } else {
+    // Tokenized to match the raw path above: each word AND-ed, satisfiable by
+    // any searched column. `bookFieldsForToken` is the shared field list.
+    const tokenClauses: Prisma.BookWhereInput[] = searchTokens(search).map((token) => {
+        if (filter === 'genre') {
+            return { genres: { some: { genre: { name: { contains: token, mode } } } } };
+        }
+        if (filter === 'all') {
+            return { OR: bookFieldsForToken(token) };
+        }
         const allowed = ['title', 'author', 'description', 'subtitle', 'publisher', 'isbn'] as const;
         const column = (allowed as readonly string[]).includes(filter) ? filter : 'title';
-        orConditions = [{ [column]: { contains: search, mode } } as Prisma.BookWhereInput];
-    }
+        return { [column]: { contains: token, mode } } as Prisma.BookWhereInput;
+    });
 
-    const where: Prisma.BookWhereInput = { OR: orConditions };
+    // Everything below appends to AND — the search owns it first now, so the
+    // genre filter has to merge rather than assign, which it used to do back
+    // when the search lived in `where.OR`.
+    const where: Prisma.BookWhereInput = {};
+    const andClauses: Prisma.BookWhereInput[] = [...tokenClauses];
     if (genres.length > 0) {
-        where.AND = [{ genres: { some: { genreId: { in: genres } } } }];
+        andClauses.push({ genres: { some: { genreId: { in: genres } } } });
     }
+    if (andClauses.length > 0) where.AND = andClauses;
     if (!includeHidden) {
         where.hiddenFromCatalogue = false;
     } else if (hiddenFilter !== undefined) {
@@ -466,18 +544,35 @@ export async function GET(request: NextRequest): Promise<Response> {
         // Scoped to every filter except availability, so these counts always
         // reflect the current search/genre/hidden/audio filters without being
         // gated by the availability filter they're meant to summarize.
-        const scopedWhere = buildBookScopeWhere({
-            searchTerm: search,
-            filter,
-            genreIds: genres,
-            includeHidden,
-            hidden: hiddenFilter,
-            audio,
-        });
-        const [availableCount, unavailableCount] = await Promise.all([
-            prisma.book.count({ where: { AND: [scopedWhere, { available: true }] } }),
-            prisma.book.count({ where: { AND: [scopedWhere, { available: false }] } }),
-        ]);
+        //
+        // With a search term these go through the same accent-insensitive SQL
+        // the list does — counting it any other way is how « etranger » came to
+        // list 684 books above a count of 5. The Prisma path stays as the
+        // fallback (and as the no-search path, where no unaccenting is
+        // involved and one query beats two).
+        let availableCount: number;
+        let unavailableCount: number;
+
+        const rawCounts = search
+            ? await countAvailabilityRaw({ search, filter, genres, includeHidden, hiddenFilter, audio })
+            : null;
+
+        if (rawCounts) {
+            ({ availableCount, unavailableCount } = rawCounts);
+        } else {
+            const scopedWhere = buildBookScopeWhere({
+                searchTerm: search,
+                filter,
+                genreIds: genres,
+                includeHidden,
+                hidden: hiddenFilter,
+                audio,
+            });
+            [availableCount, unavailableCount] = await Promise.all([
+                prisma.book.count({ where: { AND: [scopedWhere, { available: true }] } }),
+                prisma.book.count({ where: { AND: [scopedWhere, { available: false }] } }),
+            ]);
+        }
 
         const response: BooksApiResponse = {
             books,
