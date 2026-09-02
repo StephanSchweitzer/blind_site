@@ -1,8 +1,19 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Check, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+
+/**
+ * The « # » is decoration and is deliberately NOT copied.
+ *
+ * Staff search entities by pasting an id into the pickers, and the routes
+ * resolve one with `Number(...)`, which NaNs on a « # ». Both the pickers and
+ * the routes strip it defensively now (`lib/search-query.ts`), but copying the
+ * bare number keeps the paste correct everywhere else too — into Excel, an
+ * email, or a URL.
+ */
 
 interface CopyableIdProps {
     /** The identifier itself. Rendered with a leading « # »; copied without it. */
@@ -17,73 +28,23 @@ interface CopyableIdProps {
     className?: string;
 }
 
+/** Screen readers get the confirmation the check mark gives everyone else. */
+function CopyAnnouncement({ copied }: { copied: boolean }) {
+    return (
+        <span aria-live="polite" className="sr-only">
+            {copied ? 'Identifiant copié' : ''}
+        </span>
+    );
+}
+
 /**
- * The « # » is decoration and is deliberately NOT copied.
- *
- * Staff search entities by pasting an id into the pickers, and
- * `/api/orders` parses that with `Number(...)` — so a copied « #1234 »
- * used to come back as zero results. The pickers and the routes both strip a
- * leading « # » defensively now (see `lib/search-query.ts`), but copying the
- * bare number keeps the paste correct everywhere else too — into Excel, an
- * email, or a URL.
+ * The badge form, for a dialog title: « Modifier la demande #1234 » where the
+ * whole thing is the copy button. Nothing else in a modal header competes for
+ * that click, so the generous hit area is free.
  */
 export function CopyableId({ id, label, className }: CopyableIdProps) {
-    const [copied, setCopied] = useState(false);
-    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // The confirmation is a timed state change, so it has to be cleaned up:
-    // closing the modal mid-flash would otherwise setState on an unmounted tree.
-    useEffect(() => () => {
-        if (timerRef.current) clearTimeout(timerRef.current);
-    }, []);
-
+    const { copied, copy } = useCopyToClipboard();
     const value = String(id);
-
-    /**
-     * The deprecated-but-still-universal path. Kept because the modern API is
-     * unavailable in more situations than it looks: `navigator.clipboard` is
-     * undefined outside a secure context (plain http on the office LAN), and
-     * where it does exist `writeText` still REJECTS when the permission is
-     * denied. Both have to fall through to the same place.
-     */
-    const copyViaExecCommand = (): boolean => {
-        try {
-            const textarea = document.createElement('textarea');
-            textarea.value = value;
-            textarea.setAttribute('readonly', '');
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.select();
-            const ok = document.execCommand('copy');
-            document.body.removeChild(textarea);
-            return ok;
-        } catch {
-            return false;
-        }
-    };
-
-    const handleCopy = async () => {
-        let copiedOk = false;
-        try {
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(value);
-                copiedOk = true;
-            }
-        } catch {
-            // Permission denied / not focused — fall through to execCommand.
-        }
-        if (!copiedOk) copiedOk = copyViaExecCommand();
-
-        // If both fail we deliberately leave the check mark off rather than
-        // confirming a copy that never happened. The number stays selectable
-        // text, so a drag-select still gets it out by hand.
-        if (!copiedOk) return;
-
-        setCopied(true);
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => setCopied(false), 1500);
-    };
 
     return (
         <span className={cn('inline-flex items-center', className)}>
@@ -91,7 +52,7 @@ export function CopyableId({ id, label, className }: CopyableIdProps) {
                 // type="button": these sit in dialog headers above a form, and a
                 // bare <button> inside one submits it.
                 type="button"
-                onClick={handleCopy}
+                onClick={() => void copy(value)}
                 aria-label={`Copier l'identifiant ${label} ${value}`}
                 title="Copier l'identifiant"
                 className={cn(
@@ -110,11 +71,73 @@ export function CopyableId({ id, label, className }: CopyableIdProps) {
                     <Copy className="h-3.5 w-3.5 opacity-60" aria-hidden="true" />
                 )}
             </button>
-            {/* Screen readers get the confirmation the check mark gives everyone
-                else. Visually hidden, polite so it doesn't cut off the label. */}
-            <span aria-live="polite" className="sr-only">
-                {copied ? 'Identifiant copié' : ''}
-            </span>
+            <CopyAnnouncement copied={copied} />
         </span>
+    );
+}
+
+/**
+ * The icon-only form, for a table row's ID cell.
+ *
+ * Deliberately NOT the whole cell. Every one of these rows opens its edit modal
+ * on click, so a cell-sized copy target would be a large invisible region that
+ * behaves unlike the rest of the row — the user aims at the number expecting
+ * the row to open and gets a clipboard write instead. Here the NUMBER keeps row
+ * behaviour and only this icon, which visibly reads as a control, deviates.
+ *
+ * It also fixes a smaller trap: a click event fires on the row whenever
+ * mousedown and mouseup both land inside it, so dragging across the id to
+ * select it opens the modal rather than selecting anything. Reaching for this
+ * button is the only way to get the number off the row without opening it —
+ * which is very likely why staff were opening modals for an id in the first
+ * place.
+ *
+ * The parent row needs the `group` class for the hover reveal.
+ */
+export function CopyIdButton({ id, label, className }: CopyableIdProps) {
+    const { copied, copy } = useCopyToClipboard();
+    const value = String(id);
+
+    return (
+        <>
+            <button
+                type="button"
+                onClick={(e) => {
+                    // The row's own onClick would otherwise open the modal —
+                    // the exact thing this button exists to save.
+                    e.stopPropagation();
+                    void copy(value);
+                }}
+                aria-label={`Copier l'identifiant ${label} ${value}`}
+                title="Copier l'identifiant"
+                className={cn(
+                    'inline-flex items-center justify-center rounded p-1 align-middle',
+                    // One transition declaration, not two: `transition-opacity
+                    // transition-colors` are the same CSS property, so the
+                    // second silently wins and the reveal doesn't fade.
+                    'text-muted-foreground transition-[opacity,color,background-color] duration-150',
+                    'hover:bg-muted hover:text-foreground',
+                    // Hidden until the row is hovered: a dense table with one
+                    // always-on icon per row is noise, and the id column is
+                    // read far more often than it's copied.
+                    'opacity-0 group-hover:opacity-100',
+                    // ...but never hidden from the keyboard, and never on a
+                    // touch screen, where there is no hover to reveal it.
+                    'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    '[@media(hover:none)]:opacity-100',
+                    // A successful copy has to stay visible for its own
+                    // confirmation, even if the pointer has since left.
+                    copied && 'opacity-100',
+                    className
+                )}
+            >
+                {copied ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-500" aria-hidden="true" />
+                ) : (
+                    <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+            </button>
+            <CopyAnnouncement copied={copied} />
+        </>
     );
 }

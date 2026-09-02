@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { MailingLabelButton } from '@/admin/MailingLabelButton';
+import { CopyIdButton } from '@/admin/CopyableId';
 
 import type {
     SerializedOrderTableRow,
@@ -562,12 +563,13 @@ export default function OrdersTable({
                                                 <TableRow
                                                     key={order.id}
                                                     onClick={() => handleRowClick(order)}
-                                                    className={`border-b border-border hover:bg-muted cursor-pointer transition-colors ${
+                                                    className={`group border-b border-border hover:bg-muted cursor-pointer transition-colors ${
                                                         isOverdue ? 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40' : ''
                                                     }`}
                                                 >
-                                                    <TableCell className={`font-medium ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-foreground'}`}>
+                                                    <TableCell className={`font-medium whitespace-nowrap ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-foreground'}`}>
                                                         #{order.id}
+                                                        <CopyIdButton id={order.id} label="de la demande" />
                                                     </TableCell>
                                                     <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
                                                         <div>

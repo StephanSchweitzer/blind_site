@@ -35,6 +35,7 @@ import {
 } from '@/types';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { CopyIdButton } from '@/admin/CopyableId';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -450,10 +451,11 @@ export default function AssignmentsTable({
                                             <TableRow
                                                 key={assignment.id}
                                                 onClick={() => handleRowClick(assignment)}
-                                                className="border-b border-border hover:bg-muted cursor-pointer transition-colors"
+                                                className="group border-b border-border hover:bg-muted cursor-pointer transition-colors"
                                             >
-                                                <TableCell className="font-medium text-foreground">
+                                                <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                     #{assignment.id}
+                                                    <CopyIdButton id={assignment.id} label="de l'attribution" />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     {assignment.currentReader ? (

@@ -39,6 +39,7 @@ import {
 import { AddPaymentFormBackend } from '@/admin/PaymentFormBackendBase';
 import { EditPaymentModal } from '@/admin/EditPaymentModal';
 import { DeletePaymentModal } from '@/admin/DeletePaymentModal';
+import { CopyIdButton } from '@/admin/CopyableId';
 import type { SerializedPaymentTableRow as Payment } from '@/types/models/payment.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
 
@@ -261,9 +262,12 @@ export default function PaymentsTable({
                                             <TableRow
                                                 key={payment.id}
                                                 onClick={() => setViewPaymentId(payment.id)}
-                                                className="border-b border-border cursor-pointer hover:bg-muted"
+                                                className="group border-b border-border cursor-pointer hover:bg-muted"
                                             >
-                                                <TableCell className="font-medium text-foreground">#{payment.id}</TableCell>
+                                                <TableCell className="font-medium text-foreground whitespace-nowrap">
+                                                    #{payment.id}
+                                                    <CopyIdButton id={payment.id} label="du paiement" />
+                                                </TableCell>
                                                 <TableCell className="text-foreground">
                                                     {payment.client ? (
                                                         <div>

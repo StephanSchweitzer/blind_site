@@ -49,6 +49,7 @@ import {
     getUserActivityStatusColor,
 } from '@/lib/user-activity-enums';
 import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
+import { CopyIdButton } from '@/admin/CopyableId';
 
 interface UsersTableProps {
     type: UserType;
@@ -477,9 +478,12 @@ export default function UsersTable({
                                             <TableRow
                                                 key={user.id}
                                                 onClick={() => handleRowClick(user)}
-                                                className="border-b border-border hover:bg-muted cursor-pointer"
+                                                className="group border-b border-border hover:bg-muted cursor-pointer"
                                             >
-                                                <TableCell className="font-medium text-foreground">#{user.id}</TableCell>
+                                                <TableCell className="font-medium text-foreground whitespace-nowrap">
+                                                    #{user.id}
+                                                    <CopyIdButton id={user.id} label="de la personne" />
+                                                </TableCell>
                                                 <TableCell className="text-foreground">
                                                     {user.email || <span className="text-muted-foreground italic">Non d&#233;fini</span>}
                                                 </TableCell>

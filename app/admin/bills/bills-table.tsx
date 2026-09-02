@@ -38,6 +38,7 @@ import { AddBillFormBackend } from '@/admin/BillFormBackendBase';
 import { EditBillModal } from '@/admin/EditBillModal';
 import { BillPDFButton } from '@/admin/BillPDFButton';
 import { DeleteBillModal } from '@/admin/DeleteBillModal';
+import { CopyIdButton } from '@/admin/CopyableId';
 import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
 
@@ -320,14 +321,15 @@ export default function BillsTable({
                                                 <TableRow
                                                     key={bill.id}
                                                     onClick={() => setViewBillId(bill.id)}
-                                                    className={`border-b border-border cursor-pointer ${
+                                                    className={`group border-b border-border cursor-pointer ${
                                                         late
                                                             ? 'bg-red-950/40 hover:bg-red-950/60'
                                                             : 'hover:bg-muted'
                                                     }`}
                                                 >
-                                                    <TableCell className="font-medium text-foreground">
+                                                    <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                         #{bill.id}
+                                                        <CopyIdButton id={bill.id} label="de la facture" />
                                                     </TableCell>
                                                     <TableCell className="text-foreground">
                                                         <div>
