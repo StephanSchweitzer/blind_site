@@ -6,6 +6,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { EditBookFormBackend } from '@/admin/BookFormBackendBase';
+import { CopyableId } from '@/admin/CopyableId';
 import { BookFormData } from '@/admin/BookFormBackendBase';
 
 interface EditBookModalProps {
@@ -46,7 +47,10 @@ export function EditBookModal({
             <DialogContent className="max-w-4xl max-h-[85dvh] flex flex-col overflow-hidden bg-card border-border [&>button>svg]:text-white">
 
                 <DialogHeader className="flex-shrink-0">
-                    <DialogTitle className="text-foreground">Modifier le livre</DialogTitle>
+                    <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
+                        Modifier le livre
+                        {bookId && <CopyableId id={bookId} label="du livre" />}
+                    </DialogTitle>
                 </DialogHeader>
                 <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1">
                     <EditBookFormBackend

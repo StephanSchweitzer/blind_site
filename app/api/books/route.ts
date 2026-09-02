@@ -8,6 +8,7 @@ import { BookWithGenres } from '@/types/book';
 import { withAdmin, getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { audioMissingWhere, audioPresentWhere, AUDIO_MISSING_STATUSES } from '@/lib/books/audioFilter';
 import { buildBookScopeWhere } from '@/lib/books/searchWhere';
+import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 
 type AudioFilter = 'missing' | 'present' | undefined;
 
@@ -43,6 +44,21 @@ const CACHE_HEADERS = {
     'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
 };
 
+/**
+ * Move the row whose id the user searched for to the front.
+ *
+ * Asking for a book by number is an unambiguous request in a way a title
+ * search never is, so it shouldn't have to be hunted for in a list sorted by
+ * something else entirely. A no-op when the query wasn't an id, or when the
+ * id didn't survive the other filters.
+ */
+function promoteExactId<T extends { id: number }>(rows: T[], entityId: number | null): T[] {
+    if (entityId === null) return rows;
+    const index = rows.findIndex((r) => r.id === entityId);
+    if (index <= 0) return rows;
+    return [rows[index], ...rows.filter((_, i) => i !== index)];
+}
+
 // Perform accent-insensitive search using raw SQL
 async function performAccentInsensitiveSearch(
     search: string,
@@ -62,8 +78,17 @@ async function performAccentInsensitiveSearch(
     const params: QueryParam[] = [searchTerm];
     let paramCount = 1;
 
+    // Staff look books up by the id shown in « Modifier le livre #42 ». It's
+    // inlined rather than parameterised for the same reason the booleans below
+    // are: parseEntityId returns a validated positive int4 or null — never raw
+    // user input — and threading another positional param through this builder
+    // would renumber every $N that follows.
+    const entityId = parseEntityId(search);
+    const idClause = entityId !== null ? `b.id = ${entityId} OR ` : '';
+
     if (filter === 'all') {
         whereConditions.push(`(
+            ${idClause}
             LOWER(immutable_unaccent(b.title)) LIKE LOWER(immutable_unaccent($1)) OR
             LOWER(immutable_unaccent(COALESCE(b.subtitle, ''))) LIKE LOWER(immutable_unaccent($1)) OR
             LOWER(immutable_unaccent(b.author)) LIKE LOWER(immutable_unaccent($1)) OR
@@ -189,6 +214,9 @@ async function performAccentInsensitiveSearch(
             orderBy: { createdAt: 'desc' }
         });
 
+        // An exact id match leads the page. Both queries sort by createdAt, so
+        // without this the one book someone looked up by number sits wherever
+        // its creation date happens to put it in a 25-row list.
         return { books: booksWithGenres, total };
     } catch (error) {
         // The accent-insensitive path relies on the immutable_unaccent SQL function.
@@ -217,7 +245,11 @@ async function fallbackSearch(
     if (filter === 'genre') {
         orConditions = [{ genres: { some: { genre: { name: { contains: search, mode } } } } }];
     } else if (filter === 'all') {
+        const entityId = parseEntityId(search);
         orConditions = [
+            // Mirrors the id clause in the accent-insensitive path above, so a
+            // database without immutable_unaccent doesn't quietly lose id lookup.
+            ...(entityId !== null ? [{ id: entityId }] : []),
             { title: { contains: search, mode } },
             { subtitle: { contains: search, mode } },
             { author: { contains: search, mode } },
@@ -287,7 +319,10 @@ interface BooksApiError {
 export async function GET(request: NextRequest): Promise<Response> {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const search = searchParams.get('search') || '';
+        // Normalized so a pasted « #42 » resolves to book 42 — the public
+        // catalogue shares this route, and « # » is never meaningful in a title
+        // search either way.
+        const search = normalizeSearchQuery(searchParams.get('search') || '');
         const filter = searchParams.get('filter') || 'all';
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '9');
@@ -397,6 +432,35 @@ export async function GET(request: NextRequest): Promise<Response> {
                 }),
                 prisma.book.count({ where: whereClause })
             ]);
+        }
+
+        // An exact id match leads the first page.
+        //
+        // Both search paths sort by createdAt, so the one book someone looked
+        // up by number lands wherever its creation date puts it — and « 100 »
+        // also matches every title and description containing those digits, so
+        // it routinely sorts past the end of the page entirely. Promoting it
+        // within the page isn't enough; when it's missing it's fetched on its
+        // own, under the same visibility and genre filters the list obeys.
+        const entityId = search ? parseEntityId(search) : null;
+        if (entityId !== null && page === 1) {
+            if (books.some((b) => b.id === entityId)) {
+                books = promoteExactId(books, entityId);
+            } else {
+                const exact = await prisma.book.findFirst({
+                    where: {
+                        AND: [
+                            { id: entityId },
+                            whereClause,
+                            ...(genres.length > 0
+                                ? [{ genres: { some: { genreId: { in: genres } } } }]
+                                : []),
+                        ],
+                    },
+                    include: { genres: { include: { genre: true } } },
+                });
+                if (exact) books = [exact, ...books.slice(0, -1)];
+            }
         }
 
         // Scoped to every filter except availability, so these counts always

@@ -6,21 +6,76 @@ import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing
 import { STATUS, guardOrderStatus, guardDuplicationStatus, guardOrderCompletion, guardManualEnCours, resolveClosureDate, guardClosureDateRequiresTermine, logOrderEvent } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
+import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
+
+/**
+ * Shape of a demande in a list response. Hoisted out of the query so the
+ * exact-id lookup below can return the identical shape without restating it.
+ */
+const ORDER_LIST_SELECT = {
+    id: true,
+    aveugleId: true,
+    catalogueId: true,
+    requestReceivedDate: true,
+    statusId: true,
+    isDuplication: true,
+    mediaFormatId: true,
+    deliveryMethod: true,
+    processedByStaffId: true,
+    createdDate: true,
+    closureDate: true,
+    updatedAt: true,
+    cost: true,
+    billingStatus: true,
+    lentPhysicalBook: true,
+    notes: true,
+    aveugle: {
+        select: { name: true, email: true },
+    },
+    catalogue: {
+        select: { title: true, author: true },
+    },
+    status: {
+        select: { name: true },
+    },
+    mediaFormat: {
+        select: { name: true },
+    },
+    // Lets the assignment form grey out orders that already have an
+    // attribution (one-assignment-per-order is enforced server-side).
+    _count: {
+        select: { assignments: true },
+    },
+} satisfies Prisma.OrdersSelect;
 
 export const GET = withAdmin(async (request) => {
     try {
         const searchParams = request.nextUrl.searchParams;
         const page = parseInt(searchParams.get('page') || '1');
-        const search = searchParams.get('search') || '';
+        // Normalized so a « #1234 » pasted out of « Modifier la demande #1234 »
+        // resolves to that demande instead of returning nothing.
+        const search = normalizeSearchQuery(searchParams.get('search') || '');
         const filter = searchParams.get('filter') || 'all';
         const statusId = searchParams.get('statusId');
         const rawBillingStatus = searchParams.get('billingStatus');
         const isDuplication = searchParams.get('isDuplication');
         const retard = searchParams.get('retard');
 
-        const ordersPerPage = 10;
+        // The attribution picker has always asked for `limit=50`; this route
+        // ignored the parameter and served 10, which is why staff reported the
+        // results list as too short no matter how tall it was drawn. Capped at
+        // 100 so a hand-written URL can't ask for the whole table.
+        const requestedLimit = parseInt(searchParams.get('limit') || '');
+        const ordersPerPage = Number.isFinite(requestedLimit) && requestedLimit > 0
+            ? Math.min(requestedLimit, 100)
+            : 10;
 
         const whereClause: Prisma.OrdersWhereInput = {};
+
+        // The query read as a demande number, « # » and a typed « demande »
+        // prefix included. Hoisted out of the search block because the
+        // exact-match promotion after the query needs it too.
+        const entityId = search ? parseEntityId(search) : null;
 
         // Search filter
         if (search) {
@@ -43,10 +98,8 @@ export const GET = withAdmin(async (request) => {
                 },
             ];
 
-            // Allow searching an order by its numeric id.
-            const trimmedSearch = search.trim();
-            if (/^\d+$/.test(trimmedSearch) && Number.isSafeInteger(Number(trimmedSearch))) {
-                searchOR.push({ id: Number(trimmedSearch) });
+            if (entityId !== null) {
+                searchOR.push({ id: entityId });
             }
 
             whereClause.OR = searchOR;
@@ -153,53 +206,60 @@ export const GET = withAdmin(async (request) => {
             ];
         }
 
+        // Opt-in ordering for the attribution picker only — the /admin/orders
+        // table stays purely chronological.
+        //
+        // In search mode the picker shows every matching demande, greying out
+        // the ones that can't take an attribution (duplication, or already
+        // attributed). Interleaved by date, a search could fill the visible
+        // rows with greyed entries and read as "no results" — so push the
+        // selectable ones to the top. Date still decides within each group.
+        const attributableFirst = searchParams.get('attributableFirst') === 'true';
+        const orderBy: Prisma.OrdersOrderByWithRelationInput[] = attributableFirst
+            ? [
+                { isDuplication: 'asc' },
+                { assignments: { _count: 'asc' } },
+                { requestReceivedDate: 'desc' },
+            ]
+            : [{ requestReceivedDate: 'desc' }];
+
         const [orders, totalOrders] = await Promise.all([
             prisma.orders.findMany({
                 where: whereClause,
-                orderBy: { requestReceivedDate: 'desc' },
+                orderBy,
                 skip: Math.max(0, (page - 1) * ordersPerPage),
                 take: ordersPerPage,
-                select: {
-                    id: true,
-                    aveugleId: true,
-                    catalogueId: true,
-                    requestReceivedDate: true,
-                    statusId: true,
-                    isDuplication: true,
-                    mediaFormatId: true,
-                    deliveryMethod: true,
-                    processedByStaffId: true,
-                    createdDate: true,
-                    closureDate: true,
-                    updatedAt: true,
-                    cost: true,
-                    billingStatus: true,
-                    lentPhysicalBook: true,
-                    notes: true,
-                    aveugle: {
-                        select: { name: true, email: true },
-                    },
-                    catalogue: {
-                        select: { title: true, author: true },
-                    },
-                    status: {
-                        select: { name: true },
-                    },
-                    mediaFormat: {
-                        select: { name: true },
-                    },
-                    // Lets the assignment form grey out orders that already have an
-                    // attribution (one-assignment-per-order is enforced server-side).
-                    _count: {
-                        select: { assignments: true },
-                    },
-                },
+                select: ORDER_LIST_SELECT,
             }),
             prisma.orders.count({ where: whereClause }),
         ]);
 
+        // Asking for a demande by its number is unambiguous in a way no name
+        // search is, so that row leads the page — otherwise the sort above
+        // (date, or attributable-first) buries the one demande the admin
+        // actually asked for somewhere down a 50-row list, or past its end
+        // entirely. `page === 1` because promoting it onto every page would
+        // duplicate it as the user pages through.
+        let pageOrders = orders;
+        if (entityId !== null && page === 1) {
+            const index = pageOrders.findIndex((o) => o.id === entityId);
+            if (index > 0) {
+                pageOrders = [
+                    pageOrders[index],
+                    ...pageOrders.filter((_, i) => i !== index),
+                ];
+            } else if (index === -1) {
+                // It satisfies the filters but sorted past the end of the page.
+                const exact = await prisma.orders.findFirst({
+                    where: { AND: [{ id: entityId }, whereClause] },
+                    select: ORDER_LIST_SELECT,
+                });
+                if (exact) pageOrders = [exact, ...pageOrders.slice(0, -1)];
+            }
+        }
+
         return NextResponse.json({
-            orders,
+            orders: pageOrders,
             totalOrders,
             totalPages: Math.ceil(totalOrders / ordersPerPage),
         });

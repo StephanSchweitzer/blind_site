@@ -707,7 +707,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         value={null}
                         onSelect={(user) => openPerson(user.id)}
                         placeholder="Gérer la disponibilité de…"
-                        searchPlaceholder="Rechercher par nom ou email…"
+                        searchPlaceholder="Nom, email, ou numéro de personne…"
                         triggerClassName="h-9 w-64 shrink-0"
                     />
                 </div>

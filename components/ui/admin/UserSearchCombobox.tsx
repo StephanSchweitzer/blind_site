@@ -29,7 +29,7 @@ export function UserSearchCombobox<T extends UserSearchResult>({
     onSelect,
     assignable = false,
     placeholder = 'Rechercher un auditeur ...',
-    searchPlaceholder = 'Rechercher par nom ou email...',
+    searchPlaceholder = 'Nom, email, ou numéro de personne...',
     emptyMessage = 'Aucune personne trouvée',
     disabled = false,
     triggerRef,
@@ -52,11 +52,24 @@ export function UserSearchCombobox<T extends UserSearchResult>({
             getItemKey={(user) => user.id}
             renderValue={(user) => getUserDisplayName(user)}
             renderItem={(user) => (
-                <>
-                    <div className="font-medium">{getUserDisplayName(user)}</div>
-                    {user.email && <div className="text-sm text-muted-foreground">{user.email}</div>}
-                </>
+                <span className="flex items-start justify-between gap-2 w-full">
+                    <span className="min-w-0 flex-1">
+                        <span className="block font-medium">{getUserDisplayName(user)}</span>
+                        {user.email && (
+                            <span className="block text-sm text-muted-foreground">{user.email}</span>
+                        )}
+                    </span>
+                    {/* The id staff paste back into this same box, and read off
+                        « Modifier la personne #42 » — showing it here is what
+                        closes that loop. */}
+                    <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                        #{user.id}
+                    </span>
+                </span>
             )}
+            // /api/user/search takes 20 before deduping legacy rows.
+            resultLimit={20}
+            resultNoun="personnes"
             placeholder={placeholder}
             searchPlaceholder={searchPlaceholder}
             emptyMessage={emptyMessage}

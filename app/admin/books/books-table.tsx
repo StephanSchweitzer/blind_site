@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
 import { BookAudioModal } from '@/admin/BookAudioModal';
+import { CopyableId } from '@/admin/CopyableId';
 import {
     AudioLinkStatus,
     audioLinkStatusHasAudio,
@@ -1115,7 +1116,10 @@ export default function BooksTable({
                 <Dialog open={isEditModalOpen} onOpenChange={requestCloseEdit}>
                     <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
-                            <DialogTitle className="text-foreground">Modifier le livre</DialogTitle>
+                            <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
+                                Modifier le livre
+                                <CopyableId id={selectedBook.id} label="du livre" />
+                            </DialogTitle>
                         </DialogHeader>
                         <div className="overflow-y-auto px-1">
                             {/* key: the form seeds its state from initialData on

@@ -17,6 +17,7 @@ import {
 } from '@/lib/billing-enums';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { BillPDFButton } from './BillPDFButton';
+import { CopyableId } from './CopyableId';
 import { BillHistory, BillEventDTO } from './BillHistory';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -343,8 +344,9 @@ export function EditBillModal({
             <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-3 pr-8">
-                        <DialogTitle className="text-foreground">
-                            Facture {billId ? `#${billId}` : ''}
+                        <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
+                            Facture
+                            {billId && <CopyableId id={billId} label="de la facture" />}
                         </DialogTitle>
                         {bill && !isLoading && (
                             <BillPDFButton

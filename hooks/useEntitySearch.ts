@@ -1,12 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { meetsSearchMinLength, normalizeSearchQuery } from '@/lib/search-query';
 
 interface UseEntitySearchOptions {
-    /** Minimum trimmed query length before a search fires. */
+    /**
+     * Minimum normalized query length before a search fires. A query that is
+     * just an id (« 7 », « #7 ») is exempt — see `meetsSearchMinLength`.
+     */
     minLength?: number;
     /** Debounce delay between the last keystroke and the request. */
     delayMs?: number;
+    /**
+     * Fetch with an empty query instead of showing the "type N characters"
+     * hint, so the picker opens on a useful default list (the attribution
+     * form's recent attributable demandes). The fetcher decides what an empty
+     * query means; it just gets `''`.
+     */
+    searchOnEmpty?: boolean;
 }
 
 interface UseEntitySearchResult<T> {
@@ -32,7 +43,7 @@ interface UseEntitySearchResult<T> {
  */
 export function useEntitySearch<T>(
     fetcher: (query: string, signal: AbortSignal) => Promise<T[]>,
-    { minLength = 2, delayMs = 300 }: UseEntitySearchOptions = {}
+    { minLength = 2, delayMs = 300, searchOnEmpty = false }: UseEntitySearchOptions = {}
 ): UseEntitySearchResult<T> {
     const [query, setQueryState] = useState('');
     const [results, setResults] = useState<T[]>([]);
@@ -62,19 +73,26 @@ export function useEntitySearch<T>(
         setQueryState(q);
         cancelPending();
 
-        const trimmed = q.trim();
-        if (trimmed.length < minLength) {
+        // The fetcher receives the NORMALIZED query, never the raw one: staff
+        // paste « #1234 » straight out of a modal title, and every route that
+        // resolves an id does so with Number(), which NaNs on the « # ».
+        const normalized = normalizeSearchQuery(q);
+        const isDefaultList = searchOnEmpty && normalized.length === 0;
+        if (!isDefaultList && !meetsSearchMinLength(q, minLength)) {
             setResults([]);
             setIsSearching(false);
             return;
         }
 
         setIsSearching(true);
+        // The default list isn't a keystroke, it's an open — debouncing it just
+        // makes the popover sit empty for 300ms before showing what it already
+        // knows to fetch.
         timerRef.current = setTimeout(async () => {
             const controller = new AbortController();
             controllerRef.current = controller;
             try {
-                const items = await fetcherRef.current(trimmed, controller.signal);
+                const items = await fetcherRef.current(normalized, controller.signal);
                 if (!controller.signal.aborted) {
                     setResults(items);
                     setIsSearching(false);
@@ -85,15 +103,28 @@ export function useEntitySearch<T>(
                     if (!controller.signal.aborted) setIsSearching(false);
                 }
             }
-        }, delayMs);
-    }, [cancelPending, minLength, delayMs]);
+        }, isDefaultList ? 0 : delayMs);
+    }, [cancelPending, minLength, delayMs, searchOnEmpty]);
+
+    // Latest-ref for the same reason as `fetcher`: reset() is called from the
+    // combobox's open handler, and must not change identity every render.
+    const setQueryRef = useRef(setQuery);
+    useEffect(() => {
+        setQueryRef.current = setQuery;
+    });
 
     const reset = useCallback(() => {
         cancelPending();
+        // In default-list mode "reset" means "back to the default list", not
+        // "empty" — clearing to nothing would blank the popover on every open.
+        if (searchOnEmpty) {
+            setQueryRef.current('');
+            return;
+        }
         setQueryState('');
         setResults([]);
         setIsSearching(false);
-    }, [cancelPending]);
+    }, [cancelPending, searchOnEmpty]);
 
     return { query, setQuery, results, isSearching, reset };
 }

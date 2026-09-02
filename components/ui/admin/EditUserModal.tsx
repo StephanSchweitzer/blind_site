@@ -6,6 +6,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { EditUserFormBackend } from '@/admin/EditUserFormBackend';
+import { CopyableId } from '@/admin/CopyableId';
 import { UserActivityHistory } from '@/components/ui/admin/UserActivityHistory';
 import { UserFormData, UserType } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -54,7 +55,10 @@ export function EditUserModal({
             <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-4 pr-8">
-                        <DialogTitle className="text-foreground">Modifier la personne</DialogTitle>
+                        <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
+                            Modifier la personne
+                            {userId && <CopyableId id={userId} label="de la personne" />}
+                        </DialogTitle>
                         {userId && (
                             <Button
                                 asChild

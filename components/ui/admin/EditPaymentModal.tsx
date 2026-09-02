@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getPaymentTypeColor, getPaymentTypeLabel } from '@/lib/payment-enums';
+import { CopyableId } from './CopyableId';
 import type { SerializedPayment } from '@/types/api/payment.api';
 import {
     PaymentFormBackendBase,
@@ -126,8 +127,9 @@ export function EditPaymentModal({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-foreground flex items-center gap-3">
-                        Paiement {paymentId ? `#${paymentId}` : ''}
+                    <DialogTitle className="text-foreground flex flex-wrap items-center gap-3">
+                        Paiement
+                        {paymentId && <CopyableId id={paymentId} label="du paiement" />}
                         {payment && (
                             <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
                                 {getPaymentTypeLabel(payment.type)}

@@ -6,6 +6,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { EditAssignmentFormBackend } from '@/admin/EditAssignmentFormBackend';
+import { CopyableId } from '@/admin/CopyableId';
 import {
     AssignmentFormData,
     BookSummary,
@@ -80,7 +81,10 @@ export function EditAssignmentModal({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">Modifier l&apos;attribution</DialogTitle>
+                    <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
+                        Modifier l&apos;attribution
+                        {assignmentId && <CopyableId id={assignmentId} label="de l'attribution" />}
+                    </DialogTitle>
                 </DialogHeader>
                 <div className="overflow-y-auto px-1 relative">
                     {isLoading && (

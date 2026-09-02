@@ -17,6 +17,7 @@ import { useDebounce } from 'use-debounce';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { NewsType } from '@/types/news';
 import NewsTypeBadge from '@/components/NewsTypeBadge';
+import { CopyableId } from '@/admin/CopyableId';
 import {
     AddNewsFormBackend,
     EditNewsFormBackend,
@@ -396,6 +397,7 @@ export function ArticlesTable({
                         <DialogHeader>
                             <DialogTitle className="text-foreground flex flex-wrap items-center gap-3">
                                 Modifier la dernière info
+                                <CopyableId id={editing.id} label="de l'information" />
                                 <NewsTypeBadge type={editing.data.type} />
                             </DialogTitle>
                         </DialogHeader>

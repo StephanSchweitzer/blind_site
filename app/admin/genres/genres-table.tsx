@@ -16,6 +16,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddGenreFormBackend, EditGenreFormBackend } from '@/admin/GenreFormBackendBase';
+import { CopyableId } from '@/admin/CopyableId';
 import type { Genre } from '@/types';
 
 export interface GenreRow extends Genre {
@@ -179,7 +180,10 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
                 <Dialog open onOpenChange={(open) => { if (!open) setEditing(null); }}>
                     <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
-                            <DialogTitle className="text-foreground">Modifier le genre</DialogTitle>
+                            <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
+                                Modifier le genre
+                                <CopyableId id={editing.id} label="du genre" />
+                            </DialogTitle>
                         </DialogHeader>
                         <div className="overflow-y-auto px-1">
                             <EditGenreFormBackend

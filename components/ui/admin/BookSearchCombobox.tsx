@@ -33,6 +33,14 @@ interface BookSearchComboboxProps<T extends BookSearchResult> {
  * Both are trimmed: imported titles carry trailing spaces often enough that
  * joining them raw produces a visible double space.
  */
+/**
+ * 10 was too few to be worth scrolling and too few to trust: the corpus has
+ * whole series that share a title, so a search could plausibly be truncated
+ * before reaching the right volume. 25 fills the taller list, and the combobox
+ * footer says when even that is capped.
+ */
+const BOOK_RESULT_LIMIT = 25;
+
 export const bookLabel = (book: BookSearchResult): string => {
     const title = book.title.trim();
     const subtitle = book.subtitle?.trim();
@@ -49,7 +57,10 @@ export function BookSearchCombobox<T extends BookSearchResult>({
     triggerClassName,
 }: BookSearchComboboxProps<T>) {
     const fetcher = async (query: string, signal: AbortSignal): Promise<T[]> => {
-        const res = await fetch(`/api/books?search=${encodeURIComponent(query)}&limit=10`, { signal });
+        const res = await fetch(
+            `/api/books?search=${encodeURIComponent(query)}&limit=${BOOK_RESULT_LIMIT}`,
+            { signal }
+        );
         if (!res.ok) return [];
         const { books } = await res.json();
         return books;
@@ -65,17 +76,27 @@ export function BookSearchCombobox<T extends BookSearchResult>({
             renderItem={
                 renderItem ??
                 ((book) => (
-                    <>
-                        <div className="font-medium">{book.title}</div>
-                        {book.subtitle?.trim() && (
-                            <div className="text-sm text-foreground/80">{book.subtitle}</div>
-                        )}
-                        <div className="text-sm text-muted-foreground">{book.author}</div>
-                    </>
+                    <span className="flex items-start justify-between gap-2 w-full">
+                        <span className="min-w-0 flex-1">
+                            <span className="block font-medium">{book.title}</span>
+                            {book.subtitle?.trim() && (
+                                <span className="block text-sm text-foreground/80">{book.subtitle}</span>
+                            )}
+                            <span className="block text-sm text-muted-foreground">{book.author}</span>
+                        </span>
+                        {/* Shown for the same reason as in the other pickers:
+                            the corpus holds near-identical entries that only an
+                            id tells apart. */}
+                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                            #{book.id}
+                        </span>
+                    </span>
                 ))
             }
+            resultLimit={BOOK_RESULT_LIMIT}
+            resultNoun="livres"
             placeholder={placeholder}
-            searchPlaceholder="Rechercher par titre ou auteur..."
+            searchPlaceholder="Titre, auteur, ou numéro de livre..."
             emptyMessage="Aucun livre trouvé"
             triggerRef={triggerRef}
             triggerClassName={triggerClassName}

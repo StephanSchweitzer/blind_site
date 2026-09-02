@@ -45,6 +45,7 @@ import {
     useActivityStatusDraft,
 } from '@/admin/ActivityStatusFields';
 import { ReaderLanguagesField } from '@/admin/ReaderLanguagesField';
+import { CopyableId } from '@/admin/CopyableId';
 import {
     describeUnavailability,
     isEffectivelyActive,
@@ -526,6 +527,7 @@ export default function PersonAvailabilityPanel({
                         {person?.name ?? 'Disponibilité'}
                         {person && (
                             <>
+                                <CopyableId id={person.id} label="de la personne" />
                                 <span
                                     className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getMemberTypeColor(person.memberType)}`}
                                 >

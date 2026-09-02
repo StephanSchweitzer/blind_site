@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Search, History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
+import { AlertCircle, Calendar, History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -41,6 +41,7 @@ import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuard
 import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
 
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
+import { EntitySearchCombobox } from '@/admin/EntitySearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
@@ -52,6 +53,27 @@ import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
 // it isn't a field a submit can fail on — the two date fields below stand in
 // for it since a rejected save is really about their ordering.
 const ASSIGN_FIELD_ORDER = ['readerId', 'catalogueId', 'sentToReaderDate', 'returnedToECADate'];
+
+/**
+ * A demande row as the picker needs it: the summary plus the two fields that
+ * decide whether it can still take an attribution.
+ */
+type OrderPickerRow = OrderSummary & {
+    _count?: { assignments: number };
+    isDuplication?: boolean;
+};
+
+type OrderBlockReason = 'duplication' | 'attributed' | null;
+
+/**
+ * How many demandes the picker asks for. Also handed to the combobox as
+ * `resultLimit`, so a full page says « Affichage limité à N demandes » rather
+ * than silently looking like the whole set.
+ *
+ * Worth knowing: /api/orders ignored `limit` entirely until recently and always
+ * served 10, which is the real reason staff reported this list as too short.
+ */
+const ORDER_RESULT_LIMIT = 50;
 
 export interface AssignmentFormBackendBaseProps {
     presetClientId?: number | null;
@@ -206,19 +228,11 @@ export function AssignmentFormBackendBase({
     const [currentReader, setCurrentReader] = useState<ReaderSummary | null>(null);
 
     // Options data
-    const [orders, setOrders] = useState<(OrderSummary & { _count?: { assignments: number }; isDuplication?: boolean })[]>([]);
     const [statuses, setStatuses] = useState<Status[]>([]);
 
     // Reader history
     const [readerHistory, setReaderHistory] = useState<AssignmentReaderHistory[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
-
-    // Search states (order search only — reader search lives in UserSearchCombobox)
-    const [orderSearch, setOrderSearch] = useState('');
-    const [isSearchingOrders, setIsSearchingOrders] = useState(false);
-
-    // Popover open states
-    const [orderPopoverOpen, setOrderPopoverOpen] = useState(false);
 
     // Selected display values
     const [selectedBook, setSelectedBook] = useState<BookSummary | null>(initialSelectedBook || null);
@@ -289,22 +303,18 @@ export function AssignmentFormBackendBase({
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [statusesRes, ordersRes] = await Promise.all([
-                    fetch('/api/statuses'),
-                    // Recent list excludes duplications + already-attributed demandes
-                    // server-side, so the slots backfill with older attributable demandes
-                    // rather than going empty. All demandes still surface (greyed) on search.
-                    fetch(`/api/orders?page=1&limit=100&isDuplication=false&unassigned=true${presetClientId ? `&aveugleId=${presetClientId}` : ''}`),
-                ]);
+                // Demandes are no longer prefetched here: the picker owns its
+                // own list now (EntitySearchCombobox in searchOnEmpty mode
+                // fetches the recent attributable demandes when it opens), so
+                // loading 100 of them on every form mount was work nobody had
+                // asked for yet. `onOrdersLoaded` still fires below — it gates
+                // the modal's loading overlay, and statuses are what the form
+                // actually can't render without.
+                const statusesRes = await fetch('/api/statuses');
 
                 if (statusesRes.ok) {
                     const statusesData = await statusesRes.json();
                     setStatuses(statusesData);
-                }
-
-                if (ordersRes.ok) {
-                    const ordersData = await ordersRes.json();
-                    setOrders(ordersData.orders || []);
                 }
             } catch (err) {
                 console.error('Error fetching initial data:', err);
@@ -373,49 +383,36 @@ export function AssignmentFormBackendBase({
         }
     }, [initialData, initialSelectedBook, initialSelectedOrder]);
 
-    // Skip the first run of the orders effect below — the mount effect already
-    // loads the recent list (and fires onOrdersLoaded). After that, this effect
-    // owns every change to `orders`.
-    const ordersEffectMounted = useRef(false);
-
-    // Orders: empty query → recent actionable list (duplications excluded
-    // server-side); 2+ chars → full search including duplications, which the
-    // render greys out instead of hiding. Clearing the box restores recent.
-    useEffect(() => {
-        if (!ordersEffectMounted.current) {
-            ordersEffectMounted.current = true;
-            return;
-        }
-
-        const q = orderSearch.trim();
-
-        const run = async () => {
-            setIsSearchingOrders(true);
-            try {
-                const params = new URLSearchParams({ page: '1', limit: '50' });
-                if (q.length >= 2) {
-                    params.set('search', q);
-                } else {
-                    params.set('isDuplication', 'false');
-                    params.set('unassigned', 'true');
-                }
-                if (presetClientId) params.set('aveugleId', String(presetClientId));
-
-                const response = await fetch(`/api/orders?${params.toString()}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setOrders(data.orders || []);
-                }
-            } catch (err) {
-                console.error('Error searching orders:', err);
-            } finally {
-                setIsSearchingOrders(false);
+    // Demandes: empty query → recent attributable list (duplications and
+    // already-attributed ones excluded server-side); a real query → the full
+    // search including those, which the picker greys out instead of hiding, so
+    // « je ne la trouve pas » and « elle est déjà prise » stay distinguishable.
+    //
+    // `attributableFirst` sorts the selectable ones to the top of the search:
+    // ordered by date alone, a common surname could fill the visible rows with
+    // greyed entries and read as no results at all.
+    const orderFetcher = useCallback(
+        async (query: string, signal: AbortSignal): Promise<OrderPickerRow[]> => {
+            const params = new URLSearchParams({
+                page: '1',
+                limit: String(ORDER_RESULT_LIMIT),
+            });
+            if (query) {
+                params.set('search', query);
+                params.set('attributableFirst', 'true');
+            } else {
+                params.set('isDuplication', 'false');
+                params.set('unassigned', 'true');
             }
-        };
+            if (presetClientId) params.set('aveugleId', String(presetClientId));
 
-        const debounce = setTimeout(run, 300);
-        return () => clearTimeout(debounce);
-    }, [orderSearch, presetClientId]);
+            const response = await fetch(`/api/orders?${params.toString()}`, { signal });
+            if (!response.ok) return [];
+            const data = await response.json();
+            return data.orders || [];
+        },
+        [presetClientId]
+    );
 
     const handleReaderSelect = async (user: ReaderSummary) => {
         // Vetoed selections return false so the picker stays open.
@@ -452,8 +449,7 @@ export function AssignmentFormBackendBase({
     const handleOrderSelect = async (order: OrderSummary) => {
         setSelectedOrder(order);
         setFormData(prev => ({ ...prev, orderId: order.id }));
-        setOrderPopoverOpen(false);
-        setOrderSearch('');
+        // Closing the popover and clearing the box is the combobox's job now.
 
         // Auto-populate book from order - catalogueId is now always present
         if (order.catalogue) {
@@ -484,15 +480,16 @@ export function AssignmentFormBackendBase({
 
     // Recent list (empty search) shows only actionable demandes; search shows
     // everything with non-actionable rows greyed. Mirrors the per-row blockReason.
-    const isOrderSearchMode = orderSearch.trim().length >= 2;
-    const visibleOrders = isOrderSearchMode
-        ? orders
-        : orders.filter((order) => {
-            if (order.id === selectedOrder?.id) return true;
-            if (order.isDuplication) return false;
-            if ((order._count?.assignments ?? 0) >= 1) return false;
-            return true;
-        });
+    // A demande is non-actionable for a new attribution when it's a duplication
+    // (no reader needed) or already has one (one-per-demande, server-enforced).
+    // The currently-selected demande is exempt so it stays visible and
+    // re-selectable in edit mode.
+    const orderBlockReason = (order: OrderPickerRow): OrderBlockReason => {
+        if (order.id === selectedOrder?.id) return null;
+        if (order.isDuplication) return 'duplication';
+        if ((order._count?.assignments ?? 0) >= 1) return 'attributed';
+        return null;
+    };
 
     const handleReassignReader = async () => {
         if (!assignmentId || !selectedReaderId) {
@@ -811,7 +808,7 @@ export function AssignmentFormBackendBase({
                                             onSelect={handleReaderSelect}
                                             assignable
                                             placeholder="Sélectionner un lecteur..."
-                                            searchPlaceholder="Rechercher un lecteur..."
+                                            searchPlaceholder="Nom, email, ou numéro de personne..."
                                             emptyMessage="Aucun lecteur trouvé"
                                             listClassName="max-h-[300px]"
                                         />
@@ -842,7 +839,7 @@ export function AssignmentFormBackendBase({
                                                     onSelect={handleReaderSelect}
                                                     assignable
                                                     placeholder="Sélectionner un nouveau lecteur..."
-                                                    searchPlaceholder="Rechercher un lecteur..."
+                                                    searchPlaceholder="Nom, email, ou numéro de personne..."
                                                     emptyMessage="Aucun lecteur trouvé"
                                                     listClassName="max-h-[300px]"
                                                 />
@@ -887,7 +884,7 @@ export function AssignmentFormBackendBase({
                                     onSelect={handleReaderSelect}
                                     assignable
                                     placeholder="Sélectionner un lecteur..."
-                                    searchPlaceholder="Rechercher un lecteur..."
+                                    searchPlaceholder="Nom, email, ou numéro de personne..."
                                     emptyMessage="Aucun lecteur trouvé"
                                     listClassName="max-h-[300px]"
                                     triggerRef={registerField('readerId')}
@@ -904,117 +901,73 @@ export function AssignmentFormBackendBase({
                     {/* Order Selection - NOW SECOND */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Demande</label>
-                        <Popover open={orderPopoverOpen} onOpenChange={setOrderPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="w-full justify-between bg-field border-border text-foreground hover:bg-muted"
-                                >
-                                    {selectedOrder ? (
-                                        <div className="flex items-center gap-2">
-                                            <Package className="h-4 w-4 shrink-0" />
-                                            <span className="text-base">
-                                                {selectedOrder.aveugle?.name || 'Auditeur inconnu'}
-                                                {(selectedOrder.requestReceivedDate || selectedOrder.createdDate) && (
-                                                    <> · {format(new Date(selectedOrder.requestReceivedDate || selectedOrder.createdDate!), 'dd/MM/yyyy', { locale: fr })}</>
+                        <EntitySearchCombobox<OrderPickerRow>
+                            value={selectedOrder as OrderPickerRow | null}
+                            onSelect={handleOrderSelect}
+                            fetcher={orderFetcher}
+                            searchOnEmpty
+                            getItemKey={(order) => order.id}
+                            isItemDisabled={(order) => orderBlockReason(order) !== null}
+                            selectableNoun="attribuables"
+                            resultLimit={ORDER_RESULT_LIMIT}
+                            resultNoun="demandes"
+                            placeholder="Sélectionner une demande..."
+                            searchPlaceholder="Nom, titre, ou numéro de demande..."
+                            emptyMessage="Aucune demande trouvée"
+                            emptyDefaultMessage="Aucune demande récente attribuable — utilisez la recherche pour voir toutes les demandes."
+                            contentClassName="w-[min(600px,calc(100vw-2rem))]"
+                            itemClassName="items-start px-4 py-3 border-b border-border last:border-b-0"
+                            renderValue={(order) => (
+                                <span className="flex items-center gap-2">
+                                    <Package className="h-4 w-4 shrink-0" />
+                                    <span className="text-base">
+                                        {order.aveugle?.name || 'Auditeur inconnu'}
+                                        {(order.requestReceivedDate || order.createdDate) && (
+                                            <> · {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}</>
+                                        )}
+                                        <span className="text-muted-foreground"> (Demande&nbsp;#{order.id})</span>
+                                    </span>
+                                </span>
+                            )}
+                            renderItem={(order) => {
+                                const blockReason = orderBlockReason(order);
+                                return (
+                                    <span className="flex items-start justify-between gap-2">
+                                        <span className="flex-1 min-w-0">
+                                            {/* Primary: who + when — same hierarchy as the trigger */}
+                                            <span className="flex items-center gap-2 mb-1">
+                                                <Package className="h-4 w-4 text-blue-400 shrink-0" />
+                                                <span className="font-semibold text-foreground text-base">
+                                                    {order.aveugle?.name || 'Auditeur inconnu'}
+                                                </span>
+                                                {(order.requestReceivedDate || order.createdDate) && (
+                                                    <span className="text-sm text-muted-foreground">
+                                                        · {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}
+                                                    </span>
                                                 )}
-                                                <span className="text-muted-foreground"> (Demande&nbsp;#{selectedOrder.id})</span>
                                             </span>
-                                        </div>
-                                    ) : (
-                                        <span className="text-muted-foreground">Sélectionner une demande...</span>
-                                    )}
-                                    <Search className="ml-2 h-4 w-4 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent align="start" collisionPadding={16} className="w-[min(600px,calc(100vw-2rem))] p-0 bg-card border-border">
-                                <div className="p-2">
-                                    <Input
-                                        placeholder="Rechercher une demande..."
-                                        value={orderSearch}
-                                        onChange={(e) => setOrderSearch(e.target.value)}
-                                        className="bg-field border-border text-foreground"
-                                    />
-                                </div>
-                                <div
-                                    className="max-h-[400px] overflow-y-auto"
-                                    onWheel={(e) => e.stopPropagation()}
-                                >
-                                    {isSearchingOrders ? (
-                                        <div className="p-4 text-center text-muted-foreground">Recherche...</div>
-                                    ) : visibleOrders.length > 0 ? (
-                                        visibleOrders.map((order) => {
-                                            // A demande is non-actionable for a new attribution when it's a
-                                            // duplication (no reader needed) or already has an attribution
-                                            // (one-per-demande, server-enforced). The currently-selected
-                                            // demande is exempt so it stays visible/selectable in edit mode.
-                                            const blockReason: 'duplication' | 'attributed' | null =
-                                                order.id === selectedOrder?.id
-                                                    ? null
-                                                    : order.isDuplication
-                                                        ? 'duplication'
-                                                        : (order._count?.assignments ?? 0) >= 1
-                                                            ? 'attributed'
-                                                            : null;
-                                            const blocked = blockReason !== null;
-                                            return (
-                                                <div
-                                                    key={order.id}
-                                                    aria-disabled={blocked}
-                                                    className={
-                                                        blocked
-                                                            ? "px-4 py-3 border-b border-border last:border-b-0 opacity-50 cursor-not-allowed"
-                                                            : "px-4 py-3 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
-                                                    }
-                                                    onClick={blocked ? undefined : () => handleOrderSelect(order)}
-                                                >
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="flex-1">
-                                                            {/* Primary: who + when — same hierarchy as the trigger */}
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <Package className="h-4 w-4 text-blue-400 shrink-0" />
-                                                                <span className="font-semibold text-foreground text-base">
-                                                                {order.aveugle?.name || 'Auditeur inconnu'}
-                                                            </span>
-                                                                {(order.requestReceivedDate || order.createdDate) && (
-                                                                    <span className="text-sm text-muted-foreground">
-                                                                    · {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}
-                                                                </span>
-                                                                )}
-                                                            </div>
-                                                            {order.catalogue && (
-                                                                <div className="text-sm text-foreground">
-                                                                    {order.catalogue.title}
-                                                                    {order.catalogue.author && <span className="text-muted-foreground"> — {order.catalogue.author}</span>}
-                                                                </div>
-                                                            )}
-                                                            {blockReason === 'attributed' && (
-                                                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                                                                    Une attribution existe déjà
-                                                                </div>
-                                                            )}
-                                                            {blockReason === 'duplication' && (
-                                                                <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                                                                    Duplication — aucune attribution nécessaire
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Demande&nbsp;#{order.id}</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="p-4 text-center text-muted-foreground">
-                                            {isOrderSearchMode
-                                                ? "Aucune demande trouvée"
-                                                : "Aucune demande récente attribuable — utilisez la recherche pour voir toutes les demandes."}
-                                        </div>
-                                    )}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                                            {order.catalogue && (
+                                                <span className="block text-sm text-foreground">
+                                                    {order.catalogue.title}
+                                                    {order.catalogue.author && <span className="text-muted-foreground"> — {order.catalogue.author}</span>}
+                                                </span>
+                                            )}
+                                            {blockReason === 'attributed' && (
+                                                <span className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-400">
+                                                    Une attribution existe déjà
+                                                </span>
+                                            )}
+                                            {blockReason === 'duplication' && (
+                                                <span className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-400">
+                                                    Duplication — aucune attribution nécessaire
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Demande&nbsp;#{order.id}</span>
+                                    </span>
+                                );
+                            }}
+                        />
                         {selectedOrder && (
                             <Link
                                 href={`/admin/orders?order=${selectedOrder.id}`}

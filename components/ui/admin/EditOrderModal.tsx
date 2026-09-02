@@ -6,6 +6,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { EditOrderFormBackend } from '@/admin/EditOrderFormBackend';
+import { CopyableId } from '@/admin/CopyableId';
 import { OrderFormData } from '@/admin/OrderFormBackendBase';
 
 interface User {
@@ -64,7 +65,10 @@ export function EditOrderModal({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
-                    <DialogTitle className="text-foreground">Modifier la demande</DialogTitle>
+                    <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
+                        Modifier la demande
+                        {orderId && <CopyableId id={orderId} label="de la demande" />}
+                    </DialogTitle>
                 </DialogHeader>
                 <div className="overflow-y-auto px-1">
                     <EditOrderFormBackend

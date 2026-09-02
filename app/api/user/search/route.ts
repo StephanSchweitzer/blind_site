@@ -4,18 +4,22 @@ import { getActiveAssignmentCounts } from '@/lib/users/deletionGuard';
 import { Prisma } from '@prisma/client';
 import { MemberType, AccessLevel } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
+import { meetsSearchMinLength, normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 
 
 export const GET = withAdmin(async (request) => {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const query = searchParams.get('q') || '';
+        // Normalized here as well as in the picker: this route is also hit
+        // directly, and « #42 » must resolve to person 42 either way.
+        const query = normalizeSearchQuery(searchParams.get('q') || '');
         const memberType = searchParams.get('memberType');
         const accessLevel = searchParams.get('accessLevel');
         // When set, restrict to members who can currently receive assignments.
         const assignable = searchParams.get('assignable') === 'true';
 
-        if (query.trim().length < 2) {
+        // A bare id is searchable at one character — see meetsSearchMinLength.
+        if (!meetsSearchMinLength(query, 2)) {
             return NextResponse.json([]);
         }
 
@@ -24,11 +28,7 @@ export const GET = withAdmin(async (request) => {
         // "stephan" match firstName while "s" matches lastName.
         const terms = query.trim().split(/\s+/).filter(Boolean);
 
-        const whereClause: Prisma.UserWhereInput = {
-            // Exclude soft-deleted users. The global Prisma extension also does
-            // this for findMany; set explicitly here so the picker stays clean
-            // even if the query path changes.
-            deletedAt: null,
+        const nameMatch: Prisma.UserWhereInput = {
             AND: terms.map((term) => ({
                 OR: [
                     { firstName: { contains: term, mode: Prisma.QueryMode.insensitive } },
@@ -36,6 +36,22 @@ export const GET = withAdmin(async (request) => {
                     { email:     { contains: term, mode: Prisma.QueryMode.insensitive } },
                 ],
             })),
+        };
+
+        // Staff look people up by the id shown in « Modifier la personne #42 ».
+        // OR-ed with the name search rather than replacing it: an all-digit
+        // query can also be part of an email or a legacy imported name, and
+        // silently dropping those matches would be worse than a longer list.
+        const entityId = parseEntityId(query);
+
+        const whereClause: Prisma.UserWhereInput = {
+            // Exclude soft-deleted users. The global Prisma extension also does
+            // this for findMany; set explicitly here so the picker stays clean
+            // even if the query path changes.
+            deletedAt: null,
+            ...(entityId !== null
+                ? { OR: [{ id: entityId }, nameMatch] }
+                : nameMatch),
         };
 
         if (memberType) {
@@ -109,7 +125,19 @@ export const GET = withAdmin(async (request) => {
                 byEmail.set(key, u);
             }
         }
-        const deduped = [...byEmail.values(), ...noEmail];
+        let deduped = [...byEmail.values(), ...noEmail];
+
+        // An explicit id match must survive the dedupe and lead the list. Two
+        // legacy rows can share an email, and the scoring above would happily
+        // discard the very row the admin pasted the id of — handing them a
+        // different person under the number they typed. Asking for an id is
+        // unambiguous in a way a name search never is, so it wins outright.
+        if (entityId !== null) {
+            const exact = users.find((u) => u.id === entityId);
+            if (exact) {
+                deduped = [exact, ...deduped.filter((u) => u.id !== entityId)];
+            }
+        }
 
         // #3 — when filtering assignable readers, attach each one's current
         // active-assignment count so the form can warn at the max. Reuses the
