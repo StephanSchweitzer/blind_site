@@ -3,7 +3,6 @@ import 'server-only';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getUserDisplayName } from '@/lib/users/displayName';
-import { getLanguageLabel } from '@/lib/user-enums';
 import type { AuditChangeMap, AuditFieldLabelEntry, AuditRecordLabel } from '@/types';
 
 /**
@@ -118,26 +117,6 @@ const assignmentLabel = (
         title,
         subtitle: author,
         linked: id === null ? null : { model: 'Assignment', recordId: String(id) },
-    };
-};
-
-/**
- * A label that names the LANGUAGE a ReaderLanguage row is about, subtitled by
- * who speaks it, and carrying the link to that person. Used the same way as
- * `bookLabel` / `assignmentLabel` — a langue de lecteur has no screen of its
- * own, the reader's fiche is the only useful destination.
- */
-const readerLanguageLabel = (
-    language: string | null,
-    speaker: string | null,
-    userId: unknown
-): AuditRecordLabel | null => {
-    if (language === null) return null;
-    const id = asId(userId);
-    return {
-        title: getLanguageLabel(language),
-        subtitle: speaker,
-        linked: id === null ? null : { model: 'User', recordId: String(id) },
     };
 };
 
@@ -287,24 +266,6 @@ const SOURCES: Record<string, LabelSource> = {
         linksToBook: true,
     },
 
-    // Rows always come from a replace-all `deleteMany` + `createMany` (see
-    // app/api/user/[id]/route.ts), never a single-row create — so `build`/`query`
-    // only ever fire for a DELETE whose snapshot builder below couldn't answer,
-    // and a live join still names it correctly if the row somehow survives.
-    ReaderLanguage: {
-        query: (ids) => Prisma.sql`
-            SELECT rl.id::text AS key, rl."userId", rl.language::text AS language, ${USER_NAME_COLUMNS}
-            FROM "ReaderLanguage" rl
-            JOIN "User" u ON u.id = rl."userId"
-            ${USER_CIVILITY_JOIN}
-            WHERE rl.id IN (${Prisma.join(ids)})`,
-        build: (row) => readerLanguageLabel(str(row.language), userName(row) || null, row.userId),
-        // No civility and no name in a deleteMany snapshot (userId is a plain FK),
-        // so a deleted language is named for itself and links to the person
-        // instead of naming them — close enough to point a reader the right way.
-        fromSnapshot: (snap) => readerLanguageLabel(str(snap.language), null, snap.userId),
-    },
-
     // No fromSnapshot: the snapshot carries only assignmentId/readerId, and a
     // second join back to Assignment → Book from a plain id would duplicate
     // the live query for no benefit — a deleted row is left unnamed instead,
@@ -368,7 +329,6 @@ const FK_FIELD_TARGETS: Record<string, string> = {
     'News.authorId': 'User',
     'AudioTrackEvent.performedById': 'User',
     'AudioTrackEvent.bookId': 'Book',
-    'ReaderLanguage.userId': 'User',
 };
 
 /** Same label a record's own name uses, flattened to one line for a diff cell. */
@@ -548,7 +508,6 @@ export async function resolveRecordLabels(
     }
 
     await nameByReferencedBook(requests, labels);
-    await nameReaderLanguageBatches(requests, labels);
     return labels;
 }
 
@@ -598,52 +557,6 @@ async function nameByReferencedBook(
         }
     } catch (error) {
         console.error('[audit] libellés par livre référencé — abandon:', error);
-    }
-}
-
-/**
- * Names a batched ReaderLanguage write — the replace-all save in
- * app/api/user/[id]/route.ts always goes through `createMany`, even for a
- * single language, so it is always stored under recordId '*' (see
- * BULK_RECORD_ID) and never reaches the by-id pass above.
- *
- * `sharedChanges` (lib/audit/extension.ts) keeps `userId` because every
- * inserted row shares it, and keeps `language` too whenever the batch was
- * exactly one row — the only case where every row still agrees on it. That is
- * what lets this name the batch by the language when there was one, and
- * fall back to naming just the person otherwise.
- */
-async function nameReaderLanguageBatches(
-    requests: LabelRequest[],
-    labels: Map<number, AuditRecordLabel>
-): Promise<void> {
-    const wanted = new Map<number, { userId: number; language: string | null }>();
-    for (const { id, model, changes } of requests) {
-        if (model !== 'ReaderLanguage' || labels.has(id) || !changes) continue;
-        const userId = asId(changes.userId?.[1]);
-        if (userId === null) continue;
-        const language = typeof changes.language?.[1] === 'string' ? changes.language[1] : null;
-        wanted.set(id, { userId, language });
-    }
-    if (wanted.size === 0) return;
-
-    try {
-        const ids = [...new Set([...wanted.values()].map((w) => w.userId))];
-        const rows = await prisma.$queryRaw<Row[]>`
-            SELECT u.id::text AS key, ${USER_NAME_COLUMNS}
-            FROM "User" u ${USER_CIVILITY_JOIN} WHERE u.id IN (${Prisma.join(ids)})`;
-        const people = new Map(rows.map((row) => [str(row.key), row]));
-
-        for (const [id, { userId, language }] of wanted) {
-            const person = people.get(String(userId));
-            const speaker = person ? userName(person) || null : null;
-            const built: AuditRecordLabel = language
-                ? { title: getLanguageLabel(language), subtitle: speaker, linked: { model: 'User', recordId: String(userId) } }
-                : { title: speaker ?? `Personne n°${userId}`, subtitle: 'Langues mises à jour', linked: { model: 'User', recordId: String(userId) } };
-            labels.set(id, built);
-        }
-    } catch (error) {
-        console.error('[audit] libellés de lot langue de lecteur — abandon:', error);
     }
 }
 

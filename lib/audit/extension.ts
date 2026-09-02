@@ -15,6 +15,7 @@ import {
 import {
     AuditChanges,
     AuditSnapshot,
+    AuditValue,
     creationChanges,
     diffRows,
     encodeSnapshot,
@@ -22,6 +23,7 @@ import {
     withinPayloadBudget,
 } from './diff';
 import { getAuditActor, isAuditBypassed } from './context';
+import { OWNED_COLLECTIONS, OwnedCollection, describeCollection, isOwnedCollection } from './owned-collections';
 
 /**
  * Prisma client extension that turns every write to an audited model into an
@@ -35,6 +37,9 @@ import { getAuditActor, isAuditBypassed } from './context';
  *   delete             → one DELETE event, changes = {}, snapshot = the full row
  *   updateMany/deleteMany → one event per row up to BULK_ROW_LIMIT, then a
  *                        single summary event instead
+ *   owned collections  → no event of their own: one UPDATE event on the row that
+ *                        OWNS them, naming the whole collection before and after
+ *                        (see lib/audit/owned-collections.ts)
  *
  * Cost: one extra read before an update/delete (the "before" state). The "after"
  * state is normally derived from the write's own `data`, so a plain field edit
@@ -405,6 +410,85 @@ async function buildEvents({
     return [];
 }
 
+// ── owned collections ───────────────────────────────────────────────────────
+
+/** What a write spanning more owners than we read says instead of a diff. */
+const MASS_UPDATE_MARKER = 'écriture groupée sur plus de 50 fiches';
+
+/**
+ * The owners a write to an owned collection concerns — whose collections have to
+ * be read on both sides of it.
+ *
+ * Two ways a row names its owner: a row about to be INSERTED carries the foreign
+ * key in the write's own `data`; a row about to be changed or removed carries it
+ * in the table, and is found through the write's `where`.
+ *
+ * `overflow` says the `where` matched more owners than BULK_ROW_LIMIT. Reading
+ * both sides of that many collections costs more than the line would be worth —
+ * and a write of that size is a script, never a fiche being saved.
+ */
+async function ownersTouched(
+    base: PrismaClient,
+    model: string,
+    spec: OwnedCollection,
+    where: unknown,
+    candidates: unknown[]
+): Promise<{ owners: number[]; overflow: boolean }> {
+    const owners = new Set<number>();
+
+    for (const candidate of candidates) {
+        for (const row of Array.isArray(candidate) ? candidate : [candidate]) {
+            if (!isWrapperObject(row)) continue;
+            const raw = row[spec.ownerKey];
+            const value = isWrapperObject(raw) && 'set' in raw ? raw.set : raw;
+            if (typeof value === 'number') owners.add(value);
+        }
+    }
+
+    const delegate = delegateFor(base, model);
+    if (delegate && where !== undefined) {
+        const rows = await delegate.findMany({
+            where,
+            // One row over the cap is enough to know the write is a mass operation.
+            take: BULK_ROW_LIMIT + 1,
+            select: { [spec.ownerKey]: true },
+        });
+        if (rows.length > BULK_ROW_LIMIT) return { owners: [], overflow: true };
+        for (const row of rows) {
+            const value = row[spec.ownerKey];
+            if (typeof value === 'number') owners.add(value);
+        }
+    }
+
+    return { owners: [...owners], overflow: owners.size > BULK_ROW_LIMIT };
+}
+
+/** Each owner's collection, written out as one value — null when it is empty. */
+async function readCollections(
+    base: PrismaClient,
+    model: string,
+    spec: OwnedCollection,
+    owners: number[]
+): Promise<Map<number, AuditValue>> {
+    const rendered = new Map<number, AuditValue>(owners.map((owner) => [owner, null]));
+    const delegate = delegateFor(base, model);
+    if (!delegate || owners.length === 0) return rendered;
+
+    const grouped = new Map<number, Row[]>();
+    for (const row of await delegate.findMany({ where: { [spec.ownerKey]: { in: owners } } })) {
+        const owner = row[spec.ownerKey];
+        if (typeof owner !== 'number') continue;
+        const rows = grouped.get(owner);
+        if (rows) rows.push(row);
+        else grouped.set(owner, [row]);
+    }
+
+    for (const [owner, rows] of grouped) {
+        rendered.set(owner, encodeValue(describeCollection(spec, rows)));
+    }
+    return rendered;
+}
+
 /** Backstop against a pathologically large payload reaching the table. */
 function fitBudget(row: AuditRowInput): AuditRowInput {
     if (withinPayloadBudget(row.changes) && withinPayloadBudget(row.snapshot ?? {})) return row;
@@ -439,7 +523,7 @@ export function auditExtension(base: PrismaClient) {
             $allModels: {
                 async $allOperations({ model, operation, args, query }) {
                     if (
-                        !isAuditedModel(model) ||
+                        (!isAuditedModel(model) && !isOwnedCollection(model)) ||
                         !AUDITED_OPERATIONS.has(operation) ||
                         isAuditBypassed()
                     ) {
@@ -449,11 +533,55 @@ export function auditExtension(base: PrismaClient) {
                     const call = (args ?? {}) as {
                         where?: unknown;
                         data?: unknown;
+                        create?: unknown;
                         update?: unknown;
                         select?: unknown;
                     };
                     // upsert carries its edit under `update`, everything else under `data`.
                     const data = operation === 'upsert' ? call.update : call.data;
+
+                    // A collection owned by another row is traced against that row:
+                    // what it is worth saying is what the whole set became, not which
+                    // of its interchangeable rows was replaced on the way there.
+                    if (model !== undefined && isOwnedCollection(model)) {
+                        const spec = OWNED_COLLECTIONS[model];
+                        const touched = await safely(`${model}.${operation} (propriétaires)`, () =>
+                            ownersTouched(base, model, spec, call.where, [call.data, call.create, call.update])
+                        );
+                        const owners = touched?.overflow ? [] : touched?.owners ?? [];
+                        const before = await safely(`${model}.${operation} (état avant)`, () =>
+                            readCollections(base, model, spec, owners)
+                        );
+
+                        const result = await query(args);
+
+                        await safely(`${model}.${operation}`, async () => {
+                            if (touched?.overflow) {
+                                await writeAuditEvents(base, [{
+                                    model: spec.owner,
+                                    recordId: BULK_RECORD_ID,
+                                    operation: 'UPDATE',
+                                    changes: { _tronque: [null, MASS_UPDATE_MARKER] },
+                                }]);
+                                return;
+                            }
+                            const after = await readCollections(base, model, spec, owners);
+                            await writeAuditEvents(base, owners.flatMap((owner) => {
+                                const from = before?.get(owner) ?? null;
+                                const to = after.get(owner) ?? null;
+                                // A set re-saved as it stood is not a change.
+                                if (from === to) return [];
+                                return [{
+                                    model: spec.owner,
+                                    recordId: String(owner),
+                                    operation: 'UPDATE' as const,
+                                    changes: { [spec.field]: [from, to] },
+                                }];
+                            }));
+                        });
+
+                        return result;
+                    }
 
                     const before = await safely(`${model}.${operation} (état avant)`, () =>
                         loadBefore(base, model, operation, call.where)

@@ -16,7 +16,12 @@
  *   - machine-written tables rewritten wholesale by scripts (OrphanAudioFolder,
  *     AudioFilepathBackup): pure churn, no human decision behind them;
  *   - the pure join tables (BookGenre, CoupsDeCoeurBooks): they only ever move
- *     with the Book / CoupsDeCoeur row that owns them, which IS audited.
+ *     with the Book / CoupsDeCoeur row that owns them, which IS audited;
+ *   - Address and ReaderLanguage, for the same reason one step further: they are
+ *     a field of a fiche, not records, and the form edits them by replacing the
+ *     whole set. They are traced against the User that owns them instead — see
+ *     OWNED_COLLECTIONS in lib/audit/owned-collections.ts, which is where the
+ *     extension sends their writes.
  *
  * AudioTrackEvent is the one deliberate exception to the "event logs aren't
  * audited" rule above: upload/rename/delete/restore on a book's audio
@@ -29,8 +34,6 @@
  */
 export const AUDITED_MODELS = new Set([
     'User',
-    'Address',
-    'ReaderLanguage',
     'Book',
     'Genre',
     'CoupsDeCoeur',

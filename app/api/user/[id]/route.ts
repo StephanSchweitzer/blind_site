@@ -195,6 +195,114 @@ interface UserUpdateRequestBody extends UserUpdateInput {
     civilityOther?: string | null;
 }
 
+/** The columns the fiche owns on an address — read back and written identically. */
+const ADDRESS_FIELDS = {
+    addressLine1: true,
+    addressSupplement: true,
+    city: true,
+    postalCode: true,
+    stateProvince: true,
+    country: true,
+    isDefault: true,
+} as const;
+
+type StorableAddress = { [K in keyof typeof ADDRESS_FIELDS]: K extends 'country'
+    ? string
+    : K extends 'isDefault' ? boolean : string | null };
+
+/** One submitted address, normalized the way it is stored. */
+function storableAddress(address: Omit<AddressCreateInput, 'userId'>): StorableAddress {
+    return {
+        addressLine1: address.addressLine1 || null,
+        addressSupplement: address.addressSupplement || null,
+        city: address.city || null,
+        postalCode: address.postalCode || null,
+        stateProvince: address.stateProvince || null,
+        country: address.country || 'France',
+        isDefault: address.isDefault || false,
+    };
+}
+
+/** Same address, field by field — what decides whether a stored row is rewritten. */
+function sameAddress(stored: StorableAddress, submitted: StorableAddress): boolean {
+    return (Object.keys(ADDRESS_FIELDS) as Array<keyof StorableAddress>)
+        .every((field) => stored[field] === submitted[field]);
+}
+
+/**
+ * Bring a person's addresses in line with what the fiche submitted, writing as
+ * little as possible.
+ *
+ * Deliberately NOT a delete-all + create-all. That rewrote every row on every
+ * save, which cost the journal des modifications a « Suppression · Adresse »
+ * whenever anyone saved a fiche without touching the address at all — and, when
+ * an address genuinely was edited, split the one change a human made across a
+ * suppression and a creation that had to be read together to mean anything.
+ *
+ * Rows are paired by position: an address carries no key of its own, the form
+ * submits them in order, and they are interchangeable — so the first submitted
+ * address updating the first stored one is as good a pairing as any, and it is
+ * the one that leaves ids alone. What the trail records is the resulting SET
+ * either way (see lib/audit/owned-collections.ts); the pairing only decides how
+ * few writes it takes to get there.
+ */
+async function syncAddresses(userId: number, submitted: StorableAddress[]): Promise<void> {
+    const stored = await prisma.address.findMany({
+        where: { userId },
+        orderBy: { id: 'asc' },
+        select: { id: true, ...ADDRESS_FIELDS },
+    });
+
+    const paired = Math.min(stored.length, submitted.length);
+    for (let index = 0; index < paired; index++) {
+        if (sameAddress(stored[index], submitted[index])) continue;
+        await prisma.address.update({
+            where: { id: stored[index].id },
+            data: submitted[index],
+        });
+    }
+
+    if (submitted.length > paired) {
+        await prisma.address.createMany({
+            data: submitted.slice(paired).map((address) => ({ ...address, userId })),
+        });
+    }
+    if (stored.length > paired) {
+        await prisma.address.deleteMany({
+            where: { id: { in: stored.slice(paired).map((address) => address.id) } },
+        });
+    }
+}
+
+/**
+ * The same idea for the reader languages, which have no order at all: only the
+ * languages actually ticked or unticked are written. A fiche whose language set
+ * is untouched writes nothing, and adding one language is one insert rather than
+ * a wholesale rewrite of the set.
+ */
+async function syncLanguages(userId: number, submitted: string[]): Promise<void> {
+    const wanted = new Set(submitted);
+    const stored = await prisma.readerLanguage.findMany({
+        where: { userId },
+        select: { id: true, language: true },
+    });
+
+    const removed = stored.filter((row) => !wanted.has(row.language));
+    if (removed.length > 0) {
+        await prisma.readerLanguage.deleteMany({
+            where: { id: { in: removed.map((row) => row.id) } },
+        });
+    }
+
+    const held = new Set<string>(stored.map((row) => row.language));
+    const added = [...wanted].filter((language) => !held.has(language));
+    if (added.length > 0) {
+        await prisma.readerLanguage.createMany({
+            data: added.map((language) => ({ userId, language: language as Language })),
+        });
+    }
+}
+
 // withAdmin rather than a hand-rolled getCurrentUser(): the guard runs the whole
 // handler inside the audit-actor scope, which is what puts a name on the writes
 // below. Resolving the session here instead left them attributed to « Système ».
@@ -367,63 +475,18 @@ export const PATCH = withAdmin(async (
             updateData.passwordNeedsChange = true;
         }
 
-        // Handle addresses separately
+        // Addresses and languages are one-to-many and always submitted whole by the
+        // form. Both are synced entry by entry rather than replaced (see
+        // syncAddresses), and both go through their own delegate rather than a
+        // nested `addresses: { create }` on the user update below — a nested write
+        // never reaches the audit extension, so the change would be made without
+        // leaving any trace of what the set became.
         if (body.addresses !== undefined) {
-            await prisma.address.deleteMany({
-                where: { userId: userId }
-            });
-
-            if (body.addresses.length > 0) {
-                type UpdateDataWithAddresses = typeof updateData & {
-                    addresses?: {
-                        create: Array<{
-                            addressLine1: string | null;
-                            addressSupplement: string | null;
-                            city: string | null;
-                            postalCode: string | null;
-                            stateProvince: string | null;
-                            country: string;
-                            isDefault: boolean;
-                        }>;
-                    };
-                };
-
-                (updateData as UpdateDataWithAddresses).addresses = {
-                    create: body.addresses.map((addr) => ({
-                        addressLine1: addr.addressLine1 || null,
-                        addressSupplement: addr.addressSupplement || null,
-                        city: addr.city || null,
-                        postalCode: addr.postalCode || null,
-                        stateProvince: addr.stateProvince || null,
-                        country: addr.country || 'France',
-                        isDefault: addr.isDefault || false,
-                    }))
-                };
-            }
+            await syncAddresses(userId, body.addresses.map(storableAddress));
         }
 
-        // Handle languages separately (one-to-many; replace-all). The edit form
-        // always submits this field, so comparing against what's already stored
-        // first is what keeps an unrelated edit (e.g. just the phone number) from
-        // deleting and recreating every ReaderLanguage row — noise that used to
-        // show up in the journal des modifications as if languages had changed.
         if (body.languages !== undefined) {
-            const existingLanguages = await prisma.readerLanguage.findMany({
-                where: { userId },
-                select: { language: true },
-            });
-            const before = new Set(existingLanguages.map((l) => l.language));
-            const after = new Set(body.languages as string[]);
-            const unchanged = before.size === after.size && [...before].every((l) => after.has(l));
-
-            if (!unchanged) {
-                await prisma.readerLanguage.deleteMany({ where: { userId } });
-                if (body.languages.length > 0) {
-                    await prisma.readerLanguage.createMany({
-                        data: body.languages.map((language: string) => ({ userId, language: language as Language })),
-                    });
-                }
-            }
+            await syncLanguages(userId, body.languages as string[]);
         }
 
         const updatedUser = await prisma.user.update({

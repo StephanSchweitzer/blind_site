@@ -36,6 +36,10 @@ export const OPERATION_LABELS: Record<AuditOperationValue, string> = {
  */
 export const MODEL_LABELS: Record<string, string> = {
     User: 'Personne',
+    // Adresse / Langue de lecteur are no longer traced as records of their own —
+    // they are a field of the fiche that owns them (lib/audit/owned-collections.ts).
+    // Kept so events written before that change still read as words for the
+    // fortnight they survive in the table.
     Address: 'Adresse',
     ReaderLanguage: 'Langue de lecteur',
     Book: 'Livre',
@@ -164,6 +168,11 @@ const FIELD_LABELS: Record<string, string> = {
     stateProvince: 'Région',
     country: 'Pays',
     isDefault: 'Adresse par défaut',
+    // Synthetic: the whole set of adresses / langues carried by one fiche, which
+    // is how both are traced (lib/audit/owned-collections.ts). Neither is a
+    // column on User, so neither can collide with one.
+    addresses: 'Adresses',
+    languages: 'Langues',
 
     // books
     title: 'Titre',
