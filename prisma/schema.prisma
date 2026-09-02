@@ -88,6 +88,7 @@ model User {
   audioTrackEvents          AudioTrackEvent[]   @relation("AudioTrackEventsPerformedBy")
   languages                 ReaderLanguage[]
   civility                  Civility?           @relation(fields: [civilityId], references: [id])
+  passwordResetTokens       PasswordResetToken[]
 
   @@index([deletedAt])
 }
@@ -951,4 +952,28 @@ model MembershipOption {
   updatedAt      DateTime @updatedAt
 
   @@index([sortOrder])
+}
+
+/// A single-use, time-limited link letting a **permanent** unlock their own
+/// account from the sign-in page.
+///
+/// Deliberately narrow: the request route only ever issues one for an existing
+/// `admin` / `super_admin`, so this is not a public account-recovery path and
+/// cannot be used to discover or create accounts.
+///
+/// The link's secret is never stored — only its SHA-256 — so a leaked row can't
+/// be replayed as a link. Rows are short-lived and each new request for a user
+/// deletes that user's earlier ones, so the table stays a handful of rows (the
+/// database has a 500 MB hard ceiling).
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }

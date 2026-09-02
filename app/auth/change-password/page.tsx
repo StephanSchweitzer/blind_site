@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
+import { checkPasswordStrength, MIN_PASSWORD_SCORE } from '@/lib/auth/passwordStrength';
 
 export default function ChangePasswordPage() {
     const { status } = useSession();
@@ -24,11 +25,7 @@ export default function ChangePasswordPage() {
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const [passwordStrength, setPasswordStrength] = useState({
-        score: 0,
-        message: 'Très faible',
-        color: 'bg-red-500',
-    });
+    const [passwordStrength, setPasswordStrength] = useState(() => checkPasswordStrength(''));
 
     // Check if user needs to change password
     useEffect(() => {
@@ -61,49 +58,10 @@ export default function ChangePasswordPage() {
         }));
 
         if (name === 'newPassword') {
-            checkPasswordStrength(value);
+            // Scored by the shared rule (lib/auth/passwordStrength.ts), so this
+            // meter and the reset-link page can never disagree on "strong enough".
+            setPasswordStrength(checkPasswordStrength(value));
         }
-    };
-
-    const checkPasswordStrength = (password: string) => {
-        // Password strength criteria
-        const hasLowercase = /[a-z]/.test(password);
-        const hasUppercase = /[A-Z]/.test(password);
-        const hasNumber = /[0-9]/.test(password);
-        const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
-        const isLongEnough = password.length >= 8;
-
-        let score = 0;
-        if (hasLowercase) score += 1;
-        if (hasUppercase) score += 1;
-        if (hasNumber) score += 1;
-        if (hasSpecialChar) score += 1;
-        if (isLongEnough) score += 1;
-
-        const strengthInfo = {
-            score,
-            message: 'Très faible',
-            color: 'bg-red-500'
-        };
-
-        if (score === 1) {
-            strengthInfo.message = 'Très faible';
-            strengthInfo.color = 'bg-red-500';
-        } else if (score === 2) {
-            strengthInfo.message = 'Faible';
-            strengthInfo.color = 'bg-orange-500';
-        } else if (score === 3) {
-            strengthInfo.message = 'Moyenne';
-            strengthInfo.color = 'bg-yellow-500';
-        } else if (score === 4) {
-            strengthInfo.message = 'Bonne';
-            strengthInfo.color = 'bg-green-500';
-        } else if (score === 5) {
-            strengthInfo.message = 'Excellente';
-            strengthInfo.color = 'bg-emerald-500';
-        }
-
-        setPasswordStrength(strengthInfo);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +74,7 @@ export default function ChangePasswordPage() {
             return;
         }
 
-        if (passwordStrength.score < 3) {
+        if (passwordStrength.score < MIN_PASSWORD_SCORE) {
             setError('Veuillez choisir un mot de passe plus fort');
             return;
         }
@@ -240,7 +198,7 @@ export default function ChangePasswordPage() {
                                             style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
                                         ></div>
                                     </div>
-                                    <p className={`text-sm ${passwordStrength.score >= 3 ? 'text-green-400' : 'text-amber-400'}`}>
+                                    <p className={`text-sm ${passwordStrength.score >= MIN_PASSWORD_SCORE ? 'text-green-400' : 'text-amber-400'}`}>
                                         Force: {passwordStrength.message}
                                     </p>
 
