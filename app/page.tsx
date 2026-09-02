@@ -22,12 +22,13 @@ const organizationJsonLd = {
 
 export default async function Home() {
     return (
-        <main className="min-h-screen relative">
+        <div className="flex min-h-screen flex-col">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
             />
             <FrontendNavbar />
+        <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8">
                 {/* Hero Section - First card with welcome text */}
@@ -74,5 +75,6 @@ export default async function Home() {
                 </section>
             </div>
         </main>
+        </div>
     );
 }

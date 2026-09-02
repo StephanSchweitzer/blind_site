@@ -13,8 +13,9 @@ export default async function HistoriquePage() {
     const historyEvents = await getHistory();
 
     return (
-        <main className="min-h-screen relative">
+        <div className="flex min-h-screen flex-col">
             <FrontendNavbar />
+        <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
                 <section className="text-center glass-card-lg p-8 sm:p-12">
@@ -94,5 +95,6 @@ export default async function HistoriquePage() {
                 </section>
             </div>
         </main>
+        </div>
     );
 }

@@ -61,19 +61,20 @@ export default function CoupsDeCoeurClient({
     };
 
     return (
-        <main className="min-h-screen relative">
+        <div className="flex min-h-screen flex-col">
             <FrontendNavbar />
+        <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-8">
                 <section className="text-center glass-card-lg p-8 sm:p-12 animate-fade-in relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/20 dark:bg-purple-500/20 rounded-full blur-3xl animate-blob"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 dark:bg-blue-500/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
+                    <div aria-hidden="true" className="absolute top-0 right-0 w-64 h-64 bg-blue-400/20 dark:bg-purple-500/20 rounded-full blur-3xl animate-blob"></div>
+                    <div aria-hidden="true" className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 dark:bg-blue-500/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
 
                     <div className="relative z-10">
                         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
                             Listes de livres
                         </h1>
-                        <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mx-auto mb-6"></div>
+                        <div aria-hidden="true" className="w-24 h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mx-auto mb-6"></div>
                         <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed max-w-2xl mx-auto">
                             <span className="text-base">
                                 À demander au{' '}
@@ -108,6 +109,7 @@ export default function CoupsDeCoeurClient({
                                 currentPage={currentPage}
                                 totalPages={totalPages}
                                 onPageChange={goToPage}
+                                label="Pagination (haut de page)"
                             />
                         </div>
                     )}
@@ -115,8 +117,8 @@ export default function CoupsDeCoeurClient({
                     {content.length === 0 ? (
                         <div className="text-center py-12 glass-card animate-fade-in">
                             <div className="max-w-md mx-auto">
-                                <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div aria-hidden="true" className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg aria-hidden="true" focusable="false" className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
@@ -137,6 +139,7 @@ export default function CoupsDeCoeurClient({
                                 currentPage={currentPage}
                                 totalPages={totalPages}
                                 onPageChange={goToPage}
+                                label="Pagination (bas de page)"
                             />
                         </div>
                     )}
@@ -153,5 +156,6 @@ export default function CoupsDeCoeurClient({
                 <PDFButton content={content} />
             )}
         </main>
+        </div>
     );
 }

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { SearchBar } from '@/dernieres-infos/SearchBar';
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import { Tag, Filter, User, Calendar } from 'lucide-react';
-import type { NewsPost, NewsResponse } from '@/types/news';
+import type { NewsPost, NewsResponse, NewsType } from '@/types/news';
 import { newsTypeLabels, newsTypeColors, getNewsTypeColor, getNewsTypeTextColor } from '@/types/news';
 
 interface DernieresInfosClientProps {
@@ -22,6 +22,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const isFirstRender = useRef(true);
+    const filtersId = useId();
 
     const fetchNewsPosts = useCallback(async (page: number) => {
         setIsLoading(true);
@@ -109,7 +110,10 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                     />
                 </div>
                 <button
+                    type="button"
                     onClick={() => setShowFilters(!showFilters)}
+                    aria-expanded={showFilters}
+                    aria-controls={filtersId}
                     className="flex items-center gap-2 px-5 py-3
                         bg-white/95 dark:bg-gray-700/95
                         backdrop-blur-xl
@@ -123,20 +127,27 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                         hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_12px_40px_rgb(0,0,0,0.4)]
                         transition-all duration-300"
                 >
-                    <Filter className="w-4 h-4" />
+                    <Filter aria-hidden="true" className="w-4 h-4" />
                     Filtres
-                    <span className={`transition-transform duration-300 ${showFilters ? 'rotate-180' : ''}`}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span aria-hidden="true" className={`transition-transform duration-300 ${showFilters ? 'rotate-180' : ''}`}>
+                        <svg focusable="false" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                     </span>
                 </button>
             </div>
 
-            {showFilters && (
-                <div className="glass-card p-5 flex flex-wrap gap-3 animate-fade-in">
+            {/* aria-pressed on each chip: the active filter was signalled by colour
+                and scale alone, which conveys nothing to a screen reader and
+                nothing to a user who cannot distinguish the colours
+                (RGAA 3.1 / WCAG 1.4.1). */}
+            <div id={filtersId} hidden={!showFilters}>
+                <fieldset className="glass-card p-5 flex flex-wrap gap-3 animate-fade-in border-0">
+                    <legend className="sr-only">Filtrer les actualités par type</legend>
                     <button
+                        type="button"
                         onClick={() => handleTypeChange('all')}
+                        aria-pressed={selectedType === 'all'}
                         className={`px-4 py-2.5 rounded-full font-medium transition-all duration-300 shadow-md
                             ${selectedType === 'all'
                             ? 'bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-purple-600 text-white shadow-blue-500/30 scale-105'
@@ -148,23 +159,41 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                     {Object.entries(newsTypeLabels).map(([type, label]) => (
                         <button
                             key={type}
+                            type="button"
                             onClick={() => handleTypeChange(type)}
+                            aria-pressed={selectedType === type}
                             className={`px-4 py-2.5 rounded-full font-medium transition-all duration-300 shadow-md flex items-center gap-2
                                 ${selectedType === type
-                                ? newsTypeColors[type] + ' text-white scale-105'
+                                // getNewsTypeTextColor, not a hardcoded white: the
+                                // ANNONCE chip is yellow-500, on which white text is
+                                // 1.9:1. The map pairs each background with ink that
+                                // clears 4.5:1.
+                                ? `${newsTypeColors[type as NewsType]} ${getNewsTypeTextColor(type as NewsType)} scale-105`
                                 : 'bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600/50 hover:scale-105'
                             }`}
                         >
-                            <Tag className="w-4 h-4" />
+                            <Tag aria-hidden="true" className="w-4 h-4" />
                             {label}
                         </button>
                     ))}
-                </div>
-            )}
+                </fieldset>
+            </div>
+
+            {/* Results are swapped in without a page load, so their arrival has to
+                be announced explicitly (RGAA 7.4). */}
+            <p role="status" aria-live="polite" className="sr-only">
+                {isLoading
+                    ? 'Chargement des actualités…'
+                    : error
+                        ? ''
+                        : newsPosts.length === 0
+                            ? 'Aucune actualité ne correspond à votre recherche.'
+                            : `${newsPosts.length} actualité${newsPosts.length > 1 ? 's' : ''} affichée${newsPosts.length > 1 ? 's' : ''}, page ${currentPage} sur ${totalPages}.`}
+            </p>
 
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-16">
-                    <div className="relative">
+                    <div aria-hidden="true" className="relative">
                         <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 dark:border-purple-900"></div>
                         <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-4 border-transparent border-t-blue-600 dark:border-t-purple-400"></div>
                     </div>
@@ -173,19 +202,19 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                     </p>
                 </div>
             ) : error ? (
-                <div className="text-center py-12 rounded-2xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 animate-fade-in">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div role="alert" className="text-center py-12 rounded-2xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 animate-fade-in">
+                    <div aria-hidden="true" className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg focusable="false" className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <p className="text-red-700 dark:text-red-400 font-medium">{error}</p>
+                    <p className="text-red-800 dark:text-red-300 font-medium">{error}</p>
                 </div>
             ) : newsPosts.length === 0 ? (
                 <div className="text-center py-12 glass-card animate-fade-in">
                     <div className="max-w-md mx-auto">
-                        <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div aria-hidden="true" className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg focusable="false" className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                             </svg>
                         </div>
@@ -222,15 +251,19 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                                 </p>
                             </div>
 
-                            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
                                 <div className="flex items-center gap-2">
-                                    <User className="w-4 h-4" />
+                                    <User aria-hidden="true" className="w-4 h-4" />
+                                    <span className="sr-only">Publié par </span>
                                     <span className="font-medium">{post.author.name}</span>
                                 </div>
-                                <div className="w-1 h-1 rounded-full bg-gray-400"></div>
+                                <div aria-hidden="true" className="w-1 h-1 rounded-full bg-gray-400"></div>
                                 <div className="flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" />
-                                    <span>{new Date(post.publishedAt).toLocaleDateString('fr-FR')}</span>
+                                    <Calendar aria-hidden="true" className="w-4 h-4" />
+                                    <span className="sr-only">le </span>
+                                    <time dateTime={new Date(post.publishedAt).toISOString()}>
+                                        {new Date(post.publishedAt).toLocaleDateString('fr-FR')}
+                                    </time>
                                 </div>
                             </div>
                         </article>

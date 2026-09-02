@@ -16,6 +16,62 @@
 }
 
 @layer base {
+    /* RGAA 10.7 — every focusable element keeps a visible focus indicator.
+       Several components strip the outline (`focus:outline-none`) and only
+       restore a ring on `:focus-visible`; this is the site-wide fallback so a
+       keyboard user is never left guessing where they are. */
+    :focus-visible {
+        outline: 3px solid hsl(var(--ring));
+        outline-offset: 2px;
+        border-radius: 2px;
+    }
+
+    /* Keep the indicator visible on dark, saturated or gradient surfaces
+       (CTA buttons, the navbar, badges) where the ring alone can wash out. */
+    a:focus-visible,
+    button:focus-visible,
+    [role='button']:focus-visible,
+    summary:focus-visible {
+        box-shadow: 0 0 0 2px hsl(var(--background));
+    }
+
+    /* RGAA 12.7 — skip links. Off-screen until focused, then pinned to the top
+       of the viewport.
+
+       `position: fixed`, not `absolute`: absolute resolves against the whole
+       document, so `top: 0` on focus put the link at the top of the *page* —
+       still off-screen for anyone who had scrolled, i.e. invisible exactly when
+       it is needed. And the reveal is a plain state change rather than a
+       transition, so it cannot be missed where animations are suppressed. */
+    .skip-link {
+        position: fixed;
+        left: 0.5rem;
+        top: 0;
+        z-index: 100;
+        transform: translateY(-200%);
+        padding: 0.75rem 1.25rem;
+        border-radius: 0 0 0.5rem 0.5rem;
+        background-color: hsl(var(--primary));
+        color: hsl(var(--primary-foreground));
+        font-weight: 600;
+    }
+
+    .skip-link:focus {
+        transform: translateY(0);
+    }
+
+    /* A landmark given tabindex="-1" so a skip link can move focus into it must
+       not draw a focus ring — the target is a region, not a control. */
+    main:focus,
+    main:focus-visible,
+    nav[tabindex='-1']:focus,
+    nav[tabindex='-1']:focus-visible {
+        outline: none;
+        box-shadow: none;
+    }
+}
+
+@layer base {
     :root {
         --background: 214 32% 95%;
         --foreground: 222.2 84% 4.9%;

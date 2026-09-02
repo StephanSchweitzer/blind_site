@@ -15,8 +15,9 @@ export default async function InformationsPratique() {
     const items = await getPracticalInfo();
 
     return (
-        <main className="min-h-screen relative">
+        <div className="flex min-h-screen flex-col">
             <FrontendNavbar />
+        <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
                 {/* Hero Section */}
@@ -45,5 +46,6 @@ export default async function InformationsPratique() {
                 </section>
             </div>
         </main>
+        </div>
     );
 }

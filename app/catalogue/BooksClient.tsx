@@ -173,15 +173,26 @@ export function BooksClient({
             />
 
             {error && (
-                <div className="text-center py-4 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-200 rounded-lg">
+                <div role="alert" className="text-center py-4 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 rounded-lg">
                     {error}
                 </div>
             )}
 
+            {/* The result list is replaced without a page load. Without a live
+                region a screen-reader user types into the search field and gets
+                no feedback at all that anything happened (RGAA 7.4). */}
+            <p role="status" aria-live="polite" className="sr-only">
+                {isSearching
+                    ? 'Recherche en cours…'
+                    : searchResults.total === 0
+                        ? 'Aucun livre ne correspond à votre recherche.'
+                        : `${searchResults.total} livre${searchResults.total > 1 ? 's' : ''} trouvé${searchResults.total > 1 ? 's' : ''}, page ${currentPage} sur ${searchResults.totalPages}.`}
+            </p>
+
             <div className="relative min-h-[200px]">
                 {isSearching && searchResults.books.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                        <div aria-hidden="true" className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
                         <p className="mt-4 text-gray-700 dark:text-gray-300">Recherche en cours...</p>
                     </div>
                 ) : searchResults.books.length === 0 ? (
@@ -193,9 +204,16 @@ export function BooksClient({
                         </p>
                     </div>
                 ) : (
-                    <div className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
+                    <section
+                        aria-labelledby="resultats-catalogue"
+                        className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}
+                    >
+                        {/* The card titles are h3. Without this the page jumped
+                            straight from h1 to h3, and heading-by-heading
+                            navigation lost a level (RGAA 9.1). */}
+                        <h2 id="resultats-catalogue" className="sr-only">Résultats du catalogue</h2>
                         <BookList books={searchResults.books} onBookClick={handleBookClick} />
-                    </div>
+                    </section>
                 )}
             </div>
 

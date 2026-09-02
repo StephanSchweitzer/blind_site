@@ -39,20 +39,21 @@ export default async function BooksPage() {
     const { initialBooks, genres, totalBooks, totalPages } = await getInitialData();
 
     return (
-        <main className="min-h-screen relative">
+        <div className="flex min-h-screen flex-col">
             <FrontendNavbar />
+        <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-8">
                 <section className="text-center glass-card-lg p-8 sm:p-12 animate-fade-in relative overflow-hidden group">
                     {/* Decorative gradient orbs */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/20 dark:bg-purple-500/20 rounded-full blur-3xl animate-blob"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 dark:bg-blue-500/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
+                    <div aria-hidden="true" className="absolute top-0 right-0 w-64 h-64 bg-blue-400/20 dark:bg-purple-500/20 rounded-full blur-3xl animate-blob"></div>
+                    <div aria-hidden="true" className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 dark:bg-blue-500/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
 
                     <div className="relative z-10">
                         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
                             Catalogue des livres
                         </h1>
-                        <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mx-auto mb-6"></div>
+                        <div aria-hidden="true" className="w-24 h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mx-auto mb-6"></div>
                         <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed max-w-2xl mx-auto">
                             <span className="font-semibold text-xl text-blue-600 dark:text-purple-400">
                                 {totalBooks} titres au catalogue !
@@ -87,6 +88,7 @@ export default async function BooksPage() {
                 </Suspense>
             </div>
         </main>
+        </div>
     );
 }
 

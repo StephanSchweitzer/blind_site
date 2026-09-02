@@ -49,8 +49,9 @@ export default async function Contact() {
     const contact = await getSiteContact();
 
     return (
-        <main className="min-h-screen relative">
+        <div className="flex min-h-screen flex-col">
             <FrontendNavbar />
+        <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
                 {/* Hero Section */}
@@ -67,10 +68,13 @@ export default async function Contact() {
                     </section>
                 ) : (
                     <section className="glass-card p-8 space-y-6">
+                        {/* The org name is the heading this block's h3 fields sit
+                            under. Left as a <p> the page went h1 → h3, skipping a
+                            level (RGAA 9.1). */}
                         <div className="text-center pb-6 border-b border-gray-200 dark:border-gray-700">
-                            <p className="font-bold text-2xl text-gray-900 dark:text-white mb-2">
+                            <h2 className="font-bold text-2xl text-gray-900 dark:text-white mb-2">
                                 {contact.orgName}
-                            </p>
+                            </h2>
                             {contact.orgSubtitle && (
                                 <p className="font-bold text-xl text-gray-800 dark:text-gray-200">
                                     {contact.orgSubtitle}
@@ -82,7 +86,7 @@ export default async function Contact() {
                             {/* Adresse */}
                             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg">
                                 <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                                    <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                    <MapPin aria-hidden="true" className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Adresse</h3>
@@ -93,7 +97,7 @@ export default async function Contact() {
                             {/* Permanences */}
                             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg">
                                 <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                                    <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                    <Clock aria-hidden="true" className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Permanences</h3>
@@ -104,7 +108,7 @@ export default async function Contact() {
                             {/* Téléphone */}
                             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg">
                                 <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                    <Phone className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                    <Phone aria-hidden="true" className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Téléphone</h3>
@@ -116,7 +120,7 @@ export default async function Contact() {
                             {contact.metroText && (
                                 <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg">
                                     <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                                        <Train className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                        <Train aria-hidden="true" className="h-5 w-5 text-red-600 dark:text-red-400" />
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Métro</h3>
@@ -128,7 +132,7 @@ export default async function Contact() {
                             {/* Email */}
                             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg">
                                 <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                                    <Mail className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                    <Mail aria-hidden="true" className="h-5 w-5 text-green-600 dark:text-green-400" />
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Email</h3>
@@ -145,7 +149,7 @@ export default async function Contact() {
                             {contact.busText && (
                                 <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg">
                                     <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-                                        <Bus className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                        <Bus aria-hidden="true" className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Autobus</h3>
@@ -168,5 +172,6 @@ export default async function Contact() {
                 </section>
             </div>
         </main>
+        </div>
     );
 }

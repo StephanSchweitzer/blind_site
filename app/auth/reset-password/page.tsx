@@ -103,7 +103,7 @@ function ResetPasswordForm() {
         return (
             <Card className="w-full max-w-md border-gray-700 bg-gray-900 shadow-xl">
                 <CardContent className="flex items-center justify-center gap-3 py-12 text-gray-400">
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" />
                     Vérification du lien…
                 </CardContent>
             </Card>
@@ -114,8 +114,8 @@ function ResetPasswordForm() {
         return (
             <Card className="w-full max-w-md border-gray-700 bg-gray-900 shadow-xl">
                 <CardHeader className="space-y-1 text-center">
-                    <CardTitle className="text-2xl font-semibold text-gray-100">
-                        Lien invalide ou expiré
+                    <CardTitle asChild className="text-2xl font-semibold text-gray-100">
+                        <h1>Lien invalide ou expiré</h1>
                     </CardTitle>
                     <CardDescription className="text-gray-400">
                         Ce lien de réinitialisation n&apos;est plus valable — il expire au bout de
@@ -133,7 +133,7 @@ function ResetPasswordForm() {
                         href="/auth/signin"
                         className="flex items-center justify-center gap-2 text-sm text-gray-400 transition-colors hover:text-gray-200"
                     >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft aria-hidden="true" className="h-4 w-4" />
                         Retour à la connexion
                     </Link>
                 </CardContent>
@@ -144,8 +144,8 @@ function ResetPasswordForm() {
     return (
         <Card className="w-full max-w-md border-gray-700 bg-gray-900 shadow-xl">
             <CardHeader className="space-y-1 text-center">
-                <CardTitle className="text-2xl font-semibold text-gray-100">
-                    Nouveau mot de passe
+                <CardTitle asChild className="text-2xl font-semibold text-gray-100">
+                    <h1>Nouveau mot de passe</h1>
                 </CardTitle>
                 <CardDescription className="text-gray-400">
                     Choisissez un mot de passe d&apos;au moins 8 caractères, avec majuscules,
@@ -159,7 +159,7 @@ function ResetPasswordForm() {
                         role="alert"
                         className="mb-4 flex items-center gap-2 rounded-md border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300"
                     >
-                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" />
                         <span>{error}</span>
                     </div>
                 )}
@@ -188,7 +188,7 @@ function ResetPasswordForm() {
                                 aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
                             >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                {showPassword ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
                             </button>
                         </div>
 
@@ -232,12 +232,12 @@ function ResetPasswordForm() {
                     >
                         {isLoading ? (
                             <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
                                 Enregistrement…
                             </>
                         ) : (
                             <>
-                                <KeyRound className="mr-2 h-4 w-4" />
+                                <KeyRound aria-hidden="true" className="mr-2 h-4 w-4" />
                                 Enregistrer le mot de passe
                             </>
                         )}
@@ -250,16 +250,16 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-950 px-4">
+        <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-950 px-4">
             <Suspense
                 fallback={
                     <div className="flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                        <Loader2 aria-hidden="true" className="h-8 w-8 animate-spin text-blue-500" />
                     </div>
                 }
             >
                 <ResetPasswordForm />
             </Suspense>
-        </div>
+        </main>
     );
 }

@@ -14,12 +14,24 @@ interface CustomPaginationProps {
     currentPage: number;
     totalPages: number;
     onPageChange: (page: number) => void;
+    /** Distinguishes the landmark when a page shows pagination more than once —
+     *  two navigation regions both called "Pagination" are indistinguishable in
+     *  a screen reader's landmark list (RGAA 12.6). */
+    label?: string;
 }
+
+// Shared look for every control. The former hardcoded `bg-gray-700 text-gray-200`
+// painted dark chips onto the light theme and left the ellipsis at gray-400 on a
+// near-white page (~2.5:1, below the 4.5:1 floor) — theme tokens keep both themes
+// above the ratio (RGAA 3.2).
+const controlClasses =
+    'px-2 sm:px-3 py-1 sm:py-2 border border-input rounded-lg bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground text-sm sm:text-base disabled:opacity-50 disabled:pointer-events-none';
 
 export const CustomPagination: React.FC<CustomPaginationProps> = ({
                                                                       currentPage,
                                                                       totalPages,
                                                                       onPageChange,
+                                                                      label = 'Pagination',
                                                                   }) => {
     const [isMobile, setIsMobile] = useState(false);
 
@@ -69,21 +81,25 @@ export const CustomPagination: React.FC<CustomPaginationProps> = ({
         return pageNumbers;
     };
 
+    const isFirst = currentPage <= 1;
+    const isLast = currentPage >= totalPages;
+
     return (
-        <Pagination className="mt-4 sm:mt-8">
+        <Pagination aria-label={label} className="mt-4 sm:mt-8">
+            {/* On mobile only the current page is rendered, so without this the
+                position in the set is never announced at all. */}
+            <p className="sr-only">Page {currentPage} sur {totalPages}</p>
             <PaginationContent className="gap-1 sm:gap-2">
                 {/* First page button - desktop only */}
                 {!isMobile && (
                     <PaginationItem className="hidden sm:block">
                         <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                onPageChange(1);
-                            }}
-                            className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 text-sm sm:text-base"
+                            onClick={() => onPageChange(1)}
+                            disabled={isFirst}
+                            aria-label="Aller à la première page"
+                            className={controlClasses}
                         >
-                            ⟪
+                            <span aria-hidden="true">⟪</span>
                         </PaginationLink>
                     </PaginationItem>
                 )}
@@ -91,14 +107,14 @@ export const CustomPagination: React.FC<CustomPaginationProps> = ({
                 {/* Previous button */}
                 <PaginationItem>
                     <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                            e.preventDefault();
+                        onClick={() => {
                             if (currentPage > 1) onPageChange(currentPage - 1);
                         }}
-                        className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 text-sm sm:text-base"
+                        disabled={isFirst}
+                        aria-label="Aller à la page précédente"
+                        className={controlClasses}
                     >
-                        ←
+                        <span aria-hidden="true">←</span>
                     </PaginationPrevious>
                 </PaginationItem>
 
@@ -107,15 +123,16 @@ export const CustomPagination: React.FC<CustomPaginationProps> = ({
                     typeof page === 'number' ? (
                         <PaginationItem key={index}>
                             <PaginationLink
-                                href="#"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    onPageChange(page);
-                                }}
-                                className={`px-2 sm:px-4 py-1 sm:py-2 border border-gray-600 rounded-lg text-sm sm:text-base ${
+                                onClick={() => onPageChange(page)}
+                                isActive={currentPage === page}
+                                // Bare "3" tells a screen-reader user nothing about what
+                                // activating it does (RGAA 6.1); aria-current marks where
+                                // they already are.
+                                aria-label={currentPage === page ? `Page ${page}, page actuelle` : `Aller à la page ${page}`}
+                                className={`px-2 sm:px-4 py-1 sm:py-2 border rounded-lg text-sm sm:text-base ${
                                     currentPage === page
-                                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                                        ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90'
+                                        : 'border-input bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
                                 }`}
                             >
                                 {page}
@@ -124,7 +141,8 @@ export const CustomPagination: React.FC<CustomPaginationProps> = ({
                     ) : (
                         <span
                             key={index}
-                            className="px-1 sm:px-2 py-1 sm:py-2 text-gray-400 text-sm sm:text-base hidden sm:inline"
+                            aria-hidden="true"
+                            className="px-1 sm:px-2 py-1 sm:py-2 text-muted-foreground text-sm sm:text-base hidden sm:inline"
                         >
                             {page}
                         </span>
@@ -134,14 +152,14 @@ export const CustomPagination: React.FC<CustomPaginationProps> = ({
                 {/* Next button */}
                 <PaginationItem>
                     <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                            e.preventDefault();
+                        onClick={() => {
                             if (currentPage < totalPages) onPageChange(currentPage + 1);
                         }}
-                        className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 text-sm sm:text-base"
+                        disabled={isLast}
+                        aria-label="Aller à la page suivante"
+                        className={controlClasses}
                     >
-                        →
+                        <span aria-hidden="true">→</span>
                     </PaginationNext>
                 </PaginationItem>
 
@@ -149,14 +167,12 @@ export const CustomPagination: React.FC<CustomPaginationProps> = ({
                 {!isMobile && (
                     <PaginationItem className="hidden sm:block">
                         <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                onPageChange(totalPages);
-                            }}
-                            className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-200 hover:bg-gray-600 text-sm sm:text-base"
+                            onClick={() => onPageChange(totalPages)}
+                            disabled={isLast}
+                            aria-label="Aller à la dernière page"
+                            className={controlClasses}
                         >
-                            ⟫
+                            <span aria-hidden="true">⟫</span>
                         </PaginationLink>
                     </PaginationItem>
                 )}

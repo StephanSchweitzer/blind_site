@@ -75,7 +75,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     };
 
     return (
+        <search role="search">
+        {/* The field only had a placeholder, which disappears the moment the user
+            types and is not a reliable accessible name (RGAA 11.1). It has to be
+            cmdk's own `label` prop rather than our own <label htmlFor>: cmdk
+            replaces the input's id with a generated one and points its
+            aria-labelledby at an internal (empty) label element, so an external
+            label never attaches. */}
         <Command
+            label="Rechercher dans les listes de livres"
             shouldFilter={false}
             className="rounded-2xl
                 bg-white/95 dark:bg-gray-700/95
@@ -98,7 +106,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 className="border-none
                     focus:ring-4 focus:ring-blue-500/20 dark:focus:ring-purple-500/20
                     text-gray-900 dark:text-gray-100
-                    placeholder-gray-500 dark:placeholder-gray-400
+                    placeholder-gray-600 dark:placeholder-gray-300
                     py-3"
             />
             <div className={`transition-all duration-300 ${showResults && searchTerm.trim() ? "block" : "hidden"}`}>
@@ -106,22 +114,22 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     {isSearching ? (
                         <CommandEmpty className="py-8 text-center">
                             <div className="flex flex-col items-center gap-3">
-                                <div className="relative">
+                                <div aria-hidden="true" className="relative">
                                     <div className="animate-spin rounded-full h-10 w-10 border-3 border-blue-200 dark:border-purple-900"></div>
                                     <div className="absolute inset-0 animate-spin rounded-full h-10 w-10 border-3 border-transparent border-t-blue-600 dark:border-t-purple-400"></div>
                                 </div>
-                                <span className="text-gray-600 dark:text-gray-400 font-medium">Recherche en cours...</span>
+                                <span className="text-gray-700 dark:text-gray-300 font-medium">Recherche en cours...</span>
                             </div>
                         </CommandEmpty>
                     ) : results.length === 0 ? (
                         <CommandEmpty className="py-8 text-center">
                             <div className="flex flex-col items-center gap-3">
-                                <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div aria-hidden="true" className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                                    <svg focusable="false" className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
                                 </div>
-                                <span className="text-gray-600 dark:text-gray-400 font-medium">Aucun résultat trouvé</span>
+                                <span className="text-gray-700 dark:text-gray-300 font-medium">Aucun résultat trouvé</span>
                             </div>
                         </CommandEmpty>
                     ) : (
@@ -159,5 +167,18 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 </CommandList>
             </div>
         </Command>
+
+        {/* cmdk's listbox is only announced while focus sits in the field; this
+            says how many suggestions arrived regardless (RGAA 7.4). */}
+        <p role="status" aria-live="polite" className="sr-only">
+            {!searchTerm.trim()
+                ? ''
+                : isSearching
+                    ? 'Recherche en cours…'
+                    : results.length === 0
+                        ? 'Aucune liste de livres ne correspond à votre recherche.'
+                        : `${results.length} suggestion${results.length > 1 ? 's' : ''} disponible${results.length > 1 ? 's' : ''}.`}
+        </p>
+        </search>
     );
 };

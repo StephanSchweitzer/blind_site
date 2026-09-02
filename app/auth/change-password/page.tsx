@@ -120,11 +120,11 @@ export default function ChangePasswordPage() {
     };
 
     return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-950 p-4">
+        <main className="flex justify-center items-center min-h-screen bg-gray-950 p-4">
             <Card className="w-full max-w-md bg-gray-900 border-gray-800 shadow-xl">
                 <CardHeader className="space-y-1">
-                    <CardTitle className="text-2xl text-gray-100 font-bold text-center">
-                        Changement de mot de passe requis
+                    <CardTitle asChild className="text-2xl text-gray-100 font-bold text-center">
+                        <h1>Changement de mot de passe requis</h1>
                     </CardTitle>
                     <CardDescription className="text-gray-400 text-center">
                         Pour des raisons de sécurité, vous devez changer votre mot de passe temporaire
@@ -160,7 +160,7 @@ export default function ChangePasswordPage() {
                                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-200"
                                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                                 >
-                                    {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showCurrentPassword ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
                                 </button>
                             </div>
                         </div>
@@ -185,7 +185,7 @@ export default function ChangePasswordPage() {
                                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-200"
                                     onClick={() => setShowNewPassword(!showNewPassword)}
                                 >
-                                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showNewPassword ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
                                 </button>
                             </div>
 
@@ -246,7 +246,7 @@ export default function ChangePasswordPage() {
                             {passwordData.newPassword && passwordData.confirmPassword && (
                                 passwordData.newPassword === passwordData.confirmPassword ? (
                                     <p className="text-sm text-green-500 flex items-center mt-1">
-                                        <CheckCircle2 size={16} className="mr-1" /> Les mots de passe correspondent
+                                        <CheckCircle2 aria-hidden="true" size={16} className="mr-1" /> Les mots de passe correspondent
                                     </p>
                                 ) : (
                                     <p className="text-sm text-red-500 flex items-center mt-1">
@@ -268,7 +268,7 @@ export default function ChangePasswordPage() {
                                 </>
                             ) : (
                                 <>
-                                    <Lock className="mr-2 h-4 w-4" />
+                                    <Lock aria-hidden="true" className="mr-2 h-4 w-4" />
                                     Changer le mot de passe
                                 </>
                             )}
@@ -276,7 +276,7 @@ export default function ChangePasswordPage() {
                     </form>
                 </CardContent>
             </Card>
-        </div>
+        </main>
     );
 }
 
@@ -285,7 +285,7 @@ function RequirementRow({ text, met }: { text: string; met: boolean }) {
     return (
         <div className="flex items-center text-sm">
             {met ? (
-                <CheckCircle2 size={16} className="text-green-500 mr-2 flex-shrink-0" />
+                <CheckCircle2 aria-hidden="true" size={16} className="text-green-500 mr-2 flex-shrink-0" />
             ) : (
                 <AlertTriangle size={16} className="text-gray-500 mr-2 flex-shrink-0" />
             )}

@@ -27,11 +27,11 @@ function PasswordChangedContent() {
             <CardHeader className="space-y-1">
                 <div className="flex justify-center mb-4">
                     <div className="w-16 h-16 bg-green-900/30 rounded-full flex items-center justify-center">
-                        <CheckCircle2 className="h-10 w-10 text-green-500" />
+                        <CheckCircle2 aria-hidden="true" className="h-10 w-10 text-green-500" />
                     </div>
                 </div>
-                <CardTitle className="text-2xl text-gray-100 font-bold text-center">
-                    Mot de passe modifié avec succès
+                <CardTitle asChild className="text-2xl text-gray-100 font-bold text-center">
+                    <h1>Mot de passe modifié avec succès</h1>
                 </CardTitle>
                 <CardDescription className="text-gray-400 text-center">
                     {fromReset
@@ -73,7 +73,7 @@ function PasswordChangedContent() {
                     onClick={() => router.push('/auth/signin')}
                     className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
                 >
-                    <LogIn className="mr-2 h-4 w-4" />
+                    <LogIn aria-hidden="true" className="mr-2 h-4 w-4" />
                     Se connecter
                 </Button>
             </CardFooter>
@@ -83,10 +83,10 @@ function PasswordChangedContent() {
 
 export default function PasswordChangedSuccess() {
     return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-950 p-4">
+        <main className="flex justify-center items-center min-h-screen bg-gray-950 p-4">
             <Suspense fallback={null}>
                 <PasswordChangedContent />
             </Suspense>
-        </div>
+        </main>
     );
 }

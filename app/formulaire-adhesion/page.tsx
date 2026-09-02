@@ -10,8 +10,9 @@ export const metadata: Metadata = {
 
 export default function UnderDevelopmentPage() {
     return (
-        <main className="min-h-screen relative">
+        <div className="flex min-h-screen flex-col">
             <FrontendNavbar />
+        <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 min-h-[80vh] flex flex-col items-center justify-center">
                 <div className="glass-card-lg p-8 sm:p-12 text-center space-y-8 max-w-2xl">
@@ -50,5 +51,6 @@ export default function UnderDevelopmentPage() {
                 </div>
             </div>
         </main>
+        </div>
     );
 }
