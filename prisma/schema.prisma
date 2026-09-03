@@ -506,6 +506,12 @@ model BillEvent {
   payload       Json?
   performedById Int?
   createdAt     DateTime       @default(now())
+  // The bill's invoiceAmount at the moment this event was written — invoiceAmount
+  // itself is a DERIVED_FIELD excluded from the audit diff (lib/audit/config.ts),
+  // so this is the only place its history survives. Nullable because rows written
+  // before this column existed carry no value; logBillEvent (lib/billing.ts) fills
+  // it on every event from here on.
+  amountAtEvent Decimal?       @db.Decimal(10, 2)
   bill          Bill           @relation(fields: [billId], references: [id], onDelete: Cascade)
   performedBy   User?          @relation("BillEventsPerformedBy", fields: [performedById], references: [id])
 

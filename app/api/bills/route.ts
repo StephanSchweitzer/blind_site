@@ -182,6 +182,11 @@ export const POST = withAdmin(async (request, { me }) => {
                     where: { id: orderId },
                     data: { billId: bill.id, billingStatus: orderBillingForBillState(finalState) },
                 });
+                // Recompute per order, not once at the end: logBillEvent stamps each
+                // event with invoiceAmount as it stands right now, and a running
+                // total per attachment is what makes that stamp mean anything for a
+                // multi-order creation.
+                await recomputeBillTotal(tx, bill.id);
                 await logBillEvent(tx, {
                     billId: bill.id,
                     type: 'ORDER_ATTACHED',
@@ -190,7 +195,6 @@ export const POST = withAdmin(async (request, { me }) => {
                 });
             }
 
-            await recomputeBillTotal(tx, bill.id);
             return bill.id;
         });
 

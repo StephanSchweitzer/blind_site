@@ -234,6 +234,7 @@ export const GET = withSuperAdmin(async (request) => {
             recordId: row.recordId,
             snapshot: snapshots.get(row.id) ?? null,
             changes: row.changes ?? null,
+            at: row.at,
         }));
         const [labels, fieldLabels] = await Promise.all([
             resolveRecordLabels(labelRequests),

@@ -264,6 +264,7 @@ async function loadItems(
                 recordId: r.recordId,
                 snapshot: parseAuditSnapshot(r.snapshotText),
                 changes: r.changes ?? null,
+                at: r.at,
             }));
             const [labels, fieldLabels] = await Promise.all([
                 resolveRecordLabels(labelRequests),

@@ -428,6 +428,13 @@ export interface LabelRequest {
     snapshot: Row | null;
     /** The event's own diff — how a batch event names what it was about. */
     changes: AuditChangeMap | null;
+    /**
+     * When the event happened. Only consulted for a Bill: see resolveBillAmounts.
+     * Every other label is named off the record's current state or its own DELETE
+     * snapshot, so a caller that omits this only ever loses a bill's point-in-time
+     * amount, never a name.
+     */
+    at?: string | Date | null;
 }
 
 const labelKey = (model: string, recordId: string): string => `${model}:${recordId}`;
@@ -508,7 +515,72 @@ export async function resolveRecordLabels(
     }
 
     await nameByReferencedBook(requests, labels);
+    await resolveBillAmounts(requests, labels);
     return labels;
+}
+
+/**
+ * Overrides a Bill label's subtitle with the total AS OF that specific event,
+ * where one was captured — the live join in SOURCES.Bill above stays as the
+ * fallback for a caller that has no `at` (nothing to be "as of"), or for an
+ * event older than this column (see BillEvent.amountAtEvent in schema.prisma).
+ *
+ * Reads each bill's whole amount history in one query rather than one query per
+ * (billId, at) pair — a bill's event history is short and bounded, so this stays
+ * cheap, and it keeps the same "one query per distinct thing" shape as the rest
+ * of this module instead of an N+1 per event.
+ */
+async function resolveBillAmounts(
+    requests: LabelRequest[],
+    labels: Map<number, AuditRecordLabel>
+): Promise<void> {
+    const wanted = new Map<number, { billId: number; at: number }>();
+    for (const { id, model, recordId, at } of requests) {
+        if (model !== 'Bill' || at == null || !labels.has(id)) continue;
+        if (!/^\d+$/.test(recordId)) continue;
+        const when = new Date(at).getTime();
+        if (Number.isNaN(when)) continue;
+        wanted.set(id, { billId: Number(recordId), at: when });
+    }
+    if (wanted.size === 0) return;
+
+    try {
+        const billIds = [...new Set([...wanted.values()].map((w) => w.billId))];
+        const rows = await prisma.$queryRaw<Array<{ billId: number; createdAt: Date; amount: string | null }>>`
+            SELECT "billId", "createdAt", "amountAtEvent"::text AS amount
+            FROM "BillEvent"
+            WHERE "billId" IN (${Prisma.join(billIds)}) AND "amountAtEvent" IS NOT NULL
+            ORDER BY "billId" ASC, "createdAt" ASC`;
+
+        const historyByBill = new Map<number, Array<{ at: number; amount: string }>>();
+        for (const row of rows) {
+            if (row.amount === null) continue;
+            const history = historyByBill.get(row.billId) ?? [];
+            history.push({ at: row.createdAt.getTime(), amount: row.amount });
+            historyByBill.set(row.billId, history);
+        }
+
+        for (const [id, { billId, at }] of wanted) {
+            const history = historyByBill.get(billId);
+            if (!history) continue;
+            // Last entry at or before this event's own timestamp — history is
+            // sorted ascending, so the latest one that still qualifies wins.
+            let asOf: string | null = null;
+            for (const entry of history) {
+                if (entry.at > at) break;
+                asOf = entry.amount;
+            }
+            if (asOf === null) continue;
+            const existing = labels.get(id);
+            if (!existing) continue;
+            labels.set(id, { ...existing, subtitle: euros(asOf) });
+        }
+    } catch (error) {
+        // Same trade-off as everywhere else here: losing the point-in-time
+        // amount must never cost the journal the page it was decorating — the
+        // live-join subtitle already on the label stands in its place.
+        console.error('[audit] montant historique de facture — abandon:', error);
+    }
 }
 
 /**

@@ -29,7 +29,13 @@ export async function recomputeBillTotal(
 
 /**
  * Append an immutable audit entry to a bill's history. Call inside a transaction so
- * the event and the state change it describes commit together.
+ * the event and the state change it describes commit together — and always AFTER
+ * whatever statement in that same transaction last touched invoiceAmount, since
+ * this reads it back to stamp the event with the total as of right now. That
+ * total is what the journal des modifications shows for this event from then on:
+ * invoiceAmount itself is excluded from the audit diff (DERIVED_FIELDS in
+ * lib/audit/config.ts) because BillEvent is meant to be the bill's real history —
+ * so this is the one place its value over time actually survives.
  */
 export async function logBillEvent(
     tx: TransactionClient,
@@ -42,6 +48,10 @@ export async function logBillEvent(
         performedById?: number | null;
     }
 ): Promise<void> {
+    const bill = await tx.bill.findUnique({
+        where: { id: params.billId },
+        select: { invoiceAmount: true },
+    });
     await tx.billEvent.create({
         data: {
             billId: params.billId,
@@ -50,6 +60,7 @@ export async function logBillEvent(
             toState: params.toState ?? null,
             payload: params.payload ?? Prisma.JsonNull,
             performedById: params.performedById ?? null,
+            amountAtEvent: bill?.invoiceAmount ?? null,
         },
     });
 }

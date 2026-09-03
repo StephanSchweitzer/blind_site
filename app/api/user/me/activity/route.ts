@@ -84,6 +84,7 @@ export const GET = withAuth(async (request, { me }) => {
                 recordId: row.recordId,
                 snapshot: parseSnapshot(row.snapshotText),
                 changes: row.changes ?? null,
+                at: row.at,
             }))
         );
 
