@@ -25,6 +25,7 @@
 import 'dotenv/config';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { scriptDatabaseUrl, describeDatabase } from './db-url';
 import { dbPathToPrefix } from './audio-match-rules';
 
 const args = process.argv.slice(2);
@@ -32,11 +33,13 @@ const arg = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=')
 const DRY_RUN = args.includes('--dry-run');
 const ROOT = arg('root') ?? 'dirt/';
 
+const DB_URL = scriptDatabaseUrl();
 const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+    adapter: new PrismaPg({ connectionString: DB_URL }),
 });
 
 async function main() {
+    console.log(`Base ${describeDatabase(DB_URL)}`);
     if (DRY_RUN) console.log('DRY RUN — aucune écriture\n');
 
     const books = await prisma.book.findMany({

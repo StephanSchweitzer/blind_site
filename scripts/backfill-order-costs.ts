@@ -33,16 +33,19 @@
 import 'dotenv/config';
 import { PrismaClient, Prisma } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { scriptDatabaseUrl, describeDatabase } from './db-url';
 import { ADJUSTABLE_ORDER_WHERE, suggestedCostEuros, formatSizeKb, cdCount } from '../lib/pricing';
 
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
 
+const DB_URL = scriptDatabaseUrl();
 const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+    adapter: new PrismaPg({ connectionString: DB_URL }),
 });
 
 async function main() {
+    console.log(`Base ${describeDatabase(DB_URL)}`);
     console.log(APPLY ? 'APPLIQUE — les tarifs vont être écrits\n' : 'SIMULATION — aucune écriture (--apply pour appliquer)\n');
 
     const orders = await prisma.orders.findMany({

@@ -25,6 +25,7 @@ import { isAudioKey } from "../lib/audio/bucket-core";
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { scriptDatabaseUrl, describeDatabase } from './db-url';
 import { dbPathToPrefix, groupByFolder, parseFolder, inspectFolder } from './audio-match-rules';
 import { bytesToKb } from '../lib/pricing';
 
@@ -55,13 +56,15 @@ const s3 = new S3Client({
     },
 });
 
+const DB_URL = scriptDatabaseUrl();
 const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+    adapter: new PrismaPg({ connectionString: DB_URL }),
 });
 
 type Status = 'OK' | 'FOLDER_EMPTY' | 'FOLDER_MISSING' | 'NO_PATH';
 
 async function main() {
+    console.log(`Base ${describeDatabase(DB_URL)}`);
     if (DRY_RUN) console.log('DRY RUN — aucune écriture\n');
     console.log(`Bucket ${BUCKET} — racine "${ROOT}"`);
 

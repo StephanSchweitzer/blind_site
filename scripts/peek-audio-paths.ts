@@ -11,13 +11,15 @@ import 'dotenv/config';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { scriptDatabaseUrl, describeDatabase } from './db-url';
 
 const args = process.argv.slice(2);
 const arg = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=')[1];
 const MAX = Number(arg('max') ?? 3000);
 
+const DB_URL = scriptDatabaseUrl();
 const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+    adapter: new PrismaPg({ connectionString: DB_URL }),
 });
 
 // B2 shows the endpoint as a bare host; the SDK needs a URL.
@@ -39,6 +41,7 @@ const s3 = new S3Client({
 });
 
 async function main() {
+    console.log(`Base ${describeDatabase(DB_URL)}`);
     const total = await prisma.book.count();
     const withPath = await prisma.book.count({ where: { audio_filepath: { not: null } } });
     console.log(`Livres : ${total} — dont ${withPath} avec audio_filepath\n`);

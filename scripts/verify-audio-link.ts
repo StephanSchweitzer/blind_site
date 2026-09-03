@@ -18,6 +18,7 @@ import path from 'path';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { PrismaClient } from '../app/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { scriptDatabaseUrl, describeDatabase } from './db-url';
 import {
     dbPathToPrefix,
     groupByFolder,
@@ -53,8 +54,9 @@ const s3 = new S3Client({
     },
 });
 
+const DB_URL = scriptDatabaseUrl();
 const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+    adapter: new PrismaPg({ connectionString: DB_URL }),
 });
 
 const csvCell = (v: string | number) => {
@@ -65,6 +67,7 @@ const csv = (header: string[], rows: (string | number)[][]) =>
     [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n';
 
 async function main() {
+    console.log(`Base ${describeDatabase(DB_URL)}`);
     console.log(`Bucket ${BUCKET} — racine "${ROOT}"\nListing…`);
     const objects: { key: string; size: number }[] = [];
     let token: string | undefined;
