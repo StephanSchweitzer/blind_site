@@ -124,7 +124,14 @@ async function resolveAudioSide(
 export async function fuseBooks(
     survivorId: number,
     removedId: number,
-    overrides: string[] = []
+    overrides: string[] = [],
+    /**
+     * Ce que l'import avait rapproché, quand le permanent a mis un autre livre en
+     * face. Sert uniquement à la trace : le rapprochement de l'import est un
+     * indice faillible, et une fusion faite contre son avis est précisément celle
+     * qu'on voudra pouvoir relire plus tard.
+     */
+    proposedMatchId: number | null = null
 ): Promise<ActionResult> {
     return asAdminAction(async (me) => {
         if (!Number.isInteger(survivorId) || !Number.isInteger(removedId)) {
@@ -168,9 +175,18 @@ export async function fuseBooks(
 
                 // 2. Snapshot + delete the removed book BEFORE writing scalars onto the survivor,
                 //    so pulling the removed book's @unique isbn can't collide with the still-live row.
+                // `pairing` dit qui a décidé que ces deux fiches allaient ensemble.
+                // BookMergeEvent est append-only et c'est la seule trace qui restera
+                // du couple : sans ce champ, une fusion faite contre le rapprochement
+                // de l'import est indistinguable d'une fusion qui l'a suivi.
+                // `null` = l'import n'avait rien trouvé, donc le couple vient aussi
+                // du permanent. Seule l'égalité stricte vaut « c'est l'import ».
+                const manual = proposedMatchId !== removedId;
                 const snapshot = {
                     removedBook: JSON.parse(JSON.stringify(removed)),
                     overrides: fields,
+                    pairing: manual ? 'manual' : 'import',
+                    ...(manual ? { proposedMatchId } : {}),
                 } as unknown as Prisma.InputJsonValue;
                 await tx.book.delete({ where: { id: removedId } });
 

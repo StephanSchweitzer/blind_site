@@ -14,6 +14,7 @@ import {
     Loader2,
     Search,
     Send,
+    Replace,
     X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ import {
     bookHoldsTracks,
     isDoubleRecording,
 } from '@/lib/audio-enums';
+import { BookSearchCombobox, bookLabel } from '@/admin/BookSearchCombobox';
 import { formatCalendarDate } from '@/lib/calendar-date';
 import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
 
@@ -79,6 +81,13 @@ export interface ReviewBook {
 export interface ReviewPair {
     flagged: ReviewBook;
     matched: ReviewBook | null;
+    /**
+     * Autres livres du catalogue dont le titre est celui-ci, ou celui-ci suivi
+     * d'un complément — voir lib/books/title-match.ts. Vide pour 90 % de la
+     * file : la carte ne montre la liste que lorsqu'elle a quelque chose à dire,
+     * et laisse la recherche libre faire le reste.
+     */
+    candidates: ReviewBook[];
 }
 
 interface Props {
@@ -137,6 +146,8 @@ type Pending =
           removedId: number;
           overrides: string[];
           pulledLabels: string[];
+          /** Ce que l'import proposait, pour que la trace dise qui a choisi. */
+          proposedMatchId: number | null;
       }
     | { kind: 'delete'; bookId: number; title: string }
     | null;
@@ -202,7 +213,10 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
 
     const confirm = () => {
         if (!pending) return;
-        if (pending.kind === 'fuse') run(() => fuseBooks(pending.survivorId, pending.removedId, pending.overrides));
+        if (pending.kind === 'fuse')
+            run(() =>
+                fuseBooks(pending.survivorId, pending.removedId, pending.overrides, pending.proposedMatchId),
+            );
         else run(() => deleteBook(pending.bookId));
     };
 
@@ -283,11 +297,12 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
                 </Card>
             )}
 
-            {pairs.map(({ flagged, matched }) => (
+            {pairs.map(({ flagged, matched, candidates }) => (
                 <PairCard
                     key={flagged.id}
                     flagged={flagged}
                     matched={matched}
+                    candidates={candidates}
                     busy={busy}
                     onRequestFuse={(p) => setPending({ kind: 'fuse', ...p })}
                     onRequestDelete={(book) => setPending({ kind: 'delete', bookId: book.id, title: book.title })}
@@ -443,11 +458,13 @@ interface FusePayload {
     removedId: number;
     overrides: string[];
     pulledLabels: string[];
+    proposedMatchId: number | null;
 }
 
 function PairCard({
     flagged,
-    matched,
+    matched: proposed,
+    candidates,
     busy,
     onRequestFuse,
     onRequestDelete,
@@ -457,6 +474,7 @@ function PairCard({
 }: {
     flagged: ReviewBook;
     matched: ReviewBook | null;
+    candidates: ReviewBook[];
     busy: boolean;
     onRequestFuse: (p: FusePayload) => void;
     onRequestDelete: (book: ReviewBook) => void;
@@ -467,6 +485,35 @@ function PairCard({
     const [mode, setMode] = useState<'collapsed' | 'fuse' | 'distinct'>('collapsed');
     // Fields to pull FROM the matched (Access import) record onto the kept site book.
     const [overrides, setOverrides] = useState<Set<string>>(new Set());
+    /**
+     * Le livre que le permanent a mis en face, à la place de celui que l'import
+     * proposait. Le rapprochement de l'import est un indice, pas un verdict : il
+     * rapproche « tome 1 » du dossier « pt 2 », et la file ne savait alors que
+     * fusionner à tort, écarter le signalement ou passer la main.
+     */
+    const [chosenMatch, setChosenMatch] = useState<ReviewBook | null>(null);
+    const [picking, setPicking] = useState(false);
+
+    const matched = chosenMatch ?? proposed;
+
+    // Changer de livre en face invalide les cases cochées : elles désignaient des
+    // champs de l'ancienne fiche.
+    const chooseMatch = (book: ReviewBook | null) => {
+        setChosenMatch(book);
+        setOverrides(new Set());
+        setPicking(false);
+        setMode(book ? 'fuse' : 'collapsed');
+    };
+
+    const picker = (
+        <MatchPicker
+            flagged={flagged}
+            candidates={candidates}
+            busy={busy}
+            onChoose={chooseMatch}
+            onCancel={proposed || chosenMatch ? () => setPicking(false) : undefined}
+        />
+    );
 
     if (!matched) {
         return (
@@ -487,6 +534,11 @@ function PairCard({
                             <Check className="h-4 w-4" /> Pas un doublon
                         </Button>
                     </div>
+                    {/* L'import n'a rien trouvé, ce qui ne veut pas dire qu'il n'y
+                        a rien : c'est exactement là que la recherche à la main
+                        sert. Sans elle, la seule issue était d'écarter ou de
+                        passer la main. */}
+                    <div className="border-t border-border/60 pt-3">{picker}</div>
                     <EscalateRow
                         book={flagged}
                         matchedId={null}
@@ -536,6 +588,7 @@ function PairCard({
             removedId: removed.id,
             overrides: [...overrides],
             pulledLabels,
+            proposedMatchId: proposed?.id ?? null,
         });
     };
 
@@ -554,14 +607,55 @@ function PairCard({
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
                     <BookHead book={flagged} onListen={onListen} />
                     <ArrowLeftRight className="hidden sm:block h-5 w-5 text-muted-foreground mx-auto" />
-                    <BookHead book={matched} align="right" onListen={onListen} />
+                    <BookHead
+                        book={matched}
+                        align="right"
+                        onListen={onListen}
+                        // L'affordance est portée par la fiche de droite, pas par
+                        // la rangée de boutons : c'est en lisant ce livre-là qu'on
+                        // se rend compte que ce n'est pas le bon.
+                        onReplace={picking ? undefined : () => setPicking(true)}
+                    />
                 </div>
+
+                {chosenMatch && (
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge variant="secondary">Rapprochement modifié</Badge>
+                        <span className="text-muted-foreground">
+                            {proposed ? `L’import proposait #${proposed.id}.` : 'L’import n’avait rien trouvé.'}
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            disabled={busy}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                chooseMatch(null);
+                            }}
+                        >
+                            Rétablir
+                        </Button>
+                    </div>
+                )}
+
                 <div className="text-sm text-muted-foreground">
                     {diffCount === 0
                         ? 'Les champs comparés sont identiques.'
                         : `${diffCount} champ${diffCount > 1 ? 's' : ''} diffère${diffCount > 1 ? 'nt' : ''}.`}
-                    {mode === 'collapsed' && ' Cliquez pour comparer les deux fiches.'}
+                    {mode === 'collapsed' && !picking && ' Cliquez pour comparer les deux fiches.'}
                 </div>
+
+                {picking && (
+                    <div
+                        className="rounded-md border border-border bg-field p-3"
+                        // Le clic sur l'en-tête ouvre la comparaison ; à l'intérieur
+                        // du sélecteur il ne doit rien faire d'autre que sélectionner.
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {picker}
+                    </div>
+                )}
 
                 {audioConflict && (
                     <div className="space-y-3 rounded-md border border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200">
@@ -787,12 +881,13 @@ function PairCard({
                     </div>
                 )}
 
-                {/* The import's suggestion can simply be wrong — the right « pt 2 »
-                    folder rapproché de la fiche du tome 1, par exemple. Fusionner
-                    serait destructeur et « livres distincts » ne ferait qu'effacer
-                    le signalement, donc la sortie de secours est offerte quel que
-                    soit l'état de la carte. Le cas du double audio a déjà la sienne
-                    dans l'encadré ci-dessus. */}
+                {/* Ce qui reste après le sélecteur. Un rapprochement faux se
+                    corrige désormais sur la carte — « pas le bon livre ? » — donc
+                    la passe-main ne sert plus qu'au cas qu'aucun choix ne règle :
+                    le bon livre n'est pas dans le catalogue. Mesuré sur la base,
+                    c'est le cas de 90 % de la file, d'où le maintien de la sortie
+                    quel que soit l'état de la carte. Le double audio a déjà la
+                    sienne dans l'encadré ci-dessus. */}
                 {!audioConflict && (
                     <div className="border-t border-border/60 pt-3">
                         <EscalateRow
@@ -801,7 +896,7 @@ function PairCard({
                             audioConflict={false}
                             busy={busy}
                             onEscalate={onEscalate}
-                            hint="Ce rapprochement est faux ou le cas ne se règle pas ici ?"
+                            hint="Le bon livre n’existe pas dans le catalogue ?"
                         />
                     </div>
                 )}
@@ -876,10 +971,13 @@ function BookHead({
     book,
     align,
     onListen,
+    onReplace,
 }: {
     book: ReviewBook;
     align?: 'right';
     onListen: (book: ReviewBook) => void;
+    /** Présent uniquement sur la fiche que le permanent peut remplacer. */
+    onReplace?: () => void;
 }) {
     return (
         <div className={align === 'right' ? 'sm:text-right' : ''}>
@@ -899,6 +997,118 @@ function BookHead({
                     </Badge>
                 )}
                 <ListenButton book={book} onListen={onListen} />
+                {onReplace && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                        // La carte derrière ce bouton ouvre la comparaison au clic.
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onReplace();
+                        }}
+                    >
+                        <Replace className="h-3.5 w-3.5" /> Pas le bon livre ?
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Choisir le livre à mettre en face.
+ *
+ * Mène par la recherche, pas par la liste : mesuré sur la base de production,
+ * 90 % des livres signalés n'ont aucun candidat proposable, et une liste vide
+ * en tête de bloc ferait croire qu'il n'y a rien à trouver. Les suggestions ne
+ * s'affichent donc que lorsqu'il y en a — pour 10 % de la file, où elles
+ * évitent une recherche que le permanent aurait tapée à la main.
+ */
+function MatchPicker({
+    flagged,
+    candidates,
+    busy,
+    onChoose,
+    onCancel,
+}: {
+    flagged: ReviewBook;
+    candidates: ReviewBook[];
+    busy: boolean;
+    onChoose: (book: ReviewBook) => void;
+    onCancel?: () => void;
+}) {
+    const [manual, setManual] = useState<ReviewBook | null>(null);
+
+    return (
+        <div className="space-y-3">
+            {candidates.length > 0 && (
+                <div className="space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Livres au titre proche
+                    </p>
+                    {candidates.map((b) => (
+                        <div
+                            key={b.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2"
+                        >
+                            <div className="min-w-0">
+                                <div className="text-sm">
+                                    #{b.id} — {b.title}
+                                    {b.subtitle?.trim() && (
+                                        <span className="italic text-muted-foreground"> {b.subtitle}</span>
+                                    )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    {b.author}
+                                    {b.source_access_id != null && ` · n° ${b.source_access_id}`}
+                                    {' · '}
+                                    {bookHoldsTracks(b)
+                                        ? `audio (${b.audioTrackCount ?? '?'})`
+                                        : 'pas d’audio'}
+                                </div>
+                            </div>
+                            <Button size="sm" variant="outline" disabled={busy} onClick={() => onChoose(b)}>
+                                Comparer
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {candidates.length > 0 ? 'Ou chercher un autre livre' : 'Chercher le bon livre'}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="min-w-[260px] flex-1">
+                        <BookSearchCombobox<ReviewBook>
+                            value={manual}
+                            onSelect={(b) => setManual(b)}
+                            renderValue={(b) => `#${b.id} — ${bookLabel(b)} · ${b.author}`}
+                            placeholder="Titre, auteur, ISBN ou numéro…"
+                        />
+                    </div>
+                    <Button
+                        size="sm"
+                        // Se comparer à soi-même ne veut rien dire, et la fusion
+                        // serait refusée côté serveur de toute façon.
+                        disabled={busy || !manual || manual.id === flagged.id}
+                        onClick={() => manual && onChoose(manual)}
+                    >
+                        Comparer
+                    </Button>
+                    {onCancel && (
+                        <Button variant="ghost" size="sm" disabled={busy} onClick={onCancel}>
+                            Annuler
+                        </Button>
+                    )}
+                </div>
+                {manual && manual.id === flagged.id && (
+                    <p className="text-xs text-destructive">
+                        C’est la fiche de gauche : choisissez l’autre version du livre.
+                    </p>
+                )}
             </div>
         </div>
     );
