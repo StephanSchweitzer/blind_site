@@ -518,7 +518,10 @@ export function AssignmentFormBackendBase({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     readerId: selectedReaderId,
-                    notes: reassignNotes || 'Réattribution',
+                    // Only a real reassignment replaces a prior reader — the first
+                    // reader on an attribution is an attribution, not a réattribution,
+                    // and the journal des modifications should say so.
+                    notes: reassignNotes || (currentReader ? 'Réattribution' : 'Attribution'),
                 }),
             });
 
@@ -526,12 +529,14 @@ export function AssignmentFormBackendBase({
                 // Surface the server's explanation (e.g. "attribution terminée") instead
                 // of a generic message, so the toast is actually actionable.
                 const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.message || 'Échec de la réattribution');
+                throw new Error(errorData?.message || (currentReader ? 'Échec de la réattribution' : 'Échec de l’attribution'));
             }
 
             toast({
                 title: "Succès",
-                description: "Le lecteur a été réaffecté avec succès",
+                description: currentReader
+                    ? "Le lecteur a été réaffecté avec succès"
+                    : "Le lecteur a été attribué avec succès",
                 className: "bg-green-100 border-2 border-green-500 text-green-900",
             });
 
@@ -544,7 +549,9 @@ export function AssignmentFormBackendBase({
             toast({
                 variant: "destructive",
                 title: "Erreur",
-                description: error instanceof Error ? error.message : "Échec de la réattribution du lecteur",
+                description: error instanceof Error
+                    ? error.message
+                    : (currentReader ? "Échec de la réattribution du lecteur" : "Échec de l’attribution du lecteur"),
             });
         } finally {
             setIsReassigningReader(false);
