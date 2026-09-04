@@ -38,10 +38,33 @@ interface User {
 interface EligibleOrder {
     id: number;
     requestReceivedDate: string;
-    cost: number;
+    /** null = aucun tarif n'a jamais été renseigné, à distinguer de 0 €. */
+    cost: number | null;
     billingStatus: string;
+    statusId: number;
+    statusName: string | null;
+    isDuplication: boolean;
     catalogue: { title: string; author: string };
 }
+
+/**
+ * Une demande qu'on peut cocher les yeux fermés : la prestation est rendue et
+ * son tarif est connu.
+ *
+ * Le reste reste cochable — facturer une demande en cours est parfois le bon
+ * geste — mais plus PRÉ-coché. Le formulaire cochait tout par défaut, sans
+ * montrer ni le statut ni l'absence de tarif : ouvrir la fiche d'un auditeur et
+ * valider suffisait à facturer des demandes pas encore enregistrées, et des
+ * demandes sans prix comptées pour zéro.
+ *
+ * Une duplication n'a pas d'attribution et se termine sur place : « Terminé »
+ * est le seul état qui la concerne, comme pour les autres.
+ */
+const isReadyToBill = (o: EligibleOrder): boolean =>
+    o.statusId === TERMINE_STATUS_ID && o.cost != null;
+
+/** STATUS.TERMINE — dupliqué ici parce que lib/statusSync.ts est serveur. */
+const TERMINE_STATUS_ID = 3;
 
 export interface BillFormData {
     clientId: number;
@@ -130,7 +153,15 @@ export function BillFormBackendBase({
                 if (res.ok) {
                     const { orders } = await res.json();
                     setEligibleOrders(orders);
-                    setSelectedOrderIds(new Set(orders.map((o: EligibleOrder) => o.id)));
+                    // Pré-cochées : seulement celles qui sont prêtes à être
+                    // facturées. Voir isReadyToBill.
+                    setSelectedOrderIds(
+                        new Set(
+                            (orders as EligibleOrder[])
+                                .filter(isReadyToBill)
+                                .map((o) => o.id)
+                        )
+                    );
                 } else {
                     setEligibleOrders([]);
                 }
@@ -148,7 +179,7 @@ export function BillFormBackendBase({
         () =>
             eligibleOrders
                 .filter(o => selectedOrderIds.has(o.id))
-                .reduce((sum, o) => sum + (o.cost || 0), 0),
+                .reduce((sum, o) => sum + (o.cost ?? 0), 0),
         [eligibleOrders, selectedOrderIds]
     );
 
@@ -305,10 +336,22 @@ export function BillFormBackendBase({
                                                 </div>
                                                 <div className="text-muted-foreground text-xs truncate">
                                                     {o.catalogue.author} · {new Date(o.requestReceivedDate).toLocaleDateString('fr-FR')}
+                                                    {o.statusName ? ` · ${o.statusName}` : ''}
                                                 </div>
+                                                {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}
+                                                {o.statusId !== TERMINE_STATUS_ID && (
+                                                    <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
+                                                        Prestation pas encore terminée
+                                                    </div>
+                                                )}
+                                                {o.cost == null && (
+                                                    <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
+                                                        Aucun tarif renseigné — serait facturée 0,00 €
+                                                    </div>
+                                                )}
                                             </div>
                                             <span className="text-foreground text-sm font-medium whitespace-nowrap">
-                                                {formatCurrency(o.cost)}
+                                                {o.cost == null ? '—' : formatCurrency(o.cost)}
                                             </span>
                                             <a
                                                 href={`/admin/orders?order=${o.id}`}

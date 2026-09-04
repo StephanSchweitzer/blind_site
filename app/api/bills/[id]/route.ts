@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
-import { Prisma, BillingStatus } from '@prisma/client';
+import { Prisma, BillingStatus, OrderBillingStatus } from '@prisma/client';
 import { userAddressLines } from '@/lib/users/formatAddress';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { STATUS } from '@/lib/statusSync';
@@ -255,13 +255,21 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 if (!bill) throw new Error('BILL_NOT_FOUND');
                 if (bill.state !== 'DRAFT') throw new Error('BILL_NOT_DRAFT');
 
+                // Mêmes contrôles que POST /api/bills, qui fait le même geste : les
+                // deux chemins de rattachement doivent dire oui aux mêmes demandes.
+                // Il manquait ici `isActive` (une demande supprimée pouvait être
+                // rattachée, puis restait invisible — exclue du total ET des lignes)
+                // et « Non facturable », que POST refuse explicitement et que
+                // guardOrderUnbillableOnBill interdit de POSER sur une demande
+                // rattachée : l'accepter par ici revenait à contourner le garde.
                 const order = await tx.orders.findUnique({
                     where: { id: parseInt(orderId) },
-                    select: { aveugleId: true, billId: true },
+                    select: { aveugleId: true, billId: true, isActive: true, billingStatus: true },
                 });
-                if (!order) throw new Error('ORDER_NOT_FOUND');
+                if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
                 if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
                 if (order.aveugleId !== bill.clientId) throw new Error('CLIENT_MISMATCH');
+                if (order.billingStatus === OrderBillingStatus.UNBILLABLE) throw new Error('ORDER_UNBILLABLE');
 
                 await tx.orders.update({
                     where: { id: parseInt(orderId) },
@@ -367,6 +375,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             BILL_NOT_DRAFT: ['La facture doit être en brouillon pour modifier ses demandes', 400],
             ORDER_ALREADY_BILLED: ['Cette demande est déjà rattachée à une facture', 400],
             CLIENT_MISMATCH: ['Cette demande n\'appartient pas au client de cette facture', 400],
+            ORDER_UNBILLABLE: ['Cette demande est marquée « Non facturable » et ne peut pas être rattachée à une facture', 400],
         };
         if (errorMap[msg]) {
             return NextResponse.json({ error: msg, message: errorMap[msg][0] }, { status: errorMap[msg][1] });
