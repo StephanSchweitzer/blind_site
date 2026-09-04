@@ -11,6 +11,7 @@ import {
     transitionEventType,
     orderBillingForBillState,
     ordersFollowingBillState,
+    detachedBillingStatus,
 } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -296,7 +297,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 // Confirm the order is actually on this bill, and read its workflow status.
                 const order = await tx.orders.findFirst({
                     where: { id: parseInt(orderId), billId },
-                    select: { statusId: true },
+                    select: { statusId: true, billingStatus: true },
                 });
                 if (!order) throw new Error('ORDER_NOT_FOUND');
 
@@ -309,7 +310,8 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                     where: { id: parseInt(orderId), billId },
                     data: {
                         billId: null,
-                        billingStatus: 'UNBILLED',
+                        // « Non facturable » survit au détachement (detachedBillingStatus).
+                        billingStatus: detachedBillingStatus(order.billingStatus),
                         ...(deSettled ? { statusId: STATUS.TERMINE } : {}),
                     },
                 });
@@ -431,13 +433,23 @@ export const DELETE = withAdmin(async (_request, { me, params }) => {
             // Detach orders and revert their order-level billing status (never leave them
             // BILLED with no billId). De-settle any SOLDE order back to Terminé so it's clean
             // to re-add, matching removeOrder's behavior.
+            //
+            // En trois temps, et dans cet ordre, parce que la sélection se fait par
+            // billId : une fois détachées, les lignes ne sont plus retrouvables.
             await tx.orders.updateMany({
                 where: { billId, statusId: STATUS.SOLDE },
-                data: { billId: null, billingStatus: 'UNBILLED', statusId: STATUS.TERMINE },
+                data: { statusId: STATUS.TERMINE },
             });
+            // « Non facturable » garde sa décision — voir detachedBillingStatus.
+            await tx.orders.updateMany({
+                where: { billId, billingStatus: { not: 'UNBILLABLE' } },
+                data: { billingStatus: 'UNBILLED' },
+            });
+            // Tout le monde se détache, y compris les non facturables : laisser une
+            // ligne rattachée à une facture supprimée serait le vrai état perdu.
             await tx.orders.updateMany({
                 where: { billId },
-                data: { billId: null, billingStatus: 'UNBILLED' },
+                data: { billId: null },
             });
 
             // Le total tombe à 0 avant l'événement, pour que amountAtEvent porte

@@ -215,6 +215,30 @@ export const ordersFollowingBillState = (billId: number): Prisma.OrdersWhereInpu
 });
 
 /**
+ * Le statut de facturation d'une demande qu'on DÉTACHE.
+ *
+ * Le miroir de ordersFollowingBillState : ce qui ne suit pas l'état de la
+ * facture en y entrant ne le suit pas davantage en en sortant.
+ *
+ * « Non facturable » est une décision, pas un état de facturation. La remettre
+ * « Non facturé » en la détachant la replace dans le cycle — elle redevient
+ * retarifable par repriceOpenOrdersForBook (ADJUSTABLE_ORDER_WHERE) et se
+ * rattachera au prochain brouillon de l'auditeur — c'est-à-dire exactement ce
+ * dont un permanent l'avait sortie. Les quatre chemins de détachement
+ * l'écrasaient tous les quatre.
+ *
+ * « Non facturable » sans billId n'est PAS l'état perdu que ces chemins
+ * évitent : l'état perdu est « Facturé » sans facture. C'est au contraire l'état
+ * NORMAL d'une demande hors cycle.
+ */
+export const detachedBillingStatus = (
+    current: OrderBillingStatus
+): OrderBillingStatus =>
+    current === OrderBillingStatus.UNBILLABLE
+        ? OrderBillingStatus.UNBILLABLE
+        : OrderBillingStatus.UNBILLED;
+
+/**
  * Order fields printed on the invoice (BillPDF): book, date, type, cost.
  * Changing any of these on an order attached to a non-DRAFT bill makes the issued
  * document stale and should warn the admin to reprint.
@@ -401,9 +425,19 @@ export async function detachOrderFromBill(
     args: { orderId: number; billId: number; reason: string; performedById?: number | null }
 ): Promise<Prisma.Decimal> {
     const { orderId, billId, reason, performedById } = args;
+    // Relu pour ne pas écraser « Non facturable » — voir detachedBillingStatus.
+    const current = await tx.orders.findUnique({
+        where: { id: orderId },
+        select: { billingStatus: true },
+    });
     await tx.orders.update({
         where: { id: orderId, billId },
-        data: { billId: null, billingStatus: OrderBillingStatus.UNBILLED },
+        data: {
+            billId: null,
+            billingStatus: detachedBillingStatus(
+                current?.billingStatus ?? OrderBillingStatus.UNBILLED
+            ),
+        },
     });
     const total = await recomputeBillTotal(tx, billId);
     await logBillEvent(tx, {
