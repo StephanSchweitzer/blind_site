@@ -721,9 +721,10 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }
                 description: formData.description || null,
                 available: formData.available,
                 hiddenFromCatalogue: formData.hiddenFromCatalogue,
-                readingDurationMinutes: formData.readingDurationMinutes
-                    ? parseInt(formData.readingDurationMinutes.toString())
-                    : null,
+                // readingDurationMinutes n'est pas renvoyé : il est calculé à partir
+                // des fichiers audio, la route l'ignore, et ce formulaire n'en tient
+                // qu'une copie prise à l'ouverture — la renvoyer effaçait la mesure
+                // faite entre-temps. Voir PUT /api/books/[id].
                 pageCount: formData.pageCount
                     ? parseInt(formData.pageCount.toString())
                     : null

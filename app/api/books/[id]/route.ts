@@ -67,6 +67,23 @@ export const GET = withAdmin(async (_req, { params }) => {
     }
 });
 
+/**
+ * `readingDurationMinutes` is deliberately NOT read from the body.
+ *
+ * It is derived from the audio files and has exactly one writer,
+ * refreshBookAudioState() (lib/audio/state.ts) — the « Recalculer » button
+ * routes its write through that function for the same reason, and no form has
+ * offered a field to type the duration in since it became a fact about the
+ * recording rather than an opinion about it.
+ *
+ * The book form nevertheless carried the value in its state and sent it back on
+ * every save, mapping « pas de valeur » to an explicit null. The form is seeded
+ * once, when it opens, so anything that filled the duration afterwards — an
+ * upload made from the audio button in that same modal's header, another
+ * permanent measuring, a second tab — was erased by the next save of any other
+ * field. Accepting the column here can only ever overwrite a measurement with a
+ * stale copy of itself, so the route no longer takes it at all.
+ */
 export const PUT = withAdmin(async (req, { params }) => {
     revalidateAdmin();
     const bookId = await bookIdFrom(params);
@@ -83,7 +100,6 @@ export const PUT = withAdmin(async (req, { params }) => {
         description,
         available,
         hiddenFromCatalogue,
-        readingDurationMinutes,
         pageCount
     } = await req.json();
 
@@ -117,7 +133,6 @@ export const PUT = withAdmin(async (req, { params }) => {
                 publishedDate: publishedDate ? new Date(publishedDate) : undefined,
                 isbn,
                 description,
-                readingDurationMinutes,
                 pageCount,
                 available,
                 hiddenFromCatalogue,

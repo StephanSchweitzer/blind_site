@@ -153,13 +153,14 @@ export default function EditionLivre() {
                 ? `${formData.publishedYear}-01-01`
                 : null;
 
+            // readingDurationMinutes n'est pas transmis : calculé à partir des
+            // fichiers audio, ignoré par la route, et ce formulaire n'en tient qu'une
+            // copie prise à l'ouverture. Voir PUT /api/books/[id].
+            const { readingDurationMinutes: _derivee, ...champsModifiables } = formData;
             const donneesSoumission = {
-                ...formData,
+                ...champsModifiables,
                 genres: genresSelectionnes,
                 publishedDate: dateFormatee,
-                readingDurationMinutes: formData.readingDurationMinutes
-                    ? parseInt(formData.readingDurationMinutes.toString())
-                    : null
             };
 
             const res = await fetch(`/api/books/${id}`, {
