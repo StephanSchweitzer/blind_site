@@ -326,6 +326,7 @@ const FK_FIELD_TARGETS: Record<string, string> = {
     'Payment.clientId': 'User',
     'Payment.billId': 'Bill',
     'Book.addedById': 'User',
+    'CoupsDeCoeur.addedById': 'User',
     'News.authorId': 'User',
     'AudioTrackEvent.performedById': 'User',
     'AudioTrackEvent.bookId': 'Book',
@@ -522,8 +523,20 @@ export async function resolveRecordLabels(
 /**
  * Overrides a Bill label's subtitle with the total AS OF that specific event,
  * where one was captured — the live join in SOURCES.Bill above stays as the
- * fallback for a caller that has no `at` (nothing to be "as of"), or for an
- * event older than this column (see BillEvent.amountAtEvent in schema.prisma).
+ * fallback for a caller that has no `at` (nothing to be "as of"), or for a bill
+ * with no recorded history at all (see BillEvent.amountAtEvent in
+ * schema.prisma).
+ *
+ * AN EVENT THAT PREDATES THE WHOLE HISTORY STILL GETS THE RIGHT NUMBER.
+ *
+ * The AuditEvent for a facture's creation is stamped the moment `bill.create`
+ * returns, a few milliseconds BEFORE the CREATED BillEvent that logBillEvent
+ * appends next — so a strict "last entry at or before" match found nothing for
+ * it and fell through to today's total. That put « 99 € » beside the création of
+ * a facture created at 6 € — precisely the live-join staleness this function
+ * exists to remove, on the most common Bill entry in the journal. An event older
+ * than every recorded amount can only be that creation, so it takes the earliest
+ * one instead.
  *
  * Reads each bill's whole amount history in one query rather than one query per
  * (billId, at) pair — a bill's event history is short and bounded, so this stays
@@ -562,7 +575,7 @@ async function resolveBillAmounts(
 
         for (const [id, { billId, at }] of wanted) {
             const history = historyByBill.get(billId);
-            if (!history) continue;
+            if (!history?.length) continue;
             // Last entry at or before this event's own timestamp — history is
             // sorted ascending, so the latest one that still qualifies wins.
             let asOf: string | null = null;
@@ -570,7 +583,9 @@ async function resolveBillAmounts(
                 if (entry.at > at) break;
                 asOf = entry.amount;
             }
-            if (asOf === null) continue;
+            // Nothing at or before: the event predates the bill's own history,
+            // which only its creation can do. See the note above.
+            if (asOf === null) asOf = history[0].amount;
             const existing = labels.get(id);
             if (!existing) continue;
             labels.set(id, { ...existing, subtitle: euros(asOf) });
