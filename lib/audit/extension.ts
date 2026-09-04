@@ -22,7 +22,7 @@ import {
     encodeValue,
     withinPayloadBudget,
 } from './diff';
-import { getAuditActor, isAuditBypassed } from './context';
+import { getAuditActor, getAuditTransactionClient, isAuditBypassed, runAsAuditRead } from './context';
 import { OWNED_COLLECTIONS, OwnedCollection, describeCollection, isOwnedCollection } from './owned-collections';
 
 /**
@@ -75,6 +75,22 @@ interface AuditRowInput {
 }
 
 const ATOMIC_OPS = new Set(['increment', 'decrement', 'multiply', 'divide']);
+
+/**
+ * The client the trail must use for this write: the caller's interactive
+ * transaction when there is one, the bare client otherwise.
+ *
+ * Inside a transaction this is what makes the trail agree with the data — the
+ * « avant » read sees the transaction's own uncommitted rows, and the events
+ * commit or roll back with it. See runInAuditTransaction in ./context.
+ *
+ * The transaction client carries the same delegates and the same auditEvent
+ * accessor, so it is used exactly like the bare one; the cast is what lets this
+ * module keep a single type for both.
+ */
+function auditClient(base: PrismaClient): PrismaClient {
+    return (getAuditTransactionClient() as PrismaClient | null) ?? base;
+}
 
 /** Delegate lookup: Prisma exposes model `Orders` as client key `orders`. */
 function delegateFor(base: PrismaClient, model: string): Delegate | null {
@@ -154,12 +170,15 @@ async function loadBefore(
     const delegate = delegateFor(base, model);
     if (!delegate || where === undefined) return null;
 
+    // runAsAuditRead: on a transaction client these go through the soft-delete
+    // extension, which would hide an already soft-deleted user from its own
+    // deletion event.
     if (operation === 'update' || operation === 'upsert' || operation === 'delete') {
-        return delegate.findFirst({ where });
+        return runAsAuditRead(() => delegate.findFirst({ where }));
     }
     if (operation === 'updateMany' || operation === 'updateManyAndReturn' || operation === 'deleteMany') {
         // One row over the cap is enough to know the write is a mass operation.
-        return delegate.findMany({ where, take: BULK_ROW_LIMIT + 1 });
+        return runAsAuditRead(() => delegate.findMany({ where, take: BULK_ROW_LIMIT + 1 }));
     }
     return null;
 }
@@ -174,7 +193,10 @@ async function reread(base: PrismaClient, model: string, rows: Row[]): Promise<M
     const ids = rows.map((row) => row[fields[0]]).filter((id) => id !== undefined && id !== null);
     if (ids.length === 0) return fresh;
 
-    for (const row of await delegate.findMany({ where: { [fields[0]]: { in: ids } } })) {
+    const rereadRows = await runAsAuditRead(() =>
+        delegate.findMany({ where: { [fields[0]]: { in: ids } } })
+    );
+    for (const row of rereadRows) {
         const recordId = recordIdOf(model, row);
         if (recordId) fresh.set(recordId, row);
     }
@@ -215,13 +237,22 @@ function sharedChanges(data: unknown): AuditChanges {
     return changes;
 }
 
-/** The `{ champ: [null, valeur] }` shape used by a bulk summary's `data`. */
+/**
+ * The `{ champ: [null, valeur] }` shape used by a bulk summary's `data`.
+ *
+ * Filters the same two families every other diff builder does. No caller can
+ * currently reach this with a credential — nothing in the app runs
+ * `user.updateMany` — but this was the one path where « rien de secret n'entre
+ * dans le journal » (isSecretField, lib/audit/config.ts) rested on that
+ * happening to be true rather than on the code.
+ */
 function summaryChanges(data: unknown, count: number): AuditChanges {
     const changes: AuditChanges = { [BULK_COUNT_KEY]: [null, count] };
     if (!isWrapperObject(data)) return changes;
 
     for (const [field, raw] of Object.entries(data)) {
         if (raw === undefined) continue;
+        if (isSecretField(field) || isNoiseField(field)) continue;
         const value = isWrapperObject(raw) ? ('set' in raw ? raw.set : undefined) : raw;
         if (value === undefined) continue;
         changes[field] = [null, encodeValue(value)];
@@ -447,12 +478,14 @@ async function ownersTouched(
 
     const delegate = delegateFor(base, model);
     if (delegate && where !== undefined) {
-        const rows = await delegate.findMany({
-            where,
-            // One row over the cap is enough to know the write is a mass operation.
-            take: BULK_ROW_LIMIT + 1,
-            select: { [spec.ownerKey]: true },
-        });
+        const rows = await runAsAuditRead(() =>
+            delegate.findMany({
+                where,
+                // One row over the cap is enough to know the write is a mass operation.
+                take: BULK_ROW_LIMIT + 1,
+                select: { [spec.ownerKey]: true },
+            })
+        );
         if (rows.length > BULK_ROW_LIMIT) return { owners: [], overflow: true };
         for (const row of rows) {
             const value = row[spec.ownerKey];
@@ -475,7 +508,10 @@ async function readCollections(
     if (!delegate || owners.length === 0) return rendered;
 
     const grouped = new Map<number, Row[]>();
-    for (const row of await delegate.findMany({ where: { [spec.ownerKey]: { in: owners } } })) {
+    const collectionRows = await runAsAuditRead(() =>
+        delegate.findMany({ where: { [spec.ownerKey]: { in: owners } } })
+    );
+    for (const row of collectionRows) {
         const owner = row[spec.ownerKey];
         if (typeof owner !== 'number') continue;
         const rows = grouped.get(owner);
@@ -499,11 +535,11 @@ function fitBudget(row: AuditRowInput): AuditRowInput {
     };
 }
 
-export async function writeAuditEvents(base: PrismaClient, rows: AuditRowInput[]): Promise<void> {
+export async function writeAuditEvents(client: PrismaClient, rows: AuditRowInput[]): Promise<void> {
     if (rows.length === 0) return;
     const actor = getAuditActor();
 
-    await base.auditEvent.createMany({
+    await client.auditEvent.createMany({
         data: rows.map(fitBudget).map((row) => ({
             model: row.model,
             recordId: row.recordId,
@@ -543,21 +579,26 @@ export function auditExtension(base: PrismaClient) {
                     // A collection owned by another row is traced against that row:
                     // what it is worth saying is what the whole set became, not which
                     // of its interchangeable rows was replaced on the way there.
+                    // Resolved once, before the write: inside an interactive
+                    // transaction this is that transaction's client, so both sides
+                    // of the capture see — and commit with — the same work.
+                    const client = auditClient(base);
+
                     if (model !== undefined && isOwnedCollection(model)) {
                         const spec = OWNED_COLLECTIONS[model];
                         const touched = await safely(`${model}.${operation} (propriétaires)`, () =>
-                            ownersTouched(base, model, spec, call.where, [call.data, call.create, call.update])
+                            ownersTouched(client, model, spec, call.where, [call.data, call.create, call.update])
                         );
                         const owners = touched?.overflow ? [] : touched?.owners ?? [];
                         const before = await safely(`${model}.${operation} (état avant)`, () =>
-                            readCollections(base, model, spec, owners)
+                            readCollections(client, model, spec, owners)
                         );
 
                         const result = await query(args);
 
                         await safely(`${model}.${operation}`, async () => {
                             if (touched?.overflow) {
-                                await writeAuditEvents(base, [{
+                                await writeAuditEvents(client, [{
                                     model: spec.owner,
                                     recordId: BULK_RECORD_ID,
                                     operation: 'UPDATE',
@@ -565,8 +606,8 @@ export function auditExtension(base: PrismaClient) {
                                 }]);
                                 return;
                             }
-                            const after = await readCollections(base, model, spec, owners);
-                            await writeAuditEvents(base, owners.flatMap((owner) => {
+                            const after = await readCollections(client, model, spec, owners);
+                            await writeAuditEvents(client, owners.flatMap((owner) => {
                                 const from = before?.get(owner) ?? null;
                                 const to = after.get(owner) ?? null;
                                 // A set re-saved as it stood is not a change.
@@ -584,7 +625,7 @@ export function auditExtension(base: PrismaClient) {
                     }
 
                     const before = await safely(`${model}.${operation} (état avant)`, () =>
-                        loadBefore(base, model, operation, call.where)
+                        loadBefore(client, model, operation, call.where)
                     );
 
                     // Deliberately outside every try/catch: a real failure of the
@@ -594,7 +635,7 @@ export function auditExtension(base: PrismaClient) {
 
                     await safely(`${model}.${operation}`, async () => {
                         const events = await buildEvents({
-                            base,
+                            base: client,
                             model,
                             operation,
                             where: call.where,
@@ -603,7 +644,7 @@ export function auditExtension(base: PrismaClient) {
                             result,
                             narrowed: call.select !== undefined,
                         });
-                        await writeAuditEvents(base, events);
+                        await writeAuditEvents(client, events);
                     });
 
                     return result;
