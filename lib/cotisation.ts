@@ -5,6 +5,24 @@
 //
 // Callers must pass only ACTIVE payments of type COTISATION (isActive: true,
 // type: 'COTISATION'). This helper does not know about Prisma or filtering.
+//
+// UNE COTISATION EXPIRE UN JOUR, PAS À UN INSTANT
+//
+// Tout ici se compte en JOURS du calendrier français, jamais en instants lus
+// dans le fuseau de celui qui regarde. Ce module tourne des deux côtés — route
+// serveur ET composant 'use client' — donc une frontière calculée en heure
+// locale se déplace entre les deux : `new Date(y, 11, 31, 23, 59, 59)` vaut
+// 23:59:59Z sur un serveur en UTC et 22:59:59Z dans un navigateur à Paris. Le
+// 31 décembre entre 23 h et minuit, le serveur disait « à jour » et l'écran
+// « expirée » — pour la même personne, au même moment.
+//
+// Les jours sont donc représentés comme le reste de l'application le fait :
+// une Date à minuit UTC portant le jour du calendrier (voir
+// lib/calendar-date.ts), et « aujourd'hui » vient de parisDayStart
+// (lib/users/activityStatus.ts), qui sert déjà de frontière de journée aux
+// indisponibilités et aux statistiques. Comparer deux minuits UTC ne dépend
+// d'aucun fuseau.
+import { parisDayStart } from '@/lib/users/activityStatus';
 
 /** The subset of Payment fields this helper needs. Dates may arrive as Date
  *  objects (Prisma, server) or ISO strings (JSON, client). */
@@ -26,10 +44,21 @@ export interface CotisationStatus {
     latestPaymentDate: Date | null;
 }
 
-/** End of 31 December of a given year (local time) — the expiry of a
- *  calendar-year cotisation covering that year. */
+/**
+ * Le 31 décembre d'une année, comme JOUR du calendrier (minuit UTC) : le
+ * dernier jour couvert par une cotisation à l'année.
+ *
+ * Ce n'est plus un instant de fin de journée en heure locale — voir l'en-tête.
+ * La comparaison qui en découle est jour contre jour (computeCotisationStatus),
+ * si bien que le 31 décembre lui-même reste couvert jusqu'à son terme.
+ */
 function endOfYear(year: number): Date {
-    return new Date(year, 11, 31, 23, 59, 59, 999);
+    return new Date(Date.UTC(year, 11, 31));
+}
+
+/** Le même jour, un an plus tard — la règle glissante des lignes héritées. */
+function oneYearOn(day: Date): Date {
+    return new Date(Date.UTC(day.getUTCFullYear() + 1, day.getUTCMonth(), day.getUTCDate()));
 }
 
 /** Coverage a single cotisation payment grants:
@@ -47,9 +76,11 @@ function paymentCoverage(
     }
 
     if (ref) {
-        const expiresAt = new Date(ref);
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-        return { expiresAt, coverYear: ref.getFullYear(), ref };
+        // Le jour FRANÇAIS du paiement, pas celui du fuseau du lecteur : un
+        // versement du 31 décembre à 23 h 30 à Paris est du 31 décembre, et son
+        // année de couverture est celle-là, sur le serveur comme à l'écran.
+        const refDay = parisDayStart(ref);
+        return { expiresAt: oneYearOn(refDay), coverYear: refDay.getUTCFullYear(), ref };
     }
 
     return null;
@@ -81,6 +112,7 @@ function referenceDate(p: CotisationPaymentInput): Date | null {
  */
 export function computeCotisationStatus(
     payments: CotisationPaymentInput[],
+    now: Date = new Date(),
 ): CotisationStatus {
     const covered = payments
         .map(paymentCoverage)
@@ -94,7 +126,12 @@ export function computeCotisationStatus(
     covered.sort((a, b) => b.expiresAt.getTime() - a.expiresAt.getTime());
     const best = covered[0];
 
-    const isPaid = best.expiresAt.getTime() >= Date.now();
+    // Jour contre jour : « aujourd'hui » sur le calendrier français comparé au
+    // dernier jour couvert. Les deux sont des minuits UTC, donc le résultat ne
+    // dépend ni du fuseau du serveur ni de celui du navigateur — et le dernier
+    // jour couvert l'est jusqu'au bout, ce qu'un `>= Date.now()` sur un jour
+    // (et non plus sur une fin de journée) aurait cassé.
+    const isPaid = parisDayStart(now).getTime() <= best.expiresAt.getTime();
 
     return {
         isPaid,
@@ -129,9 +166,16 @@ export function cotisationCoverageQuery(now: Date = new Date()): {
     currentYear: number;
     legacyCutoff: Date;
 } {
-    const legacyCutoff = new Date(now);
-    legacyCutoff.setFullYear(legacyCutoff.getFullYear() - 1);
-    return { currentYear: now.getFullYear(), legacyCutoff };
+    // Même calendrier que computeCotisationStatus, sans quoi la liste et la
+    // pastille de la fiche se contrediraient un jour par an : l'année courante
+    // est l'année FRANÇAISE, et le seuil hérité le jour français d'il y a un an.
+    const today = parisDayStart(now);
+    return {
+        currentYear: today.getUTCFullYear(),
+        legacyCutoff: new Date(
+            Date.UTC(today.getUTCFullYear() - 1, today.getUTCMonth(), today.getUTCDate())
+        ),
+    };
 }
 
 /**
@@ -152,9 +196,14 @@ export function isCotisationExempt(memberType: string | null | undefined): boole
 export function formatCotisationDate(date: Date | string | null | undefined): string {
     const d = toDate(date ?? null);
     if (!d) return '—';
+    // `timeZone: 'UTC'` parce que ce qu'on formate est un JOUR stocké à minuit
+    // UTC, pas un instant : le relire dans le fuseau du lecteur affichait le
+    // 30 décembre à l'ouest de Greenwich. Même règle que formatDay
+    // (lib/users/activityStatus.ts) et que lib/calendar-date.ts.
     return new Intl.DateTimeFormat('fr-FR', {
         day: '2-digit',
         month: 'long',
         year: 'numeric',
+        timeZone: 'UTC',
     }).format(d);
 }
