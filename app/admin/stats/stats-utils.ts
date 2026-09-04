@@ -1,3 +1,4 @@
+import { AUDIT_RETENTION_DAYS, AUDIT_RETENTION_DAYS_UNDER_PRESSURE } from '@/lib/audit/config';
 import type { MemberGroup, StaffMetric, StatsGranularity, TrendMetric } from '@/types';
 
 // Client-side date helpers for the stats dashboard. Buckets are plain
@@ -157,7 +158,12 @@ export const METRIC_HINTS: Partial<Record<TrendMetric, string>> = {
     orders: 'Création, clôture, réouverture et changements de statut — quel que soit le chemin emprunté.',
     assignments: 'Création, clôture, réouverture et changements de statut — quel que soit le chemin emprunté.',
     audioEvents: 'Envoi, renommage, suppression et restauration de pistes.',
-    auditEvents: 'Le journal ne conserve que les 14 derniers jours.',
+    // Both windows, because the shorter one applies on its own once the table
+    // passes its soft limit (lib/audit/retention.ts) — a hard-coded « 14 jours »
+    // is simply wrong on the days that matter most.
+    auditEvents:
+        `Le journal ne conserve que les ${AUDIT_RETENTION_DAYS} derniers jours ` +
+        `(${AUDIT_RETENTION_DAYS_UNDER_PRESSURE} lorsque la table approche de sa limite).`,
 };
 
 /**

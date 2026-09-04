@@ -14,13 +14,13 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import type { TeamMember, TeamSection } from '@prisma/client';
+import { TEAM_SECTION_LABELS, TEAM_SECTION_ORDER } from '@/lib/team-enums';
 
-const SECTION_LABELS: Record<TeamSection, string> = {
-    DIRECTION: 'Direction',
-    CONSEIL: "Conseil d'Administration",
-    PERMANENCE: 'Animation des Permanences',
-};
-const SECTION_ORDER: TeamSection[] = ['DIRECTION', 'CONSEIL', 'PERMANENCE'];
+// Re-exported under the local names this file already used; the maps themselves
+// live in lib/team-enums.ts so the journal des modifications can word a section
+// the same way this screen does.
+const SECTION_LABELS: Record<TeamSection, string> = TEAM_SECTION_LABELS;
+const SECTION_ORDER: TeamSection[] = TEAM_SECTION_ORDER;
 
 type Groups = Record<TeamSection, TeamMember[]>;
 

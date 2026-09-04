@@ -9,6 +9,7 @@
 import { AUDIO_TRACK_ACTION_LABELS } from '@/lib/audio-enums';
 import { BILLING_STATUS_LABELS, ORDER_BILLING_STATUS_LABELS } from '@/lib/billing-enums';
 import { PAYMENT_METHOD_LABELS, PAYMENT_TYPE_LABELS } from '@/lib/payment-enums';
+import { TEAM_SECTION_LABELS } from '@/lib/team-enums';
 import { USER_ACTIVITY_STATUS_LABELS } from '@/lib/user-activity-enums';
 import { AUDIO_LINK_STATUS_LABELS } from '@/lib/audio-enums';
 import {
@@ -206,6 +207,7 @@ const FIELD_LABELS: Record<string, string> = {
     filename: 'Nom du fichier',
     newFilename: 'Nouveau nom',
     sizeBytes: 'Taille (octets)',
+    durationSeconds: 'Durée de la piste (s)',
     performedById: 'Effectué par',
 
     // demandes / attributions
@@ -254,6 +256,8 @@ const FIELD_LABELS: Record<string, string> = {
     deletionReason: 'Motif de suppression',
     exportDate: 'Date d’export',
     importDate: 'Date d’import',
+    sourceVenteId: 'Identifiant vente (import)',
+    sourceEcritureId: 'Identifiant écriture (import)',
     fiscalite: 'Fiscalité',
     comptable: 'Comptable',
 
@@ -372,6 +376,7 @@ const ENUM_VALUE_LABELS: Record<string, Record<string, string>> = {
     'ReaderLanguage.language':      LANGUAGE_LABELS,
     'News.type':                    newsTypeLabels,
     'AudioTrackEvent.action':       AUDIO_TRACK_ACTION_LABELS,
+    'TeamMember.section':           TEAM_SECTION_LABELS,
 };
 
 /**
