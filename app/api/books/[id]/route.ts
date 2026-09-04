@@ -7,6 +7,7 @@ import { withAdmin } from '@/lib/auth/guards';
 import { resolvePrefix } from '@/lib/audio/state';
 import { listBookTracks } from '@/lib/audio/bucket';
 import { softDeleteTracks } from '@/lib/audio/trash';
+import { BookUpdateInputSchema } from '@/types/api/book.api';
 
 /**
  * Applies to every handler in this file (GET/PUT are quick single-row
@@ -89,6 +90,14 @@ export const PUT = withAdmin(async (req, { params }) => {
     const bookId = await bookIdFrom(params);
     if (bookId === null) return invalidId();
 
+    const validation = BookUpdateInputSchema.safeParse(await req.json());
+    if (!validation.success) {
+        return NextResponse.json(
+            { error: 'Invalid data', message: 'Données invalides', errors: validation.error.issues },
+            { status: 400 }
+        );
+    }
+
     const {
         title,
         subtitle,
@@ -101,7 +110,7 @@ export const PUT = withAdmin(async (req, { params }) => {
         available,
         hiddenFromCatalogue,
         pageCount
-    } = await req.json();
+    } = validation.data;
 
     if (isbn?.trim()) {
         const existingBook = await prisma.book.findFirst({
@@ -123,6 +132,32 @@ export const PUT = withAdmin(async (req, { params }) => {
     }
 
     try {
+        // L'annonce vocale du livre est un CACHE, et il faut l'invalider ici.
+        //
+        // /api/polly synthétise une fois puis stocke l'URL dans polly_audio_url,
+        // et son propre commentaire pose le contrat : « Clear polly_audio_url in
+        // the book update route when title/author/duration/description change, so
+        // the cached audio regenerates. » Personne ne l'a jamais fait — dans tout
+        // le dépôt la colonne n'était écrite qu'à la synthèse. Corriger le titre
+        // d'un livre changeait donc la page du catalogue pendant que l'annonce
+        // continuait d'énoncer l'ancien texte, pour toujours, et de façon invisible
+        // pour un permanent voyant qui vérifie sa saisie.
+        //
+        // readingDurationMinutes fait partie de l'annonce mais ne passe pas par
+        // cette route (il est dérivé de l'audio) : c'est refreshBookAudioState qui
+        // devra l'invalider le jour où la durée entrera dans le texte lu.
+        const current = await prisma.book.findUnique({
+            where: { id: bookId },
+            select: { title: true, author: true, description: true },
+        });
+        if (!current) {
+            return NextResponse.json({ error: 'Livre introuvable' }, { status: 404 });
+        }
+        const spokenFieldsChanged =
+            (title !== undefined && title !== current.title) ||
+            (author !== undefined && author !== current.author) ||
+            (description !== undefined && (description ?? null) !== current.description);
+
         const updatedBook = await prisma.book.update({
             where: { id: bookId },
             data: {
@@ -130,26 +165,33 @@ export const PUT = withAdmin(async (req, { params }) => {
                 subtitle,
                 author,
                 publisher,
-                publishedDate: publishedDate ? new Date(publishedDate) : undefined,
+                // `=== undefined` plutôt que la seule vérité : sans ça, envoyer null
+                // pour retirer une date erronée était lu comme « ne touche à rien »,
+                // et une date saisie par erreur ne pouvait être que remplacée.
+                publishedDate:
+                    publishedDate === undefined ? undefined : (publishedDate ? new Date(publishedDate) : null),
                 isbn,
                 description,
                 pageCount,
                 available,
                 hiddenFromCatalogue,
-                updatedAt: new Date(),
-                // Handle genres relationship
-                genres: {
-                    // Delete existing genre relationships
-                    deleteMany: {},
-                    // Create new genre relationships - FIXED: Convert string IDs to numbers
-                    create: genres?.map((genreId: string) => ({
-                        genre: {
-                            connect: {
-                                id: parseInt(genreId, 10)  // Convert string to number
-                            }
-                        }
-                    }))
-                }
+                ...(spokenFieldsChanged ? { polly_audio_url: null } : {}),
+                // Les genres ne sont remplacés QUE s'ils sont fournis.
+                //
+                // Le `deleteMany: {}` était inconditionnel tandis que le `create`
+                // portait un `?.` : un corps sans `genres` supprimait donc tous les
+                // genres du livre et n'en recréait aucun. Les deux formulaires les
+                // envoient, ce qui est exactement pourquoi la perte ne se voyait pas.
+                ...(genres !== undefined
+                    ? {
+                          genres: {
+                              deleteMany: {},
+                              create: genres.map((genreId) => ({
+                                  genre: { connect: { id: Number(genreId) } },
+                              })),
+                          },
+                      }
+                    : {}),
             },
             include: {
                 genres: {

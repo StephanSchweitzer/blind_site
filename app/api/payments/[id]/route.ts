@@ -81,7 +81,7 @@ export const PATCH = withAdmin(async (request, context) => {
         const updated = await prisma.$transaction(async (tx) => {
             const existing = await tx.payment.findUnique({
                 where: { id: paymentId, isActive: true },
-                select: { id: true, type: true, clientId: true },
+                select: { id: true, type: true, clientId: true, billId: true },
             });
             if (!existing) throw new Error('PAYMENT_NOT_FOUND');
 
@@ -105,22 +105,42 @@ export const PATCH = withAdmin(async (request, context) => {
             const effectiveClientId = p.clientId !== undefined ? p.clientId : existing.clientId;
 
             // billId only valid for ENREGISTREMENT; otherwise always cleared.
+            //
+            // La facture liée est vérifiée contre le client EFFECTIF — y compris
+            // quand la requête ne parle pas de billId.
+            //
+            // Le contrôle ne vivait que dans la branche `p.billId !== undefined` :
+            // une requête qui changeait `clientId` sans rien dire du billId le
+            // sautait entièrement et laissait le billId stocké en place. Le paiement
+            // d'un auditeur se retrouvait donc enregistré sur la facture d'un autre —
+            // exactement ce que guardOrderClientOnBill empêche du côté des demandes,
+            // où le commentaire dit « la facture facturait une personne pour le livre
+            // d'une autre ».
+            // Revérifié quand le billId est fourni, ou quand le client bouge — pas
+            // sur une modification sans rapport (une observation, une date). Un
+            // paiement ancien dont la facture a depuis été supprimée reste ainsi
+            // modifiable, au lieu d'être pris en otage par son historique : c'est la
+            // même échappatoire étroite que guardClosureDateRequiresTermine.
+            const clientIsChanging = p.clientId !== undefined && p.clientId !== existing.clientId;
+            const resultingBillId = p.billId !== undefined ? p.billId : existing.billId;
+            const mustRevalidateBill = p.billId !== undefined || clientIsChanging;
+
             if (effectiveType !== PaymentType.ENREGISTREMENT) {
                 data.billId = null;
-            } else if (p.billId !== undefined) {
-                if (p.billId === null) {
-                    data.billId = null;
-                } else {
-                    const bill = await tx.bill.findUnique({
-                        where: { id: p.billId, isActive: true },
-                        select: { id: true, clientId: true },
-                    });
-                    if (!bill) throw new Error('BILL_NOT_FOUND');
-                    if (effectiveClientId != null && bill.clientId !== effectiveClientId) {
-                        throw new Error('BILL_CLIENT_MISMATCH');
-                    }
-                    data.billId = p.billId;
+            } else if (!mustRevalidateBill) {
+                // Rien à faire : data.billId reste absent, la colonne ne bouge pas.
+            } else if (resultingBillId === null) {
+                data.billId = null;
+            } else {
+                const bill = await tx.bill.findUnique({
+                    where: { id: resultingBillId, isActive: true },
+                    select: { id: true, clientId: true },
+                });
+                if (!bill) throw new Error('BILL_NOT_FOUND');
+                if (effectiveClientId != null && bill.clientId !== effectiveClientId) {
+                    throw new Error('BILL_CLIENT_MISMATCH');
                 }
+                data.billId = resultingBillId;
             }
 
             // cotisationYear only valid for COTISATION; otherwise always cleared.

@@ -132,19 +132,45 @@ export type BookCreateData = {
 // Update Input Types
 // ============================================================================
 
+/**
+ * Le corps réellement accepté par PUT /api/books/[id].
+ *
+ * Ce schéma existait déjà mais n'avait aucun appelant : la route destructurait
+ * `req.json()` directement dans Prisma. Il décrivait aussi un contrat que
+ * personne n'envoie — `genreIds` (le formulaire envoie `genres`) et
+ * `publishedDate` en ISO complet (le formulaire envoie « AAAA-01-01 », l'année
+ * saisie ramenée au 1er janvier). Il est ici réaligné sur ce qui circule
+ * vraiment, faute de quoi l'activer aurait cassé les deux formulaires.
+ *
+ * `genres` accepte nombre ou chaîne : la table des livres envoie des ids
+ * numériques, le formulaire de la fiche des chaînes.
+ */
+const GenreId = z.union([
+    z.number().int().positive(),
+    z.string().regex(/^\d+$/, 'Identifiant de genre invalide'),
+]);
+
+/** « AAAA-MM-JJ » ou ISO complet — tout ce que `new Date()` lit sans ambiguïté. */
+const DateInput = z
+    .string()
+    .refine((v) => !Number.isNaN(new Date(v).getTime()), 'Date invalide');
+
 export const BookUpdateInputSchema = z.object({
     title: z.string().min(1).optional(),
     author: z.string().min(1).optional(),
     subtitle: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
-    publishedDate: z.string().datetime().nullable().optional(),
+    publishedDate: DateInput.nullable().optional(),
     isbn: z.string().nullable().optional(),
     publisher: z.string().nullable().optional(),
     pageCount: z.number().int().positive().nullable().optional(),
-    readingDurationMinutes: z.number().int().positive().nullable().optional(),
     available: z.boolean().optional(),
     hiddenFromCatalogue: z.boolean().optional(),
-    genreIds: z.array(z.number().int().positive()).optional(),
+    genres: z.array(GenreId).optional(),
+    // readingDurationMinutes est délibérément ABSENT : il est dérivé des fichiers
+    // audio (refreshBookAudioState en est le seul écrivain) et la route l'ignore.
+    // Le laisser passer rouvrirait la porte que « Stop a book save from erasing
+    // the duration measured while the form was open » a fermée.
 });
 
 export type BookUpdateInput = z.infer<typeof BookUpdateInputSchema>;

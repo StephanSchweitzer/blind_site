@@ -190,7 +190,12 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
                     id: true,
                     isDuplication: true,
                     catalogueId: true,
-                    _count: { select: { assignments: true } },
+                    // Filtré explicitement : un _count de relation échappe à
+                    // l'extension soft-delete (lib/prisma.ts), et une attribution
+                    // supprimée empêcherait d'en recréer une sur la demande — la
+                    // règle « une seule attribution par demande » se retournerait
+                    // contre la correction d'une erreur.
+                    _count: { select: { assignments: { where: { deletedAt: null } } } },
                 },
             });
 

@@ -130,8 +130,13 @@ export const POST = withAdmin(async (request, { me }) => {
                 nonProfitAffiliation: body.nonProfitAffiliation || null,
                 isActive: true,
                 preferredDeliveryMethod: body.preferredDeliveryMethod || null,
-                paymentThreshold: body.paymentThreshold ? parseFloat(String(body.paymentThreshold)) : 21.00,
-                currentBalance: body.currentBalance ? parseFloat(String(body.currentBalance)) : 0.00,
+                // `?? …` et non `? … :` — 0 est un montant, pas un champ vide. À la
+                // création, un solde saisi à 0 retombait sur le défaut 0,00 (sans
+                // conséquence) mais un seuil saisi à 0 retombait sur 21,00, donc sur
+                // un seuil que personne n'avait demandé. Voir la même correction sur
+                // le PATCH de la fiche.
+                paymentThreshold: body.paymentThreshold ?? 21.00,
+                currentBalance: body.currentBalance ?? 0.00,
                 preferredMediaFormatId: body.preferredMediaFormatId ?? null,
                 isAvailable: body.isAvailable ?? true,
                 availabilityNotes: body.availabilityNotes || null,
@@ -139,7 +144,9 @@ export const POST = withAdmin(async (request, { me }) => {
                     ? { create: body.languages.map((language: string) => ({ language: language as Language })) }
                     : undefined,
                 saveType: body.saveType || null,
-                maxConcurrentAssignments: body.maxConcurrentAssignments || 3,
+                // Idem : `|| 3` transformait un plafond saisi à 0 (« ne lui donnez
+                // rien ») en la valeur par défaut de 3. Voir le PATCH de la fiche.
+                maxConcurrentAssignments: body.maxConcurrentAssignments ?? 3,
                 notes: body.notes || null,
                 addresses: body.addresses && body.addresses.length > 0 ? {
                     create: body.addresses.map((addr) => ({

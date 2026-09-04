@@ -181,11 +181,7 @@ export async function issueDraftIfOverThreshold(
         data: { state: BillingStatus.BILLED, issueDate: new Date() },
     });
     await tx.orders.updateMany({
-        where: {
-            billId: draft.id,
-            isActive: true,
-            billingStatus: { not: OrderBillingStatus.UNBILLABLE },
-        },
+        where: ordersFollowingBillState(draft.id),
         data: { billingStatus: OrderBillingStatus.BILLED },
     });
     await logBillEvent(tx, {
@@ -197,6 +193,26 @@ export async function issueDraftIfOverThreshold(
     });
     return { billId: draft.id, total: Number(total) };
 }
+
+/**
+ * Les demandes d'une facture dont le statut de facturation SUIT l'état de la
+ * facture — c'est-à-dire toutes sauf deux catégories.
+ *
+ * « Non facturable » sort du cycle : la marquer « Facturé » parce que sa facture
+ * vient d'être émise reviendrait à défaire à la main la décision d'un permanent.
+ * Une demande désactivée n'est plus comptée nulle part (recomputeBillTotal
+ * l'exclut déjà) et n'a donc pas à être réécrite non plus.
+ *
+ * issueDraftIfOverThreshold traçait déjà cette frontière ; les transitions
+ * d'état de la facture (app/api/bills/[id]) l'ignoraient et écrasaient les deux.
+ * Une seule définition, partagée, pour que les deux chemins écrivent la même
+ * chose.
+ */
+export const ordersFollowingBillState = (billId: number): Prisma.OrdersWhereInput => ({
+    billId,
+    isActive: true,
+    billingStatus: { not: OrderBillingStatus.UNBILLABLE },
+});
 
 /**
  * Order fields printed on the invoice (BillPDF): book, date, type, cost.
@@ -306,6 +322,43 @@ export function guardOrderUnbillableOnBill(args: {
         `Une demande rattachée à une facture ne peut pas être marquée « Non facturable » : ` +
             `elle figure sur ${billRef(billId, billState)} et son montant y est compté. ` +
             detachAdvice(billId, billState, 'la sortir du cycle de facturation')
+    );
+}
+
+/**
+ * Le statut de facturation d'une demande rattachée est DÉRIVÉ de l'état de sa
+ * facture — il ne se saisit pas.
+ *
+ * `guardOrderUnbillableOnBill` ci-dessus ne ferme qu'une des trois valeurs, et
+ * « Facturé » est déjà refusé sur une demande sans facture. Restait « Non
+ * facturé », accepté tel quel sur une demande rattachée à une facture émise :
+ * la ligne continuait d'être comptée par recomputeBillTotal (qui somme par
+ * billId, jamais par billingStatus) tout en s'annonçant non facturée partout où
+ * un permanent la lit. C'est l'état « perdu » que removeOrder et
+ * detachOrderFromBill prennent soin d'éviter, à l'envers.
+ *
+ * La valeur juste est celle qu'écrivent déjà toutes les transitions de facture :
+ * orderBillingForBillState(bill.state). Toute autre est refusée tant que la
+ * demande est rattachée — le chemin de sortie reste le détachement.
+ */
+export function guardOrderBillingStatusOnBill(args: {
+    /** `undefined` = le champ n'est pas envoyé, donc rien à vérifier. */
+    billingStatus: OrderBillingStatus | undefined;
+    billId: number | null;
+    billState: BillingStatus | null;
+}): GuardResult {
+    const { billingStatus, billId, billState } = args;
+    if (billingStatus === undefined || billId == null || billState == null) return { ok: true };
+
+    const expected = orderBillingForBillState(billState) as OrderBillingStatus;
+    if (billingStatus === expected) return { ok: true };
+
+    return billFail(
+        409,
+        `Le statut de facturation d'une demande rattachée suit sa facture et ne se saisit pas : ` +
+            `elle figure sur ${billRef(billId, billState)}, donc « ${getBillingStatusLabel(billState)} » ` +
+            `implique « ${expected === 'BILLED' ? 'Facturé' : 'Non facturé'} ». ` +
+            detachAdvice(billId, billState, 'changer son statut de facturation')
     );
 }
 

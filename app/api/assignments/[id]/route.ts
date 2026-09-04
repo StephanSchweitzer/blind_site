@@ -19,6 +19,7 @@ import {
     orderStatusForAssignmentStatus,
     classifyStatusTransition,
     logAssignmentEvent,
+    logOrderEvent,
 } from '@/lib/statusSync';
 import { bookHasWeighedAudio } from '@/lib/audio/state';
 import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
@@ -49,7 +50,9 @@ export const GET = withAdmin(async (_request, { params }) => {
             include: assignmentIncludeConfigs.all,
         });
 
-        if (!assignment) {
+        // findUnique n'est pas filtré par l'extension soft-delete (lib/prisma.ts) :
+        // Prisma y interdit un `where` non unique. Le contrôle se fait donc ici.
+        if (!assignment || assignment.deletedAt) {
             return NextResponse.json(
                 { message: 'Attribution non trouvée' },
                 { status: 404 }
@@ -112,10 +115,12 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 returnedToECADate: true,
                 order: { select: { statusId: true, billId: true, bill: { select: { state: true } } } },
                 _count: { select: { readerHistory: true } },
+                deletedAt: true,
             },
         });
 
-        if (!existingAssignment) {
+        // Voir le GET ci-dessus : findUnique échappe au filtre global.
+        if (!existingAssignment || existingAssignment.deletedAt) {
             return NextResponse.json(
                 { message: 'Attribution non trouvée' },
                 { status: 404 }
@@ -409,13 +414,45 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 });
 
 /**
- * DELETE /api/assignments/[id] - Delete an assignment.
- * Cascading delete removes related AssignmentReader records.
- * The linked order keeps its current status and becomes freely editable again.
+ * DELETE /api/assignments/[id] — supprime (logiquement) une attribution et
+ * ramène sa demande à « Attente envoi vers lecteur ».
+ *
+ * DEUX CHOSES QUI MANQUAIENT.
+ *
+ * 1. La suppression était PHYSIQUE, et AssignmentEvent comme AssignmentReader
+ *    sont `onDelete: Cascade`. Partaient donc avec la ligne : l'historique
+ *    append-only de l'attribution, et la trace de quel lecteur avait tenu quel
+ *    livre — que /admin/disponibilites et lib/users/deletionGuard.ts lisent tous
+ *    les deux. Assignment porte maintenant isActive/deletedAt et le filtre de
+ *    lecture global (lib/prisma.ts) la fait disparaître des listes.
+ *
+ * 2. La demande liée n'était pas touchée, et le commentaire de cette route
+ *    affirmait qu'elle « becomes freely editable again ». C'était faux. Une
+ *    demande « En cours » n'y est arrivée QUE par son attribution : celle-ci
+ *    partie, elle restait « En cours » sans attribution — précisément l'état que
+ *    guardManualEnCours refuse d'écrire, décrit dans son propre commentaire comme
+ *    « invisible work wearing the costume of visible work ». Et comme ce garde ne
+ *    se déclenche que sur un CHANGEMENT de statut, la demande y restait pour de
+ *    bon. Même chose plus haut : « Terminé » et « Attente envoi vers auditeur »
+ *    supposent une attribution terminée (guardOrderCompletion).
+ *
+ * La demande redescend donc à « Attente envoi vers lecteur » — le statut de
+ * départ d'une demande d'enregistrement, le seul qui reste vrai quand il n'y a
+ * plus d'attribution — avec son OrderEvent, comme n'importe quelle autre
+ * transition. Une duplication n'a jamais d'attribution et n'est donc jamais
+ * concernée.
+ *
+ * Si cette redescente fait quitter « Terminé » à une demande déjà partie sur une
+ * facture, c'est la règle habituelle qui s'applique, celle de son propre
+ * formulaire : détachement automatique sur un brouillon, refus sur une facture
+ * émise. Sans quoi supprimer l'attribution était la porte de derrière qui
+ * annulait le verrou de devant.
  */
-export const DELETE = withAdmin(async (_request, { params }) => {
+export const DELETE = withAdmin(async (_request, { me, params }) => {
     revalidateAdmin();
     try {
+        const performedById = me.id;
+
         const { id } = (await params) ?? {};
         const assignmentId = Number(id);
 
@@ -430,6 +467,16 @@ export const DELETE = withAdmin(async (_request, { params }) => {
             where: { id: assignmentId },
             select: {
                 id: true,
+                deletedAt: true,
+                orderId: true,
+                order: {
+                    select: {
+                        id: true,
+                        statusId: true,
+                        billId: true,
+                        bill: { select: { state: true } },
+                    },
+                },
                 _count: {
                     select: {
                         readerHistory: true,
@@ -438,21 +485,103 @@ export const DELETE = withAdmin(async (_request, { params }) => {
             },
         });
 
-        if (!existingAssignment) {
+        if (!existingAssignment || existingAssignment.deletedAt) {
             return NextResponse.json(
                 { message: 'Attribution non trouvée' },
                 { status: 404 }
             );
         }
 
-        await prisma.assignment.delete({
-            where: { id: assignmentId },
+        const linkedOrder = existingAssignment.order;
+        const orderStatusId = linkedOrder?.statusId ?? null;
+        const orderBillId = linkedOrder?.billId ?? null;
+        const orderBillState = linkedOrder?.bill?.state ?? null;
+
+        // La demande ne bouge que si elle porte encore un statut que l'attribution
+        // lui avait donné. Une demande déjà revenue en « Attente envoi vers
+        // lecteur » n'a rien à faire ici.
+        const orderNeedsReset =
+            orderStatusId !== null && orderStatusId !== STATUS.ATTENTE;
+
+        // Même garde que sur le formulaire de la demande et que sur le PUT
+        // ci-dessus — une seule règle, trois portes.
+        if (orderNeedsReset) {
+            const rollbackGuard = guardOrderLeavingTermineOnBill({
+                previousStatusId: orderStatusId,
+                nextStatusId: STATUS.ATTENTE,
+                billId: orderBillId,
+                billState: orderBillState,
+            });
+            if (!rollbackGuard.ok) {
+                return NextResponse.json(
+                    { message: rollbackGuard.message },
+                    { status: rollbackGuard.httpStatus }
+                );
+            }
+        }
+
+        const detachOrderFromDraft =
+            orderNeedsReset &&
+            orderBillId != null &&
+            orderBillState === 'DRAFT' &&
+            orderStatusId != null &&
+            leavesTermine(orderStatusId, STATUS.ATTENTE);
+
+        const { orderReset, billDetached } = await prisma.$transaction(async (tx) => {
+            await tx.assignment.update({
+                where: { id: assignmentId },
+                data: { isActive: false, deletedAt: new Date() },
+            });
+
+            let orderReset: { orderId: number; fromStatusId: number } | null = null;
+            let billDetached: { orderId: number; billId: number; newTotal: string } | null = null;
+
+            if (orderNeedsReset && linkedOrder && orderStatusId != null) {
+                await tx.orders.update({
+                    where: { id: linkedOrder.id },
+                    // resolveClosureDate ne peut pas servir ici : elle dérive la date
+                    // d'un statut, et on la veut simplement effacée avec le « Terminé »
+                    // qui la justifiait. La condition est la même qu'elle applique.
+                    data: {
+                        statusId: STATUS.ATTENTE,
+                        ...(orderStatusId === STATUS.TERMINE ? { closureDate: null } : {}),
+                    },
+                });
+
+                await logOrderEvent(tx, {
+                    orderId: linkedOrder.id,
+                    type: classifyStatusTransition(orderStatusId, STATUS.ATTENTE),
+                    fromStatusId: orderStatusId,
+                    toStatusId: STATUS.ATTENTE,
+                    performedById,
+                });
+
+                orderReset = { orderId: linkedOrder.id, fromStatusId: orderStatusId };
+
+                if (detachOrderFromDraft && orderBillId != null) {
+                    const total = await detachOrderFromBill(tx, {
+                        orderId: linkedOrder.id,
+                        billId: orderBillId,
+                        reason: 'assignment-deleted',
+                        performedById,
+                    });
+                    billDetached = {
+                        orderId: linkedOrder.id,
+                        billId: orderBillId,
+                        newTotal: total.toString(),
+                    };
+                }
+            }
+
+            return { orderReset, billDetached };
         });
 
         return NextResponse.json({
             message: 'Attribution supprimée avec succès',
             deletedId: assignmentId,
-            deletedReaderHistoryCount: existingAssignment._count.readerHistory,
+            readerHistoryCount: existingAssignment._count.readerHistory,
+            orderReset,
+            billDetached,
         });
     } catch (error) {
         console.error('Error deleting assignment:', error);

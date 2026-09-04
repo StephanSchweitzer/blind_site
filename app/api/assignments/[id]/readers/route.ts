@@ -24,10 +24,11 @@ export const GET = withAdmin(async (_request, { params }) => {
 
         const assignment = await prisma.assignment.findUnique({
             where: { id: assignmentId },
-            select: { id: true },
+            select: { id: true, deletedAt: true },
         });
 
-        if (!assignment) {
+        // findUnique échappe au filtre soft-delete global (lib/prisma.ts).
+        if (!assignment || assignment.deletedAt) {
             return NextResponse.json(
                 { message: 'Attribution non trouvée' },
                 { status: 404 }
@@ -67,12 +68,18 @@ export const GET = withAdmin(async (_request, { params }) => {
  * Creates a new AssignmentReader entry, maintaining history of all assignments.
  * Does not change any workflow status (status is managed on the assignment itself).
  *
- * Notification variant by current state:
- *  - no prior reader            -> 'assigned'            (pending send)
- *  - prior reader, ATTENTE      -> 'reassigned_pending'  (pending send)
- *  - prior reader, EN_COURS     -> 'reassigned_active'   (book mid-reading, forwarded)
- * The date shown is this reader's AssignmentReader.assignedDate. The 'sent' email
- * (with sentToReaderDate) is owned by the EN_COURS transition in PUT /api/assignments/[id].
+ * AUCUN MAIL N'EST ENVOYÉ AU LECTEUR, et c'est une décision de l'équipe.
+ *
+ * Ce commentaire décrivait auparavant trois variantes de notification
+ * (« assigned », « reassigned_pending », « reassigned_active ») plus un mail
+ * « sent » que le passage en EN_COURS du PUT était censé envoyer. Rien de tout
+ * cela n'a jamais été appelé : lib/email/sendAssignmentReminder.ts n'avait aucun
+ * appelant nulle part. Le helper et son gabarit ont été supprimés plutôt que
+ * rebranchés — les lecteurs sont prévenus autrement.
+ *
+ * Ne pas les réintroduire sans l'accord de l'équipe. Si un jour c'est le cas,
+ * tout mail sortant passe par lib/email/sendEmail.ts, jamais par Resend
+ * directement.
  */
 export const POST = withAdmin(async (request, { params }) => {
     revalidateAdmin();
@@ -105,10 +112,12 @@ export const POST = withAdmin(async (request, { params }) => {
                 deliveryMethod: true,
                 catalogue: { select: { title: true, author: true } },
                 _count: { select: { readerHistory: true } },
+                deletedAt: true,
             },
         });
 
-        if (!assignment) {
+        // Voir le GET ci-dessus.
+        if (!assignment || assignment.deletedAt) {
             return NextResponse.json(
                 { message: 'Attribution non trouvée' },
                 { status: 404 }

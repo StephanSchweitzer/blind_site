@@ -335,7 +335,11 @@ model Orders {
   notes               String?
   isActive            Boolean            @default(true)
   deletedAt           DateTime?
-  updatedAt           DateTime?
+  /// Maintenue par Prisma. C'était une colonne nue, la seule du schéma : les deux
+  /// chemins de création l'écrivaient à la main et aucune mise à jour n'y touchait,
+  /// si bien qu'elle est restée figée à la date de création tout en étant affichée
+  /// comme « modifié le » sur /admin/orders.
+  updatedAt           DateTime?          @updatedAt
   assignments         Assignment[]
   events              OrderEvent[]
   aveugle             User               @relation("OrdersAsAveugle", fields: [aveugleId], references: [id])
@@ -367,6 +371,14 @@ model Assignment {
   notes              String?
   processedByStaffId Int?
   deliveryMethod     DeliveryMethod?
+  /// Suppression logique, comme Orders et Bill. AssignmentEvent et
+  /// AssignmentReader sont tous deux `onDelete: Cascade` : une suppression
+  /// physique emportait l'historique append-only de l'attribution ET la trace de
+  /// quel lecteur avait tenu quel livre. Une attribution n'est donc plus jamais
+  /// supprimée — elle est désactivée, et le filtre de lecture global
+  /// (lib/prisma.ts) la fait disparaître des listes.
+  isActive           Boolean            @default(true)
+  deletedAt          DateTime?
   catalogue          Book               @relation(fields: [catalogueId], references: [id])
   order              Orders?            @relation(fields: [orderId], references: [id])
   processedByStaff   User?              @relation("AssignmentsProcessedBy", fields: [processedByStaffId], references: [id])
@@ -380,6 +392,7 @@ model Assignment {
   // Attribution windows: /admin/disponibilites (charge des lecteurs, relances).
   @@index([sentToReaderDate])
   @@index([returnedToECADate])
+  @@index([deletedAt])
 }
 
 model AssignmentReader {

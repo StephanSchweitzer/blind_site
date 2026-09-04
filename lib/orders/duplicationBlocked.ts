@@ -29,7 +29,11 @@ export const blockedDuplicationWhere: Prisma.OrdersWhereInput = {
     statusId: { notIn: DEMANDE_CLOSED },
     catalogue: {
         audio_filepath: null,
-        assignments: { some: { statusId: { in: RECORDING_UNDER_WAY } } },
+        // `deletedAt` explicite : un filtre de relation imbriqué échappe à
+        // l'extension soft-delete de lib/prisma.ts, et une attribution supprimée
+        // continuerait de bloquer les duplications d'un livre que plus personne
+        // n'enregistre.
+        assignments: { some: { deletedAt: null, statusId: { in: RECORDING_UNDER_WAY } } },
     },
 };
 

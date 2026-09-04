@@ -15,9 +15,23 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 /**
  * Soft-delete extension.
  *
- * Excludes soft-deleted users (deletedAt != null) from every *list-style* read
- * on the User model, so deleted users genuinely disappear from searches,
+ * Excludes soft-deleted rows (deletedAt != null) from every *list-style* read on
+ * the models listed below, so deleted records genuinely disappear from searches,
  * dropdowns and lists app-wide without touching each call site.
+ *
+ * WHY THE LIST GREW BEYOND User
+ *
+ * Orders and Assignment are the two other models whose children are
+ * `onDelete: Cascade` onto append-only history — OrderEvent, AssignmentEvent,
+ * AssignmentReader. A physical delete on either of them silently destroyed the
+ * very tables the schema calls "its own permanent history" and deliberately
+ * exempts from the AuditEvent retention purge, and it moved the « Demandes
+ * traitées » / « Attributions traitées » figures on /admin/stats for past
+ * months. Both routes now soft-delete instead — which only works if every list
+ * read hides those rows, and doing that at ~20 call sites is exactly the
+ * per-call-site bookkeeping this extension exists to avoid. One place, or one of
+ * them gets missed and a deleted attribution reappears in the charge des
+ * lecteurs.
  *
  * Intentional scope:
  * - Only list reads are filtered: findMany / findFirst(OrThrow) / count /
@@ -27,16 +41,23 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
  *   delete/restore) that must still resolve a soft-deleted row.
  * - Relation reads (e.g. a historical Bill's `client`) are NOT filtered by a
  *   model-level query extension — desired: past records keep their reference.
- * - Opt out / see deleted users by passing `deletedAt` explicitly in `where`
+ *   Where a relation's soft-deleted rows would change a DECISION rather than
+ *   just a display, the include carries its own `where` — see the `assignments`
+ *   include in PUT /api/orders/[id], which drives the status guards.
+ * - Opt out / see deleted rows by passing `deletedAt` explicitly in `where`
  *   (e.g. `where: { deletedAt: { not: null } }`). The filter is injected only
  *   when the caller did NOT specify `deletedAt`.
- * - Raw SQL ($queryRaw etc.) bypasses this extension. There are currently no
- *   raw user queries; any future one must filter `"deletedAt" IS NULL` itself.
+ * - Raw SQL ($queryRaw etc.) bypasses this extension. The /admin/stats queries
+ *   are raw; any that counts business rows must filter `"deletedAt" IS NULL`
+ *   itself.
  * - The audit trail's own « avant » reads are exempt (isAuditRead): they run on
  *   the caller's transaction client, extensions included, and a deletion has to
  *   stay traceable even when the row was already soft-deleted.
+ * - Orders additionally carries `isActive`, which predates this and is what the
+ *   billing sums filter on (recomputeBillTotal, ADJUSTABLE_ORDER_WHERE). The two
+ *   are written together on every soft delete; neither replaces the other.
  */
-const FILTERED_USER_READS = new Set([
+const FILTERED_READS = new Set([
     'findMany',
     'findFirst',
     'findFirstOrThrow',
@@ -45,6 +66,15 @@ const FILTERED_USER_READS = new Set([
     'groupBy',
 ]);
 
+/**
+ * Prisma client keys (camelCase delegate names) carrying a `deletedAt` column,
+ * for reference — the extension below lists them again literally, because
+ * Prisma types its `query` map by delegate name and a computed key erases that.
+ * Keep the two in step.
+ */
+const SOFT_DELETED_MODELS = ['user', 'orders', 'assignment'] as const;
+export type SoftDeletedModel = (typeof SOFT_DELETED_MODELS)[number];
+
 function makePrisma() {
     // The base client is kept out of the chain on purpose: the audit extension
     // reads "before" rows and writes AuditEvent rows through it, so those reads
@@ -52,25 +82,41 @@ function makePrisma() {
     // writes cannot re-enter the extension that produced them.
     const base = new PrismaClient({ adapter, log: getLogConfig() });
 
+    // One handler, applied per model: the rule is identical for each, so writing
+    // it three times would be three places for it to drift.
+    const hideSoftDeleted = async ({
+        operation,
+        args,
+        query,
+    }: {
+        operation: string;
+        args: unknown;
+        query: (args: never) => Promise<unknown>;
+    }) => {
+        if (FILTERED_READS.has(operation) && !isAuditRead()) {
+            const a = (args ?? {}) as { where?: Record<string, unknown> };
+            const where = a.where ?? {};
+            // Inject only when the caller hasn't mentioned deletedAt, so explicit
+            // overrides (fetching deleted rows) still work.
+            if (where.deletedAt === undefined) {
+                a.where = { ...where, deletedAt: null };
+                return query(a as never);
+            }
+        }
+        return query(args as never);
+    };
+
     const client = base
         .$extends({
-            name: 'softDeleteUsers',
+            name: 'softDelete',
+            // Écrit modèle par modèle plutôt que construit depuis
+            // SOFT_DELETED_MODELS : Prisma type `query` par nom de délégué, et un
+            // Object.fromEntries perd les clés littérales — l'extension se
+            // retrouve alors typée `never` et ne s'applique nulle part.
             query: {
-                user: {
-                    async $allOperations({ operation, args, query }) {
-                        if (FILTERED_USER_READS.has(operation) && !isAuditRead()) {
-                            const a = (args ?? {}) as { where?: Record<string, unknown> };
-                            const where = a.where ?? {};
-                            // Inject only when the caller hasn't mentioned deletedAt,
-                            // so explicit overrides (fetching deleted users) still work.
-                            if (where.deletedAt === undefined) {
-                                a.where = { ...where, deletedAt: null };
-                                return query(a as Parameters<typeof query>[0]);
-                            }
-                        }
-                        return query(args);
-                    },
-                },
+                user: { $allOperations: hideSoftDeleted },
+                orders: { $allOperations: hideSoftDeleted },
+                assignment: { $allOperations: hideSoftDeleted },
             },
         })
         .$extends(auditExtension(base));

@@ -3,8 +3,15 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus } from '@prisma/client';
 import { userAddressLines } from '@/lib/users/formatAddress';
+import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { STATUS } from '@/lib/statusSync';
-import { recomputeBillTotal, logBillEvent, transitionEventType, orderBillingForBillState } from '@/lib/billing';
+import {
+    recomputeBillTotal,
+    logBillEvent,
+    transitionEventType,
+    orderBillingForBillState,
+    ordersFollowingBillState,
+} from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
 
 export const GET = withAdmin(async (_request, context) => {
@@ -160,9 +167,12 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
 
             await prisma.$transaction(async (tx) => {
                 await tx.bill.update({ where: { id: billId }, data: updateData });
-                // Keep attached orders' billingStatus in sync with the bill's state.
+                // Keep attached orders' billingStatus in sync with the bill's state —
+                // except the two categories that don't follow it (see
+                // ordersFollowingBillState): « Non facturable » is out of the cycle by
+                // decision, and a soft-deleted demande is counted nowhere.
                 await tx.orders.updateMany({
-                    where: { billId },
+                    where: ordersFollowingBillState(billId),
                     data: { billingStatus: orderBillingForBillState(state) },
                 });
                 const evType = transitionEventType(bill.state, state);
@@ -203,7 +213,10 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                     data: { state: BillingStatus.BILLED, paymentReference: null, paymentDate: null },
                 });
                 // The bill is still issued (émise), so its orders remain BILLED.
-                await tx.orders.updateMany({ where: { billId }, data: { billingStatus: 'BILLED' } });
+                await tx.orders.updateMany({
+                    where: ordersFollowingBillState(billId),
+                    data: { billingStatus: 'BILLED' },
+                });
                 await logBillEvent(tx, {
                     billId,
                     type: 'REOPENED',
@@ -308,39 +321,32 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             return NextResponse.json({ message: 'Demande retirée de la facture' });
         }
 
+        // Enregistre la référence de paiement, et RIEN d'autre.
+        //
+        // Cette action faisait auparavant basculer un brouillon directement en
+        // « Payée » (state PAID + issueDate + paymentDate du jour) dès qu'une
+        // référence non vide y était saisie. Elle contournait ainsi la machine à
+        // états de `updateStatus` juste au-dessus, qui n'autorise DRAFT que vers
+        // BILLED : la facture était enregistrée payée un jour où elle n'avait
+        // jamais été émise ni imprimée, son total n'était jamais recalculé, et
+        // elle se retrouvait verrouillée (une facture PAID l'est) — seul
+        // reopenBill pouvait la rouvrir.
+        //
+        // Une référence est une donnée SUR un paiement ; elle n'est pas le
+        // paiement. Encaisser une facture passe par updateStatus, qui exige
+        // déjà une référence pour PAID.
         if (action === 'updatePaymentReference') {
             const { paymentReference } = body;
             const trimmed = paymentReference?.trim() || null;
             const bill = await prisma.bill.findUnique({ where: { id: billId, isActive: true }, select: { id: true, state: true } });
             if (!bill) return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
 
-            const autoPay = trimmed && bill.state === 'DRAFT';
-            await prisma.$transaction(async (tx) => {
-                await tx.bill.update({
-                    where: { id: billId },
-                    data: {
-                        paymentReference: trimmed,
-                        ...(autoPay ? { state: 'PAID', issueDate: new Date(), paymentDate: new Date() } : {}),
-                    },
-                });
-                // Auto-pay issues the bill, so its orders become BILLED.
-                if (autoPay) {
-                    await tx.orders.updateMany({ where: { billId }, data: { billingStatus: 'BILLED' } });
-                    await logBillEvent(tx, {
-                        billId,
-                        type: 'PAID',
-                        fromState: BillingStatus.DRAFT,
-                        toState: BillingStatus.PAID,
-                        payload: { paymentReference: trimmed },
-                        performedById,
-                    });
-                }
+            await prisma.bill.update({
+                where: { id: billId },
+                data: { paymentReference: trimmed },
             });
-            return NextResponse.json({
-                message: autoPay
-                    ? 'Référence enregistrée — facture marquée comme payée'
-                    : 'Référence de paiement mise à jour',
-            });
+
+            return NextResponse.json({ message: 'Référence de paiement mise à jour' });
         }
 
         return NextResponse.json({ error: 'Unknown action', message: 'Action inconnue' }, { status: 400 });
@@ -366,22 +372,57 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
     }
 });
 
-// Soft delete: mark the bill inactive AND unlink its orders (reset billId + billingStatus).
-export const DELETE = withAdmin(async (_request, context) => {
+/**
+ * Soft delete: mark the bill inactive AND unlink its orders (reset billId +
+ * billingStatus).
+ *
+ * BROUILLON UNIQUEMENT — et c'est le cœur de la garde.
+ *
+ * Détacher les demandes les remet « Non facturé » et sans billId, donc en plein
+ * dans ADJUSTABLE_ORDER_WHERE : elles redeviennent retarifables par
+ * repriceOpenOrdersForBook ET elles se rattacheront au prochain brouillon de
+ * l'auditeur à la première occasion. Sur un brouillon c'est exactement ce qu'on
+ * veut — rien n'est jamais parti. Sur une facture émise, payée ou soldée, c'est
+ * une double facturation : l'auditeur reçoit une seconde fois la note d'un
+ * enregistrement qu'il a déjà réglé.
+ *
+ * Même frontière que partout ailleurs (billIsIssued, ADJUSTABLE_ORDER_WHERE,
+ * DELETE /api/orders/[id]) : l'émission. Le chemin de sortie pour une facture
+ * émise est de la rouvrir d'abord.
+ */
+export const DELETE = withAdmin(async (_request, { me, params }) => {
     revalidateAdmin();
     try {
-        const { id } = await context.params!;
+        const performedById = me.id;
+
+        const { id } = await params!;
         const billId = parseInt(id);
         if (isNaN(billId)) {
             return NextResponse.json({ error: 'Invalid id', message: 'Identifiant invalide' }, { status: 400 });
         }
 
-        await prisma.$transaction(async (tx) => {
-            const existing = await tx.bill.findUnique({ where: { id: billId }, select: { id: true } });
-            if (!existing) {
-                throw new Prisma.PrismaClientKnownRequestError('Bill not found', { code: 'P2025', clientVersion: 'app' });
-            }
+        const existing = await prisma.bill.findUnique({
+            where: { id: billId },
+            select: { id: true, state: true, isActive: true },
+        });
+        if (!existing) {
+            return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
+        }
 
+        if (existing.state !== BillingStatus.DRAFT) {
+            return NextResponse.json(
+                {
+                    error: 'Bill not draft',
+                    message:
+                        `Impossible de supprimer la facture #${billId} : elle est ${getBillingStatusLabel(existing.state).toLowerCase()} ` +
+                        `et ses demandes redeviendraient facturables, donc facturées une seconde fois. ` +
+                        `Rouvrez la facture pour la ramener en brouillon avant de la supprimer.`,
+                },
+                { status: 409 }
+            );
+        }
+
+        await prisma.$transaction(async (tx) => {
             // Detach orders and revert their order-level billing status (never leave them
             // BILLED with no billId). De-settle any SOLDE order back to Terminé so it's clean
             // to re-add, matching removeOrder's behavior.
@@ -394,9 +435,22 @@ export const DELETE = withAdmin(async (_request, context) => {
                 data: { billId: null, billingStatus: 'UNBILLED' },
             });
 
+            // Le total tombe à 0 avant l'événement, pour que amountAtEvent porte
+            // l'état réel de la facture au moment où elle est supprimée.
+            await recomputeBillTotal(tx, billId);
+
             await tx.bill.update({
                 where: { id: billId },
                 data: { isActive: false, deletedAt: new Date() },
+            });
+
+            // Sans cette ligne l'historique d'une facture s'arrêtait au milieu
+            // d'une phrase : les demandes s'en allaient et rien ne le disait.
+            await logBillEvent(tx, {
+                billId,
+                type: 'ORDER_DETACHED',
+                payload: { reason: 'bill-deleted' },
+                performedById,
             });
         });
 

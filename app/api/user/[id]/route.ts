@@ -196,6 +196,16 @@ interface UserUpdateRequestBody extends UserUpdateInput {
 }
 
 /** The columns the fiche owns on an address — read back and written identically. */
+/**
+ * Un montant saisi vers sa colonne Decimal : null seulement quand le champ est
+ * vraiment vide. `0` est une valeur, pas une absence — voir les appels.
+ */
+function toDecimalOrNull(raw: unknown): number | null {
+    if (raw === null || raw === undefined || String(raw).trim() === '') return null;
+    const n = parseFloat(String(raw));
+    return Number.isNaN(n) ? null : n;
+}
+
 const ADDRESS_FIELDS = {
     addressLine1: true,
     addressSupplement: true,
@@ -420,12 +430,31 @@ export const PATCH = withAdmin(async (
         if (body.civilityId !== undefined) updateData.civilityId = body.civilityId ?? null;
         if (body.civilityOther !== undefined) updateData.civilityOther = body.civilityOther || null;
 
-        // Status fields
-        if (body.isActive !== undefined) updateData.isActive = body.isActive;
-        if (body.terminationDate !== undefined) {
-            updateData.terminationDate = body.terminationDate ? new Date(body.terminationDate) : null;
-        }
-        if (body.terminationReason !== undefined) updateData.terminationReason = body.terminationReason || null;
+        // Status fields — VOLONTAIREMENT NON ÉCRITS ICI.
+        //
+        // isActive, terminationDate et terminationReason sont marqués LEGACY dans le
+        // schéma : « replaced by activityStatus + UserActivityEvent » et « no longer
+        // written. Refactor out. » Cette route les écrivait quand même, et c'était
+        // pire qu'inutile.
+        //
+        // guardUserIsActive — le garde qui empêche d'attribuer une demande ou une
+        // attribution à quelqu'un d'inactif — ne lit QUE activityStatus et la
+        // fenêtre d'indisponibilité. Il ne regarde jamais isActive. Décocher
+        // « actif » sur la fiche ne protégeait donc rien : la personne continuait de
+        // passer le garde, de figurer dans les sélecteurs et de recevoir du travail,
+        // pendant que sa fiche annonçait le contraire. La synchronisation
+        // isAvailable = false que /api/user/[id]/activity maintient soigneusement ne
+        // tournait pas non plus sur ce chemin.
+        //
+        // Le statut d'activité se change donc là où il est tenu : POST
+        // /api/user/[id]/activity, qui écrit l'UserActivityEvent (append-only),
+        // horodate activityChangedAt et applique la règle isAvailable.
+        //
+        // Ignorés en silence plutôt que refusés : le formulaire de la fiche les
+        // transporte encore dans son état (UserFormBackendBase) sans jamais les
+        // afficher, donc un 400 casserait chaque enregistrement de fiche pour des
+        // champs que personne ne peut voir ni modifier. Ils sont simplement absents
+        // de updateData — la colonne ne bouge plus.
 
         // Delivery and payment preferences
         if (body.preferredDeliveryMethod !== undefined) {
@@ -439,11 +468,20 @@ export const PATCH = withAdmin(async (
             updateData.preferredDeliveryMethod = (dm as DeliveryMethod) || null;
         }
         if (body.preferredMediaFormatId !== undefined) updateData.preferredMediaFormatId = body.preferredMediaFormatId ?? null;
+        // 0 est un montant, pas une absence de montant.
+        //
+        // Ces deux champs s'écrivaient `body.x ? parseFloat(...) : null`, et 0 est
+        // falsy : une trésorière qui remettait un solde à zéro écrivait NULL,
+        // effaçant la différence entre « soldé à zéro » et « jamais renseigné ».
+        // Les deux colonnes ont pourtant un défaut non nul dans le schéma (21,00 et
+        // 0,00), et lib/audit/config.ts note que currentBalance « looks derived, is
+        // actually typed in the user form ». On teste donc la chaîne vide, comme le
+        // parseCost des routes de demandes.
         if (body.paymentThreshold !== undefined) {
-            updateData.paymentThreshold = body.paymentThreshold ? parseFloat(String(body.paymentThreshold)) : null;
+            updateData.paymentThreshold = toDecimalOrNull(body.paymentThreshold);
         }
         if (body.currentBalance !== undefined) {
-            updateData.currentBalance = body.currentBalance ? parseFloat(String(body.currentBalance)) : null;
+            updateData.currentBalance = toDecimalOrNull(body.currentBalance);
         }
 
         // Reader/staff fields
@@ -453,7 +491,19 @@ export const PATCH = withAdmin(async (
         // /admin/disponibilites; editable from the panel there.
         if (body.specialization !== undefined) updateData.specialization = body.specialization || null;
         if (body.saveType !== undefined) updateData.saveType = body.saveType || null;
-        if (body.maxConcurrentAssignments !== undefined) updateData.maxConcurrentAssignments = body.maxConcurrentAssignments || null;
+        // `?? null`, jamais `|| null` : ici le zéro s'inversait.
+        //
+        // Tous les lecteurs de cette colonne la résolvent en
+        // `maxConcurrentAssignments ?? 3` (lib/users/availability.ts,
+        // availability-dashboard, person-availability-panel,
+        // AssignmentFormBackendBase). Avec `|| null`, un permanent qui plafonnait un
+        // lecteur à 0 — la façon naturelle de dire « ne lui donnez rien en ce
+        // moment » — écrivait NULL, que toute l'application relit comme le défaut de
+        // 3. La consigne était donc retournée, et /admin/disponibilites continuait
+        // de présenter ce lecteur comme disponible.
+        if (body.maxConcurrentAssignments !== undefined) {
+            updateData.maxConcurrentAssignments = body.maxConcurrentAssignments ?? null;
+        }
 
         // Notes
         if (body.notes !== undefined) updateData.notes = body.notes || null;

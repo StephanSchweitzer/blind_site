@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus, OrderBillingStatus } from '@prisma/client';
-import { recomputeBillTotal, logBillEvent, orderBillingForBillState } from '@/lib/billing';
+import {
+    recomputeBillTotal,
+    logBillEvent,
+    orderBillingForBillState,
+    getOrCreateOpenDraft,
+} from '@/lib/billing';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { withAdmin } from '@/lib/auth/guards';
@@ -114,10 +119,22 @@ export const POST = withAdmin(async (request, { me }) => {
             );
         }
 
+        // Une facture ne NAÎT que brouillon ou émise.
+        //
+        // « Payée » et « Soldée » sont des états qu'on ATTEINT : updateStatus exige
+        // une référence de paiement pour PAID et n'y mène que depuis BILLED. Les
+        // accepter ici créait une facture payée sans trace de paiement, sur une
+        // transition que la machine à états refuse partout ailleurs.
+        const CREATABLE_STATES: BillingStatus[] = [BillingStatus.DRAFT, BillingStatus.BILLED];
         const finalState: BillingStatus = state || BillingStatus.BILLED;
-        if (!Object.values(BillingStatus).includes(finalState)) {
+        if (!CREATABLE_STATES.includes(finalState)) {
             return NextResponse.json(
-                { error: 'Invalid state', message: 'État de facture invalide' },
+                {
+                    error: 'Invalid state',
+                    message:
+                        'Une facture ne peut être créée qu\'en « Brouillon » ou « Émise ». ' +
+                        'Une facture se marque payée ou soldée depuis sa fiche, une fois émise.',
+                },
                 { status: 400 }
             );
         }
@@ -185,23 +202,47 @@ export const POST = withAdmin(async (request, { me }) => {
                 new Prisma.Decimal(0)
             );
 
-            const bill = await tx.bill.create({
-                data: {
-                    clientId: parsedClientId,
-                    state: finalState,
-                    creationDate: parsedCreationDate,
-                    issueDate: parsedIssueDate,
-                    invoiceAmount: initialTotal,
-                    isActive: true,
-                },
-                select: { id: true },
-            });
-            await logBillEvent(tx, {
-                billId: bill.id,
-                type: 'CREATED',
-                toState: finalState,
-                performedById,
-            });
+            // UN SEUL BROUILLON OUVERT PAR AUDITEUR.
+            //
+            // getOrCreateOpenDraft se décrit comme « the single grouping point —
+            // both accrual and any manual bill creation should route through here
+            // so a client never ends up with parallel open drafts ». Cette route
+            // créait pourtant sa facture directement : un permanent qui facturait à
+            // la main un auditeur ayant déjà un brouillon lui en ouvrait un second,
+            // et l'accrual suivant ne remplissait que le plus récent — l'autre
+            // restait ouvert à ne rien accumuler.
+            //
+            // Une facture ÉMISE, elle, est un document daté et distinct : elle est
+            // créée pour elle-même, avec les dates saisies par le permanent.
+            const bill =
+                finalState === BillingStatus.DRAFT
+                    ? await getOrCreateOpenDraft(tx, parsedClientId, performedById)
+                    : await tx.bill.create({
+                          data: {
+                              clientId: parsedClientId,
+                              state: finalState,
+                              creationDate: parsedCreationDate,
+                              issueDate: parsedIssueDate,
+                              // Le montant à la création, et pas 0 corrigé ensuite :
+                              // invoiceAmount est un DERIVED_FIELD, donc un write qui ne
+                              // déplace que lui est retiré du journal. La seule ligne que
+                              // le journal verra jamais est celle de la création.
+                              invoiceAmount: initialTotal,
+                              isActive: true,
+                          },
+                          select: { id: true },
+                      });
+
+            // getOrCreateOpenDraft écrit son propre événement CREATED quand il en
+            // ouvre un ; réutiliser un brouillon existant n'est pas une création.
+            if (finalState !== BillingStatus.DRAFT) {
+                await logBillEvent(tx, {
+                    billId: bill.id,
+                    type: 'CREATED',
+                    toState: finalState,
+                    performedById,
+                });
+            }
 
             // Pas de total courant par demande ici, contrairement à un rattachement
             // ultérieur (PUT /api/bills/[id], accrueOrderToOpenDraft) : cette création
@@ -213,6 +254,19 @@ export const POST = withAdmin(async (request, { me }) => {
                     where: { id: order.id },
                     data: { billId: bill.id, billingStatus: orderBillingForBillState(finalState) },
                 });
+            }
+
+            // recomputeBillTotal reste la source de vérité de la colonne : il confirme
+            // le total contre ce qui est réellement rattaché. Sans effet dans le cas
+            // normal, et invisible au journal de toute façon (champ dérivé).
+            //
+            // AVANT les événements, pas après : logBillEvent relit invoiceAmount pour
+            // en tamponner amountAtEvent, et sur un brouillon RÉUTILISÉ la colonne
+            // porte encore le total d'avant ce rattachement. C'est aussi l'ordre que
+            // suit accrueOrderToOpenDraft.
+            await recomputeBillTotal(tx, bill.id);
+
+            for (const order of orders) {
                 await logBillEvent(tx, {
                     billId: bill.id,
                     type: 'ORDER_ATTACHED',
@@ -220,11 +274,6 @@ export const POST = withAdmin(async (request, { me }) => {
                     performedById,
                 });
             }
-
-            // recomputeBillTotal reste la source de vérité de la colonne : il confirme
-            // le total contre ce qui est réellement rattaché. Sans effet dans le cas
-            // normal, et invisible au journal de toute façon (champ dérivé).
-            await recomputeBillTotal(tx, bill.id);
 
             return bill.id;
         });
