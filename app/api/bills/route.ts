@@ -6,7 +6,6 @@ import {
     recomputeBillTotal,
     logBillEvent,
     orderBillingForBillState,
-    getOrCreateOpenDraft,
 } from '@/lib/billing';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
@@ -202,47 +201,41 @@ export const POST = withAdmin(async (request, { me }) => {
                 new Prisma.Decimal(0)
             );
 
-            // UN SEUL BROUILLON OUVERT PAR AUDITEUR.
+            // PLUSIEURS BROUILLONS OUVERTS PAR AUDITEUR SONT NORMAUX.
             //
-            // getOrCreateOpenDraft se décrit comme « the single grouping point —
-            // both accrual and any manual bill creation should route through here
-            // so a client never ends up with parallel open drafts ». Cette route
-            // créait pourtant sa facture directement : un permanent qui facturait à
-            // la main un auditeur ayant déjà un brouillon lui en ouvrait un second,
-            // et l'accrual suivant ne remplissait que le plus récent — l'autre
-            // restait ouvert à ne rien accumuler.
+            // Cette création est toujours une VRAIE création, brouillon compris :
+            // un permanent qui ouvre une facture pour un auditeur en ouvre une
+            // nouvelle, même si cet auditeur en a déjà une en cours. C'est une
+            // demande explicite de l'équipe — un même auditeur peut avoir
+            // plusieurs brouillons ouverts en parallèle.
             //
-            // Une facture ÉMISE, elle, est un document daté et distinct : elle est
-            // créée pour elle-même, avec les dates saisies par le permanent.
-            const bill =
-                finalState === BillingStatus.DRAFT
-                    ? await getOrCreateOpenDraft(tx, parsedClientId, performedById)
-                    : await tx.bill.create({
-                          data: {
-                              clientId: parsedClientId,
-                              state: finalState,
-                              creationDate: parsedCreationDate,
-                              issueDate: parsedIssueDate,
-                              // Le montant à la création, et pas 0 corrigé ensuite :
-                              // invoiceAmount est un DERIVED_FIELD, donc un write qui ne
-                              // déplace que lui est retiré du journal. La seule ligne que
-                              // le journal verra jamais est celle de la création.
-                              invoiceAmount: initialTotal,
-                              isActive: true,
-                          },
-                          select: { id: true },
-                      });
+            // Ne PAS router ce chemin vers getOrCreateOpenDraft. Sa description
+            // (« the single grouping point … so a client never ends up with
+            // parallel open drafts ») décrit l'ACCRUAL automatique, qui doit bien
+            // regrouper dans un seul brouillon ; elle ne décrit pas la création
+            // manuelle, où le permanent choisit lui-même ce qu'il ouvre.
+            const bill = await tx.bill.create({
+                data: {
+                    clientId: parsedClientId,
+                    state: finalState,
+                    creationDate: parsedCreationDate,
+                    issueDate: parsedIssueDate,
+                    // Le montant à la création, et pas 0 corrigé ensuite :
+                    // invoiceAmount est un DERIVED_FIELD, donc un write qui ne
+                    // déplace que lui est retiré du journal. La seule ligne que
+                    // le journal verra jamais est celle de la création.
+                    invoiceAmount: initialTotal,
+                    isActive: true,
+                },
+                select: { id: true },
+            });
 
-            // getOrCreateOpenDraft écrit son propre événement CREATED quand il en
-            // ouvre un ; réutiliser un brouillon existant n'est pas une création.
-            if (finalState !== BillingStatus.DRAFT) {
-                await logBillEvent(tx, {
-                    billId: bill.id,
-                    type: 'CREATED',
-                    toState: finalState,
-                    performedById,
-                });
-            }
+            await logBillEvent(tx, {
+                billId: bill.id,
+                type: 'CREATED',
+                toState: finalState,
+                performedById,
+            });
 
             // Pas de total courant par demande ici, contrairement à un rattachement
             // ultérieur (PUT /api/bills/[id], accrueOrderToOpenDraft) : cette création

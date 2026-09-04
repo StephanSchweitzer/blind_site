@@ -78,9 +78,26 @@ export function transitionEventType(
 }
 
 /**
- * One open brouillon per client: reuse the most recent active DRAFT, or create one.
- * This is the single grouping point — both accrual and any manual bill creation
- * should route through here so a client never ends up with parallel open drafts.
+ * Le brouillon sur lequel l'ACCRUAL AUTOMATIQUE accumule : le DRAFT actif le
+ * plus récent du client, ou un nouveau s'il n'y en a pas.
+ *
+ * PORTÉE — À LIRE AVANT DE BRANCHER QUOI QUE CE SOIT ICI.
+ *
+ * Le regroupement décrit ci-dessus vaut pour l'accrual, et pour lui seul :
+ * quand une demande passée « Terminé » rejoint une facture toute seule, elle
+ * doit rejoindre UNE file, sinon les lignes d'un même auditeur se dispersent
+ * entre plusieurs brouillons que personne n'a demandés.
+ *
+ * Cela ne veut PAS dire qu'un auditeur n'a droit qu'à un brouillon. L'équipe a
+ * explicitement demandé le contraire : un auditeur peut avoir plusieurs
+ * brouillons ouverts en parallèle, et la création manuelle
+ * (POST /api/bills) en ouvre donc toujours un nouveau — elle ne passe pas par
+ * ici, volontairement. La version précédente de ce commentaire disait « any
+ * manual bill creation should route through here », ce qui a suffi à faire
+ * router POST /api/bills vers cette fonction et à supprimer cette possibilité.
+ *
+ * Donc : ne pas ajouter de contrainte d'unicité sur (clientId, state=DRAFT),
+ * et ne pas « corriger » les auditeurs qui portent plusieurs brouillons.
  */
 export async function getOrCreateOpenDraft(
     tx: TransactionClient,
