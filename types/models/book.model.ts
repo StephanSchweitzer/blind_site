@@ -109,6 +109,10 @@ export const bookIncludeConfigs = {
     } satisfies Prisma.UserDefaultArgs,
 
     orders: {
+        // Filtres explicites ici et sur `assignments` ci-dessous : un include de
+        // relation ne passe pas par le filtre soft-delete de lib/prisma.ts, et
+        // ces deux aperçus servent à juger si un livre est encore utilisé.
+        where: { isActive: true },
         select: {
             id: true,
             requestReceivedDate: true,
@@ -126,6 +130,7 @@ export const bookIncludeConfigs = {
     } satisfies Prisma.OrdersFindManyArgs,
 
     assignments: {
+        where: { deletedAt: null },
         select: {
             id: true,
             statusId: true,

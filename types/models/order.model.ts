@@ -157,6 +157,10 @@ export const orderIncludeConfigs = {
     } satisfies Prisma.BillDefaultArgs,
 
     assignments: {
+        // Un include de relation échappe au filtre soft-delete global
+        // (lib/prisma.ts) : sans ce where, une attribution supprimée continuerait
+        // de s'afficher sous sa demande, avec son lecteur et son statut.
+        where: { deletedAt: null },
         include: {
             readerHistory: {
                 orderBy: {
@@ -230,6 +234,8 @@ export const orderIncludeConfigs = {
             },
         },
         assignments: {
+            // Voir `assignments` ci-dessus.
+            where: { deletedAt: null },
             include: {
                 readerHistory: {
                     orderBy: {

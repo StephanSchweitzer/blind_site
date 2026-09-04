@@ -50,8 +50,17 @@ export async function getActiveAssignmentCounts(
     if (userIds.length === 0) return counts;
 
     // Every assignment any of these users has ever been a reader on.
+    //
+    // `assignment: { deletedAt: null }` explicitement : AssignmentReader n'est pas
+    // un modèle soft-delete, ses lignes SURVIVENT à la suppression de leur
+    // attribution (c'est le but — l'historique de qui a tenu quel livre), et un
+    // filtre sur une relation échappe de toute façon au filtre global de
+    // lib/prisma.ts. Sans ça, une attribution supprimée continuait de compter dans
+    // la charge d'un lecteur : le badge « 3 / 4 » de /admin/disponibilites la
+    // comptait encore, et getUserDeletionBlockers refusait de supprimer la
+    // personne au nom d'une attribution qui n'existe plus.
     const readerRows = await prisma.assignmentReader.findMany({
-        where: { readerId: { in: userIds } },
+        where: { readerId: { in: userIds }, assignment: { deletedAt: null } },
         select: { assignmentId: true },
     });
     const assignmentIds = [...new Set(readerRows.map((r) => r.assignmentId))];
@@ -59,7 +68,7 @@ export async function getActiveAssignmentCounts(
 
     // Latest reader per assignment + that assignment's status.
     const latestPerAssignment = await prisma.assignmentReader.findMany({
-        where: { assignmentId: { in: assignmentIds } },
+        where: { assignmentId: { in: assignmentIds }, assignment: { deletedAt: null } },
         orderBy: { assignedDate: 'desc' },
         distinct: ['assignmentId'],
         select: {

@@ -159,7 +159,16 @@ export const GET = withAdmin(async (request, { params }) => {
 
         const order = await prisma.orders.findUnique(relationArgs);
 
-        if (!order) {
+        // findUnique n'est pas filtré par l'extension soft-delete (lib/prisma.ts) :
+        // Prisma y interdit un `where` non unique. Le contrôle se fait donc ici,
+        // comme sur GET /api/assignments/[id]. `select`/`include` étant variables
+        // selon le mode, on relit le drapeau plutôt que d'exiger qu'il soit demandé.
+        const deleted = await prisma.orders.findUnique({
+            where: { id: orderId },
+            select: { deletedAt: true },
+        });
+
+        if (!order || deleted?.deletedAt) {
             return NextResponse.json(
                 { message: 'Demande non trouvée' },
                 { status: 404 }
@@ -210,6 +219,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 catalogueId: true,
                 requestReceivedDate: true,
                 closureDate: true,
+                deletedAt: true,
                 assignments: {
                     // Un include de relation n'est PAS filtré par l'extension
                     // soft-delete de lib/prisma.ts, et celui-ci ne sert pas à
@@ -230,7 +240,8 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             },
         });
 
-        if (!existingOrder) {
+        // Voir le GET : findUnique échappe au filtre soft-delete global.
+        if (!existingOrder || existingOrder.deletedAt) {
             return NextResponse.json({ message: 'Demande non trouvée' }, { status: 404 });
         }
 
@@ -624,12 +635,15 @@ export const DELETE = withAdmin(async (_request, { params }) => {
             select: {
                 id: true,
                 billId: true,
+                deletedAt: true,
                 bill: { select: { id: true, state: true } },
-                _count: { select: { assignments: true } },
+                // Filtré : une attribution déjà supprimée ne doit pas empêcher de
+                // supprimer sa demande.
+                _count: { select: { assignments: { where: { deletedAt: null } } } },
             },
         });
 
-        if (!existingOrder) {
+        if (!existingOrder || existingOrder.deletedAt) {
             return NextResponse.json({ message: 'Demande non trouvée' }, { status: 404 });
         }
 

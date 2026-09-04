@@ -126,7 +126,10 @@ export async function getAvailabilityOverview(options?: {
             ? Promise.resolve([])
             : prisma.assignmentReader.groupBy({
                 by: ['readerId'],
-                where: { readerId: { in: readerIds } },
+                // Voir getActiveAssignmentCounts : une ligne AssignmentReader
+                // survit à la suppression de son attribution, donc « dernière
+                // attribution le… » aurait daté d'une attribution effacée.
+                where: { readerId: { in: readerIds }, assignment: { deletedAt: null } },
                 _max: { assignedDate: true },
             }),
     ]);
@@ -168,7 +171,9 @@ const PERSON_ASSIGNMENT_LIMIT = 25;
  */
 async function getPersonAssignments(userId: number): Promise<AvailabilityAssignment[]> {
     const readerRows = await prisma.assignmentReader.findMany({
-        where: { readerId: userId },
+        // Même filtre que le badge « 3 / 4 » au-dessus (getActiveAssignmentCounts),
+        // pour que la liste et le compte ne puissent pas se contredire.
+        where: { readerId: userId, assignment: { deletedAt: null } },
         select: { assignmentId: true },
     });
     const assignmentIds = [...new Set(readerRows.map((r) => r.assignmentId))];
@@ -177,7 +182,7 @@ async function getPersonAssignments(userId: number): Promise<AvailabilityAssignm
     // Latest reader per assignment: one a lecteur has since been relieved of is
     // no longer theirs and must not show up here.
     const latest = await prisma.assignmentReader.findMany({
-        where: { assignmentId: { in: assignmentIds } },
+        where: { assignmentId: { in: assignmentIds }, assignment: { deletedAt: null } },
         orderBy: { assignedDate: 'desc' },
         distinct: ['assignmentId'],
         select: {

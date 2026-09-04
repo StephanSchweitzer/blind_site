@@ -48,6 +48,11 @@ export const GET = withAdmin(async (_request, context) => {
                     },
                 },
                 orders: {
+                    // Un include de relation échappe au filtre soft-delete global
+                    // (lib/prisma.ts), et recomputeBillTotal ne somme que les
+                    // demandes actives : sans ce where, une demande supprimée
+                    // s'imprimait sur la facture sans être dans le total.
+                    where: { isActive: true },
                     select: {
                         id: true,
                         requestReceivedDate: true,

@@ -78,8 +78,16 @@ export const billIncludeConfigs = {
         },
     } satisfies Prisma.UserDefaultArgs,
 
-    // The orders attached to this bill (line items of the invoice)
+    // The orders attached to this bill (line items of the invoice).
+    //
+    // `isActive` filtré explicitement : un include de relation échappe au filtre
+    // soft-delete global (lib/prisma.ts), et recomputeBillTotal ne somme QUE les
+    // demandes actives. Sans ce where, une demande supprimée continuait de
+    // s'imprimer sur la facture en étant absente du total — des lignes qui
+    // n'additionnent pas le montant annoncé. Même filtre que le total, pour que
+    // les deux ne puissent pas diverger.
     orders: {
+        where: { isActive: true },
         select: {
             id: true,
             requestReceivedDate: true,
@@ -109,6 +117,9 @@ export const billIncludeConfigs = {
             },
         },
         orders: {
+            // Voir le commentaire sur `orders` ci-dessus : même filtre que
+            // recomputeBillTotal, sinon les lignes et le total divergent.
+            where: { isActive: true },
             select: {
                 id: true,
                 requestReceivedDate: true,
