@@ -150,13 +150,48 @@ export const POST = withAdmin(async (request, { me }) => {
         }
 
         const billId = await prisma.$transaction(async (tx) => {
+            // Les demandes sont validées ET totalisées AVANT l'insertion, pour que la
+            // facture naisse avec son vrai montant.
+            //
+            // invoiceAmount est un DERIVED_FIELD (lib/audit/config.ts) : tout write qui
+            // ne déplace que lui est retiré du journal des modifications. Une facture
+            // créée à 0 puis recalculée à 6 € y reste donc « Montant de la facture : 0 »
+            // pour toujours — la correction, elle, est jetée. La seule ligne que le
+            // journal verra jamais est celle de la création, et c'est pourquoi elle doit
+            // déjà porter le bon chiffre.
+            const orders: { id: number; cost: Prisma.Decimal | null }[] = [];
+            for (const orderId of parsedOrderIds) {
+                const order = await tx.orders.findUnique({
+                    where: { id: orderId },
+                    select: {
+                        id: true,
+                        aveugleId: true,
+                        billId: true,
+                        billingStatus: true,
+                        isActive: true,
+                        cost: true,
+                    },
+                });
+                if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
+                if (order.aveugleId !== parsedClientId) throw new Error('CLIENT_MISMATCH');
+                if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
+                if (order.billingStatus === OrderBillingStatus.UNBILLABLE) throw new Error('ORDER_UNBILLABLE');
+                orders.push({ id: order.id, cost: order.cost });
+            }
+            // Même arithmétique que recomputeBillTotal, faite plus tôt parce que la
+            // ligne n'existe pas encore ; l'appel ci-dessous reste l'autorité.
+            const initialTotal = orders.reduce(
+                (sum, o) => sum.plus(o.cost ?? new Prisma.Decimal(0)),
+                new Prisma.Decimal(0)
+            );
+
             const bill = await tx.bill.create({
                 data: {
                     clientId: parsedClientId,
                     state: finalState,
                     creationDate: parsedCreationDate,
                     issueDate: parsedIssueDate,
-                    invoiceAmount: new Prisma.Decimal(0),
+                    invoiceAmount: initialTotal,
                     isActive: true,
                 },
                 select: { id: true },
@@ -168,32 +203,28 @@ export const POST = withAdmin(async (request, { me }) => {
                 performedById,
             });
 
-            for (const orderId of parsedOrderIds) {
-                const order = await tx.orders.findUnique({
-                    where: { id: orderId },
-                    select: { id: true, aveugleId: true, billId: true, billingStatus: true, isActive: true },
-                });
-                if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
-                if (order.aveugleId !== parsedClientId) throw new Error('CLIENT_MISMATCH');
-                if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
-                if (order.billingStatus === OrderBillingStatus.UNBILLABLE) throw new Error('ORDER_UNBILLABLE');
-
+            // Pas de total courant par demande ici, contrairement à un rattachement
+            // ultérieur (PUT /api/bills/[id], accrueOrderToOpenDraft) : cette création
+            // est un seul geste atomique, il n'existe aucun instant où la facture n'a
+            // porté que la première de ses demandes. Chaque événement porte donc le
+            // même montant, celui de la facture telle qu'elle a été créée.
+            for (const order of orders) {
                 await tx.orders.update({
-                    where: { id: orderId },
+                    where: { id: order.id },
                     data: { billId: bill.id, billingStatus: orderBillingForBillState(finalState) },
                 });
-                // Recompute per order, not once at the end: logBillEvent stamps each
-                // event with invoiceAmount as it stands right now, and a running
-                // total per attachment is what makes that stamp mean anything for a
-                // multi-order creation.
-                await recomputeBillTotal(tx, bill.id);
                 await logBillEvent(tx, {
                     billId: bill.id,
                     type: 'ORDER_ATTACHED',
-                    payload: { orderId },
+                    payload: { orderId: order.id },
                     performedById,
                 });
             }
+
+            // recomputeBillTotal reste la source de vérité de la colonne : il confirme
+            // le total contre ce qui est réellement rattaché. Sans effet dans le cas
+            // normal, et invisible au journal de toute façon (champ dérivé).
+            await recomputeBillTotal(tx, bill.id);
 
             return bill.id;
         });
