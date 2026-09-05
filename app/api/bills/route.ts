@@ -6,6 +6,7 @@ import {
     recomputeBillTotal,
     logBillEvent,
     orderBillingForBillState,
+    paymentPrecedesIssue,
 } from '@/lib/billing';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
@@ -217,7 +218,7 @@ export const POST = withAdmin(async (request, { me }) => {
                     { status: 400 }
                 );
             }
-            if (parsedPaymentDate < parsedIssueDate) {
+            if (paymentPrecedesIssue(parsedPaymentDate, parsedIssueDate)) {
                 return NextResponse.json(
                     {
                         error: 'Payment before issue',

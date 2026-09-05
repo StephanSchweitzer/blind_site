@@ -473,6 +473,7 @@ export function BillFormBackendBase({
                                 <CalendarComponent
                                     mode="single"
                                     selected={issueDate || undefined}
+                                    defaultMonth={issueDate || undefined}
                                     onSelect={(d) => setIssueDate(d || null)}
                                     initialFocus
                                     className="bg-card text-foreground"
@@ -533,6 +534,7 @@ export function BillFormBackendBase({
                                                 <CalendarComponent
                                                     mode="single"
                                                     selected={paymentDate}
+                                                    defaultMonth={paymentDate}
                                                     onSelect={(d) => d && setPaymentDate(d)}
                                                     initialFocus
                                                     className="bg-card text-foreground"

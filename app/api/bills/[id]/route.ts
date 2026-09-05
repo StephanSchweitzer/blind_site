@@ -12,6 +12,7 @@ import {
     orderBillingForBillState,
     ordersFollowingBillState,
     detachedBillingStatus,
+    paymentPrecedesIssue,
 } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -128,7 +129,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         const { action } = body;
 
         if (action === 'updateStatus') {
-            const { state, paymentReference } = body;
+            const { state, paymentReference, paymentDate } = body;
 
             const validStates = ['DRAFT', 'BILLED', 'PAID', 'SOLDE'];
             if (!validStates.includes(state)) {
@@ -144,7 +145,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
 
             const bill = await prisma.bill.findUnique({
                 where: { id: billId, isActive: true },
-                select: { id: true, state: true },
+                select: { id: true, state: true, issueDate: true },
             });
             if (!bill) {
                 return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
@@ -167,7 +168,33 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             if (state === 'BILLED') updateData.issueDate = new Date();
             if (state === 'DRAFT') updateData.issueDate = null;
             if (state === 'PAID') {
-                updateData.paymentDate = new Date();
+                // La date de paiement est SAISIE, pas déduite du moment du clic.
+                //
+                // Encaisser une facture émise il y a trois semaines est le cas
+                // courant, et « aujourd'hui » écrivait alors une date fausse dans
+                // la seule colonne qui dit quand l'auditeur a réglé. Absente, elle
+                // retombe sur le jour même — l'ancien comportement, pour tout
+                // appelant qui ne la fournit pas.
+                let resolvedPaymentDate = new Date();
+                if (paymentDate) {
+                    resolvedPaymentDate = new Date(paymentDate);
+                    if (isNaN(resolvedPaymentDate.getTime())) {
+                        return NextResponse.json(
+                            { error: 'Invalid paymentDate', message: 'La date de paiement est invalide' },
+                            { status: 400 }
+                        );
+                    }
+                }
+                if (paymentPrecedesIssue(resolvedPaymentDate, bill.issueDate)) {
+                    return NextResponse.json(
+                        {
+                            error: 'Payment before issue',
+                            message: 'La date de paiement ne peut pas précéder la date d\'émission',
+                        },
+                        { status: 400 }
+                    );
+                }
+                updateData.paymentDate = resolvedPaymentDate;
                 updateData.paymentReference = paymentReference.trim();
             }
 

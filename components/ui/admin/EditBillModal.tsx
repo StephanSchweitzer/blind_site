@@ -9,7 +9,11 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, X, Plus, ChevronLeft, ChevronRight, Pencil, Check, RotateCcw, History, ExternalLink } from 'lucide-react';
+import { Loader2, Trash2, X, Plus, ChevronLeft, ChevronRight, Pencil, Check, RotateCcw, History, ExternalLink, Calendar } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import {
     BillingStatus,
     getBillingStatusColor,
@@ -123,6 +127,8 @@ export function EditBillModal({
     // Status change
     const [pendingState, setPendingState] = useState<BillingStatus | null>(null);
     const [paymentReference, setPaymentReference] = useState('');
+    // Le jour où l'auditeur a réglé, pas celui où un permanent le saisit.
+    const [paymentDate, setPaymentDate] = useState<Date>(new Date());
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
 
@@ -230,13 +236,16 @@ export function EditBillModal({
                 body: JSON.stringify({
                     action: 'updateStatus',
                     state: pendingState,
-                    ...(pendingState === BillingStatus.PAID ? { paymentReference } : {}),
+                    ...(pendingState === BillingStatus.PAID
+                        ? { paymentReference, paymentDate: paymentDate.toISOString() }
+                        : {}),
                 }),
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.message || 'Erreur lors de la mise à jour du statut');
             setPendingState(null);
             setPaymentReference('');
+            setPaymentDate(new Date());
             await loadBill(billId);
             onBillUpdated?.();
         } catch (err) {
@@ -476,6 +485,7 @@ export function EditBillModal({
                                             onClick={() => {
                                                 setPendingState(pendingState === s ? null : s);
                                                 setPaymentReference('');
+                                                setPaymentDate(new Date());
                                                 setStatusError(null);
                                             }}
                                             className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
@@ -490,15 +500,41 @@ export function EditBillModal({
                                 </div>
 
                                 {pendingState === BillingStatus.PAID && (
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-muted-foreground">Identifiant de paiement (système externe)</label>
-                                        <Input
-                                            value={paymentReference}
-                                            onChange={(e) => setPaymentReference(e.target.value)}
-                                            placeholder="Ex: PAY-20240601-001"
-                                            className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
-                                        />
-                                    </div>
+                                    <>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-muted-foreground">Identifiant de paiement (système externe)</label>
+                                            <Input
+                                                value={paymentReference}
+                                                onChange={(e) => setPaymentReference(e.target.value)}
+                                                placeholder="Ex: PAY-20240601-001"
+                                                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-muted-foreground">Date de paiement</label>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start text-left bg-muted border-border text-foreground hover:bg-muted h-9"
+                                                    >
+                                                        <Calendar className="mr-2 h-4 w-4" />
+                                                        {format(paymentDate, 'PPP', { locale: fr })}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0 bg-card border-border">
+                                                    <CalendarComponent
+                                                        mode="single"
+                                                        selected={paymentDate}
+                                                        defaultMonth={paymentDate}
+                                                        onSelect={(d) => d && setPaymentDate(d)}
+                                                        initialFocus
+                                                        className="bg-card text-foreground"
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                    </>
                                 )}
 
                                 {statusError && (
