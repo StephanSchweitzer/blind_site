@@ -7,6 +7,7 @@ import { withAdmin } from '@/lib/auth/guards';
 import { resolvePrefix } from '@/lib/audio/state';
 import { listBookTracks } from '@/lib/audio/bucket';
 import { softDeleteTracks } from '@/lib/audio/trash';
+import { resolveMergedBook } from '@/lib/books/merged';
 import { BookUpdateInputSchema } from '@/types/api/book.api';
 
 /**
@@ -58,6 +59,19 @@ export const GET = withAdmin(async (_req, { params }) => {
         });
 
         if (!book) {
+            // A fused book is not missing, it moved: say where, so the caller can
+            // follow instead of reporting a dead end. See lib/books/merged.ts.
+            const merged = await resolveMergedBook(bookId);
+            if (merged) {
+                return NextResponse.json(
+                    {
+                        error: 'Book merged',
+                        mergedInto: merged.canonicalId,
+                        mergedAt: merged.mergedAt.toISOString(),
+                    },
+                    { status: 404 }
+                );
+            }
             return NextResponse.json({ error: 'Book not found' }, { status: 404 });
         }
 

@@ -12,12 +12,14 @@ import {
     resolveRecordLabels,
 } from '@/lib/audit/record-labels';
 import { measureAuditTable } from '@/lib/audit/retention';
+import { resolveMergedBooks } from '@/lib/books/merged';
 import { isoUtc, parisDayStartUtc, parseDateParam } from '@/lib/stats';
 import type {
     AuditChangeMap,
     AuditEventItem,
     AuditEventsResponse,
     AuditOperation,
+    AuditRestoreState,
     StatsActor,
 } from '@/types';
 
@@ -74,25 +76,56 @@ interface RawUserName {
 }
 
 /**
- * Why a deletion cannot be replayed, or null when it can.
+ * What state a deletion is in, and the sentence that explains it.
  *
- * A snapshot whose values were truncated would restore a size marker into a real
- * column, which is worse than refusing — so it refuses, and says which is which.
+ * One decision, made once, so the badge, the tooltip and the detail panel can
+ * never disagree — they used to, because the badge collapsed every non-
+ * restorable state into « Sans instantané » while the panel below it printed the
+ * real reason. A truncated snapshot is not a missing one, and a fused record is
+ * neither.
+ *
+ * `mergedInto` is the survivor of a book fusion, when the caller found one.
  */
-function restoreBlockerOf(row: AuditRaw, snapshot: Record<string, unknown> | null): string | null {
-    if (row.operation !== 'DELETE') return null;
+function restoreStateOf(
+    row: AuditRaw,
+    snapshot: Record<string, unknown> | null,
+    mergedInto: number | null
+): { state: AuditRestoreState | null; blocker: string | null } {
+    if (row.operation !== 'DELETE') return { state: null, blocker: null };
+
+    // Checked before the snapshot: a fused record may well carry a perfectly
+    // good one, and replaying it is still the wrong thing to do.
+    if (mergedInto !== null) {
+        return {
+            state: 'SUPERSEDED',
+            blocker:
+                `Cette fiche a été fusionnée dans le livre n°${mergedInto} : elle n’a pas été ` +
+                `perdue. Ses attributions, demandes et listes ont été reportées sur la fiche ` +
+                `conservée, donc la restaurer ne recréerait qu’un doublon vide.`,
+        };
+    }
     if (!row.hasSnapshot) {
-        return row.recordId === '*'
-            ? 'Suppression groupée : aucun instantané n’a été conservé.'
-            : 'Aucun instantané disponible pour cet enregistrement.';
+        return {
+            state: 'ABSENT',
+            blocker:
+                row.recordId === '*'
+                    ? 'Suppression groupée : aucun instantané n’a été conservé.'
+                    : 'Aucun instantané disponible pour cet enregistrement.',
+        };
     }
     if (!isAuditedModel(row.model)) {
-        return 'Ce modèle n’est plus suivi par le journal.';
+        return { state: 'UNTRACKED', blocker: 'Ce modèle n’est plus suivi par le journal.' };
     }
     if (hasTruncatedValue(snapshot)) {
-        return 'L’instantané contient des valeurs trop longues pour avoir été conservées.';
+        return {
+            state: 'INCOMPLETE',
+            blocker:
+                'L’instantané contient des valeurs trop longues pour avoir été conservées : ' +
+                'le restaurer écrirait un marqueur à leur place. Les suppressions enregistrées ' +
+                'depuis conservent les valeurs entières.',
+        };
     }
-    return null;
+    return { state: 'RESTORABLE', blocker: null };
 }
 
 function hasTruncatedValue(snapshot: Record<string, unknown> | null): boolean {
@@ -241,8 +274,21 @@ export const GET = withSuperAdmin(async (request) => {
             resolveFieldLabels(labelRequests),
         ]);
 
+        // Which of this page's deleted books were fused rather than destroyed —
+        // one query for the page, not one per row. See lib/books/merged.ts.
+        const merged = await resolveMergedBooks(
+            page
+                .filter((row) => row.operation === 'DELETE' && row.model === 'Book')
+                .map((row) => Number(row.recordId))
+                .filter((id) => Number.isInteger(id))
+        );
+
         const events: AuditEventItem[] = page.map((row) => {
-            const blocker = restoreBlockerOf(row, snapshots.get(row.id) ?? null);
+            const mergedInto =
+                row.model === 'Book'
+                    ? merged.get(Number(row.recordId))?.canonicalId ?? null
+                    : null;
+            const { state, blocker } = restoreStateOf(row, snapshots.get(row.id) ?? null, mergedInto);
             return {
                 id: row.id,
                 at: row.at,
@@ -257,8 +303,11 @@ export const GET = withSuperAdmin(async (request) => {
                 recordLabel: labels.get(row.id) ?? null,
                 changes: row.changes ?? {},
                 fieldLabels: fieldLabels.get(row.id),
-                restorable: row.operation === 'DELETE' && blocker === null,
+                restorable: state === 'RESTORABLE',
                 restoreBlocker: blocker,
+                restoreState: state,
+                supersededBy:
+                    mergedInto !== null ? { model: 'Book', recordId: String(mergedInto) } : null,
             };
         });
 

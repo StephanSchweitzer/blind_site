@@ -11,8 +11,29 @@ import {
  *
  * Two rules govern everything below:
  *   - nothing secret goes in (see isSecretField);
- *   - nothing big goes in. Long text and binary are replaced by a marker, so a
- *     diff records THAT a field changed without carrying a copy of its content.
+ *   - nothing big goes in *to a diff*. Long text and binary are replaced by a
+ *     marker, so a diff records THAT a field changed without carrying a copy of
+ *     its content.
+ *
+ * A DIFF AND A SNAPSHOT WANT OPPOSITE THINGS — hence two encoders below.
+ *
+ * A diff is a journal line: it must stay small, it is read by a human, and the
+ * content of a description adds nothing to « le résumé a changé ». Truncating is
+ * right.
+ *
+ * A snapshot is the only copy of a row that no longer exists, kept so a
+ * deletion can be replayed. A truncated one is not a smaller snapshot, it is a
+ * useless one: restoring it would write « [texte de 812 caractères] » into a
+ * real column, so the restore route refuses it outright (see
+ * app/api/stats/audit/[id]/restore/route.ts) and the deletion becomes
+ * unrecoverable. That is how a Book whose résumé ran past 500 characters — an
+ * ordinary book — lost its restore button while a 499-character one kept it.
+ *
+ * So a snapshot keeps its values whole, and its only ceiling is the one that
+ * actually protects the table: MAX_PAYLOAD_CHARS on the serialized row, applied
+ * by fitBudget() in extension.ts. Past that the snapshot is dropped entirely
+ * rather than silently mutilated, which the trail reports honestly as « aucun
+ * instantané » instead of offering a restore that cannot work.
  */
 
 export type AuditValue = string | number | boolean | null;
@@ -22,8 +43,15 @@ export type AuditSnapshot = Record<string, AuditValue>;
 
 const sizeMarker = (chars: number) => `[texte de ${chars} caractères]`;
 
-/** Collapse one field value to something small, printable and JSON-safe. */
-export function encodeValue(value: unknown): AuditValue {
+/**
+ * The shared part: everything that is not a decision about length.
+ *
+ * `cap` is the longest string kept verbatim, or null to keep it whole. Binary
+ * is the one value never kept either way — no audited model has a Bytes column
+ * today, and a base64 blob is exactly what neither a diff nor a snapshot may
+ * carry into a 500 MB database.
+ */
+function encode(value: unknown, cap: number | null): AuditValue {
     if (value === null || value === undefined) return null;
     if (typeof value === 'boolean' || typeof value === 'number') return value;
     if (typeof value === 'bigint') return value.toString();
@@ -32,17 +60,30 @@ export function encodeValue(value: unknown): AuditValue {
     if (value instanceof Uint8Array || Buffer.isBuffer(value)) return '[binaire]';
 
     if (typeof value === 'string') {
-        return value.length > MAX_VALUE_CHARS ? sizeMarker(value.length) : value;
+        return cap !== null && value.length > cap ? sizeMarker(value.length) : value;
     }
 
-    // Json columns and anything else structured: keep it only while it stays small.
+    // Json columns and anything else structured.
     try {
         const serialized = JSON.stringify(value);
         if (serialized === undefined) return null;
-        return serialized.length > MAX_VALUE_CHARS ? sizeMarker(serialized.length) : serialized;
+        return cap !== null && serialized.length > cap ? sizeMarker(serialized.length) : serialized;
     } catch {
         return '[valeur illisible]';
     }
+}
+
+/** Collapse one field value to something small, printable and JSON-safe. */
+export function encodeValue(value: unknown): AuditValue {
+    return encode(value, MAX_VALUE_CHARS);
+}
+
+/**
+ * The same, for a snapshot: whole values, because a partial one cannot be
+ * restored. See the header of this file for why the two differ.
+ */
+export function encodeSnapshotValue(value: unknown): AuditValue {
+    return encode(value, null);
 }
 
 /** Full row, secrets removed — what a delete stores so a restore can replay it. */
@@ -53,7 +94,7 @@ export function encodeSnapshot(row: Record<string, unknown>): AuditSnapshot {
         // Relations arrive as arrays/objects when a caller used `include`; the
         // snapshot describes ONE row, so they are dropped rather than encoded.
         if (isRelationValue(value)) continue;
-        snapshot[field] = encodeValue(value);
+        snapshot[field] = encodeSnapshotValue(value);
     }
     return snapshot;
 }

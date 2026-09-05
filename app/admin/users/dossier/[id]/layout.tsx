@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { Card, CardContent } from '@/components/ui/card';
 import DossierTabs from './dossier-tabs';
 import DossierHeaderName from './dossier-header-name';
+import DossierDeletedNotice from './dossier-deleted-notice';
 import { MEMBER_TYPE_LABELS, getMemberTypeColor } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
 import { computeCotisationStatus, formatCotisationDate, isCotisationExempt } from '@/lib/cotisation';
@@ -42,6 +43,10 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
             cellPhone: true,
             memberType: true,
             isActive: true,
+            // A soft-deleted person still resolves by id on purpose (findUnique
+            // is not filtered — see lib/prisma.ts), so the dossier has to say so
+            // itself. Without this the page renders identically to a live one.
+            deletedAt: true,
             currentBalance: true,
             paymentThreshold: true,
             // Only to know whether an étiquette d'adresse can be printed — the
@@ -62,8 +67,27 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
     const fullName =
         [user.firstName, user.lastName].filter(Boolean).join(' ') || user.name || 'Sans nom';
 
+    const isDeleted = user.deletedAt !== null;
+
     return (
         <div className="space-y-4">
+            {isDeleted && (
+                <DossierDeletedNotice
+                    userId={user.id}
+                    fullName={fullName}
+                    deletedAt={user.deletedAt!.toISOString()}
+                />
+            )}
+
+            {/* Everything below the banner is readable but inert on a deleted
+                fiche: `pointer-events-none` covers the edit dialogs, the tabs and
+                whatever a child page renders, without each of them needing to
+                learn about deletion. `aria-disabled` says the same to a screen
+                reader, which cannot see the greying. */}
+            <div
+                className={`space-y-4 ${isDeleted ? 'opacity-60 pointer-events-none' : ''}`}
+                aria-disabled={isDeleted || undefined}
+            >
             <Card className="bg-card border-border">
                 <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -73,6 +97,11 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                                 <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
                                     {MEMBER_TYPE_LABELS[user.memberType]}
                                 </span>
+                                {isDeleted && (
+                                    <span className="inline-flex items-center rounded-full bg-red-600 text-white dark:bg-red-700 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide">
+                                        Supprimé
+                                    </span>
+                                )}
                                 {user.isActive === false && (
                                     <span className="inline-flex items-center rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2.5 py-1 text-xs font-medium">
                                         Inactif
@@ -128,6 +157,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
             <DossierTabs userId={user.id} />
 
             {children}
+            </div>
         </div>
     );
 }

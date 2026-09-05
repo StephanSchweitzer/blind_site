@@ -159,7 +159,47 @@ export interface AuditEventItem {
     restorable: boolean;
     /** Why a deletion is not restorable, when it isn't. */
     restoreBlocker: string | null;
+    /**
+     * Which of the states below this deletion is in — null on anything that is
+     * not a DELETE.
+     *
+     * Carried as a discriminator rather than left for the UI to infer from
+     * `restoreBlocker`'s wording: the badge, the tooltip and the detail panel all
+     * have to agree, and matching on a French sentence is how they stop agreeing.
+     */
+    restoreState: AuditRestoreState | null;
+    /**
+     * For SUPERSEDED: the record this one was folded into, so the journal can
+     * offer the fiche that absorbed it instead of a restore that would recreate
+     * a hollow duplicate.
+     */
+    supersededBy?: { model: string; recordId: string } | null;
 }
+
+/**
+ * Why the « Restaurer » button is, or is not, available on a deletion.
+ *
+ *   RESTORABLE — a complete snapshot is on file and can be replayed.
+ *   INCOMPLETE — a snapshot exists but a value in it was truncated on the way
+ *                in. Only reachable for events recorded before snapshots began
+ *                keeping their values whole (see lib/audit/diff.ts); refusing is
+ *                correct, because restoring would write a size marker into a
+ *                real column.
+ *   ABSENT     — no snapshot at all: a bulk deletion, or a payload past
+ *                MAX_PAYLOAD_CHARS that was dropped rather than mutilated.
+ *   SUPERSEDED — the record was folded into another one rather than destroyed
+ *                (a book fusion). Its relations now live on the survivor, so a
+ *                restore would produce an empty rival fiche; the survivor is
+ *                offered instead.
+ *   UNTRACKED  — the model has since left AUDITED_MODELS and can no longer be
+ *                written back safely.
+ */
+export type AuditRestoreState =
+    | 'RESTORABLE'
+    | 'INCOMPLETE'
+    | 'ABSENT'
+    | 'SUPERSEDED'
+    | 'UNTRACKED';
 
 /** State of the trail itself, surfaced so an empty page never looks broken. */
 export interface AuditRetentionInfo {

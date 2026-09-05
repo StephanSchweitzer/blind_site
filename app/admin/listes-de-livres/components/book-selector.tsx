@@ -360,6 +360,19 @@ export default function BookSelector({
         try {
             const response = await fetch(`/api/books/${book.id}`);
             if (!response.ok) {
+                // Never « réessayer » on a 404: the book is gone and retrying
+                // cannot change that. A fusion re-points this list onto the
+                // surviving fiche, so there is nothing to forward to here.
+                if (response.status === 404) {
+                    toast({
+                        title: 'Livre introuvable',
+                        description:
+                            `Le livre n°${book.id} n’existe plus. Rafraîchissez la liste : ` +
+                            `il a pu être supprimé ou fusionné depuis son affichage.`,
+                        variant: 'destructive',
+                    });
+                    return;
+                }
                 throw new Error('Failed to fetch book details');
             }
             const bookDetails = await response.json();

@@ -7,6 +7,7 @@ import { isAuditedModel } from '@/lib/audit/config';
 import { withoutAudit } from '@/lib/audit/context';
 import { TRUNCATION_MARKER_RE, modelLabel } from '@/lib/audit/labels';
 import { resolveRecordLabels } from '@/lib/audit/record-labels';
+import { resolveMergedBook } from '@/lib/books/merged';
 import type { AuditChangeMap, AuditRestoreResponse } from '@/types';
 
 /**
@@ -18,7 +19,11 @@ import type { AuditChangeMap, AuditRestoreResponse } from '@/types';
  *   - if a record already exists at that id (it will NEVER overwrite one);
  *   - if the snapshot holds a value that was truncated on the way in, because
  *     restoring "[texte de 1200 caractères]" into a real column is worse than
- *     not restoring at all;
+ *     not restoring at all (only reachable for events recorded before snapshots
+ *     began keeping their values whole — see lib/audit/diff.ts);
+ *   - if the record was SUPERSEDED rather than destroyed: a fused book's
+ *     rattachements now live on the survivor, so restoring it recreates an empty
+ *     duplicate, not the fiche;
  *   - if the row it referenced is itself gone (a foreign key that no longer
  *     resolves) — Postgres says so and the message is passed through.
  *
@@ -69,6 +74,23 @@ export const POST = withSuperAdmin(async (request, ctx) => {
             `intégralement (valeurs trop longues). Restaurer écrirait un marqueur à leur place.`,
             422
         );
+    }
+
+    // A fused book is the one deletion that must be refused even with a perfect
+    // snapshot. The fusion moved its attributions, demandes, genres and listes
+    // onto the survivor before deleting the emptied row, and none of that comes
+    // back here — a "successful" restore would put an empty rival fiche into the
+    // catalogue under a title that already exists. See lib/books/merged.ts.
+    if (event.model === 'Book') {
+        const merged = await resolveMergedBook(Number(event.recordId));
+        if (merged) {
+            return failure(
+                `Restauration impossible : cette fiche a été fusionnée dans le livre ` +
+                `n°${merged.canonicalId}. Son contenu et ses rattachements y ont été reportés — ` +
+                `la restaurer ne recréerait qu’un doublon vide.`,
+                409
+            );
+        }
     }
 
     // Model name comes from our own registry, never from the request — safe to

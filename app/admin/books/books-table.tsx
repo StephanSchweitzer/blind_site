@@ -493,7 +493,7 @@ export default function BooksTable({
 
     // Fetches a book's full details and opens the edit modal. Shared by the
     // row-click handler and the ?book=<id> deep-link (e.g. from the stats page).
-    const openBookById = async (bookId: number | string) => {
+    const openBookById = async (bookId: number | string, followed = false) => {
         setIsLoadingBook(true);
 
         try {
@@ -503,6 +503,49 @@ export default function BooksTable({
                 },
             });
             if (!response.ok) {
+                // 404 is not a transient failure, so it must never be answered
+                // with « réessayer » — retrying a book that no longer exists
+                // just costs the reader another round before the same result.
+                if (response.status === 404) {
+                    const body = await response.json().catch(() => null);
+                    const mergedInto = typeof body?.mergedInto === 'number' ? body.mergedInto : null;
+
+                    // A fused id forwards to the fiche that absorbed it, once:
+                    // `followed` stops a malformed chain from bouncing forever.
+                    if (mergedInto !== null && !followed) {
+                        // Europe/Paris, not the viewer's zone: this date is read
+                        // next to the journal row that produced the link, and
+                        // that one is pinned to the Paris day everywhere in the
+                        // app (see DISPLAY_TIMEZONE in lib/audit/labels.ts). Left
+                        // to the browser they disagree by a day either side of
+                        // midnight.
+                        const on = typeof body?.mergedAt === 'string'
+                            ? new Date(body.mergedAt).toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                timeZone: 'Europe/Paris',
+                            })
+                            : null;
+                        toast({
+                            title: 'Fiche fusionnée',
+                            description:
+                                `Le livre n°${bookId} a été fusionné${on ? ` le ${on}` : ''} ` +
+                                `dans le livre n°${mergedInto}. Voici la fiche conservée.`,
+                        });
+                        await openBookById(mergedInto, true);
+                        return;
+                    }
+
+                    toast({
+                        title: 'Livre introuvable',
+                        description:
+                            `Le livre n°${bookId} n’existe plus dans le catalogue. ` +
+                            `Il a été supprimé, et aucune fiche ne l’a remplacé.`,
+                        variant: 'destructive',
+                    });
+                    return;
+                }
                 throw new Error('Failed to fetch book details');
             }
             const bookDetails = await response.json();

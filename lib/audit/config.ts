@@ -196,13 +196,27 @@ export function changesAreAllDerived(model: string, changes: Record<string, unkn
 }
 
 /**
- * Longest string kept verbatim. Anything longer is replaced by a size marker:
- * the trail records THAT a description or a markdown body changed, never a copy
- * of it. Base64 and file contents can never land here as a result.
+ * Longest string kept verbatim IN A DIFF. Anything longer is replaced by a size
+ * marker: the trail records THAT a description or a markdown body changed, never
+ * a copy of it. Base64 and file contents can never land in a diff as a result.
+ *
+ * Deliberately NOT applied to a delete snapshot. A snapshot is the only
+ * remaining copy of the row and a truncated one cannot be restored at all — see
+ * the header of lib/audit/diff.ts. MAX_PAYLOAD_CHARS below is the snapshot's
+ * ceiling instead.
  */
 export const MAX_VALUE_CHARS = 500;
 
-/** Largest serialized `changes` / `snapshot` payload, in characters. */
+/**
+ * Largest serialized `changes` / `snapshot` payload, in characters — and, since
+ * snapshots keep their values whole, the only limit a snapshot has. Past it
+ * fitBudget() (lib/audit/extension.ts) drops the payload rather than storing a
+ * mutilated one, so the journal says « aucun instantané » instead of offering a
+ * restore that would write markers into real columns.
+ *
+ * A row of the widest audited model with every text column full still lands far
+ * under this; a Book with a long résumé is a few KB.
+ */
 export const MAX_PAYLOAD_CHARS = 20_000;
 
 /**

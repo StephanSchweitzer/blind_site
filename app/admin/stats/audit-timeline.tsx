@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     AlertTriangle,
+    ArrowRight,
     ChevronDown,
     ChevronRight,
     ExternalLink,
@@ -39,12 +40,14 @@ import {
     formatAuditValue,
     isReservedField,
     modelLabel,
+    recordHref,
 } from '@/lib/audit/labels';
 import type {
     AuditEventItem,
     AuditEventsResponse,
     AuditOperation,
     AuditRestoreResponse,
+    AuditRestoreState,
     StatsActor,
 } from '@/types';
 import { AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT, OPERATION_TINT, formatDateTime } from './stats-utils';
@@ -234,6 +237,41 @@ function bulkCount(changes: AuditEventItem['changes']): number | null {
 const plural = (count: number, word: string): string =>
     `${count} ${word}${count > 1 ? 's' : ''}`;
 
+/**
+ * One label per state, and never a label that covers two of them.
+ *
+ * This line used to read « Sans instantané » for every deletion that could not
+ * be replayed, including the ones whose snapshot was right there but truncated —
+ * so the row contradicted the explanation printed directly under it when opened.
+ * A reader who saw « sans instantané » concluded the content was gone, when for
+ * a fusion it had simply moved to another fiche.
+ */
+const RESTORE_STATE_LABEL: Record<AuditRestoreState, string> = {
+    RESTORABLE: 'Instantané conservé',
+    INCOMPLETE: 'Instantané incomplet',
+    ABSENT: 'Sans instantané',
+    SUPERSEDED: 'Fusionné',
+    UNTRACKED: 'Modèle non suivi',
+};
+
+/**
+ * What an opened deletion says where a diff would go. A DELETE carries no
+ * before/after — the whole row went — so this explains where the content IS,
+ * which differs per state and used to promise a restore in every case.
+ */
+const DELETE_DETAIL_TEXT: Record<AuditRestoreState, string> = {
+    RESTORABLE:
+        'L’enregistrement a été supprimé ; son contenu est conservé hors du journal pour permettre une restauration.',
+    INCOMPLETE:
+        'L’enregistrement a été supprimé. Un instantané a été conservé, mais l’un de ses champs était trop long pour y tenir entièrement.',
+    ABSENT:
+        'L’enregistrement a été supprimé sans instantané : son contenu n’est pas conservé par le journal.',
+    SUPERSEDED:
+        'Cette fiche a été fusionnée dans une autre : son contenu et ses rattachements ont été reportés sur la fiche conservée, qui reste ouvrable ci-dessus.',
+    UNTRACKED:
+        'L’enregistrement a été supprimé ; son modèle n’est plus suivi par le journal et ne peut plus être réécrit.',
+};
+
 /** "3 champs" / "Instantané conservé" / "12 pistes" — the one-line gist of a row. */
 function summarize(group: EventGroup): string {
     if (isAudioBurst(group)) return plural(group.events.length, 'piste');
@@ -247,7 +285,7 @@ function summarize(group: EventGroup): string {
     }
     const count = Object.keys(group.changes).length;
     if (event.operation === 'DELETE') {
-        return event.restorable ? 'Instantané conservé' : 'Sans instantané';
+        return RESTORE_STATE_LABEL[event.restoreState ?? 'ABSENT'];
     }
     if (count === 0) return '—';
     return count === 1 ? '1 champ' : `${count} champs`;
@@ -322,7 +360,7 @@ function DiffTable({ group }: { group: EventGroup }) {
         return (
             <p className="text-sm text-muted-foreground">
                 {event.operation === 'DELETE'
-                    ? 'L’enregistrement a été supprimé ; son contenu est conservé hors du journal pour permettre une restauration.'
+                    ? DELETE_DETAIL_TEXT[event.restoreState ?? 'ABSENT']
                     : group.events.length > 1
                         ? 'Ces modifications se sont annulées entre elles : l’enregistrement a retrouvé son état de départ.'
                         : 'Aucun champ suivi n’a changé.'}
@@ -384,6 +422,11 @@ function EventRow({
     const isDeletion = event.operation === 'DELETE';
     const badge = operationBadge(event);
     const href = hrefOf(event);
+    // Set only for a deletion whose record was folded into another one.
+    const supersededHref =
+        event.restoreState === 'SUPERSEDED' && event.supersededBy
+            ? recordHref(event.supersededBy.model, event.supersededBy.recordId)
+            : null;
     const linked = event.recordLabel?.linked ?? null;
     const merged = group.events.length;
     // The stretch a grouped block covers, oldest → newest.
@@ -475,7 +518,24 @@ function EventRow({
 
                 <span className="text-xs text-muted-foreground ml-auto">{summarize(group)}</span>
 
-                {isDeletion && (
+                {/* A fused record was not lost, so the useful action is the fiche
+                    that absorbed it — never a restore, which would recreate an
+                    empty duplicate beside the real one (lib/books/merged.ts). */}
+                {isDeletion && supersededHref && (
+                    <Button size="sm" variant="outline" asChild>
+                        <Link
+                            href={supersededHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={event.restoreBlocker ?? undefined}
+                        >
+                            <ArrowRight size={13} className="mr-1.5" />
+                            Voir la fiche conservée
+                        </Link>
+                    </Button>
+                )}
+
+                {isDeletion && !supersededHref && (
                     <Button
                         size="sm"
                         variant="outline"
