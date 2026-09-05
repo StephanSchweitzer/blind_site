@@ -3,7 +3,13 @@ import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { putTrackUrl, headTrack, listBookTracks, listRawObjects } from '@/lib/audio/bucket';
 import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
-import { nextTrackName, isAllowedAudioExtension, splitExtension, newBookFolderPrefix } from '@/lib/audio/naming';
+import {
+    nextTrackName,
+    isAllowedAudioExtension,
+    isAppleDoubleName,
+    splitExtension,
+    newBookFolderPrefix,
+} from '@/lib/audio/naming';
 import { MAX_UPLOAD_BYTES } from '@/lib/audio/folder-selection';
 import { pool } from '@/lib/concurrency';
 
@@ -205,19 +211,34 @@ export const POST = withAdmin(async (req, { params }) => {
         // number, leaving the first, successful upload in place — silently
         // doubling the track and its billed weight.
         //
-        // Honoured only when the key both belongs to this book's folder
-        // (isKeyInsidePrefix — a client-supplied key is not trusted blindly)
-        // and is either absent (the earlier PUT never actually landed) or
-        // already sitting at the announced size (it landed; a retry PUT is
-        // then an idempotent overwrite of identical bytes — see putWithRetry's
-        // doc comment). A key occupied at some OTHER size is not reused: that
-        // is not this file's earlier attempt, so it falls through to a fresh
-        // name below exactly as if no existingKey had been offered.
+        // Honoured only when the key belongs to this book's folder
+        // (isKeyInsidePrefix — a client-supplied key is not trusted blindly),
+        // NAMES SOMETHING THAT COULD BE A TRACK, and is either absent (the
+        // earlier PUT never actually landed) or already sitting at the
+        // announced size (it landed; a retry PUT is then an idempotent
+        // overwrite of identical bytes — see putWithRetry's doc comment). A key
+        // occupied at some OTHER size is not reused: that is not this file's
+        // earlier attempt, so it falls through to a fresh name below exactly as
+        // if no existingKey had been offered.
+        //
+        // The name check matters because this branch is the one place a
+        // filename reaches the bucket WITHOUT passing through nextTrackName,
+        // which is where the extension and AppleDouble rules are enforced for
+        // every fresh name. Containment alone let a crafted request announce
+        // `x.mp3` and be signed for `…/x.html` or `…/._piste.mp3` inside the
+        // folder — objects isAudioKey then filters out of every listing, so
+        // they would sit there counted by nothing and noticed by no one.
+        // Same rules, both paths (see .claude/rules/audio-storage.md), and the
+        // same fallthrough as a size mismatch rather than a refusal: a retry
+        // must never be harder to complete than the first attempt.
         const requestedKey = typeof f.existingKey === 'string' ? f.existingKey : '';
         let reuseKey: string | null = null;
         if (requestedKey && isKeyInsidePrefix(requestedKey, prefix)) {
+            const requestedName = requestedKey.slice(prefix.length);
+            const nameIsUsable =
+                isAllowedAudioExtension(requestedName) && !isAppleDoubleName(requestedName);
             const currentSize = sizeByExistingKey.get(requestedKey);
-            if (currentSize === undefined || currentSize === size) {
+            if (nameIsUsable && (currentSize === undefined || currentSize === size)) {
                 reuseKey = requestedKey;
             }
         }

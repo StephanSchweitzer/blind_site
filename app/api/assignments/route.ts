@@ -27,8 +27,19 @@ export const GET = withAdmin(async (request: NextRequest) => {
         const id = searchParams.get('id');
 
         if (id) {
+            // Même validation que GET /api/assignments/[id] : `parseInt` d'une
+            // chaîne non numérique donne NaN, que Prisma refuse en 500 alors que
+            // la demande était simplement malformée.
+            const assignmentId = Number(id);
+            if (!Number.isInteger(assignmentId)) {
+                return NextResponse.json(
+                    { error: 'ID d\'attribution invalide' },
+                    { status: 400 }
+                );
+            }
+
             const assignment = await prisma.assignment.findUnique({
-                where: { id: parseInt(id) },
+                where: { id: assignmentId },
                 include: {
                     catalogue: true,
                     order: true,
@@ -52,7 +63,13 @@ export const GET = withAdmin(async (request: NextRequest) => {
                 },
             });
 
-            if (!assignment) {
+            // findUnique n'est pas filtré par l'extension soft-delete
+            // (lib/prisma.ts) : Prisma y interdit un `where` non unique. Le
+            // contrôle se fait donc ici, comme sur GET /api/assignments/[id] et
+            // GET /api/orders/[id]. Sans lui, ce branchement était le seul de
+            // l'application à rendre une attribution supprimée comme si elle
+            // était vivante.
+            if (!assignment || assignment.deletedAt) {
                 return NextResponse.json(
                     { error: 'Assignment not found' },
                     { status: 404 }

@@ -329,7 +329,7 @@ Built on semantic theme tokens (`bg-card`, `border-border`, `text-foreground`) s
 
 Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL (Supabase) · NextAuth v4 · Tailwind CSS + shadcn/ui + Radix · Zod 4 · **Backblaze B2 via `@aws-sdk/client-s3` + `s3-request-presigner`** · AWS Polly · Vercel Blob · `client-zip` · React Email + Resend · `@react-pdf/renderer` · pnpm · Husky + lint-staged · deployed on Vercel.
 
-Server state is fetched in the route handlers and in `hooks/` with plain `fetch` + `AbortController` (see `useEntitySearch`), and freshness comes from `router.refresh()` after a mutation plus the two revalidation helpers. There is **no client-side query cache**: `@tanstack/react-query` is still in `package.json` but is imported nowhere, so don't reach for it as though it were the house pattern — either adopt it deliberately or drop the dependency.
+Server state is fetched in the route handlers and in `hooks/` with plain `fetch` + `AbortController` (see `useEntitySearch`), and freshness comes from `router.refresh()` after a mutation plus the two revalidation helpers. There is deliberately **no client-side query cache** — `@tanstack/react-query` sat in `package.json` for a long time without a single import, and was removed rather than left to look like the house pattern. Adding one back is a decision to take on purpose, not by reaching for a dependency that happens to be installed.
 
 ## 13. Project structure
 

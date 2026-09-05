@@ -47,7 +47,6 @@
     "@react-pdf/renderer": "^4.1.6",
     "@smithy/node-http-handler": "4.0.2",
     "@swc/helpers": "^0.5.15",
-    "@tanstack/react-query": "^5.62.15",
     "@vercel/blob": "^2.3.2",
     "@vercel/postgres": "^0.10.0",
     "bcrypt": "^6.0.0",

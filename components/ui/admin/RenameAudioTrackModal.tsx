@@ -53,12 +53,19 @@ export function RenameAudioTrackModal({
     const [base, setBase] = useState('');
     const [isRenaming, setIsRenaming] = useState(false);
 
-    // Reset the field when a different track is targeted, without a
-    // state-setting effect.
-    const [lastKey, setLastKey] = useState<string | null>(null);
-    if (track && track.key !== lastKey) {
-        setLastKey(track.key);
-        setBase(splitName(track.name).base);
+    // Reset the field for each fresh opening, without a state-setting effect.
+    //
+    // Keyed on the track AND on the dialogue actually being open: keyed on the
+    // track alone, cancelling a rename and reopening the SAME row brought back
+    // the abandoned draft — the key had not changed, so nothing reset it. The
+    // admin was then one click away from applying a name they had explicitly
+    // backed out of, over a row whose real name the dialogue displays right
+    // above. Reopening now always starts from the name the track has today.
+    const [lastOpened, setLastOpened] = useState<string | null>(null);
+    const openFor = isOpen && track ? track.key : null;
+    if (openFor !== lastOpened) {
+        setLastOpened(openFor);
+        if (openFor && track) setBase(splitName(track.name).base);
     }
 
     const ext = track ? splitName(track.name).ext : '';
