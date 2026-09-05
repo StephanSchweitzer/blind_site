@@ -9,6 +9,7 @@ import {
     findBlockedDuplications,
     serializeBlockedDuplications,
 } from '@/lib/orders/duplicationBlocked';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -115,7 +116,7 @@ async function getOrders(
             prisma.orders.findMany({
                 where: whereClause,
                 orderBy: { requestReceivedDate: 'desc' },
-                skip: Math.max(0, (page - 1) * ordersPerPage),
+                skip: pageSkip(page, ordersPerPage),
                 take: ordersPerPage,
                 include: ordersTableInclude,
             }),
@@ -150,10 +151,7 @@ async function getOrders(
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
     const params = await searchParams;
 
-    const page = Math.max(
-        1,
-        parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
-    );
+    const page = parsePageParam(params.page);
     const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
     const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
     const statusId = params.statusId

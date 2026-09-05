@@ -10,6 +10,7 @@ import { audioMissingWhere, audioPresentWhere, AUDIO_MISSING_STATUSES } from '@/
 import { buildBookScopeWhere } from '@/lib/books/searchWhere';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { bookFieldsForToken, searchTokens } from '@/lib/search';
+import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 
 type AudioFilter = 'missing' | 'present' | undefined;
 
@@ -39,11 +40,33 @@ interface RawBookResult {
 // Type for query parameters
 type QueryParam = string | number | number[];
 
-// Cache headers for better performance
-const CACHE_HEADERS = {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-};
+/**
+ * En-têtes de cache — qui dépendent de QUI demande.
+ *
+ * Le corps de cette route n'est pas le même pour tout le monde : `includeHidden`
+ * suit `isAdmin(me)`, donc la réponse d'un permanent contient les livres
+ * `hiddenFromCatalogue`, que le public ne doit jamais voir. Elle portait
+ * pourtant un `public, s-maxage=60` inconditionnel. Un cache partagé (le CDN de
+ * Vercel) ne prend que l'URL comme clé — les cookies n'en font pas partie sans
+ * `Vary` — donc la réponse d'un permanent pouvait remplir l'entrée de cache et
+ * être resservie telle quelle à un visiteur anonyme pendant une minute, et
+ * jusqu'à cinq de plus en stale-while-revalidate. La branche `?ids=` est la
+ * plus exposée : réservée au back-office dans l'application, mais son URL
+ * s'écrit à la main.
+ *
+ * Une réponse authentifiée est donc `private` — un cache partagé ne la stocke
+ * pas, le navigateur peut. La réponse anonyme, elle, garde exactement le cache
+ * qu'elle avait ; `Vary: Cookie` est la ceinture en plus de la bretelle.
+ */
+function cacheHeaders(signedIn: boolean): HeadersInit {
+    return {
+        'Content-Type': 'application/json',
+        'Cache-Control': signedIn
+            ? 'private, no-cache'
+            : 'public, s-maxage=60, stale-while-revalidate=300',
+        Vary: 'Cookie',
+    };
+}
 
 /**
  * Move the row whose id the user searched for to the front.
@@ -296,9 +319,11 @@ async function performAccentInsensitiveSearch(
             orderBy: { createdAt: 'desc' }
         });
 
-        // An exact id match leads the page. Both queries sort by createdAt, so
-        // without this the one book someone looked up by number sits wherever
-        // its creation date happens to put it in a 25-row list.
+        // La promotion d'un identifiant exact ne se fait PAS ici — elle vit
+        // dans GET, après le choix de la branche, parce qu'elle doit valoir
+        // aussi pour la recherche Prisma et pour le filtre par genre. Ce
+        // commentaire décrivait ici un traitement que cette fonction n'a
+        // jamais fait.
         return { books: booksWithGenres, total };
     } catch (error) {
         // The accent-insensitive path relies on the immutable_unaccent SQL function.
@@ -402,8 +427,8 @@ export async function GET(request: NextRequest): Promise<Response> {
         // search either way.
         const search = normalizeSearchQuery(searchParams.get('search') || '');
         const filter = searchParams.get('filter') || 'all';
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '9');
+        const page = parsePageParam(searchParams.get('page'));
+        const limit = parseLimitParam(searchParams.get('limit'), 9);
         const genres = searchParams.getAll('genres').map(Number).filter(id => !isNaN(id));
         const recent = searchParams.get('recent') === 'true';
         const ids = searchParams.get('ids')?.split(',').map(Number).filter(id => !isNaN(id));
@@ -413,7 +438,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         const hiddenFilter = hiddenParam === 'true' ? true : hiddenParam === 'false' ? false : undefined;
         const audioParam = searchParams.get('audio');
         const audio: AudioFilter = audioParam === 'missing' ? 'missing' : audioParam === 'present' ? 'present' : undefined;
-        const skip = (page - 1) * limit;
+        const skip = pageSkip(page, limit);
 
         // Hidden books stay out of every public read path here; admins see
         // everything, since this route also backs the admin book list/search
@@ -436,7 +461,7 @@ export async function GET(request: NextRequest): Promise<Response> {
             });
             return new Response(JSON.stringify({ books }), {
                 status: 200,
-                headers: CACHE_HEADERS,
+                headers: cacheHeaders(me !== null),
             });
         }
 
@@ -457,7 +482,14 @@ export async function GET(request: NextRequest): Promise<Response> {
 
         // Handle recent books filter
         if (recent) {
+            // `active: true` comme partout ailleurs : la coupure des
+            // « nouveautés » se prend sur la dernière liste PUBLIÉE. Sans ce
+            // filtre, dépublier une liste déplaçait la coupure — la même
+            // omission que dans /api/listes-de-livres/{preview,position}, et
+            // /api/listes-de-livres l'applique déjà dans sa propre branche
+            // `recent`.
             const lastCoupDeCoeur = await prisma.coupsDeCoeur.findFirst({
+                where: { active: true },
                 orderBy: { createdAt: 'desc' },
                 select: { createdAt: true }
             });
@@ -585,16 +617,21 @@ export async function GET(request: NextRequest): Promise<Response> {
 
         return new Response(JSON.stringify(response), {
             status: 200,
-            headers: CACHE_HEADERS,
+            headers: cacheHeaders(me !== null),
         });
 
     } catch (error) {
+        // Le message d'erreur reste dans les logs du serveur, pas dans la
+        // réponse. Cette route est servie au public (le catalogue la partage),
+        // et renvoyer `error.message` y recopiait l'erreur de validation Prisma
+        // telle quelle : chemins absolus du serveur et extrait du code de la
+        // requête compilée. Partout ailleurs dans le dépôt, la réponse porte un
+        // message français fixe.
         console.error('Error in books API:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
         const errorResponse: BooksApiError = {
             error: 'Internal server error',
-            message: errorMessage,
+            message: 'Erreur lors de la récupération des livres',
             books: [],
             total: 0,
             page: 1,

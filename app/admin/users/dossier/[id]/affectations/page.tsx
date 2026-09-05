@@ -4,6 +4,7 @@ import { buildUserNameSearch } from '@/lib/search';
 
 // ⚠️ ADJUST this import to wherever your assignments-table.tsx actually lives.
 import AssignmentsTable from '@/app/admin/assignments/assignments-table';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -20,7 +21,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
     const sp = await searchParams;
     const userId = parseInt(id);
 
-    const page = Math.max(1, parseInt(Array.isArray(sp.page) ? sp.page[0] : sp.page || '1'));
+    const page = parsePageParam(sp.page);
     const searchTerm = Array.isArray(sp.search) ? sp.search[0] : sp.search || '';
     const statusId = sp.statusId
         ? parseInt(Array.isArray(sp.statusId) ? sp.statusId[0] : sp.statusId)
@@ -65,7 +66,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
         prisma.assignment.findMany({
             where: whereClause,
             orderBy: { id: 'desc' },
-            skip: Math.max(0, (page - 1) * ASSIGNMENTS_PER_PAGE),
+            skip: pageSkip(page, ASSIGNMENTS_PER_PAGE),
             take: ASSIGNMENTS_PER_PAGE,
             include: {
                 readerHistory: {

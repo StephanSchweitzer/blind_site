@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { withAdmin } from '@/lib/auth/guards';
+import { isRecordNotFound, notFoundResponse } from '@/lib/api-errors';
 
 export const PUT = withAdmin(async (request, { params }) => {
     revalidateAdmin();
@@ -46,6 +47,7 @@ export const PUT = withAdmin(async (request, { params }) => {
             }
         );
     } catch (error) {
+        if (isRecordNotFound(error)) return notFoundResponse('Genre introuvable');
         console.error('Error updating genre:', error);
         return NextResponse.json(
             { error: 'Failed to update genre' },
@@ -99,6 +101,7 @@ export const DELETE = withAdmin(async (_request, { params }) => {
 
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
+        if (isRecordNotFound(error)) return notFoundResponse('Genre introuvable');
         console.error('Error deleting genre:', error);
 
         return NextResponse.json(

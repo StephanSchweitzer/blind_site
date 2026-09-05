@@ -198,9 +198,22 @@ export const DELETE = withAdmin(async (request, context) => {
         const body = await request.json().catch(() => ({}));
         const reason = typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim() : null;
 
-        const existing = await prisma.payment.findUnique({ where: { id: paymentId }, select: { id: true } });
+        const existing = await prisma.payment.findUnique({
+            where: { id: paymentId },
+            select: { id: true, isActive: true },
+        });
         if (!existing) {
             return NextResponse.json({ error: 'Not found', message: 'Paiement introuvable' }, { status: 404 });
+        }
+        // Une seconde suppression réécrivait `deletedAt` et `deletionReason` :
+        // la date et le motif d'origine — les deux seules choses qui disent
+        // POURQUOI le paiement est parti — étaient remplacés par ceux du
+        // deuxième clic, souvent vides.
+        if (!existing.isActive) {
+            return NextResponse.json(
+                { error: 'Already deleted', message: 'Ce paiement est déjà supprimé.' },
+                { status: 409 }
+            );
         }
 
         await prisma.payment.update({

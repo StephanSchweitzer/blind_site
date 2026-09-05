@@ -8,6 +8,7 @@ import OrphansClient, {
     type SuggestedBook,
     type OrphanTab,
 } from './orphans-client';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -122,7 +123,7 @@ export default async function AudioOrphansPage({ searchParams }: PageProps) {
     const tab: OrphanTab = (TABS as readonly string[]).includes(rawTab)
         ? (rawTab as OrphanTab)
         : 'a-traiter';
-    const page = Math.max(1, parseInt(one('page') || '1') || 1);
+    const page = parsePageParam(one('page'));
     const q = one('q');
 
     const searchWhere = buildSearchWhere(q);
@@ -137,7 +138,7 @@ export default async function AudioOrphansPage({ searchParams }: PageProps) {
             // Biggest folders first: a 700 Mo orphan is a whole book nobody can
             // reach, a 3 Mo one is usually a stray file.
             orderBy: [{ bytes: 'desc' }, { id: 'asc' }],
-            skip: (page - 1) * PER_PAGE,
+            skip: pageSkip(page, PER_PAGE),
             take: PER_PAGE,
             include: {
                 linkedBook: { select: { id: true, title: true, subtitle: true, author: true } },

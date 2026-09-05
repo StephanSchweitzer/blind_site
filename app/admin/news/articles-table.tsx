@@ -25,6 +25,7 @@ import {
 } from '@/admin/NewsFormBackendBase';
 import { toast } from '@/hooks/use-toast';
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
+import { parsePageParam } from '@/lib/pagination';
 
 type Article = {
     id: number;
@@ -66,8 +67,9 @@ export function ArticlesTable({
         setSearch(urlSearch);
     }
 
-    // Get current page from URL, defaulting to initialPage if invalid
-    const currentPage = Math.max(1, parseInt(searchParams.get('page') || initialPage.toString()));
+    // Page courante depuis l'URL, à défaut initialPage. Via parsePageParam :
+    // `Math.max(1, parseInt('abc'))` vaut NaN, pas 1 — voir lib/pagination.ts.
+    const currentPage = parsePageParam(searchParams.get('page') ?? initialPage.toString());
 
     // Handle debounced search with navigation
     useEffect(() => {

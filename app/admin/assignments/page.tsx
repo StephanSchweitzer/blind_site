@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { buildAssignmentSearchWhere } from '@/lib/search';
 import AssignmentsTable from './assignments-table';
 import { notFound } from 'next/navigation';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -39,7 +40,7 @@ async function getAssignments(
             prisma.assignment.findMany({
                 where: whereClause,
                 orderBy: { id: 'desc' },
-                skip: Math.max(0, (page - 1) * assignmentsPerPage),
+                skip: pageSkip(page, assignmentsPerPage),
                 take: assignmentsPerPage,
                 include: {
                     readerHistory: {
@@ -106,10 +107,7 @@ async function getAssignments(
 export default async function AdminAssignmentsPage({ searchParams }: PageProps) {
     const params = await searchParams;
 
-    const page = Math.max(
-        1,
-        parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
-    );
+    const page = parsePageParam(params.page);
     const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
     const statusId = params.statusId
         ? parseInt(Array.isArray(params.statusId) ? params.statusId[0] : params.statusId)

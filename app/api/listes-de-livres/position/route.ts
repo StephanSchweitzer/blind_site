@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { COUPS_DE_COEUR_PAGE_SIZE } from '@/app/listes-de-livres/data';
 
 export async function GET(request: Request) {
     try {
@@ -14,10 +15,16 @@ export async function GET(request: Request) {
             );
         }
 
-        // Find all coups de coeur IDs ordered by your preferred sort
+        // La position doit être calculée sur EXACTEMENT la liste que la page
+        // publique pagine — `active: true`, même tri (voir
+        // app/listes-de-livres/data.ts). Comptées sur toutes les listes, les
+        // positions se décalaient d'un cran pour chaque liste dépubliée plus
+        // récente, et le résultat de recherche renvoyait vers la page d'une
+        // autre liste.
         const allIds = await prisma.coupsDeCoeur.findMany({
+            where: { active: true },
             select: { id: true },
-            orderBy: { createdAt: 'desc' }, // Adjust ordering as needed
+            orderBy: { createdAt: 'desc' },
         });
 
         // Find the position of the requested ID
@@ -30,8 +37,7 @@ export async function GET(request: Request) {
             );
         }
 
-        // Calculate the page number (assuming 1 item per page)
-        const page = position + 1;
+        const page = Math.floor(position / COUPS_DE_COEUR_PAGE_SIZE) + 1;
 
         return NextResponse.json({ page });
     } catch (error) {

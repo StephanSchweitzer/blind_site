@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { GenresTable } from './genres-table';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -35,7 +36,7 @@ async function getGenres(page: number, searchTerm: string) {
         prisma.genre.findMany({
             where: whereClause,
             orderBy: { name: 'asc' }, // Keep the original ordering
-            skip: (page - 1) * genresPerPage,
+            skip: pageSkip(page, genresPerPage),
             take: genresPerPage,
             // The edit dialogue replaced the genre detail page — it still tells
             // you how many books hang off the genre before you delete it.
@@ -59,7 +60,7 @@ export default async function Genres({ searchParams }: PageProps) {
     const searchParam = typeof params.search === 'string' ? params.search :
         Array.isArray(params.search) ? params.search[0] : '';
 
-    const page = parseInt(pageParam);
+    const page = parsePageParam(pageParam);
     const searchTerm = searchParam;
 
     const { genres, totalPages } = await getGenres(page, searchTerm);

@@ -1,6 +1,7 @@
 import CoupsDeCoeurClient from './CoupsDeCoeurClient';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
-import { getCoupsDeCoeurPage } from './data';
+import { getCoupsDeCoeurPage, COUPS_DE_COEUR_PAGE_SIZE } from './data';
+import { parsePageParam } from '@/lib/pagination';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -9,17 +10,15 @@ export const metadata: Metadata = {
     alternates: { canonical: '/listes-de-livres' },
 };
 
-const LIMIT = 1;
-
 export default async function CoupsDeCoeurPage({
                                                    searchParams,
                                                }: {
     searchParams: Promise<{ page?: string }>;
 }) {
     const { page: pageParam } = await searchParams;
-    const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
+    const page = parsePageParam(pageParam);
 
-    const { items, total } = await getCoupsDeCoeurPage(page, LIMIT);
+    const { items, total } = await getCoupsDeCoeurPage(page, COUPS_DE_COEUR_PAGE_SIZE);
 
     const content: CoupDeCoeur[] = items;
 
@@ -27,7 +26,7 @@ export default async function CoupsDeCoeurPage({
         <CoupsDeCoeurClient
             content={content}
             currentPage={page}
-            totalPages={Math.max(1, Math.ceil(total / LIMIT))}
+            totalPages={Math.max(1, Math.ceil(total / COUPS_DE_COEUR_PAGE_SIZE))}
         />
     );
 }

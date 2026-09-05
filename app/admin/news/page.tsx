@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { ArticlesTable } from './articles-table';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -63,7 +64,7 @@ async function getArticles(page: number, searchTerm: string) {
                 orderBy: {
                     publishedAt: 'desc'
                 },
-                skip: (page - 1) * articlesPerPage,
+                skip: pageSkip(page, articlesPerPage),
                 take: articlesPerPage,
             }),
             prisma.news.count({ where: whereClause }),
@@ -90,7 +91,7 @@ export default async function Articles({ searchParams }: PageProps) {
 
     // Parse page parameter
     const pageStr = Array.isArray(params.page) ? params.page[0] : params.page ?? '1';
-    const page = Math.max(1, parseInt(pageStr, 10) || 1);
+    const page = parsePageParam(pageStr);
 
     // Parse search parameter
     const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search ?? '';

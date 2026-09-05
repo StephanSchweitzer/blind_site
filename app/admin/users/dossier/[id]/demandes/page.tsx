@@ -9,6 +9,7 @@ import {
 
 // ⚠️ ADJUST this import to wherever your orders-table.tsx actually lives.
 import OrdersTable from '@/app/admin/orders/orders-table';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -25,7 +26,7 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
     const sp = await searchParams;
     const aveugleId = parseInt(id);
 
-    const page = Math.max(1, parseInt(Array.isArray(sp.page) ? sp.page[0] : sp.page || '1'));
+    const page = parsePageParam(sp.page);
     const searchTerm = Array.isArray(sp.search) ? sp.search[0] : sp.search || '';
     const filter = Array.isArray(sp.filter) ? sp.filter[0] : sp.filter || 'all';
     const statusId = sp.statusId
@@ -107,7 +108,7 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
         prisma.orders.findMany({
             where: whereClause,
             orderBy: { requestReceivedDate: 'desc' },
-            skip: Math.max(0, (page - 1) * ORDERS_PER_PAGE),
+            skip: pageSkip(page, ORDERS_PER_PAGE),
             take: ORDERS_PER_PAGE,
             include: ordersTableInclude,
         }),

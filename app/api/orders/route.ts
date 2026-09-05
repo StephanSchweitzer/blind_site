@@ -8,6 +8,7 @@ import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { buildOrderSearchWhere } from '@/lib/search';
+import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 
 /**
  * Shape of a demande in a list response. Hoisted out of the query so the
@@ -52,7 +53,7 @@ const ORDER_LIST_SELECT = {
 export const GET = withAdmin(async (request) => {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const page = parseInt(searchParams.get('page') || '1');
+        const page = parsePageParam(searchParams.get('page'));
         // Normalized so a « #1234 » pasted out of « Modifier la demande #1234 »
         // resolves to that demande instead of returning nothing.
         const search = normalizeSearchQuery(searchParams.get('search') || '');
@@ -66,10 +67,7 @@ export const GET = withAdmin(async (request) => {
         // ignored the parameter and served 10, which is why staff reported the
         // results list as too short no matter how tall it was drawn. Capped at
         // 100 so a hand-written URL can't ask for the whole table.
-        const requestedLimit = parseInt(searchParams.get('limit') || '');
-        const ordersPerPage = Number.isFinite(requestedLimit) && requestedLimit > 0
-            ? Math.min(requestedLimit, 100)
-            : 10;
+        const ordersPerPage = parseLimitParam(searchParams.get('limit'), 10);
 
         const whereClause: Prisma.OrdersWhereInput = {};
 
@@ -208,7 +206,7 @@ export const GET = withAdmin(async (request) => {
             prisma.orders.findMany({
                 where: whereClause,
                 orderBy,
-                skip: Math.max(0, (page - 1) * ordersPerPage),
+                skip: pageSkip(page, ordersPerPage),
                 take: ordersPerPage,
                 select: ORDER_LIST_SELECT,
             }),

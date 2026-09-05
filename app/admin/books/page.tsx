@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import BooksTable from './books-table';
 import { notFound } from 'next/navigation';
 import { buildBookScopeWhere, AudioFilter } from '@/lib/books/searchWhere';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -44,7 +45,7 @@ async function getBooks(
             prisma.book.findMany({
                 where: listWhere,
                 orderBy: { createdAt: 'desc' },
-                skip: Math.max(0, (page - 1) * booksPerPage),
+                skip: pageSkip(page, booksPerPage),
                 take: booksPerPage,
                 include: {
                     addedBy: {
@@ -96,9 +97,7 @@ async function getBooks(
 export default async function AdminBooksPage({ searchParams }: PageProps) {
     const params = await searchParams;
 
-    const page = Math.max(1, parseInt(
-        Array.isArray(params.page) ? params.page[0] : params.page || '1'
-    ));
+    const page = parsePageParam(params.page);
     const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
     const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
     const genreIds = (Array.isArray(params.genres) ? params.genres[0] : params.genres || '')

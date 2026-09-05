@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import {News, Prisma} from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
 import { withAdmin } from '@/lib/auth/guards';
+import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 
 export const POST = withAdmin(async (req, { me }) => {
     revalidateAdmin();
@@ -74,12 +75,12 @@ export const POST = withAdmin(async (req, { me }) => {
 export async function GET(req: NextRequest) {
     try {
         const searchParams = new URL(req.url).searchParams;
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '5');
+        const page = parsePageParam(searchParams.get('page'));
+        const limit = parseLimitParam(searchParams.get('limit'), 5);
         const type = searchParams.get('type');
         const search = searchParams.get('search');
 
-        const skip = (page - 1) * limit;
+        const skip = pageSkip(page, limit);
 
         // Build the where clause based on filters
         const where: Prisma.NewsWhereInput = {

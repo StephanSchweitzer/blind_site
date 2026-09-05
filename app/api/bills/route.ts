@@ -11,20 +11,19 @@ import {
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { withAdmin } from '@/lib/auth/guards';
+import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 
 const LATE_THRESHOLD_DAYS = 30;
 
 export const GET = withAdmin(async (request) => {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+        const page = parsePageParam(searchParams.get('page'));
         const search = searchParams.get('search') || '';
         const rawStatus = searchParams.get('status');
         const late = searchParams.get('late') === 'true';
         const rawClientId = searchParams.get('clientId');
-        const rawLimit = searchParams.get('limit');
-
-        const billsPerPage = rawLimit ? Math.max(1, parseInt(rawLimit)) : 10;
+        const billsPerPage = parseLimitParam(searchParams.get('limit'), 10);
 
         // Hide soft-deleted bills from the listing.
         const whereClause: Prisma.BillWhereInput = { isActive: true };
@@ -54,7 +53,7 @@ export const GET = withAdmin(async (request) => {
             prisma.bill.findMany({
                 where: whereClause,
                 orderBy: { creationDate: 'desc' },
-                skip: Math.max(0, (page - 1) * billsPerPage),
+                skip: pageSkip(page, billsPerPage),
                 take: billsPerPage,
                 include: billsTableInclude,
             }),

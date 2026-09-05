@@ -4,15 +4,24 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { withSuperAdmin } from '@/lib/auth/guards';
+import {
+    parseRecordId,
+    invalidIdResponse,
+    isRecordNotFound,
+    notFoundResponse,
+} from '@/lib/api-errors';
 
 const PATH = '/nous-rejoindre';
 
 export const PUT = withSuperAdmin(async (req, { params }) => {
     try {
         const { id } = await params!;
+        const optionId = parseRecordId(id);
+        if (optionId === null) return invalidIdResponse();
+
         const b = await req.json();
         const item = await prisma.membershipOption.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: optionId },
             data: {
                 ...(b.iconKey !== undefined && { iconKey: b.iconKey }),
                 ...(b.colorTheme !== undefined && { colorTheme: b.colorTheme }),
@@ -30,6 +39,7 @@ export const PUT = withSuperAdmin(async (req, { params }) => {
         revalidatePublic(CACHE_TAGS.nousRejoindre, PATH);
         return NextResponse.json(item);
     } catch (error) {
+        if (isRecordNotFound(error)) return notFoundResponse('Option introuvable');
         console.error('Error updating membership option:', error);
         return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
     }
@@ -38,11 +48,15 @@ export const PUT = withSuperAdmin(async (req, { params }) => {
 export const DELETE = withSuperAdmin(async (_req, { params }) => {
     try {
         const { id } = await params!;
-        await prisma.membershipOption.delete({ where: { id: parseInt(id, 10) } });
+        const optionId = parseRecordId(id);
+        if (optionId === null) return invalidIdResponse();
+
+        await prisma.membershipOption.delete({ where: { id: optionId } });
         revalidateAdmin();
         revalidatePublic(CACHE_TAGS.nousRejoindre, PATH);
         return NextResponse.json({ success: true });
     } catch (error) {
+        if (isRecordNotFound(error)) return notFoundResponse('Option introuvable');
         console.error('Error deleting membership option:', error);
         return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
     }

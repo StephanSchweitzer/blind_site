@@ -6,15 +6,16 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
+import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const search = searchParams.get('search') || '';
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10');
+        const page = parsePageParam(searchParams.get('page'));
+        const limit = parseLimitParam(searchParams.get('limit'), 10);
         const recent = searchParams.get('recent') === 'true';
-        const skip = (page - 1) * limit;
+        const skip = pageSkip(page, limit);
 
         let whereClause: Prisma.CoupsDeCoeurWhereInput = {
             active: true
@@ -85,6 +86,12 @@ export async function GET(request: NextRequest) {
                 where: whereClause,
                 include: {
                     books: {
+                        // Cette route est ouverte sans session (la recherche
+                        // publique s'en sert), et sans ce filtre elle renvoyait
+                        // la fiche complète d'un livre masqué du catalogue dès
+                        // qu'il figurait dans une liste. app/listes-de-livres/
+                        // data.ts, qui alimente la page elle-même, filtre déjà.
+                        where: { book: { hiddenFromCatalogue: false } },
                         include: {
                             book: {
                                 include: {

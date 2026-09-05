@@ -4,6 +4,7 @@ import PaymentsTable from './payments-table';
 import { buildUserNameSearch } from '@/lib/search';
 import { paymentsTableInclude } from '@/types/models/payment.model';
 import { notFound } from 'next/navigation';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -38,7 +39,7 @@ async function getPayments(
             prisma.payment.findMany({
                 where: whereClause,
                 orderBy: { creationDate: 'desc' },
-                skip: Math.max(0, (page - 1) * paymentsPerPage),
+                skip: pageSkip(page, paymentsPerPage),
                 take: paymentsPerPage,
                 include: paymentsTableInclude,
             }),
@@ -61,10 +62,7 @@ async function getPayments(
 export default async function AdminPaymentsPage({ searchParams }: PageProps) {
     const params = await searchParams;
 
-    const page = Math.max(
-        1,
-        parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
-    );
+    const page = parsePageParam(params.page);
     const searchTerm = Array.isArray(params.search)
         ? params.search[0]
         : params.search || '';

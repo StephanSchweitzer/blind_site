@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { coupsDeCoeurIncludeConfigs } from '@/types/models/coups-de-coeur.model';
 import { CoupsTable } from './coups-table';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -77,7 +78,7 @@ async function getCoupsDeCoeur(page: number, searchTerm: string) {
             orderBy: {
                 createdAt: 'desc'
             },
-            skip: (page - 1) * itemsPerPage,
+            skip: pageSkip(page, itemsPerPage),
             take: itemsPerPage,
         }),
         prisma.coupsDeCoeur.count({ where: whereClause }),
@@ -99,7 +100,7 @@ export default async function CoupsDeCoeur({ searchParams }: PageProps) {
     const searchParam = typeof params.search === 'string' ? params.search :
         Array.isArray(params.search) ? params.search[0] : '';
 
-    const page = parseInt(pageParam);
+    const page = parsePageParam(pageParam);
     const searchTerm = searchParam;
 
     const { items, totalPages } = await getCoupsDeCoeur(page, searchTerm);

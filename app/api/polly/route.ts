@@ -41,7 +41,11 @@ function formatMinutes(min: number): string {
  * dérivée de l'audio et ne passe pas par la route.
  */
 export async function POST(req: NextRequest) {
-    const { bookId } = await req.json();
+    // Corps illisible = 400, pas 500 : un POST sans corps faisait jeter
+    // `req.json()` hors de tout try, et la route — ouverte sans session —
+    // répondait par une erreur serveur non gérée.
+    const body = await req.json().catch(() => null);
+    const bookId = (body as { bookId?: unknown } | null)?.bookId;
 
     const id = Number(bookId);
     if (!Number.isInteger(id)) {
@@ -98,32 +102,45 @@ export async function POST(req: NextRequest) {
         VoiceId: 'Lea',
     });
 
-    const response = await pollyClient.send(command);
-    const audioData = await response.AudioStream?.transformToByteArray();
-    if (!audioData) {
+    // Synthèse, dépôt et mise en cache sous un seul try : trois appels à des
+    // services extérieurs (Polly, Vercel Blob) qui échouent pour des raisons
+    // qui ne regardent pas l'appelant — quota atteint, panne réseau,
+    // identifiants absents. Sans lui, l'échec remontait en erreur non gérée sur
+    // une route publique. Une réponse non-200 laisse BookModal annoncer « La
+    // lecture audio n'a pas pu démarrer » à l'auditeur, ce qui est le message
+    // juste ; une erreur non gérée ne lui disait rien de plus mais salissait
+    // les logs et exposait la trace.
+    try {
+        const response = await pollyClient.send(command);
+        const audioData = await response.AudioStream?.transformToByteArray();
+        if (!audioData) {
+            return NextResponse.json({ error: 'Échec de la synthèse' }, { status: 500 });
+        }
+
+        const fileName = `book-${book.id}.mp3`;
+        let audioUrl: string;
+
+        if (process.env.NODE_ENV === 'development') {
+            const dir = path.join(process.cwd(), 'public', 'book_descriptions');
+            await mkdir(dir, { recursive: true });
+            await writeFile(path.join(dir, fileName), Buffer.from(audioData));
+            audioUrl = `/book_descriptions/${fileName}`;
+        } else {
+            const { url } = await put(`book_descriptions/${fileName}`, Buffer.from(audioData), {
+                access: 'public',
+                contentType: 'audio/mpeg',
+            });
+            audioUrl = url;
+        }
+
+        await prisma.book.update({
+            where: { id: book.id },
+            data: { polly_audio_url: audioUrl },
+        });
+
+        return NextResponse.json({ audioUrl });
+    } catch (error) {
+        console.error('Synthèse vocale échouée pour le livre', book.id, error);
         return NextResponse.json({ error: 'Échec de la synthèse' }, { status: 500 });
     }
-
-    const fileName = `book-${book.id}.mp3`;
-    let audioUrl: string;
-
-    if (process.env.NODE_ENV === 'development') {
-        const dir = path.join(process.cwd(), 'public', 'book_descriptions');
-        await mkdir(dir, { recursive: true });
-        await writeFile(path.join(dir, fileName), Buffer.from(audioData));
-        audioUrl = `/book_descriptions/${fileName}`;
-    } else {
-        const { url } = await put(`book_descriptions/${fileName}`, Buffer.from(audioData), {
-            access: 'public',
-            contentType: 'audio/mpeg',
-        });
-        audioUrl = url;
-    }
-
-    await prisma.book.update({
-        where: { id: book.id },
-        data: { polly_audio_url: audioUrl },
-    });
-
-    return NextResponse.json({ audioUrl });
 }

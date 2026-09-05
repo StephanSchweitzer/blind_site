@@ -13,6 +13,13 @@ export async function GET(request: NextRequest) {
 
         const results = await prisma.coupsDeCoeur.findMany({
             where: {
+                // `active: false` retire une liste du site — c'est le geste par
+                // lequel un permanent la dépublie. Sans ce filtre, la recherche
+                // publique continuait d'en proposer le titre et la description,
+                // et le clic menait vers une page qui ne la contient pas : le
+                // reste du site (app/listes-de-livres/data.ts, et jusqu'à la
+                // route d'administration) ne lit QUE les listes actives.
+                active: true,
                 OR: [
                     { title: { contains: search, mode: 'insensitive' } },
                     { description: { contains: search, mode: 'insensitive' } },

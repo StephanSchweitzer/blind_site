@@ -5,6 +5,7 @@ import { BillingStatus, Prisma } from '@prisma/client';
 // Your bills page imports it as `./bills-table`; from here it needs a path/alias.
 import BillsTable from '@/app/admin/bills/bills-table';
 import { billsTableInclude } from '@/types/models/bill.model';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,10 +22,7 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
     const sp = await searchParams;
     const clientId = parseInt(id);
 
-    const page = Math.max(
-        1,
-        parseInt(Array.isArray(sp.page) ? sp.page[0] : sp.page || '1'),
-    );
+    const page = parsePageParam(sp.page);
 
     const rawStatus = Array.isArray(sp.status) ? sp.status[0] : sp.status;
     const status =
@@ -50,7 +48,7 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
         prisma.bill.findMany({
             where: whereClause,
             orderBy: { creationDate: 'desc' },
-            skip: Math.max(0, (page - 1) * BILLS_PER_PAGE),
+            skip: pageSkip(page, BILLS_PER_PAGE),
             take: BILLS_PER_PAGE,
             include: billsTableInclude,
         }),

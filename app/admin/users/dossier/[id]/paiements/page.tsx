@@ -4,6 +4,7 @@ import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 // ⚠️ ADJUST this import to wherever your payments-table.tsx actually lives.
 import PaymentsTable from '@/app/admin/payments/payments-table';
 import { paymentsTableInclude } from '@/types/models/payment.model';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -20,7 +21,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
     const sp = await searchParams;
     const clientId = parseInt(id);
 
-    const page = Math.max(1, parseInt(Array.isArray(sp.page) ? sp.page[0] : sp.page || '1'));
+    const page = parsePageParam(sp.page);
 
     const rawType = Array.isArray(sp.type) ? sp.type[0] : sp.type;
     const type =
@@ -43,7 +44,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
         prisma.payment.findMany({
             where: whereClause,
             orderBy: { creationDate: 'desc' },
-            skip: Math.max(0, (page - 1) * PAYMENTS_PER_PAGE),
+            skip: pageSkip(page, PAYMENTS_PER_PAGE),
             take: PAYMENTS_PER_PAGE,
             include: paymentsTableInclude,
         }),

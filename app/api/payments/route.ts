@@ -5,6 +5,7 @@ import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import { PaymentCreateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
 import { buildUserNameSearch } from '@/lib/search';
+import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
@@ -13,8 +14,8 @@ export const GET = withAdmin(async (request) => {
     try {
         const sp = request.nextUrl.searchParams;
 
-        const page = Math.max(1, parseInt(sp.get('page') || '1'));
-        const limit = Math.max(1, Math.min(100, parseInt(sp.get('limit') || '10')));
+        const page = parsePageParam(sp.get('page'));
+        const limit = parseLimitParam(sp.get('limit'), 10);
         const searchTerm = sp.get('search') || '';
         const clientId = sp.get('clientId') ? parseInt(sp.get('clientId')!) : undefined;
         const includeInactive = sp.get('includeInactive') === 'true';
@@ -47,7 +48,7 @@ export const GET = withAdmin(async (request) => {
             prisma.payment.findMany({
                 where: whereClause,
                 orderBy: { creationDate: 'desc' },
-                skip: (page - 1) * limit,
+                skip: pageSkip(page, limit),
                 take: limit,
                 include: { client: { select: clientSelect }, bill: { select: billSelect } },
             }),

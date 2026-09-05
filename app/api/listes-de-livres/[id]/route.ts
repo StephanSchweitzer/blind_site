@@ -4,6 +4,7 @@ import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
+import { isRecordNotFound, notFoundResponse } from '@/lib/api-errors';
 
 // Back-office only. The public /listes-de-livres page reads the active list
 // through `/api/listes-de-livres` (and /preview, /position), which stay open;
@@ -122,20 +123,25 @@ export const DELETE = withAdmin(async (_req, { params }) => {
     }
 
     try {
-        // First delete the related CoupsDeCoeurBooks entries
-        await prisma.coupsDeCoeurBooks.deleteMany({
-            where: { coupsDeCoeurId: coupId }
-        });
+        // Les deux suppressions dans UNE transaction. En deux instructions
+        // séparées, l'échec de la seconde laissait la liste en place mais
+        // vidée de tous ses livres — un état que rien ne rattrape, puisque le
+        // rattachement n'existe plus nulle part.
+        await prisma.$transaction(async (tx) => {
+            await tx.coupsDeCoeurBooks.deleteMany({
+                where: { coupsDeCoeurId: coupId }
+            });
 
-        // Then delete the CoupsDeCoeur entry
-        await prisma.coupsDeCoeur.delete({
-            where: { id: coupId }
+            await tx.coupsDeCoeur.delete({
+                where: { id: coupId }
+            });
         });
 
         revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/listes-de-livres');
 
         return NextResponse.json({ message: 'Coup de coeur deleted successfully' });
     } catch (error) {
+        if (isRecordNotFound(error)) return notFoundResponse('Liste introuvable');
         console.error('Failed to delete coup de coeur:', error);
         return NextResponse.json({ error: 'Failed to delete coup de coeur' }, { status: 500 });
     }

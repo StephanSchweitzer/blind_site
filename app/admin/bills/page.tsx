@@ -4,6 +4,7 @@ import BillsTable from './bills-table';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { notFound } from 'next/navigation';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -47,7 +48,7 @@ async function getBills(
             prisma.bill.findMany({
                 where: whereClause,
                 orderBy: { creationDate: 'desc' },
-                skip: Math.max(0, (page - 1) * billsPerPage),
+                skip: pageSkip(page, billsPerPage),
                 take: billsPerPage,
                 include: billsTableInclude,
             }),
@@ -69,10 +70,7 @@ async function getBills(
 export default async function AdminBillsPage({ searchParams }: PageProps) {
     const params = await searchParams;
 
-    const page = Math.max(
-        1,
-        parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
-    );
+    const page = parsePageParam(params.page);
     const searchTerm = Array.isArray(params.search)
         ? params.search[0]
         : params.search || '';

@@ -9,6 +9,7 @@ import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
 import { activityStatusFilterWhere, effectivelyActiveWhere } from '@/lib/users/activityStatus';
 import { LANGUAGE_VALUES } from '@/lib/user-enums';
 import { cotisationCoverageQuery } from '@/lib/cotisation';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -118,7 +119,7 @@ async function getUsers(
             prisma.user.findMany({
                 where: listWhere,
                 orderBy: { id: 'desc' },
-                skip: Math.max(0, (page - 1) * usersPerPage),
+                skip: pageSkip(page, usersPerPage),
                 take: usersPerPage,
                 select: {
                     id: true,
@@ -176,10 +177,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
 
     const searchParamsResolved = await searchParams;
 
-    const page = Math.max(
-        1,
-        parseInt(Array.isArray(searchParamsResolved.page) ? searchParamsResolved.page[0] : searchParamsResolved.page || '1')
-    );
+    const page = parsePageParam(searchParamsResolved.page);
     const searchTerm = Array.isArray(searchParamsResolved.search)
         ? searchParamsResolved.search[0]
         : searchParamsResolved.search || '';

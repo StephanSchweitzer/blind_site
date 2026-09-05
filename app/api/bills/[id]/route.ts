@@ -490,6 +490,17 @@ export const DELETE = withAdmin(async (_request, { me, params }) => {
             return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
         }
 
+        // Déjà supprimée : on s'arrête là. `isActive` était lu sans être
+        // regardé, si bien qu'une seconde suppression (deux onglets, un retour
+        // arrière) rejouait tout le bloc — dont un second BillEvent
+        // ORDER_DETACHED dans un historique où rien ne s'était détaché.
+        if (!existing.isActive) {
+            return NextResponse.json(
+                { error: 'Already deleted', message: `La facture #${billId} est déjà supprimée.` },
+                { status: 409 }
+            );
+        }
+
         if (existing.state !== BillingStatus.DRAFT) {
             return NextResponse.json(
                 {

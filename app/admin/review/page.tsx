@@ -4,6 +4,7 @@ import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { titlePrefixMatch } from '@/lib/books/title-match';
 import ReviewClient, { type ReviewBook, type ReviewPair } from './review-client';
+import { parsePageParam, pageSkip } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -75,7 +76,7 @@ export default async function AdminReviewPage({ searchParams }: PageProps) {
     if (!me || !isAdmin(me.accessLevel)) notFound();
 
     const params = await searchParams;
-    const page = Math.max(1, parseInt((Array.isArray(params.page) ? params.page[0] : params.page) || '1') || 1);
+    const page = parsePageParam(params.page);
     const q = (Array.isArray(params.q) ? params.q[0] : params.q) || '';
 
     const searchWhere = buildSearchWhere(q);
@@ -85,7 +86,7 @@ export default async function AdminReviewPage({ searchParams }: PageProps) {
         prisma.book.findMany({
             where,
             orderBy: { createdAt: 'desc' },
-            skip: (page - 1) * PER_PAGE,
+            skip: pageSkip(page, PER_PAGE),
             take: PER_PAGE,
             select: BOOK_SELECT,
         }),
