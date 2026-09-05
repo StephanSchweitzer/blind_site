@@ -33,8 +33,12 @@ function formatMinutes(min: number): string {
  *     only ever read a real catalogue book's own fields.
  *  2. Cache via Book.polly_audio_url — synthesized at most once per book;
  *     thereafter we return the stored URL. Cost is bounded by catalogue size.
- * Clear polly_audio_url in the book update route when title/author/duration/
- * description change, so the cached audio regenerates.
+ *  3. Catalogue public uniquement — voir le findFirst ci-dessous.
+ *
+ * Le cache est invalidé aux deux endroits où le texte lu peut bouger : PUT
+ * /api/books/[id] pour le titre, l'auteur et la description, et
+ * refreshBookAudioState (lib/audio/state.ts) pour la durée de lecture, qui est
+ * dérivée de l'audio et ne passe pas par la route.
  */
 export async function POST(req: NextRequest) {
     const { bookId } = await req.json();
@@ -44,8 +48,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'bookId invalide' }, { status: 400 });
     }
 
-    const book = await prisma.book.findUnique({
-        where: { id },
+    // hiddenFromCatalogue est respecté ici comme partout ailleurs côté public
+    // (app/catalogue/data.ts, app/listes-de-livres/data.ts). Cette route est
+    // ouverte sans session et accepte n'importe quel bookId : sans ce filtre,
+    // n'importe qui pouvait faire lire à voix haute le titre, l'auteur et la
+    // description d'un ouvrage délibérément masqué du site — et en faire
+    // déposer l'enregistrement sur une URL Vercel Blob PUBLIQUE, qui lui
+    // survivait. Le bouton n'existe que dans BookModal, servi uniquement par
+    // ces deux pages, qui filtrent déjà : rien de légitime ne passe par là.
+    //
+    // findFirst et non findUnique : Prisma n'accepte pas de filtre non unique
+    // dans un where de findUnique.
+    const book = await prisma.book.findFirst({
+        where: { id, hiddenFromCatalogue: false },
         select: {
             id: true,
             title: true,

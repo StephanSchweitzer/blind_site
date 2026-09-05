@@ -368,16 +368,31 @@ export const PATCH = withAdmin(async (
         const resultingIsLogin =
             resultingAccessLevel === 'admin' || resultingAccessLevel === 'super_admin';
 
-        // Elevating someone TO a login level is privileged — super_admin only,
-        // mirroring the create route. Scoped to actual changes so a plain admin can
-        // still edit existing admins without being blocked.
-        const isElevation =
-            body.accessLevel !== undefined &&
-            body.accessLevel !== existingUser.accessLevel &&
-            (body.accessLevel === 'admin' || body.accessLevel === 'super_admin');
-        if (isElevation && actorLevel !== 'super_admin') {
+        // Changer un niveau d'accès est réservé aux super administrateurs — dans
+        // LES DEUX SENS.
+        //
+        // Ce garde ne couvrait que la promotion. La rétrogradation passait donc :
+        // un simple permanent pouvait ramener le super administrateur à
+        // « Membre » — lui fermant /admin/stats, les routes withSuperAdmin, et la
+        // seule porte par laquelle des comptes de connexion se créent. Il ne
+        // pouvait pas se promouvoir lui-même, mais il pouvait retirer à quelqu'un
+        // d'autre ce qu'il n'avait pas le droit de donner.
+        //
+        // C'est aussi ce que le formulaire annonce déjà : UserFormBackendBase
+        // verrouille le champ dès que l'acteur est `admin` (« Seuls les super
+        // administrateurs peuvent modifier les niveaux d'accès »), et verrouille
+        // le niveau d'un super_admin pour tout le monde sauf un autre super_admin.
+        // Le serveur n'en appliquait que la moitié — et la règle du dépôt est que
+        // le contrôle côté client ne suffit jamais.
+        //
+        // Toujours borné à un CHANGEMENT réel, pour qu'un permanent puisse
+        // continuer d'éditer la fiche d'un autre permanent (adresse, téléphone…)
+        // sans être bloqué par le niveau que la fiche transporte déjà.
+        const accessLevelIsChanging =
+            body.accessLevel !== undefined && body.accessLevel !== existingUser.accessLevel;
+        if (accessLevelIsChanging && actorLevel !== 'super_admin') {
             return NextResponse.json(
-                { message: 'Seuls les super administrateurs peuvent promouvoir une personne en administrateur ou membre permanent' },
+                { message: "Seuls les super administrateurs peuvent modifier le niveau d'accès d'une personne" },
                 { status: 403 }
             );
         }

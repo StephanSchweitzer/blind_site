@@ -170,7 +170,7 @@ export async function refreshBookAudioState(
 ): Promise<RefreshResult> {
     const book = await prisma.book.findUnique({
         where: { id: bookId },
-        select: { audio_filepath: true, audioSizeKb: true },
+        select: { audio_filepath: true, audioSizeKb: true, readingDurationMinutes: true },
     });
     if (!book) throw new Error(`Livre ${bookId} introuvable`);
 
@@ -225,11 +225,35 @@ export async function refreshBookAudioState(
         }
     }
 
+    // L'ANNONCE VOCALE EST UN CACHE, ET LA DURÉE EN FAIT PARTIE.
+    //
+    // /api/polly compose le texte lu à partir du titre, de l'auteur, de la
+    // description ET de la durée de lecture, puis stocke le MP3 une fois pour
+    // toutes dans polly_audio_url. PUT /api/books/[id] invalide déjà ce cache
+    // quand un des trois premiers change ; la durée, elle, ne passe jamais par
+    // cette route — elle est dérivée de l'audio, et cette fonction en est
+    // l'unique écrivain. Personne ne l'invalidait donc ici.
+    //
+    // Conséquence, sur le seul chemin que les personnes aveugles empruntent :
+    // un livre mesuré APRÈS la synthèse de son annonce gardait pour toujours
+    // une annonce qui ne disait pas sa durée, et un livre remesuré (piste
+    // ajoutée, corrigée, restaurée) continuait d'énoncer l'ancienne. Muet pour
+    // un permanent voyant qui relit la fiche, puisque la page, elle, affiche
+    // la bonne valeur.
+    //
+    // Seulement sur un vrai mouvement : refreshBookAudioState tourne à chaque
+    // ouverture de dialogue, et réécrire null à chaque relecture ferait
+    // resynthétiser — donc repayer — l'annonce de tout le catalogue.
+    const durationChanged =
+        readingDurationMinutes !== undefined &&
+        readingDurationMinutes !== book.readingDurationMinutes;
+
     // Outside the audit trail, and provably lossless: this statement writes only
     // the cache columns, and the trail already refuses all of them — the
-    // states are DERIVED_FIELDS, audioCheckedAt is a NOISE_FIELD — so it could
-    // never produce a surviving event. Saying so here also spares the audit
-    // extension its "before" read on a path that runs on every dialogue open.
+    // states, readingDurationMinutes and polly_audio_url are DERIVED_FIELDS,
+    // audioCheckedAt is a NOISE_FIELD — so it could never produce a surviving
+    // event. Saying so here also spares the audit extension its "before" read
+    // on a path that runs on every dialogue open.
     //
     // Scoped to this one statement on purpose: the reprice below moves
     // Orders.cost, which IS a decision worth tracing, and must stay audited.
@@ -242,6 +266,7 @@ export async function refreshBookAudioState(
                 audioSizeKb: sizeKb,
                 audioCheckedAt: new Date(),
                 ...(readingDurationMinutes !== undefined ? { readingDurationMinutes } : {}),
+                ...(durationChanged ? { polly_audio_url: null } : {}),
             },
         })
     );

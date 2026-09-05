@@ -380,8 +380,46 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         if (action === 'updatePaymentReference') {
             const { paymentReference } = body;
             const trimmed = paymentReference?.trim() || null;
-            const bill = await prisma.bill.findUnique({ where: { id: billId, isActive: true }, select: { id: true, state: true } });
+            const bill = await prisma.bill.findUnique({
+                where: { id: billId, isActive: true },
+                select: { id: true, state: true, paymentReference: true },
+            });
             if (!bill) return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
+
+            // Une facture PAYÉE ou SOLDÉE ne peut pas se retrouver SANS référence.
+            //
+            // `updateStatus` refuse de passer une facture à PAID sans référence —
+            // c'est l'invariant : une facture encaissée dit toujours par quoi. Cette
+            // action, elle, acceptait une chaîne vide dans n'importe quel état, et le
+            // crayon du modal est offert dans tous les états : vider le champ sur une
+            // facture payée la ramenait exactement dans l'état que la transition
+            // interdit, par la porte de derrière — « Non renseignée » sur une facture
+            // qui annonce un règlement, et plus rien pour dire lequel.
+            //
+            // Corriger une référence reste permis dans tous les états — c'est ce à
+            // quoi sert ce champ, et Bill étant un modèle audité, la valeur
+            // précédente part au journal toute seule. La VIDER n'est permis que tant
+            // que la facture n'annonce pas d'encaissement ; sur une facture réglée,
+            // le chemin de sortie est reopenBill, qui archive la référence dans le
+            // BillEvent avant de l'effacer.
+            const clearing = trimmed === null;
+            const settled = bill.state === BillingStatus.PAID || bill.state === BillingStatus.SOLDE;
+            if (clearing && settled) {
+                return NextResponse.json(
+                    {
+                        error: 'Reference required',
+                        message:
+                            `La facture #${billId} est ${getBillingStatusLabel(bill.state).toLowerCase()} : ` +
+                            `elle doit garder un identifiant de paiement. Corrigez-le, ou rouvrez la facture ` +
+                            `pour retirer son règlement.`,
+                    },
+                    { status: 409 }
+                );
+            }
+
+            if (trimmed === bill.paymentReference) {
+                return NextResponse.json({ message: 'Référence de paiement inchangée' });
+            }
 
             await prisma.bill.update({
                 where: { id: billId },

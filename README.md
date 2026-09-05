@@ -41,8 +41,19 @@ The admin equivalent is `revalidateAdmin()` (`lib/revalidate-admin.ts`), which m
 | `/auth/signin` | Staff sign-in (NextAuth credentials). |
 | `/auth/change-password` | Forced password change. New accounts are created with `passwordNeedsChange: true`; `middleware.ts` redirects them here until they set a real password. |
 | `/auth/password-changed-success` | Confirmation screen after a successful password change. |
+| `/auth/forgot-password` | Request a reset link. Reachable signed out, and answers identically whatever the address is, so it cannot be used to enumerate accounts. |
+| `/auth/reset-password` | Set a new password from a link's single-use token (30 min, SHA-256 at rest, re-checked against the account's *current* access level). |
 
-Access control lives in `middleware.ts` (protects `/admin/*`, `/profile`, `/auth/change-password`) and in `lib/auth/guards.ts`, which exports the `withAuth` / `withAdmin` route wrappers plus `getCurrentUser` / `isAdmin` / `isSuperAdmin`. **Every API route is wrapped** — there are no unguarded handlers.
+Access control lives in `middleware.ts` (protects `/admin/*`, `/profile`, `/auth/change-password`) and in `lib/auth/guards.ts`, which exports the `withAuth` / `withAdmin` / `withSuperAdmin` route wrappers plus `getCurrentUser` / `isAdmin` / `isSuperAdmin`.
+
+**Every API route is guarded, but not all of them by a wrapper.** The exceptions are deliberate and each says so in its own header comment — treat anything *not* on this list as a bug:
+
+- **Public by necessity** — `password-reset` and `password-reset/confirm` (someone locked out cannot authenticate; knowledge of the single-use token *is* the authentication), and `auth/[...nextauth]`.
+- **Public reads serving public pages** — `polly`, `news/search`, `listes-de-livres/preview` and `listes-de-livres/position`. They take reference input only, and respect `hiddenFromCatalogue` like every other public query.
+- **Secret-authenticated** — `cron/*`, on `CRON_SECRET` (§7).
+- **Guarded by hand rather than by a wrapper**, because the rule isn't a flat access level: `user/[id]` GET (admins see anyone; a member only their own record, capped at `basic`) and `upload-audio` (`getCurrentUser` + `isAdmin`).
+
+Everything else goes through a wrapper, which also opens the audit-actor scope — that is what puts a name on the writes underneath.
 
 Two independent axes, easy to conflate:
 
@@ -122,7 +133,7 @@ browser ──③ POST /api/books/[id]/audio/commit ─────► server   
 
 Consequences that shape the code:
 
-- **The server names the files, not the browser.** Playback order comes from `naturalCompare` over the whole filename, because the corpus has no uniform track numbering (`1000 22- Titre.mp3`, `1000  01 Titre.mp3`, date stamps like `1000 141201_1224.MP3`). `nextTrackName` (`lib/audio/naming.ts`) guarantees a new name **sorts after** the folder's current last track, or refuses — a track that sorts into the middle plays an audiobook's chapters out of order. Existing keys are never renamed.
+- **The server names the files, not the browser.** Playback order comes from `naturalCompare` over the whole filename, because the corpus has no uniform track numbering (`1000 22- Titre.mp3`, `1000  01 Titre.mp3`, date stamps like `1000 141201_1224.MP3`). `nextTrackName` (`lib/audio/naming.ts`) guarantees a new name **sorts after** the folder's current last track, or refuses — a track that sorts into the middle plays an audiobook's chapters out of order. **Nothing renames an existing key on its own** — no upload, backfill or repair ever touches one. The single exception is deliberate and manual: `PATCH /api/books/[id]/audio/track`, where an admin fixes a filename that is *itself* what puts the track in the wrong position (see *Deletion is a corbeille*), confirming the target by echoing its exact current name.
 - **The Content-Type is decided server-side**, because the signature covers it and browsers guess differently.
 - **`XMLHttpRequest`, not `fetch`**, in `hooks/useAudioUpload.ts` — fetch cannot report upload progress, and a 50 MB track with no progress bar looks hung. A `finalisation` phase covers the gap between the last byte leaving the machine and B2 acknowledging the write.
 - **B2 answers a share of requests with 500/503 by design** (a full or offline storage vault means "ask for another one"). The AWS SDK absorbs this for server-side calls; the browser bypasses the SDK, so the retry layer is built by hand — retried PUTs, retried signing, retried verification, and a second full pass for files the server could not confirm. What survives all of that is reported per file, with the original filename and a sentence saying what to do.
@@ -221,7 +232,9 @@ Declared in `vercel.json`, all three implemented under `app/api/cron/`:
 | `/api/cron/purge-audit-events` | `40 2 * * *` | Drops `AuditEvent` rows past the retention window. |
 | `/api/cron/purge-audio-trash` | `10 3 * * *` | Permanently removes corbeille objects past 14 days (`retainForever` rows exempt). |
 
-Two ways in: Vercel's scheduler with `Authorization: Bearer $CRON_SECRET`, or a signed-in super admin. **With no `CRON_SECRET` configured the routes refuse rather than standing open.**
+All three accept Vercel's scheduler, which sends `Authorization: Bearer $CRON_SECRET`. **With no `CRON_SECRET` configured they refuse rather than standing open.**
+
+The two purges additionally accept a **signed-in super admin**, so they can be forced from `/admin/stats` when the size warning appears. `expire-unavailability` does not, and does not need to: its on-demand equivalent is `POST /api/availability/expire` (`withAdmin`), the « Clôturer » button on `/admin/disponibilites`, which runs the same idempotent sweep.
 
 ## 8. API layer (`app/api`)
 
@@ -245,7 +258,9 @@ Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments
 
 **CMS** — `site-contact`, `team`, `historique`, `practical-info`, `membership`.
 
-**Other** — `polly` (staff-pick blurb → speech, stored in Vercel Blob), `google-books` (metadata proxy with retry aligned to Google's guidance), `upload-audio` (small clips → Vercel Blob), `books/check-isbn` / `user/check-duplicate` (soft duplicate warnings), `orders/recording-check`, `orders/[id]/assignment`, `bills/eligible-orders`, `user/invite` / `user/[id]/reset-password` / `status` / `activity` / `cotisation`, the `civilities` / `media-formats` / `statuses` lookups, and `auth/[...nextauth]`.
+**Accounts & sign-in** — `auth/[...nextauth]`, `password-reset` / `password-reset/confirm` (the forgotten-password flow), `user/change-password`, `user/password-status`, `user/[id]/reset-password` (a super admin re-sends credentials), `user/[id]/status` / `activity` / `cotisation` / `restore` / `mailing-label`, `user/search`, `user/update`, and the self-service `user/me/activity` / `user/me/unavailability`.
+
+**Other** — `polly` (a catalogue book's spoken announcement — title, author, reading duration, description — synthesized once per book and cached in `Book.polly_audio_url`, the file itself on Vercel Blob), `google-books` (metadata proxy with retry aligned to Google's guidance), `upload-audio` (the small recorded clips behind a coup de cœur description → Vercel Blob), `books/check-isbn` / `user/check-duplicate` (soft duplicate warnings), `orders/recording-check`, `orders/[id]/assignment`, `bills/eligible-orders`, `listes-de-livres/preview` / `position` (public search helpers), `news/search`, and the `civilities` / `media-formats` / `statuses` lookups.
 
 ## 9. Data model (Prisma / PostgreSQL)
 
@@ -259,7 +274,7 @@ Core entities: `User` (+ `Address`, `ReaderLanguage`), `Book`, `Genre`, `Orders`
 
 Notable patterns:
 
-- **Soft delete** — `deletedAt` on `User`, `Bill`, `Orders`; a global Prisma query extension (`lib/prisma.ts`) hides deleted users from all reads.
+- **Soft delete** — `deletedAt` on `User`, `Orders`, `Assignment`, `Bill` and `Payment`. A global Prisma query extension (`lib/prisma.ts`) hides deleted rows for `User`, `Orders` and `Assignment` — the three whose children cascade onto append-only history (`OrderEvent`, `AssignmentEvent`, `AssignmentReader`), which a physical delete would destroy. It filters **list reads only** (`findMany` / `findFirst` / `count` / `aggregate` / `groupBy`): `findUnique` is deliberately left alone, because Prisma forbids a non-unique `deletedAt` in its `where` and because a by-id read is intentional admin access that must still resolve a deleted row — so detail routes check `deletedAt` themselves. Raw SQL bypasses the extension entirely; the `/admin/stats` queries filter it by hand.
 - **`audioSizeKb` is in kibioctets, not bytes** — a byte count overflows `Int` past 2 Gio and would force `BigInt`, which neither `NextResponse.json` nor the client-component boundary can serialize, and a raw `Book` row crosses both.
 - **`hiddenFromCatalogue`** keeps sensitive or personal titles off the public site while leaving them fully usable in the back office.
 - Enums for delivery method, billing/order status, payment type/method, member type, access level, news type, language, save type, user activity status, audio link status and audio track action.
@@ -312,7 +327,9 @@ Built on semantic theme tokens (`bg-card`, `border-border`, `text-foreground`) s
 
 ## 12. Tech stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL (Supabase) · NextAuth v4 · Tailwind CSS + shadcn/ui + Radix · TanStack Query · Zod 4 · **Backblaze B2 via `@aws-sdk/client-s3` + `s3-request-presigner`** · AWS Polly · Vercel Blob · `client-zip` · React Email + Resend · `@react-pdf/renderer` · pnpm · Husky + lint-staged · deployed on Vercel.
+Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL (Supabase) · NextAuth v4 · Tailwind CSS + shadcn/ui + Radix · Zod 4 · **Backblaze B2 via `@aws-sdk/client-s3` + `s3-request-presigner`** · AWS Polly · Vercel Blob · `client-zip` · React Email + Resend · `@react-pdf/renderer` · pnpm · Husky + lint-staged · deployed on Vercel.
+
+Server state is fetched in the route handlers and in `hooks/` with plain `fetch` + `AbortController` (see `useEntitySearch`), and freshness comes from `router.refresh()` after a mutation plus the two revalidation helpers. There is **no client-side query cache**: `@tanstack/react-query` is still in `package.json` but is imported nowhere, so don't reach for it as though it were the house pattern — either adopt it deliberately or drop the dependency.
 
 ## 13. Project structure
 
@@ -408,7 +425,7 @@ pnpm tsx scripts/set-audio-cors.ts
 
 ### Audio maintenance (`scripts/`)
 
-Everything here reads `DIRECT_URL` first (`scripts/db-url.ts`) — the session pooler, not the transaction one.
+Every script that opens its own database connection reads `DIRECT_URL` first, via `scriptDatabaseUrl()` (`scripts/db-url.ts`) — the session pooler, not the transaction one. Use it in anything new rather than reading `process.env.DATABASE_URL` yourself. (`audio-manage.e2e.ts` is the exception, and on purpose: it drives the *app's* client and asserts that its `DATABASE_URL` points at localhost before touching anything. The pure test/config scripts open no connection at all.)
 
 | Script | Writes? | Description |
 |---|---|---|

@@ -172,6 +172,11 @@ touch `app/`, `lib/` or `components/`. These are the rows where the three column
   open. Keep that failure mode if you add one.
 - Super-admin-only pages `notFound()` or redirect rather than returning 403 — `/admin/stats`
   must not reveal that the URL exists.
+- **`accessLevel` only ever moves under a super admin — in both directions.** Creating a login
+  account, promoting to one, and demoting *out* of one are all `super_admin` gestures
+  (`POST /api/user`, `PATCH /api/user/[id]`). Guarding only promotion left a permanent able to
+  demote the super admin. Always scope the check to an *actual* change, so a permanent can
+  still edit another permanent's fiche without being blocked by the level the form carries.
 
 ## Business rules
 

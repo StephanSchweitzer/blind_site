@@ -19,6 +19,14 @@ of that.
   `Book.audioLinkStatus` / `audioTrackCount` / `audioSizeKb` / `audioCheckedAt` /
   `readingDurationMinutes`. Every mutating audio path calls it. Don't write those columns
   from a route, and don't skip the call.
+- **A duration that moves invalidates the spoken announcement.** `/api/polly` reads the
+  reading duration into the text it synthesizes, so `refreshBookAudioState` clears
+  `Book.polly_audio_url` when — and only when — `readingDurationMinutes` actually changes.
+  (`PUT /api/books/[id]` does the same for title, author and description.) Keep the
+  "only on a real change" condition: this function runs on every dialogue open, and clearing
+  the cache on a mere re-read would re-synthesize, and re-pay for, the whole catalogue.
+  Both columns are `DERIVED_FIELDS` (`lib/audit/config.ts`), which is what lets that write
+  stay inside `withoutAudit` without losing a journal entry.
 - **Never delete a bucket object directly.** Removal goes through `softDeleteTrack` /
   `softDeleteTracks`: copy to `corbeille/`, verify the copy at the right size, write the
   `DeletedAudioTrack` row, *then* remove the original. The only real deletion is the nightly
@@ -27,11 +35,15 @@ of that.
 - **Re-check every client-supplied key** with `resolvePrefix` + `isKeyInsidePrefix` at each
   write entry point. The browser sends back keys it got from a listing; a crafted request
   must not be able to name another book's track.
-- **Never rename existing keys.** Playback order comes from `naturalCompare` over the whole
-  filename, and the corpus has no uniform track numbering. New uploads are named by
-  `nextTrackName` (`lib/audio/naming.ts`), which guarantees the name **sorts after** the
-  folder's current last track or throws. A track that sorts into the middle plays an
-  audiobook's chapters out of order.
+- **Never rename an existing key automatically.** Playback order comes from `naturalCompare`
+  over the whole filename, and the corpus has no uniform track numbering. New uploads are
+  named by `nextTrackName` (`lib/audio/naming.ts`), which guarantees the name **sorts after**
+  the folder's current last track or throws. A track that sorts into the middle plays an
+  audiobook's chapters out of order — so no upload, backfill or repair path may rewrite a name
+  as a side effect. The one deliberate rename is a human act: `PATCH
+  /api/books/[id]/audio/track` → `renameTrack` (`lib/audio/rename.ts`), for the case where the
+  filename is *itself* what puts the track out of order. It keeps the extension, refuses an
+  occupied key, and makes the admin echo back the exact current name.
 - **AppleDouble stubs (`._name.ext`) are not tracks.** Filter with `isAudioKey` on read and
   refuse with `isAppleDoubleName` on write — both directions, one definition.
 - **Bytes never transit Vercel.** Uploads are presigned PUTs straight to B2 (`upload-url` →

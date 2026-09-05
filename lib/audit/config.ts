@@ -163,6 +163,14 @@ export function isNoiseField(field: string): boolean {
  *       refreshBookAudioState), the total is summed from them rather than
  *       typed — the same re-read-writes-a-field-nobody-touched situation as
  *       the other three Book columns above.
+ *   Book.polly_audio_url
+ *       the URL of the synthesized vocal announcement. Written by /api/polly
+ *       when it synthesizes, and cleared — by PUT /api/books/[id] and by
+ *       refreshBookAudioState — whenever one of the fields the announcement
+ *       reads out moves. Nobody types it, and both ends of its lifecycle are
+ *       machine-driven, so an « Audio de synthèse: <url> → ∅ » line is never a
+ *       decision on its own. It still travels next to the edit that caused it,
+ *       which is where it reads usefully.
  *   Bill.invoiceAmount
  *       recomputeBillTotal() sums the linked orders' costs. Those costs are
  *       themselves traced, so the total restates what the journal already says —
@@ -174,7 +182,14 @@ export function isNoiseField(field: string): boolean {
  *   User.currentBalance — looks derived, is actually typed in the user form.
  */
 const DERIVED_FIELDS: Record<string, Set<string>> = {
-    Book: new Set(['audioLinkStatus', 'audioTrackCount', 'audioSizeKb', 'escalatedAt', 'readingDurationMinutes']),
+    Book: new Set([
+        'audioLinkStatus',
+        'audioTrackCount',
+        'audioSizeKb',
+        'escalatedAt',
+        'readingDurationMinutes',
+        'polly_audio_url',
+    ]),
     Bill: new Set(['invoiceAmount']),
 };
 

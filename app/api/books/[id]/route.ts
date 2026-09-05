@@ -157,9 +157,12 @@ export const PUT = withAdmin(async (req, { params }) => {
         // continuait d'énoncer l'ancien texte, pour toujours, et de façon invisible
         // pour un permanent voyant qui vérifie sa saisie.
         //
-        // readingDurationMinutes fait partie de l'annonce mais ne passe pas par
-        // cette route (il est dérivé de l'audio) : c'est refreshBookAudioState qui
-        // devra l'invalider le jour où la durée entrera dans le texte lu.
+        // readingDurationMinutes fait AUSSI partie du texte lu, mais ne passe pas
+        // par cette route : il est dérivé de l'audio, et refreshBookAudioState en
+        // est l'unique écrivain. C'est donc là qu'il est invalidé — sur un vrai
+        // changement de durée, et pas à chaque relecture du bucket. Ce commentaire
+        // disait auparavant que la durée n'était « pas encore » dans l'annonce ;
+        // elle y était depuis le début, et personne ne l'invalidait.
         const current = await prisma.book.findUnique({
             where: { id: bookId },
             select: { title: true, author: true, description: true },
