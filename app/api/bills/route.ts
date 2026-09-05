@@ -94,7 +94,7 @@ export const POST = withAdmin(async (request, { me }) => {
     try {
         const performedById = me.id;
         const body = await request.json();
-        const { clientId, orderIds, state, creationDate, issueDate } = body;
+        const { clientId, orderIds, state, creationDate, issueDate, paymentReference, paymentDate } = body;
 
         const parsedClientId = parseInt(String(clientId));
         if (!clientId || isNaN(parsedClientId)) {
@@ -155,6 +155,75 @@ export const POST = withAdmin(async (request, { me }) => {
             if (isNaN(parsedIssueDate.getTime())) {
                 return NextResponse.json(
                     { error: 'Invalid issueDate', message: 'La date d\'émission est invalide', field: 'issueDate' },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // Une facture peut NAÎTRE déjà encaissée — mais pas naître « payée » tout court.
+        //
+        // L'invariant posé plus haut n'est pas « PAID interdit à la création », c'est
+        // « une facture payée porte toujours une référence de paiement, et un passé
+        // d'émission ». Un permanent qui saisit après coup une facture déjà réglée peut
+        // donc le faire en un seul geste, à condition de fournir de quoi tenir cet
+        // invariant : la facture est créée ÉMISE, puis encaissée dans la même
+        // transaction, et le journal porte les deux événements — exactement ce
+        // qu'auraient écrit les deux étapes séparées.
+        const wantsSettled = paymentReference != null || paymentDate != null;
+        const trimmedReference = typeof paymentReference === 'string' ? paymentReference.trim() : '';
+        let parsedPaymentDate: Date | null = null;
+
+        if (wantsSettled) {
+            if (finalState !== BillingStatus.BILLED) {
+                return NextResponse.json(
+                    {
+                        error: 'Invalid settled state',
+                        message: 'Seule une facture émise peut être enregistrée comme déjà réglée ; un brouillon n\'a pas été envoyé.',
+                    },
+                    { status: 400 }
+                );
+            }
+            if (!trimmedReference) {
+                return NextResponse.json(
+                    {
+                        error: 'Payment reference required',
+                        message: 'Un identifiant de paiement est requis pour marquer une facture comme payée',
+                        field: 'paymentReference',
+                    },
+                    { status: 400 }
+                );
+            }
+            // Payée mais jamais émise est la contradiction même que ce chemin doit éviter.
+            if (!parsedIssueDate) {
+                return NextResponse.json(
+                    {
+                        error: 'Issue date required',
+                        message: 'Une facture déjà réglée doit porter sa date d\'émission',
+                        field: 'issueDate',
+                    },
+                    { status: 400 }
+                );
+            }
+            if (!paymentDate) {
+                return NextResponse.json(
+                    { error: 'Payment date required', message: 'La date de paiement est requise', field: 'paymentDate' },
+                    { status: 400 }
+                );
+            }
+            parsedPaymentDate = new Date(paymentDate);
+            if (isNaN(parsedPaymentDate.getTime())) {
+                return NextResponse.json(
+                    { error: 'Invalid paymentDate', message: 'La date de paiement est invalide', field: 'paymentDate' },
+                    { status: 400 }
+                );
+            }
+            if (parsedPaymentDate < parsedIssueDate) {
+                return NextResponse.json(
+                    {
+                        error: 'Payment before issue',
+                        message: 'La date de paiement ne peut pas précéder la date d\'émission',
+                        field: 'paymentDate',
+                    },
                     { status: 400 }
                 );
             }
@@ -268,11 +337,42 @@ export const POST = withAdmin(async (request, { me }) => {
                 });
             }
 
+            // L'encaissement : le second geste, dans la même transaction que le premier.
+            //
+            // APRÈS le rattachement et recomputeBillTotal, pour que l'amountAtEvent de
+            // l'événement PAID porte le vrai total de la facture et non le montant
+            // d'une facture encore vide. Les demandes, elles, ne bougent pas :
+            // orderBillingForBillState rend « BILLED » pour PAID comme pour BILLED,
+            // et elles viennent d'être posées à cette valeur juste au-dessus.
+            if (wantsSettled) {
+                await tx.bill.update({
+                    where: { id: bill.id },
+                    data: {
+                        state: BillingStatus.PAID,
+                        paymentDate: parsedPaymentDate,
+                        paymentReference: trimmedReference,
+                    },
+                });
+                await logBillEvent(tx, {
+                    billId: bill.id,
+                    type: 'PAID',
+                    fromState: BillingStatus.BILLED,
+                    toState: BillingStatus.PAID,
+                    payload: { paymentReference: trimmedReference },
+                    performedById,
+                });
+            }
+
             return bill.id;
         });
 
         return NextResponse.json(
-            { bill: { id: billId }, message: 'Facture créée avec succès' },
+            {
+                bill: { id: billId },
+                message: wantsSettled
+                    ? 'Facture créée et enregistrée comme payée'
+                    : 'Facture créée avec succès',
+            },
             { status: 201 }
         );
     } catch (error) {

@@ -25,7 +25,18 @@ import { useInvalidField } from '@/hooks/useInvalidField';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
 // N3 — required fields top→bottom.
-const FIELD_ORDER = ['client', 'orders'];
+const FIELD_ORDER = ['client', 'orders', 'issueDate', 'paymentReference'];
+
+/**
+ * Les deux seuls états dans lesquels une facture peut NAÎTRE — même liste que
+ * CREATABLE_STATES côté POST /api/bills.
+ *
+ * Le menu proposait les quatre : choisir « Payée » remplissait tout le
+ * formulaire pour finir sur un 400. « Payée » ne se choisit pas, elle
+ * s'atteint — soit depuis la fiche, soit ici via « Facture déjà réglée », qui
+ * fournit la référence de paiement que cet état exige.
+ */
+const CREATABLE_STATES: BillingStatus[] = [BillingStatus.DRAFT, BillingStatus.BILLED];
 
 interface User {
     id: number;
@@ -72,6 +83,9 @@ export interface BillFormData {
     state: BillingStatus;
     creationDate: Date;
     issueDate: Date | null;
+    /** Non nuls ensemble uniquement : une facture saisie déjà encaissée. */
+    paymentReference: string | null;
+    paymentDate: Date | null;
 }
 
 interface BillFormBackendBaseProps {
@@ -104,6 +118,11 @@ export function BillFormBackendBase({
     const [state, setState] = useState<BillingStatus>(BillingStatus.BILLED);
     const [creationDate, setCreationDate] = useState<Date>(new Date());
     const [issueDate, setIssueDate] = useState<Date | null>(null);
+
+    // Saisie d'une facture déjà réglée, en un seul geste. Voir CREATABLE_STATES.
+    const [markAsPaid, setMarkAsPaid] = useState(false);
+    const [paymentReference, setPaymentReference] = useState('');
+    const [paymentDate, setPaymentDate] = useState<Date>(new Date());
 
     // Client search
     const [users, setUsers] = useState<User[]>([]);
@@ -206,11 +225,17 @@ export function BillFormBackendBase({
         const invalid: string[] = [];
         if (!selectedClient) invalid.push('client');
         if (selectedOrderIds.size === 0) invalid.push('orders');
+        // Une facture réglée a forcément été envoyée : sans date d'émission, elle
+        // serait payée sans avoir jamais été émise. Le POST refuse la même chose.
+        if (markAsPaid && !issueDate) invalid.push('issueDate');
+        if (markAsPaid && !paymentReference.trim()) invalid.push('paymentReference');
 
         if (invalid.length) {
             const messages: Record<string, string> = {
                 client: 'Veuillez sélectionner un auditeur',
                 orders: 'Veuillez sélectionner au moins une demande à facturer',
+                issueDate: 'Une facture déjà réglée doit porter sa date d\'émission',
+                paymentReference: 'Veuillez renseigner l\'identifiant de paiement',
             };
             const msg = messages[invalid[0]];
             setError(msg);
@@ -227,6 +252,8 @@ export function BillFormBackendBase({
                 state,
                 creationDate,
                 issueDate,
+                paymentReference: markAsPaid ? paymentReference.trim() : null,
+                paymentDate: markAsPaid ? paymentDate : null,
             });
             if (onSuccess) onSuccess(billId);
         } catch (err) {
@@ -373,13 +400,21 @@ export function BillFormBackendBase({
                     {/* State */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">État de la facture</label>
-                        <Select value={state} onValueChange={(v) => setState(v as BillingStatus)}>
+                        <Select
+                            value={state}
+                            onValueChange={(v) => {
+                                const next = v as BillingStatus;
+                                setState(next);
+                                // Un brouillon n'a pas été envoyé, donc rien à encaisser.
+                                if (next !== BillingStatus.BILLED) setMarkAsPaid(false);
+                            }}
+                        >
                             <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
                                 <div className="py-1">
-                                    {Object.values(BillingStatus).map((s) => (
+                                    {CREATABLE_STATES.map((s) => (
                                         <SelectItem
                                             key={s}
                                             value={s}
@@ -420,10 +455,13 @@ export function BillFormBackendBase({
 
                     {/* Issue date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Date d&apos;émission</label>
+                        <label className="text-sm font-medium text-foreground">
+                            Date d&apos;émission {markAsPaid && <span className="text-red-500">*</span>}
+                        </label>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
+                                    ref={registerField('issueDate')}
                                     variant="outline"
                                     className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
                                 >
@@ -442,6 +480,70 @@ export function BillFormBackendBase({
                             </PopoverContent>
                         </Popover>
                     </div>
+
+                    {/* Facture déjà réglée — évite la création puis l'encaissement en deux temps.
+                        Les champs de paiement restent cachés tant que la case n'est pas cochée :
+                        le cas courant est une facture qu'on émet, pas une qu'on rattrape. */}
+                    {state === BillingStatus.BILLED && (
+                        <div className="space-y-3 rounded-md border border-border p-3">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <Checkbox
+                                    checked={markAsPaid}
+                                    onCheckedChange={(checked) => setMarkAsPaid(checked === true)}
+                                    className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                />
+                                <span className="text-sm font-medium text-foreground">Facture déjà réglée</span>
+                            </label>
+
+                            {markAsPaid && (
+                                <>
+                                    <p className="text-xs text-muted-foreground">
+                                        La facture sera créée émise puis enregistrée comme payée, en une seule
+                                        opération. Son historique porte les deux étapes.
+                                    </p>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-foreground">
+                                            Identifiant de paiement <span className="text-red-500">*</span>
+                                        </label>
+                                        <Input
+                                            ref={registerField('paymentReference')}
+                                            value={paymentReference}
+                                            onChange={(e) => setPaymentReference(e.target.value)}
+                                            placeholder="N° de chèque, référence de virement..."
+                                            className="bg-field border-border text-foreground"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-foreground">
+                                            Date de paiement <span className="text-red-500">*</span>
+                                        </label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
+                                                >
+                                                    <Calendar className="mr-2 h-4 w-4" />
+                                                    {format(paymentDate, 'PPP', { locale: fr })}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0 bg-card border-border">
+                                                <CalendarComponent
+                                                    mode="single"
+                                                    selected={paymentDate}
+                                                    onSelect={(d) => d && setPaymentDate(d)}
+                                                    initialFocus
+                                                    className="bg-card text-foreground"
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
 
                     {/* Amount (derived) */}
                     <div className="flex items-center justify-between pt-4 border-t border-border">
@@ -478,6 +580,8 @@ export function AddBillFormBackend({ onSuccess, initialClient }: { onSuccess?: (
                 state: formData.state,
                 creationDate: formData.creationDate.toISOString(),
                 issueDate: formData.issueDate ? formData.issueDate.toISOString() : null,
+                paymentReference: formData.paymentReference,
+                paymentDate: formData.paymentDate ? formData.paymentDate.toISOString() : null,
             }),
         });
 
