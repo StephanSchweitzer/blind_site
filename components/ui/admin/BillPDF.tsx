@@ -19,6 +19,13 @@ const NAVY = '#15366b';
 // l'étiquette d'adresse.
 const BOLD = 'Helvetica-Bold';
 
+// Marge latérale de la page. Le pied de page est en position absolue : il
+// sort du flux et ne reçoit donc pas le padding de la Page, il faut le lui
+// redonner. Les deux valeurs doivent rester égales, sinon la ligne de
+// coordonnées se décale par rapport au corps de la facture — d'où la
+// constante plutôt que deux 48 posés côte à côte.
+const PAGE_PAD_X = 48;
+
 // Le bloc-marque en tête de facture.
 // PNG et non le JPEG d'origine : celui-ci est encodé en progressif, que le filtre
 // DCTDecode d'un PDF ne sait pas relire — et le PNG évite au passage les artefacts
@@ -126,7 +133,7 @@ type Density = ReturnType<typeof densityFor>;
 
 // ─── Styles (built per-bill so spacing can adapt to the order count) ─────────
 const makeStyles = (d: Density) => StyleSheet.create({
-    page: { paddingTop: d.pageTop, paddingBottom: d.pageTop, paddingHorizontal: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#111827', lineHeight: d.line },
+    page: { paddingTop: d.pageTop, paddingBottom: d.pageTop, paddingHorizontal: PAGE_PAD_X, fontFamily: 'Helvetica', fontSize: 10, color: '#111827', lineHeight: d.line },
 
     header: { alignItems: 'center', borderBottomWidth: 2, borderColor: NAVY, paddingBottom: d.headPadB, marginBottom: d.headMarB },
     logo: { width: d.logoW, height: d.logoW / LOGO_RATIO, marginBottom: d.logoMarB },
@@ -135,7 +142,7 @@ const makeStyles = (d: Density) => StyleSheet.create({
     // chaque page : l'en-tête reste un vrai papier à en-tête (marque + objet du
     // document), et les ~35 pt ainsi rendus au flux valent deux lignes de
     // tableau — soit une facture de plus qui tient sur une seule feuille.
-    footer: { position: 'absolute', bottom: 14, left: 48, right: 48, textAlign: 'center', fontSize: 8, color: '#4b5563' },
+    footer: { position: 'absolute', bottom: 14, left: PAGE_PAD_X, right: PAGE_PAD_X, textAlign: 'center', fontSize: 8, color: '#4b5563' },
 
     billRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#9ca3af', paddingVertical: d.billPadY, marginBottom: d.billMarB },
     billToCol: { width: '52%' },
