@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
-import { Prisma, BillingStatus, OrderBillingStatus } from '@prisma/client';
+import { Prisma, BillingStatus, OrderBillingStatus, PaymentType, PaymentMethod } from '@prisma/client';
 import {
     recomputeBillTotal,
     logBillEvent,
     orderBillingForBillState,
     paymentPrecedesIssue,
+    syncBillPaymentInfo,
 } from '@/lib/billing';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
@@ -94,7 +95,7 @@ export const POST = withAdmin(async (request, { me }) => {
     try {
         const performedById = me.id;
         const body = await request.json();
-        const { clientId, orderIds, state, creationDate, issueDate, paymentReference, paymentDate } = body;
+        const { clientId, orderIds, state, creationDate, issueDate, paymentReference, paymentDate, paymentMethod } = body;
 
         const parsedClientId = parseInt(String(clientId));
         if (!clientId || isNaN(parsedClientId)) {
@@ -121,9 +122,11 @@ export const POST = withAdmin(async (request, { me }) => {
         // Une facture ne NAÎT que brouillon ou émise.
         //
         // « Payée » et « Soldée » sont des états qu'on ATTEINT : updateStatus exige
-        // une référence de paiement pour PAID et n'y mène que depuis BILLED. Les
+        // un paiement rattaché pour PAID et n'y mène que depuis BILLED. Les
         // accepter ici créait une facture payée sans trace de paiement, sur une
-        // transition que la machine à états refuse partout ailleurs.
+        // transition que la machine à états refuse partout ailleurs. Le formulaire
+        // peut malgré tout saisir une facture DÉJÀ RÉGLÉE : il envoie alors les
+        // informations du règlement, dont naît un vrai paiement (voir plus bas).
         const CREATABLE_STATES: BillingStatus[] = [BillingStatus.DRAFT, BillingStatus.BILLED];
         const finalState: BillingStatus = state || BillingStatus.BILLED;
         if (!CREATABLE_STATES.includes(finalState)) {
@@ -183,16 +186,10 @@ export const POST = withAdmin(async (request, { me }) => {
                     { status: 400 }
                 );
             }
-            if (!trimmedReference) {
-                return NextResponse.json(
-                    {
-                        error: 'Payment reference required',
-                        message: 'Un identifiant de paiement est requis pour marquer une facture comme payée',
-                        field: 'paymentReference',
-                    },
-                    { status: 400 }
-                );
-            }
+            // La référence n'est plus exigée : un règlement en espèces n'en a pas,
+            // et l'exiger revenait à en faire inventer une. Ce que la facture doit
+            // porter, c'est un PAIEMENT — il naît quelques lignes plus bas, avec
+            // son montant, sa méthode et sa date, référence ou non.
             // Payée mais jamais émise est la contradiction même que ce chemin doit éviter.
             if (!parsedIssueDate) {
                 return NextResponse.json(
@@ -227,6 +224,17 @@ export const POST = withAdmin(async (request, { me }) => {
                     { status: 400 }
                 );
             }
+        }
+
+        let parsedPaymentMethod: PaymentMethod | null = null;
+        if (wantsSettled && paymentMethod) {
+            if (!Object.values(PaymentMethod).includes(paymentMethod as PaymentMethod)) {
+                return NextResponse.json(
+                    { error: 'Invalid paymentMethod', message: 'La méthode de paiement est invalide', field: 'paymentMethod' },
+                    { status: 400 }
+                );
+            }
+            parsedPaymentMethod = paymentMethod as PaymentMethod;
         }
 
         const client = await prisma.user.findUnique({ where: { id: parsedClientId }, select: { id: true } });
@@ -345,14 +353,36 @@ export const POST = withAdmin(async (request, { me }) => {
             // orderBillingForBillState rend « BILLED » pour PAID comme pour BILLED,
             // et elles viennent d'être posées à cette valeur juste au-dessus.
             if (wantsSettled) {
-                await tx.bill.update({
+                // Le règlement devient un PAIEMENT, pas deux colonnes sur la facture.
+                //
+                // C'est ce que la saisie « facture déjà réglée » veut dire : l'argent
+                // est arrivé. Il a donc un montant, une méthode, une date, un
+                // bénéficiaire — un paiement, exactement comme celui qu'un permanent
+                // aurait saisi dans /admin/payments. La facture, elle, ne fait que le
+                // refléter (syncBillPaymentInfo). Le geste en un temps est préservé ;
+                // ce qu'il écrit a changé de place.
+                const total = await tx.bill.findUnique({
                     where: { id: bill.id },
+                    select: { invoiceAmount: true },
+                });
+                await tx.payment.create({
                     data: {
-                        state: BillingStatus.PAID,
+                        clientId: parsedClientId,
+                        type: PaymentType.ENREGISTREMENT,
+                        amount: total?.invoiceAmount ?? new Prisma.Decimal(0),
+                        paymentMethod: parsedPaymentMethod,
+                        creationDate: new Date(),
                         paymentDate: parsedPaymentDate,
                         paymentReference: trimmedReference,
+                        billId: bill.id,
+                        isActive: true,
                     },
                 });
+                await tx.bill.update({
+                    where: { id: bill.id },
+                    data: { state: BillingStatus.PAID },
+                });
+                await syncBillPaymentInfo(tx, bill.id);
                 await logBillEvent(tx, {
                     billId: bill.id,
                     type: 'PAID',
@@ -370,7 +400,7 @@ export const POST = withAdmin(async (request, { me }) => {
             {
                 bill: { id: billId },
                 message: wantsSettled
-                    ? 'Facture créée et enregistrée comme payée'
+                    ? 'Facture créée, paiement enregistré et facture marquée payée'
                     : 'Facture créée avec succès',
             },
             { status: 201 }

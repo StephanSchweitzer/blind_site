@@ -9,17 +9,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, X, Plus, ChevronLeft, ChevronRight, Pencil, Check, RotateCcw, History, ExternalLink, Calendar } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { Loader2, Trash2, X, Plus, ChevronLeft, ChevronRight, RotateCcw, History, ExternalLink } from 'lucide-react';
 import {
     BillingStatus,
     getBillingStatusColor,
     getBillingStatusLabel,
 } from '@/lib/billing-enums';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { PaymentMethod, getPaymentMethodLabel } from '@/lib/payment-enums';
+import { AddPaymentFormBackend } from './PaymentFormBackendBase';
 import { BillPDFButton } from './BillPDFButton';
 import { CopyableId } from './CopyableId';
 import { BillHistory, BillEventDTO } from './BillHistory';
@@ -55,7 +53,21 @@ interface BillDetail {
         address?: string[] | null;
     };
     orders: BillOrder[];
+    payments: BillPayment[];
+    /** Somme des paiements rattachés, et ce qu'il reste à encaisser. */
+    paidTotal: string;
+    outstanding: string;
     events: BillEventDTO[];
+}
+
+/** Un paiement rattaché — la SOURCE du règlement affiché par la facture. */
+interface BillPayment {
+    id: number;
+    amount: number | string;
+    paymentMethod: string | null;
+    paymentDate: string | null;
+    creationDate: string;
+    paymentReference: string | null;
 }
 
 interface UnbilledOrder {
@@ -126,16 +138,12 @@ export function EditBillModal({
 
     // Status change
     const [pendingState, setPendingState] = useState<BillingStatus | null>(null);
-    const [paymentReference, setPaymentReference] = useState('');
-    // Le jour où l'auditeur a réglé, pas celui où un permanent le saisit.
-    const [paymentDate, setPaymentDate] = useState<Date>(new Date());
+    // Saisie d'un paiement sans quitter la facture : le client, la facture et le
+    // reste à payer sont déjà là, les ressaisir dans /admin/payments n'apporte
+    // que des occasions de se tromper de facture.
+    const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [statusError, setStatusError] = useState<string | null>(null);
-
-    // Payment reference inline edit
-    const [isEditingPayRef, setIsEditingPayRef] = useState(false);
-    const [payRefDraft, setPayRefDraft] = useState('');
-    const [isSavingPayRef, setIsSavingPayRef] = useState(false);
 
     // Order add (draft mode)
     const [orderSearch, setOrderSearch] = useState('');
@@ -167,13 +175,11 @@ export function EditBillModal({
         setBill(null);
         setError(null);
         setPendingState(null);
-        setPaymentReference('');
+        setIsAddingPayment(false);
         setStatusError(null);
         setShowAddPanel(false);
         setOrderSearch('');
         setOrderPage(1);
-        setIsEditingPayRef(false);
-        setPayRefDraft('');
     }, []);
 
     useEffect(() => {
@@ -233,19 +239,14 @@ export function EditBillModal({
             const res = await fetch(`/api/bills/${billId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'updateStatus',
-                    state: pendingState,
-                    ...(pendingState === BillingStatus.PAID
-                        ? { paymentReference, paymentDate: paymentDate.toISOString() }
-                        : {}),
-                }),
+                // Le règlement n'est plus dans ce corps de requête : « payée » se
+                // déduit des paiements rattachés (syncBillPaymentInfo), qui portent
+                // la référence, la méthode et la date.
+                body: JSON.stringify({ action: 'updateStatus', state: pendingState }),
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.message || 'Erreur lors de la mise à jour du statut');
             setPendingState(null);
-            setPaymentReference('');
-            setPaymentDate(new Date());
             await loadBill(billId);
             onBillUpdated?.();
         } catch (err) {
@@ -297,30 +298,9 @@ export function EditBillModal({
         }
     };
 
-    const handleSavePayRef = async () => {
-        if (!billId) return;
-        setIsSavingPayRef(true);
-        try {
-            const res = await fetch(`/api/bills/${billId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'updatePaymentReference', paymentReference: payRefDraft }),
-            });
-            const data = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(data?.message || 'Erreur');
-            setIsEditingPayRef(false);
-            await loadBill(billId);
-            onBillUpdated?.();
-        } catch (err) {
-            alert(err instanceof Error ? err.message : 'Erreur inattendue');
-        } finally {
-            setIsSavingPayRef(false);
-        }
-    };
-
     const handleReopen = async () => {
         if (!billId) return;
-        if (!window.confirm("Rouvrir cette facture la repassera à « émise » et effacera ses informations de paiement (archivées dans l'historique). Continuer ?")) return;
+        if (!window.confirm("Rouvrir cette facture la repassera à « émise » et détachera ses paiements (ils restent dans « Paiements », et leur numéro part à l'historique). Continuer ?")) return;
         setIsReopening(true);
         try {
             const res = await fetch(`/api/bills/${billId}`, {
@@ -429,49 +409,101 @@ export function EditBillModal({
                             </div>
                         </div>
 
-                        {/* Payment reference */}
-                        <div className="text-sm">
-                            <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Réf. paiement</div>
-                            {isEditingPayRef ? (
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        value={payRefDraft}
-                                        onChange={(e) => setPayRefDraft(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter') handleSavePayRef(); if (e.key === 'Escape') setIsEditingPayRef(false); }}
-                                        placeholder="Ex: PAY-20240601-001"
-                                        className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-sm"
-                                        autoFocus
-                                    />
-                                    <button
-                                        onClick={handleSavePayRef}
-                                        disabled={isSavingPayRef}
-                                        className="p-1.5 rounded text-green-600 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/20 disabled:opacity-50"
-                                        title="Enregistrer"
-                                    >
-                                        {isSavingPayRef ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                    </button>
-                                    <button
-                                        onClick={() => setIsEditingPayRef(false)}
-                                        className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
-                                        title="Annuler"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
+                        {/* Paiements — la source du règlement, pas un champ de saisie.
+                            La référence, la méthode et la date vivent sur le paiement ;
+                            la facture les reflète (syncBillPaymentInfo). Le crayon qui
+                            permettait de corriger la référence ici a disparu : il aurait
+                            réécrit une colonne dérivée, et fait diverger la facture du
+                            règlement qu'elle décrit. */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                                    Paiements ({bill.payments.length})
                                 </div>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    <span className={bill.paymentReference ? 'text-foreground font-mono text-sm' : 'text-muted-foreground italic text-sm'}>
-                                        {bill.paymentReference || 'Non renseignée'}
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddingPayment(true)}
+                                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                        Enregistrer un paiement
+                                    </button>
+                                    <a
+                                        href={`/admin/payments?search=${bill.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                        title="Ouvrir les paiements de cette facture"
+                                    >
+                                        Voir dans les paiements
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div className="border border-border rounded-md divide-y divide-border">
+                                {bill.payments.length === 0 ? (
+                                    <div className="px-3 py-3 text-muted-foreground text-sm italic">
+                                        Aucun paiement rattaché — le règlement se saisit dans « Paiements ».
+                                    </div>
+                                ) : (
+                                    bill.payments.map((p) => (
+                                        <div key={p.id} className="flex items-start gap-3 px-3 py-2.5">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-foreground text-sm font-medium break-words">
+                                                    #{p.id} — {formatCurrency(p.amount)}
+                                                    {p.paymentMethod && (
+                                                        <span className="text-muted-foreground font-normal">
+                                                            {' '}· {getPaymentMethodLabel(p.paymentMethod as PaymentMethod)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-muted-foreground text-xs break-words">
+                                                    {formatDate(p.paymentDate ?? p.creationDate)}
+                                                    {p.paymentReference && (
+                                                        <>
+                                                            {' · '}
+                                                            <span className="font-mono">{p.paymentReference}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <a
+                                                href={`/admin/payments?payment=${p.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                title="Ouvrir le paiement dans un nouvel onglet"
+                                                className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                            </a>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            {/* Encaissé / reste à payer — la question qu'on se pose en
+                                ouvrant une facture, et à laquelle le montant seul ne
+                                répond pas dès qu'il y a plusieurs règlements. */}
+                            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-sm">
+                                <span className="text-muted-foreground">
+                                    Encaissé{' '}
+                                    <span className="text-foreground font-medium">{formatCurrency(bill.paidTotal)}</span>
+                                    {' '}sur {formatCurrency(bill.invoiceAmount)}
+                                </span>
+                                {parseFloat(bill.outstanding) > 0 ? (
+                                    <span className="text-amber-700 dark:text-amber-300 font-medium">
+                                        Reste à payer {formatCurrency(bill.outstanding)}
                                     </span>
-                                    <button
-                                        onClick={() => { setPayRefDraft(bill.paymentReference || ''); setIsEditingPayRef(true); }}
-                                        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                                        title="Modifier"
-                                    >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                    </button>
-                                </div>
-                            )}
+                                ) : parseFloat(bill.outstanding) < 0 ? (
+                                    <span className="text-amber-700 dark:text-amber-300 font-medium">
+                                        Trop-perçu {formatCurrency(Math.abs(parseFloat(bill.outstanding)))}
+                                    </span>
+                                ) : bill.payments.length > 0 ? (
+                                    <span className="text-green-700 dark:text-green-400 font-medium">Soldée au centime</span>
+                                ) : null}
+                            </div>
                         </div>
 
                         {/* Status change */}
@@ -484,8 +516,6 @@ export function EditBillModal({
                                             key={s}
                                             onClick={() => {
                                                 setPendingState(pendingState === s ? null : s);
-                                                setPaymentReference('');
-                                                setPaymentDate(new Date());
                                                 setStatusError(null);
                                             }}
                                             className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
@@ -499,42 +529,25 @@ export function EditBillModal({
                                     ))}
                                 </div>
 
-                                {pendingState === BillingStatus.PAID && (
-                                    <>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-muted-foreground">Identifiant de paiement (système externe)</label>
-                                            <Input
-                                                value={paymentReference}
-                                                onChange={(e) => setPaymentReference(e.target.value)}
-                                                placeholder="Ex: PAY-20240601-001"
-                                                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-muted-foreground">Date de paiement</label>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="w-full justify-start text-left bg-muted border-border text-foreground hover:bg-muted h-9"
-                                                    >
-                                                        <Calendar className="mr-2 h-4 w-4" />
-                                                        {format(paymentDate, 'PPP', { locale: fr })}
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0 bg-card border-border">
-                                                    <CalendarComponent
-                                                        mode="single"
-                                                        selected={paymentDate}
-                                                        defaultMonth={paymentDate}
-                                                        onSelect={(d) => d && setPaymentDate(d)}
-                                                        initialFocus
-                                                        className="bg-card text-foreground"
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
-                                    </>
+                                {/* « Payée » ne demande plus rien à remplir : elle
+                                    constate les paiements rattachés. Sans paiement, la
+                                    route refuse — autant le dire ici plutôt que sur un
+                                    400 après le clic. */}
+                                {pendingState === BillingStatus.PAID && bill.payments.length === 0 && (
+                                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                                        Cette facture ne porte aucun paiement. Enregistrez d&apos;abord le
+                                        règlement dans « Paiements » — c&apos;est lui qui porte la référence,
+                                        la méthode et la date.
+                                    </p>
+                                )}
+
+                                {pendingState === BillingStatus.PAID && bill.payments.length > 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        La facture reprendra la référence et la date de{' '}
+                                        {bill.payments.length > 1
+                                            ? `ses ${bill.payments.length} paiements`
+                                            : `son paiement #${bill.payments[0].id}`}.
+                                    </p>
                                 )}
 
                                 {statusError && (
@@ -544,7 +557,7 @@ export function EditBillModal({
                                 {pendingState && (
                                     <Button
                                         onClick={handleStatusUpdate}
-                                        disabled={isUpdatingStatus || (pendingState === BillingStatus.PAID && !paymentReference.trim())}
+                                        disabled={isUpdatingStatus || (pendingState === BillingStatus.PAID && bill.payments.length === 0)}
                                         className="bg-indigo-600 hover:bg-indigo-500 text-white h-8 text-sm"
                                     >
                                         {isUpdatingStatus && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
@@ -560,7 +573,8 @@ export function EditBillModal({
                                 <div className="text-xs text-amber-700 dark:text-amber-300/90 uppercase tracking-wide">Facture finalisée</div>
                                 <p className="text-sm text-foreground">
                                     Pour corriger le coût d&apos;une demande de cette facture, rouvrez-la d&apos;abord. Elle repassera
-                                    à « émise » et ses informations de paiement seront archivées dans l&apos;historique.
+                                    à « émise » et ses paiements en seront détachés — ils restent dans « Paiements »,
+                                    et leur numéro part à l&apos;historique.
                                 </p>
                                 <Button
                                     onClick={handleReopen}
@@ -760,6 +774,41 @@ export function EditBillModal({
                     </div>
                 )}
             </DialogContent>
+
+            {/* Saisie d'un paiement pour CETTE facture, préremplie du client, de la
+                facture et du reste à payer. Le montant reste corrigeable : un
+                acompte est un paiement comme un autre. */}
+            {bill && (
+                <Dialog open={isAddingPayment} onOpenChange={setIsAddingPayment}>
+                    <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
+                        <DialogHeader>
+                            <DialogTitle className="text-foreground">
+                                Enregistrer un paiement — facture #{bill.id}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="overflow-y-auto px-1">
+                            <AddPaymentFormBackend
+                                preset={{
+                                    client: {
+                                        id: bill.client.id,
+                                        name: bill.client.name,
+                                        firstName: bill.client.firstName ?? null,
+                                        lastName: bill.client.lastName ?? null,
+                                        email: bill.client.email,
+                                    },
+                                    billId: bill.id,
+                                    amount: parseFloat(bill.outstanding) > 0 ? bill.outstanding : null,
+                                }}
+                                onSuccess={() => {
+                                    setIsAddingPayment(false);
+                                    if (billId !== null) loadBill(billId);
+                                    onBillUpdated?.();
+                                }}
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </Dialog>
     );
 }

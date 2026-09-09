@@ -20,23 +20,33 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
+import { PaymentMethod, getPaymentMethodLabel } from '@/lib/payment-enums';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
 // N3 — required fields top→bottom.
-const FIELD_ORDER = ['client', 'orders', 'issueDate', 'paymentReference'];
+const FIELD_ORDER = ['client', 'orders', 'issueDate'];
 
 /**
- * Les deux seuls états dans lesquels une facture peut NAÎTRE — même liste que
- * CREATABLE_STATES côté POST /api/bills.
+ * Les trois états que le MENU propose, qui ne sont pas les trois états que la
+ * route accepte.
  *
- * Le menu proposait les quatre : choisir « Payée » remplissait tout le
- * formulaire pour finir sur un 400. « Payée » ne se choisit pas, elle
- * s'atteint — soit depuis la fiche, soit ici via « Facture déjà réglée », qui
- * fournit la référence de paiement que cet état exige.
+ * POST /api/bills ne crée qu'un brouillon ou une facture émise ; « Payée » reste
+ * un état qu'on ATTEINT. Mais « Payée » et la case « Facture déjà réglée » ont
+ * toujours désigné la même chose, et les avoir séparées obligeait à comprendre
+ * qu'un menu et une case parlaient du même fait : le menu proposait deux états
+ * pendant que la case en posait un troisième, sans que rien ne les relie.
+ *
+ * Ce sont donc maintenant DEUX VUES DU MÊME ÉTAT — cocher la case met le menu
+ * sur « Payée », choisir « Payée » coche la case. À l'envoi, « Payée » part en
+ * « Émise » accompagnée du règlement : la route crée le paiement, puis encaisse.
  */
-const CREATABLE_STATES: BillingStatus[] = [BillingStatus.DRAFT, BillingStatus.BILLED];
+const SELECTABLE_STATES: BillingStatus[] = [
+    BillingStatus.DRAFT,
+    BillingStatus.BILLED,
+    BillingStatus.PAID,
+];
 
 interface User {
     id: number;
@@ -83,9 +93,10 @@ export interface BillFormData {
     state: BillingStatus;
     creationDate: Date;
     issueDate: Date | null;
-    /** Non nuls ensemble uniquement : une facture saisie déjà encaissée. */
+    /** Le règlement d'une facture saisie déjà encaissée : la route en fait un paiement. */
     paymentReference: string | null;
     paymentDate: Date | null;
+    paymentMethod: PaymentMethod | null;
 }
 
 interface BillFormBackendBaseProps {
@@ -119,10 +130,14 @@ export function BillFormBackendBase({
     const [creationDate, setCreationDate] = useState<Date>(new Date());
     const [issueDate, setIssueDate] = useState<Date | null>(null);
 
-    // Saisie d'une facture déjà réglée, en un seul geste. Voir CREATABLE_STATES.
-    const [markAsPaid, setMarkAsPaid] = useState(false);
+    // Saisie d'une facture déjà réglée, en un seul geste : la route en crée le
+    // paiement. Voir SELECTABLE_STATES — la case et le menu sont le même état.
+    const markAsPaid = state === BillingStatus.PAID;
+    const setMarkAsPaid = (next: boolean) =>
+        setState(next ? BillingStatus.PAID : BillingStatus.BILLED);
     const [paymentReference, setPaymentReference] = useState('');
     const [paymentDate, setPaymentDate] = useState<Date>(new Date());
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
 
     // Client search
     const [users, setUsers] = useState<User[]>([]);
@@ -228,14 +243,12 @@ export function BillFormBackendBase({
         // Une facture réglée a forcément été envoyée : sans date d'émission, elle
         // serait payée sans avoir jamais été émise. Le POST refuse la même chose.
         if (markAsPaid && !issueDate) invalid.push('issueDate');
-        if (markAsPaid && !paymentReference.trim()) invalid.push('paymentReference');
 
         if (invalid.length) {
             const messages: Record<string, string> = {
                 client: 'Veuillez sélectionner un auditeur',
                 orders: 'Veuillez sélectionner au moins une demande à facturer',
                 issueDate: 'Une facture déjà réglée doit porter sa date d\'émission',
-                paymentReference: 'Veuillez renseigner l\'identifiant de paiement',
             };
             const msg = messages[invalid[0]];
             setError(msg);
@@ -249,11 +262,14 @@ export function BillFormBackendBase({
             const billId = await onSubmit({
                 clientId: selectedClient!.id,
                 orderIds: Array.from(selectedOrderIds),
-                state,
+                // « Payée » n'est pas un état créable : la route crée la facture
+                // émise, en enregistre le paiement, puis l'encaisse.
+                state: markAsPaid ? BillingStatus.BILLED : state,
                 creationDate,
                 issueDate,
-                paymentReference: markAsPaid ? paymentReference.trim() : null,
+                paymentReference: markAsPaid ? paymentReference.trim() || null : null,
                 paymentDate: markAsPaid ? paymentDate : null,
+                paymentMethod: markAsPaid ? paymentMethod || null : null,
             });
             if (onSuccess) onSuccess(billId);
         } catch (err) {
@@ -402,19 +418,14 @@ export function BillFormBackendBase({
                         <label className="text-sm font-medium text-foreground">État de la facture</label>
                         <Select
                             value={state}
-                            onValueChange={(v) => {
-                                const next = v as BillingStatus;
-                                setState(next);
-                                // Un brouillon n'a pas été envoyé, donc rien à encaisser.
-                                if (next !== BillingStatus.BILLED) setMarkAsPaid(false);
-                            }}
+                            onValueChange={(v) => setState(v as BillingStatus)}
                         >
                             <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
                                 <div className="py-1">
-                                    {CREATABLE_STATES.map((s) => (
+                                    {SELECTABLE_STATES.map((s) => (
                                         <SelectItem
                                             key={s}
                                             value={s}
@@ -483,9 +494,12 @@ export function BillFormBackendBase({
                     </div>
 
                     {/* Facture déjà réglée — évite la création puis l'encaissement en deux temps.
-                        Les champs de paiement restent cachés tant que la case n'est pas cochée :
-                        le cas courant est une facture qu'on émet, pas une qu'on rattrape. */}
-                    {state === BillingStatus.BILLED && (
+                        La case et le menu ci-dessus sont le MÊME état (voir SELECTABLE_STATES) :
+                        cocher met le menu sur « Payée », choisir « Payée » coche. Les champs du
+                        règlement restent cachés tant que la case n'est pas cochée : le cas
+                        courant est une facture qu'on émet, pas une qu'on rattrape.
+                        Un brouillon n'ayant rien à encaisser, le bloc disparaît pour lui. */}
+                    {state !== BillingStatus.DRAFT && (
                         <div className="space-y-3 rounded-md border border-border p-3">
                             <label className="flex items-center gap-3 cursor-pointer">
                                 <Checkbox
@@ -499,21 +513,47 @@ export function BillFormBackendBase({
                             {markAsPaid && (
                                 <>
                                     <p className="text-xs text-muted-foreground">
-                                        La facture sera créée émise puis enregistrée comme payée, en une seule
-                                        opération. Son historique porte les deux étapes.
+                                        La facture sera créée émise, son paiement enregistré, puis elle sera
+                                        marquée payée — en une seule opération. Le règlement devient un
+                                        paiement à part entière, visible dans « Paiements » et modifiable
+                                        là-bas ; la facture ne fait que le refléter.
                                     </p>
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-foreground">
-                                            Identifiant de paiement <span className="text-red-500">*</span>
+                                            Référence de paiement
+                                            <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
                                         </label>
                                         <Input
-                                            ref={registerField('paymentReference')}
                                             value={paymentReference}
                                             onChange={(e) => setPaymentReference(e.target.value)}
                                             placeholder="N° de chèque, référence de virement..."
                                             className="bg-field border-border text-foreground"
                                         />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-foreground">
+                                            Méthode de paiement
+                                        </label>
+                                        <Select
+                                            value={paymentMethod || 'NONE'}
+                                            onValueChange={(v) => setPaymentMethod(v === 'NONE' ? '' : (v as PaymentMethod))}
+                                        >
+                                            <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-card border-border">
+                                                <SelectItem value="NONE" className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
+                                                    Non renseignée
+                                                </SelectItem>
+                                                {Object.values(PaymentMethod).map((m) => (
+                                                    <SelectItem key={m} value={m} className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer">
+                                                        {getPaymentMethodLabel(m)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
                                     <div className="space-y-2">
@@ -584,6 +624,7 @@ export function AddBillFormBackend({ onSuccess, initialClient }: { onSuccess?: (
                 issueDate: formData.issueDate ? formData.issueDate.toISOString() : null,
                 paymentReference: formData.paymentReference,
                 paymentDate: formData.paymentDate ? formData.paymentDate.toISOString() : null,
+                paymentMethod: formData.paymentMethod,
             }),
         });
 

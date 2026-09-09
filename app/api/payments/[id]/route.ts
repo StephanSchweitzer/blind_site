@@ -5,6 +5,7 @@ import { PaymentType, Prisma } from '@prisma/client';
 import { isClientRequiredForPaymentType } from '@/lib/payment-enums';
 import { PaymentUpdateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
+import { syncBillPaymentInfo, paymentPrecedesIssue } from '@/lib/billing';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
@@ -82,7 +83,7 @@ export const PATCH = withAdmin(async (request, context) => {
         const updated = await prisma.$transaction(async (tx) => {
             const existing = await tx.payment.findUnique({
                 where: { id: paymentId, isActive: true },
-                select: { id: true, type: true, clientId: true, billId: true },
+                select: { id: true, type: true, clientId: true, billId: true, paymentDate: true },
             });
             if (!existing) throw new Error('PAYMENT_NOT_FOUND');
 
@@ -148,13 +149,32 @@ export const PATCH = withAdmin(async (request, context) => {
             } else {
                 const bill = await tx.bill.findUnique({
                     where: { id: resultingBillId, isActive: true },
-                    select: { id: true, clientId: true },
+                    select: { id: true, clientId: true, issueDate: true },
                 });
                 if (!bill) throw new Error('BILL_NOT_FOUND');
                 if (effectiveClientId != null && bill.clientId !== effectiveClientId) {
                     throw new Error('BILL_CLIENT_MISMATCH');
                 }
                 data.billId = resultingBillId;
+            }
+
+            // Réglée avant d'être émise : le contrôle que la facture posait sur sa
+            // propre colonne, là où la date se saisit maintenant. Testé sur la date
+            // EFFECTIVE, pour qu'une modification qui ne touche qu'elle soit vue.
+            const effectivePaymentDate =
+                p.paymentDate !== undefined
+                    ? (p.paymentDate ? new Date(p.paymentDate) : null)
+                    : existing.paymentDate;
+            const billIdForDateCheck =
+                effectiveType === PaymentType.ENREGISTREMENT ? resultingBillId : null;
+            if (effectivePaymentDate && billIdForDateCheck != null) {
+                const target = await tx.bill.findUnique({
+                    where: { id: billIdForDateCheck },
+                    select: { issueDate: true },
+                });
+                if (target && paymentPrecedesIssue(effectivePaymentDate, target.issueDate)) {
+                    throw new Error('PAYMENT_BEFORE_ISSUE');
+                }
             }
 
             // cotisationYear only valid for COTISATION; otherwise always cleared.
@@ -164,11 +184,23 @@ export const PATCH = withAdmin(async (request, context) => {
                 data.cotisationYear = p.cotisationYear;
             }
 
-            return tx.payment.update({
+            const saved = await tx.payment.update({
                 where: { id: paymentId },
                 data,
                 include: { client: { select: clientSelect }, bill: { select: billSelect } },
             });
+
+            // Les DEUX factures, quand le paiement change de facture : celle qu'il
+            // quitte perd sa référence autant que celle qu'il rejoint la gagne. Ne
+            // resynchroniser que la nouvelle laisserait l'ancienne annoncer un
+            // règlement qui n'est plus le sien.
+            const touched = new Set<number>();
+            if (existing.billId != null) touched.add(existing.billId);
+            const savedBillId = saved.billId;
+            if (savedBillId != null) touched.add(savedBillId);
+            for (const id of touched) await syncBillPaymentInfo(tx, id);
+
+            return saved;
         });
 
         return NextResponse.json({ payment: serialize(updated), message: 'Paiement mis à jour avec succès' });
@@ -179,6 +211,11 @@ export const PATCH = withAdmin(async (request, context) => {
         const errorMap: Record<string, [string, number]> = {
             PAYMENT_NOT_FOUND: ['Paiement introuvable', 404],
             CLIENT_REQUIRED: ['Ce type de paiement doit être rattaché à une personne', 400],
+            PAYMENT_BEFORE_ISSUE: ['La date de paiement ne peut pas précéder la date d’émission de la facture', 400],
+            BILL_SETTLED_NEEDS_PAYMENT: [
+                'La facture que ce paiement réglait est payée ou soldée : elle doit garder au moins un paiement. Rouvrez la facture avant de détacher son règlement.',
+                409,
+            ],
             BILL_NOT_FOUND: ['La facture liée est introuvable ou inactive', 409],
             BILL_CLIENT_MISMATCH: ['La facture liée n’appartient pas au client du paiement', 400],
         };
@@ -215,7 +252,7 @@ export const DELETE = withAdmin(async (request, context) => {
 
         const existing = await prisma.payment.findUnique({
             where: { id: paymentId },
-            select: { id: true, isActive: true },
+            select: { id: true, isActive: true, billId: true },
         });
         if (!existing) {
             return NextResponse.json({ error: 'Not found', message: 'Paiement introuvable' }, { status: 404 });
@@ -231,14 +268,31 @@ export const DELETE = withAdmin(async (request, context) => {
             );
         }
 
-        await prisma.payment.update({
-            where: { id: paymentId },
-            data: { isActive: false, deletedAt: new Date(), deletionReason: reason },
+        // La suppression et la resynchronisation dans la même transaction : la
+        // facture ne doit jamais exister, même un instant, en annonçant un
+        // règlement dont le paiement vient de partir. Et si elle est payée, c'est
+        // syncBillPaymentInfo qui refuse — la facture se rouvre d'abord.
+        await prisma.$transaction(async (tx) => {
+            await tx.payment.update({
+                where: { id: paymentId },
+                data: { isActive: false, deletedAt: new Date(), deletionReason: reason },
+            });
+            if (existing.billId != null) await syncBillPaymentInfo(tx, existing.billId);
         });
 
         return NextResponse.json({ message: 'Paiement supprimé avec succès' });
     } catch (error) {
         console.error('Error deleting payment:', error);
+        if (error instanceof Error && error.message === 'BILL_SETTLED_NEEDS_PAYMENT') {
+            return NextResponse.json(
+                {
+                    error: error.message,
+                    message:
+                        'La facture que ce paiement réglait est payée ou soldée : elle doit garder au moins un paiement. Rouvrez la facture avant de supprimer son règlement.',
+                },
+                { status: 409 }
+            );
+        }
         return NextResponse.json(
             { error: 'Failed to delete payment', message: 'Une erreur inattendue est survenue', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500 }

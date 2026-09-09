@@ -13,6 +13,8 @@ import {
     ordersFollowingBillState,
     detachedBillingStatus,
     paymentPrecedesIssue,
+    summarizeBillPayments,
+    syncBillPaymentInfo,
 } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -73,6 +75,22 @@ export const GET = withAdmin(async (_request, context) => {
                     // de clôture (legacy) ferment la liste plutôt que de l'ouvrir.
                     orderBy: [{ closureDate: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
                 },
+                // Les paiements qui règlent cette facture. Ils sont la SOURCE des
+                // colonnes paymentReference / paymentDate ci-dessus, pas l'inverse :
+                // le modal les affiche pour que le règlement annoncé par la facture
+                // soit vérifiable ligne à ligne, et non à croire sur parole.
+                payments: {
+                    where: { isActive: true },
+                    orderBy: { id: 'asc' },
+                    select: {
+                        id: true,
+                        amount: true,
+                        paymentMethod: true,
+                        paymentDate: true,
+                        creationDate: true,
+                        paymentReference: true,
+                    },
+                },
                 events: {
                     orderBy: { createdAt: 'desc' },
                     select: {
@@ -95,8 +113,12 @@ export const GET = withAdmin(async (_request, context) => {
         // #12 — flatten the client into the shape the PDF/modal consume:
         // civility as a plain string and the default address as display lines.
         const { addresses, civility, ...clientRest } = bill.client;
+        const paid = bill.payments.reduce((sum, p) => sum.plus(p.amount), new Prisma.Decimal(0));
         const shapedBill = {
             ...bill,
+            // Le reste à payer, calculé là où les deux nombres se trouvent déjà.
+            paidTotal: paid.toString(),
+            outstanding: bill.invoiceAmount.minus(paid).toString(),
             client: {
                 ...clientRest,
                 civility: civility?.name ?? null,
@@ -129,18 +151,11 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         const { action } = body;
 
         if (action === 'updateStatus') {
-            const { state, paymentReference, paymentDate } = body;
+            const { state } = body;
 
             const validStates = ['DRAFT', 'BILLED', 'PAID', 'SOLDE'];
             if (!validStates.includes(state)) {
                 return NextResponse.json({ error: 'Invalid state', message: 'Statut invalide' }, { status: 400 });
-            }
-
-            if (state === 'PAID' && !paymentReference?.trim()) {
-                return NextResponse.json(
-                    { error: 'Payment reference required', message: 'Un identifiant de paiement est requis pour marquer une facture comme payée' },
-                    { status: 400 }
-                );
             }
 
             const bill = await prisma.bill.findUnique({
@@ -164,42 +179,49 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 );
             }
 
-            const updateData: Record<string, unknown> = { state };
-            if (state === 'BILLED') updateData.issueDate = new Date();
-            if (state === 'DRAFT') updateData.issueDate = null;
+            // Encaisser une facture, c'est constater un paiement — pas taper une
+            // chaîne de caractères.
+            //
+            // La transition exigeait auparavant une référence saisie sur la facture.
+            // Elle exige maintenant un PAIEMENT rattaché : il porte le montant, la
+            // méthode, la date et la référence, il se retrouve dans /admin/payments,
+            // et il rend la facture vérifiable au lieu de la déclarer réglée sur
+            // parole. La date et la référence de la facture en sont DÉDUITES
+            // (syncBillPaymentInfo), plus jamais saisies ici.
+            let paidSummary: Awaited<ReturnType<typeof summarizeBillPayments>> | null = null;
             if (state === 'PAID') {
-                // La date de paiement est SAISIE, pas déduite du moment du clic.
-                //
-                // Encaisser une facture émise il y a trois semaines est le cas
-                // courant, et « aujourd'hui » écrivait alors une date fausse dans
-                // la seule colonne qui dit quand l'auditeur a réglé. Absente, elle
-                // retombe sur le jour même — l'ancien comportement, pour tout
-                // appelant qui ne la fournit pas.
-                let resolvedPaymentDate = new Date();
-                if (paymentDate) {
-                    resolvedPaymentDate = new Date(paymentDate);
-                    if (isNaN(resolvedPaymentDate.getTime())) {
-                        return NextResponse.json(
-                            { error: 'Invalid paymentDate', message: 'La date de paiement est invalide' },
-                            { status: 400 }
-                        );
-                    }
-                }
-                if (paymentPrecedesIssue(resolvedPaymentDate, bill.issueDate)) {
+                paidSummary = await summarizeBillPayments(prisma, billId);
+                if (paidSummary.count === 0) {
                     return NextResponse.json(
                         {
-                            error: 'Payment before issue',
-                            message: 'La date de paiement ne peut pas précéder la date d\'émission',
+                            error: 'Payment required',
+                            message:
+                                "Enregistrez d'abord le paiement de cette facture : c'est lui qui porte la référence, la méthode et la date du règlement.",
                         },
                         { status: 400 }
                     );
                 }
-                updateData.paymentDate = resolvedPaymentDate;
-                updateData.paymentReference = paymentReference.trim();
+                // Le contrôle d'avant, sur la date désormais portée par le paiement.
+                if (paidSummary.paymentDate && paymentPrecedesIssue(paidSummary.paymentDate, bill.issueDate)) {
+                    return NextResponse.json(
+                        {
+                            error: 'Payment before issue',
+                            message: "La date de paiement ne peut pas précéder la date d'émission",
+                        },
+                        { status: 400 }
+                    );
+                }
             }
+
+            const updateData: Record<string, unknown> = { state };
+            if (state === 'BILLED') updateData.issueDate = new Date();
+            if (state === 'DRAFT') updateData.issueDate = null;
 
             await prisma.$transaction(async (tx) => {
                 await tx.bill.update({ where: { id: billId }, data: updateData });
+                // APRÈS le changement d'état, pour que le refus « une facture
+                // encaissée porte au moins un paiement » porte sur le NOUVEL état.
+                if (state === 'PAID') await syncBillPaymentInfo(tx, billId);
                 // Keep attached orders' billingStatus in sync with the bill's state —
                 // except the two categories that don't follow it (see
                 // ordersFollowingBillState): « Non facturable » is out of the cycle by
@@ -215,7 +237,10 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                         type: evType,
                         fromState: bill.state as BillingStatus,
                         toState: state as BillingStatus,
-                        payload: state === 'PAID' ? { paymentReference: paymentReference.trim() } : null,
+                        payload:
+                            state === 'PAID' && paidSummary
+                                ? { paymentReference: paidSummary.reference, paidTotal: paidSummary.paid.toString() }
+                                : null,
                         performedById,
                     });
                 }
@@ -224,7 +249,14 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         }
 
         // Reopen a finalized bill (PAID or SOLDE) back to BILLED so it can be corrected.
-        // Payment fields are cleared but archived in the audit log so they aren't lost.
+        //
+        // Les paiements rattachés se DÉTACHENT, et c'est le seul geste cohérent
+        // depuis que les colonnes de règlement de la facture sont le reflet de ses
+        // paiements (syncBillPaymentInfo) : les laisser rattachés ferait annoncer un
+        // règlement à une facture qu'on rouvre justement pour la corriger, et les
+        // colonnes se recalculeraient au prochain passage. Les paiements eux-mêmes
+        // ne sont pas supprimés — ils restent dans /admin/payments, retrouvables et
+        // rattachables à la facture corrigée. Leur numéro part au journal.
         if (action === 'reopenBill') {
             const bill = await prisma.bill.findUnique({
                 where: { id: billId, isActive: true },
@@ -240,7 +272,14 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 );
             }
 
+            const linkedPayments = await prisma.payment.findMany({
+                where: { billId, isActive: true },
+                select: { id: true, paymentReference: true },
+                orderBy: { id: 'asc' },
+            });
+
             await prisma.$transaction(async (tx) => {
+                await tx.payment.updateMany({ where: { billId, isActive: true }, data: { billId: null } });
                 await tx.bill.update({
                     where: { id: billId },
                     data: { state: BillingStatus.BILLED, paymentReference: null, paymentDate: null },
@@ -258,13 +297,19 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                     payload: {
                         clearedPaymentReference: bill.paymentReference,
                         clearedPaymentDate: bill.paymentDate ? bill.paymentDate.toISOString() : null,
+                        detachedPaymentIds: linkedPayments.map((p) => p.id),
                     },
                     performedById,
                 });
             });
 
+            const detached = linkedPayments.length
+                ? ` ${linkedPayments.length} paiement${linkedPayments.length > 1 ? 's ont été détachés' : ' a été détaché'} (n° ${linkedPayments.map((p) => p.id).join(', ')}) ; ${linkedPayments.length > 1 ? 'ils restent' : 'il reste'} dans les paiements.`
+                : '';
             return NextResponse.json({
-                message: `Facture rouverte (état précédent : ${bill.state === BillingStatus.PAID ? 'payée' : 'soldée'}). Les informations de paiement ont été archivées dans l'historique.`,
+                message:
+                    `Facture rouverte (état précédent : ${bill.state === BillingStatus.PAID ? 'payée' : 'soldée'}). ` +
+                    `Les informations de paiement ont été archivées dans l'historique.${detached}`,
             });
         }
 
@@ -363,71 +408,14 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             return NextResponse.json({ message: 'Demande retirée de la facture' });
         }
 
-        // Enregistre la référence de paiement, et RIEN d'autre.
+        // L'action `updatePaymentReference` a été retirée.
         //
-        // Cette action faisait auparavant basculer un brouillon directement en
-        // « Payée » (state PAID + issueDate + paymentDate du jour) dès qu'une
-        // référence non vide y était saisie. Elle contournait ainsi la machine à
-        // états de `updateStatus` juste au-dessus, qui n'autorise DRAFT que vers
-        // BILLED : la facture était enregistrée payée un jour où elle n'avait
-        // jamais été émise ni imprimée, son total n'était jamais recalculé, et
-        // elle se retrouvait verrouillée (une facture PAID l'est) — seul
-        // reopenBill pouvait la rouvrir.
-        //
-        // Une référence est une donnée SUR un paiement ; elle n'est pas le
-        // paiement. Encaisser une facture passe par updateStatus, qui exige
-        // déjà une référence pour PAID.
-        if (action === 'updatePaymentReference') {
-            const { paymentReference } = body;
-            const trimmed = paymentReference?.trim() || null;
-            const bill = await prisma.bill.findUnique({
-                where: { id: billId, isActive: true },
-                select: { id: true, state: true, paymentReference: true },
-            });
-            if (!bill) return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
-
-            // Une facture PAYÉE ou SOLDÉE ne peut pas se retrouver SANS référence.
-            //
-            // `updateStatus` refuse de passer une facture à PAID sans référence —
-            // c'est l'invariant : une facture encaissée dit toujours par quoi. Cette
-            // action, elle, acceptait une chaîne vide dans n'importe quel état, et le
-            // crayon du modal est offert dans tous les états : vider le champ sur une
-            // facture payée la ramenait exactement dans l'état que la transition
-            // interdit, par la porte de derrière — « Non renseignée » sur une facture
-            // qui annonce un règlement, et plus rien pour dire lequel.
-            //
-            // Corriger une référence reste permis dans tous les états — c'est ce à
-            // quoi sert ce champ, et Bill étant un modèle audité, la valeur
-            // précédente part au journal toute seule. La VIDER n'est permis que tant
-            // que la facture n'annonce pas d'encaissement ; sur une facture réglée,
-            // le chemin de sortie est reopenBill, qui archive la référence dans le
-            // BillEvent avant de l'effacer.
-            const clearing = trimmed === null;
-            const settled = bill.state === BillingStatus.PAID || bill.state === BillingStatus.SOLDE;
-            if (clearing && settled) {
-                return NextResponse.json(
-                    {
-                        error: 'Reference required',
-                        message:
-                            `La facture #${billId} est ${getBillingStatusLabel(bill.state).toLowerCase()} : ` +
-                            `elle doit garder un identifiant de paiement. Corrigez-le, ou rouvrez la facture ` +
-                            `pour retirer son règlement.`,
-                    },
-                    { status: 409 }
-                );
-            }
-
-            if (trimmed === bill.paymentReference) {
-                return NextResponse.json({ message: 'Référence de paiement inchangée' });
-            }
-
-            await prisma.bill.update({
-                where: { id: billId },
-                data: { paymentReference: trimmed },
-            });
-
-            return NextResponse.json({ message: 'Référence de paiement mise à jour' });
-        }
+        // Elle laissait corriger à la main une colonne qui n'est plus une saisie :
+        // `Bill.paymentReference` reflète les paiements rattachés
+        // (syncBillPaymentInfo). La corriger sur la facture aurait été réécrite au
+        // premier changement côté paiement, et aurait surtout fait diverger la
+        // facture du règlement qu'elle est censée décrire. La référence se modifie
+        // sur le paiement, dans /admin/payments.
 
         return NextResponse.json({ error: 'Unknown action', message: 'Action inconnue' }, { status: 400 });
     } catch (error) {

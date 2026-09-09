@@ -50,6 +50,104 @@ export async function recomputeBillTotal(
 }
 
 /**
+ * Ce que les paiements rattachés disent d'une facture.
+ *
+ * `Payment.billId` est un lien MULTIPLE : une facture réglée en deux chèques
+ * porte deux paiements, et c'est le cas normal, pas une anomalie. Tout ce qui
+ * s'affiche ou se décide à propos du règlement d'une facture se lit donc ici,
+ * jamais sur un paiement pris isolément.
+ */
+export type BillPaymentSummary = {
+    /** Somme des paiements actifs rattachés. */
+    paid: Prisma.Decimal;
+    /** invoiceAmount − paid. Négatif = trop-perçu, et c'est une information. */
+    outstanding: Prisma.Decimal;
+    invoiceAmount: Prisma.Decimal;
+    count: number;
+    /** Les références des paiements, dans l'ordre, ou null s'il n'y en a aucune. */
+    reference: string | null;
+    /** La plus récente des dates de règlement, ou null. */
+    paymentDate: Date | null;
+};
+
+export async function summarizeBillPayments(
+    tx: TransactionClient,
+    billId: number
+): Promise<BillPaymentSummary> {
+    const [bill, payments] = await Promise.all([
+        tx.bill.findUnique({ where: { id: billId }, select: { invoiceAmount: true } }),
+        tx.payment.findMany({
+            where: { billId, isActive: true },
+            select: { id: true, amount: true, paymentReference: true, paymentDate: true, creationDate: true },
+            orderBy: { id: 'asc' },
+        }),
+    ]);
+
+    const invoiceAmount = bill?.invoiceAmount ?? new Prisma.Decimal(0);
+    const paid = payments.reduce((sum, p) => sum.plus(p.amount), new Prisma.Decimal(0));
+
+    // Les références de TOUS les paiements, pas seulement du dernier : une
+    // facture réglée en deux chèques se retrouve par l'un OU l'autre numéro, et
+    // la recherche factures (buildBillSearchWhere) fait un `contains` sur cette
+    // colonne — chaque référence y reste donc atteignable.
+    const references = Array.from(
+        new Set(payments.map((p) => p.paymentReference).filter((r): r is string => !!r))
+    );
+
+    // Une date de règlement manquante retombe sur la date de création du
+    // paiement : la colonne de la facture ne doit pas se vider parce qu'un
+    // paiement a été saisi sans sa date.
+    const dates = payments.map((p) => p.paymentDate ?? p.creationDate);
+
+    return {
+        paid,
+        outstanding: invoiceAmount.minus(paid),
+        invoiceAmount,
+        count: payments.length,
+        reference: references.length ? references.join(' + ') : null,
+        paymentDate: dates.length ? new Date(Math.max(...dates.map((d) => d.getTime()))) : null,
+    };
+}
+
+/**
+ * Recopie sur la facture ce que disent ses paiements.
+ *
+ * `Bill.paymentReference` et `Bill.paymentDate` ne se saisissent plus : elles
+ * sont le REFLET des paiements rattachés, comme `invoiceAmount` est le reflet
+ * des demandes rattachées. À appeler dans la même transaction que tout geste qui
+ * crée, modifie, rattache, détache ou supprime un paiement — des deux côtés
+ * quand un paiement change de facture.
+ *
+ * Le refus final est l'invariant que `updateStatus` posait déjà, resserré : une
+ * facture qui annonce un encaissement porte toujours AU MOINS UN PAIEMENT.
+ * L'ancienne version exigeait une référence — mais un règlement en espèces n'en
+ * a pas, et exiger une chaîne de caractères revenait à en faire inventer une.
+ * Un paiement, lui, existe toujours, avec son montant, sa méthode et sa date.
+ * Retirer le dernier paiement d'une facture payée la ramènerait dans l'état que
+ * la transition interdit, par la porte de derrière ; le chemin de sortie est
+ * `reopenBill`.
+ */
+export async function syncBillPaymentInfo(
+    tx: TransactionClient,
+    billId: number
+): Promise<BillPaymentSummary> {
+    const summary = await summarizeBillPayments(tx, billId);
+
+    const bill = await tx.bill.findUnique({ where: { id: billId }, select: { state: true } });
+    const settled = bill?.state === BillingStatus.PAID || bill?.state === BillingStatus.SOLDE;
+    if (settled && summary.count === 0) {
+        throw new Error('BILL_SETTLED_NEEDS_PAYMENT');
+    }
+
+    await tx.bill.update({
+        where: { id: billId },
+        data: { paymentReference: summary.reference, paymentDate: summary.paymentDate },
+    });
+
+    return summary;
+}
+
+/**
  * Append an immutable audit entry to a bill's history. Call inside a transaction so
  * the event and the state change it describes commit together — and always AFTER
  * whatever statement in that same transaction last touched invoiceAmount, since

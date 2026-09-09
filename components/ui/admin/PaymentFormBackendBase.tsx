@@ -91,6 +91,19 @@ export interface PaymentFormInitialData {
     bill: BillOption | null;
 }
 
+/**
+ * Une saisie amorcée depuis la fiche d'une facture : le client, la facture et
+ * le reste à payer sont déjà connus là-bas, les redemander serait les faire
+ * ressaisir — et laisser choisir une AUTRE facture depuis le bouton d'une
+ * facture précise.
+ */
+export interface PaymentFormPreset {
+    client: User;
+    billId: number;
+    /** Le reste à encaisser, pré-rempli — corrigeable pour un acompte. */
+    amount?: string | number | null;
+}
+
 interface PaymentFormBackendBaseProps {
     onSubmit: (formData: PaymentFormData) => Promise<number>;
     submitButtonText: string;
@@ -99,6 +112,7 @@ interface PaymentFormBackendBaseProps {
     onSuccess?: (paymentId: number) => void;
     initialData?: PaymentFormInitialData;
     initialClient?: User | null;
+    preset?: PaymentFormPreset | null;
 }
 
 const NONE = 'NONE';
@@ -116,6 +130,7 @@ export function PaymentFormBackendBase({
                                            onSuccess,
                                            initialData,
                                            initialClient,
+                                           preset = null,
                                        }: PaymentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -123,9 +138,16 @@ export function PaymentFormBackendBase({
     const { registerField, focusFirstInvalid } = useInvalidField();
     const [showAdvanced, setShowAdvanced] = useState(false);
 
-    const [type, setType] = useState<PaymentType>(initialData?.type ?? PaymentType.COTISATION);
-    const [selectedClient, setSelectedClient] = useState<User | null>(initialData?.client ?? initialClient ?? null);
-    const [amount, setAmount] = useState<string>(initialData ? String(initialData.amount) : '');
+    // Un preset désigne une facture : le type ne peut être qu'« Enregistrement ».
+    const [type, setType] = useState<PaymentType>(
+        initialData?.type ?? (preset ? PaymentType.ENREGISTREMENT : PaymentType.COTISATION)
+    );
+    const [selectedClient, setSelectedClient] = useState<User | null>(
+        initialData?.client ?? preset?.client ?? initialClient ?? null
+    );
+    const [amount, setAmount] = useState<string>(
+        initialData ? String(initialData.amount) : preset?.amount != null ? String(preset.amount) : ''
+    );
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>(initialData?.paymentMethod ?? '');
     const [creationDate, setCreationDate] = useState<Date>(
         initialData?.creationDate ? new Date(initialData.creationDate) : new Date()
@@ -134,7 +156,7 @@ export function PaymentFormBackendBase({
         initialData?.issueDate ? new Date(initialData.issueDate) : null
     );
     const [paymentDate, setPaymentDate] = useState<Date | null>(
-        initialData?.paymentDate ? new Date(initialData.paymentDate) : null
+        initialData?.paymentDate ? new Date(initialData.paymentDate) : preset ? new Date() : null
     );
     const [paymentReference, setPaymentReference] = useState(initialData?.paymentReference ?? '');
     const [receiptNumber, setReceiptNumber] = useState(initialData?.receiptNumber ?? '');
@@ -151,7 +173,7 @@ export function PaymentFormBackendBase({
 
     // Bills of the selected client (only for ENREGISTREMENT)
     const [clientBills, setClientBills] = useState<BillOption[]>([]);
-    const [selectedBillId, setSelectedBillId] = useState<number | null>(initialData?.bill?.id ?? null);
+    const [selectedBillId, setSelectedBillId] = useState<number | null>(initialData?.bill?.id ?? preset?.billId ?? null);
     const [isLoadingBills, setIsLoadingBills] = useState(false);
 
     useEffect(() => {
@@ -595,7 +617,7 @@ export function paymentFormDataToApiBody(d: PaymentFormData) {
 
 // ─── Add wrapper (POST) ─────────────────────────────────────────────────────────
 
-export function AddPaymentFormBackend({ onSuccess, initialClient }: { onSuccess?: (paymentId: number) => void; initialClient?: User | null }) {
+export function AddPaymentFormBackend({ onSuccess, initialClient, preset }: { onSuccess?: (paymentId: number) => void; initialClient?: User | null; preset?: PaymentFormPreset | null }) {
     const { toast } = useToast();
 
     const handleSubmit = async (formData: PaymentFormData): Promise<number> => {
@@ -637,6 +659,7 @@ export function AddPaymentFormBackend({ onSuccess, initialClient }: { onSuccess?
             title="Créer un nouveau paiement"
             onSuccess={onSuccess}
             initialClient={initialClient}
+            preset={preset}
         />
     );
 }

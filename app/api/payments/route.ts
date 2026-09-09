@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import { PaymentCreateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
+import { syncBillPaymentInfo, paymentPrecedesIssue } from '@/lib/billing';
 import { buildPaymentSearchWhere } from '@/lib/search';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 
@@ -133,7 +134,7 @@ export const POST = withAdmin(async (request) => {
             if (billId != null) {
                 const bill = await tx.bill.findUnique({
                     where: { id: billId, isActive: true },
-                    select: { id: true, clientId: true },
+                    select: { id: true, clientId: true, issueDate: true },
                 });
                 if (!bill) {
                     throw new Prisma.PrismaClientKnownRequestError('Bill not found', { code: 'P2025', clientVersion: 'app' });
@@ -141,11 +142,20 @@ export const POST = withAdmin(async (request) => {
                 if (d.clientId != null && bill.clientId !== d.clientId) {
                     throw new Error('BILL_CLIENT_MISMATCH');
                 }
+                // Le contrôle que la facture posait sur SA date de paiement, déplacé
+                // là où la date se saisit désormais : réglée avant d'être émise reste
+                // la contradiction que rien ne doit écrire.
+                if (data.paymentDate && paymentPrecedesIssue(data.paymentDate as Date, bill.issueDate)) {
+                    throw new Error('PAYMENT_BEFORE_ISSUE');
+                }
             }
-            return tx.payment.create({
+            const created = await tx.payment.create({
                 data,
                 include: { client: { select: clientSelect }, bill: { select: billSelect } },
             });
+            // La facture reprend ce que ses paiements disent d'elle.
+            if (billId != null) await syncBillPaymentInfo(tx, billId);
+            return created;
         });
 
         return NextResponse.json(
@@ -170,10 +180,14 @@ export const POST = withAdmin(async (request) => {
         console.error('Error creating payment:', error);
 
         const msg = error instanceof Error ? error.message : '';
-        if (msg === 'BILL_CLIENT_MISMATCH') {
+        const errorMap: Record<string, [string, number]> = {
+            BILL_CLIENT_MISMATCH: ['La facture liée n’appartient pas au client sélectionné.', 400],
+            PAYMENT_BEFORE_ISSUE: ['La date de paiement ne peut pas précéder la date d’émission de la facture.', 400],
+        };
+        if (errorMap[msg]) {
             return NextResponse.json(
-                { success: false, error: msg, message: 'La facture liée n’appartient pas au client sélectionné.' },
-                { status: 400 }
+                { success: false, error: msg, message: errorMap[msg][0] },
+                { status: errorMap[msg][1] }
             );
         }
 
