@@ -107,7 +107,22 @@ function CreateBookDialog({ onCreated }: { onCreated: (book: Book) => void }) {
 }
 
 // Add Order Form — multiple books, one order created per book
-export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: (orderId: number) => void; initialClient?: User | null }) {
+export function AddOrderFormBackend({
+    onSuccess,
+    initialClient,
+    initialBook,
+}: {
+    onSuccess?: (orderId: number) => void;
+    initialClient?: User | null;
+    /**
+     * Pré-remplit l'ouvrage de la première ligne. Utilisé par
+     * MissingDemandeNotice, qui ouvre ce formulaire depuis la fenêtre audio d'un
+     * livre rattaché à aucune demande : le livre est le seul élément que
+     * l'appelant connaisse avec certitude. L'auditeur et le type de ligne
+     * restent à saisir — ce sont des décisions, pas des déductions.
+     */
+    initialBook?: Book | null;
+}) {
     const { toast } = useToast();
 
     const [isLoading, setIsLoading] = useState(false);
@@ -148,7 +163,16 @@ export function AddOrderFormBackend({ onSuccess, initialClient }: { onSuccess?: 
     // auditeur's preference / the book's tarif conseillé when known but always
     // overridable per ouvrage. Cost is a per-demande value, not shared metadata.
     const [lines, setLines] = useState<OrderBookLine[]>([
-        { ...makeLine('3.00'), mediaFormatId: initialClient?.preferredMediaFormatId ?? null },
+        {
+            ...makeLine(
+                // Même tarif conseillé que la sélection manuelle d'un ouvrage
+                // (voir selectBookForLine) : sans ça une demande pré-remplie
+                // partirait au plancher pour un enregistrement lourd.
+                costSuggestion(initialBook?.audioSizeKb)?.value ?? '3.00',
+            ),
+            book: initialBook ?? null,
+            mediaFormatId: initialClient?.preferredMediaFormatId ?? null,
+        },
     ]);
 
     // Une décision d'enregistrement par ligne. `saved` est absent : ici tout est

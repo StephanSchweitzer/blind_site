@@ -45,6 +45,7 @@ import {
 import { DeleteAudioTrackModal, type AudioTrackTarget } from '@/admin/DeleteAudioTrackModal';
 import { DeleteAllAudioTracksModal } from '@/admin/DeleteAllAudioTracksModal';
 import { RenameAudioTrackModal, type AudioTrackRenameTarget } from '@/admin/RenameAudioTrackModal';
+import { MissingDemandeNotice } from '@/admin/MissingDemandeNotice';
 import { parisDate } from '@/lib/paris-day';
 
 interface Track {
@@ -67,6 +68,9 @@ interface ManageResponse {
     trackCount: number;
     totalBytes: number;
     trashCount: number;
+    /** Demandes / attributions nommant ce livre — voir MissingDemandeNotice. */
+    orderCount: number;
+    assignmentCount: number;
     tracks: Track[];
 }
 
@@ -629,6 +633,19 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             )}
                         </div>
                     )}
+
+                    {/* Monté sans condition : c'est le composant qui décide de se
+                        taire (compteurs non nuls, ou pas encore chargés). Voir
+                        .claude/rules/order-recording-warnings.md — une condition
+                        posée ici est une condition qu'un nettoyage emporte. */}
+                    <MissingDemandeNotice
+                        bookId={bookId}
+                        bookTitle={data?.title}
+                        orderCount={data?.orderCount}
+                        assignmentCount={data?.assignmentCount}
+                        disabled={busy}
+                        onCreated={() => void refreshAll()}
+                    />
 
                     {/* --- Tabs -------------------------------------------------------- */}
                     <div className="flex-shrink-0 flex gap-2 pt-2">

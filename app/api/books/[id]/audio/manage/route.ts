@@ -77,6 +77,25 @@ export const GET = withAdmin(async (_req, { params }) => {
         where: { bookId, restoredAt: null },
     });
 
+    // Is this book attached to anything in the workflow at all?
+    //
+    // A recording deposited on a book that no demande and no attribution ever
+    // named is the « enregistrement fantôme » : nothing credits the lecteur who
+    // read it, and — the part that costs — nothing carries a tarif, so the
+    // auditeur receives the audio and is never billed for it. The deposit is
+    // the last moment the portal sees the recording (the envoi itself happens
+    // outside it), so this is where the dialogue gets told, and MissingDemandeNotice
+    // is what says it.
+    //
+    // Two top-level counts rather than a nested `_count` on the book lookup:
+    // the soft-delete extension (lib/prisma.ts) filters `count` but NOT a
+    // nested `_count`, so this way a demande someone deleted doesn't come back
+    // as evidence that the book was requested.
+    const [orderCount, assignmentCount] = await Promise.all([
+        prisma.orders.count({ where: { catalogueId: bookId } }),
+        prisma.assignment.count({ where: { catalogueId: bookId } }),
+    ]);
+
     return NextResponse.json({
         bookId: book.id,
         title: book.title,
@@ -89,6 +108,8 @@ export const GET = withAdmin(async (_req, { params }) => {
         trackCount: signed.length,
         totalBytes: signed.reduce((t, s) => t + s.sizeBytes, 0),
         trashCount,
+        orderCount,
+        assignmentCount,
         tracks: signed,
     });
 });
