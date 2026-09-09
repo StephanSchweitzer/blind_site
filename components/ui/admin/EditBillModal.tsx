@@ -21,6 +21,7 @@ import { AddPaymentFormBackend } from './PaymentFormBackendBase';
 import { BillPDFButton } from './BillPDFButton';
 import { CopyableId } from './CopyableId';
 import { BillHistory, BillEventDTO } from './BillHistory';
+import { parisDate } from '@/lib/paris-day';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ const STATE_ACTION_LABEL: Partial<Record<BillingStatus, string>> = {
 
 function formatDate(dateString: string | null) {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('fr-FR');
+    return parisDate(dateString);
 }
 
 function formatCurrency(amount: number | string) {

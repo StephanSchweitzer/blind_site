@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
+import { parisDate, parisDateTimeDisplay } from '@/lib/paris-day';
 
 export interface BillEventDTO {
     id: number;
@@ -55,10 +56,10 @@ export function billEventTint(type: string, payload: Record<string, unknown> | n
 }
 
 const fmtDateTime = (iso: string) =>
-    new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+    parisDateTimeDisplay(iso);
 
 const fmtDate = (iso: unknown) =>
-    typeof iso === 'string' ? new Date(iso).toLocaleDateString('fr-FR') : '—';
+    typeof iso === 'string' ? parisDate(iso) : '—';
 
 const asString = (v: unknown): string | null => (v == null ? null : String(v));
 

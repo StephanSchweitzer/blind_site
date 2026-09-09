@@ -23,6 +23,7 @@ import { AddBookButtonBackend } from "@/admin/BookModalBackend";
 import { EditBookModal } from '@/admin/EditBookModal';
 import { BookFormData } from "@/admin/BookFormBackendBase";
 import { toast } from "@/hooks/use-toast";
+import { parisDate } from '@/lib/paris-day';
 
 interface Book {
     id: number;
@@ -140,7 +141,7 @@ function BookTable({
                         <TableCell className="text-foreground">{book.author}</TableCell>
                         <TableCell className="text-foreground">{book.isbn || 'N/A'}</TableCell>
                         <TableCell className="text-foreground">
-                            {new Date(book.createdAt).toLocaleDateString('fr-FR')}
+                            {parisDate(book.createdAt)}
                         </TableCell>
                     </TableRow>
                 ))}

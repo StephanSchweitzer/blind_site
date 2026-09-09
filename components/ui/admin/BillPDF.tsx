@@ -2,6 +2,7 @@
 import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import { BillingStatus } from '@/lib/billing-enums';
 import { ORG } from '@/lib/org';
+import { parisDate } from '@/lib/paris-day';
 
 // ─── Brand ──────────────────────────────────────────────────────────────────
 // The issuer block itself lives in lib/org.ts. The facture is now its only
@@ -76,7 +77,7 @@ export interface BillPDFData {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (d: string | null | undefined) =>
-    d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+    d ? parisDate(d) : '—';
 
 const formatCurrency = (a: number | string | null) =>
     a == null

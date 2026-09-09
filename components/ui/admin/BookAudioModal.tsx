@@ -45,6 +45,7 @@ import {
 import { DeleteAudioTrackModal, type AudioTrackTarget } from '@/admin/DeleteAudioTrackModal';
 import { DeleteAllAudioTracksModal } from '@/admin/DeleteAllAudioTracksModal';
 import { RenameAudioTrackModal, type AudioTrackRenameTarget } from '@/admin/RenameAudioTrackModal';
+import { parisDate } from '@/lib/paris-day';
 
 interface Track {
     order: number;
@@ -109,7 +110,7 @@ const formatDuration = (seconds: number) => {
 };
 
 const formatDate = (iso: string) =>
-    new Date(iso).toLocaleString('fr-FR', {
+    parisDate(iso, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',

@@ -41,6 +41,7 @@ import { DeleteBillModal } from '@/admin/DeleteBillModal';
 import { CopyIdButton } from '@/admin/CopyableId';
 import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { parisDate } from '@/lib/paris-day';
 
 interface BillsTableProps {
     initialBills: Bill[];
@@ -158,7 +159,7 @@ export default function BillsTable({
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
-        return new Date(dateString).toLocaleDateString('fr-FR');
+        return parisDate(dateString);
     };
 
     const formatCurrency = (amount: string) => {

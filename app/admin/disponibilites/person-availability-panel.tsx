@@ -57,6 +57,7 @@ import {
     formatDayKey,
 } from '@/lib/users/availability';
 import type { AvailabilityAssignment, PersonAvailabilityDetail } from '@/types';
+import { parisDate } from '@/lib/paris-day';
 
 /**
  * The person panel of /admin/disponibilites.
@@ -872,14 +873,11 @@ export default function PersonAvailabilityPanel({
                                                                         : getUserActivityStatusLabel(event.toStatus)}
                                                                 </span>
                                                                 <span className="text-muted-foreground whitespace-nowrap">
-                                                                    {new Date(event.changedAt).toLocaleDateString(
-                                                                        'fr-FR',
-                                                                        {
-                                                                            day: '2-digit',
-                                                                            month: 'short',
-                                                                            year: 'numeric',
-                                                                        }
-                                                                    )}
+                                                                    {parisDate(event.changedAt, {
+                                                                        day: '2-digit',
+                                                                        month: 'short',
+                                                                        year: 'numeric',
+                                                                    })}
                                                                 </span>
                                                             </div>
                                                             {event.unavailableFrom && (

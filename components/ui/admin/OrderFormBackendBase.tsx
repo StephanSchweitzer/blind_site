@@ -37,6 +37,7 @@ import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { STATUS } from '@/lib/statusSync';
 import { costSuggestion } from '@/lib/pricing';
+import { parisDate } from '@/lib/paris-day';
 
 // N3 — required fields, visual top→bottom.
 const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'statusId', 'mediaFormatId', 'deliveryMethod'];
@@ -784,7 +785,7 @@ export function OrderFormBackendBase({
                                         de fichier audio et un enregistrement est en cours
                                         {blockingRecording.readerName ? ` (lecteur ${blockingRecording.readerName}` : ''}
                                         {blockingRecording.readerName && blockingRecording.sentToReaderDate
-                                            ? `, envoyé le ${new Date(blockingRecording.sentToReaderDate).toLocaleDateString('fr-FR')}`
+                                            ? `, envoyé le ${parisDate(blockingRecording.sentToReaderDate)}`
                                             : ''}
                                         {blockingRecording.readerName ? ')' : ''}. La duplication ne pourra
                                         être faite qu&apos;au retour de l&apos;enregistrement.

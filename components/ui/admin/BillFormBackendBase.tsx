@@ -24,6 +24,7 @@ import { PaymentMethod, getPaymentMethodLabel } from '@/lib/payment-enums';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { getUserDisplayName } from '@/lib/users/displayName';
+import { parisDate } from '@/lib/paris-day';
 
 // N3 — required fields top→bottom.
 const FIELD_ORDER = ['client', 'orders', 'issueDate'];
@@ -378,7 +379,7 @@ export function BillFormBackendBase({
                                                     #{o.id} — {o.catalogue.title}
                                                 </div>
                                                 <div className="text-muted-foreground text-xs truncate">
-                                                    {o.catalogue.author} · {new Date(o.requestReceivedDate).toLocaleDateString('fr-FR')}
+                                                    {o.catalogue.author} · {parisDate(o.requestReceivedDate)}
                                                     {o.statusName ? ` · ${o.statusName}` : ''}
                                                 </div>
                                                 {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}

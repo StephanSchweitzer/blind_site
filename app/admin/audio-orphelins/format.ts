@@ -1,4 +1,6 @@
 /** Shared formatters for the orphan-folder screen. */
+import { parisDate } from '@/lib/paris-day';
+
 
 export const formatBytes = (bytes: number): string =>
     bytes >= 1e9
@@ -8,7 +10,7 @@ export const formatBytes = (bytes: number): string =>
           : `${Math.max(1, Math.round(bytes / 1e3))} Ko`;
 
 export const formatDate = (iso: string | null): string =>
-    iso ? new Date(iso).toLocaleDateString('fr-FR') : '—';
+    iso ? parisDate(iso) : '—';
 
 /**
  * `#recycle` is the Synology recycle bin, and `…UploadDBCaseConflict` is a Cloud

@@ -43,6 +43,7 @@ import type {
     OrderBookOption,
 } from '@/types/models/order.model';
 import type { SerializedBlockingRecording } from '@/lib/orders/duplicationBlocked';
+import { parisDate } from '@/lib/paris-day';
 
 type OrdersTableProps = {
     initialOrders: SerializedOrderTableRow[];
@@ -285,7 +286,7 @@ export default function OrdersTable({
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
-        return new Date(dateString).toLocaleDateString('fr-FR');
+        return parisDate(dateString);
     };
 
     // Tooltip behind the « En attente d'enregistrement » badge — names the lecteur

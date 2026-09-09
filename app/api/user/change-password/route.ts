@@ -7,6 +7,7 @@ import PasswordChangedEmail from '@/components/emails/PasswordChangedEmail';
 import { sendEmail } from '@/lib/email/sendEmail';
 import { withAuth } from '@/lib/auth/guards';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { parisDateTimeDisplay } from '@/lib/paris-day';
 
 export const POST = withAuth(async (req, { me }) => {
     try {
@@ -72,7 +73,7 @@ export const POST = withAuth(async (req, { me }) => {
                 PasswordChangedEmail({
                     name: getUserNameOnly(user),
                     appName,
-                    changedAt: new Date().toLocaleString('fr-FR'),
+                    changedAt: parisDateTimeDisplay(new Date()),
                     logoUrl: `${baseUrl}/eca_logo.png`,
                 })
             );

@@ -8,6 +8,7 @@ import { sendEmail } from '@/lib/email/sendEmail';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { resolveResetToken } from '@/lib/auth/password-reset';
 import { validateNewPassword } from '@/lib/auth/passwordStrength';
+import { parisDateTimeDisplay } from '@/lib/paris-day';
 
 /**
  * PUBLIC BY NECESSITY, like the request route next to it — knowledge of the
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
                 PasswordChangedEmail({
                     name: getUserNameOnly(user),
                     appName,
-                    changedAt: new Date().toLocaleString('fr-FR'),
+                    changedAt: parisDateTimeDisplay(new Date()),
                     logoUrl: `${baseUrl}/eca_logo.png`,
                 })
             );

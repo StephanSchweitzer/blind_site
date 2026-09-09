@@ -84,20 +84,72 @@ export function parisDayEndUtc(day: string): Date | null {
     return parisDayStartUtc(next.toISOString().slice(0, 10));
 }
 
-const parisDisplayFormatter = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: PARIS_TIMEZONE,
+/**
+ * Formatage d'un instant EN HEURE FRANÇAISE.
+ *
+ * `date.toLocaleDateString('fr-FR')` ne fixe que la LANGUE ; le fuseau reste
+ * celui de la machine — le navigateur du permanent, ou le serveur (UTC en
+ * production). Un paiement enregistré le 9 juin à minuit UTC s'affichait donc
+ * « 08/06 » sur un poste réglé à l'ouest d'UTC, et une facture imprimée depuis
+ * un serveur UTC pouvait dater du jour d'avant.
+ *
+ * C'est l'association qui date ses écritures, pas le poste qui les consulte.
+ * `lib/audit/labels.ts` avait déjà tiré cette conclusion pour le journal (« west
+ * of UTC it moves the date »), `lib/stats.ts` pour ses compteurs ; ceci la rend
+ * disponible partout ailleurs.
+ *
+ * Les options sont celles de `Intl.DateTimeFormat` : chaque appelant garde le
+ * format qu'il affichait, et ne gagne que le fuseau.
+ *
+ * À NE PAS employer pour les colonnes « jour » normalisées à minuit UTC —
+ * indisponibilités, créneaux de disponibilité, clés de bucket des statistiques.
+ * Celles-ci se relisent en `timeZone: 'UTC'`, qui rend le jour tel qu'il a été
+ * écrit ; c'est ce que font déjà `lib/users/activityStatus.ts`,
+ * `lib/users/availability.ts` et `app/admin/stats/stats-utils.ts`.
+ */
+
+const DEFAULT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-});
+};
+
+// Construire un Intl.DateTimeFormat coûte bien plus cher que de s'en servir, et
+// une liste de dix lignes en demande dix. Ils se réutilisent par jeu d'options.
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function formatterFor(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+    const key = JSON.stringify(options);
+    let formatter = formatterCache.get(key);
+    if (!formatter) {
+        formatter = new Intl.DateTimeFormat('fr-FR', { ...options, timeZone: PARIS_TIMEZONE });
+        formatterCache.set(key, formatter);
+    }
+    return formatter;
+}
 
 /**
- * La date d'un instant, telle qu'elle se lit en France : 'JJ/MM/AAAA'.
+ * Une date (ou un instant) en heure française.
  *
- * Le même jour que `parisDayKey`, écrit dans l'autre sens — l'export CSV s'ouvre
- * dans un tableur réglé en français, où '2026-09-08' n'est pas reconnu comme une
- * date et reste du texte.
+ * Rend '' pour une valeur absente ou illisible plutôt que « Invalid Date » :
+ * les appelants ont presque tous leur propre repli ('—', '-'), qu'ils gardent.
  */
-export function parisDateDisplay(date: Date | null | undefined): string {
-    return date ? parisDisplayFormatter.format(date) : '';
+export function parisDate(
+    value: Date | string | number | null | undefined,
+    options: Intl.DateTimeFormatOptions = DEFAULT_DATE_OPTIONS
+): string {
+    if (value === null || value === undefined || value === '') return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return formatterFor(options).format(date);
+}
+
+/** 'JJ/MM/AAAA' — le format des listes. */
+export function parisDateDisplay(value: Date | string | number | null | undefined): string {
+    return parisDate(value);
+}
+
+/** 'JJ/MM/AAAA HH:MM' — pour les historiques, où l'heure compte. */
+export function parisDateTimeDisplay(value: Date | string | number | null | undefined): string {
+    return parisDate(value, { dateStyle: 'short', timeStyle: 'short' });
 }

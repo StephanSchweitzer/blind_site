@@ -17,6 +17,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { CoupDeCoeurPDFButton } from "@/admin/CoupDeCoeurPDFButton";
 import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
+import { parisDate } from '@/lib/paris-day';
 
 interface CoupsTableProps {
     initialItems: CoupDeCoeurWithBooks[];
@@ -129,7 +130,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                                     <TableCell className="text-foreground">{item.active ? 'Actif' : 'Inactif'}</TableCell>
                                     <TableCell className="text-foreground">{item.books.length} livres</TableCell>
                                     <TableCell className="text-foreground">
-                                        {new Date(item.createdAt).toLocaleDateString('fr-FR', {
+                                        {parisDate(item.createdAt, {
                                             month: 'numeric',
                                             day: 'numeric',
                                             year: 'numeric'

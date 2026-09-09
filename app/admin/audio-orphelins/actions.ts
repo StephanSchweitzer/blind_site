@@ -7,6 +7,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { listRawObjects } from '@/lib/audio/bucket';
 import { refreshBookAudioState } from '@/lib/audio/state';
+import { parisDate } from '@/lib/paris-day';
 
 /**
  * Rattachement d'un dossier audio orphelin à un livre.
@@ -43,7 +44,7 @@ const isLinked = (o: { resolvedAt: Date | null; linkedBookId: number | null }): 
 
 /** Append a dated line to the row's note rather than overwriting the previous one. */
 function appendNote(existing: string | null, line: string): string {
-    const stamped = `${new Date().toLocaleDateString('fr-FR')} — ${line}`;
+    const stamped = `${parisDate(new Date())} — ${line}`;
     return existing?.trim() ? `${existing.trim()}\n${stamped}` : stamped;
 }
 

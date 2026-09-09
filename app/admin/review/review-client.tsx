@@ -56,6 +56,7 @@ import {
 import { BookSearchCombobox, bookLabel } from '@/admin/BookSearchCombobox';
 import { formatCalendarDate } from '@/lib/calendar-date';
 import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
+import { parisDate } from '@/lib/paris-day';
 
 export interface ReviewBook {
     id: number;
@@ -105,7 +106,7 @@ interface Props {
 const fmtDate = (v: Date | string | null): string => {
     if (!v) return '—';
     const d = new Date(v);
-    return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('fr-FR');
+    return isNaN(d.getTime()) ? '—' : parisDate(d);
 };
 const fmtText = (v: string | number | null): string => (v == null || v === '' ? '—' : String(v));
 const fmtDuration = (v: number | null): string => (v == null ? '—' : `${v} min`);

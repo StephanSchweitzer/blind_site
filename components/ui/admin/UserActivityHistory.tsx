@@ -18,6 +18,7 @@ import {
     formatDay,
     resolveEffectiveActivityStatus,
 } from '@/lib/users/activityStatus';
+import { parisDate } from '@/lib/paris-day';
 
 interface ActivityEvent {
     id: number;
@@ -132,7 +133,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
     };
 
     const fmtDate = (iso: string) =>
-        new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+        parisDate(iso, { day: '2-digit', month: 'short', year: 'numeric' });
 
     const who = (e: ActivityEvent) => {
         if (!e.changedBy) return 'Syst\u00e8me';

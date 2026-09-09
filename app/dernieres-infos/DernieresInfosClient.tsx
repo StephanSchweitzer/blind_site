@@ -6,6 +6,7 @@ import { CustomPagination } from "@/components/ui/custom-pagination";
 import { Tag, Filter, User, Calendar } from 'lucide-react';
 import type { NewsPost, NewsResponse, NewsType } from '@/types/news';
 import { newsTypeLabels, newsTypeColors, getNewsTypeColor, getNewsTypeTextColor } from '@/types/news';
+import { parisDate } from '@/lib/paris-day';
 
 interface DernieresInfosClientProps {
     initialData: NewsResponse;
@@ -262,7 +263,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                                     <Calendar aria-hidden="true" className="w-4 h-4" />
                                     <span className="sr-only">le </span>
                                     <time dateTime={new Date(post.publishedAt).toISOString()}>
-                                        {new Date(post.publishedAt).toLocaleDateString('fr-FR')}
+                                        {parisDate(post.publishedAt)}
                                     </time>
                                 </div>
                             </div>

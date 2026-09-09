@@ -36,6 +36,7 @@ import {
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { CopyIdButton } from '@/admin/CopyableId';
+import { parisDate } from '@/lib/paris-day';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -263,7 +264,7 @@ export default function AssignmentsTable({
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
-        return new Date(dateString).toLocaleDateString('fr-FR');
+        return parisDate(dateString);
     };
 
     const getStatusDisplayName = (statusName: string) => {

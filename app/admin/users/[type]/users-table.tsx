@@ -50,6 +50,7 @@ import {
 } from '@/lib/user-activity-enums';
 import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
 import { CopyIdButton } from '@/admin/CopyableId';
+import { parisDate } from '@/lib/paris-day';
 
 interface UsersTableProps {
     type: UserType;
@@ -292,7 +293,7 @@ export default function UsersTable({
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return 'Non disponible';
-        return new Date(dateString).toLocaleDateString('fr-FR', {
+        return parisDate(dateString, {
             year: 'numeric',
             month: 'long',
             day: 'numeric',

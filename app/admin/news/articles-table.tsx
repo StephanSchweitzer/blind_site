@@ -26,6 +26,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { parsePageParam } from '@/lib/pagination';
+import { parisDate } from '@/lib/paris-day';
 
 type Article = {
     id: number;
@@ -338,7 +339,7 @@ export function ArticlesTable({
                                             {article.author?.name || 'Inconnu'}
                                         </TableCell>
                                         <TableCell className="text-foreground">
-                                            {new Date(article.publishedAt).toLocaleDateString('fr-FR', {
+                                            {parisDate(article.publishedAt, {
                                                 year: 'numeric',
                                                 month: 'short',
                                                 day: 'numeric'

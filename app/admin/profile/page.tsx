@@ -20,6 +20,7 @@ import {
 import AccountSecurity from './account-security';
 import MyActivity from './my-activity';
 import MyUnavailability from './my-unavailability';
+import { parisDate } from '@/lib/paris-day';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,7 +94,7 @@ export default async function ProfilePage() {
                                 {user.email && <div className="truncate">{user.email}</div>}
                                 <div>
                                     Membre depuis le{' '}
-                                    {user.createdAt.toLocaleDateString('fr-FR', {
+                                    {parisDate(user.createdAt, {
                                         day: '2-digit',
                                         month: 'long',
                                         year: 'numeric',
