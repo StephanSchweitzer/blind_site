@@ -570,9 +570,18 @@ export function EditBillModal({
                             </div>
                         </div>
 
-                        {/* Status change */}
+                        {/* Status change
+
+                            Un cadre par section, et la modale n'était plus qu'une pile de
+                            rectangles de même poids : paiements, statut, facture finalisée,
+                            demandes. Souligner tout revient à ne rien souligner. Les cadres
+                            gardent UN sens — « voici une liste d'enregistrements », pour les
+                            paiements et les demandes — et le fond teinté un autre — « fais
+                            attention », réservé au bandeau ambre de la facture finalisée.
+                            Ici, un intitulé et des boutons : ils se portent tout seuls,
+                            comme les dates au-dessus. */}
                         {nextStates.length > 0 && (
-                            <div className="space-y-3 p-3 bg-card/50 border border-border rounded-md">
+                            <div className="space-y-3">
                                 <div className="text-xs text-muted-foreground uppercase tracking-wide">Changer le statut</div>
                                 <div className="flex flex-wrap gap-2">
                                     {nextStates.map((s) => (
@@ -582,10 +591,12 @@ export function EditBillModal({
                                                 setPendingState(pendingState === s ? null : s);
                                                 setStatusError(null);
                                             }}
+                                            // `hover:bg-muted` sur un bouton déjà `bg-muted` ne
+                                            // faisait rien : le survol ne répondait pas.
                                             className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
                                                 pendingState === s
                                                     ? 'bg-indigo-600 border-indigo-500 text-white'
-                                                    : 'bg-muted border-border text-foreground hover:bg-muted'
+                                                    : 'bg-muted border-border text-foreground hover:bg-accent hover:text-accent-foreground'
                                             }`}
                                         >
                                             {STATE_ACTION_LABEL[s]}
@@ -721,7 +732,9 @@ export function EditBillModal({
                                         }}
                                         className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors mt-1"
                                     >
-                                        <Plus className="h-4 w-4" />
+                                        {/* Un « + » devant « Masquer » promettait le contraire
+                                            de ce que le clic allait faire. */}
+                                        {showAddPanel ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                                         {showAddPanel ? 'Masquer' : 'Ajouter une demande'}
                                     </button>
 
