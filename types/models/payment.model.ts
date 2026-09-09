@@ -135,6 +135,11 @@ export const paymentsTableInclude = {
     // firstName/lastName are what the row displays (getUserNameOnly); `name` is
     // the legacy column and only a fallback.
     client: { select: { name: true, email: true, firstName: true, lastName: true } },
+    // La facture réglée, affichée en colonne et cliquable : c'est le lien qui
+    // manquait entre les deux listes. La recherche sait déjà retrouver un
+    // paiement par le numéro de sa facture (buildPaymentSearchWhere) ; la
+    // colonne fait le chemin inverse, de la ligne vers la facture.
+    bill: { select: { id: true, state: true, invoiceAmount: true } },
 } as const satisfies Prisma.PaymentInclude;
 
 type PaymentsTableRowRaw = Prisma.PaymentGetPayload<{ include: typeof paymentsTableInclude }>;
@@ -142,12 +147,13 @@ type PaymentsTableRowRaw = Prisma.PaymentGetPayload<{ include: typeof paymentsTa
 // JSON-safe row as sent to client components (Date -> ISO string, Decimal -> string)
 export type SerializedPaymentTableRow = Omit<
     PaymentsTableRowRaw,
-    'amount' | 'creationDate' | 'issueDate' | 'paymentDate' | 'exportDate' | 'importDate' | 'allocationDate' | 'deletedAt'
+    'amount' | 'creationDate' | 'issueDate' | 'paymentDate' | 'exportDate' | 'importDate' | 'allocationDate' | 'deletedAt' | 'bill'
 > & {
     amount: string;
     creationDate: string;
     issueDate: string | null;
     paymentDate: string | null;
+    bill: { id: number; state: string; invoiceAmount: string } | null;
 };
 
 // Lightweight selection shapes consumed by the payment modal selectors

@@ -177,6 +177,41 @@ export function buildBillSearchWhere(searchTerm: string): Prisma.BillWhereInput[
 }
 
 /**
+ * Paiements : la personne, la référence du règlement, le n° de reçu, l'année de
+ * cotisation, le numéro du paiement — et le numéro de la FACTURE réglée.
+ *
+ * Ce dernier est la raison d'être de cette fonction. La liste ne cherchait que
+ * le nom du client (`buildUserNameSearch`), si bien qu'un permanent tenant une
+ * facture en main n'avait aucun moyen de retrouver le paiement qui l'a réglée
+ * autrement qu'en devinant le nom de l'auditeur. « 412 » trouve maintenant le
+ * paiement n° 412 ET les paiements de la facture n° 412 — les deux lectures du
+ * même chiffre, laissée au lecteur, comme partout ailleurs (voir tokenAsId).
+ *
+ * Les rows de cette liste sont des paiements, pas des jointures, mais elle
+ * cherche sur plus que la personne : c'est donc `buildTokenizedSearch` et non
+ * `buildUserNameSearch`, comme pour les demandes et les factures.
+ */
+export function buildPaymentSearchWhere(searchTerm: string): Prisma.PaymentWhereInput[] | null {
+    return buildTokenizedSearch<Prisma.PaymentWhereInput>(searchTerm, (token) => {
+        const clauses: Prisma.PaymentWhereInput[] = [
+            { client: userNameFieldsForToken(token) },
+            { paymentReference: contains(token) },
+            { receiptNumber: contains(token) },
+            { observations: contains(token) },
+        ];
+        const id = tokenAsId(token);
+        if (id !== null) {
+            clauses.push({ id });
+            clauses.push({ billId: id });
+            // Une année de cotisation est un nombre à quatre chiffres ; la
+            // borner évite d'ajouter une clause qui ne peut rien rendre.
+            if (id >= 1900 && id <= 2200) clauses.push({ cotisationYear: id });
+        }
+        return clauses;
+    });
+}
+
+/**
  * Livres, for one token — the Prisma spelling of the field list.
  *
  * The book list has a THIRD implementation, the accent-insensitive raw SQL in

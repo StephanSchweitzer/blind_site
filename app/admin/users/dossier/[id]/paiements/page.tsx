@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 
-// ⚠️ ADJUST this import to wherever your payments-table.tsx actually lives.
 import PaymentsTable from '@/app/admin/payments/payments-table';
 import { paymentsTableInclude } from '@/types/models/payment.model';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
@@ -40,7 +39,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
     if (type) whereClause.type = type;
     if (paymentMethod) whereClause.paymentMethod = paymentMethod;
 
-    const [payments, totalPayments] = await Promise.all([
+    const [payments, totalPayments, totals] = await Promise.all([
         prisma.payment.findMany({
             where: whereClause,
             orderBy: { creationDate: 'desc' },
@@ -49,6 +48,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
             include: paymentsTableInclude,
         }),
         prisma.payment.count({ where: whereClause }),
+        prisma.payment.aggregate({ where: whereClause, _sum: { amount: true } }),
     ]);
 
     const client = await prisma.user.findUnique({
@@ -62,6 +62,9 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
         creationDate: payment.creationDate.toISOString(),
         issueDate: payment.issueDate?.toISOString() ?? null,
         paymentDate: payment.paymentDate?.toISOString() ?? null,
+        bill: payment.bill
+            ? { ...payment.bill, invoiceAmount: payment.bill.invoiceAmount.toString() }
+            : null,
     }));
 
     return (
@@ -73,6 +76,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
             availableTypes={Object.values(PaymentType)}
             availableMethods={Object.values(PaymentMethod)}
             initialTotalPayments={totalPayments}
+            initialTotalAmount={(totals._sum.amount ?? new Prisma.Decimal(0)).toString()}
             hideSearch
             presetClient={client}
         />

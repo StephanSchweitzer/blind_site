@@ -26,7 +26,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, Loader2 } from 'lucide-react';
+import { Search, X, Plus, Loader2, ExternalLink } from 'lucide-react';
 import {
     PaymentType,
     PaymentMethod,
@@ -42,6 +42,7 @@ import { DeletePaymentModal } from '@/admin/DeletePaymentModal';
 import { CopyIdButton } from '@/admin/CopyableId';
 import type { SerializedPaymentTableRow as Payment } from '@/types/models/payment.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { BillingStatus, getBillingStatusLabel, getBillingStatusColor } from '@/lib/billing-enums';
 
 interface PaymentsTableProps {
     initialPayments: Payment[];
@@ -51,6 +52,7 @@ interface PaymentsTableProps {
     availableTypes: PaymentType[];
     availableMethods: PaymentMethod[];
     initialTotalPayments: number;
+    initialTotalAmount: string;
     hideSearch?: boolean;
     presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null } | null;
 }
@@ -63,6 +65,7 @@ export default function PaymentsTable({
                                           availableTypes,
                                           availableMethods,
                                           initialTotalPayments,
+                                          initialTotalAmount,
                                           hideSearch = false,
                                           presetClient = null,
                                       }: PaymentsTableProps) {
@@ -151,7 +154,9 @@ export default function PaymentsTable({
                     <div>
                         <CardTitle className="text-2xl font-bold text-foreground">Paiements</CardTitle>
                         <CardDescription className="text-muted-foreground mt-1">
-                            {initialTotalPayments} paiement{initialTotalPayments > 1 ? 's' : ''} au total
+                            {initialTotalPayments} paiement{initialTotalPayments > 1 ? 's' : ''}
+                            {' · '}
+                            <span className="font-semibold text-foreground">{formatCurrency(initialTotalAmount)}</span>
                         </CardDescription>
                     </div>
                     <Button
@@ -172,7 +177,7 @@ export default function PaymentsTable({
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                                 <Input
-                                    placeholder="Rechercher par client..."
+                                    placeholder="Nom, n° de paiement, n° de facture, référence..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -252,6 +257,7 @@ export default function PaymentsTable({
                                             <TableHead className="text-foreground font-medium">Client</TableHead>
                                             <TableHead className="text-foreground font-medium">Type</TableHead>
                                             <TableHead className="text-foreground font-medium">Méthode</TableHead>
+                                            <TableHead className="text-foreground font-medium">Facture</TableHead>
                                             <TableHead className="text-foreground font-medium">Date de création</TableHead>
                                             <TableHead className="text-foreground font-medium">Date de paiement</TableHead>
                                             <TableHead className="text-foreground font-medium">Montant</TableHead>
@@ -285,6 +291,26 @@ export default function PaymentsTable({
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     {getPaymentMethodLabel(payment.paymentMethod)}
+                                                </TableCell>
+                                                <TableCell className="text-foreground">
+                                                    {payment.bill ? (
+                                                        <a
+                                                            href={`/admin/bills?bill=${payment.bill.id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            title="Ouvrir la facture dans un nouvel onglet"
+                                                            className="inline-flex items-center gap-1.5 whitespace-nowrap hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                                        >
+                                                            #{payment.bill.id}
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getBillingStatusColor(payment.bill.state as BillingStatus)}`}>
+                                                                {getBillingStatusLabel(payment.bill.state as BillingStatus)}
+                                                            </span>
+                                                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">—</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-foreground">{formatDate(payment.creationDate)}</TableCell>
                                                 <TableCell className="text-foreground">{formatDate(payment.paymentDate)}</TableCell>

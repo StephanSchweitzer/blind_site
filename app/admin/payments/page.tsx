@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import PaymentsTable from './payments-table';
-import { buildUserNameSearch } from '@/lib/search';
+import { buildPaymentSearchWhere } from '@/lib/search';
 import { paymentsTableInclude } from '@/types/models/payment.model';
 import { notFound } from 'next/navigation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
@@ -26,16 +26,26 @@ async function getPayments(
     // Hide soft-deleted payments from the listing.
     const whereClause: Prisma.PaymentWhereInput = { isActive: true };
 
-    // Tokenized search across firstName / lastName / name / email, so a full-name
-    // query matches even when the words live in different columns.
-    const clientSearch = searchTerm ? buildUserNameSearch(searchTerm) : null;
-    if (clientSearch) whereClause.client = clientSearch;
+    // Tokens AND-ed across la personne, la référence du règlement, le n° de reçu,
+    // le numéro du paiement et celui de la facture réglée — « 412 » trouve donc
+    // aussi bien le paiement que les paiements de la facture. Voir
+    // buildPaymentSearchWhere.
+    if (searchTerm) {
+        const tokenClauses = buildPaymentSearchWhere(searchTerm);
+        if (tokenClauses) whereClause.AND = tokenClauses;
+    }
 
     if (type) whereClause.type = type;
     if (paymentMethod) whereClause.paymentMethod = paymentMethod;
 
     try {
-        const [payments, totalPayments] = await Promise.all([
+        // La SOMME de la sélection, pas seulement son compte.
+        //
+        // « 47 paiements » ne dit rien à une trésorière qui filtre sur « Don,
+        // 2026 » : la question est combien, pas combien de lignes. L'agrégat
+        // porte sur le MÊME whereClause que la liste, donc sur la sélection
+        // entière et non sur la page affichée.
+        const [payments, totalPayments, totals] = await Promise.all([
             prisma.payment.findMany({
                 where: whereClause,
                 orderBy: { creationDate: 'desc' },
@@ -44,11 +54,13 @@ async function getPayments(
                 include: paymentsTableInclude,
             }),
             prisma.payment.count({ where: whereClause }),
+            prisma.payment.aggregate({ where: whereClause, _sum: { amount: true } }),
         ]);
 
         return {
             payments,
             totalPayments,
+            totalAmount: (totals._sum.amount ?? new Prisma.Decimal(0)).toString(),
             totalPages: Math.ceil(totalPayments / paymentsPerPage),
             availableTypes: Object.values(PaymentType),
             availableMethods: Object.values(PaymentMethod),
@@ -87,7 +99,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         notFound();
     }
 
-    const { payments, totalPayments, totalPages, availableTypes, availableMethods } = data;
+    const { payments, totalPayments, totalAmount, totalPages, availableTypes, availableMethods } = data;
 
     const serializedPayments = payments.map(payment => ({
         ...payment,
@@ -95,6 +107,9 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         creationDate: payment.creationDate.toISOString(),
         issueDate: payment.issueDate?.toISOString() ?? null,
         paymentDate: payment.paymentDate?.toISOString() ?? null,
+        bill: payment.bill
+            ? { ...payment.bill, invoiceAmount: payment.bill.invoiceAmount.toString() }
+            : null,
     }));
 
     return (
@@ -107,6 +122,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
                 availableTypes={availableTypes}
                 availableMethods={availableMethods}
                 initialTotalPayments={totalPayments}
+                initialTotalAmount={totalAmount}
             />
         </div>
     );
