@@ -496,6 +496,20 @@ export async function GET(request: NextRequest): Promise<Response> {
             if (lastCoupDeCoeur) {
                 whereClause.createdAt = { gte: lastCoupDeCoeur.createdAt };
             }
+
+            // Une liste de livres annonce ce qu'on peut écouter MAINTENANT.
+            // Un livre « en attente » est un enregistrement en cours : il n'a
+            // rien à proposer, et il était pourtant présélectionné d'office
+            // dans la nouvelle liste, à charge pour le permanent de le
+            // décocher. `available` est justement le drapeau que la mise en
+            // ligne d'un enregistrement lève (voir
+            // /api/books/[id]/audio/commit) et que le catalogue public affiche
+            // en « Disponible » / « En attente ».
+            //
+            // Passe après la coupure, jamais à sa place : la suggestion reste
+            // « les nouveautés depuis la dernière liste », restreinte à celles
+            // qui sont prêtes.
+            whereClause.available = true;
         }
 
         // Perform search or regular query

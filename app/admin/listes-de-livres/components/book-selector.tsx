@@ -436,7 +436,7 @@ export default function BookSelector({
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-foreground">
-                    {mode === 'edit' ? 'Livres sélectionnés' : 'Livres récents'}
+                    {mode === 'edit' ? 'Livres sélectionnés' : 'Nouveautés disponibles'}
                 </h3>
                 <div className="flex gap-2">
                     <AddBookButtonBackend onBookAdded={handleBookAdded} />
@@ -510,6 +510,13 @@ export default function BookSelector({
                 <p className="text-sm text-muted-foreground">
                     {selectedBooks.length} livres sélectionnés sur {displayedBookIds.length} livres dans la liste
                 </p>
+                {mode === 'create' && (
+                    <p className="text-sm text-muted-foreground">
+                        Seuls les livres disponibles ajoutés depuis la dernière liste publiée sont
+                        proposés : un enregistrement encore en cours n&apos;a rien à faire dans une liste.
+                        Utilisez « Ajouter un livre existant » pour en ajouter un autre.
+                    </p>
+                )}
             </div>
 
             {selectedBookForEdit && (
