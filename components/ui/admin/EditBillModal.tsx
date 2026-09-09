@@ -325,6 +325,22 @@ export function EditBillModal({
     const isLoading = isOpen && billId !== null && bill === null && error === null;
 
     const isDraft = bill?.state === BillingStatus.DRAFT;
+
+    /**
+     * Une facture réglée AVANT la reprise : encaissée, mais sans paiement en face.
+     *
+     * Un paiement rattaché vaut encaissement — c'est la règle depuis que les
+     * colonnes de règlement de la facture sont dérivées de ses paiements. Les
+     * factures d'avant portaient leur référence à la main et n'ont jamais eu de
+     * ligne dans « Paiements » : l'import Access n'en a rattaché aucune. Leur
+     * appliquer l'arithmétique normale les affichait « Encaissé 0,00 € sur
+     * 30,00 € — Reste à payer 30,00 € », en ambre, sur des milliers de factures
+     * soldées depuis des années. Le calcul était juste et la lecture fausse : il
+     * n'y a rien à réclamer, seulement rien à montrer.
+     */
+    const settledWithoutPayments =
+        (bill?.state === BillingStatus.PAID || bill?.state === BillingStatus.SOLDE) &&
+        bill.payments.length === 0;
     const nextStates = bill ? (NEXT_STATES[bill.state] ?? []) : [];
 
     // ── Render ─────────────────────────────────────────────────────────────────
@@ -445,8 +461,25 @@ export function EditBillModal({
 
                             <div className="border border-border rounded-md divide-y divide-border">
                                 {bill.payments.length === 0 ? (
-                                    <div className="px-3 py-3 text-muted-foreground text-sm italic">
-                                        Aucun paiement rattaché — le règlement se saisit dans « Paiements ».
+                                    <div className="px-3 py-3 text-muted-foreground text-sm">
+                                        {settledWithoutPayments ? (
+                                            <>
+                                                Réglée avant la reprise : le règlement n&apos;a pas de paiement en face.
+                                                {(bill.paymentReference || bill.paymentDate) && (
+                                                    <div className="text-xs mt-1">
+                                                        {bill.paymentReference && (
+                                                            <span className="font-mono">{bill.paymentReference}</span>
+                                                        )}
+                                                        {bill.paymentReference && bill.paymentDate ? ' · ' : ''}
+                                                        {bill.paymentDate && formatDate(bill.paymentDate)}
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="italic">
+                                                Aucun paiement rattaché — le règlement se saisit dans « Paiements ».
+                                            </span>
+                                        )}
                                     </div>
                                 ) : (
                                     bill.payments.map((p) => (
@@ -485,8 +518,11 @@ export function EditBillModal({
                             </div>
 
                             {/* Encaissé / reste à payer — la question qu'on se pose en
-                                ouvrant une facture, et à laquelle le montant seul ne
-                                répond pas dès qu'il y a plusieurs règlements. */}
+                                ouvrant une facture, et à laquelle le montant seul ne répond
+                                pas dès qu'il y a plusieurs règlements. Tue pour une facture
+                                réglée avant la reprise : « reste à payer » y désignerait une
+                                créance qui n'existe pas. */}
+                            {!settledWithoutPayments && (
                             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-sm">
                                 <span className="text-muted-foreground">
                                     Encaissé{' '}
@@ -505,6 +541,7 @@ export function EditBillModal({
                                     <span className="text-green-700 dark:text-green-400 font-medium">Soldée au centime</span>
                                 ) : null}
                             </div>
+                            )}
                         </div>
 
                         {/* Status change */}
