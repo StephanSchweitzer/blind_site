@@ -437,115 +437,137 @@ export function EditBillModal({
                                 <div className="text-xs text-muted-foreground uppercase tracking-wide">
                                     Paiements ({bill.payments.length})
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAddingPayment(true)}
-                                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
-                                    >
-                                        <Plus className="h-3.5 w-3.5" />
-                                        Enregistrer un paiement
-                                    </button>
-                                    <a
-                                        href={`/admin/payments?search=${bill.id}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                                        title="Ouvrir les paiements de cette facture"
-                                    >
-                                        Voir dans les paiements
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                    </a>
-                                </div>
+                                {/* UNE action, et elle est ici.
+                                    À côté vivait « Voir dans les paiements », qui pointait
+                                    /admin/payments?search=<id de la facture>. La recherche
+                                    des paiements fait feu de tout token : elle rend aussi le
+                                    paiement dont l'ID vaut ce nombre, et toute référence qui
+                                    le contient. Sur la facture #2787, elle ouvrait quatre
+                                    lignes dont une cotisation d'un autre auditeur, sous un
+                                    total de 92 € qui ne décrivait rien. Rien à réparer : la
+                                    liste ci-dessous montre déjà les paiements de CETTE
+                                    facture, chacun ouvrant le sien. */}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsAddingPayment(true)}
+                                    className="h-7 px-2.5 gap-1.5 text-xs [&_svg]:size-3.5"
+                                >
+                                    <Plus />
+                                    Enregistrer un paiement
+                                </Button>
                             </div>
 
-                            <div className="border border-border rounded-md divide-y divide-border">
-                                {bill.payments.length === 0 ? (
-                                    <div className="px-3 py-3 text-muted-foreground text-sm">
-                                        {settledWithoutPayments ? (
-                                            <>
-                                                Réglée avant la reprise : le règlement n&apos;a pas de paiement en face.
-                                                {(bill.paymentReference || bill.paymentDate) && (
-                                                    <div className="text-xs mt-1">
-                                                        {bill.paymentReference && (
-                                                            <span className="font-mono">{bill.paymentReference}</span>
-                                                        )}
-                                                        {bill.paymentReference && bill.paymentDate ? ' · ' : ''}
-                                                        {bill.paymentDate && formatDate(bill.paymentDate)}
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <span className="italic">
-                                                Aucun paiement rattaché — le règlement se saisit dans « Paiements ».
+                            {/* Le compte et ses pièces, dans un seul encadré.
+
+                                « Encaissé X sur Y » traînait sous la liste, en petit, après
+                                l'encadré : la seule ligne qui répond à « cette facture
+                                est-elle payée ? » arrivait après les pièces justificatives.
+                                Elle passe en tête, sur fond appuyé, et les paiements se
+                                lisent comme ce qu'ils sont — le détail de ce chiffre. */}
+                            <div className="border border-border rounded-md overflow-hidden">
+                                {/* Ce qui est encaissé — CONSTATÉ, pas jugé.
+
+                                    Un paiement rattaché vaut règlement : c'est le rattachement
+                                    qui dit qu'une facture est réglée, pas l'arithmétique. La
+                                    comparaison des montants alertait en ambre dès que la somme
+                                    des paiements ne tombait pas juste sur le total, et
+                                    réclamait donc de l'argent sur des factures que quelqu'un
+                                    avait déjà encaissées — un écart de saisie lu comme une
+                                    créance. Les deux chiffres restent affichés, en gris : qui
+                                    les regarde voit l'écart, personne n'est alerté d'une dette
+                                    qui n'existe pas.
+
+                                    L'ambre ne subsiste que là où il dit vrai — une facture à
+                                    laquelle AUCUN paiement n'est rattaché, et qui n'a pas été
+                                    réglée avant la reprise. */}
+                                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-3 py-2.5 bg-muted/60">
+                                    {settledWithoutPayments ? (
+                                        <>
+                                            <span className="text-sm text-muted-foreground">
+                                                Réglée avant la reprise — pas de paiement en face.
                                             </span>
-                                        )}
-                                    </div>
-                                ) : (
-                                    bill.payments.map((p) => (
-                                        <div key={p.id} className="flex items-start gap-3 px-3 py-2.5">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-foreground text-sm font-medium break-words">
-                                                    #{p.id} — {formatCurrency(p.amount)}
-                                                    {p.paymentMethod && (
-                                                        <span className="text-muted-foreground font-normal">
-                                                            {' '}· {getPaymentMethodLabel(p.paymentMethod as PaymentMethod)}
-                                                        </span>
+                                            {(bill.paymentReference || bill.paymentDate) && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {bill.paymentReference && (
+                                                        <span className="font-mono">{bill.paymentReference}</span>
                                                     )}
-                                                </div>
-                                                <div className="text-muted-foreground text-xs break-words">
-                                                    {formatDate(p.paymentDate ?? p.creationDate)}
-                                                    {p.paymentReference && (
-                                                        <>
-                                                            {' · '}
-                                                            <span className="font-mono">{p.paymentReference}</span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
+                                                    {bill.paymentReference && bill.paymentDate ? ' · ' : ''}
+                                                    {bill.paymentDate && formatDate(bill.paymentDate)}
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-sm text-muted-foreground">
+                                                Encaissé{' '}
+                                                <span className="text-base font-semibold text-foreground">
+                                                    {formatCurrency(bill.paidTotal)}
+                                                </span>
+                                                {' '}sur {formatCurrency(bill.invoiceAmount)}
+                                            </span>
+                                            {bill.payments.length === 0 && parseFloat(bill.outstanding) > 0 && (
+                                                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                                    Reste à payer {formatCurrency(bill.outstanding)}
+                                                </span>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Rien sous le bandeau quand il a déjà tout dit : sur une
+                                    facture réglée avant la reprise, « aucun paiement
+                                    rattaché » répétait mot pour mot la ligne au-dessus. */}
+                                {!(settledWithoutPayments && bill.payments.length === 0) && (
+                                <div className="border-t border-border divide-y divide-border">
+                                    {bill.payments.length === 0 ? (
+                                        <div className="px-3 py-3 text-muted-foreground text-sm italic">
+                                            Aucun paiement rattaché — « Enregistrer un paiement » en saisit un pour cette facture.
+                                        </div>
+                                    ) : (
+                                        // La ligne ENTIÈRE ouvre le paiement : la flèche seule
+                                        // était une cible de 14 px au bout d'une ligne dont
+                                        // rien ne disait qu'elle menait quelque part.
+                                        bill.payments.map((p) => (
                                             <a
+                                                key={p.id}
                                                 href={`/admin/payments?payment=${p.id}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 title="Ouvrir le paiement dans un nouvel onglet"
-                                                className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
+                                                className="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/60 transition-colors"
                                             >
-                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                <div className="flex-1 min-w-0">
+                                                    {/* Le montant d'abord : c'est ce qu'on cherche
+                                                        en parcourant la liste, pas le numéro. */}
+                                                    <div className="text-foreground text-sm font-medium break-words">
+                                                        {formatCurrency(p.amount)}
+                                                        {p.paymentMethod && (
+                                                            <span className="text-muted-foreground font-normal">
+                                                                {' '}· {getPaymentMethodLabel(p.paymentMethod as PaymentMethod)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-muted-foreground text-xs break-words">
+                                                        {formatDate(p.paymentDate ?? p.creationDate)}
+                                                        {p.paymentReference && (
+                                                            <>
+                                                                {' · '}
+                                                                <span className="font-mono">{p.paymentReference}</span>
+                                                            </>
+                                                        )}
+                                                        {' · '}
+                                                        <span className="font-mono">#{p.id}</span>
+                                                    </div>
+                                                </div>
+                                                <ExternalLink className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                                             </a>
-                                        </div>
-                                    ))
+                                        ))
+                                    )}
+                                </div>
                                 )}
                             </div>
-
-                            {/* Ce qui est encaissé — CONSTATÉ, pas jugé.
-
-                                Un paiement rattaché vaut règlement : c'est le rattachement
-                                qui dit qu'une facture est réglée, pas l'arithmétique. La
-                                comparaison des montants alertait en ambre dès que la somme
-                                des paiements ne tombait pas juste sur le total, et
-                                réclamait donc de l'argent sur des factures que quelqu'un
-                                avait déjà encaissées — un écart de saisie lu comme une
-                                créance. Les deux chiffres restent affichés, en gris : qui
-                                les regarde voit l'écart, personne n'est alerté d'une dette
-                                qui n'existe pas.
-
-                                L'ambre ne subsiste que là où il dit vrai — une facture à
-                                laquelle AUCUN paiement n'est rattaché, et qui n'a pas été
-                                réglée avant la reprise. */}
-                            {!settledWithoutPayments && (
-                            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-sm">
-                                <span className="text-muted-foreground">
-                                    Encaissé{' '}
-                                    <span className="text-foreground font-medium">{formatCurrency(bill.paidTotal)}</span>
-                                    {' '}sur {formatCurrency(bill.invoiceAmount)}
-                                </span>
-                                {bill.payments.length === 0 && parseFloat(bill.outstanding) > 0 && (
-                                    <span className="text-amber-700 dark:text-amber-300 font-medium">
-                                        Reste à payer {formatCurrency(bill.outstanding)}
-                                    </span>
-                                )}
-                            </div>
-                            )}
                         </div>
 
                         {/* Status change */}
@@ -574,12 +596,15 @@ export function EditBillModal({
                                 {/* « Payée » ne demande plus rien à remplir : elle
                                     constate les paiements rattachés. Sans paiement, la
                                     route refuse — autant le dire ici plutôt que sur un
-                                    400 après le clic. */}
+                                    400 après le clic. Et le renvoi vers « Paiements » n'a
+                                    plus lieu d'être : le bouton qui fait la chose est juste
+                                    au-dessus, prérempli du client, de la facture et du reste
+                                    à payer. */}
                                 {pendingState === BillingStatus.PAID && bill.payments.length === 0 && (
                                     <p className="text-sm text-amber-700 dark:text-amber-300">
                                         Cette facture ne porte aucun paiement. Enregistrez d&apos;abord le
-                                        règlement dans « Paiements » — c&apos;est lui qui porte la référence,
-                                        la méthode et la date.
+                                        règlement ci-dessus — c&apos;est lui qui porte la référence, la
+                                        méthode et la date.
                                     </p>
                                 )}
 
