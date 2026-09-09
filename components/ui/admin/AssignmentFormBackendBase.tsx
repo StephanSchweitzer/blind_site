@@ -27,12 +27,6 @@ import {
     AssignmentFormData,
     AssignmentReaderHistory,
 } from '@/types';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { STATUS } from '@/lib/statusSync';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
@@ -232,7 +226,6 @@ export function AssignmentFormBackendBase({
 
     // Reader history
     const [readerHistory, setReaderHistory] = useState<AssignmentReaderHistory[]>([]);
-    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     // Selected display values
     const [selectedBook, setSelectedBook] = useState<BookSummary | null>(initialSelectedBook || null);
@@ -784,26 +777,13 @@ export function AssignmentFormBackendBase({
                                                     <div className="text-sm text-muted-foreground">{currentReader.email}</div>
                                                 )}
                                                 <div className="text-xs text-muted-foreground italic mt-0.5">
-                                                    Cliquez pour réattribuer cette attribution.
+                                                    {readerHistory.length > 1
+                                                        ? 'Cliquez pour réattribuer cette attribution ou voir les lecteurs précédents.'
+                                                        : 'Cliquez pour réattribuer cette attribution.'}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {readerHistory.length > 1 && (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setShowHistoryModal(true);
-                                                    }}
-                                                    className="text-muted-foreground hover:text-foreground"
-                                                >
-                                                    <History className="h-4 w-4 mr-1" />
-                                                    <span className="text-xs">Historique</span>
-                                                </Button>
-                                            )}
                                             <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform ${showReassignSection ? 'rotate-90' : ''}`} />
                                         </div>
                                     </div>
@@ -880,6 +860,52 @@ export function AssignmentFormBackendBase({
                                             onChange={(e) => setReassignNotes(e.target.value)}
                                             className="bg-field border-border text-foreground"
                                         />
+
+                                        {/* Lecteurs précédents — l'historique se lit ici, à côté du
+                                            geste qu'il éclaire, plutôt que dans une fenêtre séparée.
+                                            Le premier élément de readerHistory est le lecteur actuel,
+                                            déjà affiché dans la barre ci-dessus : on ne montre que la
+                                            suite, et rien du tout si l'attribution n'a jamais bougé. */}
+                                        {readerHistory.length > 1 && (
+                                            <div className="pt-3 border-t border-border space-y-2">
+                                                <h5 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                                                    <History className="h-4 w-4" />
+                                                    Lecteurs précédents
+                                                </h5>
+                                                <div className="space-y-2 max-h-64 overflow-y-auto">
+                                                    {readerHistory.slice(1).map((history) => (
+                                                        <div
+                                                            key={history.id}
+                                                            className="p-3 rounded bg-muted/50 border border-border"
+                                                        >
+                                                            <div className="flex justify-between items-start gap-3">
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                                                        <span className="font-medium text-foreground truncate">
+                                                                            {getReaderDisplayName(history.reader)}
+                                                                        </span>
+                                                                    </div>
+                                                                    {history.reader.email && (
+                                                                        <div className="text-sm text-muted-foreground truncate">
+                                                                            {history.reader.email}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-sm text-muted-foreground shrink-0">
+                                                                    {format(new Date(history.assignedDate), 'PPP', { locale: fr })}
+                                                                </div>
+                                                            </div>
+                                                            {history.notes && (
+                                                                <div className="text-sm text-foreground mt-2 p-2 bg-card rounded italic border-l-2 border-blue-700">
+                                                                    {history.notes}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1187,53 +1213,6 @@ export function AssignmentFormBackendBase({
                 </form>
             </CardContent>
 
-            {/* Reader History Modal */}
-            <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-                <DialogContent className="max-w-2xl bg-card border-border [&>button>svg]:text-white">
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">Historique des lecteurs</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3 max-h-[60dvh] overflow-y-auto">
-                        {readerHistory.map((history, index) => (
-                            <div
-                                key={history.id}
-                                className={`p-4 rounded ${
-                                    index === 0
-                                        ? 'bg-blue-50 border border-blue-300 dark:bg-blue-900/20 dark:border-blue-800'
-                                        : 'bg-card border border-border'
-                                }`}
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="font-medium text-foreground">
-                                                {getReaderDisplayName(history.reader)}
-                                            </span>
-                                            {index === 0 && (
-                                                <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
-                                                    Actuel
-                                                </span>
-                                            )}
-                                        </div>
-                                        {history.reader.email && (
-                                            <div className="text-sm text-muted-foreground mb-2">{history.reader.email}</div>
-                                        )}
-                                        {history.notes && (
-                                            <div className="text-sm text-foreground mt-2 p-2 bg-card rounded italic border-l-2 border-blue-700">
-                                                {history.notes}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground ml-4">
-                                        {format(new Date(history.assignedDate), 'PPP', { locale: fr })}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </DialogContent>
-            </Dialog>
         </Card>
         <UserActivityGuardDialog
             blocked={activityBlocked}
