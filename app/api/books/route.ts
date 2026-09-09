@@ -11,6 +11,7 @@ import { buildBookScopeWhere } from '@/lib/books/searchWhere';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { bookFieldsForToken, searchTokens } from '@/lib/search';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
+import { isParisDay, parisDayStartUtc } from '@/lib/paris-day';
 
 type AudioFilter = 'missing' | 'present' | undefined;
 
@@ -399,6 +400,17 @@ async function fallbackSearch(
 }
 
 // Type for the API response
+/**
+ * De quoi étiqueter la fenêtre des nouveautés côté back-office : la coupure
+ * appliquée, celle par défaut, et le titre de la liste qui la porte. Présent
+ * seulement quand `recent=true` — le catalogue public ne la demande jamais.
+ */
+interface RecentWindow {
+    since: string | null;
+    defaultSince: string | null;
+    defaultLabel: string | null;
+}
+
 interface BooksApiResponse {
     books: BookWithGenres[];
     total: number;
@@ -406,6 +418,7 @@ interface BooksApiResponse {
     totalPages: number;
     availableCount: number;
     unavailableCount: number;
+    recentWindow?: RecentWindow;
 }
 
 interface BooksApiError {
@@ -431,6 +444,9 @@ export async function GET(request: NextRequest): Promise<Response> {
         const limit = parseLimitParam(searchParams.get('limit'), 9);
         const genres = searchParams.getAll('genres').map(Number).filter(id => !isNaN(id));
         const recent = searchParams.get('recent') === 'true';
+        // Jour parisien 'YYYY-MM-DD' — n'a de sens qu'avec `recent`, dont il
+        // déplace la coupure. Validé par isParisDay avant d'atteindre Prisma.
+        const since = searchParams.get('since');
         const ids = searchParams.get('ids')?.split(',').map(Number).filter(id => !isNaN(id));
         const availableParam = searchParams.get('available');
         const available = availableParam === 'true' ? true : availableParam === 'false' ? false : undefined;
@@ -481,6 +497,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         }
 
         // Handle recent books filter
+        let recentWindow: RecentWindow | undefined;
         if (recent) {
             // `active: true` comme partout ailleurs : la coupure des
             // « nouveautés » se prend sur la dernière liste PUBLIÉE. Sans ce
@@ -491,11 +508,33 @@ export async function GET(request: NextRequest): Promise<Response> {
             const lastCoupDeCoeur = await prisma.coupsDeCoeur.findFirst({
                 where: { active: true },
                 orderBy: { createdAt: 'desc' },
-                select: { createdAt: true }
+                select: { createdAt: true, title: true }
             });
-            if (lastCoupDeCoeur) {
-                whereClause.createdAt = { gte: lastCoupDeCoeur.createdAt };
+
+            // La coupure par défaut, que `since` peut déplacer.
+            //
+            // « Depuis la dernière liste » a une propriété qu'on ne veut pas
+            // perdre : elle ne saute aucun livre. Chaque nouveauté tombe dans
+            // exactement une fenêtre, celle de la liste suivante. Mais quand
+            // aucune liste n'a été publiée depuis longtemps, cette même
+            // propriété propose des milliers de titres d'un coup — et un
+            // plancher fixe (« deux mois ») rendrait définitivement invisibles
+            // tous ceux d'avant, sans le dire.
+            //
+            // D'où un paramètre plutôt qu'une règle : le permanent voit la
+            // coupure appliquée, il la déplace s'il veut une fenêtre plus
+            // courte, et rien n'est jamais masqué à son insu. `recentWindow`
+            // ci-dessous lui renvoie de quoi l'afficher.
+            const sinceOverride = isParisDay(since) ? parisDayStartUtc(since) : null;
+            const appliedSince = sinceOverride ?? lastCoupDeCoeur?.createdAt ?? null;
+            if (appliedSince) {
+                whereClause.createdAt = { gte: appliedSince };
             }
+            recentWindow = {
+                since: appliedSince?.toISOString() ?? null,
+                defaultSince: lastCoupDeCoeur?.createdAt.toISOString() ?? null,
+                defaultLabel: lastCoupDeCoeur?.title ?? null,
+            };
 
             // Une liste de livres annonce ce qu'on peut écouter MAINTENANT.
             // Un livre « en attente » est un enregistrement en cours : il n'a
@@ -627,6 +666,7 @@ export async function GET(request: NextRequest): Promise<Response> {
             totalPages: Math.ceil(total / limit),
             availableCount,
             unavailableCount,
+            ...(recentWindow ? { recentWindow } : {}),
         };
 
         return new Response(JSON.stringify(response), {
