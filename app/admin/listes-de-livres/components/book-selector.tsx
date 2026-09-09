@@ -179,7 +179,7 @@ export default function BookSelector({
     // pour qu'un changement de date remplace CES livres-là sans emporter ceux
     // que le permanent a ajoutés à la main.
     const [since, setSince] = useState('');
-    const [windowLabel, setWindowLabel] = useState<{ defaultSince: string | null; defaultLabel: string | null } | null>(null);
+    const [windowLabel, setWindowLabel] = useState<{ defaultSince: string | null; defaultLabel: string | null; defaultActive: boolean | null } | null>(null);
     const [matchingTotal, setMatchingTotal] = useState<number | null>(null);
     const [suggestedCount, setSuggestedCount] = useState(0);
     // Vrai dès le départ en création : le montage enchaîne sur un chargement.
@@ -258,6 +258,7 @@ export default function BookSelector({
                 setWindowLabel({
                     defaultSince: data.recentWindow.defaultSince,
                     defaultLabel: data.recentWindow.defaultLabel,
+                    defaultActive: data.recentWindow.defaultActive ?? null,
                 });
                 if (data.recentWindow.since) {
                     setSince(parisDayKey(new Date(data.recentWindow.since)));
@@ -613,8 +614,14 @@ export default function BookSelector({
                             <>
                                 {windowLabel?.defaultSince && (
                                     <>
-                                        Par défaut, la date de la dernière liste publiée
-                                        {windowLabel.defaultLabel ? ` (« ${windowLabel.defaultLabel} »)` : ''} :{' '}
+                                        {/* « créée », pas « publiée » : une liste dépubliée
+                                            porte la coupure comme les autres. Elle est
+                                            signalée comme telle, sans quoi le permanent
+                                            chercherait en vain sur le site la liste que
+                                            cette phrase nomme. */}
+                                        Par défaut, la date de la dernière liste créée
+                                        {windowLabel.defaultLabel ? ` (« ${windowLabel.defaultLabel} »)` : ''}
+                                        {windowLabel.defaultActive === false ? ', dépubliée' : ''} :{' '}
                                         {parisDate(windowLabel.defaultSince)}.{' '}
                                         {defaultSinceDay && since !== defaultSinceDay && (
                                             <button

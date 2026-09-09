@@ -404,11 +404,16 @@ async function fallbackSearch(
  * De quoi étiqueter la fenêtre des nouveautés côté back-office : la coupure
  * appliquée, celle par défaut, et le titre de la liste qui la porte. Présent
  * seulement quand `recent=true` — le catalogue public ne la demande jamais.
+ *
+ * `defaultActive` dit si cette liste est encore publiée : la coupure se prend
+ * sur la dernière liste créée, dépubliée comprise, et le permanent doit
+ * pouvoir constater qu'elle ne figure plus sur le site.
  */
 interface RecentWindow {
     since: string | null;
     defaultSince: string | null;
     defaultLabel: string | null;
+    defaultActive: boolean | null;
 }
 
 interface BooksApiResponse {
@@ -499,16 +504,22 @@ export async function GET(request: NextRequest): Promise<Response> {
         // Handle recent books filter
         let recentWindow: RecentWindow | undefined;
         if (recent) {
-            // `active: true` comme partout ailleurs : la coupure des
-            // « nouveautés » se prend sur la dernière liste PUBLIÉE. Sans ce
-            // filtre, dépublier une liste déplaçait la coupure — la même
-            // omission que dans /api/listes-de-livres/{preview,position}, et
-            // /api/listes-de-livres l'applique déjà dans sa propre branche
-            // `recent`.
+            // Ici, et seulement ici, la coupure ignore `active` : elle se
+            // prend sur la dernière liste CRÉÉE, publiée ou non. Dépublier
+            // une liste la retire du site, pas de l'histoire — les livres
+            // qu'elle annonce ont déjà été choisis, et une liste dépubliée
+            // est le plus souvent une liste qu'on republiera. Filtré sur
+            // `active: true`, le défaut reculait jusqu'à l'avant-dernière
+            // liste publiée et re-proposait d'office, cochés, tous les
+            // livres que la liste dépubliée contenait déjà.
+            //
+            // Les routes publiques (/api/listes-de-livres/{preview,position}
+            // et la branche `recent` de /api/listes-de-livres) gardent
+            // `active: true` : elles décrivent ce que le site affiche, quand
+            // celle-ci décrit ce qui existe.
             const lastCoupDeCoeur = await prisma.coupsDeCoeur.findFirst({
-                where: { active: true },
                 orderBy: { createdAt: 'desc' },
-                select: { createdAt: true, title: true }
+                select: { createdAt: true, title: true, active: true }
             });
 
             // La coupure par défaut, que `since` peut déplacer.
@@ -534,6 +545,7 @@ export async function GET(request: NextRequest): Promise<Response> {
                 since: appliedSince?.toISOString() ?? null,
                 defaultSince: lastCoupDeCoeur?.createdAt.toISOString() ?? null,
                 defaultLabel: lastCoupDeCoeur?.title ?? null,
+                defaultActive: lastCoupDeCoeur?.active ?? null,
             };
 
             // Une liste de livres annonce ce qu'on peut écouter MAINTENANT.
