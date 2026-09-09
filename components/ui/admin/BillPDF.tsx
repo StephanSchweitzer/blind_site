@@ -9,6 +9,16 @@ import { ORG } from '@/lib/org';
 // there rather than moving back inline: two copies of a postal address drift.
 const NAVY = '#15366b';
 
+// La graisse se demande par la police, pas par fontWeight.
+// react-pdf ne synthétise une graisse que pour une famille enregistrée avec
+// elle ; la Helvetica intégrée ne l'est pas, et un fontWeight: 'bold' posé
+// dessus est ignoré sans rien signaler. La facture a été composée ainsi
+// pendant toute sa vie : titre, numéro, en-têtes de colonnes, total et
+// filigrane sortaient en romain alors que la feuille de style les disait gras.
+// Nommer la police règle la question à la source — et c'est aussi ce que fait
+// l'étiquette d'adresse.
+const BOLD = 'Helvetica-Bold';
+
 // Le bloc-marque en tête de facture.
 // PNG et non le JPEG d'origine : celui-ci est encodé en progressif, que le filtre
 // DCTDecode d'un PDF ne sait pas relire — et le PNG évite au passage les artefacts
@@ -120,7 +130,7 @@ const makeStyles = (d: Density) => StyleSheet.create({
 
     header: { alignItems: 'center', borderBottomWidth: 2, borderColor: NAVY, paddingBottom: d.headPadB, marginBottom: d.headMarB },
     logo: { width: d.logoW, height: d.logoW / LOGO_RATIO, marginBottom: d.logoMarB },
-    docTitle: { color: NAVY, fontSize: d.titleSize, fontWeight: 'bold', letterSpacing: 3, textAlign: 'center' },
+    docTitle: { color: NAVY, fontSize: d.titleSize, fontFamily: BOLD, letterSpacing: 3, textAlign: 'center' },
     // Les coordonnées de l'émetteur vivent dans la marge basse, répétées sur
     // chaque page : l'en-tête reste un vrai papier à en-tête (marque + objet du
     // document), et les ~35 pt ainsi rendus au flux valent deux lignes de
@@ -132,13 +142,13 @@ const makeStyles = (d: Density) => StyleSheet.create({
     billMetaCol: { width: '42%' },
     metaItem: { marginBottom: d.metaMarB },
     alignRight: { textAlign: 'right' },
-    metaLabel: { fontSize: 8.5, color: '#4b5563', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, fontWeight: 'bold' },
-    metaName: { fontSize: 11, fontWeight: 'bold', color: '#111827', marginBottom: 2 },
-    metaNumber: { fontSize: 13, fontWeight: 'bold', color: NAVY },
+    metaLabel: { fontSize: 8.5, color: '#4b5563', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, fontFamily: BOLD },
+    metaName: { fontSize: 11, fontFamily: BOLD, color: '#111827', marginBottom: 2 },
+    metaNumber: { fontSize: 13, fontFamily: BOLD, color: NAVY },
     metaLine: { fontSize: 9.5, color: '#1f2937' },
 
     th: { flexDirection: 'row', borderBottomWidth: 1.5, borderColor: NAVY, paddingVertical: d.thPadY, paddingHorizontal: 4 },
-    thText: { color: NAVY, fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 },
+    thText: { color: NAVY, fontSize: 9, fontFamily: BOLD, textTransform: 'uppercase', letterSpacing: 0.5 },
     tr: { flexDirection: 'row', paddingVertical: d.trPadY, paddingHorizontal: 4, borderBottomWidth: 1, borderColor: '#d1d5db' },
 
     cId: { width: 36 },
@@ -158,26 +168,26 @@ const makeStyles = (d: Density) => StyleSheet.create({
     totalLabel: { fontSize: 10, color: '#1f2937' },
     totalValue: { fontSize: 10, color: '#111827' },
     grandRow: { flexDirection: 'row', width: 240, justifyContent: 'space-between', marginTop: d.grandTop, paddingTop: d.grandPadT, borderTopWidth: 1.5, borderColor: NAVY },
-    grandLabel: { fontSize: 12, fontWeight: 'bold', color: NAVY, letterSpacing: 0.5 },
-    grandValue: { fontSize: 14, fontWeight: 'bold', color: NAVY },
+    grandLabel: { fontSize: 12, fontFamily: BOLD, color: NAVY, letterSpacing: 0.5 },
+    grandValue: { fontSize: 14, fontFamily: BOLD, color: NAVY },
 
     payBox: { marginTop: d.payTop, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 4, padding: d.payPad },
     settledBox: { marginTop: d.payTop, borderWidth: 1.5, borderColor: NAVY, borderRadius: 4, padding: d.payPad },
-    settledTitle: { fontSize: 11, fontWeight: 'bold', color: NAVY, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
+    settledTitle: { fontSize: 11, fontFamily: BOLD, color: NAVY, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
     // Date et référence côte à côte plutôt qu'empilées : deux lignes de moins,
     // et l'encadré ne pèse alors pas plus qu'une ligne de tableau.
     payRow: { flexDirection: 'row', justifyContent: 'space-between' },
-    payLabel: { fontSize: 8, color: '#4b5563', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3, fontWeight: 'bold' },
+    payLabel: { fontSize: 8, color: '#4b5563', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3, fontFamily: BOLD },
     payValue: { fontSize: 10, color: '#111827' },
 
     legal: { marginTop: d.legalTop, fontSize: 9, color: '#374151' },
-    draftNote: { marginTop: d.legalTop, fontSize: 9, color: '#92400e', fontWeight: 'bold' },
+    draftNote: { marginTop: d.legalTop, fontSize: 9, color: '#92400e', fontFamily: BOLD },
 
     // Flows once at the very end of the document (last page only).
     payInfoBox: { marginTop: d.payTop, borderWidth: 1, borderColor: NAVY, borderRadius: 4, padding: d.infoPad, alignItems: 'center' },
     payInfoLine: { fontSize: 9.5, color: '#111827', textAlign: 'center', marginBottom: d.infoLineMarB },
 
-    watermark: { position: 'absolute', top: '42%', left: 0, right: 0, textAlign: 'center', fontSize: 96, fontWeight: 'bold', color: NAVY, opacity: 0.06, transform: 'rotate(-24deg)' },
+    watermark: { position: 'absolute', top: '42%', left: 0, right: 0, textAlign: 'center', fontSize: 96, fontFamily: BOLD, color: NAVY, opacity: 0.06, transform: 'rotate(-24deg)' },
 });
 
 export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: boolean }) => {
