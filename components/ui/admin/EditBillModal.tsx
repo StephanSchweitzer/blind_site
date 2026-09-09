@@ -380,49 +380,60 @@ export function EditBillModal({
 
                 {bill && !isLoading && (
                     <div className="space-y-5">
-                        {/* Summary */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="min-w-0">
-                                <div className="text-xs text-muted-foreground uppercase tracking-wide">Auditeur</div>
-                                <a
-                                    href={`/admin/users/auditeurs?user=${bill.client.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Ouvrir la fiche de l'auditeur dans un nouvel onglet"
-                                    className="text-foreground font-medium break-words hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1"
-                                >
-                                    {getUserNameOnly(bill.client) || 'N/A'}
-                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                                </a>
-                                <div className="text-muted-foreground text-sm break-words">{bill.client.email}</div>
-                                {bill.client.address && bill.client.address.filter(Boolean).length > 0 && (
-                                    <div className="text-muted-foreground text-sm mt-1 leading-snug break-words">
-                                        {bill.client.address.filter(Boolean).map((line, i) => (
-                                            <div key={i}>{line}</div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="min-w-0 text-right">
-                                <div className="text-xs text-muted-foreground uppercase tracking-wide">État actuel</div>
-                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
-                                    {getBillingStatusLabel(bill.state)}
-                                </span>
-                            </div>
-                        </div>
+                        {/* L'identité de la facture — qui, quel état, quelles dates.
 
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-wide">Création</div>
-                                <div className="text-foreground">{formatDate(bill.creationDate)}</div>
+                            Groupée, et non posée dans la pile comme deux sections de plus :
+                            ces trois choses se lisent d'un bloc, et le corps de la modale ne
+                            commence qu'aux paiements. D'où un intérieur plus serré (16 px) et
+                            une respiration plus large en sortie : « Enregistrer un paiement »
+                            est un bouton bordé dont l'arête tombait à 20 px sous la date, là
+                            où les autres sections s'ouvrent sur un intitulé dont l'encre est
+                            en retrait. Même écart au pixel, moins d'air à l'œil. */}
+                        <div className="space-y-4 pb-2">
+                            {/* Summary */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="min-w-0">
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Auditeur</div>
+                                    <a
+                                        href={`/admin/users/auditeurs?user=${bill.client.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Ouvrir la fiche de l'auditeur dans un nouvel onglet"
+                                        className="text-foreground font-medium break-words hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1"
+                                    >
+                                        {getUserNameOnly(bill.client) || 'N/A'}
+                                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                    </a>
+                                    <div className="text-muted-foreground text-sm break-words">{bill.client.email}</div>
+                                    {bill.client.address && bill.client.address.filter(Boolean).length > 0 && (
+                                        <div className="text-muted-foreground text-sm mt-1 leading-snug break-words">
+                                            {bill.client.address.filter(Boolean).map((line, i) => (
+                                                <div key={i}>{line}</div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="min-w-0 text-right">
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">État actuel</div>
+                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
+                                        {getBillingStatusLabel(bill.state)}
+                                    </span>
+                                </div>
                             </div>
-                            <div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-wide">Émission</div>
-                                <div className="text-foreground">{formatDate(bill.issueDate)}</div>
-                            </div>
-                            <div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-wide">Paiement</div>
-                                <div className="text-foreground">{formatDate(bill.paymentDate)}</div>
+
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Création</div>
+                                    <div className="text-foreground">{formatDate(bill.creationDate)}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Émission</div>
+                                    <div className="text-foreground">{formatDate(bill.issueDate)}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Paiement</div>
+                                    <div className="text-foreground">{formatDate(bill.paymentDate)}</div>
+                                </div>
                             </div>
                         </div>
 
