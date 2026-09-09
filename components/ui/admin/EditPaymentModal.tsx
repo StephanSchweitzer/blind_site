@@ -36,6 +36,7 @@ function toInitialData(p: SerializedPayment): PaymentFormInitialData {
         creationDate: p.creationDate,
         issueDate: p.issueDate,
         paymentDate: p.paymentDate,
+        paymentReference: p.paymentReference,
         receiptNumber: p.receiptNumber,
         fiscalite: p.fiscalite,
         cotisationYear: p.cotisationYear,

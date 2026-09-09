@@ -265,6 +265,13 @@ model Bill {
   state            BillingStatus @default(BILLED)
   creationDate     DateTime
   issueDate        DateTime?
+  /// Reflet des paiements rattachés, jamais saisi sur la facture : recalculé par
+  /// syncBillPaymentInfo (lib/billing.ts) à chaque rattachement, modification ou
+  /// suppression d'un paiement. La saisie vit sur Payment.paymentDate /
+  /// Payment.paymentReference. Les deux colonnes restent ici parce que la
+  /// recherche factures (buildBillSearchWhere) et l'historique (BillEvent) s'y
+  /// appuient, et parce que les factures d'avant la reprise les portent sans
+  /// avoir de paiement en face.
   paymentDate      DateTime?
   paymentReference String?
   invoiceAmount    Decimal       @db.Decimal(10, 2)
@@ -292,6 +299,10 @@ model Payment {
   paymentDate      DateTime?
   exportDate       DateTime?
   importDate       DateTime?
+  /// Référence du règlement — n° de chèque, référence de virement. C'est ICI
+  /// qu'elle se saisit : Bill.paymentReference n'est plus qu'un reflet, recalculé
+  /// depuis les paiements rattachés (syncBillPaymentInfo, lib/billing.ts).
+  paymentReference String?
   receiptNumber    String? // num_recu
   fiscalite        String? // source type unclear – tighten to Boolean/enum after inspecting data
   cotisationYear   Int? // Annee_cotisation – only for type COTISATION

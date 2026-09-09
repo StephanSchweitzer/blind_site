@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PaymentType, PaymentMethod } from '@prisma/client';
+import { isClientRequiredForPaymentType } from '@/lib/payment-enums';
 
 // Accepts an ISO datetime string produced by Date.toISOString().
 const isoDate = z.string().datetime();
@@ -34,6 +35,7 @@ export const PaymentCreateInputSchema = z
         issueDate: nullableIsoDate,
         paymentDate: nullableIsoDate,
         allocationDate: nullableIsoDate,
+        paymentReference: optionalText,
         receiptNumber: optionalText,
         fiscalite: optionalText,
         cotisationYear,
@@ -48,6 +50,17 @@ export const PaymentCreateInputSchema = z
                 code: z.ZodIssueCode.custom,
                 path: ['billId'],
                 message: 'Une facture ne peut être liée qu’à un paiement de type Enregistrement',
+            });
+        }
+        // Un paiement rattaché à quelqu'un, sauf « Divers ». Le formulaire pose
+        // déjà le contrôle ; il est répété ici parce que la route est l'autre
+        // porte d'entrée et qu'un contrôle qui ne vit que dans l'UI n'en est pas
+        // un. Voir isClientRequiredForPaymentType.
+        if (data.clientId == null && isClientRequiredForPaymentType(data.type)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['clientId'],
+                message: 'Ce type de paiement doit être rattaché à une personne',
             });
         }
         if (data.cotisationYear != null && data.type !== PaymentType.COTISATION) {
@@ -70,6 +83,7 @@ export const PaymentUpdateInputSchema = z.object({
     issueDate: nullableIsoDate,
     paymentDate: nullableIsoDate,
     allocationDate: nullableIsoDate,
+    paymentReference: optionalText,
     receiptNumber: optionalText,
     fiscalite: optionalText,
     cotisationYear,
@@ -95,6 +109,7 @@ export interface SerializedPayment {
     paymentDate: string | null;
     exportDate: string | null;
     importDate: string | null;
+    paymentReference: string | null;
     receiptNumber: string | null;
     fiscalite: string | null;
     cotisationYear: number | null;

@@ -59,3 +59,39 @@ export function getPaymentMethodLabel(method: PaymentMethod | null | undefined):
     if (!method) return '-';
     return PAYMENT_METHOD_LABELS[method] ?? method;
 }
+
+// ─── Client requirement ───────────────────────────────────────────────────────
+
+/**
+ * Les types de paiement qui exigent de savoir DE QUI vient l'argent.
+ *
+ * Une cotisation et un enregistrement se rattachent forcément à un auditeur, et
+ * un don à son donateur — sans lui, ni reçu fiscal ni relance possible. Seul
+ * « Divers » reste anonyme : c'est le fourre-tout des encaissements qui ne
+ * désignent personne.
+ *
+ * Partagé par le formulaire et les routes : les deux doivent refuser la même
+ * chose, sans quoi le contrôle client n'est qu'une décoration.
+ */
+export const PAYMENT_CLIENT_REQUIRED_TYPES: readonly PaymentType[] = [
+    PaymentType.COTISATION,
+    PaymentType.ENREGISTREMENT,
+    PaymentType.DON,
+];
+
+export function isClientRequiredForPaymentType(type: PaymentType): boolean {
+    return PAYMENT_CLIENT_REQUIRED_TYPES.includes(type);
+}
+
+/** Le mot juste pour le champ client, qui suit le type. */
+export function getPaymentClientFieldLabel(type: PaymentType): string {
+    if (type === PaymentType.DON) return 'Donateur';
+    if (type === PaymentType.DIVERS) return 'Personne';
+    return 'Auditeur';
+}
+
+export function getPaymentClientSearchPlaceholder(type: PaymentType): string {
+    if (type === PaymentType.DON) return 'Rechercher un donateur ...';
+    if (type === PaymentType.DIVERS) return 'Rechercher une personne ...';
+    return 'Rechercher un auditeur ...';
+}

@@ -24,6 +24,9 @@ import {
     PaymentMethod,
     getPaymentTypeLabel,
     getPaymentMethodLabel,
+    isClientRequiredForPaymentType,
+    getPaymentClientFieldLabel,
+    getPaymentClientSearchPlaceholder,
 } from '@/lib/payment-enums';
 import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
 import { useFormToast } from '@/hooks/useFormToast';
@@ -58,6 +61,7 @@ export interface PaymentFormData {
     creationDate: Date;
     issueDate: Date | null;
     paymentDate: Date | null;
+    paymentReference: string | null;
     receiptNumber: string | null;
     fiscalite: string | null;
     cotisationYear: number | null;
@@ -75,6 +79,7 @@ export interface PaymentFormInitialData {
     creationDate: string;
     issueDate: string | null;
     paymentDate: string | null;
+    paymentReference: string | null;
     receiptNumber: string | null;
     fiscalite: string | null;
     cotisationYear: number | null;
@@ -101,20 +106,6 @@ const COMPTABLE_OPTIONS = ['Comptable', 'ECA', 'AUXILIAIRES'] as const;
 
 function formatCurrency(amount: number) {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
-}
-
-// Client field wording follows the payment type so it stays coherent for admins:
-// a DON comes from a donateur, a DIVERS from anyone — not necessarily an auditeur.
-function getClientFieldLabel(type: PaymentType): string {
-    if (type === PaymentType.DON) return 'Donateur';
-    if (type === PaymentType.DIVERS) return 'Personne';
-    return 'Auditeur';
-}
-
-function getClientSearchPlaceholder(type: PaymentType): string {
-    if (type === PaymentType.DON) return 'Rechercher un donateur ...';
-    if (type === PaymentType.DIVERS) return 'Rechercher une personne ...';
-    return 'Rechercher un auditeur ...';
 }
 
 export function PaymentFormBackendBase({
@@ -145,6 +136,7 @@ export function PaymentFormBackendBase({
     const [paymentDate, setPaymentDate] = useState<Date | null>(
         initialData?.paymentDate ? new Date(initialData.paymentDate) : null
     );
+    const [paymentReference, setPaymentReference] = useState(initialData?.paymentReference ?? '');
     const [receiptNumber, setReceiptNumber] = useState(initialData?.receiptNumber ?? '');
     const [cotisationYear, setCotisationYear] = useState<string>(
         initialData?.cotisationYear != null ? String(initialData.cotisationYear) : String(new Date().getFullYear())
@@ -200,14 +192,14 @@ export function PaymentFormBackendBase({
 
         // N3 — collect failing fields in visual order, then toast + focus the first.
         const invalid: string[] = [];
-        const clientRequired = type === PaymentType.COTISATION || type === PaymentType.ENREGISTREMENT;
+        const clientRequired = isClientRequiredForPaymentType(type);
         if (clientRequired && !selectedClient) invalid.push('client');
         if (type === PaymentType.ENREGISTREMENT && selectedClient && !selectedBillId) invalid.push('bill');
         if (!Number.isFinite(amt) || amt <= 0) invalid.push('amount');
 
         if (invalid.length) {
             const messages: Record<string, string> = {
-                client: 'Un auditeur est requis pour ce type de paiement',
+                client: `Un ${getPaymentClientFieldLabel(type).toLowerCase()} est requis pour ce type de paiement`,
                 bill: 'Veuillez sélectionner la facture liée à cet enregistrement',
                 amount: 'Veuillez saisir un montant positif',
             };
@@ -230,6 +222,7 @@ export function PaymentFormBackendBase({
                 creationDate,
                 issueDate,
                 paymentDate,
+                paymentReference: paymentReference.trim() || null,
                 receiptNumber: receiptNumber.trim() || null,
                 fiscalite: fiscalite ? 'OUI' : null,
                 cotisationYear:
@@ -317,11 +310,10 @@ export function PaymentFormBackendBase({
                     {/* Client */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
-                            {getClientFieldLabel(type)}
-                            {(type === PaymentType.COTISATION || type === PaymentType.ENREGISTREMENT) && (
+                            {getPaymentClientFieldLabel(type)}
+                            {isClientRequiredForPaymentType(type) ? (
                                 <span className="text-red-500"> *</span>
-                            )}
-                            {(type === PaymentType.DON || type === PaymentType.DIVERS) && (
+                            ) : (
                                 <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
                             )}
                         </label>
@@ -331,7 +323,7 @@ export function PaymentFormBackendBase({
                                     value={selectedClient}
                                     onSelect={handleClientSelect}
                                     triggerRef={registerField('client')}
-                                    placeholder={getClientSearchPlaceholder(type)}
+                                    placeholder={getPaymentClientSearchPlaceholder(type)}
                                 />
                             </div>
                             {selectedClient && (
@@ -429,6 +421,19 @@ export function PaymentFormBackendBase({
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    {/* Payment reference — saisie ICI et nulle part ailleurs.
+                        La facture liée la reprend (syncBillPaymentInfo) : c'est
+                        pourquoi le formulaire des factures ne la demande plus. */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Référence de paiement</label>
+                        <Input
+                            value={paymentReference}
+                            onChange={(e) => setPaymentReference(e.target.value)}
+                            placeholder="N° de chèque, référence de virement..."
+                            className="bg-field border-border text-foreground"
+                        />
                     </div>
 
                     {/* Cotisation year (COTISATION only) */}
@@ -577,6 +582,7 @@ export function paymentFormDataToApiBody(d: PaymentFormData) {
         issueDate: d.issueDate?.toISOString() ?? null,
         paymentDate: d.paymentDate?.toISOString() ?? null,
         allocationDate: d.allocationDate?.toISOString() ?? null,
+        paymentReference: d.paymentReference,
         receiptNumber: d.receiptNumber,
         fiscalite: d.fiscalite,
         cotisationYear: d.cotisationYear,

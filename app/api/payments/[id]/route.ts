@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { PaymentType, Prisma } from '@prisma/client';
+import { isClientRequiredForPaymentType } from '@/lib/payment-enums';
 import { PaymentUpdateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -95,6 +96,7 @@ export const PATCH = withAdmin(async (request, context) => {
             if (p.issueDate !== undefined) data.issueDate = p.issueDate ? new Date(p.issueDate) : null;
             if (p.paymentDate !== undefined) data.paymentDate = p.paymentDate ? new Date(p.paymentDate) : null;
             if (p.allocationDate !== undefined) data.allocationDate = p.allocationDate ? new Date(p.allocationDate) : null;
+            if (p.paymentReference !== undefined) data.paymentReference = p.paymentReference;
             if (p.receiptNumber !== undefined) data.receiptNumber = p.receiptNumber;
             if (p.fiscalite !== undefined) data.fiscalite = p.fiscalite;
             if (p.comptable !== undefined) data.comptable = p.comptable;
@@ -103,6 +105,18 @@ export const PATCH = withAdmin(async (request, context) => {
 
             const effectiveType = p.type ?? existing.type;
             const effectiveClientId = p.clientId !== undefined ? p.clientId : existing.clientId;
+
+            // Le contrôle porte sur le RÉSULTAT, pas sur ce que la requête dit.
+            //
+            // Changer le type d'un « Divers » anonyme en « Don » ne parle pas du
+            // client et laisserait donc passer un don sans donateur ; c'est le
+            // couple (type, client) tel qu'il sera enregistré qui doit tenir.
+            // Conséquence assumée : un paiement importé sans client ne se modifie
+            // plus sans qu'on lui en attribue un — c'est précisément la reprise
+            // que ce contrôle sert à faire.
+            if (effectiveClientId == null && isClientRequiredForPaymentType(effectiveType)) {
+                throw new Error('CLIENT_REQUIRED');
+            }
 
             // billId only valid for ENREGISTREMENT; otherwise always cleared.
             //
@@ -164,6 +178,7 @@ export const PATCH = withAdmin(async (request, context) => {
         const msg = error instanceof Error ? error.message : '';
         const errorMap: Record<string, [string, number]> = {
             PAYMENT_NOT_FOUND: ['Paiement introuvable', 404],
+            CLIENT_REQUIRED: ['Ce type de paiement doit être rattaché à une personne', 400],
             BILL_NOT_FOUND: ['La facture liée est introuvable ou inactive', 409],
             BILL_CLIENT_MISMATCH: ['La facture liée n’appartient pas au client du paiement', 400],
         };

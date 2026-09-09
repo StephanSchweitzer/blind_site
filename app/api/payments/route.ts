@@ -118,6 +118,7 @@ export const POST = withAdmin(async (request) => {
             issueDate: d.issueDate ? new Date(d.issueDate) : null,
             paymentDate: d.paymentDate ? new Date(d.paymentDate) : null,
             allocationDate: d.allocationDate ? new Date(d.allocationDate) : null,
+            paymentReference: d.paymentReference ?? null,
             receiptNumber: d.receiptNumber ?? null,
             fiscalite: d.fiscalite ?? null,
             cotisationYear,
