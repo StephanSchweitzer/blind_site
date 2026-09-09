@@ -4,6 +4,11 @@ import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import PaymentsTable from '@/app/admin/payments/payments-table';
 import { paymentsTableInclude } from '@/types/models/payment.model';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import {
+    parsePaymentListParams,
+    buildPaymentListWhere,
+    buildPaymentListOrderBy,
+} from '@/lib/payments/list-query';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -22,27 +27,16 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
 
     const page = parsePageParam(sp.page);
 
-    const rawType = Array.isArray(sp.type) ? sp.type[0] : sp.type;
-    const type =
-        rawType && Object.values(PaymentType).includes(rawType as PaymentType)
-            ? (rawType as PaymentType)
-            : undefined;
-
-    const rawMethod = Array.isArray(sp.paymentMethod) ? sp.paymentMethod[0] : sp.paymentMethod;
-    const paymentMethod =
-        rawMethod && Object.values(PaymentMethod).includes(rawMethod as PaymentMethod)
-            ? (rawMethod as PaymentMethod)
-            : undefined;
-
-    // Same filtering as the global payments page, locked to this client.
-    const whereClause: Prisma.PaymentWhereInput = { isActive: true, clientId };
-    if (type) whereClause.type = type;
-    if (paymentMethod) whereClause.paymentMethod = paymentMethod;
+    // Mêmes filtres et même tri que la liste globale, verrouillés sur ce client :
+    // l'onglet portait sa propre copie du `where` et ne suivait donc aucun des
+    // filtres ajoutés en face. Voir lib/payments/list-query.ts.
+    const listParams = parsePaymentListParams(sp, { clientId });
+    const whereClause = buildPaymentListWhere(listParams);
 
     const [payments, totalPayments, totals] = await Promise.all([
         prisma.payment.findMany({
             where: whereClause,
-            orderBy: { creationDate: 'desc' },
+            orderBy: buildPaymentListOrderBy(listParams),
             skip: pageSkip(page, PAYMENTS_PER_PAGE),
             take: PAYMENTS_PER_PAGE,
             include: paymentsTableInclude,
@@ -71,7 +65,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
         <PaymentsTable
             initialPayments={serializedPayments}
             initialPage={page}
-            initialSearch=""
+            initialParams={listParams}
             totalPages={Math.ceil(totalPayments / PAYMENTS_PER_PAGE)}
             availableTypes={Object.values(PaymentType)}
             availableMethods={Object.values(PaymentMethod)}

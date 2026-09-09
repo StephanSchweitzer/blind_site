@@ -5,8 +5,12 @@ import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import { PaymentCreateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
 import { syncBillPaymentInfo, paymentPrecedesIssue } from '@/lib/billing';
-import { buildPaymentSearchWhere } from '@/lib/search';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
+import {
+    parsePaymentListParams,
+    buildPaymentListWhere,
+    buildPaymentListOrderBy,
+} from '@/lib/payments/list-query';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
@@ -17,38 +21,17 @@ export const GET = withAdmin(async (request) => {
 
         const page = parsePageParam(sp.get('page'));
         const limit = parseLimitParam(sp.get('limit'), 10);
-        const searchTerm = sp.get('search') || '';
-        const clientId = sp.get('clientId') ? parseInt(sp.get('clientId')!) : undefined;
-        const includeInactive = sp.get('includeInactive') === 'true';
 
-        const rawType = sp.get('type');
-        const type = rawType && Object.values(PaymentType).includes(rawType as PaymentType)
-            ? (rawType as PaymentType)
-            : undefined;
-
-        const rawMethod = sp.get('paymentMethod');
-        const paymentMethod = rawMethod && Object.values(PaymentMethod).includes(rawMethod as PaymentMethod)
-            ? (rawMethod as PaymentMethod)
-            : undefined;
-
-        const whereClause: Prisma.PaymentWhereInput = {};
-
-        if (!includeInactive) whereClause.isActive = true;
-        if (type) whereClause.type = type;
-        if (paymentMethod) whereClause.paymentMethod = paymentMethod;
-        if (clientId) whereClause.clientId = clientId;
-
-        if (searchTerm) {
-            // Même recherche que la page /admin/payments — les deux portes
-            // d'entrée doivent rendre la même liste. Voir buildPaymentSearchWhere.
-            const tokenClauses = buildPaymentSearchWhere(searchTerm);
-            if (tokenClauses) whereClause.AND = tokenClauses;
-        }
+        // Recherche, filtres et tri partagés avec la page /admin/payments : les
+        // deux portes d'entrée doivent rendre la même liste, et ce fichier en
+        // portait sa propre copie. Voir lib/payments/list-query.ts.
+        const params = parsePaymentListParams(sp);
+        const whereClause = buildPaymentListWhere(params);
 
         const [payments, totalPayments] = await Promise.all([
             prisma.payment.findMany({
                 where: whereClause,
-                orderBy: { creationDate: 'desc' },
+                orderBy: buildPaymentListOrderBy(params),
                 skip: pageSkip(page, limit),
                 take: limit,
                 include: { client: { select: clientSelect }, bill: { select: billSelect } },

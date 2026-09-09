@@ -26,7 +26,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, Loader2, ExternalLink } from 'lucide-react';
+import { Search, X, Plus, Loader2, ExternalLink, ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     PaymentType,
     PaymentMethod,
@@ -43,11 +44,19 @@ import { CopyIdButton } from '@/admin/CopyableId';
 import type { SerializedPaymentTableRow as Payment } from '@/types/models/payment.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { BillingStatus, getBillingStatusLabel, getBillingStatusColor } from '@/lib/billing-enums';
+// list-params, pas list-query : ce fichier est 'use client', et list-query
+// importe @prisma/client — qui ne peut pas entrer dans le bundle navigateur.
+import {
+    isDefaultPaymentFilters,
+    type PaymentListParams,
+    type PaymentSortField,
+} from '@/lib/payments/list-params';
 
 interface PaymentsTableProps {
     initialPayments: Payment[];
     initialPage: number;
-    initialSearch: string;
+    /** Recherche, filtres et tri déjà analysés par lib/payments/list-query.ts. */
+    initialParams: PaymentListParams;
     totalPages: number;
     availableTypes: PaymentType[];
     availableMethods: PaymentMethod[];
@@ -57,10 +66,61 @@ interface PaymentsTableProps {
     presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null } | null;
 }
 
+/**
+ * Un en-tête de colonne triable.
+ *
+ * Défini ici et non dans le rendu : un composant redéclaré à chaque rendu est
+ * remonté par React à chaque fois (règle `static-components` du dépôt).
+ *
+ * La colonne active porte une flèche pleine, les autres un chevron estompé —
+ * sans quoi rien ne distingue « trié par ce critère » de « triable ».
+ */
+function SortableHead({
+    field,
+    label,
+    activeField,
+    direction,
+    onSort,
+    className = '',
+}: {
+    field: PaymentSortField;
+    label: string;
+    activeField: PaymentSortField;
+    direction: 'asc' | 'desc';
+    onSort: (field: PaymentSortField) => void;
+    className?: string;
+}) {
+    const isActive = activeField === field;
+    return (
+        <TableHead
+            className={`text-foreground font-medium ${className}`}
+            aria-sort={isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+        >
+            <button
+                type="button"
+                onClick={() => onSort(field)}
+                title={`Trier par ${label.toLowerCase()}`}
+                className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+                {label}
+                {isActive ? (
+                    direction === 'asc' ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                    ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                    )
+                ) : (
+                    <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />
+                )}
+            </button>
+        </TableHead>
+    );
+}
+
 export default function PaymentsTable({
                                           initialPayments,
                                           initialPage,
-                                          initialSearch,
+                                          initialParams,
                                           totalPages,
                                           availableTypes,
                                           availableMethods,
@@ -73,7 +133,7 @@ export default function PaymentsTable({
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
 
-    const [searchTerm, setSearchTerm] = useState(initialSearch);
+    const [searchTerm, setSearchTerm] = useState(initialParams.search);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     // Deep-link: open the view/edit modal directly from /admin/payments?payment=<id>.
     const [viewPaymentId, setViewPaymentId] = useState<number | null>(() => {
@@ -84,8 +144,10 @@ export default function PaymentsTable({
     const [paymentToDelete, setPaymentToDelete] = useState<number | null>(null);
 
     const currentPage = initialPage;
-    const currentType = searchParams.get('type') as PaymentType | null;
-    const currentMethod = searchParams.get('paymentMethod') as PaymentMethod | null;
+    // Le serveur a déjà validé chaque paramètre ; relire l'URL ici ferait afficher
+    // comme actif un filtre que le serveur a écarté (« ?type=nimportequoi »).
+    const { type: currentType, paymentMethod: currentMethod, sort, dir } = initialParams;
+    const hasFilters = !isDefaultPaymentFilters(initialParams);
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -114,6 +176,31 @@ export default function PaymentsTable({
     const handlePageChange = (newPage: number) => updateUrl({ page: newPage.toString() });
     const handleTypeFilter = (value: string) => updateUrl({ type: value === 'all' ? undefined : value, page: '1' });
     const handleMethodFilter = (value: string) => updateUrl({ paymentMethod: value === 'all' ? undefined : value, page: '1' });
+    const handleDateFieldChange = (value: string) => updateUrl({ dateField: value === 'creationDate' ? undefined : value, page: '1' });
+    const handleBoundChange = (key: 'from' | 'to', value: string) => updateUrl({ [key]: value || undefined, page: '1' });
+    const handleToggle = (key: 'unlinked' | 'unallocated', on: boolean) => updateUrl({ [key]: on ? 'true' : undefined, page: '1' });
+
+    // Un clic sur une colonne déjà triée inverse le sens ; sur une autre, il la
+    // prend dans son sens le plus utile — décroissant pour une date ou un
+    // montant (le plus récent, le plus gros), croissant pour un numéro.
+    const handleSort = (field: PaymentSortField) => {
+        const nextDir = sort === field ? (dir === 'asc' ? 'desc' : 'asc') : field === 'id' ? 'asc' : 'desc';
+        updateUrl({
+            sort: field === 'creationDate' && nextDir === 'desc' ? undefined : field,
+            dir: nextDir === 'desc' ? undefined : nextDir,
+            page: '1',
+        });
+    };
+
+    const handleResetFilters = () => {
+        setSearchTerm('');
+        updateUrl({
+            search: undefined, type: undefined, paymentMethod: undefined,
+            from: undefined, to: undefined, dateField: undefined,
+            unlinked: undefined, unallocated: undefined,
+            sort: undefined, dir: undefined, page: '1',
+        });
+    };
 
     const handlePaymentAdded = () => { setIsAddModalOpen(false); router.refresh(); };
     const handlePaymentDeleted = () => { setPaymentToDelete(null); router.refresh(); };
@@ -229,6 +316,77 @@ export default function PaymentsTable({
                     </div>
                 </div>
 
+                {/* Période et rapprochement.
+                    La période porte au choix sur la date de création ou celle du
+                    règlement : « qu'a-t-on saisi en janvier » et « qu'a-t-on encaissé
+                    en janvier » sont deux questions, et une seule des deux colonnes
+                    ne peut pas répondre aux deux. Les bornes sont des jours
+                    parisiens, inclusives (voir lib/paris-day.ts). */}
+                <div className="flex flex-wrap items-end gap-3 mb-6">
+                    <div className="space-y-1">
+                        <label className="block text-xs text-muted-foreground uppercase tracking-wide">Période sur</label>
+                        <Select value={initialParams.dateField} onValueChange={handleDateFieldChange}>
+                            <SelectTrigger className="w-full sm:w-[190px] bg-field border-border text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="creationDate" className="text-foreground">Date de création</SelectItem>
+                                <SelectItem value="paymentDate" className="text-foreground">Date de paiement</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="block text-xs text-muted-foreground uppercase tracking-wide">Du</label>
+                        <Input
+                            type="date"
+                            value={initialParams.from ?? ''}
+                            onChange={(e) => handleBoundChange('from', e.target.value)}
+                            className="w-full sm:w-[165px] bg-field border-border text-foreground"
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="block text-xs text-muted-foreground uppercase tracking-wide">Au</label>
+                        <Input
+                            type="date"
+                            value={initialParams.to ?? ''}
+                            onChange={(e) => handleBoundChange('to', e.target.value)}
+                            className="w-full sm:w-[165px] bg-field border-border text-foreground"
+                        />
+                    </div>
+
+                    <label className="flex items-center gap-2 h-10 text-foreground text-sm cursor-pointer whitespace-nowrap">
+                        <Checkbox
+                            checked={initialParams.unlinked}
+                            onCheckedChange={(checked) => handleToggle('unlinked', !!checked)}
+                            className="border-border"
+                        />
+                        Sans facture liée
+                    </label>
+
+                    <label className="flex items-center gap-2 h-10 text-foreground text-sm cursor-pointer whitespace-nowrap">
+                        <Checkbox
+                            checked={initialParams.unallocated}
+                            onCheckedChange={(checked) => handleToggle('unallocated', !!checked)}
+                            className="border-border"
+                        />
+                        Non affectés
+                    </label>
+
+                    {hasFilters && (
+                        <Button
+                            variant="outline"
+                            onClick={handleResetFilters}
+                            disabled={isPending}
+                            className="h-10 bg-card text-foreground border-border hover:bg-muted flex items-center gap-2"
+                        >
+                            <RotateCcw className="h-4 w-4" />
+                            Réinitialiser
+                        </Button>
+                    )}
+                </div>
+
                 {/* Loading Overlay */}
                 {isPending && (
                     <div className="relative">
@@ -253,14 +411,20 @@ export default function PaymentsTable({
                                 <Table>
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border hover:bg-muted">
-                                            <TableHead className="text-foreground font-medium">ID</TableHead>
+                                            {/* Seules les colonnes que la base sait trier sont
+                                                cliquables : « Client » se trie sur une relation et
+                                                « Type » sur l'ordre de l'enum, pas sur son
+                                                libellé — un tri qui rendrait Cotisation, Don,
+                                                Enregistrement dans le désordre alphabétique
+                                                mentirait plus qu'il n'aiderait. */}
+                                            <SortableHead field="id" label="ID" activeField={sort} direction={dir} onSort={handleSort} />
                                             <TableHead className="text-foreground font-medium">Client</TableHead>
                                             <TableHead className="text-foreground font-medium">Type</TableHead>
                                             <TableHead className="text-foreground font-medium">Méthode</TableHead>
                                             <TableHead className="text-foreground font-medium">Facture</TableHead>
-                                            <TableHead className="text-foreground font-medium">Date de création</TableHead>
-                                            <TableHead className="text-foreground font-medium">Date de paiement</TableHead>
-                                            <TableHead className="text-foreground font-medium">Montant</TableHead>
+                                            <SortableHead field="creationDate" label="Date de création" activeField={sort} direction={dir} onSort={handleSort} />
+                                            <SortableHead field="paymentDate" label="Date de paiement" activeField={sort} direction={dir} onSort={handleSort} />
+                                            <SortableHead field="amount" label="Montant" activeField={sort} direction={dir} onSort={handleSort} />
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>

@@ -3,24 +3,10 @@ import { Prisma, OrderBillingStatus, BillingStatus, BillEventType } from '@prism
 import { prisma } from '@/lib/prisma';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { STATUS, type GuardResult } from '@/lib/statusSync';
+// Le jour français, partagé — voir lib/paris-day.ts pour le pourquoi du fuseau.
+import { parisDayKey } from '@/lib/paris-day';
 
 type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
-
-/**
- * Émission et paiement se COMPARENT en jours, même s'ils se STOCKENT en instants.
- *
- * Une facture émise depuis sa fiche porte l'instant du clic (18 h 55), tandis
- * qu'une date de paiement vient d'un sélecteur, donc de minuit. Comparés comme
- * instants, encaisser le jour même une facture émise le matin donnerait un
- * paiement « antérieur » à l'émission et un refus incompréhensible.
- *
- * Le jour est celui du calendrier FRANÇAIS, pas celui du navigateur — même frame
- * que les compteurs de lib/stats.ts : c'est l'association qui date ses factures,
- * pas le fuseau de qui les saisit.
- */
-const parisDayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' });
-
-export const parisDayKey = (date: Date): string => parisDayFormatter.format(date);
 
 /** true quand le paiement tombe, en jours français, avant l'émission. */
 export function paymentPrecedesIssue(paymentDate: Date, issueDate: Date | null): boolean {
