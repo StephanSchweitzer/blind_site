@@ -517,11 +517,21 @@ export function EditBillModal({
                                 )}
                             </div>
 
-                            {/* Encaissé / reste à payer — la question qu'on se pose en
-                                ouvrant une facture, et à laquelle le montant seul ne répond
-                                pas dès qu'il y a plusieurs règlements. Tue pour une facture
-                                réglée avant la reprise : « reste à payer » y désignerait une
-                                créance qui n'existe pas. */}
+                            {/* Ce qui est encaissé — CONSTATÉ, pas jugé.
+
+                                Un paiement rattaché vaut règlement : c'est le rattachement
+                                qui dit qu'une facture est réglée, pas l'arithmétique. La
+                                comparaison des montants alertait en ambre dès que la somme
+                                des paiements ne tombait pas juste sur le total, et
+                                réclamait donc de l'argent sur des factures que quelqu'un
+                                avait déjà encaissées — un écart de saisie lu comme une
+                                créance. Les deux chiffres restent affichés, en gris : qui
+                                les regarde voit l'écart, personne n'est alerté d'une dette
+                                qui n'existe pas.
+
+                                L'ambre ne subsiste que là où il dit vrai — une facture à
+                                laquelle AUCUN paiement n'est rattaché, et qui n'a pas été
+                                réglée avant la reprise. */}
                             {!settledWithoutPayments && (
                             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-sm">
                                 <span className="text-muted-foreground">
@@ -529,17 +539,11 @@ export function EditBillModal({
                                     <span className="text-foreground font-medium">{formatCurrency(bill.paidTotal)}</span>
                                     {' '}sur {formatCurrency(bill.invoiceAmount)}
                                 </span>
-                                {parseFloat(bill.outstanding) > 0 ? (
+                                {bill.payments.length === 0 && parseFloat(bill.outstanding) > 0 && (
                                     <span className="text-amber-700 dark:text-amber-300 font-medium">
                                         Reste à payer {formatCurrency(bill.outstanding)}
                                     </span>
-                                ) : parseFloat(bill.outstanding) < 0 ? (
-                                    <span className="text-amber-700 dark:text-amber-300 font-medium">
-                                        Trop-perçu {formatCurrency(Math.abs(parseFloat(bill.outstanding)))}
-                                    </span>
-                                ) : bill.payments.length > 0 ? (
-                                    <span className="text-green-700 dark:text-green-400 font-medium">Soldée au centime</span>
-                                ) : null}
+                                )}
                             </div>
                             )}
                         </div>
