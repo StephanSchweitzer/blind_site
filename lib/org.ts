@@ -2,8 +2,11 @@
  * Issuer identity for anything ECA prints or sends on paper.
  *
  * Lived inline in BillPDF.tsx until the étiquette d'adresse needed the same
- * block. Two copies of a postal address drift silently — the facture keeps the
- * old phone number for a year before anyone notices — so there is one.
+ * block. The étiquette has since dropped its expéditeur block entirely (a label
+ * carries the destinataire and nothing else), so the facture is the only
+ * consumer again — but two copies of a postal address drift silently, the
+ * facture keeping the old phone number for a year before anyone notices, so it
+ * stays the one place this is written down.
  */
 export const ORG = {
     name: 'ECA — Enregistrements à la Carte pour les Aveugles',

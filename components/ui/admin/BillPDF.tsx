@@ -4,7 +4,9 @@ import { BillingStatus } from '@/lib/billing-enums';
 import { ORG } from '@/lib/org';
 
 // ─── Brand ──────────────────────────────────────────────────────────────────
-// The issuer block itself lives in lib/org.ts — shared with MailingLabelPDF.
+// The issuer block itself lives in lib/org.ts. The facture is now its only
+// consumer — the étiquette d'adresse dropped its expéditeur block — but it stays
+// there rather than moving back inline: two copies of a postal address drift.
 const NAVY = '#15366b';
 
 // Le bloc-marque en tête de facture.
