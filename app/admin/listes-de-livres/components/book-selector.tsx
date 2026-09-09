@@ -35,6 +35,27 @@ interface Book {
     hiddenFromCatalogue?: boolean;
 }
 
+/** Une liste de livres qui contient déjà un livre donné. */
+interface ListRef {
+    id: number;
+    title: string;
+    active: boolean;
+}
+
+/**
+ * L'avertissement porté par une ligne : « Déjà dans « X » ».
+ *
+ * Une seule liste est nommée, la plus récente — les autres se comptent. Une
+ * liste dépubliée est dite dépubliée : sans quoi le permanent irait vérifier
+ * sur le site, n'y trouverait rien, et conclurait à une erreur.
+ */
+function membershipLabel(refs: ListRef[]): string {
+    const [first, ...rest] = refs;
+    const name = `« ${first.title} »${first.active ? '' : ' (dépubliée)'}`;
+    if (rest.length === 0) return `Déjà dans ${name}`;
+    return `Déjà dans ${name} et ${rest.length} autre${rest.length > 1 ? 's' : ''} liste${rest.length > 1 ? 's' : ''}`;
+}
+
 interface BookSelectorProps {
     selectedBooks?: number[];
     onSelectedBooksChange: (bookIds: number[]) => void;
@@ -54,6 +75,7 @@ interface BookTableProps {
     handleSelectAll: (checked: boolean, books: Book[]) => void;
     toggleBookSelection: (bookId: number, forceAdd?: boolean) => void;
     handleRowClick: (book: Book) => void;
+    membership: Map<number, ListRef[]>;
 }
 
 function BookTable({
@@ -66,6 +88,7 @@ function BookTable({
                        handleSelectAll,
                        toggleBookSelection,
                        handleRowClick,
+                       membership,
                    }: BookTableProps) {
     return (
         <Table>
@@ -136,6 +159,11 @@ function BookTable({
                                         Ce livre appartient déjà à la liste
                                     </span>
                                 )}
+                                {membership.has(book.id) && (
+                                    <span className="text-sm text-amber-500">
+                                        {membershipLabel(membership.get(book.id)!)}
+                                    </span>
+                                )}
                             </div>
                         </TableCell>
                         <TableCell className="text-foreground">{book.author}</TableCell>
@@ -187,6 +215,45 @@ export default function BookSelector({
     // le setState synchrone que react-hooks/set-state-in-effect refuse.
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(mode === 'create');
     const suggestedIdsRef = useRef<number[]>([]);
+
+    // Les listes qui contiennent déjà chaque livre, la liste en cours
+    // d'édition exclue — elle n'est pas « une autre liste ». Chargée une fois
+    // au montage : voir /api/listes-de-livres/memberships pour pourquoi tout
+    // arrive d'un bloc plutôt que par identifiants.
+    const [membership, setMembership] = useState<Map<number, ListRef[]>>(new Map());
+
+    useEffect(() => {
+        const loadMemberships = async () => {
+            try {
+                const response = await fetch('/api/listes-de-livres/memberships');
+                if (!response.ok) return;
+
+                const data: {
+                    lists?: Record<string, { title: string; active: boolean }>;
+                    books?: Record<string, number[]>;
+                } = await response.json();
+
+                const next = new Map<number, ListRef[]>();
+                Object.entries(data.books ?? {}).forEach(([bookId, listIds]) => {
+                    const refs = listIds
+                        .filter((id) => id !== coupDeCoeurId)
+                        .map((id) => ({
+                            id,
+                            title: data.lists?.[id]?.title ?? `n°${id}`,
+                            active: data.lists?.[id]?.active ?? true,
+                        }));
+                    if (refs.length > 0) next.set(Number(bookId), refs);
+                });
+                setMembership(next);
+            } catch (error) {
+                // L'avertissement est un confort : son absence ne doit pas
+                // empêcher de composer la liste.
+                console.error('Error loading coups de coeur memberships:', error);
+            }
+        };
+
+        void loadMemberships();
+    }, [coupDeCoeurId]);
 
     // Miroir de la sélection courante, pour que loadSuggestions lise toujours
     // la dernière valeur sans se recréer à chaque coche.
@@ -520,6 +587,10 @@ export default function BookSelector({
     // liste tronquée : on la dit, chiffres à l'appui.
     const isTruncated = matchingTotal !== null && matchingTotal > suggestedCount;
 
+    // Les livres cochés qui figurent déjà ailleurs. Comptés sur la sélection,
+    // pas sur l'affichage : c'est ce qui partira dans la liste qui compte.
+    const alreadyListed = selectedBooks.filter((id) => membership.has(id));
+
     const displayedBookDetails = displayedBookIds
         .map(id => bookDetailsMap.get(id))
         .filter(book => book !== undefined) as Book[];
@@ -569,6 +640,7 @@ export default function BookSelector({
                                                 handleSelectAll={handleSelectAll}
                                                 toggleBookSelection={toggleBookSelection}
                                                 handleRowClick={handleRowClick}
+                                                membership={membership}
                                             />
                                         ) : (
                                             debouncedSearchTerm && (
@@ -658,6 +730,7 @@ export default function BookSelector({
                     handleSelectAll={handleSelectAll}
                     toggleBookSelection={toggleBookSelection}
                     handleRowClick={handleRowClick}
+                    membership={membership}
                 />
             </div>
 
@@ -665,6 +738,28 @@ export default function BookSelector({
                 <p className="text-sm text-muted-foreground">
                     {selectedBooks.length} livres sélectionnés sur {displayedBookIds.length} livres dans la liste
                 </p>
+                {/* Un avertissement, pas une règle : republier un titre est
+                    parfois voulu (une lecture reprise, une liste thématique).
+                    Rien n'est donc décoché d'office — mais le décochage tient
+                    en un clic, sans quoi il faudrait retrouver ces livres un
+                    par un au milieu de plusieurs centaines. */}
+                {alreadyListed.length > 0 && (
+                    <p className="text-sm text-amber-500">
+                        {alreadyListed.length === 1
+                            ? '1 livre sélectionné figure déjà dans une autre liste de livres.'
+                            : `${alreadyListed.length} livres sélectionnés figurent déjà dans une autre liste de livres.`}{' '}
+                        <button
+                            type="button"
+                            className="underline hover:text-foreground"
+                            onClick={() => {
+                                const drop = new Set(alreadyListed);
+                                onSelectedBooksChange(selectedBooks.filter((id) => !drop.has(id)));
+                            }}
+                        >
+                            {alreadyListed.length === 1 ? 'Le décocher' : 'Les décocher'}
+                        </button>
+                    </p>
+                )}
                 {mode === 'create' && (
                     <>
                         {isTruncated && (
