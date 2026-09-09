@@ -89,10 +89,19 @@ interface EditBillModalProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+/**
+ * Doit rester le miroir de `transitions` dans app/api/bills/[id]/route.ts, qui
+ * seul fait foi — le raisonnement y est écrit en entier.
+ *
+ * En deux mots : « payée » et « soldée » closent toutes deux la facture, et ce
+ * qui les sépare est la COUVERTURE, pas la présence de paiements. Payée, ce qui
+ * est entré couvre la facture ; soldée, non, et on renonce au reste. Toutes deux
+ * terminales, toutes deux prises depuis « émise ».
+ */
 const NEXT_STATES: Record<BillingStatus, BillingStatus[]> = {
     [BillingStatus.DRAFT]: [BillingStatus.BILLED],
-    [BillingStatus.BILLED]: [BillingStatus.DRAFT, BillingStatus.PAID],
-    [BillingStatus.PAID]: [BillingStatus.SOLDE],
+    [BillingStatus.BILLED]: [BillingStatus.DRAFT, BillingStatus.PAID, BillingStatus.SOLDE],
+    [BillingStatus.PAID]: [],
     [BillingStatus.SOLDE]: [],
 };
 
@@ -301,7 +310,12 @@ export function EditBillModal({
 
     const handleReopen = async () => {
         if (!billId) return;
-        if (!window.confirm("Rouvrir cette facture la repassera à « émise » et détachera ses paiements (ils restent dans « Paiements », et leur numéro part à l'historique). Continuer ?")) return;
+        const hasPayments = (bill?.payments.length ?? 0) > 0;
+        if (!window.confirm(
+            hasPayments
+                ? "Rouvrir cette facture la repassera à « émise » et détachera ses paiements (ils restent dans « Paiements », et leur numéro part à l'historique). Continuer ?"
+                : "Rouvrir cette facture la repassera à « émise » : elle redeviendra une créance à réclamer. Continuer ?"
+        )) return;
         setIsReopening(true);
         try {
             const res = await fetch(`/api/bills/${billId}`, {
@@ -335,12 +349,27 @@ export function EditBillModal({
      * ligne dans « Paiements » : l'import Access n'en a rattaché aucune. Leur
      * appliquer l'arithmétique normale les affichait « Encaissé 0,00 € sur
      * 30,00 € — Reste à payer 30,00 € », en ambre, sur des milliers de factures
-     * soldées depuis des années. Le calcul était juste et la lecture fausse : il
+     * payées depuis des années. Le calcul était juste et la lecture fausse : il
      * n'y a rien à réclamer, seulement rien à montrer.
+     *
+     * PAID seulement, désormais : les soldées sans paiement ne sont pas des
+     * factures dont le règlement manque à l'appel, ce sont des créances
+     * abandonnées, et `writtenOff` les décrit pour ce qu'elles sont.
      */
     const settledWithoutPayments =
-        (bill?.state === BillingStatus.PAID || bill?.state === BillingStatus.SOLDE) &&
-        bill.payments.length === 0;
+        bill?.state === BillingStatus.PAID && bill.payments.length === 0;
+
+    /**
+     * Créance abandonnée : le compte est clos, le reste ne sera pas réclamé.
+     *
+     * L'écart entre l'encaissé et le total change de sens sous cet état. Sur une
+     * facture ouverte c'est une dette — « Reste à payer », en ambre. Sur une
+     * soldée c'est le contraire : de l'argent qu'on a décidé de ne pas
+     * poursuivre. Réclamer en ambre ce qu'on vient formellement d'abandonner
+     * serait le seul vrai contresens que cet encadré puisse commettre.
+     */
+    const writtenOff = bill?.state === BillingStatus.SOLDE;
+    const outstanding = bill ? parseFloat(bill.outstanding) : 0;
     const nextStates = bill ? (NEXT_STATES[bill.state] ?? []) : [];
 
     // ── Render ─────────────────────────────────────────────────────────────────
@@ -492,7 +521,13 @@ export function EditBillModal({
 
                                     L'ambre ne subsiste que là où il dit vrai — une facture à
                                     laquelle AUCUN paiement n'est rattaché, et qui n'a pas été
-                                    réglée avant la reprise. */}
+                                    réglée avant la reprise.
+
+                                    Sous « soldée », l'écart n'est plus une dette du tout : il
+                                    est ce qu'on renonce à percevoir. Il se dit « Abandonné »,
+                                    dans le violet du statut, et non en ambre — on ne réclame
+                                    pas ce qu'on vient d'abandonner. C'est aussi le chiffre que
+                                    l'événement SETTLED inscrit au journal. */}
                                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-3 py-2.5 bg-muted/60">
                                     {settledWithoutPayments ? (
                                         <>
@@ -518,11 +553,17 @@ export function EditBillModal({
                                                 </span>
                                                 {' '}sur {formatCurrency(bill.invoiceAmount)}
                                             </span>
-                                            {bill.payments.length === 0 && parseFloat(bill.outstanding) > 0 && (
-                                                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                                                    Reste à payer {formatCurrency(bill.outstanding)}
-                                                </span>
-                                            )}
+                                            {writtenOff
+                                                ? outstanding > 0 && (
+                                                      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                                                          Abandonné {formatCurrency(bill.outstanding)}
+                                                      </span>
+                                                  )
+                                                : bill.payments.length === 0 && outstanding > 0 && (
+                                                      <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                                          Reste à payer {formatCurrency(bill.outstanding)}
+                                                      </span>
+                                                  )}
                                         </>
                                     )}
                                 </div>
@@ -530,11 +571,15 @@ export function EditBillModal({
                                 {/* Rien sous le bandeau quand il a déjà tout dit : sur une
                                     facture réglée avant la reprise, « aucun paiement
                                     rattaché » répétait mot pour mot la ligne au-dessus. */}
-                                {!(settledWithoutPayments && bill.payments.length === 0) && (
+                                {!settledWithoutPayments && (
                                 <div className="border-t border-border divide-y divide-border">
                                     {bill.payments.length === 0 ? (
                                         <div className="px-3 py-3 text-muted-foreground text-sm italic">
-                                            Aucun paiement rattaché — « Enregistrer un paiement » en saisit un pour cette facture.
+                                            {/* Sur une soldée, inviter à saisir un règlement
+                                                irait contre le geste qu'on vient de poser. */}
+                                            {writtenOff
+                                                ? 'Aucun paiement rattaché — la créance a été abandonnée.'
+                                                : 'Aucun paiement rattaché — « Enregistrer un paiement » en saisit un pour cette facture.'}
                                         </div>
                                     ) : (
                                         // La ligne ENTIÈRE ouvre le paiement : la flèche seule
@@ -639,6 +684,34 @@ export function EditBillModal({
                                     </p>
                                 )}
 
+                                {/* Solder, c'est renoncer — autant chiffrer le renoncement
+                                    avant le clic, pas après. Le cas « rien à abandonner »
+                                    existe pour de bon : des paiements peuvent couvrir la
+                                    facture sans que personne n'ait cliqué « payée », et
+                                    solder là serait la clore en la disant impayée. */}
+                                {pendingState === BillingStatus.SOLDE && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {outstanding > 0 ? (
+                                            <>
+                                                La facture sera close sans réclamer le reste :{' '}
+                                                <span className="font-medium text-purple-700 dark:text-purple-300">
+                                                    {formatCurrency(bill.outstanding)}
+                                                </span>{' '}
+                                                seront abandonnés.
+                                                {/* Le possessif s'accorde AVEC le nombre : il doit
+                                                    donc vivre dans la branche, pas devant. */}
+                                                {bill.payments.length > 0 &&
+                                                    ` ${bill.payments.length > 1 ? `Ses ${bill.payments.length} paiements restent rattachés` : 'Son paiement reste rattaché'}.`}
+                                            </>
+                                        ) : (
+                                            <>
+                                                Les paiements rattachés couvrent déjà cette facture — il n&apos;y a
+                                                rien à abandonner. « Marquer comme payée » la clôt plus justement.
+                                            </>
+                                        )}
+                                    </p>
+                                )}
+
                                 {statusError && (
                                     <div className="text-red-700 dark:text-red-300 text-sm">{statusError}</div>
                                 )}
@@ -660,10 +733,21 @@ export function EditBillModal({
                         {(bill.state === BillingStatus.PAID || bill.state === BillingStatus.SOLDE) && (
                             <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/15 dark:border-amber-800/50 rounded-md">
                                 <div className="text-xs text-amber-700 dark:text-amber-300/90 uppercase tracking-wide">Facture finalisée</div>
+                                {/* Une soldée sans paiement n'a rien à détacher : lui
+                                    promettre le contraire ferait douter du geste. */}
                                 <p className="text-sm text-foreground">
-                                    Pour corriger le coût d&apos;une demande de cette facture, rouvrez-la d&apos;abord. Elle repassera
-                                    à « émise » et ses paiements en seront détachés — ils restent dans « Paiements »,
-                                    et leur numéro part à l&apos;historique.
+                                    Pour corriger le coût d&apos;une demande de cette facture, rouvrez-la d&apos;abord.
+                                    Elle repassera à « émise »
+                                    {bill.payments.length > 0 ? (
+                                        <>
+                                            {' '}et ses paiements en seront détachés — ils restent dans « Paiements »,
+                                            et leur numéro part à l&apos;historique.
+                                        </>
+                                    ) : writtenOff ? (
+                                        <> et redeviendra une créance à réclamer.</>
+                                    ) : (
+                                        <>.</>
+                                    )}
                                 </p>
                                 <Button
                                     onClick={handleReopen}

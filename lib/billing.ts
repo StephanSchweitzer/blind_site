@@ -105,13 +105,25 @@ export async function summarizeBillPayments(
  * quand un paiement change de facture.
  *
  * Le refus final est l'invariant que `updateStatus` posait déjà, resserré : une
- * facture qui annonce un encaissement porte toujours AU MOINS UN PAIEMENT.
+ * facture qui annonce un ENCAISSEMENT porte toujours AU MOINS UN PAIEMENT.
  * L'ancienne version exigeait une référence — mais un règlement en espèces n'en
  * a pas, et exiger une chaîne de caractères revenait à en faire inventer une.
  * Un paiement, lui, existe toujours, avec son montant, sa méthode et sa date.
  * Retirer le dernier paiement d'une facture payée la ramènerait dans l'état que
  * la transition interdit, par la porte de derrière ; le chemin de sortie est
  * `reopenBill`.
+ *
+ * SOLDE ne relève PAS de cet invariant, et l'y avoir mis était l'erreur.
+ *
+ * « Soldée » ne dit pas qu'on a encaissé : elle dit que le compte est clos et
+ * qu'on ne réclame plus rien — le reste est abandonné. Exiger un paiement d'une
+ * créance abandonnée rendait le geste impossible : le seul chemin vers SOLDE
+ * passait par PAID, qui réclame un paiement, si bien qu'abandonner 6 € obligeait
+ * à INVENTER 6 € d'encaissement — une ligne fausse dans /admin/payments, dans le
+ * total de la page et dans l'export de la trésorière. Les 82 factures soldées de
+ * la reprise le disent d'ailleurs à leur manière : aucune ne porte de paiement,
+ * elles valent 6 € en médiane, et 71 d'entre elles ont été closes le même
+ * week-end d'avril 2021 — des créances qu'on a cessé de poursuivre, en lot.
  */
 export async function syncBillPaymentInfo(
     tx: TransactionClient,
@@ -120,8 +132,9 @@ export async function syncBillPaymentInfo(
     const summary = await summarizeBillPayments(tx, billId);
 
     const bill = await tx.bill.findUnique({ where: { id: billId }, select: { state: true } });
-    const settled = bill?.state === BillingStatus.PAID || bill?.state === BillingStatus.SOLDE;
-    if (settled && summary.count === 0) {
+    // PAID seulement — voir l'en-tête : une facture soldée est une créance
+    // abandonnée, elle n'a par définition pas de règlement à montrer.
+    if (bill?.state === BillingStatus.PAID && summary.count === 0) {
         throw new Error('BILL_SETTLED_NEEDS_PAYMENT');
     }
 

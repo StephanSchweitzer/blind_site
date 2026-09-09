@@ -166,10 +166,25 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 return NextResponse.json({ error: 'Not found', message: 'Facture introuvable' }, { status: 404 });
             }
 
+            // Deux fins possibles, et une seule raison de les distinguer.
+            //
+            // « Payée » et « soldée » closent toutes deux la facture ; ce qui les
+            // sépare n'est pas la présence de paiements mais leur COUVERTURE.
+            // Payée : ce qui est entré couvre la facture. Soldée : non, et on
+            // renonce au reste. Les deux sont donc terminales, et SOLDE se prend
+            // depuis BILLED — l'enchaînement PAID → SOLDE d'avant faisait de
+            // « soldée » un second « terminé » posé sur le premier, qui n'ajoutait
+            // rien, et rendait l'abandon de créance inatteignable autrement qu'en
+            // inventant un encaissement.
+            //
+            // Pas de DRAFT → SOLDE : on n'abandonne pas une créance qu'on n'a
+            // jamais réclamée. Un brouillon se supprime, ou ses demandes passent
+            // « non facturable ». Le chemin de sortie des deux états finaux reste
+            // `reopenBill`.
             const transitions: Record<string, string[]> = {
                 DRAFT: ['BILLED'],
-                BILLED: ['DRAFT', 'PAID'],
-                PAID: ['SOLDE'],
+                BILLED: ['DRAFT', 'PAID', 'SOLDE'],
+                PAID: [],
                 SOLDE: [],
             };
             if (!transitions[bill.state]?.includes(state)) {
@@ -188,9 +203,13 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             // et il rend la facture vérifiable au lieu de la déclarer réglée sur
             // parole. La date et la référence de la facture en sont DÉDUITES
             // (syncBillPaymentInfo), plus jamais saisies ici.
+            // Lu pour les DEUX fins : PAID s'en sert pour refuser une facture sans
+            // règlement, SOLDE pour inscrire au journal ce qu'on abandonne.
             let paidSummary: Awaited<ReturnType<typeof summarizeBillPayments>> | null = null;
-            if (state === 'PAID') {
+            if (state === 'PAID' || state === 'SOLDE') {
                 paidSummary = await summarizeBillPayments(prisma, billId);
+            }
+            if (state === 'PAID' && paidSummary) {
                 if (paidSummary.count === 0) {
                     return NextResponse.json(
                         {
@@ -221,7 +240,11 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 await tx.bill.update({ where: { id: billId }, data: updateData });
                 // APRÈS le changement d'état, pour que le refus « une facture
                 // encaissée porte au moins un paiement » porte sur le NOUVEL état.
-                if (state === 'PAID') await syncBillPaymentInfo(tx, billId);
+                //
+                // Appelé aussi pour SOLDE, où il ne refuse plus rien mais remet les
+                // colonnes dérivées d'aplomb : une facture soldée sans paiement ne
+                // doit pas garder une date de règlement d'un état antérieur.
+                if (state === 'PAID' || state === 'SOLDE') await syncBillPaymentInfo(tx, billId);
                 // Keep attached orders' billingStatus in sync with the bill's state —
                 // except the two categories that don't follow it (see
                 // ordersFollowingBillState): « Non facturable » is out of the cycle by
@@ -237,10 +260,22 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                         type: evType,
                         fromState: bill.state as BillingStatus,
                         toState: state as BillingStatus,
-                        payload:
-                            state === 'PAID' && paidSummary
+                        // Ce qu'on abandonne s'inscrit au journal, sinon il ne
+                        // s'inscrit nulle part : `BillEvent` est append-only, et
+                        // c'est le seul endroit d'où « combien a-t-on abandonné
+                        // cette année ? » restera répondable. Le reste à payer est
+                        // borné à zéro — une facture trop-perçue n'abandonne rien.
+                        payload: !paidSummary
+                            ? null
+                            : state === 'PAID'
                                 ? { paymentReference: paidSummary.reference, paidTotal: paidSummary.paid.toString() }
-                                : null,
+                                : {
+                                      paidTotal: paidSummary.paid.toString(),
+                                      writtenOff: (paidSummary.outstanding.greaterThan(0)
+                                          ? paidSummary.outstanding
+                                          : new Prisma.Decimal(0)
+                                      ).toString(),
+                                  },
                         performedById,
                     });
                 }

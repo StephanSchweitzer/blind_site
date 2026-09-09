@@ -87,6 +87,18 @@ function summarize(e: BillEventDTO): string | null {
         }
         case 'PAID':
             return asString(p.paymentReference) ? `Réf. de paiement : ${asString(p.paymentReference)}` : null;
+        case 'SETTLED': {
+            // Le montant abandonné ne vit QUE là : `BillEvent` est append-only, et
+            // la facture, elle, ne garde aucune trace de ce qu'on a renoncé à
+            // percevoir. Les factures soldées d'avant ce payload n'en portent pas —
+            // d'où le repli silencieux.
+            const off = asString(p.writtenOff);
+            const paid = asString(p.paidTotal);
+            if (off == null) return null;
+            return Number(off) > 0
+                ? `Abandonné : ${off} €${paid != null && Number(paid) > 0 ? ` (encaissé ${paid} €)` : ''}`
+                : 'Soldée sans rien abandonner — les paiements couvraient la facture.';
+        }
         case 'ORDER_ATTACHED':
         case 'ORDER_DETACHED':
             return asString(p.orderId) ? `Demande #${asString(p.orderId)}` : null;
