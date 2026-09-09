@@ -83,3 +83,21 @@ export function parisDayEndUtc(day: string): Date | null {
     next.setUTCDate(next.getUTCDate() + 1);
     return parisDayStartUtc(next.toISOString().slice(0, 10));
 }
+
+const parisDisplayFormatter = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: PARIS_TIMEZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+});
+
+/**
+ * La date d'un instant, telle qu'elle se lit en France : 'JJ/MM/AAAA'.
+ *
+ * Le même jour que `parisDayKey`, écrit dans l'autre sens — l'export CSV s'ouvre
+ * dans un tableur réglé en français, où '2026-09-08' n'est pas reconnu comme une
+ * date et reste du texte.
+ */
+export function parisDateDisplay(date: Date | null | undefined): string {
+    return date ? parisDisplayFormatter.format(date) : '';
+}

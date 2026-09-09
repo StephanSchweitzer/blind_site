@@ -119,3 +119,34 @@ export function parsePaymentListParams(
         includeInactive: isOn(get('includeInactive')),
     };
 }
+
+/**
+ * Refait la query string d'une sélection.
+ *
+ * L'export CSV en dépend : il doit rendre EXACTEMENT la liste affichée, filtres
+ * compris. Repartir de l'URL du navigateur ne suffisait pas — dans l'onglet
+ * « Paiements » d'un dossier, le client vient du segment de route et n'apparaît
+ * nulle part dans la query string, si bien qu'un export construit ainsi aurait
+ * silencieusement versé les paiements de toute l'association.
+ *
+ * Les valeurs par défaut sont omises : une URL ne porte que ce qui s'écarte de
+ * la liste telle qu'elle s'ouvre.
+ */
+export function paymentListParamsToQuery(p: PaymentListParams): string {
+    const q = new URLSearchParams();
+
+    if (p.search) q.set('search', p.search);
+    if (p.type) q.set('type', p.type);
+    if (p.paymentMethod) q.set('paymentMethod', p.paymentMethod);
+    if (p.clientId !== undefined) q.set('clientId', String(p.clientId));
+    if (p.from) q.set('from', p.from);
+    if (p.to) q.set('to', p.to);
+    if (p.dateField !== 'creationDate') q.set('dateField', p.dateField);
+    if (p.unlinked) q.set('unlinked', 'true');
+    if (p.unallocated) q.set('unallocated', 'true');
+    if (p.sort !== DEFAULT_PAYMENT_SORT) q.set('sort', p.sort);
+    if (p.dir !== DEFAULT_PAYMENT_DIR) q.set('dir', p.dir);
+    if (p.includeInactive) q.set('includeInactive', 'true');
+
+    return q.toString();
+}

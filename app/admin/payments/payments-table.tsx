@@ -26,7 +26,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, Loader2, ExternalLink, ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw } from 'lucide-react';
+import { Search, X, Plus, Loader2, ExternalLink, ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw, Download } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     PaymentType,
@@ -43,11 +43,13 @@ import { DeletePaymentModal } from '@/admin/DeletePaymentModal';
 import { CopyIdButton } from '@/admin/CopyableId';
 import type { SerializedPaymentTableRow as Payment } from '@/types/models/payment.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { parisDateDisplay } from '@/lib/paris-day';
 import { BillingStatus, getBillingStatusLabel, getBillingStatusColor } from '@/lib/billing-enums';
 // list-params, pas list-query : ce fichier est 'use client', et list-query
 // importe @prisma/client — qui ne peut pas entrer dans le bundle navigateur.
 import {
     isDefaultPaymentFilters,
+    paymentListParamsToQuery,
     type PaymentListParams,
     type PaymentSortField,
 } from '@/lib/payments/list-params';
@@ -149,6 +151,14 @@ export default function PaymentsTable({
     const { type: currentType, paymentMethod: currentMethod, sort, dir } = initialParams;
     const hasFilters = !isDefaultPaymentFilters(initialParams);
 
+    // L'export part des paramètres ANALYSÉS, pas de l'URL du navigateur : dans
+    // l'onglet d'un dossier, le client vient du segment de route et n'apparaît
+    // dans aucune query string — un export construit sur l'URL aurait versé les
+    // paiements de toute l'association. Un simple lien : le navigateur suit le
+    // Content-Disposition de la route, sans fetch ni blob à gérer ici.
+    const exportQuery = paymentListParamsToQuery(initialParams);
+    const exportHref = `/api/payments/export${exportQuery ? `?${exportQuery}` : ''}`;
+
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
         Object.entries(updates).forEach(([key, value]) => {
@@ -205,9 +215,18 @@ export default function PaymentsTable({
     const handlePaymentAdded = () => { setIsAddModalOpen(false); router.refresh(); };
     const handlePaymentDeleted = () => { setPaymentToDelete(null); router.refresh(); };
 
+    // Le jour PARISIEN, pas celui du navigateur.
+    //
+    // `toLocaleDateString` datait chaque ligne dans le fuseau de qui regarde :
+    // sur un poste réglé à l'ouest d'UTC, un paiement stocké au 9 juin à minuit
+    // UTC s'affichait « 08/06/2026 ». Le décalage est resté invisible tant que
+    // tout le monde lisait la liste depuis la France — jusqu'à ce que l'export
+    // CSV, lui daté en heure française, annonce un autre jour que l'écran dont
+    // il sort. C'est l'association qui date ses paiements, pas le poste qui les
+    // consulte : même parti pris que lib/stats.ts et lib/billing.ts.
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
-        return new Date(dateString).toLocaleDateString('fr-FR');
+        return parisDateDisplay(new Date(dateString));
     };
 
     const formatCurrency = (amount: string) =>
@@ -246,13 +265,23 @@ export default function PaymentsTable({
                             <span className="font-semibold text-foreground">{formatCurrency(initialTotalAmount)}</span>
                         </CardDescription>
                     </div>
-                    <Button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Ajouter un paiement
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <a
+                            href={exportHref}
+                            title={`Exporter ${initialTotalPayments} paiement${initialTotalPayments > 1 ? 's' : ''} au format CSV`}
+                            className="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium bg-card text-foreground border border-border hover:bg-muted transition-colors"
+                        >
+                            <Download className="h-4 w-4" />
+                            Exporter (CSV)
+                        </a>
+                        <Button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Ajouter un paiement
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
 
