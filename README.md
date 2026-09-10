@@ -50,7 +50,7 @@ Access control lives in `middleware.ts` (protects `/admin/*`, `/profile`, `/auth
 
 - **Public by necessity** — `password-reset` and `password-reset/confirm` (someone locked out cannot authenticate; knowledge of the single-use token *is* the authentication), and `auth/[...nextauth]`.
 - **Public reads serving public pages** — `polly`, `news/search`, `listes-de-livres/preview` and `listes-de-livres/position`. They take reference input only, and respect `hiddenFromCatalogue` like every other public query.
-- **Secret-authenticated** — `cron/*`, on `CRON_SECRET` (§7).
+- **Secret-authenticated** — `cron/*`, on `CRON_SECRET` (§8).
 - **Guarded by hand rather than by a wrapper**, because the rule isn't a flat access level: `user/[id]` GET (admins see anyone; a member only their own record, capped at `basic`) and `upload-audio` (`getCurrentUser` + `isAdmin`).
 
 Everything else goes through a wrapper, which also opens the audit-actor scope — that is what puts a name on the writes underneath.
@@ -95,13 +95,57 @@ Isolated from the public layout via its own `layout.tsx` + `Backend-Navbar`, gro
 | `/admin/disponibilites` | **Disponibilités** — planning view over member availability: a timeline of indisponibilités, a coverage chart, per-person editing without leaving the page, language filters, and a count of genuinely free lecteurs. Loading the page also closes any indisponibilité that has reached its term, so it is never cached. |
 | `/admin/profile` | The signed-in staff member's own profile / password. |
 
+`/admin/aide` — the staff mode d'emploi, reachable by every signed-in account; see §4.
+
 ### Pages (CMS, super-admin only)
 
 `/admin/news`, `/admin/site-contact`, `/admin/team`, `/admin/historique`, `/admin/informations-pratiques`, `/admin/nous-rejoindre` — the editable content behind the public pages, with drag-and-drop ordering, an icon picker and a theme picker (`components/admin/IconPicker.tsx`, `ThemePicker.tsx`). Every save invalidates the matching public cache tag.
 
 ---
 
-## 4. Audio storage (Backblaze B2)
+## 4. In-app help (mode d'emploi)
+
+`/admin/aide` is the staff user guide — every admin page carries an « Aide » button
+(`AideLink`, `components/ui/admin/AideLink.tsx`) pointing at its section. It replaced a
+Google Doc that had drifted from the product it described (a two-month late rule that was
+actually thirty days, a flat tariff that had become per-CD, a « Don » flow that no longer
+accepted an anonymous donor) — the guide now renders two ways from **one** source, so there
+is nothing left to fall out of sync.
+
+- **Content** — `content/aide/<order>-<slug>.md`, one file per section (`01-composants-de-base.md`
+  … `16-mon-compte.md`), each with a small YAML frontmatter (`title`, `slug`, `order`).
+  `lib/aide.ts` is the only reader: `listAideSections()` for the summary at `/admin/aide`,
+  `getAideSection(slug)` for one page, `getAllAideSections()` for the PDF. Screenshots live in
+  `content/aide/images/`, served by the guarded route `app/admin/aide/images/[name]` —
+  deliberately **not** `public/`, which `middleware.ts` does not cover.
+- **Anchors, never page numbers.** A link is `/admin/aide/<slug>#<heading-slug>`
+  (`lib/aide-slug.ts` derives the anchor from the heading text) — a heading survives a rewrite,
+  a page number does not. `pnpm aide:check` (`scripts/check-aide-links.ts`) fails if an
+  `AideLink`'s `section` doesn't resolve to a real file, so a broken help link breaks the build
+  instead of quietly sending someone to the wrong page.
+- **The PDF is generated on request, never stored** — a file saved somewhere would be a second
+  copy to keep in step, i.e. a copy that goes stale. `/admin/aide/pdf` (`withAuth`, since the
+  guide is for anyone who can reach `/admin`) re-renders the same Markdown through
+  `@react-pdf/renderer` (`components/aide/AideGuidePDF.tsx`), via `lib/aide-blocks.ts` — a small
+  parser purpose-built for this content (headings, paragraphs, images, tables, block quotes,
+  links) that re-joins hand-wrapped plain-text lines into paragraphs the way `react-markdown`
+  already does on screen, and resolves an internal `[texte](/admin/aide/slug)` link to an
+  absolute URL (a PDF has no base to resolve against). The response is **streamed**
+  (`renderToStream` + `Readable.toWeb`), not buffered: Vercel caps a function response body at
+  4.5 MB and the guide alone runs past 11 MB once screenshots are embedded.
+  `AidePdfButton` (`components/aide/AidePdfButton.tsx`) fetches rather than links to it, so it
+  can show "Préparation…" for the few seconds the render takes; the print action opens its tab
+  **synchronously inside the click** (a `window.open` after an `await` gets blocked as a
+  popup) with a waiting page, then rewrites it to an `<iframe>` whose `load` handler calls
+  `contentWindow.print()` once the PDF is ready.
+- **Screenshots are maintained, not hand-captured** — `pnpm aide:shots`
+  (`scripts/capture-aide-screenshots.mjs`) drives the app to recapture them, `pnpm aide:optimize`
+  compresses them (what keeps the PDF under the response cap above), `pnpm aide:annotate` draws
+  the numbered markers some sections reference in prose.
+- The pre-existing guide (`user_guide/*.pdf|docx`) is the frozen original, kept for reference
+  only — never edited, never read from.
+
+## 5. Audio storage (Backblaze B2)
 
 The recordings are the association's most valuable and least replaceable asset: most are the only copy in existence. Everything in this section is shaped by that.
 
@@ -186,7 +230,7 @@ lib/audio/
 
 The `-core` files omit `server-only` **on purpose**: the maintenance scripts run under plain Node, where `server-only` throws, and a second implementation is how a backfill and a button end up disagreeing about the length of the same file. The B2 credentials stay server-side either way — app code imports the guarded wrapper, and the browser only ever receives expiring presigned URLs.
 
-## 5. Pricing, billing and the demande lifecycle
+## 6. Pricing, billing and the demande lifecycle
 
 **The tarif is derived from the weight of the recording** (`lib/pricing.ts`): a CD holds 700 Mio, every started 700 Mio block costs 3 €, minimum one CD. It is always a *proposal* — the field stays hand-editable; it exists so large books stop being billed at the default.
 
@@ -211,7 +255,7 @@ Status rules live in `lib/statusSync.ts` and are **deliberately asymmetric** —
 
 Bill totals auto-recompute, bills lock at `PAID`/`SOLDE`, and every mutation is recorded in the append-only `BillEvent` log. Exporting a PDF from a `DRAFT` bill triggers a confirmation dialog. Cotisation status is computed by the pure `lib/cotisation.ts` (usable from both server and client), and donateurs are never nagged about a cotisation they do not owe.
 
-## 6. Audit trail
+## 7. Audit trail
 
 `lib/audit/*` installs a **Prisma client extension** that turns every write to an audited model into an `AuditEvent` row. There are deliberately **no per-action logging calls anywhere in the codebase** — a route that forgets to log is not possible.
 
@@ -222,7 +266,7 @@ Bill totals auto-recompute, bills lock at `PAID`/`SOLDE`, and every mutation is 
 
 `/admin/stats` reads it: bursts of related events are folded into one row, records are named rather than shown as bare ids, the journal is searchable, and only decisions are traced — observations are kept out.
 
-## 7. Scheduled jobs
+## 8. Scheduled jobs
 
 Declared in `vercel.json`, all three implemented under `app/api/cron/`:
 
@@ -236,7 +280,7 @@ All three accept Vercel's scheduler, which sends `Authorization: Bearer $CRON_SE
 
 The two purges additionally accept a **signed-in super admin**, so they can be forced from `/admin/stats` when the size warning appears. `expire-unavailability` does not, and does not need to: its on-demand equivalent is `POST /api/availability/expire` (`withAdmin`), the « Clôturer » button on `/admin/disponibilites`, which runs the same idempotent sweep.
 
-## 8. API layer (`app/api`)
+## 9. API layer (`app/api`)
 
 Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments`, `bills`, `payments`, `listes-de-livres`, `user`), plus:
 
@@ -262,7 +306,7 @@ Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments
 
 **Other** — `polly` (a catalogue book's spoken announcement — title, author, reading duration, description — synthesized once per book and cached in `Book.polly_audio_url`, the file itself on Vercel Blob), `google-books` (metadata proxy with retry aligned to Google's guidance), `upload-audio` (the small recorded clips behind a coup de cœur description → Vercel Blob), `books/check-isbn` / `user/check-duplicate` (soft duplicate warnings), `orders/recording-check`, `orders/[id]/assignment`, `bills/eligible-orders`, `listes-de-livres/preview` / `position` (public search helpers), `news/search`, and the `civilities` / `media-formats` / `statuses` lookups.
 
-## 9. Data model (Prisma / PostgreSQL)
+## 10. Data model (Prisma / PostgreSQL)
 
 Core entities: `User` (+ `Address`, `ReaderLanguage`), `Book`, `Genre`, `Orders`, `Assignment` (+ `AssignmentReader`), `Bill`, `Payment`, `CoupsDeCoeur`, `News`, plus the reference tables `MediaFormat`, `Civility`, `Status`.
 
@@ -281,7 +325,7 @@ Notable patterns:
 
 The Prisma client is generated to `app/generated/prisma` (custom output), configured in `prisma.config.ts` with `@prisma/adapter-pg`.
 
-## 10. Component architecture
+## 11. Component architecture
 
 Three layers: app-specific components at the top of `components/`, the shadcn/ui primitives in `components/ui`, and the back-office kit in `components/ui/admin`.
 
@@ -303,7 +347,7 @@ Three layers: app-specific components at the top of `components/`, the shadcn/ui
 Built on semantic theme tokens (`bg-card`, `border-border`, `text-foreground`) so light/dark stays consistent.
 
 - **Layout primitives** — `AdminCard`, `AdminDashboardCard`.
-- **Entity search kit** — `EntitySearchCombobox` (debounced search-and-pick popover: `AbortController` cancellation, stale-results-while-loading, keyboard navigation, a spinner while a selection resolves) on `hooks/useEntitySearch`, plus `UserSearchCombobox` (optionally `assignable`-filtered) and `BookSearchCombobox`. Don't hand-roll a search popover.
+- **Entity search kit** — `EntitySearchCombobox` (debounced search-and-pick popover: `AbortController` cancellation, stale-results-while-loading, keyboard navigation, a spinner while a selection resolves) on `hooks/useEntitySearch`, plus `UserSearchCombobox` (optionally `assignable`-filtered), `BookSearchCombobox` and `BillSearchCombobox` (bill number, linked book/author, or payment reference — used by `PaymentFormBackendBase` to pick the facture a payment settles, replacing what used to be a plain dropdown of up to 100 bills). Don't hand-roll a search popover.
 - **Form bases** — `BookFormBackendBase`, `UserFormBackendBase`, `OrderFormBackendBase`, `AssignmentFormBackendBase`, `BillFormBackendBase`, `PaymentFormBackendBase`, `GenreFormBackendBase`, `NewsFormBackendBase`. **The "new" page and the "edit" modal render the same base**, differing only in whether `initialData` is present — the DRY spine of the admin.
 - **Modals** — `BookModalBackend`, `EditBookModal`, `Add`/`EditAssignmentModal`, `EditOrderModal`, `EditBillModal`, `EditPaymentModal`, `EditUserModal`, `DeleteBillModal` / `DeletePaymentModal`. `EditBillModal` encodes the billing state machine (DRAFT→BILLED→PAID→SOLDE, BILLED can reopen); `EditUserModal` is permission-aware.
 - **Audio manager** — `BookAudioButton` / `BookAudioModal` (upload with per-file progress, folder or plain-file picker with the same batching UX, per-track durations, folder zip download, corbeille with restore), plus `RenameAudioTrackModal`, `DeleteAudioTrackModal`, `DeleteAllAudioTracksModal`.
@@ -315,7 +359,7 @@ Built on semantic theme tokens (`bg-card`, `border-border`, `text-foreground`) s
 
 `useEntitySearch`, `useAudioUpload`, `useAudioFolderZip`, `useUserActivityGuard`, `useRecordingCheck`, `useFormToast`, `useInvalidField`, `use-toast`.
 
-## 11. Type system
+## 12. Type system
 
 `types/index.ts` re-exports three barrels — `models`, `api`, `shared` — forming one typed chain:
 
@@ -325,13 +369,13 @@ Built on semantic theme tokens (`bg-card`, `border-border`, `text-foreground`) s
 - **`types/api/*.api.ts`** — the wire contract. `Summary`/`BasicInfo` picks, query-mode Zod enums (`basic|detailed|full`), `Response` types derived from the model selects, and Zod `Create`/`Update` schemas with inferred types — the route validates with the schema and the client imports the inferred type from the same file.
 - **`types/shared/frontend.types.ts`** — UI shapes not 1:1 with DB rows: `Simple*` projections, list-item view models, the `*FormData` interfaces the form bases bind to, and generic envelopes (`PaginatedResponse<T>`, `ApiResponse<T>`, `PaginationParams`…).
 
-## 12. Tech stack
+## 13. Tech stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL (Supabase) · NextAuth v4 · Tailwind CSS + shadcn/ui + Radix · Zod 4 · **Backblaze B2 via `@aws-sdk/client-s3` + `s3-request-presigner`** · AWS Polly · Vercel Blob · `client-zip` · React Email + Resend · `@react-pdf/renderer` · pnpm · Husky + lint-staged · deployed on Vercel.
 
 Server state is fetched in the route handlers and in `hooks/` with plain `fetch` + `AbortController` (see `useEntitySearch`), and freshness comes from `router.refresh()` after a mutation plus the two revalidation helpers. There is deliberately **no client-side query cache** — `@tanstack/react-query` sat in `package.json` for a long time without a single import, and was removed rather than left to look like the house pattern. Adding one back is a decision to take on purpose, not by reaching for a dependency that happens to be installed.
 
-## 13. Project structure
+## 14. Project structure
 
 ```
 app/
@@ -341,7 +385,8 @@ app/
   auth/                 Sign-in and password flows
   generated/prisma/     Generated Prisma client
   sitemap.ts robots.ts  SEO surface
-components/             Shared components, UI kit, admin kit, email templates
+components/             Shared components, UI kit, admin kit, email templates, aide/ (PDF + print button)
+content/aide/           Mode d'emploi source: one Markdown file per section, plus images/
 hooks/                  React hooks (entity search, audio upload/zip, activity guard, toasts…)
 lib/
   audio/                Bucket access, naming, state cache, corbeille, durations
@@ -349,17 +394,18 @@ lib/
   auth/                 withAuth / withAdmin guards
   books/ orders/ users/  Domain helpers
   email/                sendEmail chokepoint + templated senders
+  aide.ts aide-slug.ts aide-blocks.ts aide-images.ts aide-image-size.ts   Mode d'emploi reader/parser
   billing.ts pricing.ts pricing-sync.ts statusSync.ts stats.ts cotisation.ts
   cache-tags.ts revalidate-public.ts revalidate-admin.ts concurrency.ts feature-flags.ts
 prisma/                 schema.prisma, migrations, seed, dev-claude-user
-scripts/                Audio audits, backfills, probes, one-off maintenance
+scripts/                Audio audits, backfills, probes, aide screenshots, one-off maintenance
 types/                  models / api / shared barrels
 middleware.ts           Auth gating + forced password change
 prisma.config.ts        Prisma 7 config (adapter-pg, migrations path)
 vercel.json             Cron schedules
 ```
 
-## 14. Getting started
+## 15. Getting started
 
 Requires **Node.js**, **pnpm 10.9+**, and a **PostgreSQL** database.
 
@@ -371,7 +417,7 @@ pnpm prisma db seed         # optional
 pnpm dev                    # http://localhost:3000
 ```
 
-## 15. Environment variables
+## 16. Environment variables
 
 ```bash
 DATABASE_URL=              # PostgreSQL. On Supabase: port 6543, pgbouncer transaction mode
@@ -412,7 +458,7 @@ The bucket also needs a **CORS rule allowing `PUT` from the site origins**, or e
 pnpm tsx scripts/set-audio-cors.ts
 ```
 
-## 16. Scripts
+## 17. Scripts
 
 | Command | Description |
 |---|---|
@@ -422,6 +468,10 @@ pnpm tsx scripts/set-audio-cors.ts
 | `pnpm lint` | ESLint |
 | `pnpm prisma db seed` | Seed the database |
 | `pnpm prisma db execute --file <sql>` | Apply a schema change — see the warning below |
+| `pnpm aide:check` | Fails if an `AideLink` points at a mode d'emploi section that doesn't exist |
+| `pnpm aide:shots` | Recaptures the mode d'emploi screenshots by driving the app |
+| `pnpm aide:optimize` | Compresses those screenshots (keeps the generated PDF under Vercel's response cap) |
+| `pnpm aide:annotate` | Draws the numbered markers some sections reference in prose |
 
 ### Audio maintenance (`scripts/`)
 
@@ -468,7 +518,7 @@ pnpm prisma db execute --file prisma/migrations/<timestamp>_<name>/migration.sql
 
 Keep the SQL file in the repo so the change is recorded even though the history itself is not trustworthy. `prisma.config.ts` points the datasource at `DIRECT_URL`, so override that variable to target a different database.
 
-## 17. Deployment
+## 18. Deployment
 
 Deployed on **Vercel**. `pnpm build` runs `prisma generate` first. Before a release:
 
@@ -478,6 +528,6 @@ Deployed on **Vercel**. `pnpm build` runs `prisma generate` first. Before a rele
 
 The production database is a **Supabase free tier**: 500 MB, and it flips to read-only past that. The audit-trail retention and the corbeille purge exist because of that ceiling; don't raise their windows without checking the headroom.
 
-## 18. Status
+## 19. Status
 
 Internal project built pro bono for ECA. Not open for external contribution.
