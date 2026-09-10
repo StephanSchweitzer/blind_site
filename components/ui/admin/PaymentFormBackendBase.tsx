@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,10 +28,10 @@ import {
     getPaymentClientFieldLabel,
     getPaymentClientSearchPlaceholder,
 } from '@/lib/payment-enums';
-import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
+import { BillSearchCombobox, type BillSearchResult } from '@/admin/BillSearchCombobox';
 
 // N3 — required fields, visual top→bottom (client picker, linked bill, amount).
 const FIELD_ORDER = ['client', 'bill', 'amount'];
@@ -46,12 +46,7 @@ interface User {
     email: string | null;
 }
 
-interface BillOption {
-    id: number;
-    invoiceAmount: string | number;
-    state: string;
-    creationDate: string;
-}
+type BillOption = BillSearchResult;
 
 export interface PaymentFormData {
     clientId: number | null;
@@ -99,7 +94,7 @@ export interface PaymentFormInitialData {
  */
 export interface PaymentFormPreset {
     client: User;
-    billId: number;
+    bill: BillOption;
     /** Le reste à encaisser, pré-rempli — corrigeable pour un acompte. */
     amount?: string | number | null;
 }
@@ -117,10 +112,6 @@ interface PaymentFormBackendBaseProps {
 
 const NONE = 'NONE';
 const COMPTABLE_OPTIONS = ['Comptable', 'ECA', 'AUXILIAIRES'] as const;
-
-function formatCurrency(amount: number) {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
-}
 
 export function PaymentFormBackendBase({
                                            onSubmit,
@@ -171,39 +162,15 @@ export function PaymentFormBackendBase({
         initialData?.allocationDate ? new Date(initialData.allocationDate) : null
     );
 
-    // Bills of the selected client (only for ENREGISTREMENT)
-    const [clientBills, setClientBills] = useState<BillOption[]>([]);
-    const [selectedBillId, setSelectedBillId] = useState<number | null>(initialData?.bill?.id ?? preset?.billId ?? null);
-    const [isLoadingBills, setIsLoadingBills] = useState(false);
-
-    useEffect(() => {
-        let active = true;
-        const shouldFetch = type === PaymentType.ENREGISTREMENT && !!selectedClient;
-
-        const loadBills = async () => {
-            if (type !== PaymentType.ENREGISTREMENT || !selectedClient) return [];
-            const res = await fetch(`/api/bills?clientId=${selectedClient.id}&limit=100`);
-            if (!res.ok) return [];
-            const json = await res.json();
-            return json?.bills ?? [];
-        };
-
-        Promise.resolve()
-            .then(() => { if (active && shouldFetch) setIsLoadingBills(true); })
-            .then(() => loadBills())
-            .then((bills) => { if (active) setClientBills(bills); })
-            .catch((err) => {
-                console.error('Error loading client bills:', err);
-                if (active) setClientBills([]);
-            })
-            .finally(() => { if (active) setIsLoadingBills(false); });
-
-        return () => { active = false; };
-    }, [type, selectedClient]);
+    // Bill of the selected client (only for ENREGISTREMENT) — the combobox
+    // fetches its own candidates from /api/bills, scoped to selectedClient.id.
+    const [selectedBill, setSelectedBill] = useState<BillOption | null>(
+        initialData?.bill ?? preset?.bill ?? null
+    );
 
     const handleClientSelect = (user: User) => {
         setSelectedClient(user);
-        setSelectedBillId(null);
+        setSelectedBill(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -216,7 +183,7 @@ export function PaymentFormBackendBase({
         const invalid: string[] = [];
         const clientRequired = isClientRequiredForPaymentType(type);
         if (clientRequired && !selectedClient) invalid.push('client');
-        if (type === PaymentType.ENREGISTREMENT && selectedClient && !selectedBillId) invalid.push('bill');
+        if (type === PaymentType.ENREGISTREMENT && selectedClient && !selectedBill) invalid.push('bill');
         if (!Number.isFinite(amt) || amt <= 0) invalid.push('amount');
 
         if (invalid.length) {
@@ -253,7 +220,7 @@ export function PaymentFormBackendBase({
                 isAllocated,
                 allocationDate: isAllocated ? allocationDate : null,
                 observations: observations.trim() || null,
-                billId: type === PaymentType.ENREGISTREMENT ? selectedBillId : null,
+                billId: type === PaymentType.ENREGISTREMENT ? selectedBill?.id ?? null : null,
             });
             if (onSuccess) onSuccess(paymentId);
         } catch (err) {
@@ -352,7 +319,7 @@ export function PaymentFormBackendBase({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => { setSelectedClient(null); setSelectedBillId(null); }}
+                                    onClick={() => { setSelectedClient(null); setSelectedBill(null); }}
                                     className="bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground px-3"
                                     title="Retirer le client"
                                 >
@@ -368,35 +335,12 @@ export function PaymentFormBackendBase({
                             <label className="text-sm font-medium text-foreground">
                                 Facture liée <span className="text-red-500">*</span>
                             </label>
-                            {isLoadingBills ? (
-                                <div className="px-3 py-2.5 bg-card border border-border rounded-md text-muted-foreground text-sm">
-                                    Chargement des factures...
-                                </div>
-                            ) : clientBills.length === 0 ? (
-                                <div className="px-3 py-2.5 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
-                                    Aucune facture pour ce client
-                                </div>
-                            ) : (
-                                <Select
-                                    value={selectedBillId ? String(selectedBillId) : undefined}
-                                    onValueChange={(v) => setSelectedBillId(parseInt(v))}
-                                >
-                                    <SelectTrigger ref={registerField('bill')} className="bg-field border-border text-foreground hover:bg-muted">
-                                        <SelectValue placeholder="Sélectionner une facture" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-card border-border">
-                                        {clientBills.map((b) => (
-                                            <SelectItem
-                                                key={b.id}
-                                                value={String(b.id)}
-                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer"
-                                            >
-                                                Facture #{b.id} — {format(new Date(b.creationDate), 'PPP', { locale: fr })} — {getBillingStatusLabel(b.state as BillingStatus)} — {formatCurrency(parseFloat(String(b.invoiceAmount)))}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
+                            <BillSearchCombobox<BillOption>
+                                value={selectedBill}
+                                onSelect={setSelectedBill}
+                                clientId={selectedClient.id}
+                                triggerRef={registerField('bill')}
+                            />
                         </div>
                     )}
 

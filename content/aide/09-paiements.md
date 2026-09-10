@@ -40,13 +40,13 @@ Pour la cotisation, vous devez indiquer (1) le type, (2) l'auditeur concerné, (
 
 ![Paiements - capture 3](/admin/aide/images/paiements-03.jpg)
 
-Pour l'enregistrement, vous devez d'abord sélectionner l'auditeur ; la liste des factures associées s'affichera alors.
+Pour l'enregistrement, vous devez d'abord sélectionner l'auditeur ; le champ « Facture liée » s'affichera alors.
 
 ![Paiements - capture 4](/admin/aide/images/paiements-04.jpg)
 
-Le champ « Factures associées » est automatiquement renseigné avec les 10 dernières factures de l'auditeur une fois que vous les aurez sélectionnées.
+Ce champ montre par défaut les 10 dernières factures de l'auditeur, les plus récentes en premier.
 
-Pour l'ouvrir, (1) cliquez sur « Sélectionner une facture », puis (2) cliquez sur la ligne correspondant à la facture que vous souhaitez ajouter dans la liste déroulante.
+Pour l'ouvrir, cliquez sur le champ « Rechercher une facture », tapez tout ou partie du numéro de facture, du livre, de l'auteur ou de la référence de paiement pour filtrer la liste, puis cliquez sur la ligne correspondant à la facture voulue.
 
 ![Paiements - capture 5](/admin/aide/images/paiements-05.jpg)
 

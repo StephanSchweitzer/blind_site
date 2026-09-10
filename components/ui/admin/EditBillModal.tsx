@@ -971,7 +971,12 @@ export function EditBillModal({
                                         lastName: bill.client.lastName ?? null,
                                         email: bill.client.email,
                                     },
-                                    billId: bill.id,
+                                    bill: {
+                                        id: bill.id,
+                                        state: bill.state,
+                                        creationDate: bill.creationDate,
+                                        invoiceAmount: bill.invoiceAmount,
+                                    },
                                     amount: parseFloat(bill.outstanding) > 0 ? bill.outstanding : null,
                                 }}
                                 onSuccess={() => {
