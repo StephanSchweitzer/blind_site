@@ -76,6 +76,18 @@ export default function AidePage() {
                         « Composants de base » et « Page principale » expliquent le vocabulaire
                         commun à toutes les autres.
                     </p>
+
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Quelque chose vous semble faux dans ces pages ? Envoyez la page concernée
+                        et une capture d&apos;écran à{' '}
+                        <a
+                            href="mailto:steezefanschweitzer@gmail.com"
+                            className="text-primary hover:underline"
+                        >
+                            steezefanschweitzer@gmail.com
+                        </a>{' '}
+                        pour le faire corriger ou vous l&apos;expliquer.
+                    </p>
                 </CardContent>
             </Card>
         </div>

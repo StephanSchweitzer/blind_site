@@ -166,13 +166,6 @@ export function AideGuidePDF({
                     </Text>
                 ))}
 
-                <Text style={[styles.paragraphe, { marginTop: 24, color: GRIS }]}>
-                    Ce document est engendré depuis le mode d&apos;emploi consultable dans Arbre
-                    Rose, à la page « Aide ». Les deux disent donc toujours la même chose : si
-                    quelque chose vous semble faux ici, c&apos;est qu&apos;il l&apos;est aussi
-                    là-bas, et cela se corrige.
-                </Text>
-
                 <Text style={styles.pied} fixed>Mode d&apos;emploi — Arbre Rose</Text>
             </Page>
 
