@@ -222,11 +222,11 @@ export function AideGuidePDF({
 
                 {/*
                     Chaque ligne du sommaire est une ancre interne, pas un numéro de
-                    page : `Link src="#<slug>"` saute directement à la page de la
-                    section (`Page id={section.slug}` plus bas) au lieu d'ouvrir le
-                    site — voir isSrcId/setLink dans @react-pdf/render. Un numéro de
-                    page n'aurait rien apporté de plus et aurait fait courir le
-                    risque documenté sur `pied` plus bas.
+                    page : `Link src="#<slug>"` saute directement au titre de la
+                    section (`id={section.slug}` sur le `Text` plus bas) au lieu
+                    d'ouvrir le site — voir isSrcId/setLink dans @react-pdf/render. Un
+                    numéro de page n'aurait rien apporté de plus et aurait fait courir
+                    le risque documenté sur `pied` plus bas.
                 */}
                 <Text style={styles.sommaireTitre}>Sommaire</Text>
                 <View style={styles.sommaireGrille}>
@@ -248,8 +248,15 @@ export function AideGuidePDF({
             </Page>
 
             {sections.map((section) => (
-                <Page key={section.slug} id={section.slug} size="A4" style={styles.page}>
-                    <Text style={styles.sectionTitre}>{section.titre}</Text>
+                // L'ancre est sur le titre, pas sur la Page : une section trop longue
+                // pour une page se scinde en plusieurs Page internes (react-pdf clone
+                // `props` sur chacune, `bookmark` excepté — voir splitPage dans
+                // @react-pdf/layout), et `addNamedDestination` écrase la précédente à
+                // chaque occurrence du même id. Le lien atterrissait donc sur la
+                // DERNIÈRE page de la section, pas la première. Le titre, lui,
+                // n'existe qu'une fois dans l'arbre : l'ancre ne peut plus se dupliquer.
+                <Page key={section.slug} size="A4" style={styles.page}>
+                    <Text id={section.slug} style={styles.sectionTitre}>{section.titre}</Text>
                     {section.blocs.map((bloc, i) => (
                         <Bloc key={i} bloc={bloc} images={images} />
                     ))}
