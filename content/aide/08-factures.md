@@ -100,6 +100,8 @@ Sur un brouillon, les fonctions de base sont les suivantes :
 
 (4) « **Supprimer la facture** » supprime définitivement la facture
 
+> « **Enregistrer un paiement** » ouvre la fenêtre « Ajouter un paiement ». Pour tout ce qui concerne les [paiements](/admin/aide/paiements), reportez-vous à [cette page](/admin/aide/paiements).
+
 ![Factures - capture 9](/admin/aide/images/factures-09.jpg)
 
 ### Une facture émise
