@@ -383,6 +383,16 @@ const SPECS = [
     },
     // ── Sections ajoutees apres la reprise du guide ─────────────────────────
     {
+        name: 'page-principale-05.jpg',
+        url: '/admin',
+        waitFor: 'nav',
+        clip: 'nav',
+        annotations: [
+            { n: 1, label: 'Aide', self: true, fleche: true },
+        ],
+        why: 'le lien « Aide », qui ouvre le mode d\'emploi de la page en cours dans un nouvel onglet',
+    },
+    {
         name: 'doublons-01.jpg',
         url: '/admin/review',
         waitFor: '.rounded-lg.border',

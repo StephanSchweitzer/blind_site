@@ -25,3 +25,7 @@ Si vous cliquez sur le bouton « site principal », vous serez redirigé vers la
 Enfin, si vous cliquez sur le bouton « Mon Compte », vous serez redirigé vers la page des paramètres, où vous pourrez modifier vos informations si vous le souhaitez.
 
 ![Page principale - capture 4](/admin/aide/images/page-principale-04.jpg)
+
+La barre de navigation comporte aussi un lien « Aide », qui ouvre le mode d'emploi dans un nouvel onglet — celui de la page sur laquelle vous vous trouvez au moment de cliquer. Vous gardez ainsi votre page de travail ouverte à côté.
+
+![Page principale - capture 5](/admin/aide/images/page-principale-05.jpg)
