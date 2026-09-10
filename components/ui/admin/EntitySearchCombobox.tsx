@@ -253,13 +253,24 @@ export function EntitySearchCombobox<T>({
             </PopoverTrigger>
             <PopoverContent
                 className={cn(
-                    'w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border',
+                    // Radix flips the popover to whichever side has more room, but
+                    // a fixed max-height (below) can still be taller than that
+                    // side's actual space — e.g. a short trigger near the bottom
+                    // of a small/mobile viewport, where "flip to top" still has
+                    // less than 400px above it. `flex flex-col` here plus
+                    // `--radix-popover-content-available-height` (Radix's own
+                    // collision-aware measurement) caps the whole popover to
+                    // what's really available, and the results list (flex-1
+                    // below) shrinks to fit instead of pushing the footer or the
+                    // top of the popover off-screen.
+                    'w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border flex flex-col overflow-hidden',
                     contentClassName
                 )}
+                style={{ maxHeight: 'var(--radix-popover-content-available-height)' }}
                 align="start"
                 collisionPadding={16}
             >
-                <div className="p-2 relative">
+                <div className="p-2 relative shrink-0">
                     <Input
                         placeholder={searchPlaceholder}
                         value={query}
@@ -285,11 +296,12 @@ export function EntitySearchCombobox<T>({
                 <div
                     ref={listRef}
                     className={cn(
-                        // 200px fitted barely three two-line rows, so a 20-result
-                        // search looked like three. `min(…, 50vh)` keeps the taller
-                        // list from running off a short laptop screen — the popover
-                        // also has a search box and a footer above/below it.
-                        'max-h-[min(400px,50vh)] overflow-y-auto transition-opacity',
+                        // flex-1 + min-h-0: within the popover's flex column (capped
+                        // to --radix-popover-content-available-height above), the
+                        // list takes whatever space is left after the search box and
+                        // footer and scrolls internally — it never forces the popover
+                        // itself past the edge of the screen.
+                        'flex-1 min-h-0 overflow-y-auto transition-opacity',
                         isSearching && 'opacity-60',
                         listClassName
                     )}
@@ -342,7 +354,7 @@ export function EntitySearchCombobox<T>({
                     )}
                 </div>
                 {showFooter && (
-                    <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+                    <div className="shrink-0 border-t border-border px-4 py-2 text-xs text-muted-foreground">
                         {footerText}
                     </div>
                 )}
