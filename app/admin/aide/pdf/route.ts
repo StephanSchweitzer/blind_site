@@ -29,10 +29,12 @@ export const dynamic = 'force-dynamic';
 
 const IMAGES = path.join(process.cwd(), 'content', 'aide', 'images');
 // Comme les captures : le rendu tourne côté serveur (Node), pas dans un
-// navigateur, donc un `src="/eca_logo.png"` ne se résoudrait pas — il faut le
-// binaire. `public/` et pas `content/aide/images/` : c'est le logotype de
+// navigateur, donc un `src="/eca_logo_facture.png"` ne se résoudrait pas — il
+// faut le binaire. Le même fichier que BillPDF.tsx — le PNG 1000×508 pensé
+// pour l'impression, pas le eca_logo.png plus petit utilisé sur le site.
+// `public/` et pas `content/aide/images/` : c'est le logotype de
 // l'association, pas une capture d'écran du guide.
-const LOGO = path.join(process.cwd(), 'public', 'eca_logo.png');
+const LOGO = path.join(process.cwd(), 'public', 'eca_logo_facture.png');
 
 // A4 : 595 pt de large, 842 de haut ; la page en réserve 48 de chaque côté et
 // 54/56 en haut et en bas. Reste 499 pt utiles en largeur. On plafonne la

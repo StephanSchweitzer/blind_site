@@ -36,24 +36,36 @@ export interface AideImageResolue {
     hauteur: number;
 }
 
-// 750 × 141 px, voir public/eca_logo.png — un ratio fixe, connu une fois pour
-// toutes, comme LOGO_RATIO dans BillPDF.tsx.
-const LOGO_RATIO = 750 / 141;
+// 1000 × 508 px — le même PNG que BillPDF.tsx, pensé pour l'impression (voir
+// LOGO_RATIO là-bas). Pas eca_logo.png : trop étroit, pensé pour un bandeau
+// web, pas pour une couverture.
+const LOGO_RATIO = 1000 / 508;
 
 const styles = StyleSheet.create({
     page: { paddingTop: 54, paddingBottom: 56, paddingHorizontal: 48, fontSize: 10.5, lineHeight: 1.5 },
-    couvertureLogo: { width: 168, height: 168 / LOGO_RATIO, marginBottom: 40 },
-    couvertureTitre: { fontFamily: BOLD, fontSize: 30, color: NAVY, marginBottom: 10 },
-    couvertureSous: { fontSize: 12, color: GRIS, marginBottom: 36 },
-    sommaireTitre: { fontFamily: BOLD, fontSize: 13, color: NAVY, marginBottom: 14 },
+    // Logo, titre et sous-titre centrés en bloc : `alignItems: 'center'` sur ce
+    // conteneur seulement, pas sur toute la Page, pour que le sommaire qui suit
+    // reste, lui, aligné à gauche sur toute la largeur.
+    couvertureEntete: { alignItems: 'center', marginBottom: 46 },
+    couvertureLogo: { width: 230, height: 230 / LOGO_RATIO, marginBottom: 28 },
+    couvertureTitre: { fontFamily: BOLD, fontSize: 36, lineHeight: 1, color: NAVY, marginTop: 8, marginBottom: 20, textAlign: 'center' },
+    couvertureSous: { fontSize: 13, color: GRIS, textAlign: 'center', lineHeight: 1.6 },
+    sommaireTitre: { fontFamily: BOLD, fontSize: 14, color: NAVY, marginBottom: 16 },
+    // Deux colonnes plutôt qu'une : à 16 sections, une colonne unique laisse la
+    // moitié droite de la page vide et le sommaire ressemble à une liste
+    // abandonnée sur le bord gauche. Le total tient alors sur une seule page
+    // au lieu de déborder sur une deuxième aux trois quarts blanche.
+    sommaireGrille: { flexDirection: 'row' },
+    sommaireColonneGauche: { flex: 1, paddingRight: 20 },
+    sommaireColonneDroite: { flex: 1, paddingLeft: 20 },
     sommaireLigne: {
         flexDirection: 'row',
-        marginBottom: 10,
-        paddingBottom: 10,
+        marginBottom: 9,
+        paddingBottom: 9,
         borderBottomWidth: 0.5,
         borderBottomColor: '#e5e7eb',
     },
-    sommaireNumero: { width: 22, fontSize: 11, color: GRIS },
+    sommaireNumero: { width: 20, fontSize: 11, color: GRIS },
     sommaireLien: { flex: 1, fontSize: 11, color: '#2563eb', textDecoration: 'none' },
     sectionTitre: { fontFamily: BOLD, fontSize: 20, color: NAVY, marginBottom: 14 },
     h2: { fontFamily: BOLD, fontSize: 13, color: NAVY, marginTop: 16, marginBottom: 6 },
@@ -191,16 +203,22 @@ export function AideGuidePDF({
     logo: Buffer;
     dateImpression: string;
 }) {
+    // Deux colonnes : la première reçoit la section en plus quand le compte est impair.
+    const milieu = Math.ceil(sections.length / 2);
+    const colonnes = [sections.slice(0, milieu), sections.slice(milieu)];
+
     return (
         <Document title="Mode d'emploi — Arbre Rose" author="ECA — Les Auxiliaires des Aveugles">
             <Page size="A4" style={styles.page}>
-                {/* eslint-disable-next-line jsx-a11y/alt-text -- l'Image de react-pdf n'accepte pas d'alt */}
-                <Image style={styles.couvertureLogo} src={{ data: logo, format: 'png' }} />
-                <Text style={styles.couvertureTitre}>Mode d&apos;emploi</Text>
-                <Text style={styles.couvertureSous}>
-                    Arbre Rose — la partie administration du site aux ECA{'\n'}
-                    Édition du {dateImpression}
-                </Text>
+                <View style={styles.couvertureEntete}>
+                    {/* eslint-disable-next-line jsx-a11y/alt-text -- l'Image de react-pdf n'accepte pas d'alt */}
+                    <Image style={styles.couvertureLogo} src={{ data: logo, format: 'png' }} />
+                    <Text style={styles.couvertureTitre}>Mode d&apos;emploi</Text>
+                    <Text style={styles.couvertureSous}>
+                        Arbre Rose — la partie administration du site aux ECA{'\n'}
+                        Édition du {dateImpression}
+                    </Text>
+                </View>
 
                 {/*
                     Chaque ligne du sommaire est une ancre interne, pas un numéro de
@@ -211,14 +229,20 @@ export function AideGuidePDF({
                     risque documenté sur `pied` plus bas.
                 */}
                 <Text style={styles.sommaireTitre}>Sommaire</Text>
-                {sections.map((section, i) => (
-                    <View key={section.slug} style={styles.sommaireLigne}>
-                        <Text style={styles.sommaireNumero}>{i + 1}.</Text>
-                        <Link src={`#${section.slug}`} style={styles.sommaireLien}>
-                            {section.titre}
-                        </Link>
-                    </View>
-                ))}
+                <View style={styles.sommaireGrille}>
+                    {colonnes.map((colonne, c) => (
+                        <View key={c} style={c === 0 ? styles.sommaireColonneGauche : styles.sommaireColonneDroite}>
+                            {colonne.map((section, i) => (
+                                <View key={section.slug} style={styles.sommaireLigne}>
+                                    <Text style={styles.sommaireNumero}>{c * milieu + i + 1}.</Text>
+                                    <Link src={`#${section.slug}`} style={styles.sommaireLien}>
+                                        {section.titre}
+                                    </Link>
+                                </View>
+                            ))}
+                        </View>
+                    ))}
+                </View>
 
                 <Text style={styles.pied} fixed>Mode d&apos;emploi — Arbre Rose</Text>
             </Page>
