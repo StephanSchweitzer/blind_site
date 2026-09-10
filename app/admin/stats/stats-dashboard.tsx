@@ -22,6 +22,7 @@ import StaffHeatmap from './staff-heatmap';
 import DetailDrawer, { DrawerSelection } from './detail-drawer';
 import MembersCard from './members-card';
 import AuditTimeline from './audit-timeline';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 // Super-admin activity dashboard. All charts consume pre-aggregated data
 // (one GROUP BY per request); record lists are only fetched when a cell is
@@ -92,7 +93,10 @@ export default function StatsDashboard() {
         <div className="space-y-6">
             <AdminCard className="p-4 md:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="text-xl font-bold text-foreground">Statistiques d’activité</h1>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="text-xl font-bold text-foreground">Statistiques d’activité</h1>
+                        <AideLink section="statistiques" />
+                    </div>
                     <div className="flex flex-wrap gap-1">
                         {RANGE_PRESETS.map((p) => (
                             <Button

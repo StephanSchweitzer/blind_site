@@ -51,6 +51,7 @@ import {
 import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 interface UsersTableProps {
     type: UserType;
@@ -329,7 +330,10 @@ export default function UsersTable({
             <CardHeader className="border-b border-border">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <CardTitle className="text-2xl text-foreground">{plural}</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="text-2xl text-foreground">{plural}</CardTitle>
+                            <AideLink section="membres" />
+                        </div>
                         <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
                             <span>
                                 {scopedTotal} {singular}{scopedTotal > 1 ? 's' : ''} au total

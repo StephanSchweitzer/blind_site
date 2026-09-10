@@ -44,6 +44,7 @@ import type {
 } from '@/types/models/order.model';
 import type { SerializedBlockingRecording } from '@/lib/orders/duplicationBlocked';
 import { parisDate } from '@/lib/paris-day';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 type OrdersTableProps = {
     initialOrders: SerializedOrderTableRow[];
@@ -379,7 +380,10 @@ export default function OrdersTable({
             <CardHeader>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <CardTitle className="text-2xl text-foreground">Demandes</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="text-2xl text-foreground">Demandes</CardTitle>
+                            <AideLink section="demandes" />
+                        </div>
                         <CardDescription className="text-muted-foreground">
                             Gérer et suivre toutes les demandes
                         </CardDescription>

@@ -21,6 +21,7 @@ import AccountSecurity from './account-security';
 import MyActivity from './my-activity';
 import MyUnavailability from './my-unavailability';
 import { parisDate } from '@/lib/paris-day';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,9 +76,12 @@ export default async function ProfilePage() {
                             {initial}
                         </div>
                         <div className="min-w-0">
-                            <h1 className="text-2xl font-bold text-foreground truncate">
-                                {displayName || 'Sans nom'}
-                            </h1>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className="text-2xl font-bold text-foreground truncate">
+                                    {displayName || 'Sans nom'}
+                                </h1>
+                                <AideLink section="mon-compte" />
+                            </div>
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                                 <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
                                     {MEMBER_TYPE_LABELS[user.memberType]}

@@ -70,3 +70,11 @@ public/book_descriptions/
 !.claude/rules/
 # Local output of scripts/audit-audio-files.ts
 audio-audit/
+
+# Mode d'emploi — sources d'origine, NON expurgées.
+# Le PDF et le .docx exportés du Google Doc montrent de vrais auditeurs,
+# lecteurs et donateurs : noms, adresses électroniques, adresses postales.
+# Les captures publiées (public/aide/) sont masquées ; ces fichiers-ci ne le
+# sont pas, et un commit les graverait définitivement dans l'historique.
+# Ils restent en local comme référence : voir scripts/convert-user-guide.py.
+/user_guide/

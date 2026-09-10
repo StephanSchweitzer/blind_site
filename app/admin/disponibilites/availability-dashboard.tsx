@@ -63,6 +63,7 @@ import AvailabilityTimeline, {
     type PeriodPreset,
 } from './availability-timeline';
 import PersonAvailabilityPanel from './person-availability-panel';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 /**
  * /admin/disponibilites — one screen answering "qui est là, qui ne l'est pas,
@@ -591,7 +592,10 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             {/* ── header ─────────────────────────────────────────────────── */}
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Disponibilités</h1>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="text-2xl font-bold text-foreground">Disponibilités</h1>
+                        <AideLink section="disponibilites" />
+                    </div>
                     <p className="text-sm text-muted-foreground">
                         Qui est indisponible et quand, et à qui confier la prochaine attribution.
                         Situation au {formatDayKey(today)}.

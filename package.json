@@ -9,6 +9,9 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "dev:claude-user": "tsx prisma/dev-claude-user.ts",
+    "aide:check": "tsx scripts/check-aide-links.ts",
+    "aide:shots": "node scripts/capture-aide-screenshots.mjs",
+    "aide:annotate": "python scripts/annotate-aide-screenshots.py",
     "prepare": "husky"
   },
   "prisma": {

@@ -57,6 +57,7 @@ import { BookSearchCombobox, bookLabel } from '@/admin/BookSearchCombobox';
 import { formatCalendarDate } from '@/lib/calendar-date';
 import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
 import { parisDate } from '@/lib/paris-day';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 export interface ReviewBook {
     id: number;
@@ -244,7 +245,10 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
             <Card>
                 <CardHeader className="space-y-4">
                     <div>
-                        <CardTitle>Révision des doublons</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle>Révision des doublons</CardTitle>
+                            <AideLink section="doublons" />
+                        </div>
                         <CardDescription>
                             {search
                                 ? `${total} résultat${total > 1 ? 's' : ''} pour « ${search} » — ${queueTotal} livre${queueTotal > 1 ? 's' : ''} dans la file.`

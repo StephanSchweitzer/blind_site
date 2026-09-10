@@ -5,6 +5,19 @@ const nextConfig: NextConfig = {
         domains: ['api.dicebear.com'],
     },
     /**
+     * Le mode d'emploi (`content/aide/*.md`) est lu au disque par lib/aide.ts.
+     * /admin/aide est prérendu, donc le contenu part déjà dans le HTML — mais
+     * le tracing ne suit pas un chemin construit à l'exécution, et la moindre
+     * bascule en rendu dynamique laisserait le dossier hors du déploiement.
+     * On l'inclut explicitement plutôt que de le découvrir en production.
+     */
+    outputFileTracingIncludes: {
+        '/admin/aide': ['./content/aide/**'],
+        '/admin/aide/[slug]': ['./content/aide/**'],
+        // Les captures sont lues au disque a chaque requete par la route gardee.
+        '/admin/aide/images/[name]': ['./content/aide/images/**'],
+    },
+    /**
      * The « listes de livres » pages used to live under /coups-de-coeur (and
      * /admin/manage_coups_de_coeur, /api/coups-de-coeur). The public one was in
      * the sitemap and has been indexed, so the old paths have to keep

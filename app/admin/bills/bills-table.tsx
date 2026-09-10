@@ -42,6 +42,7 @@ import { CopyIdButton } from '@/admin/CopyableId';
 import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { parisDate } from '@/lib/paris-day';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 interface BillsTableProps {
     initialBills: Bill[];
@@ -195,9 +196,12 @@ export default function BillsTable({
             <CardHeader className="border-b border-border pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <CardTitle className="text-2xl font-bold text-foreground">
-                            Factures
-                        </CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="text-2xl font-bold text-foreground">
+                                Factures
+                            </CardTitle>
+                            <AideLink section="factures" />
+                        </div>
                         <CardDescription className="text-muted-foreground mt-1">
                             {initialTotalBills} facture{initialTotalBills > 1 ? 's' : ''} au total
                         </CardDescription>

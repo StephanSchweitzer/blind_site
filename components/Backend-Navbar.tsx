@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu, X, ChevronDown, HelpCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -137,6 +137,14 @@ const BackendNavbar: React.FC = () => {
                     {/* Desktop right-aligned actions */}
                     <div className="hidden lg:flex items-center gap-3">
                         <Link
+                            href="/admin/aide"
+                            onClick={closeAll}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
+                        >
+                            <HelpCircle className="h-4 w-4" aria-hidden="true" />
+                            Aide
+                        </Link>
+                        <Link
                             href="/admin/profile"
                             onClick={closeAll}
                             className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
@@ -202,6 +210,14 @@ const BackendNavbar: React.FC = () => {
                                 )}
                             </div>
                         ))}
+                        <Link
+                            href="/admin/aide"
+                            onClick={closeAll}
+                            className="flex items-center gap-2 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-100"
+                        >
+                            <HelpCircle className="h-4 w-4" aria-hidden="true" />
+                            Aide
+                        </Link>
                         <Link
                             href="/admin/profile"
                             onClick={closeAll}

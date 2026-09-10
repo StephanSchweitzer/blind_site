@@ -37,6 +37,7 @@ import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -333,9 +334,12 @@ export default function AssignmentsTable({
             <CardHeader className="border-b border-border">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <CardTitle className="text-3xl font-bold text-foreground">
-                            Attributions
-                        </CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="text-3xl font-bold text-foreground">
+                                Attributions
+                            </CardTitle>
+                            <AideLink section="attributions" />
+                        </div>
                         <CardDescription className="text-muted-foreground mt-2">
                             {initialTotalAssignments} attribution{initialTotalAssignments !== 1 ? 's' : ''} au total
                         </CardDescription>

@@ -40,6 +40,7 @@ import {
 } from '@/lib/audio-enums';
 import { calendarYear } from '@/lib/calendar-date';
 import { toast } from "@/hooks/use-toast";
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 const ITEMS_PER_PAGE = 10;
 const DEBOUNCE_DELAY = 300;
@@ -719,7 +720,10 @@ export default function BooksTable({
         <Card className="bg-card border-border">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
-                    <CardTitle className="text-foreground">Gestion des livres</CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <CardTitle className="text-foreground">Gestion des livres</CardTitle>
+                        <AideLink section="catalogue" />
+                    </div>
                     <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
                         <span>
                             {searchResults.total} livre{searchResults.total !== 1 ? 's' : ''} au total
@@ -1233,4 +1237,4 @@ export default function BooksTable({
             )}
         </Card>
     );
-}
+}

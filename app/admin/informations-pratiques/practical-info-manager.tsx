@@ -11,6 +11,7 @@ import { IconPicker } from '@/components/admin/IconPicker';
 import { ThemePicker } from '@/components/admin/ThemePicker';
 import { resolveIcon } from '@/lib/icons';
 import type { PracticalInfo } from '@prisma/client';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 type Draft = { iconKey: string; colorTheme: string; question: string; body: string };
 const EMPTY: Draft = { iconKey: 'BookMarked', colorTheme: 'blue', question: '', body: '' };
@@ -65,7 +66,10 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
             <div className="container mx-auto py-8 space-y-6">
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <CardTitle className="text-foreground">Informations pratiques ({items.length})</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="text-foreground">Informations pratiques ({items.length})</CardTitle>
+                            <AideLink section="pages-publiques" />
+                        </div>
                         <div className="flex gap-2">
                             {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">Enregistrer l&apos;ordre</Button>}
                             <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-muted">

@@ -49,6 +49,7 @@ import {
 } from '@/lib/audio-enums';
 import { OrphanAudioModal } from './orphan-audio-modal';
 import { formatBytes, formatDate, isNasArtefact } from './format';
+import { AideLink } from '@/components/ui/admin/AideLink';
 import {
     createBookForOrphan,
     dismissOrphan,
@@ -530,7 +531,10 @@ export default function OrphansClient({
             <Card>
                 <CardHeader className="space-y-4">
                     <div>
-                        <CardTitle>Dossiers audio orphelins</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle>Dossiers audio orphelins</CardTitle>
+                            <AideLink section="audio-orphelin" />
+                        </div>
                         <CardDescription>
                             Dossiers présents dans le stockage qu’aucun livre du catalogue ne
                             revendique. Rattachez-les à un livre existant, créez le livre manquant,

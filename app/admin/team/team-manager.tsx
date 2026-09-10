@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import type { TeamMember, TeamSection } from '@prisma/client';
 import { TEAM_SECTION_LABELS, TEAM_SECTION_ORDER } from '@/lib/team-enums';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 // Re-exported under the local names this file already used; the maps themselves
 // live in lib/team-enums.ts so the journal des modifications can word a section
@@ -134,7 +135,10 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
             <div className="container mx-auto py-8 space-y-6">
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border flex flex-row items-center justify-between">
-                        <CardTitle className="text-foreground">Équipe ({total})</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="text-foreground">Équipe ({total})</CardTitle>
+                            <AideLink section="pages-publiques" />
+                        </div>
                         {dirty && (
                             <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">
                                 Enregistrer l&apos;ordre

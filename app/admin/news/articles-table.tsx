@@ -27,6 +27,7 @@ import { toast } from '@/hooks/use-toast';
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { parsePageParam } from '@/lib/pagination';
 import { parisDate } from '@/lib/paris-day';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 type Article = {
     id: number;
@@ -271,7 +272,10 @@ export function ArticlesTable({
         <Card className="bg-card border-border">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
-                    <CardTitle className="text-foreground">Gérer les dernières info</CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <CardTitle className="text-foreground">Gérer les dernières info</CardTitle>
+                        <AideLink section="pages-publiques" />
+                    </div>
                     <CardDescription className="text-muted-foreground">
                         Gérer et modifier les informations affichées sur dernières info
                     </CardDescription>

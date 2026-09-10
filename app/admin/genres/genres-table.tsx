@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AddGenreFormBackend, EditGenreFormBackend } from '@/admin/GenreFormBackendBase';
 import { CopyableId } from '@/admin/CopyableId';
 import type { Genre } from '@/types';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 export interface GenreRow extends Genre {
     /** Books already carrying this genre — surfaced in the edit dialogue. */
@@ -81,7 +82,10 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
         <Card className="bg-card border-border">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
-                    <CardTitle className="text-foreground">Gestion des Genres</CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <CardTitle className="text-foreground">Gestion des Genres</CardTitle>
+                        <AideLink section="genres" />
+                    </div>
                     <CardDescription className="text-muted-foreground">
                         Gérer et modifier les différents genres associés aux livres
                     </CardDescription>

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { CoupDeCoeurPDFButton } from "@/admin/CoupDeCoeurPDFButton";
 import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
 import { parisDate } from '@/lib/paris-day';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 interface CoupsTableProps {
     initialItems: CoupDeCoeurWithBooks[];
@@ -78,7 +79,10 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
         <Card className="bg-card border-border">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
-                    <CardTitle className="text-foreground">Gestion des listes de livres</CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <CardTitle className="text-foreground">Gestion des listes de livres</CardTitle>
+                        <AideLink section="liste-de-livres" />
+                    </div>
                     <CardDescription className="text-muted-foreground">
                         Gérez et modifiez les listes de livres
                     </CardDescription>

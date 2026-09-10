@@ -11,6 +11,7 @@ import { IconPicker } from '@/components/admin/IconPicker';
 import { ThemePicker } from '@/components/admin/ThemePicker';
 import { resolveIcon } from '@/lib/icons';
 import type { MembershipOption } from '@prisma/client';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 type Draft = {
     iconKey: string; colorTheme: string; title: string; body: string;
@@ -76,7 +77,10 @@ export function MembershipManager({ initial }: { initial: MembershipOption[] }) 
             <div className="container mx-auto py-8 space-y-6">
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <CardTitle className="text-foreground">Nous rejoindre ({items.length})</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="text-foreground">Nous rejoindre ({items.length})</CardTitle>
+                            <AideLink section="pages-publiques" />
+                        </div>
                         <div className="flex gap-2">
                             {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">Enregistrer l&apos;ordre</Button>}
                             <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-muted">
