@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Markdown } from '@/components/Markdown';
 import { AideHashScroll } from '@/components/aide/AideHashScroll';
 import { getAideNeighbours, getAideSection, listAideSections } from '@/lib/aide';
+import { capturesDeLaSection } from '@/lib/aide-images';
 
 interface PageProps {
     params: Promise<{ slug: string }>;
@@ -32,12 +33,45 @@ export default async function AideSectionPage({ params }: PageProps) {
     if (!section) notFound();
 
     const { previous, next } = getAideNeighbours(slug);
+
+    /**
+     * Les captures, mesurées à la compilation, et la première annoncée au
+     * navigateur avant même qu'il ne lise le corps de la page.
+     *
+     * Sans préchargement, une capture n'est découverte qu'au moment où
+     * l'analyseur atteint le `<img>` qui la porte : ici, 64 Ko de HTML plus
+     * loin. L'annoncer dans l'en-tête fait partir la requête tout de suite —
+     * la seule image visible sans défiler cesse d'attendre son tour.
+     *
+     * Une seule, et pas les onze : précharger tout le lot mettrait onze requêtes
+     * en concurrence pour la bande passante, et la première — la seule visible —
+     * arriverait plus tard qu'aujourd'hui. Les autres restent paresseuses.
+     */
+    const captures = capturesDeLaSection(section.body);
+    const premiereCapture = captures[0];
+    const taillesDesCaptures = Object.fromEntries(
+        captures.map((c) => [c.src, { largeur: c.largeur, hauteur: c.hauteur }]),
+    );
     // Le sommaire ne liste que les sous-sections (##). Les titres de niveau 3
     // sont des repères dans le texte, pas des destinations.
     const summary = section.headings.filter((h) => h.level === 2);
 
     return (
         <div className="space-y-4">
+            {/* Écrit en JSX, et non par `preload()` de react-dom : cet appel-là
+                ne ressortait PAS dans le HTML servi (vérifié — aucun
+                `as="image"` dedans), il n'arrivait qu'après l'hydratation,
+                donc trop tard pour servir à quoi que ce soit. Un `<link>` rendu
+                ici, React 19 le remonte dans le `<head>` du document. */}
+            {premiereCapture && (
+                <link
+                    rel="preload"
+                    as="image"
+                    href={premiereCapture.src}
+                    fetchPriority="high"
+                />
+            )}
+
             <AideHashScroll />
 
             <Link
@@ -74,7 +108,12 @@ export default async function AideSectionPage({ params }: PageProps) {
                         </nav>
                     )}
 
-                    <Markdown headingIds className="max-w-3xl">
+                    <Markdown
+                        headingIds
+                        className="max-w-3xl"
+                        imageSizes={taillesDesCaptures}
+                        eagerImage={premiereCapture?.src}
+                    >
                         {section.body}
                     </Markdown>
 

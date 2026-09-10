@@ -12,6 +12,12 @@ function headingText(children: React.ReactNode): string {
     return '';
 }
 
+/** Ce que le rendu a besoin de savoir d'une capture avant de l'avoir reçue. */
+export interface MarkdownImageSize {
+    largeur: number;
+    hauteur: number;
+}
+
 interface MarkdownProps {
     children: string;
     className?: string;
@@ -21,6 +27,19 @@ interface MarkdownProps {
      * mode d'emploi s'en sert ; la copie saisie en base, non.
      */
     headingIds?: boolean;
+    /**
+     * Les dimensions des captures, par URL. Fournies par l'appelant qui, lui,
+     * a accès au disque — voir lib/aide-images.ts. Absentes, l'image s'affiche
+     * comme avant : elle perd la réservation de place, rien d'autre.
+     */
+    imageSizes?: Record<string, MarkdownImageSize>;
+    /**
+     * L'URL de la capture à charger TOUT DE SUITE, sans attendre le défilement.
+     * En général la première de la section : c'est elle que le lecteur a sous
+     * les yeux, et la charger paresseusement revenait à la demander APRÈS la
+     * mise en page, donc à la faire attendre pour rien.
+     */
+    eagerImage?: string;
 }
 
 /**
@@ -33,7 +52,13 @@ interface MarkdownProps {
  * anciens appels ne changent pas de comportement : ils n'écrivent ni titres de
  * niveau 1-2, ni images.
  */
-export function Markdown({ children, className, headingIds = false }: MarkdownProps) {
+export function Markdown({
+    children,
+    className,
+    headingIds = false,
+    imageSizes,
+    eagerImage,
+}: MarkdownProps) {
     const anchor = (children: React.ReactNode) =>
         headingIds ? slugifyHeading(headingText(children)) : undefined;
 
@@ -67,19 +92,44 @@ export function Markdown({ children, className, headingIds = false }: MarkdownPr
                     code: (props) => (
                         <code className="rounded bg-muted px-1.5 py-0.5 text-sm text-foreground" {...props} />
                     ),
-                    // Les captures du mode d'emploi sont des fichiers statiques de
-                    // public/aide, de dimensions inconnues à la compilation : next/image
-                    // exigerait une largeur et une hauteur par capture. Un <img> paresseux
-                    // fait le travail, et le cadre rappelle qu'on regarde une capture.
-                    img: ({ src, alt }) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                            src={typeof src === 'string' ? src : ''}
-                            alt={alt ?? ''}
-                            loading="lazy"
-                            className="my-4 w-full rounded-lg border border-border shadow-sm"
-                        />
-                    ),
+                    /**
+                     * Les captures du mode d'emploi sortent d'une route gardée
+                     * (`/admin/aide/images/…`), que l'optimiseur de next/image ne
+                     * peut pas aller chercher : un `<img>` reste donc le bon outil.
+                     * Mais un `<img>` nu laisse trois choses sur la table, et les
+                     * trois se paient au chargement :
+                     *
+                     *   * SES DIMENSIONS. Sans elles le navigateur ne réserve rien,
+                     *     et le texte saute à chaque capture qui arrive. Elles sont
+                     *     désormais connues (lib/aide-images.ts les lit dans l'en-tête
+                     *     du fichier, à la compilation) — d'où width/height, avec
+                     *     `h-auto` pour que la mise à l'échelle reste fluide.
+                     *   * LA PREMIÈRE IMAGE, chargée paresseusement comme les autres.
+                     *     Or elle est visible d'emblée : `loading="lazy"` la faisait
+                     *     demander APRÈS la mise en page, alors qu'elle est
+                     *     justement ce que le lecteur attend. Elle passe en `eager`
+                     *     et en priorité haute ; les suivantes restent paresseuses,
+                     *     une section en comptant jusqu'à onze.
+                     *   * LE DÉCODAGE, fait sur le fil principal par défaut.
+                     */
+                    img: ({ src, alt }) => {
+                        const url = typeof src === 'string' ? src : '';
+                        const taille = imageSizes?.[url];
+                        const prioritaire = url !== '' && url === eagerImage;
+                        return (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={url}
+                                alt={alt ?? ''}
+                                width={taille?.largeur}
+                                height={taille?.hauteur}
+                                loading={prioritaire ? 'eager' : 'lazy'}
+                                fetchPriority={prioritaire ? 'high' : 'auto'}
+                                decoding="async"
+                                className="my-4 h-auto w-full rounded-lg border border-border shadow-sm"
+                            />
+                        );
+                    },
                 }}
             >
                 {children}
