@@ -1,4 +1,4 @@
-import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, View, Text, Image, Link, StyleSheet } from '@react-pdf/renderer';
 import type { AideBlock, AideRun } from '@/lib/aide-blocks';
 
 /**
@@ -44,6 +44,16 @@ const styles = StyleSheet.create({
     h2: { fontFamily: BOLD, fontSize: 13, color: NAVY, marginTop: 16, marginBottom: 6 },
     h3: { fontFamily: BOLD, fontSize: 11, marginTop: 12, marginBottom: 4 },
     paragraphe: { marginBottom: 8, textAlign: 'justify' },
+    lien: { color: '#2563eb', textDecoration: 'underline' },
+    citation: {
+        marginBottom: 8,
+        paddingLeft: 10,
+        borderLeftWidth: 2,
+        borderLeftColor: '#d1d5db',
+        fontStyle: 'italic',
+        color: GRIS,
+        textAlign: 'justify',
+    },
     listeLigne: { flexDirection: 'row', marginBottom: 4, paddingLeft: 6 },
     listePuce: { width: 16 },
     listeTexte: { flex: 1 },
@@ -70,11 +80,17 @@ const styles = StyleSheet.create({
 function Runs({ runs }: { runs: AideRun[] }) {
     return (
         <>
-            {runs.map((run, i) => (
-                <Text key={i} style={run.bold ? { fontFamily: BOLD } : undefined}>
-                    {run.text}
-                </Text>
-            ))}
+            {runs.map((run, i) =>
+                run.url ? (
+                    <Link key={i} src={run.url} style={styles.lien}>
+                        {run.text}
+                    </Link>
+                ) : (
+                    <Text key={i} style={run.bold ? { fontFamily: BOLD } : undefined}>
+                        {run.text}
+                    </Text>
+                ),
+            )}
         </>
     );
 }
@@ -87,6 +103,13 @@ function Bloc({ bloc, images }: { bloc: AideBlock; images: Map<string, AideImage
         case 'paragraphe':
             return (
                 <Text style={styles.paragraphe}>
+                    <Runs runs={bloc.runs} />
+                </Text>
+            );
+
+        case 'citation':
+            return (
+                <Text style={styles.citation}>
                     <Runs runs={bloc.runs} />
                 </Text>
             );
