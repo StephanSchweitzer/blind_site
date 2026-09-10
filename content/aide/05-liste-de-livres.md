@@ -14,7 +14,9 @@ Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de l
 
 Si vous en ajoutez une nouvelle, vous serez redirigé vers une page distincte où s'affichent les « **Nouveautés disponibles** » : les livres ajoutés au catalogue depuis une date de coupure.
 
-Cette coupure ne se subit plus, elle se choisit. Elle est proposée par défaut à la date de la **dernière liste créée — publiée ou non** — et le champ « **Nouveautés depuis le …** » vous permet de la déplacer. Dépublier une liste ne la retire donc pas de l'histoire : les livres qu'elle annonçait ne reviennent pas se proposer d'office.
+Cette coupure ne se subit plus, elle se choisit. Elle est proposée par défaut à la date de la **dernière liste créée — publiée ou non**, rappelée juste à côté. Le champ (1) « **Nouveautés depuis le …** » vous permet de la déplacer : cliquez dedans et choisissez une autre date dans le calendrier. Si vous voulez revenir à la date proposée par défaut après l'avoir changée, cliquez sur (2) « Revenir à cette date ». Dépublier une liste ne la retire donc pas de l'histoire : les livres qu'elle annonçait ne reviennent pas se proposer d'office.
+
+![Liste de Livres - capture 10](/admin/aide/images/liste-de-livres-10.jpg)
 
 Deux garde-fous accompagnent cette sélection :
 

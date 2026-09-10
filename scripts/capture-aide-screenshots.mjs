@@ -358,6 +358,23 @@ const SPECS = [
         clip: '.rounded-lg.border',
         why: "l'adresse /admin/listes-de-livres",
     },
+    {
+        name: 'liste-de-livres-10.jpg',
+        url: '/admin/listes-de-livres/new',
+        waitFor: '#since',
+        steps: [
+            // Une date bien avant la coupure par défaut, pour faire apparaître
+            // le bouton « Revenir à cette date » qu'on annote juste après.
+            { typeIn: { selector: '#since', value: '2020-01-01' } },
+            { sleep: 1800 },
+        ],
+        clip: '.rounded-md.border.border-border.bg-card.p-3',
+        annotations: [
+            { n: 1, label: 'Nouveautés depuis le' },
+            { n: 2, label: 'Revenir à cette date', self: true },
+        ],
+        why: 'le filtre de date des nouveautés, et le retour à la coupure par défaut',
+    },
     // ── Sections ajoutees apres la reprise du guide ─────────────────────────
     {
         name: 'doublons-01.jpg',
