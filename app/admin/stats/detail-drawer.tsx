@@ -7,16 +7,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { billEventLabel, billEventTint } from '@/components/ui/admin/BillHistory';
 import { OPERATION_LABELS } from '@/lib/audit/labels';
-import type { StaffDetailItem, StaffDetailsResponse, StaffMetric, StatsGranularity } from '@/types';
+import type {
+    StaffDetailItem,
+    StaffDetailsResponse,
+    StaffMetric,
+    StaffMetricFilter,
+    StatsGranularity,
+} from '@/types';
 import {
     AUDIO_ACTION_LABEL,
     AUDIO_ACTION_TINT,
     LIFECYCLE_EVENT_LABEL,
     LIFECYCLE_EVENT_TINT,
-    METRIC_LABELS,
     OPERATION_TINT,
     formatBucketLabel,
     formatDateTime,
+    staffMetricFilterLabel,
 } from './stats-utils';
 import { type DetailGroup, groupDetailItems, headOf } from './detail-grouping';
 
@@ -47,14 +53,14 @@ const GROUP_NOUN: Partial<Record<StaffMetric, string>> = {
     audioEvents: 'pistes',
 };
 
-const summarizeGroup = (group: DetailGroup, metric: StaffMetric): string =>
-    `${group.items.length} ${GROUP_NOUN[metric] ?? 'éléments'}`;
+const summarizeGroup = (group: DetailGroup, metric: StaffMetric | undefined): string =>
+    `${group.items.length} ${(metric && GROUP_NOUN[metric]) ?? 'éléments'}`;
 
 // Side drawer behind a heatmap cell: the person's records for that bucket,
 // fetched lazily on open, each deep-linking to its admin edit screen.
 
 export interface DrawerSelection {
-    metric: StaffMetric;
+    metric: StaffMetricFilter;
     granularity: StatsGranularity;
     actorId: number;
     actorName: string;
@@ -99,7 +105,6 @@ export default function DetailDrawer({
     const current = result?.key === key ? result : null;
     const items = current ? current.items : undefined; // undefined = loading
     const error = current !== null && current.items === null;
-    const [badgeLabel, badgeTint] = BADGE_MAPS[metric] ?? [{}, {}];
 
     // Bulk actions (a folder of tracks uploaded at once, a batch job walking
     // several records) fold into one row with a count, the same way the
@@ -137,7 +142,7 @@ export default function DetailDrawer({
                     <div>
                         <h3 className="font-semibold text-foreground">{actorName}</h3>
                         <p className="text-sm text-muted-foreground">
-                            {METRIC_LABELS[metric]} — {formatBucketLabel(bucket, granularity)}
+                            {staffMetricFilterLabel(metric)} — {formatBucketLabel(bucket, granularity)}
                         </p>
                     </div>
                     <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer">
@@ -162,8 +167,14 @@ export default function DetailDrawer({
                         const item = headOf(group);
                         const merged = group.items.length;
                         const expanded = expandedKeys.has(group.key);
+                        // Under metric 'all', each item carries which metric it came
+                        // from (see loadAllItems in the details route) — the `type`
+                        // domains aren't disjoint across metrics, so the badge map has
+                        // to be picked per item rather than once for the whole drawer.
+                        const itemMetric = item.metric ?? (metric !== 'all' ? metric : undefined);
+                        const [badgeLabel, badgeTint] = itemMetric ? (BADGE_MAPS[itemMetric] ?? [{}, {}]) : [{}, {}];
                         const typeBadge = item.type && (
-                            metric === 'billEvents' ? (
+                            itemMetric === 'billEvents' ? (
                                 <Badge className={billEventTint(item.type, item.payload ?? null)}>
                                     {billEventLabel(item.type, item.payload ?? null)}
                                 </Badge>
@@ -219,7 +230,7 @@ export default function DetailDrawer({
                                             className="font-normal text-muted-foreground"
                                             title={`${merged} écritures entre ${formatDateTime(group.items[0].at)} et ${formatDateTime(item.at)}, regroupées`}
                                         >
-                                            {summarizeGroup(group, metric)}
+                                            {summarizeGroup(group, itemMetric)}
                                         </Badge>
                                     )}
                                     {item.needsReview && (

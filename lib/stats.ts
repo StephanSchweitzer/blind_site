@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import type { MemberGroup, StaffMetric, StatsGranularity, TrendMetric } from '@/types';
+import type { MemberGroup, StaffMetric, StaffMetricFilter, StatsGranularity, TrendMetric } from '@/types';
 
 // Helpers shared by the /api/stats/* aggregate routes.
 //
@@ -154,6 +154,24 @@ export function parseMetricParam(value: string | null): StaffMetric | null {
         ? (value as StaffMetric)
         : null;
 }
+
+/** Like parseMetricParam, but also accepts the combined-total pseudo-metric. */
+export function parseMetricFilterParam(value: string | null): StaffMetricFilter | null {
+    return value === 'all' ? 'all' : parseMetricParam(value);
+}
+
+/**
+ * Metrics summed for the "Tous" total. auditEvents is deliberately left out: Book,
+ * CoupsDeCoeur, News, Orders, Assignment, Bill and AudioTrackEvent are all audited
+ * models (AUDITED_MODELS, lib/audit/config.ts), so almost every row behind the
+ * other seven metrics already produces its own AuditEvent — adding auditEvents as
+ * an eighth addend would double-count the very production the total is supposed to
+ * add up. Same "a count would mislead" reasoning already keeps auditEvents out of
+ * the production trend cards — see TREND_TABS in app/admin/stats/stats-utils.ts.
+ */
+export const STAFF_TOTAL_METRICS: StaffMetric[] = STAFF_METRICS.filter(
+    (metric) => metric !== 'auditEvents'
+);
 
 /**
  * memberType → the three buckets the Membres filter offers. 'ecouteur' is the

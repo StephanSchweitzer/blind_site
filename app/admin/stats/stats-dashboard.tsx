@@ -5,17 +5,17 @@ import { AdminCard } from '@/components/ui/admin';
 import { Button } from '@/components/ui/button';
 import type {
     MemberStatsResponse,
-    StaffMetric,
+    StaffMetricFilter,
     StaffStatsResponse,
     TrendsResponse,
 } from '@/types';
 import {
     METRIC_HINTS,
-    METRIC_LABELS,
     RANGE_PRESETS,
     RangePreset,
-    STAFF_METRIC_ORDER,
+    STAFF_METRIC_FILTER_ORDER,
     resolveRange,
+    staffMetricFilterLabel,
 } from './stats-utils';
 import TrendCards from './trend-cards';
 import StaffHeatmap from './staff-heatmap';
@@ -48,7 +48,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export default function StatsDashboard() {
     const [preset, setPreset] = useState<RangePreset>('28d');
-    const [metric, setMetric] = useState<StaffMetric>('books');
+    const [metric, setMetric] = useState<StaffMetricFilter>('all');
 
     const [staff, setStaff] = useState<Keyed<StaffStatsResponse> | null>(null);
     const [trends, setTrends] = useState<Keyed<TrendsResponse> | null>(null);
@@ -87,7 +87,9 @@ export default function StatsDashboard() {
     }, [rangeQuery]);
 
     const staffLoading = staff?.key !== staffKey;
-    const metricHint = METRIC_HINTS[metric];
+    const metricHint = metric === 'all'
+        ? 'Somme des autres métriques ci-contre ; le journal des modifications n’y entre pas, car il double presque toujours l’une d’elles.'
+        : METRIC_HINTS[metric];
 
     return (
         <div className="space-y-6">
@@ -123,14 +125,14 @@ export default function StatsDashboard() {
                         Activité des permanents
                     </h2>
                     <div className="flex flex-wrap gap-1">
-                        {STAFF_METRIC_ORDER.map((m) => (
+                        {STAFF_METRIC_FILTER_ORDER.map((m) => (
                             <Button
                                 key={m}
                                 size="sm"
                                 variant={m === metric ? 'default' : 'outline'}
                                 onClick={() => { setMetric(m); setSelection(null); }}
                             >
-                                {METRIC_LABELS[m]}
+                                {staffMetricFilterLabel(m)}
                             </Button>
                         ))}
                     </div>

@@ -34,7 +34,11 @@ export const headOf = (group: DetailGroup): StaffDetailItem => group.items[group
  * a rename right after wouldn't join, since its type differs.
  */
 function sameBurst(previous: StaffDetailItem, item: StaffDetailItem): boolean {
-    return previous.title === item.title && (previous.type ?? null) === (item.type ?? null);
+    return (
+        previous.title === item.title &&
+        (previous.type ?? null) === (item.type ?? null) &&
+        (previous.metric ?? null) === (item.metric ?? null)
+    );
 }
 
 /**

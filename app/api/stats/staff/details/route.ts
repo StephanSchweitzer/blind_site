@@ -6,12 +6,13 @@ import { getUserDisplayName } from '@/lib/users/displayName';
 import { auditHref, auditIdentity, fieldLabel, formatAuditValue, isReservedField } from '@/lib/audit/labels';
 import { parseAuditSnapshot, resolveFieldLabels, resolveRecordLabels } from '@/lib/audit/record-labels';
 import {
+    STAFF_TOTAL_METRICS,
     isoUtc,
     parisDayStartUtc,
     parisDayStartUtcPlusDays,
     parseDateParam,
     parseGranularityParam,
-    parseMetricParam,
+    parseMetricFilterParam,
 } from '@/lib/stats';
 import { newsTypeLabels, type NewsType } from '@/types/news';
 import type {
@@ -296,9 +297,32 @@ async function loadItems(
     }
 }
 
+/**
+ * The 'all' cell's detail: every metric's own items for that (actor, bucket),
+ * tagged with the metric they came from — the client needs it to pick the
+ * right badge map, since the metrics' `type` domains aren't disjoint (see
+ * detail-drawer.tsx). auditEvents is left out for the same reason it's left
+ * out of the aggregate itself: it doubles what the other metrics already say.
+ */
+async function loadAllItems(
+    actorId: number,
+    from: Prisma.Sql,
+    to: Prisma.Sql
+): Promise<StaffDetailItem[]> {
+    const perMetric = await Promise.all(
+        STAFF_TOTAL_METRICS.map(async (metric) =>
+            (await loadItems(metric, actorId, from, to)).map((item) => ({ ...item, metric }))
+        )
+    );
+    return perMetric
+        .flat()
+        .sort((a, b) => a.at.localeCompare(b.at))
+        .slice(0, DETAILS_LIMIT);
+}
+
 export const GET = withSuperAdmin(async (request) => {
     const params = request.nextUrl.searchParams;
-    const metric = parseMetricParam(params.get('metric'));
+    const metric = parseMetricFilterParam(params.get('metric'));
     const bucket = parseDateParam(params.get('bucket'));
     const granularity = parseGranularityParam(params.get('granularity'));
     const actorIdRaw = params.get('actorId');
@@ -312,7 +336,10 @@ export const GET = withSuperAdmin(async (request) => {
     const to = parisDayStartUtcPlusDays(bucket, granularity === 'week' ? 7 : 1);
 
     try {
-        const response: StaffDetailsResponse = { items: await loadItems(metric, actorId, from, to) };
+        const items = metric === 'all'
+            ? await loadAllItems(actorId, from, to)
+            : await loadItems(metric, actorId, from, to);
+        const response: StaffDetailsResponse = { items };
         return NextResponse.json(response);
     } catch (error) {
         console.error('Error fetching staff stat details:', error);

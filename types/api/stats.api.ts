@@ -18,6 +18,9 @@ export type OrgMetric = 'payments' | 'bills' | 'newMembers' | 'activityEvents';
 
 export type TrendMetric = StaffMetric | OrgMetric;
 
+/** A single metric, or 'all' for the total summed across every one of them. */
+export type StaffMetricFilter = StaffMetric | 'all';
+
 export type StatsGranularity = 'day' | 'week';
 
 export interface StatsActor {
@@ -58,6 +61,8 @@ export interface StaffDetailItem {
     type?: string;
     /** billEvents only — carries e.g. { reason: 'accrual' } for auto-attached orders. */
     payload?: Record<string, unknown> | null;
+    /** Which metric produced this record — set only when several were merged (metric 'all'). */
+    metric?: StaffMetric;
 }
 
 export interface StaffDetailsResponse {

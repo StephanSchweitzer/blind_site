@@ -1,5 +1,5 @@
 import { AUDIT_RETENTION_DAYS, AUDIT_RETENTION_DAYS_UNDER_PRESSURE } from '@/lib/audit/config';
-import type { MemberGroup, StaffMetric, StatsGranularity, TrendMetric } from '@/types';
+import type { MemberGroup, StaffMetric, StaffMetricFilter, StatsGranularity, TrendMetric } from '@/types';
 
 // Client-side date helpers for the stats dashboard. Buckets are plain
 // 'YYYY-MM-DD' keys manipulated through UTC arithmetic so no local-timezone
@@ -105,6 +105,16 @@ export const STAFF_METRIC_ORDER: StaffMetric[] = [
     'audioEvents',
     'auditEvents',
 ];
+
+/** The heatmap's own button row: the combined total first, then each metric on its own. */
+export const STAFF_METRIC_FILTER_ORDER: StaffMetricFilter[] = ['all', ...STAFF_METRIC_ORDER];
+
+export const ALL_METRICS_LABEL = 'Tous';
+
+/** METRIC_LABELS doesn't carry 'all' (it also serves the trend cards, which have no such tab). */
+export function staffMetricFilterLabel(metric: StaffMetricFilter): string {
+    return metric === 'all' ? ALL_METRICS_LABEL : METRIC_LABELS[metric];
+}
 
 /**
  * The trend strip, clustered.
