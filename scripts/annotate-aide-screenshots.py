@@ -59,26 +59,49 @@ def dessiner(chemin_image, reperes):
     dessin = ImageDraw.Draw(image)
     fonte = police(TAILLE_NUMERO)
 
+    dessines = 0
     for repere in reperes:
         x0 = max(0, repere['x'] - MARGE)
         y0 = max(0, repere['y'] - MARGE)
         x1 = min(image.width - 1, repere['x'] + repere['w'] + MARGE)
         y1 = min(image.height - 1, repere['y'] + repere['h'] + MARGE)
+
+        # Un champ hors du cadrage rend un rectangle degenere (y1 <= y0), et
+        # Pillow leve alors une exception qui emportait TOUTE la serie — les
+        # captures suivantes restaient sans reperes sans que rien ne le dise.
+        # Le cas arrive des qu'un modal defile : le bouton vise est reel, mais
+        # il n'est pas dans l'image. On le signale et on continue.
+        if x1 - x0 < EPAISSEUR * 2 or y1 - y0 < EPAISSEUR * 2:
+            print('    ! repere %s hors cadrage, ignore' % repere['n'])
+            continue
+
+        dessines += 1
         dessin.rounded_rectangle([x0, y0, x1, y1], radius=RAYON,
                                  outline=VERT, width=EPAISSEUR)
 
         numero = str(repere['n'])
         boite = dessin.textbbox((0, 0), numero, font=fonte)
         largeur, hauteur = boite[2] - boite[0], boite[3] - boite[1]
-        y_numero = (y0 + y1) // 2 - hauteur // 2 - boite[1]
 
-        # Le numero se pose a gauche du cadre ; s'il n'y a pas la place, il
-        # passe dedans, en haut a gauche, plutot que de sortir de l'image.
-        x_numero = x0 - largeur - 14
-        if x_numero < 4:
-            x_numero = x0 + 10
-            y_numero = y0 + 6
-        dessin.text((x_numero, y_numero), numero, font=fonte, fill=VERT)
+        # UNE PASTILLE SUR LE COIN, ET NON UN CHIFFRE POSE DANS LE CADRE.
+        #
+        # Le numero se mettait a gauche du cadre, et faute de place il retombait
+        # DANS le cadre, en haut a gauche. Sur trois boutons cote a cote —
+        # « Remettre en brouillon », « Marquer comme payee », « Solder la
+        # facture » — les trois numeros se posaient donc en travers des trois
+        # libelles, qu'on ne pouvait plus lire. Un repere qui masque ce qu'il
+        # designe ne repere rien.
+        #
+        # La pastille est centree sur le COIN du cadre : a cheval dessus, elle
+        # ne mord que l'angle, la ou aucun libelle ne commence. Le chiffre passe
+        # en blanc sur le vert, lisible sur une interface claire comme sombre.
+        rayon = max(largeur, hauteur) // 2 + 9
+        cx = min(max(x0, rayon), image.width - rayon - 1)
+        cy = min(max(y0, rayon), image.height - rayon - 1)
+        dessin.ellipse([cx - rayon, cy - rayon, cx + rayon, cy + rayon],
+                       fill=VERT, outline=(255, 255, 255), width=2)
+        dessin.text((cx - largeur // 2 - boite[0], cy - hauteur // 2 - boite[1]),
+                    numero, font=fonte, fill=(255, 255, 255))
 
         if repere.get('fleche'):
             fleche(dessin, x_pointe=x0 - largeur - 24, y=(y0 + y1) // 2)
@@ -88,7 +111,7 @@ def dessiner(chemin_image, reperes):
         image.save(chemin_image, quality=90, optimize=True)
     else:
         image.save(chemin_image)
-    return len(reperes)
+    return dessines
 
 
 def main():

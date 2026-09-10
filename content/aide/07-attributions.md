@@ -74,7 +74,7 @@ Pour modifier une attribution, cliquez sur la ligne correspondante dans le table
 
 Cela ouvrira le modal de modification des attributions.
 
-![Attributions - capture 13](/admin/aide/images/attributions-13.png)
+![Attributions - capture 13](/admin/aide/images/attributions-13.jpg)
 
 Il peut arriver qu'un lecteur ne parvienne pas à terminer son attribution ; dans ce cas, depuis cette fenêtre modale de modification d'attribution, nous pouvons réattribuer un lecteur en cliquant sur le champ « Lecteur ».
 

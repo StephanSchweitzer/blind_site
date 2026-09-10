@@ -90,7 +90,7 @@ Pour modifier un auditeur, cliquez sur la ligne que vous souhaitez modifier
 
 Cela ouvrira le modal « Modifier un membre ».
 
-![Membres - capture 11](/admin/aide/images/membres-11.png)
+![Membres - capture 11](/admin/aide/images/membres-11.jpg)
 
 Tout ici est identique à le modal « Ajouter un membre », à l'exception de deux éléments en haut et d'un élément en bas. Les différences en haut sont les suivantes : (1) la bannière qui affiche le statut de la cotisation, et (2) le bouton « Voir le dossier ».
 
@@ -152,7 +152,7 @@ Tous ces onglets fonctionnent presque exactement de la même manière que les se
 
 ## Section « statut »
 
-![Membres - capture 22](/admin/aide/images/membres-22.png)
+![Membres - capture 22](/admin/aide/images/membres-22.jpg)
 
 La section « Statut » vous permet de modifier la disponibilité et le statut d'une personne au sein de l'ECA. Quatre statuts peuvent être attribués à une personne.
 

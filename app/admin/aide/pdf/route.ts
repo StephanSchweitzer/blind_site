@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import { Readable } from 'stream';
 import { NextResponse } from 'next/server';
-import { renderToBuffer } from '@react-pdf/renderer';
+import { renderToStream } from '@react-pdf/renderer';
 import { withAuth } from '@/lib/auth/guards';
 import { getAllAideSections } from '@/lib/aide';
 import { parseAideBlocks } from '@/lib/aide-blocks';
@@ -77,13 +78,37 @@ export const GET = withAuth(async () => {
         images,
         dateImpression: parisDate(new Date()),
     });
-    const pdf = await renderToBuffer(document);
+    /**
+     * EN FLUX, ET C'EST LA RAISON D'ÊTRE DE CE DÉTOUR.
+     *
+     * `renderToBuffer` rendait le guide entier en mémoire puis le renvoyait
+     * d'un bloc. En local cela marche — c'est ce qui a longtemps caché le
+     * problème. Sur Vercel, le corps d'une réponse de fonction est PLAFONNÉ À
+     * 4,5 Mo : le guide en pesait 11,3, et le bouton « Exporter en PDF »
+     * répondait une erreur au lieu d'un fichier.
+     *
+     * Une réponse diffusée n'a pas ce plafond. Le PDF part par morceaux, à
+     * mesure que react-pdf les produit — ce qui supprime au passage le pic de
+     * mémoire du tampon complet.
+     *
+     * Pas de `Content-Length` : la taille n'est pas connue avant d'avoir tout
+     * rendu, et l'annoncer fausse ferait couper le téléchargement. Le fichier
+     * arrive donc sans jauge de progression ; c'est le prix, et il se voit à
+     * peine sur quelques secondes.
+     *
+     * Ce plafond se rappellera au bon souvenir de qui ajoutera des captures :
+     * le PDF pèse à peu près ce que pèse `content/aide/images/`, react-pdf
+     * embarquant les JPEG tels quels sans les redécoder. `pnpm aide:optimize`
+     * tient ce poids ; le flux fait qu'il ne casse plus rien s'il remonte.
+     */
+    // `renderToStream` est typé `NodeJS.ReadableStream`, l'interface minimale ;
+    // il rend en pratique un `Readable`, seul type que `toWeb` accepte.
+    const flux = (await renderToStream(document)) as unknown as Readable;
 
     const jour = new Date().toISOString().slice(0, 10);
-    return new NextResponse(new Uint8Array(pdf), {
+    return new NextResponse(Readable.toWeb(flux) as ReadableStream<Uint8Array>, {
         headers: {
             'Content-Type': 'application/pdf',
-            'Content-Length': String(pdf.length),
             'Content-Disposition': `attachment; filename="mode-d-emploi-arbre-rose-${jour}.pdf"`,
             // Engendré à chaque appel : c'est ce qui garantit qu'il colle au
             // guide en ligne. Aucun cache, partagé ou non.

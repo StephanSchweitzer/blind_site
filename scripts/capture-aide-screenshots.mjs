@@ -54,6 +54,44 @@ const SPECS = [
         why: 'états Payée/Soldée et le filtre « Factures en retard »',
     },
     {
+        name: 'factures-02.jpg',
+        url: '/admin/bills',
+        waitFor: 'table tbody tr',
+        steps: [{ clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 }],
+        clip: '[role="dialog"]',
+        why: 'le formulaire vide, avant qu\'un auditeur ne soit choisi',
+    },
+    {
+        name: 'factures-03.jpg',
+        url: '/admin/bills',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickSelector: '[role="dialog"] [role="combobox"]' }, { sleep: 600 },
+            { typeIn: { selector: '[placeholder="Rechercher par nom ou email..."]', value: 'stef' } },
+            { sleep: 1600 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'la recherche d\'auditeur, nom et adresse sur deux lignes',
+    },
+    {
+        name: 'factures-04.jpg',
+        url: '/admin/bills',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickSelector: '[role="dialog"] [role="combobox"]' }, { sleep: 600 },
+            { typeIn: { selector: '[placeholder="Rechercher par nom ou email..."]', value: 'stef' } },
+            { sleep: 1600 },
+            { clickSelector: '[data-radix-popper-content-wrapper] button' },
+            { sleep: 2200 },
+            // L'etoile du champ obligatoire fait partie du texte du libelle.
+            { scrollToText: 'Demandes à facturer *' }, { sleep: 400 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'les avertissements ambre : prestation non terminée, tarif absent',
+    },
+    {
         name: 'factures-06.jpg',
         url: '/admin/bills',
         waitFor: 'table tbody tr',
@@ -61,12 +99,86 @@ const SPECS = [
         clip: '[role="dialog"]',
         // Les numeros reprennent ceux du paragraphe de 08-factures.md.
         annotations: [
-            { n: 1, label: "État de la facture" },
-            { n: 2, label: 'Date de création' },
-            { n: 3, label: "Date d'émission" },
-            { n: 4, label: 'Créer la facture', self: true },
+            { n: 1, label: 'Auditeur *' },
+            { n: 2, label: "État de la facture" },
+            { n: 3, label: 'Date de création' },
+            { n: 4, label: "Date d'émission" },
+            { n: 5, label: 'Créer la facture', self: true },
         ],
         why: "état à la création + date d'émission obligatoire si « Payée »",
+    },
+    {
+        name: 'factures-07.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/bills',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            // Le formulaire s'ouvre deja sur « Émise » : le bloc du reglement
+            // est donc la, il ne reste qu'a cocher la case (par son etiquette).
+            { clickExact: 'Facture déjà réglée' }, { sleep: 1000 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'la case « Facture déjà réglée » et les trois champs du règlement',
+    },
+    {
+        name: 'factures-09.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/bills?bill=2791',
+        waitFor: '[role="dialog"]',
+        sleep: 2200,
+        clip: '[role="dialog"]',
+        annotations: [
+            { n: 1, label: 'Enregistrer un paiement', self: true },
+            { n: 2, label: 'Émettre la facture', self: true },
+            { n: 3, label: 'Ajouter une demande', self: true },
+            { n: 4, label: 'Supprimer la facture', self: true },
+        ],
+        why: 'un BROUILLON : « Ajouter une demande » n\'existe que là',
+    },
+    {
+        name: 'factures-10.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/bills?bill=2804',
+        waitFor: '[role="dialog"]',
+        sleep: 2200,
+        clip: '[role="dialog"]',
+        annotations: [
+            { n: 1, label: 'Imprimer la facture', self: true },
+            { n: 2, label: 'Remettre en brouillon', self: true },
+            { n: 3, label: 'Marquer comme payée', self: true },
+            { n: 4, label: 'Solder la facture', self: true },
+        ],
+        why: 'une ÉMISE : le compte encaissé, et les trois suites possibles',
+    },
+    {
+        name: 'factures-11.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/bills?bill=2809',
+        waitFor: '[role="dialog"]',
+        sleep: 2200,
+        clip: '[role="dialog"]',
+        annotations: [{ n: 1, label: 'Rouvrir la facture', self: true }],
+        why: 'une PAYÉE : le bandeau ambre « Facture finalisée »',
+    },
+    {
+        name: 'factures-12.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/bills?bill=2804',
+        waitFor: '[role="dialog"]',
+        sleep: 2200,
+        steps: [{ clickText: 'Historique de la facture' }, { sleep: 1200 }],
+        clip: '[role="dialog"]',
+        why: "l'historique déployé, une ligne par écriture",
+    },
+    {
+        name: 'factures-13.jpg',
+        url: '/admin/bills?bill=2804',
+        waitFor: '[role="dialog"]',
+        sleep: 2200,
+        steps: [{ clickText: 'Supprimer la facture' }, { sleep: 1200 }],
+        clip: '[role="alertdialog"], [role="dialog"]',
+        why: 'la confirmation de suppression, et ce qu\'elle annonce',
     },
     {
         name: 'demandes-07.jpg',
@@ -88,7 +200,63 @@ const SPECS = [
         why: 'les trois dates, dans leur ordre',
     },
     {
+        name: 'paiements-04.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter un paiement' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickExact: 'Cotisation' }, { waitFor: '[role="option"]' }, { sleep: 500 },
+            { clickExact: 'Enregistrement' }, { sleep: 900 },
+            { clickText: 'Rechercher un auditeur' }, { sleep: 700 },
+            { typeIn: { selector: '[placeholder="Nom, email, ou numéro de personne..."]', value: 'stef' } },
+            { sleep: 1800 },
+            { clickSelector: '[data-radix-popper-content-wrapper] button' }, { sleep: 2200 },
+        ],
+        clip: '[role="dialog"]',
+        why: "l'auditeur choisi fait apparaitre « Factures associees »",
+    },
+    {
+        name: 'paiements-05.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter un paiement' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickExact: 'Cotisation' }, { waitFor: '[role="option"]' }, { sleep: 500 },
+            { clickExact: 'Enregistrement' }, { sleep: 900 },
+            { clickText: 'Rechercher un auditeur' }, { sleep: 700 },
+            { typeIn: { selector: '[placeholder="Nom, email, ou numéro de personne..."]', value: 'stef' } },
+            { sleep: 1800 },
+            { clickSelector: '[data-radix-popper-content-wrapper] button' }, { sleep: 2200 },
+            { clickText: 'Sélectionner une facture' }, { sleep: 1200 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'la liste deroulante des factures de cet auditeur',
+    },
+    {
+        name: 'paiements-06.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter un paiement' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickExact: 'Cotisation' }, { waitFor: '[role="option"]' }, { sleep: 500 },
+            { clickExact: 'Enregistrement' }, { sleep: 900 },
+            { clickText: 'Rechercher un auditeur' }, { sleep: 700 },
+            { typeIn: { selector: '[placeholder="Nom, email, ou numéro de personne..."]', value: 'stef' } },
+            { sleep: 1800 },
+            { clickSelector: '[data-radix-popper-content-wrapper] button' }, { sleep: 2200 },
+            { clickText: 'Sélectionner une facture' }, { sleep: 1200 },
+            { clickSelector: '[role="option"], [data-radix-popper-content-wrapper] button' },
+            { sleep: 1400 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'la facture une fois rattachee au paiement en cours',
+    },
+    {
         name: 'paiements-07.jpg',
+        viewport: { width: 1440, height: 1300 },
         url: '/admin/payments',
         waitFor: 'table tbody tr',
         steps: [
@@ -98,6 +266,90 @@ const SPECS = [
         ],
         clip: '[role="dialog"]',
         why: 'le champ client selon le type (Donateur / Personne)',
+    },
+    {
+        name: 'paiements-01.jpg',
+        url: '/admin/payments',
+        waitFor: 'table tbody tr',
+        steps: [{ typeIn: { selector: 'input[placeholder*="paiement"]', value: 'stef' } }, { sleep: 2200 }],
+        clip: '.rounded-lg.border',
+        annotations: [
+            { n: 1, label: 'Exporter (CSV)', self: true },
+            { n: 2, label: 'Période sur' },
+        ],
+        why: 'la recherche élargie, le filtre de période et l\'export CSV',
+    },
+    {
+        name: 'paiements-02.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter un paiement' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickExact: 'Cotisation' }, { waitFor: '[role="option"]' }, { sleep: 600 },
+        ],
+        clip: '[role="listbox"], [data-radix-popper-content-wrapper]',
+        why: 'les quatre types de paiement, dans leur menu',
+    },
+    {
+        name: 'paiements-03.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments',
+        waitFor: 'table tbody tr',
+        steps: [{ clickText: 'Ajouter un paiement' }, { waitFor: '[role="dialog"]' }, { sleep: 1200 }],
+        clip: '[role="dialog"]',
+        annotations: [
+            { n: 1, label: 'Type *' },
+            { n: 2, label: 'Auditeur *' },
+            { n: 3, label: 'Montant *' },
+            { n: 4, label: 'Année de cotisation' },
+            { n: 5, label: 'Créer le paiement', self: true },
+        ],
+        why: 'une COTISATION : le champ « Année de cotisation » lui est propre',
+    },
+    {
+        name: 'paiements-08.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter un paiement' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickExact: 'Détails comptables' }, { sleep: 900 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'les détails comptables, repliés par défaut',
+    },
+    {
+        name: 'paiements-09.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments?payment=8996',
+        waitFor: '[role="dialog"]',
+        sleep: 2400,
+        clip: '[role="dialog"]',
+        why: 'un ENREGISTREMENT rattaché à une facture, tel qu\'on le rouvre',
+    },
+    {
+        name: 'paiements-10.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments?payment=8985',
+        waitFor: '[role="dialog"]',
+        sleep: 2400,
+        clip: '[role="dialog"]',
+        annotations: [
+            { n: 1, label: 'Supprimer le paiement', self: true },
+            { n: 2, label: 'Enregistrer les modifications', self: true },
+        ],
+        why: 'les deux gestes propres à la modification',
+    },
+    {
+        name: 'paiements-11.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/payments?payment=8985',
+        waitFor: '[role="dialog"]',
+        sleep: 2400,
+        steps: [{ clickText: 'Supprimer le paiement' }, { sleep: 1400 }],
+        clip: '[role="alertdialog"], [role="dialog"]',
+        why: 'la confirmation de suppression d\'un paiement',
     },
     {
         name: 'liste-de-livres-01.jpg',
@@ -127,8 +379,51 @@ const SPECS = [
         name: 'statistiques-01.jpg',
         url: '/admin/stats',
         waitFor: 'h1',
-        sleep: 2500,
-        why: "les indicateurs d'activite",
+        sleep: 4000,
+        annotations: [
+            { n: 1, label: '4 semaines', self: true },
+            // L'onglet porte son total colle a son nom : « Production1 ».
+            { n: 2, label: 'Livres ajoutés' },
+        ],
+        why: "la periode, les trois familles, et les cartes de Production",
+    },
+    {
+        name: 'statistiques-02.jpg',
+        url: '/admin/stats',
+        waitFor: 'h1',
+        sleep: 4000,
+        steps: [{ clickText: 'Facturation' }, { sleep: 1800 }],
+        why: 'la famille Facturation, et ce que chaque carte y compte',
+    },
+    {
+        name: 'statistiques-03.jpg',
+        viewport: { width: 1440, height: 1100 },
+        url: '/admin/stats',
+        waitFor: 'h1',
+        sleep: 4000,
+        steps: [{ scrollToText: 'Activité des permanents' }, { sleep: 1200 }],
+        annotations: [{ n: 1, label: 'Modifications tracées', self: true }],
+        why: 'la grille : une ligne par permanent, une colonne par jour',
+    },
+    {
+        name: 'statistiques-04.jpg',
+        viewport: { width: 1440, height: 1100 },
+        url: '/admin/stats',
+        waitFor: 'h1',
+        sleep: 4000,
+        steps: [{ scrollToText: 'Membres' }, { sleep: 1200 }],
+        why: "la carte Membres et son filtre Tous / Lecteurs / Auditeurs / Autres",
+    },
+    {
+        name: 'statistiques-05.jpg',
+        viewport: { width: 1440, height: 1300 },
+        url: '/admin/stats',
+        waitFor: 'h1',
+        sleep: 4500,
+        steps: [
+            { scrollToText: 'Journal des modifications' }, { sleep: 2000 },
+        ],
+        why: 'le journal, ses filtres, et la ligne de retenue en tete',
     },
     {
         name: 'pages-publiques-01.jpg',
@@ -246,7 +541,9 @@ async function clickText(text, exact = false) {
     const clicked = await evaluate(`(() => {
         const wanted = ${JSON.stringify(text)};
         const exact = ${exact};
-        const nodes = [...document.querySelectorAll('button, a, [role="button"], [role="option"], [role="combobox"]')];
+        // Les etiquettes en font partie : une case a cocher Radix se bascule
+        // par son libelle, et « Facture deja reglee » n'est rien d'autre.
+        const nodes = [...document.querySelectorAll('button, a, label, [role="button"], [role="option"], [role="combobox"]')];
         const hit = nodes.find((n) => {
             const label = n.textContent.trim();
             const ok = exact ? label === wanted : label.includes(wanted);
@@ -263,7 +560,10 @@ async function clickText(text, exact = false) {
 async function scrollToText(text) {
     const ok = await evaluate(`(() => {
         const wanted = ${JSON.stringify(text)};
-        const nodes = [...document.querySelectorAll('label, h3, h4, button, p, span, div')];
+        // h1 et h2 compris : les titres de section des statistiques en sont,
+        // et leur absence d'ici faisait echouer le cadrage sur un libelle
+        // pourtant bien present dans la page.
+        const nodes = [...document.querySelectorAll('label, h1, h2, h3, h4, button, p, span, div')];
         const hit = nodes.reverse().find((n) => n.textContent.trim() === wanted && n.getBoundingClientRect().height > 0);
         if (!hit) return false;
         hit.scrollIntoView({ block: 'center' });
@@ -290,6 +590,32 @@ async function searchFor(term) {
     } catch {
         /* recherche instantanee */
     }
+}
+
+/**
+ * Ecrit dans UN champ designe, et pas dans le premier venu.
+ *
+ * `searchFor` prend le premier champ de recherche du document. Modal ouvert,
+ * ce premier champ est celui de la PAGE, reste derriere : on filtrait le
+ * tableau du fond pendant que le formulaire au premier plan restait vide.
+ */
+async function typeIn(selector, value) {
+    const ok = await evaluate(`(() => {
+        // Le premier VISIBLE : plusieurs pages posent le meme champ deux fois,
+        // une version pour le telephone et une pour l'ecran large, dont une
+        // seule est affichee. Ecrire dans la version masquee ne filtre rien.
+        const el = [...document.querySelectorAll(${JSON.stringify(selector)})]
+            .find((n) => n.getBoundingClientRect().height > 0);
+        if (!el) return false;
+        const proto = el instanceof window.HTMLTextAreaElement
+            ? window.HTMLTextAreaElement.prototype
+            : window.HTMLInputElement.prototype;
+        Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(value)});
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+    })()`);
+    if (!ok) throw new Error(`champ ${selector} introuvable`);
 }
 
 async function clickSelector(selector) {
@@ -339,18 +665,30 @@ async function reperesPour(annotations, clip) {
             const libelle = ${JSON.stringify(a.label)};
             const propre = ${a.self ? "true" : "false"};
             const noeuds = [...document.querySelectorAll('label, button, a, p, span, div, h3, h4')];
-            const el = noeuds.find((n) => n.textContent.trim() === libelle
-                && n.getBoundingClientRect().height > 0);
+            // Une taille REELLE, pas seulement non nulle : le meme libelle
+            // existe souvent en double, dont une copie de 1x1 px destinee aux
+            // lecteurs d'ecran. Elle vient en premier dans le document, et le
+            // repere se posait donc sur un point invisible.
+            const el = noeuds.find((n) => {
+                if (n.textContent.trim() !== libelle) return false;
+                const r = n.getBoundingClientRect();
+                return r.height > 8 && r.width > 8;
+            });
             if (!el) return null;
             let cible = el;
             if (!propre) {
                 // Remonter jusqu'au bloc qui englobe l'etiquette ET son champ.
+                // Assez grand pour englober l'etiquette ET son champ, mais pas
+                // plus : sans plafond, « Annee de cotisation » remontait
+                // jusqu'au formulaire entier et le cadre vert enfermait dix
+                // champs d'un coup, ce qui ne designe plus rien.
                 const hauteurLibelle = el.getBoundingClientRect().height;
                 let noeud = el;
                 for (let i = 0; i < 3 && noeud.parentElement; i++) {
                     noeud = noeud.parentElement;
-                    if (noeud.getBoundingClientRect().height > hauteurLibelle * 1.8) {
-                        cible = noeud;
+                    const h = noeud.getBoundingClientRect().height;
+                    if (h > hauteurLibelle * 1.8) {
+                        if (h <= hauteurLibelle * 6) cible = noeud;
                         break;
                     }
                 }
@@ -372,6 +710,180 @@ async function reperesPour(annotations, clip) {
         });
     }
     return trouves;
+}
+
+/**
+ * Remplace les donnees personnelles AVANT la photo.
+ *
+ * La base de developpement n'est pas un jeu d'essai : c'est une copie du reel,
+ * avec de vrais auditeurs, leurs adresses electroniques et leurs adresses
+ * postales. Or le guide s'imprime et se donne aux nouveaux permanents.
+ *
+ * D'ou ce nettoyage a la SOURCE plutot qu'apres coup. L'autre chaine
+ * (aide-ocr.ps1 + redact-aide-screenshots.py) peint des rectangles sur des
+ * pixels d'apres un OCR : elle depend de ce que l'OCR a su lire, et ce qu'il
+ * rate reste lisible. Ici on reecrit le DOM — ce qui n'est plus dans la page
+ * n'est dans aucune capture, sans dependre d'une reconnaissance de caracteres.
+ *
+ * Les pseudonymes sont DETERMINISTES : « Bernard MORVAN » rend toujours le
+ * meme faux nom, dans toutes les captures. Un tirage aleatoire donnerait a la
+ * meme personne un nom different d'une image a l'autre, et le lecteur croirait
+ * a deux dossiers la ou le guide en montre un.
+ *
+ * Ce que le nettoyage NE fait pas : deviner qu'un mot est un patronyme. Les
+ * formes reglees (courriel, telephone, voie, code postal) partent par motif ;
+ * les noms partent par CORRESPONDANCE EXACTE contre la liste des membres, que
+ * l'application nous donne elle-meme (voir chargerNomsReels). Une heuristique
+ * aurait rebaptise « Claire » dans un titre du catalogue ; la verite terrain,
+ * non. Le garde-fou en fin de fonction refuse la capture s'il reste un nom.
+ */
+const NOMS_FICTIFS = [
+    'Camille Berger', 'Julien Marchand', 'Sylvie Lemoine', 'Thierry Nadaud',
+    'Odile Vasseur', 'Marc Delaunay', 'Hélène Rousseau', 'Patrick Fontaine',
+    'Nicole Aubry', 'Damien Perrot', 'Christiane Loiseau', 'Serge Bonnet',
+];
+
+/**
+ * Les vrais noms, demandes a l'application elle-meme.
+ *
+ * Deviner qu'un mot est un patronyme ne marche pas : « Claire » ouvre autant de
+ * fiches que de titres de livres. On prend donc la VERITE TERRAIN — la liste
+ * des membres — et on ne remplace que ce qui y figure vraiment.
+ *
+ * Seuls les noms COMPLETS servent. Un prenom seul n'identifie personne et se
+ * confond avec un titre ou un auteur du catalogue : le remplacer abimerait des
+ * captures sans rien proteger.
+ */
+let NOMS_REELS = [];
+
+async function chargerNomsReels() {
+    const paires = await evaluate(`(async () => {
+        const r = await fetch('/api/user');
+        const j = await r.json();
+        // /api/user rend un TABLEAU NU, la ou les autres routes enveloppent
+        // dans { data } ou { users }. Lire j.users donnait undefined, donc une
+        // liste vide, donc un garde-fou qui laissait tout passer sans rien
+        // dire : c'est ainsi qu'un nom reel s'est retrouve dans une capture.
+        const liste = Array.isArray(j) ? j : (j.users ?? j.data ?? []);
+        return liste
+            .filter((u) => u.firstName && u.lastName)
+            .map((u) => [String(u.firstName).trim(), String(u.lastName).trim()]);
+    })()`);
+
+    const noms = new Set();
+    for (const [prenom, nom] of paires ?? []) {
+        if (prenom.length + nom.length < 5) continue;
+        noms.add(`${prenom} ${nom}`);
+        noms.add(`${nom} ${prenom}`);
+    }
+    // Les plus longs d'abord : « Daniel CHAVANCE BLESSIG » doit partir avant
+    // qu'un fragment plus court n'en emporte la moitie.
+    NOMS_REELS = [...noms].sort((a, b) => b.length - a.length);
+
+    // Une liste vide n'est PAS une base sans membres : c'est une reponse qu'on
+    // a mal lue. Un garde-fou qui ne garde rien est pire que pas de garde-fou,
+    // parce qu'il rassure — on ne repart donc pas du tout dans ce cas.
+    if (NOMS_REELS.length < 10) {
+        throw new Error(
+            `liste des membres quasi vide (${NOMS_REELS.length}) : le masquage des noms ne peut pas etre verifie`,
+        );
+    }
+    return NOMS_REELS.length;
+}
+
+async function anonymiser(pseudonymes = []) {
+    const restes = await evaluate(`(() => {
+        const NOMS = ${JSON.stringify(NOMS_FICTIFS)};
+        const REELS = ${JSON.stringify(NOMS_REELS)};
+
+        // Meme chaine -> meme pseudonyme, pour toute la session.
+        const memoire = (window.__pseudos ||= new Map());
+        const pseudo = (brut) => {
+            if (!memoire.has(brut)) memoire.set(brut, NOMS[memoire.size % NOMS.length]);
+            return memoire.get(brut);
+        };
+
+        const COURRIEL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/g;
+        const TELEPHONE = /\\b0[1-9](?:[ .\\-]?\\d{2}){4}\\b/g;
+        const VOIE = /\\b\\d{1,4}\\s*(?:bis|ter)?\\s*(?:rue|avenue|av|boulevard|bd|impasse|chemin|all[ée]e|place|route|r[ée]sidence|quai|square|villa|cours)\\b[^,;\\n]*/gi;
+        const CODE_POSTAL = /\\b\\d{5}\\s+[A-ZÀ-Ý][A-Za-zÀ-ÿ\\- ]{2,}/g;
+
+        // Les noms declares par la spec, remplaces entiers : un patronyme n'a
+        // pas de forme reconnaissable, seul son emplacement le designe.
+        for (const selecteur of ${JSON.stringify(pseudonymes)}) {
+            for (const el of document.querySelectorAll(selecteur)) {
+                const brut = el.textContent.trim();
+                if (brut) el.textContent = pseudo(brut);
+            }
+        }
+
+        // Puis les formes reglees, sur les seuls noeuds de texte : passer par
+        // innerHTML reecrirait le balisage et casserait la mise en page.
+        const parcours = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        const noeuds = [];
+        while (parcours.nextNode()) noeuds.push(parcours.currentNode);
+        for (const noeud of noeuds) {
+            const avant = noeud.nodeValue;
+            if (!avant || !avant.trim()) continue;
+            let apres = avant
+                .replace(COURRIEL, (m) => pseudo(m).toLowerCase().replace(/ /g, '.')
+                    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '') + '@exemple.fr')
+                .replace(TELEPHONE, '01 23 45 67 89')
+                .replace(VOIE, '12 rue des Lilas')
+                .replace(CODE_POSTAL, '57000 EXEMPLEVILLE');
+
+            // Les noms reels, par correspondance exacte contre la liste des
+            // membres — aucune heuristique, donc aucun faux positif sur un
+            // titre du catalogue.
+            for (const reel of REELS) {
+                if (apres.includes(reel)) apres = apres.split(reel).join(pseudo(reel));
+            }
+            if (apres !== avant) noeud.nodeValue = apres;
+        }
+
+        /**
+         * Rattrapage : les noms COUPES entre deux elements.
+         *
+         * « Prenom » dans un span et « NOM » dans le suivant, et aucun noeud de
+         * texte ne porte le nom entier : la passe ci-dessus ne voit rien, alors
+         * que la page, elle, l'affiche bien. C'est exactement ce que le
+         * garde-fou a rattrape sur la fiche d'une attribution.
+         *
+         * On cherche donc le PLUS PETIT element dont le texte contient le nom,
+         * et on remplace son contenu. Ecraser le balisage interne n'a pas
+         * d'importance ici : ce qu'il portait, c'etait le nom.
+         */
+        const restant = () => REELS.filter((r) => document.body.innerText.includes(r));
+        for (const reel of restant()) {
+            // On descend par innerText, PAS par textContent. « Agnes Blanc »
+            // s'affiche en deux elements voisins : l'espace qui les separe
+            // vient du rendu, pas du texte. textContent rend donc
+            // « AgnesBlanc » et ne trouve jamais le nom qu'on voit a l'ecran.
+            let element = document.body;
+            for (;;) {
+                const enfant = [...element.children].find((e) => e.innerText?.includes(reel));
+                if (!enfant) break;
+                element = enfant;
+            }
+            if (element !== document.body) element.textContent = pseudo(reel);
+        }
+
+        // Garde-fou : ce qui ressemble encore a une donnee personnelle apres
+        // le passage. Mieux vaut manquer une capture que la publier.
+        const texte = document.body.innerText;
+        const restes = [];
+        if (/[A-Za-z0-9._%+-]+@(?!exemple\\.fr)[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/.test(texte)) restes.push('courriel');
+        if (/\\b0[1-9](?:[ .\\-]?\\d{2}){4}\\b/.test(texte.replace(/01 23 45 67 89/g, ''))) restes.push('téléphone');
+        // Un nom de membre encore lisible : la capture est refusee. On ne dit
+        // que le NOMBRE — ce script n'imprime jamais la donnee qu'il protege.
+        const noms = REELS.filter((r) => texte.includes(r)).length;
+        if (noms) restes.push(noms + ' nom(s) de membre');
+        return restes;
+    })()`);
+
+    if (restes.length) {
+        throw new Error(`donnée personnelle encore visible (${restes.join(', ')})`);
+    }
 }
 
 async function capture(name, clipSelector, annotations = []) {
@@ -513,10 +1025,27 @@ async function main() {
             ...VIEWPORT, deviceScaleFactor: 1, mobile: false,
         });
         await signIn();
-        console.log(`Connecté. ${specs.length} capture(s) à prendre.\n`);
+        const combien = await chargerNomsReels();
+        console.log(`Connecté. ${combien} noms de membres à masquer. ${specs.length} capture(s) à prendre.\n`);
 
         for (const spec of specs) {
             try {
+                /**
+                 * Une fenetre plus haute pour les modales qui depassent.
+                 *
+                 * La modale d'une facture mesure plus que les 900 px de la
+                 * fenetre : « Imprimer la facture » en haut et « Supprimer la
+                 * facture » en bas ne tenaient pas dans la meme image, et les
+                 * reperes qui les visaient tombaient hors cadrage. Plutot que
+                 * de couper le guide en deux captures qui se repondent mal, on
+                 * agrandit la fenetre le temps de la photo.
+                 */
+                await send('Emulation.setDeviceMetricsOverride', {
+                    width: spec.viewport?.width ?? VIEWPORT.width,
+                    height: spec.viewport?.height ?? VIEWPORT.height,
+                    deviceScaleFactor: 1,
+                    mobile: false,
+                });
                 await goto(BASE + spec.url);
                 if (spec.waitFor) await waitFor(spec.waitFor);
                 await sleep(spec.sleep ?? 600);
@@ -524,6 +1053,7 @@ async function main() {
                     if (step.clickText) await clickText(step.clickText);
                     if (step.clickExact) await clickText(step.clickExact, true);
                     if (step.clickSelector) await clickSelector(step.clickSelector);
+                    if (step.typeIn) await typeIn(step.typeIn.selector, step.typeIn.value);
                     if (step.scrollToText) await scrollToText(step.scrollToText);
                     if (step.searchFor) await searchFor(step.searchFor);
                     if (step.waitFor) await waitFor(step.waitFor);
@@ -531,6 +1061,9 @@ async function main() {
                 }
                 await forcerThemeClair();
                 await sleep(300);
+                // Juste avant la photo : apres toute la navigation, donc plus
+                // rien ne peut recharger de vraies donnees par-dessus.
+                await anonymiser(spec.pseudonymes ?? []);
                 const size = await capture(spec.name, spec.clip, spec.annotations ?? []);
                 console.log(`  ✓ ${spec.name.padEnd(26)} ${String(Math.round(size / 1024)).padStart(4)} Ko   ${spec.why}`);
             } catch (error) {

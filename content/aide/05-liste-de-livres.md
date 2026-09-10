@@ -39,7 +39,7 @@ Lorsque vous cliquez sur le bouton « Démarrer l'enregistrement », l'enregistr
 
 Lorsqu'on clique dessus, le bouton devient « Arrêter l'enregistrement »
 
-![Liste de Livres - capture 4](/admin/aide/images/liste-de-livres-04.png)
+![Liste de Livres - capture 4](/admin/aide/images/liste-de-livres-04.jpg)
 
 Lorsque vous cliquerez sur le bouton qui indique désormais « arrêter l'enregistrement », la section suivante s'affichera
 
@@ -47,7 +47,7 @@ Lorsque vous cliquerez sur le bouton qui indique désormais « arrêter l'enregi
 
 Vous pouvez poursuivre l'enregistrement par prises de cette manière en cliquant sur « Continuer l'enregistrement », ce qui ajoutera une nouvelle barre d'enregistrement au menu.
 
-![Liste de Livres - capture 6](/admin/aide/images/liste-de-livres-06.png)
+![Liste de Livres - capture 6](/admin/aide/images/liste-de-livres-06.jpg)
 
 Vous pouvez (1) continuer à enregistrer des sections, (2) écouter une section enregistrée, (3) supprimer une section enregistrée, (4) enregistrer toutes les sections enregistrées sous la forme d'un seul enregistrement combiné dans l'ordre indiqué ci-dessus, et (5) supprimer tous les enregistrements et arrêter l'enregistrement d'une section audio.
 

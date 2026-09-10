@@ -11,6 +11,7 @@
     "dev:claude-user": "tsx prisma/dev-claude-user.ts",
     "aide:check": "tsx scripts/check-aide-links.ts",
     "aide:shots": "node scripts/capture-aide-screenshots.mjs",
+    "aide:optimize": "python scripts/optimize-aide-images.py",
     "aide:annotate": "python scripts/annotate-aide-screenshots.py",
     "prepare": "husky"
   },

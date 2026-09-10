@@ -10,7 +10,7 @@ La page « Disponibilité » a été conçue pour faciliter le suivi logistique 
 
 Cet outil vous permet de savoir qui est disponible, à quel moment, quelles langues ces personnes parlent, combien de livres elles lisent actuellement, et il nous permet de mettre à jour leurs disponibilités de manière centralisée pour tous, plutôt que de le faire individuellement sur la page des membres via la fenêtre contextuelle « Modifier le membre ».
 
-![Disponibilités - capture 1](/admin/aide/images/disponibilites-01.png)
+![Disponibilités - capture 1](/admin/aide/images/disponibilites-01.jpg)
 
 Si vous souhaitez trouver une personne en particulier et connaître ses disponibilités, utilisez la barre de recherche ci-dessous et recherche par nom
 

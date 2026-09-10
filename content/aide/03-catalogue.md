@@ -42,7 +42,7 @@ Vous pouvez également cliquer sur le bouton représentant un casque, situé à 
 
 Lorsque vous cliquez sur le bouton « Ajouter un livre », le modal permettant de créer un livre s'ouvre.
 
-![Catalogue - capture 7](/admin/aide/images/catalogue-07.png)
+![Catalogue - capture 7](/admin/aide/images/catalogue-07.jpg)
 
 Vous pouvez soit saisir manuellement les informations relatives au livre, soit utiliser l'API Google Livres pour que les champs soient remplis automatiquement. Pour effectuer une recherche via Google, cliquez sur le bouton « Rechercher sur Google Livres ».
 
@@ -72,7 +72,7 @@ Je vais rechercher « romain français », puis je cliquerai dessus
 
 ![Catalogue - capture 13](/admin/aide/images/catalogue-13.jpg)
 
-![Catalogue - capture 14](/admin/aide/images/catalogue-14.png)
+![Catalogue - capture 14](/admin/aide/images/catalogue-14.jpg)
 
 Le livre est désormais classé dans la catégorie « Roman français ».
 
@@ -90,7 +90,7 @@ Enfin, cliquez sur le bouton « Ajouter le livre » situé en bas de la page pou
 
 Lorsque vous cliquez sur la ligne d'un livre ou sur le bouton de modification situé sur cette ligne, le modal de modification du livre s'ouvre.
 
-![Catalogue - capture 17](/admin/aide/images/catalogue-17.png)
+![Catalogue - capture 17](/admin/aide/images/catalogue-17.jpg)
 
 Vous pouvez également ouvrir l'éditeur audio ici
 
