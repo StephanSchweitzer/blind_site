@@ -19,6 +19,8 @@ const NAVY = '#15366b';
 const GRIS = '#4b5563';
 
 export interface AideSectionPDF {
+    /** Sert d'ancre PDF (`id` de la page) — c'est elle que ciblent le sommaire et les renvois entre sections. */
+    slug: string;
     titre: string;
     blocs: AideBlock[];
 }
@@ -34,12 +36,25 @@ export interface AideImageResolue {
     hauteur: number;
 }
 
+// 750 × 141 px, voir public/eca_logo.png — un ratio fixe, connu une fois pour
+// toutes, comme LOGO_RATIO dans BillPDF.tsx.
+const LOGO_RATIO = 750 / 141;
+
 const styles = StyleSheet.create({
     page: { paddingTop: 54, paddingBottom: 56, paddingHorizontal: 48, fontSize: 10.5, lineHeight: 1.5 },
+    couvertureLogo: { width: 168, height: 168 / LOGO_RATIO, marginBottom: 40 },
     couvertureTitre: { fontFamily: BOLD, fontSize: 30, color: NAVY, marginBottom: 10 },
-    couvertureSous: { fontSize: 12, color: GRIS, marginBottom: 28 },
-    sommaireTitre: { fontFamily: BOLD, fontSize: 13, color: NAVY, marginBottom: 8 },
-    sommaireLigne: { fontSize: 11, marginBottom: 4, color: '#111827' },
+    couvertureSous: { fontSize: 12, color: GRIS, marginBottom: 36 },
+    sommaireTitre: { fontFamily: BOLD, fontSize: 13, color: NAVY, marginBottom: 14 },
+    sommaireLigne: {
+        flexDirection: 'row',
+        marginBottom: 10,
+        paddingBottom: 10,
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#e5e7eb',
+    },
+    sommaireNumero: { width: 22, fontSize: 11, color: GRIS },
+    sommaireLien: { flex: 1, fontSize: 11, color: '#2563eb', textDecoration: 'none' },
     sectionTitre: { fontFamily: BOLD, fontSize: 20, color: NAVY, marginBottom: 14 },
     h2: { fontFamily: BOLD, fontSize: 13, color: NAVY, marginTop: 16, marginBottom: 6 },
     h3: { fontFamily: BOLD, fontSize: 11, marginTop: 12, marginBottom: 4 },
@@ -167,33 +182,49 @@ function Bloc({ bloc, images }: { bloc: AideBlock; images: Map<string, AideImage
 export function AideGuidePDF({
     sections,
     images,
+    logo,
     dateImpression,
 }: {
     sections: AideSectionPDF[];
     images: Map<string, AideImageResolue>;
+    /** Le logotype ECA, lu au disque côté serveur — voir app/admin/aide/pdf/route.ts. */
+    logo: Buffer;
     dateImpression: string;
 }) {
     return (
         <Document title="Mode d'emploi — Arbre Rose" author="ECA — Les Auxiliaires des Aveugles">
             <Page size="A4" style={styles.page}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text -- l'Image de react-pdf n'accepte pas d'alt */}
+                <Image style={styles.couvertureLogo} src={{ data: logo, format: 'png' }} />
                 <Text style={styles.couvertureTitre}>Mode d&apos;emploi</Text>
                 <Text style={styles.couvertureSous}>
                     Arbre Rose — la partie administration du site aux ECA{'\n'}
                     Édition du {dateImpression}
                 </Text>
 
+                {/*
+                    Chaque ligne du sommaire est une ancre interne, pas un numéro de
+                    page : `Link src="#<slug>"` saute directement à la page de la
+                    section (`Page id={section.slug}` plus bas) au lieu d'ouvrir le
+                    site — voir isSrcId/setLink dans @react-pdf/render. Un numéro de
+                    page n'aurait rien apporté de plus et aurait fait courir le
+                    risque documenté sur `pied` plus bas.
+                */}
                 <Text style={styles.sommaireTitre}>Sommaire</Text>
                 {sections.map((section, i) => (
-                    <Text key={section.titre} style={styles.sommaireLigne}>
-                        {i + 1}. {section.titre}
-                    </Text>
+                    <View key={section.slug} style={styles.sommaireLigne}>
+                        <Text style={styles.sommaireNumero}>{i + 1}.</Text>
+                        <Link src={`#${section.slug}`} style={styles.sommaireLien}>
+                            {section.titre}
+                        </Link>
+                    </View>
                 ))}
 
                 <Text style={styles.pied} fixed>Mode d&apos;emploi — Arbre Rose</Text>
             </Page>
 
             {sections.map((section) => (
-                <Page key={section.titre} size="A4" style={styles.page}>
+                <Page key={section.slug} id={section.slug} size="A4" style={styles.page}>
                     <Text style={styles.sectionTitre}>{section.titre}</Text>
                     {section.blocs.map((bloc, i) => (
                         <Bloc key={i} bloc={bloc} images={images} />

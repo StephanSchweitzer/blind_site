@@ -29,8 +29,33 @@ export type AideBlock =
 /** Les liens du guide sont tous internes ; un `/admin/...` relatif n'a de sens que sur ce site. */
 const SITE_URL = 'https://eca-aveugles.fr';
 
-/** Découpe le gras `**…**` et les liens `[texte](url)`. Le reste de l'inline n'est pas utilisé par le guide. */
-export function decouperRuns(ligne: string): AideRun[] {
+/**
+ * Un lien vers une autre section du guide (`/admin/aide/<slug>`, éventuellement
+ * suivi d'une ancre de titre qu'on ignore — le PDF n'ancre que la section).
+ */
+const LIEN_AIDE = /^\/admin\/aide\/([a-z0-9-]+)\/?(?:#.*)?$/;
+
+/**
+ * `#<slug>` plutôt qu'une URL : `@react-pdf/render` reconnaît un `src` commençant
+ * par `#` comme une destination interne (voir `isSrcId` / `setLink` dans
+ * `@react-pdf/render`) et saute à la page qui porte cet `id`, au lieu d'ouvrir le
+ * site — un guide imprimé ou lu hors ligne n'a pas de session pour y suivre le lien.
+ */
+function resoudreHref(cible: string, slugsInternes: ReadonlySet<string> | undefined): string {
+    const interne = LIEN_AIDE.exec(cible);
+    if (interne && slugsInternes?.has(interne[1])) return `#${interne[1]}`;
+    return cible.startsWith('/') ? `${SITE_URL}${cible}` : cible;
+}
+
+/**
+ * Découpe le gras `**…**` et les liens `[texte](url)`. Le reste de l'inline n'est
+ * pas utilisé par le guide.
+ *
+ * `slugsInternes` — les slugs des sections du guide — permet de transformer un
+ * lien vers une autre section en ancre interne au PDF ; omis, tout lien
+ * `/admin/...` reste résolu en absolu vers le site.
+ */
+export function decouperRuns(ligne: string, slugsInternes?: ReadonlySet<string>): AideRun[] {
     const runs: AideRun[] = [];
     const re = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)]+)\)/g;
     let position = 0;
@@ -42,8 +67,7 @@ export function decouperRuns(ligne: string): AideRun[] {
         if (m[1] !== undefined) {
             runs.push({ text: m[1], bold: true });
         } else {
-            const url = m[3].startsWith('/') ? `${SITE_URL}${m[3]}` : m[3];
-            runs.push({ text: m[2], bold: false, url });
+            runs.push({ text: m[2], bold: false, url: resoudreHref(m[3], slugsInternes) });
         }
         position = m.index + m[0].length;
     }
@@ -60,7 +84,7 @@ const PUCE = /^[-*]\s+(.+)$/;
 const NUMEROTEE = /^(\d+)\.\s+(.+)$/;
 const SEPARATEUR_TABLEAU = /^\|?\s*:?-{2,}/;
 
-export function parseAideBlocks(corps: string): AideBlock[] {
+export function parseAideBlocks(corps: string, slugsInternes?: ReadonlySet<string>): AideBlock[] {
     const blocs: AideBlock[] = [];
     const lignes = corps.split(/\r?\n/);
 
@@ -108,13 +132,13 @@ export function parseAideBlocks(corps: string): AideBlock[] {
 
         const citation = CITATION.exec(ligne);
         if (citation) {
-            blocs.push({ type: 'citation', runs: decouperRuns(citation[1]) });
+            blocs.push({ type: 'citation', runs: decouperRuns(citation[1], slugsInternes) });
             continue;
         }
 
         const puce = PUCE.exec(ligne);
         if (puce) {
-            blocs.push({ type: 'liste', puce: '•', runs: decouperRuns(puce[1]) });
+            blocs.push({ type: 'liste', puce: '•', runs: decouperRuns(puce[1], slugsInternes) });
             continue;
         }
 
@@ -123,12 +147,12 @@ export function parseAideBlocks(corps: string): AideBlock[] {
             blocs.push({
                 type: 'liste',
                 puce: `${numerotee[1]}.`,
-                runs: decouperRuns(numerotee[2]),
+                runs: decouperRuns(numerotee[2], slugsInternes),
             });
             continue;
         }
 
-        blocs.push({ type: 'paragraphe', runs: decouperRuns(ligne) });
+        blocs.push({ type: 'paragraphe', runs: decouperRuns(ligne, slugsInternes) });
     }
 
     return blocs;

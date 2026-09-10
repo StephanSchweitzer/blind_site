@@ -28,6 +28,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const IMAGES = path.join(process.cwd(), 'content', 'aide', 'images');
+// Comme les captures : le rendu tourne côté serveur (Node), pas dans un
+// navigateur, donc un `src="/eca_logo.png"` ne se résoudrait pas — il faut le
+// binaire. `public/` et pas `content/aide/images/` : c'est le logotype de
+// l'association, pas une capture d'écran du guide.
+const LOGO = path.join(process.cwd(), 'public', 'eca_logo.png');
 
 // A4 : 595 pt de large, 842 de haut ; la page en réserve 48 de chaque côté et
 // 54/56 en haut et en bas. Reste 499 pt utiles en largeur. On plafonne la
@@ -37,9 +42,15 @@ const LARGEUR_UTILE = 499;
 const HAUTEUR_MAX = 560;
 
 export const GET = withAuth(async () => {
-    const sections = getAllAideSections().map((section) => ({
+    const sectionsBrutes = getAllAideSections();
+    // Les liens d'une section vers une autre (`[Paiements](/admin/aide/paiements)`)
+    // ne deviennent une ancre interne que s'ils pointent une section qui existe
+    // réellement — voir resoudreHref dans lib/aide-blocks.ts.
+    const slugs = new Set(sectionsBrutes.map((section) => section.slug));
+    const sections = sectionsBrutes.map((section) => ({
+        slug: section.slug,
         titre: section.title,
-        blocs: parseAideBlocks(section.body),
+        blocs: parseAideBlocks(section.body, slugs),
     }));
 
     // Ne lire au disque que les captures réellement citées, une seule fois
@@ -73,9 +84,12 @@ export const GET = withAuth(async () => {
         }
     }
 
+    const logo = await fs.promises.readFile(LOGO);
+
     const document = AideGuidePDF({
         sections,
         images,
+        logo,
         dateImpression: parisDate(new Date()),
     });
     /**

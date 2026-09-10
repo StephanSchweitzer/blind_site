@@ -78,7 +78,7 @@ Cette case et le menu « État de la facture » **désignent la même chose** : 
 
 Une fois cochée, trois champs s'ouvrent : la **référence de paiement** (facultative — un numéro de chèque, une référence de virement), la **méthode de paiement**, et la **date de paiement**, elle obligatoire.
 
-À l'enregistrement, la facture est créée émise, son paiement est enregistré, puis elle passe payée — en une seule opération. **Le règlement devient un paiement à part entière** : il apparaît dans « Paiements » et se corrige là-bas. La facture ne fait que le refléter.
+À l'enregistrement, la facture est créée émise, son paiement est enregistré, puis elle passe payée — en une seule opération. **Le règlement devient un paiement à part entière** : il apparaît dans « [Paiements](/admin/aide/paiements) » et se corrige là-bas. La facture ne fait que le refléter.
 
 ![Factures - capture 7](/admin/aide/images/factures-07.jpg)
 
@@ -116,7 +116,7 @@ Une fois la facture émise, ce sont d'autres gestes qui s'offrent :
 
 (4) « **Solder la facture** » abandonne la créance
 
-Au-dessus, le bloc « **Paiements** » répond d'un coup d'œil à « cette facture est-elle réglée ? » : *Encaissé 0,00 € sur 30,00 €*, puis *Reste à payer 30,00 €*. Chaque paiement rattaché s'y affiche avec son montant, sa méthode, sa date et sa référence, et **la ligne entière ouvre le paiement** dans « Paiements ».
+Au-dessus, le bloc « **Paiements** » répond d'un coup d'œil à « cette facture est-elle réglée ? » : *Encaissé 0,00 € sur 30,00 €*, puis *Reste à payer 30,00 €*. Chaque paiement rattaché s'y affiche avec son montant, sa méthode, sa date et sa référence, et **la ligne entière ouvre le paiement** dans « [Paiements](/admin/aide/paiements) ».
 
 L'écart entre l'encaissé et le total est affiché en gris, sans alerte. C'est délibéré : **un paiement rattaché vaut règlement**. C'est le rattachement qui dit qu'une facture est réglée, pas l'arithmétique — sans quoi un écart de saisie de quelques centimes réclamerait de l'argent sur une facture que quelqu'un a déjà encaissée.
 
@@ -132,7 +132,7 @@ Pour corriger une référence, ouvrez donc le paiement — depuis la liste « Pa
 
 Une facture « Payée » ou « Soldée » est finalisée : son contenu ne bouge plus. Un bandeau ambre le dit et propose la seule issue, « **Rouvrir la facture** ».
 
-Rouvrir la fait repasser à « émise ». Si elle portait des paiements, **ils en sont détachés** — ils restent dans « Paiements », et leur numéro part à l'historique. Si elle était soldée sans paiement, elle redevient une créance à réclamer.
+Rouvrir la fait repasser à « émise ». Si elle portait des paiements, **ils en sont détachés** — ils restent dans « [Paiements](/admin/aide/paiements) », et leur numéro part à l'historique. Si elle était soldée sans paiement, elle redevient une créance à réclamer.
 
 ![Factures - capture 11](/admin/aide/images/factures-11.jpg)
 

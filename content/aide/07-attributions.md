@@ -56,7 +56,7 @@ Ainsi, si seule la (1) « Date de réception » est renseignée, le statut est �
 
 Ces trois dates se remplissent **dans cet ordre**. Chacune affirme que le livre est physiquement passé par l'étape précédente, si bien qu'une date de retour sans date d'envoi est refusée.
 
-**Une attribution ne peut pas passer « Terminé » tant qu'aucun enregistrement n'a été déposé pour le livre.** Le système répond alors : « Impossible de terminer l'attribution : aucun enregistrement n'a été déposé pour ce livre. » Déposez l'audio dans le dossier du livre — l'éditeur audio du Catalogue — puis repassez l'attribution « Terminé ».
+**Une attribution ne peut pas passer « Terminé » tant qu'aucun enregistrement n'a été déposé pour le livre.** Le système répond alors : « Impossible de terminer l'attribution : aucun enregistrement n'a été déposé pour ce livre. » Déposez l'audio dans le dossier du livre — l'éditeur audio du [Catalogue](/admin/aide/catalogue) — puis repassez l'attribution « Terminé ».
 
 Ce contrôle existe parce que le coût de la demande se calcule sur le poids de l'enregistrement : terminer une attribution sans audio figerait un tarif plancher sur une facture que l'on ne pourrait plus corriger. L'inverse n'est volontairement pas vrai — déposer l'audio ne termine jamais une attribution tout seul, car le retour du lecteur est un fait qu'un permanent constate.
 

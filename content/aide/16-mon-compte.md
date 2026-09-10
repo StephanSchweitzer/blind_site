@@ -34,10 +34,10 @@ une précision facultative.
 
 Ce n'est pas une formalité administrative : cette période est ce qui fait qu'on ne vous confie
 pas une attribution pendant vos vacances, et ce qui vous fait apparaître dans « Retours
-prochains » sur la page Disponibilités le jour où vous redevenez disponible. Une absence non
+prochains » sur la page [Disponibilités](/admin/aide/disponibilites) le jour où vous redevenez disponible. Une absence non
 déclarée se traduit par un livre qui attend chez quelqu'un qui n'est pas là.
 
-Une permanente peut aussi renseigner votre indisponibilité depuis la page Disponibilités : les
+Une permanente peut aussi renseigner votre indisponibilité depuis la page [Disponibilités](/admin/aide/disponibilites) : les
 deux chemins écrivent la même chose.
 
 ## Mon activité récente

@@ -26,7 +26,7 @@ L'URL de cette page est https://eca-aveugles.fr/admin/audio-orphelins
 
 Un détail qui a son importance : un dossier n'est « rattaché » que tant que **le livre auquel
 il est rattaché existe encore**. Si ce livre est supprimé plus tard — lors d'une fusion sur la
-page Doublons, par exemple — le dossier redevient orphelin et **revient dans « À traiter »**.
+page [Doublons](/admin/aide/doublons), par exemple — le dossier redevient orphelin et **revient dans « À traiter »**.
 Il ne disparaît pas en silence en se prétendant réglé.
 
 ## Rattacher un dossier à un livre existant
