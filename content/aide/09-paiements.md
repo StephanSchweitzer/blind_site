@@ -16,15 +16,17 @@ L'URL de cette page est https://eca-aveugles.fr/admin/payments
 
 La **recherche** ne se limite pas au nom de la personne. Elle accepte aussi le **numéro du paiement**, le **numéro de la facture** à laquelle il est rattaché, et la **référence de règlement** — un numéro de chèque, par exemple. C'est en général le chemin le plus court : on a rarement le nom sous les yeux, souvent le chèque.
 
-Deux menus filtrent ensuite la liste **par type** et **par méthode de paiement**.
+Le bouton « **Filtres** », à droite de la barre de recherche, déplie le panneau des filtres. La pastille bleue qu'il porte compte ceux qui sont posés ; le panneau lui-même reste replié tant qu'on ne le demande pas, pour laisser le tableau commencer haut dans la page.
 
-En dessous vient le filtre de **période**, qui demande d'abord *sur quelle date* il porte : la **date de création** de l'écriture, ou la **date de paiement**. Les deux diffèrent souvent — un chèque de décembre saisi en janvier — et la distinction compte au moment de rapprocher les comptes. Les champs « Du » et « Au » bornent alors la période.
+Le panneau filtre **par type** et **par méthode de paiement**, puis sur une **période**, qui demande d'abord *sur quelle date* elle porte : la **date de création** de l'écriture, ou la **date de paiement**. Les deux diffèrent souvent — un chèque de décembre saisi en janvier — et la distinction compte au moment de rapprocher les comptes. Les champs « Du » et « Au » bornent alors la période. Deux cases terminent le panneau, sous « Rapprochement » : « **Sans facture liée** » ne garde que les paiements qu'aucune facture ne réclame, « **Non affectés** » ceux qui n'ont jamais été affectés.
+
+Chaque filtre posé s'affiche alors sous la barre de recherche, sous forme d'étiquette. C'est là qu'on lit pourquoi la liste est plus courte qu'attendu, sans rouvrir le panneau : la croix d'une étiquette retire ce filtre-là, et « **Tout réinitialiser** » les enlève tous, recherche et tri compris.
 
 Enfin, les colonnes **ID**, **Date de création**, **Date de paiement** et **Montant** se trient : cliquez sur l'en-tête pour changer le sens.
 
 Le bouton « **Exporter (CSV)** » enregistre **la sélection telle qu'elle est affichée** — mêmes filtres, même tri, même contenu. Ce n'est pas un export de toute la base : ce que vous voyez est ce que vous obtenez, ce qui rend l'export utilisable tel quel pour une clôture.
 
-(1) L'export CSV de la sélection affichée — (2) le filtre de période et la date sur laquelle il porte
+(1) L'export CSV de la sélection affichée — (2) le bouton qui déplie les filtres — (3) la période et la date sur laquelle elle porte
 
 ![Paiements - capture 1](/admin/aide/images/paiements-01.jpg)
 

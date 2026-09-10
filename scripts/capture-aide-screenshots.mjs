@@ -271,13 +271,19 @@ const SPECS = [
         name: 'paiements-01.jpg',
         url: '/admin/payments',
         waitFor: 'table tbody tr',
-        steps: [{ typeIn: { selector: 'input[placeholder*="paiement"]', value: 'stef' } }, { sleep: 2200 }],
+        // Le panneau de filtres part replie : sans ce clic, « Periode sur »
+        // n'existe pas dans le DOM et son repere se poserait dans le vide.
+        steps: [
+            { typeIn: { selector: 'input[placeholder*="paiement"]', value: 'stef' } }, { sleep: 2200 },
+            { clickExact: 'Filtres' }, { sleep: 600 },
+        ],
         clip: '.rounded-lg.border',
         annotations: [
             { n: 1, label: 'Exporter (CSV)', self: true },
-            { n: 2, label: 'Période sur' },
+            { n: 2, label: 'Filtres', self: true },
+            { n: 3, label: 'Période sur' },
         ],
-        why: 'la recherche élargie, le filtre de période et l\'export CSV',
+        why: 'la recherche élargie, le panneau des filtres déplié et l\'export CSV',
     },
     {
         name: 'paiements-02.jpg',

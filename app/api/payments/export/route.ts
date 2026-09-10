@@ -63,6 +63,26 @@ const CHUNK = 500;
  */
 const MAX_ROWS = 50_000;
 
+/**
+ * Le budget de temps, écrit plutôt que subi.
+ *
+ * Mesuré sur la base de dev (7 988 paiements, aucun filtre) : 890 ms en tout,
+ * 1,1 Mio, seize requêtes de 500 lignes. En production s'ajoute l'aller-retour
+ * réseau vers Supabase à chaque tranche — de l'ordre de deux à trois secondes,
+ * loin des limites. Ce n'est pas la sélection d'aujourd'hui qui coûte, c'est le
+ * plafond : à 50 000 lignes, l'`OFFSET` de la dernière tranche se paie, et la
+ * durée par défaut du plus petit forfait Vercel (10 s sans Fluid compute) ne
+ * suffirait plus. 45 s laisse cette marge, en restant sous les ~60 s
+ * configurables sur ce forfait — même arbitrage que `/api/books/[id]`.
+ *
+ * La réponse est un FLUX, et c'est ce qui la garde hors du plafond de 4,5 Mio
+ * qui frappe les corps de réponse assemblés en mémoire. Rassembler ce CSV dans
+ * une chaîne avant de le rendre — la « simplification » qui vient à l'esprit —
+ * le heurterait vers 30 000 lignes, et ferait porter le fichier entier à la
+ * mémoire de la fonction. Le `ReadableStream` ci-dessous n'est pas décoratif.
+ */
+export const maxDuration = 45;
+
 export const GET = withAdmin(async (request) => {
     const params = parsePaymentListParams(request.nextUrl.searchParams);
     const where = buildPaymentListWhere(params);
