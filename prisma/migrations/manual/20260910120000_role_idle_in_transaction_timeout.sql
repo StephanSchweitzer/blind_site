@@ -1,0 +1,25 @@
+-- A transaction opened by the app's role and then left idle (no statement
+-- running — an abandoned script, a forgotten Studio/psql session) holds a
+-- real Postgres backend connection open indefinitely. DATABASE_URL is
+-- Supabase's pgbouncer in transaction mode, which hands out a limited number
+-- of those backend connections; one stuck session is enough to eventually
+-- starve the pool, which is what made /admin/listes-de-livres (and
+-- potentially any other admin page) hang forever waiting on pool.connect()
+-- with no error and no timeout (see lib/prisma.ts's connectionTimeoutMillis
+-- for the client-side half of this fix).
+--
+-- This is set at the role level, not sent per-session by the client, because
+-- pgbouncer's transaction-mode multiplexing can hand a client a different
+-- backend per transaction — a one-time client-side SET is not guaranteed to
+-- still be attached to whichever backend picks up the next transaction. A
+-- role default is re-applied by Postgres itself every time that role starts
+-- a new backend session, regardless of how pgbouncer routed it there.
+--
+-- 30s is well above anything this app or its scripts legitimately need — no
+-- code here holds a transaction open waiting on anything external. Confirmed
+-- locally: a transaction idled past the limit is killed by Postgres with
+-- `error: terminating connection due to idle-in-transaction timeout` (25P03).
+--
+-- Applies only to new sessions from the moment it runs; nothing already
+-- connected is affected. Safe to re-run (idempotent).
+ALTER ROLE "postgres" SET idle_in_transaction_session_timeout = '30s';

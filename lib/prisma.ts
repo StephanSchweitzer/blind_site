@@ -10,7 +10,28 @@ const getLogConfig = () => {
     return ["error"] as Prisma.LogLevel[];
 };
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+// connectionTimeoutMillis matters more here than usual: DATABASE_URL is
+// Supabase's pgbouncer in transaction mode (see CLAUDE.md), which caps how
+// many backend connections it hands out. `pg`'s own default for this option
+// is 0 — wait forever — so when that pool is briefly saturated, a request
+// hangs on pool.connect() indefinitely instead of failing. A server component
+// awaiting that never resolves or rejects, so Next.js has nothing to catch
+// and the page's loading.tsx spins forever until the user reloads. Bounding
+// it turns that into a normal, retryable error.
+//
+// `max` is set explicitly rather than left at pg's default of 10: this app
+// runs on Vercel, so every serverless instance opens its own pool, and each
+// one competing for 10 slots on Supabase's shared free-tier pooler is what
+// causes that saturation in the first place. Note DATABASE_URL's own
+// `connection_limit`/`pgbouncer` query params do NOT do this — those are a
+// Prisma-native-engine convention that `@prisma/adapter-pg` + plain `pg`
+// never reads (confirmed: `pg.Pool` silently drops unrecognized connection
+// string params), so `max` here is the only real cap.
+const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL!,
+    max: 3,
+    connectionTimeoutMillis: 5_000,
+});
 
 /**
  * Soft-delete extension.
