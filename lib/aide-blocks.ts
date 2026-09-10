@@ -84,6 +84,23 @@ const PUCE = /^[-*]\s+(.+)$/;
 const NUMEROTEE = /^(\d+)\.\s+(.+)$/;
 const SEPARATEUR_TABLEAU = /^\|?\s*:?-{2,}/;
 
+/**
+ * Vrai si `ligne` amorce un bloc autre qu'un paragraphe — sert à savoir où
+ * s'arrête l'agrégation des lignes "plates" (voir plus bas). `ligneSuivante`
+ * n'est utile que pour reconnaître le début d'un tableau, qui se joue sur
+ * deux lignes (en-têtes puis séparateur).
+ */
+function estDebutBlocSpecial(ligne: string, ligneSuivante: string | undefined): boolean {
+    return (
+        IMAGE.test(ligne) ||
+        TITRE.test(ligne) ||
+        CITATION.test(ligne) ||
+        PUCE.test(ligne) ||
+        NUMEROTEE.test(ligne) ||
+        (ligne.startsWith('|') && SEPARATEUR_TABLEAU.test((ligneSuivante ?? '').trim()))
+    );
+}
+
 export function parseAideBlocks(corps: string, slugsInternes?: ReadonlySet<string>): AideBlock[] {
     const blocs: AideBlock[] = [];
     const lignes = corps.split(/\r?\n/);
@@ -152,7 +169,21 @@ export function parseAideBlocks(corps: string, slugsInternes?: ReadonlySet<strin
             continue;
         }
 
-        blocs.push({ type: 'paragraphe', runs: decouperRuns(ligne, slugsInternes) });
+        // Un paragraphe agrège les lignes "plates" consécutives : un retour à la
+        // ligne manuel dans le Markdown source (habitude de rédaction, pas une
+        // intention de mise en page) ne doit pas produire un nouveau bloc — sinon
+        // chaque ligne récupère son propre marginBottom et le PDF affiche des
+        // espacements irréguliers au milieu d'un même paragraphe. Sur l'écran ce
+        // n'est pas un problème : react-markdown (Markdown.tsx) rejoint déjà ces
+        // lignes en un seul <p>.
+        const morceaux = [ligne];
+        while (i + 1 < lignes.length) {
+            const suivante = lignes[i + 1].trim();
+            if (!suivante || estDebutBlocSpecial(suivante, lignes[i + 2])) break;
+            i++;
+            morceaux.push(suivante);
+        }
+        blocs.push({ type: 'paragraphe', runs: decouperRuns(morceaux.join(' '), slugsInternes) });
     }
 
     return blocs;
