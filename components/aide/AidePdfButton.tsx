@@ -12,6 +12,77 @@ async function fabriquerPdf(): Promise<Blob> {
     return reponse.blob();
 }
 
+function ecrireDansOnglet(onglet: Window, html: string) {
+    onglet.document.open();
+    onglet.document.write(html);
+    onglet.document.close();
+}
+
+const PAGE_PREPARATION = `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Mode d'emploi — préparation…</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f8fafc;
+    color: #334155;
+  }
+  .conteneur { text-align: center; }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 16px;
+    border: 4px solid hsl(221 83% 53% / 0.2);
+    border-top-color: hsl(221 83% 53%);
+    border-radius: 50%;
+    animation: tourner 0.8s linear infinite;
+  }
+  @keyframes tourner { to { transform: rotate(360deg); } }
+  p { margin: 0; font-size: 0.95rem; }
+  .discret { margin-top: 6px; color: #94a3b8; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+  <div class="conteneur">
+    <div class="spinner" role="status" aria-label="Génération en cours"></div>
+    <p>Génération du mode d'emploi en cours…</p>
+    <p class="discret">Une centaine de pages à mettre en forme, quelques secondes suffisent.</p>
+  </div>
+</body>
+</html>`;
+
+function pageImpression(url: string) {
+    return `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Mode d'emploi — impression</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  iframe { border: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+  <iframe src="${url}" id="pdf" title="Mode d'emploi"></iframe>
+  <script>
+    var frame = document.getElementById('pdf');
+    frame.addEventListener('load', function () {
+      try {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      } catch (e) {}
+    });
+  </script>
+</body>
+</html>`;
+}
+
 /**
  * Télécharge ou imprime le mode d'emploi complet en PDF.
  *
@@ -23,11 +94,18 @@ async function fabriquerPdf(): Promise<Blob> {
  * La route est derrière l'authentification : le `fetch` embarque le cookie de
  * session comme n'importe quelle navigation.
  *
- * « Imprimer » ouvre l'onglet de manière synchrone, dans le clic lui-même,
- * puis le fait pointer vers le PDF une fois prêt — un `window.open` lancé
- * après un `await` se fait bloquer comme popup par la plupart des
- * navigateurs. Le `print()` automatique est du confort en plus : s'il ne se
- * déclenche pas, l'onglet reste ouvert avec le PDF et son icône imprimante.
+ * « Imprimer » ouvre l'onglet de manière synchrone, dans le clic lui-même —
+ * un `window.open` lancé après un `await` se fait bloquer comme popup par la
+ * plupart des navigateurs. En attendant le PDF, l'onglet affiche tout de
+ * suite une page d'attente (même esprit que le bouton « Préparation… ») pour
+ * qu'il ne reste pas blanc pendant les quelques secondes de fabrication.
+ * Une fois le blob prêt, l'onglet est réécrit avec un `<iframe>` plein cadre
+ * pointant vers le PDF ; `contentWindow.print()` sur ce cadre ouvre
+ * directement la boîte d'impression du PDF (naviguer l'onglet lui-même vers
+ * le blob puis appeler `print()` dessus ne déclenche pas toujours
+ * l'impression — le visualiseur PDF intégré l'avale). Si l'impression
+ * automatique ne se déclenche pas, l'onglet reste ouvert avec le PDF affiché
+ * et son icône imprimante.
  */
 export function AidePdfButton({ className }: { className?: string }) {
     const [enCours, setEnCours] = useState<Action>(null);
@@ -59,12 +137,12 @@ export function AidePdfButton({ className }: { className?: string }) {
         setEnCours('impression');
         setErreur(null);
         const onglet = window.open('', '_blank');
+        if (onglet) ecrireDansOnglet(onglet, PAGE_PREPARATION);
         try {
             const blob = await fabriquerPdf();
             const url = URL.createObjectURL(blob);
-            if (onglet) {
-                onglet.addEventListener('load', () => onglet.print());
-                onglet.location.href = url;
+            if (onglet && !onglet.closed) {
+                ecrireDansOnglet(onglet, pageImpression(url));
             }
             setTimeout(() => URL.revokeObjectURL(url), 30_000);
         } catch {
