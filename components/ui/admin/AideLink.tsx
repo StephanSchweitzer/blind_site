@@ -25,6 +25,8 @@ export function AideLink({ section, anchor, label = 'Aide', className }: AideLin
     return (
         <Link
             href={`/admin/aide/${section}${anchor ? `#${anchor}` : ''}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className={
                 'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ' +
                 (className ?? '')
