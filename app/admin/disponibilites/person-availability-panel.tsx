@@ -525,7 +525,18 @@ export default function PersonAvailabilityPanel({
             <DialogContent className="bg-card border-border max-w-5xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-y-hidden">
                 <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
                     <DialogTitle className="text-foreground flex flex-wrap items-center gap-2 pr-8">
-                        {person?.name ?? 'Disponibilité'}
+                        {person ? (
+                            <Link
+                                href={`/admin/users/dossier/${person.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline"
+                            >
+                                {person.name}
+                            </Link>
+                        ) : (
+                            'Disponibilité'
+                        )}
                         {person && (
                             <>
                                 <CopyableId id={person.id} label="de la personne" />
