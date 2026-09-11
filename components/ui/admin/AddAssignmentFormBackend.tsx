@@ -1,6 +1,6 @@
 import React from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { ReaderSummary, AssignmentFormData } from '@/types';
+import { ReaderSummary, UserSummary, AssignmentFormData } from '@/types';
 import { AssignmentFormBackendBase } from '@/admin/AssignmentFormBackendBase';
 import { getFieldErrorLines, ErrorToastBody } from '@/admin/AssignmentFormErrors';
 
@@ -10,11 +10,13 @@ export function AddAssignmentFormBackend({
                                              onOrdersLoaded,
                                              presetClientId,
                                              initialReader,
+                                             presetClient,
                                          }: {
     onSuccess?: (assignmentId: number) => void;
     onOrdersLoaded?: () => void;
     presetClientId?: number | null;
     initialReader?: ReaderSummary | null;
+    presetClient?: UserSummary | null;
 }) {
     const { toast } = useToast();
 
@@ -75,6 +77,7 @@ export function AddAssignmentFormBackend({
             onOrdersLoaded={onOrdersLoaded}
             presetClientId={presetClientId}
             initialSelectedReader={initialReader}
+            presetClient={presetClient}
         />
     );
 }

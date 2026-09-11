@@ -21,6 +21,7 @@ import { fr } from "date-fns/locale";
 import { DeliveryMethod } from '@prisma/client';
 import {
     ReaderSummary,
+    UserSummary,
     BookSummary,
     OrderSummary,
     Status,
@@ -71,6 +72,11 @@ const ORDER_RESULT_LIMIT = 50;
 
 export interface AssignmentFormBackendBaseProps {
     presetClientId?: number | null;
+    // Display-only: the aveugle this dossier belongs to, shown next to the
+    // (already client-filtered via presetClientId) Demande picker so it's
+    // clear at a glance who the attribution is being created for — Assignment
+    // itself has no aveugleId field to actually preset.
+    presetClient?: UserSummary | null;
     initialData?: AssignmentFormData;
     onSubmit: (formData: AssignmentFormData, readerId?: number | null) => Promise<number>;
     submitButtonText: string;
@@ -195,6 +201,7 @@ export function AssignmentFormBackendBase({
                                               onReadersLoaded,
                                               onOrdersLoaded,
                                               presetClientId,
+                                              presetClient,
                                           }: AssignmentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -930,6 +937,19 @@ export function AssignmentFormBackendBase({
                             </>
                         )}
                     </div>
+
+                    {/* Auditeur — display-only context from the dossier this form was
+                        opened from; the Demande picker below is already filtered to
+                        them via presetClientId. Not editable: Assignment has no
+                        aveugleId of its own to actually set. */}
+                    {!isEditMode && presetClient && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Auditeur</label>
+                            <div className="flex h-10 items-center rounded-md border border-border bg-muted px-3 text-foreground">
+                                {getUserDisplayName(presetClient)}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Order Selection - NOW SECOND */}
                     <div className="space-y-2">

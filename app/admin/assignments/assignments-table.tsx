@@ -29,6 +29,7 @@ import {
     StatusSummary,
     AssignmentFormData,
     ReaderSummary,
+    UserSummary,
     BookSummary,
     OrderSummary,
     AssignmentWithCurrentReader,
@@ -49,6 +50,7 @@ interface AssignmentsTableProps {
     hideSearch?: boolean;
     presetClientId?: number | null;
     presetReader?: ReaderSummary | null;
+    presetClient?: UserSummary | null;
 }
 
 export default function AssignmentsTable({
@@ -61,6 +63,7 @@ export default function AssignmentsTable({
                                              hideSearch = false,
                                              presetClientId = null,
                                              presetReader = null,
+                                             presetClient = null,
                                          }: AssignmentsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -600,6 +603,7 @@ export default function AssignmentsTable({
                 onAssignmentCreated={handleAssignmentAdded}
                 presetClientId={presetClientId}
                 presetReader={presetReader}
+                presetClient={presetClient}
             />
 
             {/* Edit Assignment Modal */}

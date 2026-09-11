@@ -39,6 +39,14 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
         isReader && user
             ? { id: userId, name: user.name, firstName: user.firstName, lastName: user.lastName, email: user.email ?? '' }
             : null;
+    // Not the reader (who does the work) — the aveugle whose demandes this
+    // dossier shows. Assignment has no aveugleId of its own to preset with,
+    // so this is display-only context next to the (already client-filtered)
+    // Demande picker, the same way the demande/facture/paiement forms show it.
+    const presetClient =
+        !isReader && user
+            ? { id: userId, name: user.name, firstName: user.firstName, lastName: user.lastName, email: user.email ?? '' }
+            : null;
     const whereClause: Prisma.AssignmentWhereInput = isReader
         ? { readerHistory: { some: { readerId: userId } } }
         : { order: { is: { aveugleId: userId } } };
@@ -129,6 +137,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
             hideSearch
             presetClientId={isReader ? null : userId}
             presetReader={presetReader}
+            presetClient={presetClient}
         />
     );
 }
