@@ -72,10 +72,10 @@ const ORDER_RESULT_LIMIT = 50;
 
 export interface AssignmentFormBackendBaseProps {
     presetClientId?: number | null;
-    // Display-only: the aveugle this dossier belongs to, shown next to the
-    // (already client-filtered via presetClientId) Demande picker so it's
-    // clear at a glance who the attribution is being created for — Assignment
-    // itself has no aveugleId field to actually preset.
+    // The aveugle this dossier belongs to. presetClientId alone already scopes
+    // the Demande picker's results; this is only used to name that scoping in
+    // the picker's placeholder/empty-state text, since the list is otherwise
+    // filtered with no visible indication of to whom.
     presetClient?: UserSummary | null;
     initialData?: AssignmentFormData;
     onSubmit: (formData: AssignmentFormData, readerId?: number | null) => Promise<number>;
@@ -938,19 +938,6 @@ export function AssignmentFormBackendBase({
                         )}
                     </div>
 
-                    {/* Auditeur — display-only context from the dossier this form was
-                        opened from; the Demande picker below is already filtered to
-                        them via presetClientId. Not editable: Assignment has no
-                        aveugleId of its own to actually set. */}
-                    {!isEditMode && presetClient && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Auditeur</label>
-                            <div className="flex h-10 items-center rounded-md border border-border bg-muted px-3 text-foreground">
-                                {getUserDisplayName(presetClient)}
-                            </div>
-                        </div>
-                    )}
-
                     {/* Order Selection - NOW SECOND */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Demande</label>
@@ -964,10 +951,18 @@ export function AssignmentFormBackendBase({
                             selectableNoun="attribuables"
                             resultLimit={ORDER_RESULT_LIMIT}
                             resultNoun="demandes"
-                            placeholder="Sélectionner une demande..."
+                            placeholder={
+                                presetClient
+                                    ? `Sélectionner une demande de ${getUserDisplayName(presetClient)}...`
+                                    : "Sélectionner une demande..."
+                            }
                             searchPlaceholder="Nom, titre, ou numéro de demande..."
                             emptyMessage="Aucune demande trouvée"
-                            emptyDefaultMessage="Aucune demande récente attribuable — utilisez la recherche pour voir toutes les demandes."
+                            emptyDefaultMessage={
+                                presetClient
+                                    ? `Aucune demande récente attribuable pour ${getUserDisplayName(presetClient)} — utilisez la recherche pour voir toutes les demandes.`
+                                    : "Aucune demande récente attribuable — utilisez la recherche pour voir toutes les demandes."
+                            }
                             contentClassName="w-[min(600px,calc(100vw-2rem))]"
                             itemClassName="items-start px-4 py-3 border-b border-border last:border-b-0"
                             renderValue={(order) => (
