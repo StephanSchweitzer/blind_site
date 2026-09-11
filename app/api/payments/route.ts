@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
-import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
+import { PaymentType, PaymentMethod, Prisma, BillingStatus } from '@prisma/client';
 import { PaymentCreateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
-import { syncBillPaymentInfo, paymentPrecedesIssue } from '@/lib/billing';
+import {
+    syncBillPaymentInfo,
+    paymentPrecedesIssue,
+    archiveHandTypedSettlement,
+    BILL_IS_DRAFT_MESSAGE,
+} from '@/lib/billing';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 import {
     parsePaymentListParams,
@@ -76,7 +81,7 @@ export const GET = withAdmin(async (request) => {
 // POST: create a payment. The amount is supplied directly (unlike bills, which
 // derive it from orders). A billId is only persisted for ENREGISTREMENT and a
 // cotisationYear only for COTISATION; both are validated/coerced server-side.
-export const POST = withAdmin(async (request) => {
+export const POST = withAdmin(async (request, { me }) => {
     revalidateAdmin();
     try {
         const body = await request.json();
@@ -117,7 +122,7 @@ export const POST = withAdmin(async (request) => {
             if (billId != null) {
                 const bill = await tx.bill.findUnique({
                     where: { id: billId, isActive: true },
-                    select: { id: true, clientId: true, issueDate: true },
+                    select: { id: true, clientId: true, issueDate: true, state: true },
                 });
                 if (!bill) {
                     throw new Prisma.PrismaClientKnownRequestError('Bill not found', { code: 'P2025', clientVersion: 'app' });
@@ -125,12 +130,25 @@ export const POST = withAdmin(async (request) => {
                 if (d.clientId != null && bill.clientId !== d.clientId) {
                     throw new Error('BILL_CLIENT_MISMATCH');
                 }
+                // Un brouillon n'a pas été envoyé : il n'a rien à encaisser.
+                //
+                // L'y autoriser ouvrait trois pannes. La suppression du brouillon
+                // laissait le paiement rattaché à une facture supprimée. Et
+                // l'émission, qui date la facture du jour, rendait le paiement
+                // antérieur à son émission — « Marquer comme payée » était alors
+                // refusé pour toujours, par le contrôle juste en dessous.
+                if (bill.state === BillingStatus.DRAFT) {
+                    throw new Error('BILL_IS_DRAFT');
+                }
                 // Le contrôle que la facture posait sur SA date de paiement, déplacé
                 // là où la date se saisit désormais : réglée avant d'être émise reste
                 // la contradiction que rien ne doit écrire.
                 if (data.paymentDate && paymentPrecedesIssue(data.paymentDate as Date, bill.issueDate)) {
                     throw new Error('PAYMENT_BEFORE_ISSUE');
                 }
+                // Avant la création : syncBillPaymentInfo va réécrire la référence
+                // et la date de la facture d'après ce paiement.
+                await archiveHandTypedSettlement(tx, billId, me.id);
             }
             const created = await tx.payment.create({
                 data,
@@ -166,6 +184,7 @@ export const POST = withAdmin(async (request) => {
         const errorMap: Record<string, [string, number]> = {
             BILL_CLIENT_MISMATCH: ['La facture liée n’appartient pas au client sélectionné.', 400],
             PAYMENT_BEFORE_ISSUE: ['La date de paiement ne peut pas précéder la date d’émission de la facture.', 400],
+            BILL_IS_DRAFT: [BILL_IS_DRAFT_MESSAGE, 409],
         };
         if (errorMap[msg]) {
             return NextResponse.json(

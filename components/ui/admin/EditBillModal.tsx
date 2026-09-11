@@ -486,17 +486,23 @@ export function EditBillModal({
                                     lignes dont une cotisation d'un autre auditeur, sous un
                                     total de 92 € qui ne décrivait rien. Rien à réparer : la
                                     liste ci-dessous montre déjà les paiements de CETTE
-                                    facture, chacun ouvrant le sien. */}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setIsAddingPayment(true)}
-                                    className="h-7 px-2.5 gap-1.5 text-xs [&_svg]:size-3.5"
-                                >
-                                    <Plus />
-                                    Enregistrer un paiement
-                                </Button>
+                                    facture, chacun ouvrant le sien.
+
+                                    Absente d'un brouillon : il n'a pas été envoyé, il n'a
+                                    rien à encaisser, et les routes de paiement refusent de
+                                    s'y rattacher (voir POST /api/payments). */}
+                                {!isDraft && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setIsAddingPayment(true)}
+                                        className="h-7 px-2.5 gap-1.5 text-xs [&_svg]:size-3.5"
+                                    >
+                                        <Plus />
+                                        Enregistrer un paiement
+                                    </Button>
+                                )}
                             </div>
 
                             {/* Le compte et ses pièces, dans un seul encadré.
@@ -579,7 +585,9 @@ export function EditBillModal({
                                                 irait contre le geste qu'on vient de poser. */}
                                             {writtenOff
                                                 ? 'Aucun paiement rattaché — la créance a été abandonnée.'
-                                                : 'Aucun paiement rattaché — « Enregistrer un paiement » en saisit un pour cette facture.'}
+                                                : isDraft
+                                                    ? "Aucun paiement rattaché — un brouillon n'a pas encore été envoyé. Le règlement s'enregistre une fois la facture émise."
+                                                    : 'Aucun paiement rattaché — « Enregistrer un paiement » en saisit un pour cette facture.'}
                                         </div>
                                     ) : (
                                         // La ligne ENTIÈRE ouvre le paiement : la flèche seule
@@ -712,6 +720,19 @@ export function EditBillModal({
                                     </p>
                                 )}
 
+                                {/* Le miroir du refus de la route : un brouillon n'a rien
+                                    encaissé. Dit avant le clic, avec l'issue. */}
+                                {pendingState === BillingStatus.DRAFT && bill.payments.length > 0 && (
+                                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                                        Cette facture porte déjà{' '}
+                                        {bill.payments.length > 1
+                                            ? `${bill.payments.length} paiements`
+                                            : `le paiement #${bill.payments[0].id}`}{' '}
+                                        : un brouillon n&apos;a rien encaissé. Rattachez ce règlement à une autre
+                                        facture de l&apos;auditeur, ou supprimez-le, avant de la remettre en brouillon.
+                                    </p>
+                                )}
+
                                 {statusError && (
                                     <div className="text-red-700 dark:text-red-300 text-sm">{statusError}</div>
                                 )}
@@ -719,7 +740,11 @@ export function EditBillModal({
                                 {pendingState && (
                                     <Button
                                         onClick={handleStatusUpdate}
-                                        disabled={isUpdatingStatus || (pendingState === BillingStatus.PAID && bill.payments.length === 0)}
+                                        disabled={
+                                            isUpdatingStatus ||
+                                            (pendingState === BillingStatus.PAID && bill.payments.length === 0) ||
+                                            (pendingState === BillingStatus.DRAFT && bill.payments.length > 0)
+                                        }
                                         className="bg-indigo-600 hover:bg-indigo-500 text-white h-8 text-sm"
                                     >
                                         {isUpdatingStatus && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}

@@ -21,6 +21,12 @@ interface BillSearchComboboxProps<T extends BillSearchResult> {
     placeholder?: string;
     triggerRef?: React.Ref<HTMLButtonElement>;
     triggerClassName?: string;
+    /**
+     * Écarte les brouillons des résultats. Le sélecteur « Facture liée » d'un
+     * paiement en a besoin : un brouillon n'a rien à encaisser, et les routes de
+     * paiement refusent de s'y rattacher — autant ne pas le proposer.
+     */
+    excludeDrafts?: boolean;
 }
 
 // Matches GET /api/bills' own default page size, so the empty-query open and
@@ -43,10 +49,12 @@ export function BillSearchCombobox<T extends BillSearchResult>({
     placeholder = 'Rechercher une facture ...',
     triggerRef,
     triggerClassName,
+    excludeDrafts = false,
 }: BillSearchComboboxProps<T>) {
     const fetcher = async (query: string, signal: AbortSignal): Promise<T[]> => {
         const params = new URLSearchParams({ clientId: String(clientId), limit: String(BILL_RESULT_LIMIT) });
         if (query) params.set('search', query);
+        if (excludeDrafts) params.set('excludeDraft', 'true');
         const res = await fetch(`/api/bills?${params.toString()}`, { signal });
         if (!res.ok) return [];
         const { bills } = await res.json();
@@ -67,7 +75,7 @@ export function BillSearchCombobox<T extends BillSearchResult>({
             placeholder={placeholder}
             searchPlaceholder="N° de facture, auditeur, livre, auteur, ou référence de paiement..."
             emptyMessage="Aucune facture trouvée"
-            emptyDefaultMessage="Aucune facture pour ce client"
+            emptyDefaultMessage={excludeDrafts ? 'Aucune facture émise pour ce client' : 'Aucune facture pour ce client'}
             triggerRef={triggerRef}
             triggerClassName={triggerClassName}
         />

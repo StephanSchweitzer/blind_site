@@ -46,7 +46,7 @@ Pour l'enregistrement, vous devez d'abord sélectionner l'auditeur ; le champ «
 
 ![Paiements - capture 4](/admin/aide/images/paiements-04.jpg)
 
-Ce champ montre par défaut les 10 dernières factures de l'auditeur, les plus récentes en premier.
+Ce champ montre par défaut les 10 dernières factures de l'auditeur, les plus récentes en premier. **Les brouillons n'y figurent pas** : une facture qui n'a pas encore été envoyée n'a rien à encaisser, et un paiement ne se rattache qu'à une facture émise. La date de paiement, elle, ne peut pas précéder la date d'émission de la facture.
 
 Pour l'ouvrir, cliquez sur le champ « Rechercher une facture », tapez tout ou partie du numéro de facture, du livre, de l'auteur ou de la référence de paiement pour filtrer la liste, puis cliquez sur la ligne correspondant à la facture voulue.
 
@@ -91,6 +91,8 @@ Pour modifier un paiement, cliquez sur la ligne que vous souhaitez modifier. Cel
 Ce fonctionnement est identique à celui de la fenêtre « Ajouter un paiement », à la différence que vous pouvez également (1) supprimer le paiement en bas de la page en cliquant sur le bouton « Supprimer le paiement ». (2) Pour enregistrer les modifications, cliquez sur le bouton « Enregistrer les modifications » ; cela met à jour l'entrée de la base de données avec les nouvelles informations que vous avez saisies dans les champs.
 
 ![Paiements - capture 10](/admin/aide/images/paiements-10.jpg)
+
+L'enregistrement **ne réécrit que ce que vous avez modifié**. Corriger une observation sur une cotisation ancienne, saisie sans année, la laisse sans année — elle ne devient pas une cotisation de l'année en cours. De même, les cases « Fiscalité » et « Affectée » gardent leur valeur d'origine, et la date d'attribution avec, tant que vous ne les changez pas.
 
 La suppression demande confirmation. Si le paiement était rattaché à une facture, retirer le règlement change ce que cette facture réclame — la confirmation le dit avant d'agir.
 

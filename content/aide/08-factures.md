@@ -80,6 +80,8 @@ Une fois cochée, trois champs s'ouvrent : la **référence de paiement** (facul
 
 À l'enregistrement, la facture est créée émise, son paiement est enregistré, puis elle passe payée — en une seule opération. **Le règlement devient un paiement à part entière** : il apparaît dans « [Paiements](/admin/aide/paiements) » et se corrige là-bas. La facture ne fait que le refléter.
 
+Le paiement reprend le montant de la facture. Une facture à **0,00 €** — des demandes sans tarif — ne peut donc pas être saisie déjà réglée : son paiement n'aurait pas de montant. Renseignez d'abord le tarif des demandes, ou créez-la simplement émise.
+
 ![Factures - capture 7](/admin/aide/images/factures-07.jpg)
 
 ## Modification et impression des factures
@@ -92,7 +94,7 @@ Le haut du modal se lit d'un bloc : l'**auditeur**, l'**état actuel**, et les t
 
 Sur un brouillon, les fonctions de base sont les suivantes :
 
-(1) « **Enregistrer un paiement** » saisit un règlement pour cette facture
+(1) « **Enregistrer un paiement** » **n'apparaît plus sur un brouillon**, contrairement à ce que montre encore la capture ci-dessous. Un brouillon n'a pas été envoyé : il n'a rien à encaisser, et le règlement s'enregistre une fois la facture émise
 
 (2) La section « **Changer le statut** » ne propose ici qu'« Émettre la facture » : c'est la seule suite qu'un brouillon connaisse
 
@@ -100,7 +102,7 @@ Sur un brouillon, les fonctions de base sont les suivantes :
 
 (4) « **Supprimer la facture** » supprime définitivement la facture
 
-> « **Enregistrer un paiement** » ouvre la fenêtre « Ajouter un paiement ». Pour tout ce qui concerne les [paiements](/admin/aide/paiements), reportez-vous à [cette page](/admin/aide/paiements).
+> Sur une facture émise, « **Enregistrer un paiement** » ouvre la fenêtre « Ajouter un paiement ». Pour tout ce qui concerne les [paiements](/admin/aide/paiements), reportez-vous à [cette page](/admin/aide/paiements).
 
 ![Factures - capture 9](/admin/aide/images/factures-09.jpg)
 
@@ -110,7 +112,7 @@ Une fois la facture émise, ce sont d'autres gestes qui s'offrent :
 
 (1) « **Imprimer la facture** », en haut, engendre le PDF à envoyer à l'auditeur
 
-(2) « **Remettre en brouillon** » rouvre la facture pour la corriger
+(2) « **Remettre en brouillon** » rouvre la facture pour la corriger. Ce n'est plus possible tant qu'un paiement y est rattaché : un brouillon n'a rien encaissé. Rattachez d'abord ce règlement à une autre facture de l'auditeur, ou supprimez-le
 
 (3) « **Marquer comme payée** » constate le règlement
 
@@ -119,6 +121,8 @@ Une fois la facture émise, ce sont d'autres gestes qui s'offrent :
 Au-dessus, le bloc « **Paiements** » répond d'un coup d'œil à « cette facture est-elle réglée ? » : *Encaissé 0,00 € sur 30,00 €*, puis *Reste à payer 30,00 €*. Chaque paiement rattaché s'y affiche avec son montant, sa méthode, sa date et sa référence, et **la ligne entière ouvre le paiement** dans « [Paiements](/admin/aide/paiements) ».
 
 L'écart entre l'encaissé et le total est affiché en gris, sans alerte. C'est délibéré : **un paiement rattaché vaut règlement**. C'est le rattachement qui dit qu'une facture est réglée, pas l'arithmétique — sans quoi un écart de saisie de quelques centimes réclamerait de l'argent sur une facture que quelqu'un a déjà encaissée.
+
+Une facture payée **avant la reprise** n'a pas de paiement en face : sa référence et sa date de règlement avaient été saisies à la main, et le bloc l'annonce « Réglée avant la reprise ». Vous pouvez tout de même lui enregistrer un paiement. La facture reprend alors la référence et la date de ce paiement, et **l'ancienne référence part à l'historique** (« Ancien règlement archivé ») — elle n'est pas perdue.
 
 ![Factures - capture 10](/admin/aide/images/factures-10.jpg)
 
@@ -145,6 +149,8 @@ Rouvrir la fait repasser à « émise ». Si elle portait des paiements, **ils e
 ### Supprimer une facture
 
 « Supprimer la facture » demande confirmation avant d'agir, et annonce ce que la suppression entraîne pour les demandes qui y sont rattachées.
+
+Seul un brouillon se supprime. S'il portait un paiement — ce qui n'est plus possible aujourd'hui, mais a pu arriver avant —, ce paiement **en est détaché** et reste dans « [Paiements](/admin/aide/paiements) », sous le filtre « Sans facture liée », prêt à être rattaché à la bonne facture. Son numéro est donné à la suppression et part à l'historique.
 
 ![Factures - capture 13](/admin/aide/images/factures-13.jpg)
 

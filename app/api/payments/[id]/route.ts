@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
-import { PaymentType, Prisma } from '@prisma/client';
+import { PaymentType, Prisma, BillingStatus } from '@prisma/client';
 import { isClientRequiredForPaymentType } from '@/lib/payment-enums';
 import { PaymentUpdateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
-import { syncBillPaymentInfo, paymentPrecedesIssue } from '@/lib/billing';
+import {
+    syncBillPaymentInfo,
+    paymentPrecedesIssue,
+    archiveHandTypedSettlement,
+    BILL_IS_DRAFT_MESSAGE,
+} from '@/lib/billing';
 
 const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
@@ -61,10 +66,10 @@ export const GET = withAdmin(async (_request, context) => {
     }
 });
 
-export const PATCH = withAdmin(async (request, context) => {
+export const PATCH = withAdmin(async (request, { me, params }) => {
     revalidateAdmin();
     try {
-        const { id } = await context.params!;
+        const { id } = await params!;
         const paymentId = parseInt(id);
         if (isNaN(paymentId)) {
             return NextResponse.json({ error: 'Invalid id', message: 'Identifiant invalide' }, { status: 400 });
@@ -131,14 +136,20 @@ export const PATCH = withAdmin(async (request, context) => {
             // exactement ce que guardOrderClientOnBill empêche du côté des demandes,
             // où le commentaire dit « la facture facturait une personne pour le livre
             // d'une autre ».
-            // Revérifié quand le billId est fourni, ou quand le client bouge — pas
-            // sur une modification sans rapport (une observation, une date). Un
+            // Revérifié quand la facture CHANGE, ou quand le client bouge — pas sur
+            // une modification sans rapport (une observation, une date). Un
             // paiement ancien dont la facture a depuis été supprimée reste ainsi
             // modifiable, au lieu d'être pris en otage par son historique : c'est la
             // même échappatoire étroite que guardClosureDateRequiresTermine.
+            //
+            // « Change », et non « est fourni » : le formulaire renvoie TOUS les
+            // champs à chaque enregistrement, billId compris. Tester sa seule
+            // présence refermait l'échappatoire sur le seul client de la route —
+            // le paiement d'une facture supprimée n'était plus modifiable du tout.
             const clientIsChanging = p.clientId !== undefined && p.clientId !== existing.clientId;
             const resultingBillId = p.billId !== undefined ? p.billId : existing.billId;
-            const mustRevalidateBill = p.billId !== undefined || clientIsChanging;
+            const billIsChanging = resultingBillId !== existing.billId;
+            const mustRevalidateBill = billIsChanging || clientIsChanging;
 
             if (effectiveType !== PaymentType.ENREGISTREMENT) {
                 data.billId = null;
@@ -149,25 +160,40 @@ export const PATCH = withAdmin(async (request, context) => {
             } else {
                 const bill = await tx.bill.findUnique({
                     where: { id: resultingBillId, isActive: true },
-                    select: { id: true, clientId: true, issueDate: true },
+                    select: { id: true, clientId: true, issueDate: true, state: true },
                 });
                 if (!bill) throw new Error('BILL_NOT_FOUND');
                 if (effectiveClientId != null && bill.clientId !== effectiveClientId) {
                     throw new Error('BILL_CLIENT_MISMATCH');
+                }
+                if (billIsChanging) {
+                    // Même refus qu'à la création (POST /api/payments). Seulement
+                    // sur un NOUVEAU rattachement : un paiement déjà posé sur un
+                    // brouillon, d'avant ce refus, doit rester modifiable.
+                    if (bill.state === BillingStatus.DRAFT) throw new Error('BILL_IS_DRAFT');
+                    // Avant l'update : syncBillPaymentInfo va réécrire la référence
+                    // et la date de la facture d'après ce paiement.
+                    await archiveHandTypedSettlement(tx, resultingBillId, me.id);
                 }
                 data.billId = resultingBillId;
             }
 
             // Réglée avant d'être émise : le contrôle que la facture posait sur sa
             // propre colonne, là où la date se saisit maintenant. Testé sur la date
-            // EFFECTIVE, pour qu'une modification qui ne touche qu'elle soit vue.
+            // EFFECTIVE, pour qu'une modification qui ne touche qu'elle soit vue —
+            // mais seulement quand la date ou la facture CHANGE. Le formulaire
+            // renvoie la date à chaque enregistrement : la tester à chaque fois
+            // interdisait de corriger une observation sur un paiement déjà
+            // antérieur à l'émission, le cas même que ce contrôle signale.
             const effectivePaymentDate =
                 p.paymentDate !== undefined
                     ? (p.paymentDate ? new Date(p.paymentDate) : null)
                     : existing.paymentDate;
+            const dateIsChanging =
+                (effectivePaymentDate?.getTime() ?? null) !== (existing.paymentDate?.getTime() ?? null);
             const billIdForDateCheck =
                 effectiveType === PaymentType.ENREGISTREMENT ? resultingBillId : null;
-            if (effectivePaymentDate && billIdForDateCheck != null) {
+            if (effectivePaymentDate && billIdForDateCheck != null && (dateIsChanging || billIsChanging)) {
                 const target = await tx.bill.findUnique({
                     where: { id: billIdForDateCheck },
                     select: { issueDate: true },
@@ -217,6 +243,7 @@ export const PATCH = withAdmin(async (request, context) => {
                 409,
             ],
             BILL_NOT_FOUND: ['La facture liée est introuvable ou inactive', 409],
+            BILL_IS_DRAFT: [BILL_IS_DRAFT_MESSAGE, 409],
             BILL_CLIENT_MISMATCH: ['La facture liée n’appartient pas au client du paiement', 400],
         };
         if (errorMap[msg]) {

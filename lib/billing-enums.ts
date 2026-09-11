@@ -49,3 +49,10 @@ export const ORDER_BILLING_STATUS_LABELS: Record<OrderBillingStatus, string> = {
 
 export const getOrderBillingStatusLabel = (status: string): string =>
     ORDER_BILLING_STATUS_LABELS[status as OrderBillingStatus] ?? status;
+/**
+ * Le `payload.reason` d'un BillEvent PAID qui n'est pas un encaissement : il
+ * archive le règlement saisi à la main d'une facture d'avant la reprise, au
+ * moment où un paiement vient le remplacer. Écrit par archiveHandTypedSettlement
+ * (lib/billing.ts), lu par BillHistory — d'où sa place ici, côté client.
+ */
+export const HAND_TYPED_SETTLEMENT_ARCHIVED = 'hand-typed-settlement-archived';

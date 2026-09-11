@@ -244,11 +244,17 @@ export function BillFormBackendBase({
         // Une facture réglée a forcément été envoyée : sans date d'émission, elle
         // serait payée sans avoir jamais été émise. Le POST refuse la même chose.
         if (markAsPaid && !issueDate) invalid.push('issueDate');
+        // Son paiement en reprend le montant : à 0 € il n'en aurait pas. Le POST
+        // refuse la même chose (SETTLED_ZERO_TOTAL).
+        const zeroSettled = markAsPaid && selectedOrderIds.size > 0 && totalAmount <= 0;
+        if (zeroSettled) invalid.push('orders');
 
         if (invalid.length) {
             const messages: Record<string, string> = {
                 client: 'Veuillez sélectionner un auditeur',
-                orders: 'Veuillez sélectionner au moins une demande à facturer',
+                orders: zeroSettled
+                    ? 'Une facture à 0,00 € ne peut pas être enregistrée comme déjà réglée : renseignez le tarif des demandes, ou créez-la simplement émise'
+                    : 'Veuillez sélectionner au moins une demande à facturer',
                 issueDate: 'Une facture déjà réglée doit porter sa date d\'émission',
             };
             const msg = messages[invalid[0]];

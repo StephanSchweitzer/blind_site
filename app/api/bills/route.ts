@@ -48,6 +48,10 @@ export const GET = withAdmin(async (request) => {
             whereClause.issueDate = { lt: thirtyDaysAgo };
         } else if (rawStatus && Object.values(BillingStatus).includes(rawStatus as BillingStatus)) {
             whereClause.state = rawStatus as BillingStatus;
+        } else if (searchParams.get('excludeDraft') === 'true') {
+            // Le sélecteur « Facture liée » d'un paiement : un brouillon n'y a pas
+            // sa place, les routes de paiement refusent de s'y rattacher.
+            whereClause.state = { not: BillingStatus.DRAFT };
         }
 
         const [bills, totalBills] = await Promise.all([
@@ -173,7 +177,10 @@ export const POST = withAdmin(async (request, { me }) => {
         // transaction, et le journal porte les deux événements — exactement ce
         // qu'auraient écrit les deux étapes séparées.
         const wantsSettled = paymentReference != null || paymentDate != null;
-        const trimmedReference = typeof paymentReference === 'string' ? paymentReference.trim() : '';
+        // null, et non '' : sans référence, le paiement en porte AUCUNE — comme
+        // partout ailleurs (POST /api/payments passe par optionalText).
+        const trimmedReference =
+            (typeof paymentReference === 'string' ? paymentReference.trim() : '') || null;
         let parsedPaymentDate: Date | null = null;
 
         if (wantsSettled) {
@@ -277,6 +284,12 @@ export const POST = withAdmin(async (request, { me }) => {
                 (sum, o) => sum.plus(o.cost ?? new Prisma.Decimal(0)),
                 new Prisma.Decimal(0)
             );
+            // Le paiement d'une facture « déjà réglée » en reprend le montant. À
+            // zéro — des demandes sans tarif — il naîtrait d'un montant que la
+            // saisie d'un paiement refuse partout ailleurs, puis ne se laisserait
+            // plus enregistrer sans qu'on le corrige, et figurerait à 0 € dans
+            // l'export de la trésorière.
+            if (wantsSettled && !initialTotal.greaterThan(0)) throw new Error('SETTLED_ZERO_TOTAL');
 
             // PLUSIEURS BROUILLONS OUVERTS PAR AUDITEUR SONT NORMAUX.
             //
@@ -414,6 +427,11 @@ export const POST = withAdmin(async (request, { me }) => {
             CLIENT_MISMATCH: ['Une des demandes sélectionnées n\'appartient pas à cet auditeur', 400],
             ORDER_ALREADY_BILLED: ['Une des demandes sélectionnées est déjà rattachée à une facture', 400],
             ORDER_UNBILLABLE: ['Une des demandes sélectionnées est marquée non-facturable', 400],
+            SETTLED_ZERO_TOTAL: [
+                'Une facture à 0,00 € ne peut pas être enregistrée comme déjà réglée : son paiement n\'aurait pas de montant. ' +
+                    'Renseignez le tarif des demandes, ou créez-la simplement émise.',
+                400,
+            ],
         };
         if (errorMap[msg]) {
             return NextResponse.json({ error: msg, message: errorMap[msg][0] }, { status: errorMap[msg][1] });

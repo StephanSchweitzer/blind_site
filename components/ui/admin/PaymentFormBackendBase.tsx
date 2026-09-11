@@ -151,13 +151,29 @@ export function PaymentFormBackendBase({
     );
     const [paymentReference, setPaymentReference] = useState(initialData?.paymentReference ?? '');
     const [receiptNumber, setReceiptNumber] = useState(initialData?.receiptNumber ?? '');
+
+    // Une modification n'écrit que ce que le permanent a TOUCHÉ.
+    //
+    // Le formulaire renvoie tous les champs à chaque enregistrement, et trois
+    // d'entre eux étaient réécrits sans que personne y touche : une cotisation
+    // ancienne, sans année, prenait l'année en cours — et comptait dès lors
+    // comme à jour pour l'année entière (lib/cotisation.ts) ; une fiscalité
+    // « oui » ou « non » devenait « OUI » ; un « Affectée » jamais renseigné
+    // devenait « non », et emportait sa date d'attribution. Corriger une
+    // observation suffisait. L'année en cours reste proposée, mais à la création
+    // seulement ; les deux cases, elles, renvoient la valeur d'origine tant
+    // qu'on ne les a pas changées.
     const [cotisationYear, setCotisationYear] = useState<string>(
-        initialData?.cotisationYear != null ? String(initialData.cotisationYear) : String(new Date().getFullYear())
+        initialData
+            ? (initialData.cotisationYear != null ? String(initialData.cotisationYear) : '')
+            : String(new Date().getFullYear())
     );
     const [observations, setObservations] = useState(initialData?.observations ?? '');
-    const [fiscalite, setFiscalite] = useState<boolean>(Boolean(initialData?.fiscalite));
+    const initialFiscalite = initialData?.fiscalite ?? null;
+    const [fiscalite, setFiscalite] = useState<boolean>(Boolean(initialFiscalite));
     const [comptable, setComptable] = useState<string>(initialData?.comptable ?? '');
-    const [isAllocated, setIsAllocated] = useState<boolean>(initialData?.isAllocated ?? false);
+    const initialIsAllocated = initialData?.isAllocated ?? null;
+    const [isAllocated, setIsAllocated] = useState<boolean>(initialIsAllocated ?? false);
     const [allocationDate, setAllocationDate] = useState<Date | null>(
         initialData?.allocationDate ? new Date(initialData.allocationDate) : null
     );
@@ -201,6 +217,10 @@ export function PaymentFormBackendBase({
             return;
         }
 
+        // Les deux cases, à leur valeur d'origine tant qu'on ne les a pas changées.
+        const fiscaliteUntouched = fiscalite === Boolean(initialFiscalite);
+        const allocationUntouched = isAllocated === (initialIsAllocated ?? false);
+
         setIsLoading(true);
         try {
             const paymentId = await onSubmit({
@@ -213,12 +233,15 @@ export function PaymentFormBackendBase({
                 paymentDate,
                 paymentReference: paymentReference.trim() || null,
                 receiptNumber: receiptNumber.trim() || null,
-                fiscalite: fiscalite ? 'OUI' : null,
+                fiscalite: fiscaliteUntouched ? initialFiscalite : fiscalite ? 'OUI' : null,
                 cotisationYear:
                     type === PaymentType.COTISATION && cotisationYear ? parseInt(cotisationYear) : null,
                 comptable: comptable || null,
-                isAllocated,
-                allocationDate: isAllocated ? allocationDate : null,
+                // `initialData` : à la création, « non » reste la valeur par défaut.
+                isAllocated: allocationUntouched && initialData ? initialIsAllocated : isAllocated,
+                // Vidée seulement quand on DÉCOCHE « Affectée » ; intacte, la date
+                // d'origine repart telle quelle, cochée ou non.
+                allocationDate: isAllocated || allocationUntouched ? allocationDate : null,
                 observations: observations.trim() || null,
                 billId: type === PaymentType.ENREGISTREMENT ? selectedBill?.id ?? null : null,
             });
@@ -340,6 +363,7 @@ export function PaymentFormBackendBase({
                                 onSelect={setSelectedBill}
                                 clientId={selectedClient.id}
                                 triggerRef={registerField('bill')}
+                                excludeDrafts
                             />
                         </div>
                     )}

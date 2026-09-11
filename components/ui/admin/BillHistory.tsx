@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
+import { BillingStatus, getBillingStatusLabel, HAND_TYPED_SETTLEMENT_ARCHIVED } from '@/lib/billing-enums';
 import { parisDate, parisDateTimeDisplay } from '@/lib/paris-day';
 
 export interface BillEventDTO {
@@ -45,6 +45,9 @@ export const TYPE_TINT: Record<string, string> = {
  */
 export function billEventLabel(type: string, payload: Record<string, unknown> | null): string {
     if (type === 'ORDER_ATTACHED' && payload?.reason === 'accrual') return 'Demande clôturée';
+    // Même procédé : un PAID qui n'encaisse rien, il archive le règlement saisi à
+    // la main avant la reprise (archiveHandTypedSettlement, lib/billing.ts).
+    if (type === 'PAID' && payload?.reason === HAND_TYPED_SETTLEMENT_ARCHIVED) return 'Ancien règlement archivé';
     return TYPE_LABEL[type] ?? type;
 }
 
@@ -52,6 +55,7 @@ export function billEventTint(type: string, payload: Record<string, unknown> | n
     if (type === 'ORDER_ATTACHED' && payload?.reason === 'accrual') {
         return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200';
     }
+    if (type === 'PAID' && payload?.reason === HAND_TYPED_SETTLEMENT_ARCHIVED) return 'bg-muted text-foreground';
     return TYPE_TINT[type] ?? 'bg-muted text-foreground';
 }
 
@@ -85,8 +89,17 @@ function summarize(e: BillEventDTO): string | null {
             if (total != null) bits.push(`nouveau total : ${total} €`);
             return bits.join(' · ') || null;
         }
-        case 'PAID':
+        case 'PAID': {
+            if (p.reason === HAND_TYPED_SETTLEMENT_ARCHIVED) {
+                const ref = asString(p.archivedPaymentReference);
+                const date = asString(p.archivedPaymentDate);
+                const parts: string[] = [];
+                if (ref) parts.push(`réf. ${ref}`);
+                if (date) parts.push(`payée le ${fmtDate(date)}`);
+                return `Règlement saisi avant la reprise — ${parts.join(', ')}. Un paiement rattaché le remplace désormais sur la facture.`;
+            }
             return asString(p.paymentReference) ? `Réf. de paiement : ${asString(p.paymentReference)}` : null;
+        }
         case 'SETTLED': {
             // Le montant abandonné ne vit QUE là : `BillEvent` est append-only, et
             // la facture, elle, ne garde aucune trace de ce qu'on a renoncé à
@@ -99,8 +112,15 @@ function summarize(e: BillEventDTO): string | null {
                 ? `Abandonné : ${off} €${paid != null && Number(paid) > 0 ? ` (encaissé ${paid} €)` : ''}`
                 : 'Soldée sans rien abandonner — les paiements couvraient la facture.';
         }
-        case 'ORDER_ATTACHED':
         case 'ORDER_DETACHED':
+            if (p.reason === 'bill-deleted') {
+                const ids = Array.isArray(p.detachedPaymentIds) ? p.detachedPaymentIds.map(String) : [];
+                return ids.length
+                    ? `Facture supprimée — paiement${ids.length > 1 ? 's' : ''} n° ${ids.join(', ')} détaché${ids.length > 1 ? 's' : ''}, à retrouver dans « Paiements » (filtre « Sans facture liée »).`
+                    : 'Facture supprimée — ses demandes en ont été détachées.';
+            }
+            return asString(p.orderId) ? `Demande #${asString(p.orderId)}` : null;
+        case 'ORDER_ATTACHED':
             return asString(p.orderId) ? `Demande #${asString(p.orderId)}` : null;
         default:
             return null;

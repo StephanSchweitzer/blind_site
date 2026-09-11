@@ -194,6 +194,34 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 );
             }
 
+            // Un brouillon n'a rien encaissé — le miroir du refus de POST
+            // /api/payments. Ramener en brouillon une facture qui porte des
+            // paiements les laissait sur un brouillon ; et la réémission, qui
+            // redate la facture du jour, les rendait antérieurs à son émission :
+            // « payée » était alors refusée pour toujours. Les détacher d'office
+            // ne vaudrait pas mieux — les rattacher de nouveau après réémission
+            // bute sur le même contrôle de date.
+            if (state === 'DRAFT') {
+                const attached = await prisma.payment.findMany({
+                    where: { billId, isActive: true },
+                    select: { id: true },
+                    orderBy: { id: 'asc' },
+                });
+                if (attached.length > 0) {
+                    const ids = attached.map((p) => `n° ${p.id}`).join(', ');
+                    return NextResponse.json(
+                        {
+                            error: 'Bill has payments',
+                            message:
+                                `Cette facture porte déjà ${attached.length > 1 ? `${attached.length} paiements` : 'un paiement'} (${ids}) : ` +
+                                "un brouillon n'a rien encaissé. Rattachez ce règlement à une autre facture de l'auditeur, " +
+                                'ou supprimez-le, avant de la remettre en brouillon.',
+                        },
+                        { status: 409 }
+                    );
+                }
+            }
+
             // Encaisser une facture, c'est constater un paiement — pas taper une
             // chaîne de caractères.
             //
@@ -478,7 +506,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
 
 /**
  * Soft delete: mark the bill inactive AND unlink its orders (reset billId +
- * billingStatus).
+ * billingStatus) and its payments (billId only — they stay in /admin/payments).
  *
  * BROUILLON UNIQUEMENT — et c'est le cœur de la garde.
  *
@@ -537,7 +565,24 @@ export const DELETE = withAdmin(async (_request, { me, params }) => {
             );
         }
 
-        await prisma.$transaction(async (tx) => {
+        const detachedPayments = await prisma.$transaction(async (tx) => {
+            // Les paiements se DÉTACHENT, comme dans reopenBill : sans quoi ils
+            // restaient rattachés à une facture supprimée, et le formulaire — qui
+            // revérifie la facture — ne les laissait plus modifier. Détachés, ils
+            // rejoignent la file « Sans facture liée » de /admin/payments, faite
+            // pour les rattacher ailleurs. Un brouillon n'en porte plus depuis que
+            // les routes de paiement le refusent ; ceci rattrape ceux d'avant.
+            const payments = await tx.payment.findMany({
+                where: { billId, isActive: true },
+                select: { id: true },
+                orderBy: { id: 'asc' },
+            });
+            if (payments.length > 0) {
+                await tx.payment.updateMany({ where: { billId, isActive: true }, data: { billId: null } });
+                // Les colonnes dérivées d'aplomb : plus aucun paiement derrière.
+                await syncBillPaymentInfo(tx, billId);
+            }
+
             // Detach orders and revert their order-level billing status (never leave them
             // BILLED with no billId). De-settle any SOLDE order back to Terminé so it's clean
             // to re-add, matching removeOrder's behavior.
@@ -574,12 +619,19 @@ export const DELETE = withAdmin(async (_request, { me, params }) => {
             await logBillEvent(tx, {
                 billId,
                 type: 'ORDER_DETACHED',
-                payload: { reason: 'bill-deleted' },
+                payload: { reason: 'bill-deleted', detachedPaymentIds: payments.map((p) => p.id) },
                 performedById,
             });
+
+            return payments;
         });
 
-        return NextResponse.json({ message: 'Facture supprimée avec succès' });
+        const n = detachedPayments.length;
+        const detached = n
+            ? ` ${n > 1 ? `${n} paiements ont été détachés` : 'Un paiement a été détaché'} (n° ${detachedPayments.map((p) => p.id).join(', ')}) : ` +
+              `${n > 1 ? 'ils restent' : 'il reste'} dans les paiements, sous le filtre « Sans facture liée ».`
+            : '';
+        return NextResponse.json({ message: `Facture supprimée avec succès.${detached}` });
     } catch (error) {
         console.error('Error deleting bill:', error);
 

@@ -1,7 +1,7 @@
 // lib/billing.ts
 import { Prisma, OrderBillingStatus, BillingStatus, BillEventType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { getBillingStatusLabel } from '@/lib/billing-enums';
+import { getBillingStatusLabel, HAND_TYPED_SETTLEMENT_ARCHIVED } from '@/lib/billing-enums';
 import { STATUS, type GuardResult } from '@/lib/statusSync';
 // Le jour français, partagé — voir lib/paris-day.ts pour le pourquoi du fuseau.
 import { parisDayKey } from '@/lib/paris-day';
@@ -144,6 +144,62 @@ export async function syncBillPaymentInfo(
     });
 
     return summary;
+}
+
+/**
+ * Le refus de rattacher un paiement à un brouillon, partagé par les deux routes
+ * qui rattachent (POST et PATCH /api/payments) — voir le commentaire du POST.
+ */
+export const BILL_IS_DRAFT_MESSAGE =
+    "Cette facture est encore un brouillon : elle n'a pas été envoyée, elle n'a donc rien à encaisser. " +
+    'Émettez-la avant de lui rattacher un paiement.';
+
+/**
+ * Met au journal le règlement saisi À LA MAIN d'une facture, avant qu'un
+ * paiement ne vienne le remplacer.
+ *
+ * Les factures d'avant la reprise portent leur référence et leur date de
+ * règlement sans aucun paiement en face : l'import Access n'en a rattaché
+ * aucun. Le premier paiement qu'on leur rattache fait passer ces colonnes au
+ * régime dérivé, et syncBillPaymentInfo les RÉÉCRIT d'après lui — la référence
+ * du chèque d'origine disparaissait alors de la facture, du PDF et de tout
+ * historique durable (l'AuditEvent, lui, se purge).
+ *
+ * Reconnaître ces colonnes est sûr : sous le régime dérivé, une facture sans
+ * paiement actif a toujours les deux à null (syncBillPaymentInfo et reopenBill
+ * les vident). Des valeurs sans paiement derrière ne peuvent donc venir que
+ * d'une saisie faite avant.
+ *
+ * Écrit comme un PAID sans transition, relabellisé par son `reason` (le même
+ * procédé que l'`accrual` d'ORDER_ATTACHED, voir BillHistory) : un type
+ * d'événement de plus aurait exigé une migration de l'enum en production avant
+ * le déploiement. À appeler AVANT le write qui rattache le paiement, dans la
+ * même transaction.
+ */
+export async function archiveHandTypedSettlement(
+    tx: TransactionClient,
+    billId: number,
+    performedById: number | null
+): Promise<void> {
+    const bill = await tx.bill.findUnique({
+        where: { id: billId },
+        select: { paymentReference: true, paymentDate: true },
+    });
+    if (!bill || (!bill.paymentReference && !bill.paymentDate)) return;
+
+    const linked = await tx.payment.count({ where: { billId, isActive: true } });
+    if (linked > 0) return;
+
+    await logBillEvent(tx, {
+        billId,
+        type: BillEventType.PAID,
+        payload: {
+            reason: HAND_TYPED_SETTLEMENT_ARCHIVED,
+            archivedPaymentReference: bill.paymentReference,
+            archivedPaymentDate: bill.paymentDate ? bill.paymentDate.toISOString() : null,
+        },
+        performedById,
+    });
 }
 
 /**

@@ -37,7 +37,8 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">La facture a été supprimée avec succès</span>,
+                // Le message de la route, qui nomme les paiements détachés s'il y en a.
+                description: <span className="text-xl mt-2">{data?.message || 'La facture a été supprimée avec succès'}</span>,
                 className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
             });
 
@@ -66,8 +67,8 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground pt-2">
                         Cette facture sera archivée et les demandes qui y sont rattachées seront détachées
-                        (leur état de facturation repassera à « Non facturé »). Cette action peut être effectuée
-                        de nouveau si nécessaire.
+                        (leur état de facturation repassera à « Non facturé »). Un paiement qui y serait rattaché
+                        en est détaché lui aussi : il reste dans « Paiements », sous le filtre « Sans facture liée ».
                     </DialogDescription>
                 </DialogHeader>
 
