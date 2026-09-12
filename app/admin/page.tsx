@@ -31,6 +31,7 @@ export default async function Dashboard() {
             historyEventCount,
             practicalInfoCount,
             membershipCount,
+            auditEventCount,
         ],
         // Active lecteurs with no attribution in progress — the count the
         // Disponibilités card leads with.
@@ -57,6 +58,7 @@ export default async function Dashboard() {
             prisma.historyEvent.count(),
             prisma.practicalInfo.count(),
             prisma.membershipOption.count(),
+            prisma.auditEvent.count(),
         ]),
         getFreeReaderCount(),
     ]);
@@ -137,6 +139,15 @@ export default async function Dashboard() {
                         buttonText="Gestion des paiements (cotisations, dons, enregistrements)"
                         accentColor="green"
                     />
+                    {isSuper && (
+                        <AdminDashboardCard
+                            title="Statistiques"
+                            count={auditEventCount}
+                            href="/admin/stats"
+                            buttonText="Tableau de bord et journal des modifications"
+                            accentColor="purple"
+                        />
+                    )}
                 </div>
             </div>
 

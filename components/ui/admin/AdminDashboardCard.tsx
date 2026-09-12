@@ -23,6 +23,7 @@ import {
     History,
     Info,
     Handshake,
+    BarChart3,
     LucideIcon,
 } from 'lucide-react';
 
@@ -118,6 +119,7 @@ const iconMap: Record<string, LucideIcon> = {
     'Historique': History,
     'Infos pratiques': Info,
     'Nous rejoindre': Handshake,
+    'Statistiques': BarChart3,
 };
 
 export function AdminDashboardCard({
