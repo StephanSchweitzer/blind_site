@@ -482,9 +482,9 @@ interface JsonResult {
  * safe to repeat — signing recomputes names from the bucket, and verification
  * only re-reads it.
  *
- * 4xx answers are returned untouched on the first try: `409 needsFolder` is a
- * question for the admin, not a failure, and retrying it would only delay the
- * prompt.
+ * 4xx answers are returned untouched on the first try: a `409` folder conflict
+ * is something for the admin to act on, not a failure, and retrying it would
+ * only delay the message.
  */
 async function fetchJsonWithRetry(url: string, init: RequestInit): Promise<JsonResult> {
     let lastNetworkError: unknown = null;
@@ -517,8 +517,16 @@ export function useAudioUpload(bookId: number) {
     const [phase, setPhase] = useState<UploadPhase>('idle');
     const [progress, setProgress] = useState<FileProgress[]>([]);
     const [error, setError] = useState<string | null>(null);
-    /** Set when the book has no folder and the admin must approve creating one. */
-    const [needsFolder, setNeedsFolder] = useState<string | null>(null);
+    /**
+     * Set when the book has no folder AND the proposed folder number collides
+     * with something already in the bucket — the one case that isn't safe to
+     * resolve automatically. Points the admin at the orphan screen instead of
+     * creating a duplicate folder.
+     */
+    const [folderConflict, setFolderConflict] = useState<{
+        message: string;
+        proposedPrefix: string;
+    } | null>(null);
     /**
      * The files that did not make it, kept so the UI can offer to send exactly
      * those again — re-picking the folder would re-send everything.
@@ -568,21 +576,17 @@ export function useAudioUpload(bookId: number) {
         assignedKeysRef.current = new Map();
         setProgress([]);
         setError(null);
-        setNeedsFolder(null);
+        setFolderConflict(null);
         setFailedFiles([]);
         setPhase('idle');
     }, []);
 
-    /**
-     * @param createFolder approve creating the book's audio folder — only set
-     *        after the admin has confirmed the proposed prefix.
-     */
     const upload = useCallback(
-        async (files: File[], createFolder = false): Promise<UploadOutcome> => {
+        async (files: File[]): Promise<UploadOutcome> => {
             if (!files.length) return FAILED;
 
             setError(null);
-            setNeedsFolder(null);
+            setFolderConflict(null);
             setFailedFiles([]);
             setPhase('preparing');
 
@@ -667,9 +671,6 @@ export function useAudioUpload(bookId: number) {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    // Only the first chunk of the first pass can
-                                    // need this; afterwards the folder exists.
-                                    createFolder,
                                     files: chunk.map((f) => {
                                         const existingKey = assignedKeysRef.current.get(f.name);
                                         const checksum = checksumByName.get(f.name)!;
@@ -681,8 +682,13 @@ export function useAudioUpload(bookId: number) {
                             },
                         );
 
-                        if (res.status === 409 && data?.needsFolder) {
-                            setNeedsFolder(String(data.proposedPrefix ?? ''));
+                        if (res.status === 409 && data?.occupied) {
+                            setFolderConflict({
+                                message: String(
+                                    data.message ?? 'Un dossier existe déjà à cet emplacement.',
+                                ),
+                                proposedPrefix: String(data.proposedPrefix ?? ''),
+                            });
                             setPhase('idle');
                             return FAILED;
                         }
@@ -923,5 +929,5 @@ export function useAudioUpload(bookId: number) {
         [bookId, publish, publishProgress],
     );
 
-    return { phase, progress, error, needsFolder, failedFiles, upload, reset };
+    return { phase, progress, error, folderConflict, failedFiles, upload, reset };
 }

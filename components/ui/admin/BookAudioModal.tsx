@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
     Dialog,
     DialogContent,
@@ -15,7 +16,6 @@ import {
     Download,
     FolderArchive,
     FolderOpen,
-    FolderPlus,
     Loader2,
     Lock,
     Pause,
@@ -316,7 +316,6 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const [renameTarget, setRenameTarget] = useState<AudioTrackRenameTarget | null>(null);
     const [renameOpen, setRenameOpen] = useState(false);
     const [restoringId, setRestoringId] = useState<number | null>(null);
-    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     /** A picked folder, awaiting the admin's confirmation. See the panel below. */
     const [selection, setSelection] = useState<FolderSelection | null>(null);
 
@@ -328,7 +327,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         phase,
         progress,
         error: uploadError,
-        needsFolder,
+        folderConflict,
         failedFiles,
         upload,
         reset,
@@ -434,11 +433,10 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         setSelection(chosen);
     };
 
-    const handleFilesChosen = async (files: File[], createFolder = false) => {
+    const handleFilesChosen = async (files: File[]) => {
         if (!files.length) return;
         setSelection(null);
-        setPendingFiles(files);
-        const { ok, becameAvailable, recovered, repriced } = await upload(files, createFolder);
+        const { ok, becameAvailable, recovered, repriced } = await upload(files);
         if (ok) {
             toast({
                 // @ts-expect-error jsx in toast
@@ -463,7 +461,6 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                 ),
                 className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
             });
-            setPendingFiles([]);
             reset();
             await refreshAll();
         } else {
@@ -1077,26 +1074,22 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         </div>
                                     )}
 
-                                    {/* The book has no folder — creating one is an explicit decision. */}
-                                    {needsFolder !== null && (
-                                        <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-                                            <p className="text-foreground">
-                                                Ce livre n’a pas de dossier audio. Un nouveau dossier sera créé :
-                                            </p>
+                                    {/* The book has no folder and the number the corpus would give it is
+                                        already taken — the one case that isn't safe to resolve by itself,
+                                        since writing there could land in another book's recordings. */}
+                                    {folderConflict && (
+                                        <div className="mt-3 rounded-md border border-red-500/50 bg-red-500/10 p-3 text-sm">
+                                            <p className="text-foreground">{folderConflict.message}</p>
                                             <p className="mt-1 font-mono text-xs break-all text-muted-foreground">
-                                                {needsFolder}
+                                                {folderConflict.proposedPrefix}
                                             </p>
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                onClick={() => void handleFilesChosen(pendingFiles, true)}
-                                                disabled={busy || !pendingFiles.length}
-                                                className="mt-2"
+                                            <Link
+                                                href="/admin/audio-orphelins"
+                                                target="_blank"
+                                                className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-primary underline underline-offset-2"
                                             >
-                                                <span className="flex items-center gap-2">
-                                                    <FolderPlus className="h-4 w-4" /> Créer le dossier et envoyer
-                                                </span>
-                                            </Button>
+                                                <FolderOpen className="h-4 w-4" /> Ouvrir Audio orphelin
+                                            </Link>
                                         </div>
                                     )}
 

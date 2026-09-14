@@ -288,7 +288,7 @@ Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments
 - `books/[id]/audio` — ordered tracks with presigned playback URLs (`withAuth`: auditeurs are the audience).
 - `books/[id]/audio/manage` — the same folder as the management dialogue needs it: raw keys, empty folders included (`withAdmin`).
 - `books/[id]/audio/state` — the cached columns only; cheap enough to ask for on sight, for a badge.
-- `books/[id]/audio/upload-url` — mints presigned PUTs, assigns filenames, creates the folder on explicit consent (never as a side effect), refuses a prefix that is already occupied.
+- `books/[id]/audio/upload-url` — mints presigned PUTs, assigns filenames, creates the book's folder inline the first time it uploads; refuses (409, points at `/admin/audio-orphelins`) when the folder number the corpus would give it is already occupied by something else.
 - `books/[id]/audio/commit` — HEAD-verifies what landed; a wrong-size object is removed as a truncated upload.
 - `books/[id]/audio/track` — delete one track (to the corbeille) or rename it; the caller must echo the exact filename back.
 - `books/[id]/audio/tracks` — bulk delete of a whole folder; the caller must echo the track count, re-checked against a fresh listing.

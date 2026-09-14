@@ -84,7 +84,6 @@ export const POST = withAdmin(async (req, { params }) => {
 
     const body = await req.json().catch(() => null);
     const files: RequestedFile[] = Array.isArray(body?.files) ? body.files : [];
-    const createFolder = body?.createFolder === true;
 
     if (!files.length) {
         return NextResponse.json({ message: 'Aucun fichier demandé' }, { status: 400 });
@@ -149,32 +148,26 @@ export const POST = withAdmin(async (req, { params }) => {
     let prefix = resolvePrefix(book.audio_filepath);
 
     // --- The book has no folder yet -----------------------------------------
-    // Creating one writes Book.audio_filepath, so it needs the admin's explicit
-    // say-so rather than happening as a side effect of dropping in a file.
+    // Creating one is just Book.audio_filepath being set — there's nothing an
+    // admin can usefully decide before that write, so it happens inline rather
+    // than as a separate confirmation step. The one real risk is the folder
+    // number: it falls back to Book.id for books created after the Access
+    // import, and that can collide with a real Access id belonging to another
+    // book's (possibly still-unlinked) recordings. So the occupancy check
+    // always runs first — a prefix that already holds something is refused
+    // rather than written into, and the admin is pointed at the orphan screen
+    // to attach the real folder instead of creating a duplicate.
     if (!prefix) {
         const proposed = newBookFolderPrefix(book);
-        if (!createFolder) {
-            return NextResponse.json(
-                {
-                    message: 'Ce livre n’a pas encore de dossier audio.',
-                    needsFolder: true,
-                    proposedPrefix: proposed,
-                },
-                { status: 409 },
-            );
-        }
-
-        // The folder number falls back to Book.id for books created after the
-        // Access import, and that can collide with a real Access id. Never write
-        // into a prefix that already holds something — it could be another
-        // book's recordings.
         const occupants = await listRawObjects(proposed);
         if (occupants.length) {
             return NextResponse.json(
                 {
                     message:
                         'Un dossier existe déjà à cet emplacement et appartient peut-être à un autre livre. ' +
-                        'Rattachez le livre à ce dossier au lieu d’en créer un nouveau.',
+                        'L’enregistrement de ce livre existe peut-être déjà sous un autre nom : ' +
+                        'vérifiez la page Audio orphelin et rattachez le bon dossier au lieu d’en créer un nouveau.',
+                    occupied: true,
                     proposedPrefix: proposed,
                 },
                 { status: 409 },
