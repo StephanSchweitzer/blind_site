@@ -299,7 +299,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             updateData.returnedToECADate = validation.data.returnedToECADate ? new Date(validation.data.returnedToECADate) : null;
         }
         if (validation.data.notes !== undefined) {
-            updateData.notes = validation.data.notes;
+            // Le formulaire hydrate toujours notes en '' (jamais undefined, voir
+            // AssignmentFormData) : sans ce `|| null`, resauvegarder une attribution
+            // dont les notes n'ont jamais été renseignées écrivait '' par-dessus le
+            // null existant à CHAQUE sauvegarde — même en ne touchant qu'un autre
+            // champ — et produisait une ligne « Notes: — → (vide) » fantôme dans le
+            // journal. Même normalisation que POST /api/assignments et PUT
+            // /api/orders/[id].
+            updateData.notes = validation.data.notes || null;
         }
         if (validation.data.processedByStaffId !== undefined) {
             updateData.processedByStaffId = validation.data.processedByStaffId;
