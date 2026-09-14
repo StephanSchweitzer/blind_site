@@ -9,7 +9,7 @@ import FrontendNavbar from '@/components/Frontend-Navbar';
 import { CustomPagination } from '@/components/ui/custom-pagination';
 import { PDFButton } from '@/listes-de-livres/PDFButton';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
-import type { BookWithGenres } from '@/types/book';
+import type { PublicBook } from '@/lib/books/publicBook';
 
 interface CoupsDeCoeurClientProps {
     content: CoupDeCoeur[];
@@ -25,7 +25,7 @@ export default function CoupsDeCoeurClient({
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);
+    const [selectedBook, setSelectedBook] = useState<PublicBook | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const isFirstRender = useRef(true);
 
@@ -55,7 +55,7 @@ export default function CoupsDeCoeurClient({
         }
     };
 
-    const handleBookClick = (book: BookWithGenres) => {
+    const handleBookClick = (book: PublicBook) => {
         setSelectedBook(book);
         setIsModalOpen(true);
     };

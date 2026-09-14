@@ -5,6 +5,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { Prisma } from '@prisma/client';
 import { BookWithGenres } from '@/types/book';
+import { PublicBook, toPublicBook } from '@/lib/books/publicBook';
 import { withAdmin, getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { audioMissingWhere, audioPresentWhere, AUDIO_MISSING_STATUSES } from '@/lib/books/audioFilter';
 import { buildBookScopeWhere } from '@/lib/books/searchWhere';
@@ -417,7 +418,7 @@ interface RecentWindow {
 }
 
 interface BooksApiResponse {
-    books: BookWithGenres[];
+    books: BookWithGenres[] | PublicBook[];
     total: number;
     page: number;
     totalPages: number;
@@ -464,8 +465,16 @@ export async function GET(request: NextRequest): Promise<Response> {
         // Hidden books stay out of every public read path here; admins see
         // everything, since this route also backs the admin book list/search
         // and the Coup de Cœur book selector.
+        //
+        // `scope=public` overrides that for the one caller that must never show
+        // them regardless of who's asking: the public /catalogue page shares
+        // this exact route, and a permanent signed in while just browsing the
+        // public site (not the back office) got hidden books back in their
+        // "public" search results purely because their session passed
+        // isAdmin() — the route had no way to tell the two callers apart.
         const me = await getCurrentUser();
-        const includeHidden = isAdmin(me?.accessLevel);
+        const publicScope = searchParams.get('scope') === 'public';
+        const includeHidden = isAdmin(me?.accessLevel) && !publicScope;
 
         // Handle specific IDs request
         if (ids && ids.length > 0) {
@@ -480,7 +489,7 @@ export async function GET(request: NextRequest): Promise<Response> {
                     }
                 },
             });
-            return new Response(JSON.stringify({ books }), {
+            return new Response(JSON.stringify({ books: includeHidden ? books : books.map(toPublicBook) }), {
                 status: 200,
                 headers: cacheHeaders(me !== null),
             });
@@ -672,7 +681,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         }
 
         const response: BooksApiResponse = {
-            books,
+            books: includeHidden ? books : books.map(toPublicBook),
             total,
             page,
             totalPages: Math.ceil(total / limit),

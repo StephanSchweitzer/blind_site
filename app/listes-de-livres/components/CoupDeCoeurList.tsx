@@ -2,11 +2,11 @@ import React from 'react';
 import { AudioPlayer } from '@/listes-de-livres/AudioPlayer';
 import { BookList } from '@/listes-de-livres/BookList';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
-import type { BookWithGenres } from '@/types/book';
+import type { PublicBook } from '@/lib/books/publicBook';
 
 interface CoupDeCoeurListProps {
     content: CoupDeCoeur[];
-    onBookClick: (book: BookWithGenres) => void;
+    onBookClick: (book: PublicBook) => void;
     isTransitioning: boolean;
 }
 

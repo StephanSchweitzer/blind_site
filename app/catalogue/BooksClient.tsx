@@ -5,13 +5,14 @@ import { SearchBar } from '@/catalogue/search/SearchBar';
 import { BookList } from '@/catalogue/search/BookList';
 import { BookModal } from '@/components/BookModal';
 import { CustomPagination } from "@/components/ui/custom-pagination";
-import { BookWithGenres, SearchResult } from '@/types/book';
+import { SearchResult } from '@/types/book';
+import type { PublicBook } from '@/lib/books/publicBook';
 
 const ITEMS_PER_PAGE = 9;
 const DEBOUNCE_DELAY = 300;
 
 interface BooksClientProps {
-    initialBooks: BookWithGenres[];
+    initialBooks: PublicBook[];
     genres: { id: number; name: string; description: string | null; }[];
     totalBooks: number;
     totalPages: number;
@@ -27,7 +28,7 @@ export function BooksClient({
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
-    const [selectedBook, setSelectedBook] = useState<BookWithGenres | null>(null);
+    const [selectedBook, setSelectedBook] = useState<PublicBook | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -78,6 +79,10 @@ export function BooksClient({
                 filter,
                 page: page.toString(),
                 limit: ITEMS_PER_PAGE.toString(),
+                // Forces hidden books out of the response even when the
+                // visitor is a signed-in permanent browsing the public site —
+                // see the matching comment in /api/books.
+                scope: 'public',
             });
 
             genreIds.forEach(id => params.append('genres', id.toString()));
@@ -146,7 +151,7 @@ export function BooksClient({
         setCurrentPage(1);
     }, []);
 
-    const handleBookClick = useCallback((book: BookWithGenres) => {
+    const handleBookClick = useCallback((book: PublicBook) => {
         setSelectedBook(book);
         setIsModalOpen(true);
     }, []);

@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { CACHE_TAGS } from '@/lib/cache-tags';
+import { toPublicBook } from '@/lib/books/publicBook';
 
 /**
  * Une liste par page — chaque coup de cœur occupe la page entière.
@@ -19,13 +20,21 @@ export const COUPS_DE_COEUR_PAGE_SIZE = 1;
  */
 export const getCoupsDeCoeurPage = unstable_cache(
     async (page: number, pageSize: number) => {
-        const [items, total] = await Promise.all([
+        const [rows, total] = await Promise.all([
             prisma.coupsDeCoeur.findMany({
                 where: { active: true },
-                include: {
+                // `select`, not `include`: this feeds the public page directly, and
+                // it only ever reads id/title/description/audioPath off a coup de
+                // cœur — the staff name that added it, and the raw timestamps, have
+                // no reason to ship to every visitor.
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    audioPath: true,
                     books: {
                         where: { book: { hiddenFromCatalogue: false } },
-                        include: {
+                        select: {
                             book: {
                                 include: {
                                     genres: { include: { genre: true } },
@@ -33,7 +42,6 @@ export const getCoupsDeCoeurPage = unstable_cache(
                             },
                         },
                     },
-                    addedBy: { select: { name: true } },
                 },
                 skip: (page - 1) * pageSize,
                 take: pageSize,
@@ -41,6 +49,11 @@ export const getCoupsDeCoeurPage = unstable_cache(
             }),
             prisma.coupsDeCoeur.count({ where: { active: true } }),
         ]);
+
+        const items = rows.map((coup) => ({
+            ...coup,
+            books: coup.books.map((b) => ({ ...b, book: toPublicBook(b.book) })),
+        }));
 
         return { items, total };
     },

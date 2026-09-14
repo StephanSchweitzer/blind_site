@@ -1,13 +1,13 @@
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { CACHE_TAGS } from '@/lib/cache-tags';
-import type { BookWithGenres } from '@/types/book';
+import { PublicBook, toPublicBook } from '@/lib/books/publicBook';
 import type { Genre } from '@prisma/client';
 
 const CATALOGUE_PAGE_SIZE = 9;
 
 interface CatalogueData {
-    initialBooks: BookWithGenres[];
+    initialBooks: PublicBook[];
     genres: Genre[];
     totalBooks: number;
     totalPages: number;
@@ -24,7 +24,7 @@ interface CatalogueData {
  */
 export const getCatalogueData = unstable_cache(
     async (): Promise<CatalogueData> => {
-        const [initialBooks, genres, totalBooks] = await Promise.all([
+        const [books, genres, totalBooks] = await Promise.all([
             prisma.book.findMany({
                 where: { hiddenFromCatalogue: false },
                 include: {
@@ -42,7 +42,10 @@ export const getCatalogueData = unstable_cache(
         ]);
 
         return {
-            initialBooks,
+            // This is the page's own first render, not a fetch to /api/books —
+            // easy to forget that the same trimming has to happen here too. See
+            // lib/books/publicBook.ts for what's dropped and why.
+            initialBooks: books.map(toPublicBook),
             genres,
             totalBooks,
             totalPages: Math.ceil(totalBooks / CATALOGUE_PAGE_SIZE),

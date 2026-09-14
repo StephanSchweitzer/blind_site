@@ -1,4 +1,4 @@
-import { BookWithGenres } from '@/types/book';
+import { PublicBook } from '@/lib/books/publicBook';
 
 export interface CoupDeCoeur {
     id: number;
@@ -6,7 +6,7 @@ export interface CoupDeCoeur {
     description: string | null;
     audioPath: string | null;
     books: {
-        book: BookWithGenres;
+        book: PublicBook;
     }[];
 }
 

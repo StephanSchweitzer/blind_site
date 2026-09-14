@@ -1,5 +1,6 @@
 // types/book.ts
 import { Book, Genre, BookGenre } from '@prisma/client';
+import type { PublicBook } from '@/lib/books/publicBook';
 
 // Ensure this matches your Prisma schema exactly
 export interface BookWithGenres extends Book {
@@ -22,7 +23,7 @@ export interface BookWithGenresResponse extends Omit<Book, 'genres'> {
 }
 
 export interface SearchResult {
-    books: BookWithGenres[];
+    books: PublicBook[];
     total: number;
     page: number;
     totalPages: number;

@@ -1,9 +1,9 @@
 import React from 'react';
-import { BookWithGenres } from '@/types/book';
+import type { PublicBook } from '@/lib/books/publicBook';
 
 interface BookListProps {
-    books: BookWithGenres[];
-    onBookClick: (book: BookWithGenres) => void;
+    books: PublicBook[];
+    onBookClick: (book: PublicBook) => void;
 }
 
 const formatDuration = (minutes: number | null): string => {
@@ -117,7 +117,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                         </p>
 
                         <div className="flex items-center justify-between">
-                            {/* Two fixes here.
+                            {/* Three fixes here.
                                 Contrast: white on the old emerald-400→green-500 and
                                 amber-400→orange-500 gradients measured 1.7–2.8:1 against
                                 a 4.5:1 requirement for 12px text — the status was
@@ -125,13 +125,19 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 shades keep the same colour language at 5:1+ in both
                                 themes.
                                 The ✓ / ⏳ glyphs are decoration: read aloud they become
-                                "coche" / "sablier" and clutter the status. */}
+                                "coche" / "sablier" and clutter the status.
+                                Sharpness: `shadow-md` at this pill's size put a 6px,
+                                same-hue coloured blur (`shadow-emerald/amber-700/30`)
+                                right against the card's own `backdrop-blur-xl`, which
+                                read as the badge text itself being blurry. `shadow-sm`
+                                is the same tight, low-blur treatment the genre pills
+                                just above already use. */}
                             <span className={`px-3 py-1.5 rounded-full text-xs font-semibold
-                                shadow-md
+                                shadow-sm
                                 transition-all duration-300
                                 ${book.available
-                                ? 'bg-gradient-to-r from-emerald-700 to-green-700 text-white border border-emerald-800/50 shadow-emerald-700/30'
-                                : 'bg-gradient-to-r from-amber-700 to-orange-700 text-white border border-amber-800/50 shadow-amber-700/30 animate-pulse-subtle'
+                                ? 'bg-gradient-to-r from-emerald-700 to-green-700 text-white border border-emerald-800/50 shadow-emerald-900/40'
+                                : 'bg-gradient-to-r from-amber-700 to-orange-700 text-white border border-amber-800/50 shadow-amber-900/40 animate-pulse-subtle'
                             }`}>
                                 <span aria-hidden="true">{book.available ? '✓' : '⏳'}</span>{' '}
                                 {book.available ? 'Disponible' : 'En attente'}

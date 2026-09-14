@@ -1,10 +1,10 @@
 import React from 'react';
 import { groupBy } from 'lodash';
-import type { BookWithGenres  } from '@/types/book';
+import type { PublicBook } from '@/lib/books/publicBook';
 
 interface BookListProps {
-    books: { book: BookWithGenres }[];
-    onBookClick: (book: BookWithGenres) => void;
+    books: { book: PublicBook }[];
+    onBookClick: (book: PublicBook) => void;
 }
 
 // Simple truncated description
@@ -25,7 +25,7 @@ const TruncatedDescription: React.FC<{ description: string, characterLimit?: num
 };
 
 export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
-    const groupBooksByGenre = (books: { book: BookWithGenres }[]) => {
+    const groupBooksByGenre = (books: { book: PublicBook }[]) => {
         const booksWithGenres = books.map(({ book }) => {
             const genreNames = book.genres?.length
                 ? book.genres.map(g => g.genre?.name).filter(Boolean).sort()

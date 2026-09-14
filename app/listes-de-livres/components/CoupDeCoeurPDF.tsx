@@ -1,7 +1,7 @@
 // CoupDeCoeurPDF.tsx
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
-import type { BookWithGenres } from '@/types/book';
+import type { PublicBook } from '@/lib/books/publicBook';
 import { groupBy } from 'lodash';
 
 const NAVY = '#15366b';
@@ -30,7 +30,7 @@ const s = StyleSheet.create({
     contact: { fontSize: 11, textAlign: 'center', marginTop: 36, color: NAVY },
 });
 
-const formatBookMeta = (book: BookWithGenres) => {
+const formatBookMeta = (book: PublicBook) => {
     const parts: string[] = [];
     if (book.publisher) parts.push(book.publisher);
     if (book.pageCount) parts.push(`${book.pageCount} pages`);
@@ -42,7 +42,7 @@ const formatBookMeta = (book: BookWithGenres) => {
     return parts.join('  ·  ');
 };
 
-const groupBooksByGenre = (books: { book: BookWithGenres }[]) => {
+const groupBooksByGenre = (books: { book: PublicBook }[]) => {
     const withGenres = books.map(({ book }) => ({
         ...book,
         genreNames: book.genres?.length

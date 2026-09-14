@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { BookWithGenres } from '@/types/book';
+import type { PublicBook } from '@/lib/books/publicBook';
 import {
     Dialog,
     DialogContent,
@@ -11,7 +11,7 @@ import { ChevronDown, ChevronUp, Volume2, Filter, Clock, Calendar, User, X } fro
 import { formatCalendarDate } from '@/lib/calendar-date';
 
 interface BookModalProps {
-    book: BookWithGenres | null;
+    book: PublicBook | null;
     isOpen: boolean;
     onClose: () => void;
     onGenreClick?: (genreId: number) => void;

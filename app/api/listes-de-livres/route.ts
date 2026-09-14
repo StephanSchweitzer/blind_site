@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
+import { toPublicBook } from '@/lib/books/publicBook';
 
 export async function GET(request: NextRequest) {
     try {
@@ -84,7 +85,16 @@ export async function GET(request: NextRequest) {
         const [coupsDeCoeur, total] = await Promise.all([
             prisma.coupsDeCoeur.findMany({
                 where: whereClause,
-                include: {
+                // `select`, not `include`: this route is open without a session, and
+                // the public page only ever reads id/title/description/audioPath off
+                // a coup de cœur — `addedBy` (a staff name), `addedById`, `active` and
+                // the timestamps were only in the response because `include` hands
+                // back every scalar column by default.
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    audioPath: true,
                     books: {
                         // Cette route est ouverte sans session (la recherche
                         // publique s'en sert), et sans ce filtre elle renvoyait
@@ -92,7 +102,7 @@ export async function GET(request: NextRequest) {
                         // qu'il figurait dans une liste. app/listes-de-livres/
                         // data.ts, qui alimente la page elle-même, filtre déjà.
                         where: { book: { hiddenFromCatalogue: false } },
-                        include: {
+                        select: {
                             book: {
                                 include: {
                                     genres: {
@@ -103,11 +113,6 @@ export async function GET(request: NextRequest) {
                                 }
                             }
                         }
-                    },
-                    addedBy: {
-                        select: {
-                            name: true
-                        }
                     }
                 },
                 skip,
@@ -117,8 +122,17 @@ export async function GET(request: NextRequest) {
             prisma.coupsDeCoeur.count({ where: whereClause })
         ]);
 
+        // Same reasoning as /api/books: trim each embedded book down to what a
+        // visitor can actually see, regardless of session — this route has no
+        // `withAdmin` branch to begin with, so there's no "admin" shape to
+        // preserve here the way there was in /api/books.
+        const items = coupsDeCoeur.map((coup) => ({
+            ...coup,
+            books: coup.books.map((b) => ({ ...b, book: toPublicBook(b.book) })),
+        }));
+
         return NextResponse.json({
-            items: coupsDeCoeur,
+            items,
             total,
             page,
             totalPages: Math.ceil(total / limit)
