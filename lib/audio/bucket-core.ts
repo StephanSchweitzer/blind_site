@@ -214,12 +214,40 @@ export function getTrackUrl(key: string, expiresIn = 3600, downloadAs?: string):
  *
  * Requires a B2 CORS rule allowing `s3_put` from the site origin; without one
  * the browser's preflight fails and no upload can succeed.
+ *
+ * `checksumSha256` is the base64 SHA-256 the browser already computed for this
+ * file (hooks/useAudioUpload.ts's `sha256Base64`, sent back on the signing
+ * request) — required, not optional, because of two things confirmed against
+ * the real bucket while building this:
+ *
+ *  - B2 makes an `x-amz-checksum-sha256` header mandatory on every PUT the
+ *    moment the bucket has Object Lock (default retention) turned on, and
+ *    validates/accepts it the same way when Object Lock is off — so signing
+ *    it is correct in both bucket states, not conditional on which is active.
+ *  - The checksum value must be known and passed as `ChecksumSHA256` *before*
+ *    signing, with `unhoistableHeaders` forcing it to stay a real signed
+ *    header. Passing only `ChecksumAlgorithm: 'SHA256'` (no value) lets the
+ *    SDK hoist the header into an unsigned query parameter instead — B2
+ *    rejects that PUT outright with "header 'x-amz-checksum-sha256' must be
+ *    included in signature", regardless of Object Lock. There's no way to
+ *    defer the checksum to the browser alone; it has to be computed first and
+ *    round-tripped through this signing call.
  */
-export function putTrackUrl(key: string, contentType: string, expiresIn = 3600): Promise<string> {
+export function putTrackUrl(
+    key: string,
+    contentType: string,
+    checksumSha256: string,
+    expiresIn = 3600,
+): Promise<string> {
     return getSignedUrl(
         getS3(),
-        new PutObjectCommand({ Bucket: AUDIO_BUCKET, Key: key, ContentType: contentType }),
-        { expiresIn },
+        new PutObjectCommand({
+            Bucket: AUDIO_BUCKET,
+            Key: key,
+            ContentType: contentType,
+            ChecksumSHA256: checksumSha256,
+        }),
+        { expiresIn, unhoistableHeaders: new Set(['x-amz-checksum-sha256']) },
     );
 }
 
@@ -377,6 +405,13 @@ export async function ensureFolderPlaceholder(
             Bucket: AUDIO_BUCKET,
             Key: `${prefix}.bzEmpty`,
             Body: new Uint8Array(0),
+            // Same Object-Lock requirement as putTrackUrl, but this call goes
+            // straight through the SDK rather than being presigned for a
+            // browser to replay later — the SDK has the body right here, so
+            // ChecksumAlgorithm alone is enough for it to compute and sign
+            // the checksum itself. No ChecksumSHA256/unhoistableHeaders
+            // dance needed; that workaround is only for presigned URLs.
+            ChecksumAlgorithm: 'SHA256',
         }),
     );
     return true;

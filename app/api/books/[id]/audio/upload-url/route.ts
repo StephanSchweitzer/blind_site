@@ -51,7 +51,18 @@ interface RequestedFile {
      * into a fresh slot; see the loop below for when it's honoured.
      */
     existingKey?: unknown;
+    /**
+     * Base64 SHA-256 of the file's bytes, computed client-side
+     * (hooks/useAudioUpload.ts's `sha256Base64`) before this request is even
+     * sent. Required so `putTrackUrl` can sign it into the URL — B2 needs the
+     * value in hand at signing time (see bucket-core.ts's `putTrackUrl` doc
+     * comment for why it can't just be sent along with the PUT unsigned).
+     */
+    checksum?: unknown;
 }
+
+/** Base64 SHA-256: 32 bytes -> 44 base64 chars, one trailing '=' pad. */
+const SHA256_BASE64 = /^[A-Za-z0-9+/]{43}=$/;
 
 /**
  * Mint presigned PUT URLs so the browser can upload straight to B2.
@@ -116,6 +127,12 @@ export const POST = withAdmin(async (req, { params }) => {
         if (size > MAX_UPLOAD_BYTES) {
             return NextResponse.json(
                 { message: `« ${originalName} » dépasse la taille maximale (500 Mo).` },
+                { status: 400 },
+            );
+        }
+        if (typeof f.checksum !== 'string' || !SHA256_BASE64.test(f.checksum)) {
+            return NextResponse.json(
+                { message: `Somme de contrôle manquante ou invalide pour « ${originalName} »` },
                 { status: 400 },
             );
         }
@@ -193,12 +210,15 @@ export const POST = withAdmin(async (req, { params }) => {
         strategy: string;
         /** True when `key` was reused via `existingKey`, not freshly minted. */
         reused: boolean;
+        checksum: string;
     }[] = [];
 
     for (const f of files) {
-        // Already validated above (name present, allowed extension, size in range).
+        // Already validated above (name present, allowed extension, size in range,
+        // checksum present and shaped like a base64 SHA-256).
         const originalName = f.name as string;
         const size = f.size as number;
+        const checksum = f.checksum as string;
 
         // --- Re-sign an existing key instead of minting a new name ----------
         //
@@ -279,7 +299,16 @@ export const POST = withAdmin(async (req, { params }) => {
         const ext = splitExtension(filename).ext;
         const contentType = MIME[ext] ?? 'application/octet-stream';
 
-        results.push({ originalName, filename, key, url: '', contentType, strategy, reused: Boolean(reuseKey) });
+        results.push({
+            originalName,
+            filename,
+            key,
+            url: '',
+            contentType,
+            strategy,
+            reused: Boolean(reuseKey),
+            checksum,
+        });
     }
 
     // One remaining storage-level check, pooled rather than serial, and only
@@ -307,7 +336,7 @@ export const POST = withAdmin(async (req, { params }) => {
 
     // Sign only now that every name in the batch is confirmed free.
     for (const r of results) {
-        r.url = await putTrackUrl(r.key, r.contentType, URL_TTL_SECONDS);
+        r.url = await putTrackUrl(r.key, r.contentType, r.checksum, URL_TTL_SECONDS);
     }
 
     return NextResponse.json({ prefix, expiresIn: URL_TTL_SECONDS, files: results });

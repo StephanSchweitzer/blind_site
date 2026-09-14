@@ -1,17 +1,23 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
+import { pool } from '@/lib/concurrency';
 
 /**
  * Uploads audio files straight from the browser to the storage bucket.
  *
  * The server only mints presigned PUT URLs — the bytes go browser → B2 and
- * never transit Vercel. Three consequences shape this hook:
+ * never transit Vercel. Four consequences shape this hook:
  *
  *  - `XMLHttpRequest`, not `fetch`: fetch cannot report upload progress, and a
  *    50 MB track with no progress bar looks like a hung dialogue.
  *  - the PUT must send exactly the Content-Type the server signed, or B2
  *    rejects the signature.
+ *  - the PUT must also carry an `x-amz-checksum-sha256` header matching the
+ *    file's actual SHA-256 (see `sha256Base64` below) — B2 requires one on
+ *    every write once the bucket has Object Lock enabled, and accepts it
+ *    just the same when Object Lock is off, so this isn't conditional on
+ *    which state the bucket is in.
  *  - the server can't see the write, so a commit call afterwards verifies what
  *    actually landed and refreshes the book's cached track count.
  *
@@ -276,12 +282,31 @@ const HINT_CONFIG =
     'Ce n’est pas un problème de fichier ni de connexion : la configuration du ' +
     'stockage est en cause. Signalez-le à l’informaticien en citant le code ci-dessus.';
 
+/**
+ * SHA-256 of a file's bytes, base64-encoded — the value B2 now requires in
+ * `x-amz-checksum-sha256` on every PUT once the bucket has Object Lock
+ * (default retention) enabled; see `putTrackUrl` in `lib/audio/bucket-core.ts`
+ * for the server side of this same requirement.
+ *
+ * Reads the whole file into memory, since `crypto.subtle.digest` takes a
+ * buffer rather than a stream — unavoidable, but the *output* is a fixed 32
+ * bytes regardless of the file being up to `MAX_UPLOAD_BYTES`, so encoding it
+ * to base64 needs no chunking the way hashing the input itself would.
+ */
+async function sha256Base64(file: File): Promise<string> {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    const bytes = new Uint8Array(digest);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+}
+
 interface PutCallbacks {
     onProgress: (loaded: number, total: number) => void;
     onSent: () => void;
 }
 
-function putOnce(file: File, signed: SignedFile, cbs: PutCallbacks): Promise<void> {
+function putOnce(file: File, signed: SignedFile, checksum: string, cbs: PutCallbacks): Promise<void> {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         let watchdog: ReturnType<typeof setTimeout> | undefined;
@@ -299,6 +324,9 @@ function putOnce(file: File, signed: SignedFile, cbs: PutCallbacks): Promise<voi
         xhr.open('PUT', signed.url, true);
         // Must match the signature exactly.
         xhr.setRequestHeader('Content-Type', signed.contentType);
+        // See sha256Base64's doc comment: required once Object Lock is on,
+        // accepted either way.
+        xhr.setRequestHeader('x-amz-checksum-sha256', checksum);
 
         xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) cbs.onProgress(e.loaded, e.total);
@@ -399,6 +427,7 @@ async function putWithRetry(
     file: File,
     signed: SignedFile,
     row: FileProgress,
+    checksum: string,
     publish: () => void,
     publishProgress: () => void,
 ): Promise<void> {
@@ -411,7 +440,7 @@ async function putWithRetry(
         publish();
 
         try {
-            await putOnce(file, signed, {
+            await putOnce(file, signed, checksum, {
                 onProgress: (loaded, total) => {
                     row.loaded = loaded;
                     row.total = total;
@@ -610,8 +639,26 @@ export function useAudioUpload(bookId: number) {
                     const chunk = chunks[c];
                     const downstream = chunks.slice(c + 1).flat();
 
-                    // --- 1. Ask the server to name and sign each file ---------
+                    // --- 0. Hash every file in the chunk ----------------------
+                    //
+                    // Has to happen before signing, not before the PUT: B2 needs
+                    // the checksum value at signing time to fold it into the
+                    // presigned URL's signature (see putTrackUrl's doc comment
+                    // in lib/audio/bucket-core.ts) — sending it only as a PUT
+                    // header, unsigned, is rejected outright. Bounded the same
+                    // as the transfers below so a 50-file chunk doesn't try to
+                    // hold 50 files' bytes in memory at once.
                     setPhase('preparing');
+                    const checksumByName = new Map(
+                        (
+                            await pool(chunk, CONCURRENCY, async (f) => ({
+                                name: f.name,
+                                checksum: await sha256Base64(f),
+                            }))
+                        ).map((r) => [r.name, r.checksum] as const),
+                    );
+
+                    // --- 1. Ask the server to name and sign each file ---------
                     let signed: SignedFile[];
                     try {
                         const { res, data } = await fetchJsonWithRetry(
@@ -625,9 +672,10 @@ export function useAudioUpload(bookId: number) {
                                     createFolder,
                                     files: chunk.map((f) => {
                                         const existingKey = assignedKeysRef.current.get(f.name);
+                                        const checksum = checksumByName.get(f.name)!;
                                         return existingKey
-                                            ? { name: f.name, size: f.size, existingKey }
-                                            : { name: f.name, size: f.size };
+                                            ? { name: f.name, size: f.size, existingKey, checksum }
+                                            : { name: f.name, size: f.size, checksum };
                                     }),
                                 }),
                             },
@@ -717,7 +765,15 @@ export function useAudioUpload(bookId: number) {
                             if (!file || !row) continue;
 
                             try {
-                                await putWithRetry(file, s, row, publish, publishProgress);
+                                // Computed once, back in step 0, and reused
+                                // across every retry attempt here — a retry
+                                // re-sends the same bytes, so re-hashing them
+                                // per attempt would repeat the same CPU work
+                                // for no reason. Must exist: every file in
+                                // `signed` came from `chunk`, which is exactly
+                                // what checksumByName was built from.
+                                const checksum = checksumByName.get(s.originalName)!;
+                                await putWithRetry(file, s, row, checksum, publish, publishProgress);
                                 row.status = 'terminé';
                                 row.loaded = row.total;
                                 sent.push({ key: s.key, size: file.size, name: s.originalName });
