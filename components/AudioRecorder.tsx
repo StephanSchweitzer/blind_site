@@ -1,7 +1,7 @@
 // components/AudioRecorder.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, Square, Trash2, Check } from 'lucide-react';
+import { Mic, Square, Trash2, Check, Upload } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface AudioRecorderProps {
@@ -16,6 +16,10 @@ interface AudioSegment {
     isConfirmed?: boolean;
 }
 
+// Kept in sync with app/api/upload-audio/route.ts's own MAX_BYTES so a
+// too-large file is rejected here instead of after a slow upload.
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => {
     const [isRecording, setIsRecording] = useState(false);
     const [segments, setSegments] = useState<AudioSegment[]>([]);
@@ -23,11 +27,15 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
     const [error, setError] = useState<string>('');
     const [isConfirmed, setIsConfirmed] = useState(false);
     const [finalAudioUrl, setFinalAudioUrl] = useState<string | null>(null);
+    // Only affects wording in the confirmed panel (imported file vs merged
+    // recording) — both are handed to onConfirm the same way.
+    const [source, setSource] = useState<'recording' | 'import' | null>(null);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         audioContextRef.current = new AudioContext();
@@ -126,11 +134,51 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
             setSegments([{ blob: finalBlob, url, duration: 0, isConfirmed: true }]);
 
             onConfirm(finalBlob);
+            setSource('recording');
             setIsConfirmed(true);
         } catch (err) {
             console.error('Error merging audio:', err);
             setError('Failed to merge audio segments');
         }
+    };
+
+    /**
+     * A file picked from disk is treated exactly like the result of
+     * `handleConfirm`: it becomes the one confirmed segment and is handed
+     * straight to `onConfirm`, with no re-encoding — unlike a recording,
+     * which is always merged down to WAV, an imported file keeps whatever
+     * format (mp3, m4a, wav…) the admin produced it in. It can still be
+     * extended afterwards: clicking « Continuer l'enregistrement » adds a
+     * mic segment behind it, and « Confirmer l'enregistrement » merges both
+     * through the same WAV path as any other multi-segment recording.
+     */
+    const handleFileSelected = (file: File) => {
+        setError('');
+
+        if (!file.type.startsWith('audio/')) {
+            setError('Le fichier doit être un fichier audio.');
+            return;
+        }
+        if (file.size > MAX_UPLOAD_BYTES) {
+            setError('Fichier trop volumineux (max 25 Mo).');
+            return;
+        }
+
+        if (finalAudioUrl) URL.revokeObjectURL(finalAudioUrl);
+        const url = URL.createObjectURL(file);
+        setFinalAudioUrl(url);
+        setSegments([{ blob: file, url, duration: 0, isConfirmed: true }]);
+
+        onConfirm(file);
+        setSource('import');
+        setIsConfirmed(true);
+    };
+
+    const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        // Reset so picking the same file again still fires onChange.
+        e.target.value = '';
+        if (file) handleFileSelected(file);
     };
 
     // WAV conversion utilities remain the same
@@ -188,6 +236,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
             setFinalAudioUrl(null);
         }
         setIsConfirmed(false);
+        setSource(null);
         onClear();
     };
 
@@ -217,14 +266,33 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
                 <>
                     <div className="flex items-center gap-4">
                         {!isRecording ? (
-                            <Button
-                                type="button"
-                                onClick={startRecording}
-                                className="bg-red-500 hover:bg-red-600"
-                            >
-                                <Mic className="w-4 h-4 mr-2" />
-                                {segments.length > 0 ? 'Continuer l\'enregistrement' : 'Démarrer l\'enregistrement'}
-                            </Button>
+                            <>
+                                <Button
+                                    type="button"
+                                    onClick={startRecording}
+                                    className="bg-red-500 hover:bg-red-600"
+                                >
+                                    <Mic className="w-4 h-4 mr-2" />
+                                    {segments.length > 0 ? 'Continuer l\'enregistrement' : 'Démarrer l\'enregistrement'}
+                                </Button>
+                                {segments.length === 0 && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <Upload className="w-4 h-4 mr-2" />
+                                        Importer un fichier
+                                    </Button>
+                                )}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="audio/*"
+                                    className="hidden"
+                                    onChange={handleFileInputChange}
+                                />
+                            </>
                         ) : (
                             <Button
                                 type="button"
@@ -287,14 +355,16 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
             {isConfirmed && finalAudioUrl && (
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-green-600">Enregistrement confirmé</span>
+                        <span className="text-sm font-medium text-green-600">
+                            {source === 'import' ? 'Fichier importé' : 'Enregistrement confirmé'}
+                        </span>
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => setIsConfirmed(false)}
                         >
-                            Modifier l&apos;enregistrement
+                            {source === 'import' ? 'Remplacer le fichier' : 'Modifier l\'enregistrement'}
                         </Button>
                     </div>
                     <audio src={finalAudioUrl} controls className="w-full" />

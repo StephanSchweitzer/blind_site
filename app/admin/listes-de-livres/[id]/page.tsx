@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import BookSelector from '../components/book-selector';
 import AudioRecorder from '@/components/AudioRecorder';
 import { CoupDeCoeurPDFButton } from '@/admin/CoupDeCoeurPDFButton';
+import { extensionForMimeType } from '@/lib/audio-file-extension';
 import {useWarnIfUnsavedChanges} from "@/components/userWarnIfUnsavedChanges";
 
 interface BookWithDetails {
@@ -137,7 +138,7 @@ export default function EditCoupDeCoeurPage() {
 
             if (tempAudioBlob) {
                 const timestamp = new Date().getTime();
-                const filename = `coup_description_${timestamp}.mp3`;
+                const filename = `coup_description_${timestamp}.${extensionForMimeType(tempAudioBlob.type)}`;
                 const audioFormData = new FormData();
                 audioFormData.append('audio', tempAudioBlob, filename);
 
@@ -276,7 +277,7 @@ export default function EditCoupDeCoeurPage() {
                                             variant="outline"
                                             className="w-full bg-field border-border text-foreground hover:bg-muted"
                                         >
-                                            Nouvel Enregistrement
+                                            Remplacer l&apos;audio
                                         </Button>
                                     </div>
                                 ) : (

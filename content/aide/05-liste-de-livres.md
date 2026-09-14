@@ -35,6 +35,8 @@ Ce switch « Visibilité » existe parce que la création de la liste et la mise
 
 ## Enregistrement pour les listes des livres
 
+Deux façons d'ajouter cet audio sont proposées côte à côte : l'enregistrer directement au micro de l'ordinateur, ou importer un fichier déjà préparé (par exemple monté dans un autre logiciel). Le bouton « Importer un fichier » n'apparaît pas encore sur les captures ci-dessous, mais se trouve juste à côté de « Démarrer l'enregistrement ».
+
 Lorsque vous cliquez sur le bouton « Démarrer l'enregistrement », l'enregistrement commence.
 
 ![Liste de Livres - capture 3](/admin/aide/images/liste-de-livres-03.jpg)
@@ -54,6 +56,8 @@ Vous pouvez poursuivre l'enregistrement par prises de cette manière en cliquant
 Vous pouvez (1) continuer à enregistrer des sections, (2) écouter une section enregistrée, (3) supprimer une section enregistrée, (4) enregistrer toutes les sections enregistrées sous la forme d'un seul enregistrement combiné dans l'ordre indiqué ci-dessus, et (5) supprimer tous les enregistrements et arrêter l'enregistrement d'une section audio.
 
 ![Liste de Livres - capture 7](/admin/aide/images/liste-de-livres-07.jpg)
+
+Si vous préférez importer un fichier déjà prêt plutôt que d'enregistrer au micro, cliquez sur « Importer un fichier » et choisissez-le sur votre ordinateur (25 Mo maximum). Il est accepté tel quel, sans être ré-encodé, puis s'affiche immédiatement comme un enregistrement confirmé, prêt à être réécouté ou remplacé via le bouton « Remplacer le fichier ».
 
 ## Ajoutez des livres à la liste et sélectionnez-les
 

@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/custom-switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import BookSelector from '../components/book-selector';
 import AudioRecorder from '@/components/AudioRecorder';
+import { extensionForMimeType } from '@/lib/audio-file-extension';
 
 export default function AddCoupDeCoeur() {
     const [formData, setFormData] = useState({
@@ -55,7 +56,7 @@ export default function AddCoupDeCoeur() {
 
             if (tempAudioBlob) {
                 const timestamp = new Date().getTime();
-                const filename = `coup_description_${timestamp}.mp3`;
+                const filename = `coup_description_${timestamp}.${extensionForMimeType(tempAudioBlob.type)}`;
                 const audioFormData = new FormData();
                 audioFormData.append('audio', tempAudioBlob, filename);
 
