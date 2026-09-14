@@ -6,6 +6,7 @@ import { PaymentCreateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
 import {
     syncBillPaymentInfo,
+    autoSettleBillIfFullyPaid,
     paymentPrecedesIssue,
     archiveHandTypedSettlement,
     BILL_IS_DRAFT_MESSAGE,
@@ -155,7 +156,12 @@ export const POST = withAdmin(async (request, { me }) => {
                 include: { client: { select: clientSelect }, bill: { select: billSelect } },
             });
             // La facture reprend ce que ses paiements disent d'elle.
-            if (billId != null) await syncBillPaymentInfo(tx, billId);
+            if (billId != null) {
+                await syncBillPaymentInfo(tx, billId);
+                // Réglée pile en une fois : plus besoin d'aller cliquer
+                // « Marquer comme payée » derrière.
+                await autoSettleBillIfFullyPaid(tx, billId, me.id);
+            }
             return created;
         });
 

@@ -7,6 +7,7 @@ import { PaymentUpdateInputSchema } from '@/types/api/payment.api';
 import { withAdmin } from '@/lib/auth/guards';
 import {
     syncBillPaymentInfo,
+    autoSettleBillIfFullyPaid,
     paymentPrecedesIssue,
     archiveHandTypedSettlement,
     BILL_IS_DRAFT_MESSAGE,
@@ -225,6 +226,9 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             const savedBillId = saved.billId;
             if (savedBillId != null) touched.add(savedBillId);
             for (const id of touched) await syncBillPaymentInfo(tx, id);
+            // Réglée pile en une fois — un montant corrigé à la hausse peut
+            // suffire à couvrir le total tout seul.
+            if (savedBillId != null) await autoSettleBillIfFullyPaid(tx, savedBillId, me.id);
 
             return saved;
         });

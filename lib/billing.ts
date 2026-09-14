@@ -147,6 +147,41 @@ export async function syncBillPaymentInfo(
 }
 
 /**
+ * Bascule automatiquement une facture ÉMISE vers PAYÉE quand ses paiements
+ * rattachés couvrent enfin le total. À appeler juste après syncBillPaymentInfo,
+ * dans la même transaction, sur chaque facture qu'un paiement vient de
+ * toucher (création, montant modifié, rattachée/détachée).
+ *
+ * Ne fait rien hors de BILLED : un brouillon n'a rien à encaisser, et PAID/SOLDE
+ * n'ont pas de retour en arrière automatique ici. Ne fait rien non plus tant que
+ * le reste à payer est positif — « Marquer comme payée » (PATCH /api/bills/[id])
+ * reste le geste manuel pour couvrir moins que le total ; celui-ci ne fait que le
+ * cas où le compte tombe juste, pour éviter le clic systématique qui suit chaque
+ * dernier versement.
+ */
+export async function autoSettleBillIfFullyPaid(
+    tx: TransactionClient,
+    billId: number,
+    performedById: number | null
+): Promise<void> {
+    const bill = await tx.bill.findUnique({ where: { id: billId }, select: { state: true } });
+    if (bill?.state !== BillingStatus.BILLED) return;
+
+    const summary = await summarizeBillPayments(tx, billId);
+    if (summary.count === 0 || summary.outstanding.greaterThan(0)) return;
+
+    await tx.bill.update({ where: { id: billId }, data: { state: BillingStatus.PAID } });
+    await logBillEvent(tx, {
+        billId,
+        type: BillEventType.PAID,
+        fromState: BillingStatus.BILLED,
+        toState: BillingStatus.PAID,
+        payload: { paymentReference: summary.reference, paidTotal: summary.paid.toString(), reason: 'auto' },
+        performedById,
+    });
+}
+
+/**
  * Le refus de rattacher un paiement à un brouillon, partagé par les deux routes
  * qui rattachent (POST et PATCH /api/payments) — voir le commentaire du POST.
  */

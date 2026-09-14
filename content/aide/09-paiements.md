@@ -80,6 +80,8 @@ D'abord, une facture saisie « déjà réglée » (voir [Factures](/admin/aide/f
 
 Ensuite, **la référence, la méthode et la date du règlement se saisissent sur le paiement**, jamais sur la facture. La facture les affiche, mais elle ne fait que les refléter. Le crayon qui permettait autrefois de les corriger depuis la facture a été retiré pour cette raison : il réécrivait une valeur dérivée, et faisait diverger la facture du règlement qu'elle décrivait.
 
+Si le montant saisi couvre enfin le total de la facture, celle-ci passe « Payée » **toute seule**, dans le même geste que la création du paiement — voir [Factures](/admin/aide/factures).
+
 Un paiement ouvert depuis une facture affiche la facture à laquelle il se rattache.
 
 ![Paiements - capture 9](/admin/aide/images/paiements-09.jpg)

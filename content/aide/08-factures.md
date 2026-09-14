@@ -16,7 +16,7 @@ Une facture porte l'un de ces **quatre états** :
 
 - **Brouillon** — la facture s'accumule encore. Les demandes terminées viennent s'y rattacher toutes seules, et peuvent encore en être retirées.
 - **Émise** — la facture a été imprimée et envoyée à l'auditeur. Son contenu est désormais verrouillé.
-- **Payée** — au moins un règlement lui est rattaché. Une facture ne peut pas être « Payée » sans paiement enregistré.
+- **Payée** — au moins un règlement lui est rattaché. Une facture ne peut pas être « Payée » sans paiement enregistré. Elle y passe **toute seule** dès qu'un paiement rattaché couvre le total restant à payer — plus besoin de cliquer « Marquer comme payée » derrière le dernier versement.
 - **Soldée** — la créance est abandonnée : le compte est clos et on ne réclame plus rien. C'est justement pour cela qu'une facture soldée ne porte aucun paiement — il ne faut pas inventer un encaissement pour clore une petite créance.
 
 Il n'existe pas d'état « terminée ».
@@ -114,13 +114,13 @@ Une fois la facture émise, ce sont d'autres gestes qui s'offrent :
 
 (2) « **Remettre en brouillon** » rouvre la facture pour la corriger. Ce n'est plus possible tant qu'un paiement y est rattaché : un brouillon n'a rien encaissé. Rattachez d'abord ce règlement à une autre facture de l'auditeur, ou supprimez-le
 
-(3) « **Marquer comme payée** » constate le règlement
+(3) « **Marquer comme payée** » constate le règlement — utile pour clore une facture avec un reste à payer qu'on n'ira pas réclamer autrement qu'en la soldant, puisque le passage à « Payée » se fait tout seul dès que le montant rattaché couvre le total
 
 (4) « **Solder la facture** » abandonne la créance
 
 Au-dessus, le bloc « **Paiements** » répond d'un coup d'œil à « cette facture est-elle réglée ? » : *Encaissé 0,00 € sur 30,00 €*, puis *Reste à payer 30,00 €*. Chaque paiement rattaché s'y affiche avec son montant, sa méthode, sa date et sa référence, et **la ligne entière ouvre le paiement** dans « [Paiements](/admin/aide/paiements) ».
 
-L'écart entre l'encaissé et le total est affiché en gris, sans alerte. C'est délibéré : **un paiement rattaché vaut règlement**. C'est le rattachement qui dit qu'une facture est réglée, pas l'arithmétique — sans quoi un écart de saisie de quelques centimes réclamerait de l'argent sur une facture que quelqu'un a déjà encaissée.
+L'écart entre l'encaissé et le total est affiché en gris, sans alerte. C'est délibéré : **un paiement rattaché vaut règlement**. C'est le rattachement qui dit qu'une facture est réglée, pas l'arithmétique — sans quoi un écart de saisie de quelques centimes réclamerait de l'argent sur une facture que quelqu'un a déjà encaissée. Ce bloc ne s'affiche donc, en pratique, que sur un reste à payer non nul : dès qu'un paiement l'amène à zéro, la facture passe « Payée » toute seule et ce n'est plus ce bloc qui s'affiche, mais celui d'une facture réglée.
 
 Une facture payée **avant la reprise** n'a pas de paiement en face : sa référence et sa date de règlement avaient été saisies à la main, et le bloc l'annonce « Réglée avant la reprise ». Vous pouvez tout de même lui enregistrer un paiement. La facture reprend alors la référence et la date de ce paiement, et **l'ancienne référence part à l'historique** (« Ancien règlement archivé ») — elle n'est pas perdue.
 
