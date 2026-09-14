@@ -533,7 +533,15 @@ export function EditBillModal({
                                     est ce qu'on renonce à percevoir. Il se dit « Abandonné »,
                                     dans le violet du statut, et non en ambre — on ne réclame
                                     pas ce qu'on vient d'abandonner. C'est aussi le chiffre que
-                                    l'événement SETTLED inscrit au journal. */}
+                                    l'événement SETTLED inscrit au journal.
+
+                                    Le trop-perçu (outstanding négatif) suit la même règle,
+                                    dans l'autre sens : ce n'est ni une dette ni un abandon,
+                                    donc ni ambre ni violet — ces deux couleurs disent une
+                                    décision ou un manque, pas un surplus. Un bleu neutre,
+                                    à part de l'ambre/violet du statut et du bleu des liens
+                                    (qui ne vit que sur du texte cliquable ici), CONSTATE le
+                                    surplus sans le classer dans l'un ou l'autre. */}
                                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-3 py-2.5 bg-muted/60">
                                     {settledWithoutPayments ? (
                                         <>
@@ -570,6 +578,11 @@ export function EditBillModal({
                                                           Reste à payer {formatCurrency(bill.outstanding)}
                                                       </span>
                                                   )}
+                                            {outstanding < 0 && (
+                                                <span className="text-sm font-medium text-sky-700 dark:text-sky-300">
+                                                    Trop-perçu {formatCurrency(Math.abs(outstanding))}
+                                                </span>
+                                            )}
                                         </>
                                     )}
                                 </div>

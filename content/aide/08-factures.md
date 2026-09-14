@@ -122,6 +122,8 @@ Au-dessus, le bloc « **Paiements** » répond d'un coup d'œil à « cette fact
 
 L'écart entre l'encaissé et le total est affiché en gris, sans alerte. C'est délibéré : **un paiement rattaché vaut règlement**. C'est le rattachement qui dit qu'une facture est réglée, pas l'arithmétique — sans quoi un écart de saisie de quelques centimes réclamerait de l'argent sur une facture que quelqu'un a déjà encaissée. Ce bloc ne s'affiche donc, en pratique, que sur un reste à payer non nul : dès qu'un paiement l'amène à zéro, la facture passe « Payée » toute seule et ce n'est plus ce bloc qui s'affiche, mais celui d'une facture réglée.
 
+Rien n'empêche de saisir un paiement supérieur au reste à payer. La facture passe « Payée » tout aussi automatiquement, et le bloc affiche alors, en bleu, « **Trop-perçu** » suivi du montant en trop — ni ambre (ce n'est pas une dette), ni violet (personne n'a rien abandonné) : juste un surplus constaté.
+
 Une facture payée **avant la reprise** n'a pas de paiement en face : sa référence et sa date de règlement avaient été saisies à la main, et le bloc l'annonce « Réglée avant la reprise ». Vous pouvez tout de même lui enregistrer un paiement. La facture reprend alors la référence et la date de ce paiement, et **l'ancienne référence part à l'historique** (« Ancien règlement archivé ») — elle n'est pas perdue.
 
 ![Factures - capture 10](/admin/aide/images/factures-10.jpg)
