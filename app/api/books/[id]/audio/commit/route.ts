@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { listRawObjects } from '@/lib/audio/bucket';
 import { refreshBookAudioState, resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTracks } from '@/lib/audio/trash';
+import { measureAndCacheTracks } from '@/lib/audio/measure';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 
@@ -12,13 +13,17 @@ const SIZE_TOLERANCE_BYTES = 0;
 
 /**
  * The reworked route runs ~6-7 round trips for a 50-file chunk (see the doc
- * comment above POST). The one path that can run long is a chunk where
- * several files land mis-sized: softDeleteTracks copies them to the
- * corbeille 10-wide, so up to 5 pooled batches on a worst-case all-mis-sized
- * chunk. 45s keeps real margin over that while staying inside the ~60s
- * that's configurable even on the smallest Vercel tier (the repo doesn't
- * record which plan this project is on; raise this if it turns out to allow
- * more).
+ * comment above POST), plus now one ranged GET per confirmed upload to probe
+ * its real duration (measureAndCacheTracks) — the same per-track cost
+ * measureBookDurations pays for the Recalculer button, reasoned there at
+ * roughly 0.15s/track and comfortably inside a 200-track budget, so a 50-file
+ * chunk adds on the order of seconds. The other path that can run long is a
+ * chunk where several files land mis-sized: softDeleteTracks copies them to
+ * the corbeille 10-wide, so up to 5 pooled batches on a worst-case
+ * all-mis-sized chunk. 45s keeps real margin over both while staying inside
+ * the ~60s that's configurable even on the smallest Vercel tier (the repo
+ * doesn't record which plan this project is on; raise this if it turns out
+ * to allow more).
  */
 export const maxDuration = 45;
 
@@ -39,7 +44,9 @@ export const maxDuration = 45;
  * membership/size question the loop needed, and is then handed to
  * `refreshBookAudioState` so it doesn't list a third time. Lands at roughly
  * 6-7 round trips for the same chunk: the listing, an idempotency check, one
- * `createMany`, and the refresh's own (parallel) queries.
+ * `createMany`, and the refresh's own (parallel) queries — on top of that,
+ * one ranged GET per confirmed file for `measureAndCacheTracks`, run in the
+ * same bounded pool the Recalculer button uses.
  *
  * ## Idempotency
  *
@@ -49,6 +56,17 @@ export const maxDuration = 45;
  * the duration sum (last-wins) but not for an append-only trail meant to
  * describe what actually happened. Filenames that already have an UPLOAD
  * event at the same size are skipped rather than re-recorded.
+ *
+ * ## Duration is probed, not trusted
+ *
+ * `durationSeconds` on each upload is the browser's own reading of the file
+ * (hooks/useAudioUpload.ts), taken before this route ever sees the file — and
+ * a known-unreliable number for some encodings, which is why it is only ever
+ * recorded as a fallback on the UPLOAD event. `measureAndCacheTracks`
+ * (lib/audio/measure.ts) re-derives the real duration from the bytes now
+ * sitting in the bucket, the same way the Recalculer button does, so
+ * `refreshBookAudioState` below sums byte-accurate durations rather than
+ * whatever the browser guessed.
  *
  * ## Mis-sized uploads go through the corbeille now
  *
@@ -166,6 +184,21 @@ export const POST = withAdmin(async (req, { params, me }) => {
             // it already holds — see refreshBookAudioState's `objects` param.
             skipFinalisation: true,
         });
+    }
+
+    // Probe what actually landed from its own header bytes rather than trusting
+    // the browser's reading (recorded above only as the UPLOAD event's, and used
+    // as a fallback for formats this parser doesn't cover). This is the same
+    // measurement the Recalculer button runs — see measureAndCacheTracks's doc
+    // comment — so a fresh upload gets the accurate figure immediately instead
+    // of carrying whatever the browser guessed until someone presses that button.
+    // Safe to run on every confirmed key, not just `fresh`: an already-cached,
+    // correctly-sized track costs a lookup, not a re-read.
+    if (candidates.length) {
+        await measureAndCacheTracks(
+            bookId,
+            candidates.map((c) => ({ key: c.key, name: c.filename, sizeBytes: c.sizeBytes })),
+        );
     }
 
     const confirmed = candidates.map((c) => c.key);

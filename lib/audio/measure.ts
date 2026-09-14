@@ -63,54 +63,31 @@ export interface MeasureResult {
 }
 
 /**
- * A refusal this function is sure about, carrying the status it deserves.
+ * Measure a set of tracks, reusing whatever the cache already knows for them
+ * and persisting whatever it doesn't — the one implementation both the
+ * Recalculer button and a fresh upload go through.
  *
- * Without it every failure looks the same to the route, which then has to report
- * « le stockage a échoué » for a book id that simply does not exist. The
- * distinction matters to whoever reads the message: one is worth retrying and
- * the other never will be.
+ * Before this, an upload's duration was only ever the browser's own reading
+ * of the file (hooks/useAudioUpload.ts), taken on faith and never checked
+ * against the header bytes unless a permanent later pressed Recalculer. That
+ * is a known-unreliable number — some browsers report it wrong, occasionally
+ * Infinity, for MP3s that carry no duration metadata of their own — and nothing
+ * corrected it automatically. Calling this from the commit route means a fresh
+ * upload gets the exact same, byte-accurate answer as a manual recalculation,
+ * the moment it lands: resolveTrackDurations (lib/audio/state.ts) already
+ * prefers a cached measurement over the browser-reported event whenever the
+ * two describe the same size, so populating the cache here is all it takes for
+ * that preference to kick in immediately instead of waiting for a button press.
+ * The browser reading is still recorded on the UPLOAD event and still used as a
+ * fallback — for the formats this parser does not implement (ogg, aac…), it
+ * remains the only answer there is.
  */
-export class MeasureError extends Error {
-    constructor(
-        message: string,
-        readonly status: number,
-    ) {
-        super(message);
-        this.name = 'MeasureError';
-    }
-}
+export async function measureAndCacheTracks(
+    bookId: number,
+    tracks: { key: string; name: string; sizeBytes: number }[],
+): Promise<{ tracks: TrackMeasure[]; fromCache: number }> {
+    if (!tracks.length) return { tracks: [], fromCache: 0 };
 
-/**
- * Measure every track of a book, reusing what was measured before.
- *
- * `totalSeconds` is null unless EVERY current track resolved, mirroring the rule
- * refreshBookAudioState already applies: a partial sum understates the recording,
- * and a duration that is quietly too short is worse than no duration at all —
- * this figure is what an auditeur reads when choosing a book.
- */
-export async function measureBookDurations(bookId: number): Promise<MeasureResult> {
-    const book = await prisma.book.findUnique({
-        where: { id: bookId },
-        select: { audio_filepath: true },
-    });
-    if (!book) throw new MeasureError('Livre introuvable', 404);
-
-    const prefix = resolvePrefix(book.audio_filepath);
-    const tracks = prefix ? await listBookTracks(prefix) : [];
-    if (!tracks.length) {
-        return { tracks: [], totalSeconds: null, measured: 0, failed: 0, fromCache: 0 };
-    }
-    if (tracks.length > MAX_TRACKS) {
-        throw new MeasureError(
-            `Ce dossier contient ${tracks.length} pistes : mesure automatique impossible ` +
-                `au-delà de ${MAX_TRACKS}. Signalez-le à l’informaticien.`,
-            413,
-        );
-    }
-
-    // A cached row is believed only while the object still weighs what it did
-    // when measured — see the model comment for why the filename alone is not an
-    // identity in this corpus.
     const cachedRows = await prisma.audioTrackDuration.findMany({
         where: { bookId, filename: { in: tracks.map((t) => t.name) } },
         select: { filename: true, sizeBytes: true, seconds: true, method: true, exact: true },
@@ -161,6 +138,61 @@ export async function measureBookDurations(bookId: number): Promise<MeasureResul
         ]);
     }
 
+    return { tracks: results, fromCache: results.filter((r) => r.cached).length };
+}
+
+/**
+ * A refusal this function is sure about, carrying the status it deserves.
+ *
+ * Without it every failure looks the same to the route, which then has to report
+ * « le stockage a échoué » for a book id that simply does not exist. The
+ * distinction matters to whoever reads the message: one is worth retrying and
+ * the other never will be.
+ */
+export class MeasureError extends Error {
+    constructor(
+        message: string,
+        readonly status: number,
+    ) {
+        super(message);
+        this.name = 'MeasureError';
+    }
+}
+
+/**
+ * Measure every track of a book, reusing what was measured before.
+ *
+ * `totalSeconds` is null unless EVERY current track resolved, mirroring the rule
+ * refreshBookAudioState already applies: a partial sum understates the recording,
+ * and a duration that is quietly too short is worse than no duration at all —
+ * this figure is what an auditeur reads when choosing a book.
+ */
+export async function measureBookDurations(bookId: number): Promise<MeasureResult> {
+    const book = await prisma.book.findUnique({
+        where: { id: bookId },
+        select: { audio_filepath: true },
+    });
+    if (!book) throw new MeasureError('Livre introuvable', 404);
+
+    const prefix = resolvePrefix(book.audio_filepath);
+    const tracks = prefix ? await listBookTracks(prefix) : [];
+    if (!tracks.length) {
+        return { tracks: [], totalSeconds: null, measured: 0, failed: 0, fromCache: 0 };
+    }
+    if (tracks.length > MAX_TRACKS) {
+        throw new MeasureError(
+            `Ce dossier contient ${tracks.length} pistes : mesure automatique impossible ` +
+                `au-delà de ${MAX_TRACKS}. Signalez-le à l’informaticien.`,
+            413,
+        );
+    }
+
+    // A cached row is believed only while the object still weighs what it did
+    // when measured — see the model comment for why the filename alone is not an
+    // identity in this corpus. Shared with the commit route, which primes this
+    // same cache right after an upload — see measureAndCacheTracks above.
+    const { tracks: results, fromCache } = await measureAndCacheTracks(bookId, tracks);
+
     const measured = results.filter((r) => r.seconds !== null);
     return {
         tracks: results,
@@ -170,6 +202,6 @@ export async function measureBookDurations(bookId: number): Promise<MeasureResul
                 : null,
         measured: measured.length,
         failed: results.length - measured.length,
-        fromCache: results.filter((r) => r.cached).length,
+        fromCache,
     };
 }

@@ -101,10 +101,21 @@ async function readWithRetry(
 export { pool } from '../concurrency';
 
 /**
+ * Fractions through the file sampled to confirm a constant bitrate. Mirrors
+ * the methodology scripts/probe-audio-durations.ts's --audit-estimate used to
+ * validate the estimate in the first place — a single midpoint sample let a
+ * real VBR file through whenever its middle happened to echo its opening
+ * bitrate (common on spoken-word audio, where the middle often resembles the
+ * start), which is exactly the silent wrong answer this check exists to catch.
+ */
+const CBR_PROBE_FRACTIONS = [0.25, 0.5, 0.75];
+
+/**
  * Is this untagged MPEG file really constant-bitrate?
  *
- * One read from the middle. A folder is not uniform — the corpus holds folders
- * mixing 64 and 128 kbps — so this is asked per file, never per folder.
+ * Three reads spread through the file. A folder is not uniform — the corpus
+ * holds folders mixing 64 and 128 kbps — so this is asked per file, never per
+ * folder.
  */
 async function confirmConstantBitrate(
     read: ReadRange,
@@ -112,26 +123,31 @@ async function confirmConstantBitrate(
     sizeBytes: number,
     bitrateKbps: number,
 ): Promise<boolean> {
-    const start = Math.floor(sizeBytes / 2);
-    if (start + PROBE_BYTES >= sizeBytes) {
+    const spots = CBR_PROBE_FRACTIONS.map((f) => Math.floor(sizeBytes * f)).filter(
+        (start) => start + PROBE_BYTES < sizeBytes,
+    );
+    if (!spots.length) {
         // Too short to sample anywhere but the header we already read. A file
         // this small is seconds long, so a wrong reading cannot move the total.
         return true;
     }
-    const chunk = await readWithRetry(read, key, start, start + PROBE_BYTES - 1);
-    const mid = summariseMpeg(chunk);
-    // An unreadable slice is not evidence of variability — mid-file bytes can
-    // land inside a frame we cannot resynchronise on. Absence of contradiction
-    // is what is being tested.
-    return !mid || mid.bitrateKbps === bitrateKbps;
+    for (const start of spots) {
+        const chunk = await readWithRetry(read, key, start, start + PROBE_BYTES - 1);
+        const mid = summariseMpeg(chunk);
+        // An unreadable slice is not evidence of variability — mid-file bytes can
+        // land inside a frame we cannot resynchronise on. Absence of contradiction
+        // is what is being tested.
+        if (mid && mid.bitrateKbps !== bitrateKbps) return false;
+    }
+    return true;
 }
 
 /**
  * Measure one track from its header bytes.
  *
  * An estimate is the only answer that can be silently wrong, so it is the only
- * one that has to be earned: a file with no Xing/VBRI counter gets one extra
- * read from its middle, and is refused outright if the bitrate there disagrees.
+ * one that has to be earned: a file with no Xing/VBRI counter gets three extra
+ * reads spread through it, and is refused outright if any of them disagrees.
  * Measured across the corpus the estimate is either right to under a second or
  * wrong by over ten minutes, so there is no tolerance to fall back on.
  */
