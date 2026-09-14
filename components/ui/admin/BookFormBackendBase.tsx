@@ -712,7 +712,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }
         try {
             const submissionData = {
                 title: formData.title,
-                subtitle: formData.subtitle,
+                subtitle: formData.subtitle || null,
                 author: formData.author,
                 publisher: formData.publisher || null,
                 publishedDate: formattedDate,
