@@ -383,6 +383,38 @@ const SPECS = [
     },
     // ── Sections ajoutees apres la reprise du guide ─────────────────────────
     {
+        name: 'catalogue-01.jpg',
+        // Le tableau depasse les 900px par defaut : sans fenetre plus haute,
+        // le clip sur la carte entiere en tronque le haut (titre et bouton
+        // « Ajouter un livre » coupes en deux).
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/books',
+        waitFor: 'table tbody tr',
+        clip: '.rounded-lg.border',
+        why: 'la page telle qu’elle se présente : recherche, filtres et tableau',
+    },
+    {
+        name: 'catalogue-04.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/books',
+        waitFor: 'table tbody tr',
+        clip: '.rounded-lg.border',
+        annotations: [{ n: 1, label: 'Ajouter un livre', self: true }],
+        why: 'le bouton « Ajouter un livre », en haut à droite',
+    },
+    {
+        name: 'catalogue-06.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/books',
+        waitFor: 'table tbody tr',
+        clip: '.rounded-lg.border',
+        // Le bouton n'a pas de texte propre — son libelle accessible embarque
+        // le titre du livre et change donc d'une ligne a l'autre — d'ou un
+        // selecteur plutot qu'un libelle.
+        annotations: [{ n: 1, selector: 'table tbody tr:first-child td:nth-child(5) button', self: true }],
+        why: 'le bouton de l’éditeur audio, dans la colonne Audio',
+    },
+    {
         name: 'page-principale-05.jpg',
         url: '/admin',
         waitFor: 'nav',
@@ -690,11 +722,27 @@ async function clipFor(selector) {
  * Les reperes numerotes du guide ne sont pas decoratifs : le texte y renvoie
  * (« (1) Selectionnez l'etat ... »). Les tracer a la main, c'est les voir
  * glisser des que l'interface bouge ; les prendre ici, c'est qu'ils suivent.
+ *
+ * Chaque annotation vise sa cible par `label` (texte exact) ou par `selector`
+ * (CSS) — ce second chemin sert aux boutons icone seul, dont le libelle
+ * accessible n'est pas un texte fixe.
  */
 async function reperesPour(annotations, clip) {
     const trouves = [];
     for (const a of annotations) {
         const rect = await evaluate(`(() => {
+            // Un bouton icone seul (l'editeur audio d'une ligne, par exemple)
+            // n'a pas de texte a chercher : son libelle accessible varie meme
+            // d'une ligne a l'autre (il embarque le titre du livre). Un
+            // selecteur CSS le vise directement, sans passer par le texte —
+            // dans son propre bloc, pour ne pas redeclarer les identifiants
+            // du chemin par libelle qui suit.
+            ${a.selector ? `{
+                const cible = document.querySelector(${JSON.stringify(a.selector)});
+                if (!cible) return null;
+                const r = cible.getBoundingClientRect();
+                return { x: r.x, y: r.y, w: r.width, h: r.height };
+            }` : ''}
             const libelle = ${JSON.stringify(a.label)};
             const propre = ${a.self ? "true" : "false"};
             const noeuds = [...document.querySelectorAll('label, button, a, p, span, div, h3, h4')];

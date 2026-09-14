@@ -28,13 +28,9 @@ Vous pouvez créer un nouveau livre en cliquant sur le bouton « Ajouter un livr
 
 ![Catalogue - capture 4](/admin/aide/images/catalogue-04.jpg)
 
-Vous pouvez modifier un livre existant en cliquant sur la ligne correspondante ou sur le bouton
+Vous pouvez modifier un livre existant en cliquant sur la ligne correspondante.
 
-« Modifier ».
-
-![Catalogue - capture 5](/admin/aide/images/catalogue-05.jpg)
-
-Vous pouvez également cliquer sur le bouton représentant un casque, situé à l'extrême droite, pour ouvrir l'éditeur audio.
+Vous pouvez également cliquer sur le bouton audio, situé dans la colonne « Audio », pour ouvrir l'éditeur audio directement depuis le tableau.
 
 ![Catalogue - capture 6](/admin/aide/images/catalogue-06.jpg)
 
@@ -88,7 +84,7 @@ Enfin, cliquez sur le bouton « Ajouter le livre » situé en bas de la page pou
 
 ## Modification des livres
 
-Lorsque vous cliquez sur la ligne d'un livre ou sur le bouton de modification situé sur cette ligne, le modal de modification du livre s'ouvre.
+Lorsque vous cliquez sur la ligne d'un livre, le modal de modification du livre s'ouvre.
 
 ![Catalogue - capture 17](/admin/aide/images/catalogue-17.jpg)
 

@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
 import { BookAudioModal } from '@/admin/BookAudioModal';
-import { CopyableId } from '@/admin/CopyableId';
+import { CopyableId, CopyIdButton } from '@/admin/CopyableId';
 import {
     AudioLinkStatus,
     audioLinkStatusHasAudio,
@@ -162,7 +162,13 @@ function AudioEditorButton({ book, onOpen }: { book: Book; onOpen: () => void })
             variant="outline"
             size="sm"
             className={getAudioLinkStatusButtonColor(status)}
-            onClick={onOpen}
+            // Shares its cell with the status badge, which itself falls through
+            // to the row's onClick (opens the fiche) — this button needs the
+            // opposite, so it stops the click here rather than the whole cell.
+            onClick={(e) => {
+                e.stopPropagation();
+                onOpen();
+            }}
             aria-label={
                 missing
                     ? `Ouvrir l’éditeur audio de ${book.title} — ${getAudioLinkStatusLabel(status).toLowerCase()}`
@@ -485,10 +491,7 @@ export default function BooksTable({
         }
     };
 
-    const openBookEditModal = async (book: Book, e?: React.MouseEvent) => {
-        if (e) {
-            e.stopPropagation();
-        }
+    const openBookEditModal = async (book: Book) => {
         await openBookById(book.id);
     };
 
@@ -981,22 +984,25 @@ export default function BooksTable({
                                 <Table>
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border">
+                                            <TableHead className="text-foreground font-medium">ID</TableHead>
                                             <TableHead className="text-foreground font-medium">Titre</TableHead>
                                             <TableHead className="text-foreground font-medium">Auteur</TableHead>
                                             <TableHead className="text-foreground font-medium">Genres</TableHead>
-                                            <TableHead className="text-foreground font-medium">Durée de lecture</TableHead>
                                             <TableHead className="text-foreground font-medium">Audio</TableHead>
                                             <TableHead className="text-foreground font-medium">Disponible</TableHead>
-                                            <TableHead className="text-foreground font-medium">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {searchResults.books.map((book) => (
                                             <TableRow
                                                 key={book.id}
-                                                className="border-b border-border hover:bg-muted cursor-pointer"
+                                                className="group border-b border-border hover:bg-muted cursor-pointer"
                                                 onClick={() => openBookEditModal(book)}
                                             >
+                                                <TableCell className="font-medium text-foreground whitespace-nowrap">
+                                                    #{book.id}
+                                                    <CopyIdButton id={book.id} label="du livre" />
+                                                </TableCell>
                                                 <TableCell className="text-foreground">
                                                     <div>
                                                         <div className="font-medium">{book.title}</div>
@@ -1024,13 +1030,13 @@ export default function BooksTable({
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
-                                                    {book.readingDurationMinutes
-                                                        ? `${Math.floor(book.readingDurationMinutes / 60)}h ${book.readingDurationMinutes % 60}min`
-                                                        : 'N/D'
-                                                    }
-                                                </TableCell>
-                                                <TableCell className="text-foreground">
-                                                    <AudioStatusCell book={book} />
+                                                    <div className="flex items-center gap-2">
+                                                        <AudioStatusCell book={book} />
+                                                        <AudioEditorButton
+                                                            book={book}
+                                                            onOpen={() => setAudioBook({ id: book.id, title: book.title })}
+                                                        />
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     <div className="flex flex-wrap gap-1">
@@ -1046,22 +1052,6 @@ export default function BooksTable({
                                                                 Masqué
                                                             </span>
                                                         )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="bg-muted text-foreground border-border hover:bg-accent"
-                                                            onClick={(e) => openBookEditModal(book, e)}
-                                                        >
-                                                            Modifier
-                                                        </Button>
-                                                        <AudioEditorButton
-                                                            book={book}
-                                                            onOpen={() => setAudioBook({ id: book.id, title: book.title })}
-                                                        />
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
