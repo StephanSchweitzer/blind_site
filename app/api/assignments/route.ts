@@ -207,12 +207,16 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
                     id: true,
                     isDuplication: true,
                     catalogueId: true,
-                    // Filtré explicitement : un _count de relation échappe à
-                    // l'extension soft-delete (lib/prisma.ts), et une attribution
-                    // supprimée empêcherait d'en recréer une sur la demande — la
-                    // règle « une seule attribution par demande » se retournerait
+                    // Filtré explicitement : cette relation échappe à l'extension
+                    // soft-delete (lib/prisma.ts), et une attribution supprimée
+                    // empêcherait d'en recréer une sur la demande — la règle
+                    // « une seule attribution par demande » se retournerait
                     // contre la correction d'une erreur.
-                    _count: { select: { assignments: { where: { deletedAt: null } } } },
+                    // `select: { id: true }` plutôt qu'un `_count` : le guard qui
+                    // bloque la création a besoin du numéro de l'attribution
+                    // bloquante pour l'inclure dans la réponse, pas seulement du
+                    // compte.
+                    assignments: { where: { deletedAt: null }, select: { id: true } },
                 },
             });
 
@@ -231,10 +235,13 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
                 );
             }
 
-            const oneToOneGuard = guardOrderHasNoAssignment(order._count.assignments);
+            const oneToOneGuard = guardOrderHasNoAssignment(order.assignments.length);
             if (!oneToOneGuard.ok) {
                 return NextResponse.json(
-                    { error: oneToOneGuard.message },
+                    {
+                        error: oneToOneGuard.message,
+                        blockingAssignmentId: order.assignments[0]?.id ?? null,
+                    },
                     { status: oneToOneGuard.httpStatus }
                 );
             }

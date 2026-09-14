@@ -41,12 +41,19 @@ export function AddAssignmentFormBackend({
                 console.error('Assignment creation failed:', data);
                 const errorMessage = data?.message || data?.error || 'Échec de la création de l\'attribution';
                 const fieldLines = getFieldErrorLines(data);
+                const blockingAssignmentId = data?.blockingAssignmentId ?? null;
 
                 toast({
                     variant: "destructive",
                     // @ts-expect-error jsx in toast
                     title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <ErrorToastBody message={errorMessage} lines={fieldLines} />,
+                    description: (
+                        <ErrorToastBody
+                            message={errorMessage}
+                            lines={fieldLines}
+                            blockingAssignmentId={blockingAssignmentId}
+                        />
+                    ),
                     className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
                 });
 

@@ -143,7 +143,14 @@ export function buildOrderSearchWhere(searchTerm: string): Prisma.OrdersWhereInp
     });
 }
 
-/** Attributions: the lecteur (current or past), the auditeur, the book, the number. */
+/**
+ * Attributions: the lecteur (current or past), the auditeur, the book, the
+ * attribution's own number — AND the number of the demande it's linked to.
+ * The latter is what lets an admin blocked from creating a second attribution
+ * on a demande ("Cette demande possède déjà une attribution") search that
+ * demande's id here and land straight on the one already holding it, the same
+ * ambiguous-token trick buildBillSearchWhere uses for facture numbers.
+ */
 export function buildAssignmentSearchWhere(searchTerm: string): Prisma.AssignmentWhereInput[] | null {
     return buildTokenizedSearch<Prisma.AssignmentWhereInput>(searchTerm, (token) => {
         const person = userNameFieldsForToken(token);
@@ -153,7 +160,10 @@ export function buildAssignmentSearchWhere(searchTerm: string): Prisma.Assignmen
             { order: { aveugle: person } },
         ];
         const id = tokenAsId(token);
-        if (id !== null) clauses.push({ id });
+        if (id !== null) {
+            clauses.push({ id });
+            clauses.push({ orderId: id });
+        }
         return clauses;
     });
 }

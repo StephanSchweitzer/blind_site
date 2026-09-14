@@ -37,7 +37,15 @@ export function getFieldErrorLines(data: unknown): string[] {
     });
 }
 
-export function ErrorToastBody({ message, lines }: { message: string; lines: string[] }) {
+export function ErrorToastBody({
+    message,
+    lines,
+    blockingAssignmentId,
+}: {
+    message: string;
+    lines: string[];
+    blockingAssignmentId?: number | null;
+}) {
     return (
         <div className="text-xl mt-2">
             <p>{message}</p>
@@ -47,6 +55,18 @@ export function ErrorToastBody({ message, lines }: { message: string; lines: str
                         <li key={i}>{line}</li>
                     ))}
                 </ul>
+            )}
+            {blockingAssignmentId != null && (
+                <p className="mt-2 text-base font-normal">
+                    <a
+                        href={`/admin/assignments?assignment=${blockingAssignmentId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold underline underline-offset-2"
+                    >
+                        Voir l&apos;attribution #{blockingAssignmentId}
+                    </a>
+                </p>
             )}
         </div>
     );
