@@ -3,6 +3,7 @@ import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
+import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
 import { renameTrack, AudioRenameError } from '@/lib/audio/rename';
 import { splitExtension } from '@/lib/audio/naming';
 
@@ -47,6 +48,20 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
         return NextResponse.json(
             { message: 'Ce fichier n’appartient pas au dossier de ce livre.' },
             { status: 403 },
+        );
+    }
+
+    // Le dossier peut être celui de deux fiches : supprimer la piste ici la
+    // retire aussi à l'autre livre, sans que rien ne le dise. Refus nommant le
+    // jumeau — voir lib/audio/sharedFolder.ts.
+    const sharing = await booksSharingAudioFolder(bookId, book.audio_filepath);
+    if (sharing.length) {
+        return NextResponse.json(
+            {
+                message: sharedFolderRefusal(sharing, 'supprimer cette piste'),
+                sharedWith: sharing,
+            },
+            { status: 409 },
         );
     }
 

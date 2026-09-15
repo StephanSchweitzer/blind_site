@@ -98,6 +98,14 @@ Le reste du formulaire fonctionne de la même manière que le formulaire d'ajout
 
 Pour enregistrer le livre, rendez-vous en bas de la page et cliquez sur « Mettre à jour le livre ». Pour le supprimer, rendez-vous en bas de la page et cliquez sur « Supprimer le livre ».
 
+### Quand la suppression est refusée
+
+Un livre ne se supprime que si rien ne s'y rattache. Le refus s'affiche en rouge dans le formulaire et dit précisément ce qui bloque :
+
+- **Des demandes ou des attributions nomment ce livre.** Le message donne leur nombre et leurs identifiants, et la ligne « Ce livre : … » juste en dessous mène aux listes filtrées sur cet ouvrage. Traitez-les d'abord — supprimez-les, ou rattachez-les à un autre livre.
+- **Le livre garde l'historique de demandes ou d'attributions supprimées.** Cet historique est conservé volontairement : la fiche ne peut plus être supprimée, même si ces demandes n'apparaissent plus dans les listes. Pour retirer l'ouvrage du catalogue public et des listes de livres, cochez « Masqué du catalogue public » au lieu de le supprimer — la fiche reste utilisable par les permanents.
+- **Le dossier audio est aussi celui d'un autre livre.** Le message nomme la ou les autres fiches avec leur identifiant. Supprimer ici viderait aussi leur dossier, l'enregistrement étant le même : réglez d'abord le doublon depuis [Doublons](/admin/aide/doublons), ou détachez le dossier de l'autre fiche.
+
 ## Éditeur audio
 
 Lorsque vous cliquez sur l'éditeur audio depuis la page d'accueil ou depuis le modal « Modifier le livre », le modal de « L'éditeur audio » s'ouvre. Pour cet exemple, j'utilise un livre qui est déjà disponible en version audio.
@@ -105,6 +113,8 @@ Lorsque vous cliquez sur l'éditeur audio depuis la page d'accueil ou depuis le 
 ![Catalogue - capture 19](/admin/aide/images/catalogue-19.jpg)
 
 Vous pouvez ici importer des fichiers ou des dossiers, ainsi que supprimer des fichiers ou des dossiers. Pour tout télécharger ou tout supprimer, utilisez les deux boutons correspondants situés en haut de la page.
+
+Si le dossier audio est partagé avec une autre fiche — cas des doublons issus de l'ancienne base —, toute suppression de piste est refusée, qu'elle porte sur un seul fichier ou sur l'ensemble : le message nomme l'autre livre et son identifiant. L'enregistrement étant le même pour les deux fiches, il faut d'abord régler le doublon depuis [Doublons](/admin/aide/doublons).
 
 ![Catalogue - capture 20](/admin/aide/images/catalogue-20.jpg)
 

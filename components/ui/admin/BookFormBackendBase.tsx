@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X, AlertCircle } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
 import { BookAudioButton } from '@/admin/BookAudioButton';
+import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
 import { useFormToast } from "@/hooks/useFormToast";
@@ -131,6 +132,12 @@ export function BookFormBackendBase({
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    /**
+     * La suppression vient d'être refusée. Le refus cite déjà les identifiants
+     * (route DELETE, lib/books/deletionGuard.ts) ; la ligne de liens rend ces
+     * demandes et attributions atteignables sans quitter le formulaire.
+     */
+    const [deleteBlocked, setDeleteBlocked] = useState(false);
     const { toastError } = useFormToast();
 
     useEffect(() => {
@@ -241,6 +248,7 @@ export function BookFormBackendBase({
         e.stopPropagation();
         setIsLoading(true);
         setError(null);
+        setDeleteBlocked(false);
 
         try {
             const newBookId = await onSubmit(formData);
@@ -264,6 +272,8 @@ export function BookFormBackendBase({
 
         if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
             setIsLoading(true);
+            setError(null);
+            setDeleteBlocked(false);
             // The book is going away; unsaved edits to it are moot.
             if (dirtyRef) dirtyRef.current = false;
             try {
@@ -271,7 +281,13 @@ export function BookFormBackendBase({
             } catch (err) {
                 const msg = err instanceof Error ? err.message : 'Échec de la suppression du livre';
                 setError(msg);
+                setDeleteBlocked(true);
                 toastError(msg);
+                // Rien n'a été supprimé : les modifications en cours comptent
+                // de nouveau, sinon fermer la fenêtre les perdrait sans rien dire.
+                if (dirtyRef) {
+                    dirtyRef.current = JSON.stringify(formDataRef.current) !== pristineRef.current;
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -300,6 +316,9 @@ export function BookFormBackendBase({
                             <AlertTitle className="text-red-600 dark:text-red-400">Erreur</AlertTitle>
                             <AlertDescription className="text-foreground mt-1">
                                 {error}
+                                {deleteBlocked && audioBookId != null && (
+                                    <BookUsageLinks bookId={audioBookId} className="mt-2" />
+                                )}
                             </AlertDescription>
                         </Alert>
                     )}
@@ -685,7 +704,17 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }
             });
 
             if (!response.ok) {
-                throw new Error('Failed to delete book');
+                // Le message de la route, pas un texte en dur : c'est lui qui dit
+                // POURQUOI — demandes ou attributions liées (avec leurs
+                // identifiants), historique supprimé, dossier audio partagé. Le
+                // « Failed to delete book » qui vivait ici écrasait les trois, y
+                // compris le refus déjà rédigé en français, et un permanent n'avait
+                // plus qu'un échec anglais sans cause. Voir la fiche livre
+                // (app/admin/books/[id]/page.tsx), qui lisait déjà `error`.
+                const data = await response.json().catch(() => null);
+                throw new Error(
+                    data?.error || data?.message || 'La suppression du livre a échoué.',
+                );
             }
 
             toast({

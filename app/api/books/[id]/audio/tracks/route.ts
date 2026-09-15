@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { resolvePrefix } from '@/lib/audio/state';
 import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
 import { softDeleteTracks } from '@/lib/audio/trash';
+import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
 
 /**
  * softDeleteTracks copies 10-wide; the largest folder sampled in the corpus
@@ -43,6 +44,20 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     });
     if (!book) {
         return NextResponse.json({ message: 'Livre non trouvé' }, { status: 404 });
+    }
+
+    // Un dossier revendiqué par deux fiches : vider celui-ci vide l'autre, dont
+    // l'enregistrement est souvent la seule copie. Refus nommant le jumeau —
+    // même règle que le rattachement d'un dossier orphelin.
+    const sharing = await booksSharingAudioFolder(bookId, book.audio_filepath);
+    if (sharing.length) {
+        return NextResponse.json(
+            {
+                message: sharedFolderRefusal(sharing, 'supprimer toutes les pistes'),
+                sharedWith: sharing,
+            },
+            { status: 409 },
+        );
     }
 
     const prefix = resolvePrefix(book.audio_filepath);

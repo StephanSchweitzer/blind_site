@@ -8,6 +8,13 @@ import { resolvePrefix } from '@/lib/audio/state';
 import { listBookTracks } from '@/lib/audio/bucket';
 import { softDeleteTracks } from '@/lib/audio/trash';
 import { resolveMergedBook } from '@/lib/books/merged';
+import {
+    readBookUsage,
+    bookUsageBlocksDeletion,
+    bookUsageRefusal,
+    bookUsageLinks,
+} from '@/lib/books/deletionGuard';
+import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
 import { BookUpdateInputSchema } from '@/types/api/book.api';
 
 /**
@@ -23,6 +30,29 @@ import { BookUpdateInputSchema } from '@/types/api/book.api';
 export const maxDuration = 45;
 
 const invalidId = () => NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
+
+/**
+ * Une violation de clé étrangère, quelle que soit la couche qui l'a signalée.
+ *
+ * Avec l'adaptateur pg, l'erreur ne remonte pas toujours en
+ * PrismaClientKnownRequestError P2003 : un RESTRICT arrive telle quelle depuis
+ * le driver, en DriverAdapterError portant le SQLSTATE dans `cause`
+ * (23001 pour un RESTRICT, 23503 pour une clé étrangère ordinaire). Les deux
+ * formes sont donc reconnues.
+ */
+function isForeignKeyViolation(error: unknown): boolean {
+    const codes = new Set(['P2003', '23001', '23503']);
+    const seen = new Set<unknown>();
+    let node: unknown = error;
+    while (node && typeof node === 'object' && !seen.has(node)) {
+        seen.add(node);
+        const o = node as { code?: unknown; originalCode?: unknown; cause?: unknown };
+        if (typeof o.code === 'string' && codes.has(o.code)) return true;
+        if (typeof o.originalCode === 'string' && codes.has(o.originalCode)) return true;
+        node = o.cause;
+    }
+    return false;
+}
 
 /** Numeric book id from the route params, or null when it isn't one. */
 async function bookIdFrom(params?: Promise<Record<string, string>>): Promise<number | null> {
@@ -250,11 +280,16 @@ export const PUT = withAdmin(async (req, { params }) => {
  * fires afterwards, once, on rows that already reference it). Deleting the
  * book first and soft-deleting after would violate that constraint.
  *
- * Orders/Assignment reference Book with no onDelete override (Postgres
- * RESTRICT), so a book with any request or attribution history can't be
- * deleted at all — checked up front, before the bucket is touched. Otherwise
- * a book that turns out to be undeletable would still have had its audio
- * folder emptied for nothing.
+ * Two things are refused up front, before the bucket is touched, because a
+ * book that turns out to be undeletable must not have had its folder emptied
+ * for nothing:
+ *
+ *  - any demande or attribution naming it. Orders/Assignment reference Book in
+ *    RESTRICT, so Postgres would refuse anyway — INCLUDING for the rows the
+ *    soft-delete filter hides, which is what used to turn this into an opaque
+ *    500. See lib/books/deletionGuard.ts for why the counts are split.
+ *  - a folder shared with another fiche, which the deletion would empty on its
+ *    behalf. See lib/audio/sharedFolder.ts.
  */
 export const DELETE = withAdmin(async (_request, { params, me }) => {
     revalidateAdmin();
@@ -270,13 +305,25 @@ export const DELETE = withAdmin(async (_request, { params, me }) => {
             return NextResponse.json({ error: 'Livre introuvable' }, { status: 404 });
         }
 
-        const [orderCount, assignmentCount] = await Promise.all([
-            prisma.orders.count({ where: { catalogueId: bookId } }),
-            prisma.assignment.count({ where: { catalogueId: bookId } }),
-        ]);
-        if (orderCount > 0 || assignmentCount > 0) {
+        const usage = await readBookUsage(bookId);
+        if (bookUsageBlocksDeletion(usage)) {
             return NextResponse.json(
-                { error: 'Ce livre a des demandes ou attributions associées et ne peut pas être supprimé.' },
+                {
+                    error: bookUsageRefusal(usage),
+                    usage,
+                    links: bookUsageLinks(bookId),
+                },
+                { status: 409 }
+            );
+        }
+
+        const sharing = await booksSharingAudioFolder(bookId, book.audio_filepath);
+        if (sharing.length) {
+            return NextResponse.json(
+                {
+                    error: sharedFolderRefusal(sharing, 'supprimer ce livre'),
+                    sharedWith: sharing,
+                },
                 { status: 409 }
             );
         }
@@ -331,6 +378,23 @@ export const DELETE = withAdmin(async (_request, { params, me }) => {
         );
     } catch (error) {
         console.error('Error deleting book:', error);
-        return NextResponse.json({ error: 'Failed to delete book' }, { status: 500 });
+        // Filet : plus aucune clé étrangère connue ne devrait arriver ici (le
+        // contrôle ci-dessus couvre les deux relations en RESTRICT), mais une
+        // contrainte ajoutée demain n'a pas à ressortir en « 500 Failed to
+        // delete book » — c'est exactement le message qui n'apprenait rien.
+        if (isForeignKeyViolation(error)) {
+            return NextResponse.json(
+                {
+                    error:
+                        'D’autres fiches ou enregistrements renvoient encore à ce livre, ' +
+                        'la base a donc refusé la suppression. Le livre n’a pas été supprimé.',
+                },
+                { status: 409 }
+            );
+        }
+        return NextResponse.json(
+            { error: 'La suppression du livre a échoué. Le livre n’a pas été supprimé.' },
+            { status: 500 }
+        );
     }
 });
