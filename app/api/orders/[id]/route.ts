@@ -507,6 +507,21 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
             let newTotal: Prisma.Decimal | null = null;
 
+            // Le livre de l'attribution suit celui de la demande. La colonne reste
+            // portée par l'attribution — elle existe aussi sans demande (orderId
+            // nullable), donc on ne peut pas la dériver — mais c'est ici, et nulle
+            // part ailleurs, qu'on la réaligne : sans ça, guardAssignmentMatchesOrder
+            // refusait ensuite TOUTE sauvegarde de l'attribution, notes comprises.
+            // Pas de blocage si l'attribution est déjà chez un lecteur ou terminée :
+            // le changement sert à corriger une erreur de saisie, et le formulaire
+            // prévient avant que l'enregistrement fait porte sur l'ancien livre.
+            if (catalogueChanged && assignment) {
+                await tx.assignment.update({
+                    where: { id: assignment.id },
+                    data: { catalogueId: data.catalogueId },
+                });
+            }
+
             // Track the demande's processing history — creation is logged where the
             // order is created; this is every status transition after that, however
             // it was made (directly here, or pushed up from its attribution).

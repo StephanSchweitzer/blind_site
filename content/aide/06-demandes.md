@@ -96,6 +96,13 @@ Nous pouvons mettre à jour la demande avec les informations que nous avons modi
 
 ![Demandes - capture 13](/admin/aide/images/demandes-13.jpg)
 
+### Corriger le livre d'une demande
+
+Le livre d'une demande reste modifiable, même une fois la demande terminée ou facturée : c'est ce qui permet de corriger une erreur de saisie. Deux choses suivent automatiquement :
+
+- **L'attribution liée prend le même livre.** Si elle est déjà chez un lecteur ou terminée, le formulaire vous prévient : ce qui a été lu porte sur l'ancien livre, vérifiez que l'enregistrement se trouve bien dans le dossier audio du nouveau.
+- **Le coût** est recalculé sur le poids du nouveau livre tant que la demande n'est sur aucune facture ou sur un brouillon. Sur une facture **émise, payée ou soldée**, le coût facturé est conservé — l'auditeur n'a pas à payer une erreur des ECA. La facture n'est pas bloquée, mais elle est à réimprimer pour que le livre corresponde.
+
 La suppression est refusée dans deux cas : (1) si une attribution active est associée à la demande — supprimez d'abord l'attribution ; (2) si la demande figure sur une facture **déjà émise, payée ou soldée** — détachez-la de la facture, ou rouvrez celle-ci d'abord.
 
 En revanche, une demande posée sur un simple **brouillon** peut être supprimée directement : elle sort d'elle-même du total de la facture.

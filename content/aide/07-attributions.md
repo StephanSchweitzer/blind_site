@@ -92,6 +92,8 @@ Lorsque vous cliquez sur ce bouton, l'attribution est immédiatement mise à jou
 
 Le reste de la fenêtre contextuelle fonctionne de la même manière que celle permettant d'ajouter une attribution.
 
+Une attribution liée à une demande porte toujours le même livre qu'elle. Pour corriger ce livre, modifiez-le **sur la demande** : l'attribution est mise à jour en même temps (voir [Demandes](/admin/aide/demandes)).
+
 En bas de la fenêtre, vous trouverez (1) le bouton « Mettre à jour l'attribution », qui enregistrera vos modifications, et (2) le bouton « Supprimer l'attribution ». Là aussi il s'agit d'une **suppression logique** : l'attribution quitte les listes, son historique est conservé.
 
 ![Attributions - capture 16](/admin/aide/images/attributions-16.jpg)

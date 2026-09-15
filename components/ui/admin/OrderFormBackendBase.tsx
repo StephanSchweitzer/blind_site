@@ -377,22 +377,30 @@ export function OrderFormBackendBase({
 
         setSelectedBook(full);
 
-        const hasAudio = Boolean(full.audio_filepath);
+        // Une demande qui a déjà une attribution est un enregistrement, et le serveur
+        // refuse de la basculer en duplication (guardDuplicationFlip). Corriger son
+        // livre vers un titre déjà enregistré ne doit donc pas cocher la case — sinon
+        // la correction elle-même serait refusée.
+        const autoDuplication = Boolean(full.audio_filepath) && !initialAssignment;
         // Only when we actually auto-check duplication here should the
         // "cochée automatiquement" banner show.
-        setDupAutoChecked(hasAudio);
+        setDupAutoChecked(autoDuplication);
         // Le tarif dépend du poids de l'enregistrement : en changeant de livre on
         // l'aligne sur le nouveau, sinon le coût du livre précédent resterait là
         // sans que personne le remarque. Ça reste une proposition — le champ est
-        // libre juste en dessous, et une facture verrouillée n'est jamais touchée.
+        // libre juste en dessous.
+        //
+        // Jamais sur une facture émise, payée ou soldée : le montant est parti chez
+        // l'auditeur, et changer de livre après coup corrige une erreur des ECA —
+        // l'auditeur n'a pas à la payer. Le coût facturé reste, et le formulaire le dit.
         const suggested = costSuggestion(full.audioSizeKb);
         setFormData(prev => ({
             ...prev,
             catalogueId: full.id,
             // Audio already exists -> default this to a duplication (not forced;
             // the admin can uncheck it, e.g. for a re-recording / re-read).
-            ...(hasAudio ? { isDuplication: true, lentPhysicalBook: false } : {}),
-            ...(suggested && !costLocked ? { cost: suggested.value } : {}),
+            ...(autoDuplication ? { isDuplication: true, lentPhysicalBook: false } : {}),
+            ...(suggested && !billIssued ? { cost: suggested.value } : {}),
         }));
     };
 
@@ -546,6 +554,17 @@ export function OrderFormBackendBase({
     const costDiffersFromTarif =
         tarif != null && !costLocked && formatEuro2(formData.cost) !== tarif.value;
 
+    // Livre corrigé sur une demande existante. Rien n'est bloqué — c'est un geste de
+    // correction — mais deux conséquences se voient mal depuis ce formulaire :
+    // l'attribution suit (le serveur la réaligne), et une facture déjà partie garde
+    // son coût tout en étant à réimprimer.
+    const bookChanged = !!initialData && formData.catalogueId !== initialData.catalogueId;
+    // Le lecteur a le livre en main, ou l'a déjà rendu enregistré : l'enregistrement
+    // porte sur l'ancien titre.
+    const assignmentUnderway =
+        !!initialAssignment &&
+        (!!initialAssignment.reader || !!initialAssignment.sentToReaderDate || !!initialAssignment.returnedToECADate);
+
     // A duplication is normally « À faire » — do it now. The exception is a book
     // with no audio yet because a lecteur is still recording it: nothing can be
     // copied until that comes back. A closed demande is excluded — it waits for
@@ -684,6 +703,31 @@ export function OrderFormBackendBase({
                                 bookTitle={selectedBook.title}
                                 size="sm"
                             />
+                        )}
+                        {bookChanged && (initialAssignment || billIssued) && (
+                            <div className="bg-amber-50 border border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200 p-3 rounded-lg text-sm space-y-2">
+                                {initialAssignment && (
+                                    <p>
+                                        L&apos;attribution liée sera mise à jour avec ce livre.
+                                        {assignmentUnderway && (
+                                            <>
+                                                {' '}Elle est déjà « {initialAssignment.statusName} »
+                                                {initialAssignment.reader ? ` (lecteur : ${initialAssignment.reader.name || 'sans nom'})` : ''} :
+                                                ce qui a été lu ou enregistré porte sur l&apos;ancien livre.
+                                                Vérifiez que l&apos;enregistrement se trouve bien dans le dossier audio de ce livre-ci.
+                                            </>
+                                        )}
+                                    </p>
+                                )}
+                                {billIssued && initialBill && (
+                                    <p>
+                                        La facture #{initialBill.id} est déjà{' '}
+                                        {getBillingStatusLabel(initialBill.state as BillingStatus).toLowerCase()} : le
+                                        coût facturé n&apos;est pas recalculé — l&apos;auditeur n&apos;a pas à payer une
+                                        erreur de saisie. Pensez à réimprimer la facture pour que le livre corresponde.
+                                    </p>
+                                )}
+                            </div>
                         )}
                     </div>
 
