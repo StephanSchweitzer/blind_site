@@ -362,24 +362,75 @@ const SPECS = [
         url: '/admin/listes-de-livres',
         waitFor: 'table tbody tr, .rounded-lg.border',
         clip: '.rounded-lg.border',
+        annotations: [
+            { n: 1, selector: 'input[placeholder^="Rechercher une liste"]', self: true },
+            { n: 2, label: 'Nouvelle liste de livres', self: true },
+            { n: 3, selector: 'table tbody tr:first-child', self: true },
+        ],
         why: "l'adresse /admin/listes-de-livres",
+    },
+    // Les pages d'ajout et de modification partagent un meme editeur
+    // (components/liste-de-livres-form.tsx). Fenetre haute : la barre
+    // d'enregistrement est collante, et dans une fenetre de 900px elle se
+    // poserait par-dessus la carte photographiee.
+    {
+        name: 'liste-de-livres-02.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/new',
+        waitFor: '#title',
+        steps: [{ sleep: 1200 }],
+        clip: 'form > .grid',
+        annotations: [
+            { n: 1, selector: '#title', self: true },
+            { n: 2, selector: '#description', self: true },
+            { n: 3, label: "Démarrer l'enregistrement", self: true },
+            { n: 4, selector: 'label[for="active"]', self: true },
+        ],
+        why: 'informations, présentation audio et publication',
+    },
+    {
+        name: 'liste-de-livres-08.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/18',
+        waitFor: 'form table tbody tr',
+        steps: [{ sleep: 1500 }],
+        clip: 'form > .rounded-lg.border:not(.sticky)',
+        annotations: [
+            { n: 1, label: 'Voir', self: true },
+            { n: 2, label: 'Rechercher un livre', self: true },
+            { n: 3, label: 'Créer une fiche', self: true },
+            { n: 4, selector: 'form table tbody tr:first-child button[role="checkbox"]', self: true },
+            { n: 5, selector: 'form table tbody tr:first-child button[aria-label^="Retirer"]', self: true },
+        ],
+        why: 'les trois façons d’ajouter un livre, la sélection et le retrait',
+    },
+    {
+        name: 'liste-de-livres-09.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/18',
+        waitFor: 'form table tbody tr',
+        steps: [{ sleep: 1200 }],
+        clip: 'form > .sticky',
+        annotations: [{ n: 1, label: 'Enregistrer', self: true }],
+        why: "la barre d'enregistrement, commune aux deux pages",
     },
     {
         name: 'liste-de-livres-10.jpg',
+        viewport: { width: 1440, height: 1600 },
         url: '/admin/listes-de-livres/new',
-        waitFor: '#since',
+        waitFor: '#since-hero',
         steps: [
             // Une date bien avant la coupure par défaut, pour faire apparaître
-            // le bouton « Revenir à cette date » qu'on annote juste après.
-            { typeIn: { selector: '#since', value: '2020-01-01' } },
+            // le lien « Revenir à cette date ».
+            { typeIn: { selector: '#since-hero', value: '2020-01-01' } },
             { sleep: 1800 },
         ],
-        clip: '.rounded-md.border.border-border.bg-card.p-3',
+        clip: 'form > .rounded-lg.border:not(.sticky)',
         annotations: [
-            { n: 1, label: 'Nouveautés depuis le' },
-            { n: 2, label: 'Revenir à cette date', self: true },
+            { n: 1, selector: '#since-hero', self: true },
+            { n: 2, label: 'Voir', self: true },
         ],
-        why: 'le filtre de date des nouveautés, et le retour à la coupure par défaut',
+        why: 'la liste vide et le contrôle des nouveautés',
     },
     // ── Sections ajoutees apres la reprise du guide ─────────────────────────
     {

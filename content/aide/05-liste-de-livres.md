@@ -8,33 +8,19 @@ order: 5
 
 La page « Liste de Livres » est le nouveau nom de ce qui s'appelait auparavant « Coups de Cœurs ». Il s'agit d'une liste mise à jour régulièrement qui regroupe les livres préférés du moment sélectionnés par les membres permanents ; les listes définitives et accessibles au public sont publiées dans la partie publique du site. L'URL de cette page est https://eca-aveugles.fr/admin/listes-de-livres — l'ancienne adresse /admin/manage_coups_de_coeur y redirige toujours.
 
-Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de livres » existantes en fonction de leur auteur ou de leur titre. Vous pouvez (2) ajouter une nouvelle « Liste de livres », ou (3) modifier une liste existante en cliquant sur le bouton « Modifier » ou sur la ligne que vous souhaitez modifier.
+Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de livres » existantes, par leur titre ou par le titre d'un livre qu'elles contiennent. Vous pouvez (2) créer une « Nouvelle liste de livres », ou (3) ouvrir une liste existante en cliquant sur sa ligne. Chaque ligne indique si la liste est **Publiée** sur le site ou reste un **Brouillon** ; l'icône d'impression, à droite, imprime la liste sans l'ouvrir.
 
 ![Liste de Livres - capture 1](/admin/aide/images/liste-de-livres-01.jpg)
 
-Si vous en ajoutez une nouvelle, vous serez redirigé vers une page distincte. La liste y commence **vide** : aucun livre n'y est ajouté sans que vous l'ayez choisi.
-
-Pour retrouver les livres ajoutés au catalogue depuis la dernière liste, utilisez l'encadré « **Nouveautés depuis le …** », présent à l'identique sur la page d'ajout et sur la page de modification. La date est proposée par défaut à celle de la **dernière liste créée — publiée ou non**, rappelée juste à côté (« Dernière liste « … » créée le … »). Vous pouvez (1) la déplacer en cliquant dans le champ et en choisissant une autre date dans le calendrier, puis revenir à la date proposée avec « Revenir à cette date ». Cliquez ensuite sur (2) « **Voir les nouveautés** » : une fenêtre s'ouvre avec les nouveautés depuis cette date, **toutes décochées**. Cochez celles que vous voulez (ou « Tout cocher »), puis cliquez sur « Ajouter à la liste » : elles rejoignent la liste de la page, en tête et cochées.
-
-![Liste de Livres - capture 10](/admin/aide/images/liste-de-livres-10.jpg)
-
-*La capture ci-dessus montre encore l'ancien affichage, où les nouveautés étaient ajoutées d'office à la liste : le champ de date est au même endroit, le bouton « Voir les nouveautés » s'y ajoute.*
-
-Trois garde-fous accompagnent cette sélection :
-
-- Seuls les **livres disponibles** sont proposés — un enregistrement encore en cours n'a rien à faire dans une liste.
-- Un livre qui **figure déjà dans une autre liste** le signale (« Déjà dans « … » ») avant que vous ne le repassiez.
-- Un livre **déjà dans la liste en cours** est affiché grisé (« Déjà dans la liste en cours ») et ne peut pas être ajouté deux fois.
-
-Si la date choisie ramène beaucoup de nouveautés, elles se chargent par centaines : cliquez sur « Charger la suite » en bas de la fenêtre pour voir les suivantes.
-
 ## Ajout des listes de livres
 
-Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme l'enregistrement présentant la liste (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque à l'ECA. Vous pouvez également choisir de rendre la liste visible ou non sur la partie publique du site web à l'aide du switch de visibilité (4).
+La création et la modification d'une liste se font sur la même page, organisée en trois blocs : **Informations**, **Présentation audio** et **Livres**, suivis d'une barre d'enregistrement.
+
+Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Publiée sur le site** » (4) décide si la liste est visible dans la partie publique du site.
 
 ![Liste de Livres - capture 2](/admin/aide/images/liste-de-livres-02.jpg)
 
-Ce switch « Visibilité » existe parce que la création de la liste et la mise en forme selon vos souhaits prennent sans doute du temps. Grâce à ce bouton, vous pouvez rendre la liste invisible, ce qui revient à en faire un brouillon, puis, une fois que tout est à votre goût, vous pouvez la rendre publique et la « publier ».
+Cet interrupteur existe parce que la création de la liste et la mise en forme selon vos souhaits prennent sans doute du temps. Désactivé, il fait de la liste un brouillon, visible seulement dans l'administration ; une fois que tout est à votre goût, activez-le pour la « publier ». Le statut s'affiche à côté du titre de la page (« Publiée » ou « Brouillon »).
 
 ## Enregistrement pour les listes des livres
 
@@ -62,22 +48,39 @@ Vous pouvez (1) continuer à enregistrer des sections, (2) écouter une section 
 
 Si vous préférez importer un fichier déjà prêt plutôt que d'enregistrer au micro, cliquez sur « Importer un fichier » et choisissez-le sur votre ordinateur (25 Mo maximum). Il est accepté tel quel, sans être ré-encodé, puis s'affiche immédiatement comme un enregistrement confirmé, prêt à être réécouté ou remplacé via le bouton « Remplacer le fichier ».
 
-## Ajoutez des livres à la liste et sélectionnez-les
+## Ajoutez des livres à la liste
 
-(1) Vous pouvez ajouter un livre entièrement nouveau, comme vous le feriez pour ajouter un nouveau livre au catalogue à l'aide du bouton « Ajouter un nouveau livre ». En procédant ainsi, le livre sera ÉGALEMENT ajouté au catalogue.
+Une nouvelle liste commence **vide** : aucun livre n'y est ajouté sans que vous l'ayez choisi. Tous les livres présents dans le tableau sont ceux qui seront enregistrés dans la liste.
 
-Vous pouvez également ajouter un livre qui existe déjà dans le catalogue à l'aide du bouton « Ajouter un livre existant ».
+Pour retrouver les livres ajoutés au catalogue depuis la dernière liste, utilisez le contrôle « **Nouveautés depuis le …** ». Tant que la liste est vide, il s'affiche en grand au milieu du bloc Livres :
 
-(2) Une fois qu'un livre figure dans la liste, vous pouvez l'activer ou le désactiver à l'aide du bouton de sélection.
+![Liste de Livres - capture 10](/admin/aide/images/liste-de-livres-10.jpg)
+
+La date est proposée par défaut à celle de la **dernière liste créée — publiée ou non**, rappelée juste en dessous (« Dernière liste « … » créée le … »). Vous pouvez (1) la déplacer en cliquant dans le champ et en choisissant une autre date dans le calendrier, puis revenir à la date proposée avec « Revenir à cette date ». Cliquez ensuite sur (2) « **Voir** » : une fenêtre s'ouvre avec les nouveautés depuis cette date, **toutes décochées**. Cochez celles que vous voulez (ou « Tout cocher »), puis cliquez sur « Ajouter à la liste » : elles rejoignent la liste, en tête.
+
+Trois garde-fous accompagnent cette sélection :
+
+- Seuls les **livres disponibles** sont proposés — un enregistrement encore en cours n'a rien à faire dans une liste.
+- Un livre qui **figure déjà dans une autre liste** le signale (« Déjà dans « … » ») avant que vous ne le repassiez.
+- Un livre **déjà dans la liste en cours** est affiché grisé (« Déjà dans la liste en cours ») et ne peut pas être ajouté deux fois.
+
+Si la date choisie ramène beaucoup de nouveautés, elles se chargent par centaines : cliquez sur « Charger la suite » en bas de la fenêtre pour voir les suivantes.
+
+Une fois la liste commencée, le même contrôle (1) reste disponible en haut du bloc Livres, à côté des deux autres façons d'ajouter un livre :
 
 ![Liste de Livres - capture 8](/admin/aide/images/liste-de-livres-08.jpg)
 
-Cette option a été prévue pour vous permettre de supprimer rapidement plusieurs livres sans avoir à les ouvrir un par un.
+- (2) « **Rechercher un livre** » cherche dans tout le catalogue, par titre, auteur ou ISBN. Cliquez sur un résultat pour l'ajouter ; la fenêtre reste ouverte pour en ajouter d'autres.
+- (3) « **Créer une fiche** » ajoute un livre entièrement nouveau. En procédant ainsi, le livre sera ÉGALEMENT ajouté au catalogue.
 
-Lorsque vous êtes prêt à l'enregistrer, descendez tout en bas de la page et cliquez sur le bouton « Ajouter à la liste des livres ».
+Pour retirer un livre, cliquez sur la croix au bout de sa ligne (5). Pour en retirer plusieurs d'un coup, cochez leurs cases (4), puis cliquez sur « Retirer de la liste » dans la barre qui surmonte le tableau. Un retrait s'annule d'un clic sur « Annuler », juste après. Si des livres de la liste figurent déjà dans une autre liste, la même barre le signale et propose de « Les retirer ». Le crayon, à côté de la croix, ouvre la fiche du livre pour la modifier.
+
+Lorsque vous êtes prêt, cliquez sur « **Créer la liste** » (ou « **Enregistrer** » pour une liste existante) dans la barre d'enregistrement (1). Elle reste visible en bas de l'écran pendant que vous faites défiler la page, et indique « Modifications non enregistrées » tant que vos changements ne sont pas enregistrés. Si vous quittez la page avant, une fenêtre vous le rappelle.
 
 ![Liste de Livres - capture 9](/admin/aide/images/liste-de-livres-09.jpg)
 
 ## Modification des listes de livres
 
-La modification d'une liste s'effectue de la même manière que son ajout. La seule différence réside dans le fait que, lorsque vous modifiez une liste, celle-ci contient déjà des informations et des livres qui y ont été enregistrés auparavant.
+La modification d'une liste s'effectue sur la même page que son ajout, qui contient alors les informations et les livres enregistrés auparavant. Deux gestes s'y ajoutent, en haut à droite : « Imprimer la liste de livres », et le bouton « ⋯ » qui propose « Supprimer la liste ». La suppression demande une confirmation ; les livres eux-mêmes restent au catalogue.
+
+Pour une liste qui a déjà une présentation audio, le bloc Présentation audio affiche le lecteur avec deux boutons : « Remplacer » pour enregistrer ou importer un nouvel audio, et « Retirer » pour la supprimer de la liste.

@@ -1,381 +1,85 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import BookSelector from '../components/book-selector';
-import AudioRecorder from '@/components/AudioRecorder';
-import { CoupDeCoeurPDFButton } from '@/admin/CoupDeCoeurPDFButton';
-import { extensionForMimeType } from '@/lib/audio-file-extension';
-import {useWarnIfUnsavedChanges} from "@/components/userWarnIfUnsavedChanges";
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { LoadingSkeleton } from '@/components/loading-skeleton';
+import ListeDeLivresForm, { ListeDeLivresPayload, ListeDeLivresValues } from '../components/liste-de-livres-form';
+import { ListBook } from '../components/list-book';
 
-interface BookWithDetails {
-    coupsDeCoeurId: number;
-    bookId: number;
-    book: {
-        id: number;
-        title: string;
-        author: string;
-        publishedDate: string;
-        isbn: string | null;
-        description: string | null;
-        readingDurationMinutes: number | null;
-        available: boolean;
-        createdAt: string;
-        updatedAt: string;
-        addedById: number;
-    };
-}
-
-interface CoupDeCoeur {
+interface LoadedList {
     id: number;
     title: string;
-    description: string;
-    audioPath: string;
+    description: string | null;
+    audioPath: string | null;
     active: boolean;
-    books: BookWithDetails[];
-    addedById: number;
     createdAt: string;
-    updatedAt: string;
+    books: { book: ListBook }[];
 }
 
-export default function EditCoupDeCoeurPage() {
+export default function ModifierListeDeLivresPage() {
     const router = useRouter();
-    const params = useParams();
-    const { id } = params;
+    const { id } = useParams();
+    const listId = Number(id);
 
-    const [formData, setFormData] = useState<CoupDeCoeur | null>(null);
-    const [originalData, setOriginalData] = useState<CoupDeCoeur | null>(null);
-    const [bookMap, setBookMap] = useState<Record<number, BookWithDetails['book']>>({});
-    const [tempAudioBlob, setTempAudioBlob] = useState<Blob | null>(null);
-    const [isRerecording, setIsRerecording] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isBookSelectorOpen, setIsBookSelectorOpen] = useState(false);
-    const [isLeaving, setIsLeaving] = useState(false);
-
-    // Derived: are there edits relative to the loaded data? No effect needed.
-    const isDirty = useMemo(() => {
-        if (!formData || !originalData) return false;
-        return (
-            formData.title !== originalData.title ||
-            formData.description !== originalData.description ||
-            formData.active !== originalData.active ||
-            tempAudioBlob !== null ||
-            JSON.stringify(formData.books.map(b => b.book.id).sort()) !==
-            JSON.stringify(originalData.books.map(b => b.book.id).sort())
-        );
-    }, [formData, originalData, tempAudioBlob]);
-
-    // isLeaving lets us suppress the warning on intentional exits (save/cancel/delete).
-    const hasUnsavedChanges = isDirty && !isLeaving;
-
-    const { NavigationWarningDialog } = useWarnIfUnsavedChanges({
-        unsaved: hasUnsavedChanges,
-        message: "Si vous souhaitez enregistrer ces modifications, cliquez sur le bouton " +
-            "\n\n « Mettre à jour la liste de livres » \n\n " +
-            "En bas à droite, sinon quittez la page."
-    });
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prevData => ({
-            ...prevData!,
-            [name]: value,
-        }));
-    };
+    const [loaded, setLoaded] = useState<{ values: ListeDeLivresValues; createdAt: string } | null>(null);
 
     useEffect(() => {
-        if (!id) return;
+        if (!Number.isInteger(listId)) return;
         let active = true;
 
-        fetch(`/api/listes-de-livres/${id}`)
+        fetch(`/api/listes-de-livres/${listId}`)
             .then(async (res) => {
                 if (!res.ok) throw new Error('LOAD_FAILED');
-                return res.json();
+                return res.json() as Promise<LoadedList>;
             })
             .then((data) => {
                 if (!active) return;
-                setFormData(data);
-                setOriginalData(data);
-                const initialBookMap = data.books.reduce(
-                    (acc: Record<number, BookWithDetails['book']>, curr: BookWithDetails) => {
-                        acc[curr.book.id] = curr.book;
-                        return acc;
+                setLoaded({
+                    createdAt: data.createdAt,
+                    values: {
+                        title: data.title,
+                        description: data.description ?? '',
+                        audioPath: data.audioPath || null,
+                        active: data.active,
+                        books: data.books.map((entry) => entry.book),
                     },
-                    {}
-                );
-                setBookMap(initialBookMap);
+                });
             })
             .catch((err) => {
-                if (!active) return;
-                setError(
-                    err instanceof Error && err.message === 'LOAD_FAILED'
-                        ? 'Échec du chargement de la liste de livres'
-                        : 'Erreur lors du chargement de la liste de livres' + err
-                );
-                router.push('/admin/listes-de-livres');
+                console.error('Erreur lors du chargement de la liste de livres:', err);
+                if (active) router.push('/admin/listes-de-livres');
             });
 
         return () => {
             active = false;
         };
-    }, [id, router]);
+    }, [listId, router]);
 
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            let audioPath = formData!.audioPath;
-
-            if (tempAudioBlob) {
-                const timestamp = new Date().getTime();
-                const filename = `coup_description_${timestamp}.${extensionForMimeType(tempAudioBlob.type)}`;
-                const audioFormData = new FormData();
-                audioFormData.append('audio', tempAudioBlob, filename);
-
-                const uploadRes = await fetch('/api/upload-audio', {
-                    method: 'POST',
-                    body: audioFormData,
-                });
-
-                if (!uploadRes.ok) throw new Error('Échec du téléchargement audio');
-                const { filepath } = await uploadRes.json();
-                audioPath = filepath;
-            }
-
-            const res = await fetch(`/api/listes-de-livres/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: formData!.title,
-                    description: formData!.description,
-                    audioPath,
-                    active: formData!.active,
-                    bookIds: formData!.books.map(book => book.book.id)
-                }),
-            });
-
-            if (res.ok) {
-                setIsLeaving(true);
-                await new Promise(resolve => requestAnimationFrame(resolve));
-
-                router.push('/admin/listes-de-livres');
-                router.refresh();
-            } else {
-                throw new Error('Échec de la mise à jour de la liste de livres');
-            }
-        } catch (error) {
-            setError(error instanceof Error ? error.message : 'Échec de la mise à jour de la liste de livres');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleDelete = async () => {
-        if (window.confirm('Êtes-vous sûr de vouloir supprimer cette liste de livres ?')) {
-            try {
-                const res = await fetch(`/api/listes-de-livres/${id}`, {
-                    method: 'DELETE',
-                });
-
-                if (res.ok) {
-                    setIsLeaving(true);
-                    router.push('/admin/listes-de-livres');
-                    router.refresh();
-                } else {
-                    setError('Échec de la suppression de la liste de livres');
-                }
-            } catch (error) {
-                console.error('Erreur lors de la suppression:', error);
-                setError('Une erreur est survenue lors de la suppression.');
-            }
-        }
-    };
-
-    if (!formData) {
-        return <div className="flex justify-center items-center min-h-screen">
-            <p className="text-foreground">Chargement...</p>
-        </div>;
+    if (!loaded) {
+        return <LoadingSkeleton message="Chargement de la liste de livres..." variant="admin" />;
     }
 
+    const update = async (payload: ListeDeLivresPayload) => {
+        const res = await fetch(`/api/listes-de-livres/${listId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Échec de la mise à jour de la liste de livres.');
+    };
+
+    const remove = async () => {
+        const res = await fetch(`/api/listes-de-livres/${listId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Échec de la suppression de la liste de livres.');
+    };
+
     return (
-        <div className="space-y-4">
-            <Card className="bg-card border-border">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border">
-                    <CardTitle className="text-foreground">Modifier la liste de livres</CardTitle>
-                    <div className="flex items-center gap-2">
-                        <CoupDeCoeurPDFButton coupDeCoeurId={formData.id} />
-                        <Button
-                            variant="destructive"
-                            onClick={handleDelete}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                            Supprimer
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {error && (
-                            <Alert variant="destructive">
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
-
-                        <div className="grid gap-6">
-                            <div className="space-y-2">
-                                <label htmlFor="title" className="text-sm font-medium text-foreground">
-                                    Titre *
-                                </label>
-                                <Input
-                                    type="text"
-                                    name="title"
-                                    id="title"
-                                    required
-                                    value={formData.title}
-                                    onChange={handleChange}
-                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label htmlFor="description" className="text-sm font-medium text-foreground">
-                                    Description
-                                </label>
-                                <Textarea
-                                    name="description"
-                                    id="description"
-                                    value={formData.description || ""}
-                                    onChange={handleChange}
-                                    className="bg-card border-border text-foreground focus:ring-ring focus:border-ring min-h-[150px]"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Enregistrement Audio
-                                </label>
-                                {!isRerecording ? (
-                                    <div className="space-y-2">
-                                        <audio
-                                            src={formData.audioPath}
-                                            controls
-                                            className="w-full bg-card rounded-md"
-                                        />
-                                        <Button
-                                            type="button"
-                                            onClick={() => setIsRerecording(true)}
-                                            variant="outline"
-                                            className="w-full bg-field border-border text-foreground hover:bg-muted"
-                                        >
-                                            Remplacer l&apos;audio
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <AudioRecorder
-                                        onConfirm={setTempAudioBlob}
-                                        onClear={() => {
-                                            setTempAudioBlob(null);
-                                            setIsRerecording(false);
-                                        }}
-                                    />
-                                )}
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                                <Switch
-                                    id="active"
-                                    checked={formData.active}
-                                    onCheckedChange={(checked: boolean) => {
-                                        setFormData(prev => ({ ...prev!, active: checked }));
-                                    }}
-                                    className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
-                                />
-                                <label htmlFor="active" className="text-sm font-medium text-foreground">
-                                    Cette liste de livres est-elle visible par le public ?
-                                </label>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label
-                                    className="text-sm font-medium text-foreground cursor-pointer"
-                                    onClick={() => {
-                                        setIsBookSelectorOpen(true);
-                                    }}
-                                >
-                                    Sélectionner les livres *
-                                </label>
-                                <BookSelector
-                                    selectedBooks={formData.books.map(book => book.book.id)}
-                                    onSelectedBooksChange={(bookIds: number[]) => {
-                                        setFormData(prev => {
-                                            if (!prev) return null;
-                                            return {
-                                                ...prev,
-                                                books: bookIds.map(id => ({
-                                                    coupsDeCoeurId: prev.id,
-                                                    bookId: id,
-                                                    book: bookMap[id] || {
-                                                        id,
-                                                        title: '',
-                                                        author: '',
-                                                        publishedDate: new Date().toISOString(),
-                                                        isbn: null,
-                                                        description: null,
-                                                        readingDurationMinutes: null,
-                                                        available: true,
-                                                        createdAt: new Date().toISOString(),
-                                                        updatedAt: new Date().toISOString(),
-                                                        addedById: prev.addedById
-                                                    }
-                                                }))
-                                            };
-                                        });
-                                    }}
-                                    coupDeCoeurId={parseInt(id as string)}
-                                    onDialogOpenChange={setIsBookSelectorOpen}
-                                    isOpen={isBookSelectorOpen}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-4">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={async () => {
-                                    await new Promise(resolve => {
-                                        setIsLeaving(true);
-                                        setTimeout(resolve, 0);
-                                    });
-                                    router.push('/admin/listes-de-livres');
-                                    router.refresh();
-                                }}
-                                className="bg-field border-border text-foreground hover:bg-muted"
-                            >
-                                Annuler
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={isLoading || formData.books.length === 0}
-                                className="bg-muted hover:bg-muted text-foreground"
-                            >
-                                {isLoading ? 'Mise à jour...' : 'Mettre à jour la liste de livres '}
-                            </Button>
-                        </div>
-                    </form>
-                    <NavigationWarningDialog />
-                </CardContent>
-            </Card>
-        </div>
+        <ListeDeLivresForm
+            listId={listId}
+            createdAt={loaded.createdAt}
+            initialValues={loaded.values}
+            onSave={update}
+            onDelete={remove}
+        />
     );
-}
+}

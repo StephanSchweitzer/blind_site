@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/custom-switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Table,
     TableBody,
@@ -18,18 +18,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from '@/lib/utils';
 import { parisDate, parisDayKey } from '@/lib/paris-day';
-import { ListRef, membershipLabel } from './list-membership';
-
-export interface RecentBook {
-    id: number;
-    title: string;
-    subtitle: string;
-    author: string;
-    isbn: string | null;
-    createdAt: Date;
-    hiddenFromCatalogue?: boolean;
-}
+import { ListRef } from './list-membership';
+import { BookBadges, ListBook } from './list-book';
 
 interface DefaultWindow {
     since: string | null;
@@ -37,52 +29,35 @@ interface DefaultWindow {
     active: boolean | null;
 }
 
-interface RecentBooksPickerProps {
-    /** Les livres cochés dans la liste en cours — ceux qui partiront à l'enregistrement. */
-    selectedBookIds: number[];
-    /** Les AUTRES listes qui contiennent chaque livre. */
-    membership: Map<number, ListRef[]>;
-    onAdd: (books: RecentBook[]) => void;
+export interface RecentWindowState {
+    /** Le jour parisien affiché dans le champ ; vide tant que le défaut n'est pas connu. */
+    since: string;
+    setSince: (day: string) => void;
+    /** Vrai si le permanent a déplacé la date. */
+    sinceTouched: boolean;
+    resetSince: () => void;
+    defaultWindow: DefaultWindow | null;
+    /** Le `since` à envoyer à /api/books, ou null pour la coupure par défaut. */
+    sinceParam: string | null;
+    /** La date lisible de la fenêtre appliquée, pour les titres. */
+    appliedLabel: string | null;
 }
 
-// Le plafond de /api/books : au-delà, la fenêtre se charge par pages.
-const PAGE_SIZE = 100;
-
 /**
- * « Nouveautés depuis le … » : un choix, jamais un ajout d'office.
+ * La date des nouveautés, tenue au-dessus du contrôle et de la fenêtre.
  *
- * La création d'une liste chargeait autrefois, cochées, toutes les nouveautés
- * depuis la dernière liste — parfois des centaines — à charge pour le
- * permanent de décocher ce qu'il ne voulait pas. Ici rien n'entre dans la liste
- * sans avoir été coché : la fenêtre s'ouvre sur demande, tout y part décoché,
- * et seul « Ajouter » touche à la liste.
+ * Levée ici plutôt que dans le contrôle : il s'affiche tantôt en grand dans
+ * l'état vide de la liste, tantôt dans la barre d'outils, et un changement de
+ * place ne doit pas faire oublier la date que le permanent a choisie.
  *
- * Le même composant sert la création et la modification, sans distinction :
- * ce qu'il sait de la page tient dans `selectedBookIds` et `membership`.
- *
- * Le bouton plutôt qu'une ouverture au changement de date : un champ date
- * saisi au clavier émet un changement par segment (jour, mois, année), et
- * chacun ouvrirait la fenêtre sur une date à moitié tapée.
+ * Tant que la date n'a pas été déplacée, on n'envoie PAS de `since` : le
+ * serveur applique l'instant exact de la dernière liste — pas son jour arrondi,
+ * qui élargirait la fenêtre de quelques heures.
  */
-export default function RecentBooksPicker({ selectedBookIds, membership, onAdd }: RecentBooksPickerProps) {
-    // `since` vide tant que le défaut n'est pas connu. `sinceTouched` dit si le
-    // permanent l'a déplacé : tant que non, on n'envoie PAS de `since`, et le
-    // serveur applique l'instant exact de la dernière liste — pas son jour
-    // arrondi, qui élargirait la fenêtre de quelques heures.
-    const [since, setSince] = useState('');
+export function useRecentWindow(): RecentWindowState {
+    const [since, setSinceState] = useState('');
     const [sinceTouched, setSinceTouched] = useState(false);
     const [defaultWindow, setDefaultWindow] = useState<DefaultWindow | null>(null);
-
-    const [open, setOpen] = useState(false);
-    const [books, setBooks] = useState<RecentBook[]>([]);
-    const [total, setTotal] = useState(0);
-    const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
-    const [isLoading, setIsLoading] = useState(false);
-    const [loadError, setLoadError] = useState(false);
-    const [checked, setChecked] = useState<Set<number>>(new Set());
-    // Une réponse d'une ouverture précédente ne doit pas se mêler à la suivante.
-    const requestId = useRef(0);
 
     useEffect(() => {
         const loadDefault = async () => {
@@ -99,7 +74,7 @@ export default function RecentBooksPicker({ selectedBookIds, membership, onAdd }
                     active: recentWindow.defaultActive ?? null,
                 });
                 if (recentWindow.defaultSince) {
-                    setSince((current) => current || parisDayKey(new Date(recentWindow.defaultSince)));
+                    setSinceState((current) => current || parisDayKey(new Date(recentWindow.defaultSince)));
                 }
             } catch (error) {
                 console.error('Error loading recent-books window:', error);
@@ -109,53 +84,196 @@ export default function RecentBooksPicker({ selectedBookIds, membership, onAdd }
     }, []);
 
     const defaultSinceDay = defaultWindow?.since ? parisDayKey(new Date(defaultWindow.since)) : null;
+    const sinceParam = sinceTouched && since ? since : null;
 
-    const loadPage = async (pageNumber: number, reset: boolean) => {
+    return {
+        since,
+        setSince: (day) => {
+            setSinceState(day);
+            setSinceTouched(day !== '' && day !== defaultSinceDay);
+        },
+        sinceTouched,
+        resetSince: () => {
+            if (defaultSinceDay) setSinceState(defaultSinceDay);
+            setSinceTouched(false);
+        },
+        defaultWindow,
+        sinceParam,
+        appliedLabel: sinceParam
+            ? parisDate(`${sinceParam}T12:00:00Z`)
+            : defaultWindow?.since
+                ? parisDate(defaultWindow.since)
+                : null,
+    };
+}
+
+interface RecentBooksControlProps {
+    win: RecentWindowState;
+    onOpen: () => void;
+    /** `hero` : l'état vide d'une liste, où c'est la première chose à faire. */
+    size?: 'toolbar' | 'hero';
+}
+
+/**
+ * « Nouveautés depuis le [date] [Voir] » : un seul contrôle, qui se lit comme
+ * une phrase — la date dit ce que le bouton va montrer.
+ *
+ * Le bouton plutôt qu'une ouverture au changement de date : un champ date
+ * saisi au clavier émet un changement par segment (jour, mois, année), et
+ * chacun ouvrirait la fenêtre sur une date à moitié tapée.
+ */
+export function RecentBooksControl({ win, onOpen, size = 'toolbar' }: RecentBooksControlProps) {
+    const { since, setSince, sinceTouched, resetSince, defaultWindow } = win;
+    const hero = size === 'hero';
+
+    return (
+        <div className={cn('space-y-1.5', hero && 'flex flex-col items-center text-center')}>
+            <div
+                className={cn(
+                    'inline-flex items-stretch overflow-hidden rounded-md border border-border bg-field shadow-sm',
+                    hero ? 'h-11' : 'h-9'
+                )}
+            >
+                <label
+                    htmlFor={`since-${size}`}
+                    className="flex items-center gap-2 whitespace-nowrap pl-3 pr-2 text-sm text-muted-foreground"
+                >
+                    <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
+                    {/* Le libellé complet déborde d'un écran de téléphone. */}
+                    <span className="hidden sm:inline">Nouveautés depuis le</span>
+                    <span className="sm:hidden">Depuis le</span>
+                </label>
+                <input
+                    type="date"
+                    id={`since-${size}`}
+                    value={since}
+                    max={parisDayKey(new Date())}
+                    onChange={(e) => setSince(e.target.value)}
+                    className="bg-transparent px-1 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [color-scheme:light] dark:[color-scheme:dark]"
+                />
+                <Button
+                    type="button"
+                    onClick={onOpen}
+                    className={cn('rounded-none border-l border-border', hero ? 'h-full px-5' : 'h-full px-3')}
+                >
+                    Voir
+                </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+                {defaultWindow === null ? (
+                    <span className="invisible">…</span>
+                ) : defaultWindow.since ? (
+                    <>
+                        {/* « créée », pas « publiée » : une liste dépubliée
+                            porte la coupure comme les autres. Elle est
+                            signalée comme telle, sans quoi le permanent
+                            chercherait en vain sur le site la liste que
+                            cette phrase nomme. */}
+                        Dernière liste
+                        {defaultWindow.label ? ` « ${defaultWindow.label} »` : ''} créée le{' '}
+                        {parisDate(defaultWindow.since)}
+                        {defaultWindow.active === false ? ' (dépubliée)' : ''}
+                        {sinceTouched && (
+                            <>
+                                {' · '}
+                                <button
+                                    type="button"
+                                    className="underline underline-offset-2 hover:text-foreground"
+                                    onClick={resetSince}
+                                >
+                                    Revenir à cette date
+                                </button>
+                            </>
+                        )}
+                    </>
+                ) : (
+                    "Aucune liste de livres n'a encore été créée."
+                )}
+            </p>
+        </div>
+    );
+}
+
+interface RecentBooksDialogProps {
+    win: RecentWindowState;
+    onClose: () => void;
+    /** Les livres déjà dans la liste en cours. */
+    inListIds: Set<number>;
+    /** Les AUTRES listes qui contiennent chaque livre. */
+    membership: Map<number, ListRef[]>;
+    onAdd: (books: ListBook[]) => void;
+}
+
+// Le plafond de /api/books : au-delà, la fenêtre se charge par pages.
+const PAGE_SIZE = 100;
+
+/**
+ * La fenêtre des nouveautés : un choix, jamais un ajout d'office.
+ *
+ * La création d'une liste chargeait autrefois, cochées, toutes les nouveautés
+ * depuis la dernière liste — parfois des centaines — à charge pour le
+ * permanent de décocher ce qu'il ne voulait pas. Ici tout part décoché, et
+ * seul « Ajouter » touche à la liste.
+ *
+ * Montée seulement quand elle est ouverte : chaque ouverture repart d'un
+ * chargement frais et d'aucune coche, sans effet de remise à zéro.
+ */
+export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }: RecentBooksDialogProps) {
+    const [books, setBooks] = useState<ListBook[]>([]);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
+    const [checked, setChecked] = useState<Set<number>>(new Set());
+    const requestId = useRef(0);
+    const { sinceParam, appliedLabel } = win;
+
+    // Aucun setState ici : la lecture est séparée de l'application, pour que
+    // le chargement initial puisse partir d'un effet sans y écrire l'état.
+    const fetchPage = async (pageNumber: number) => {
+        const params = new URLSearchParams({
+            recent: 'true',
+            limit: String(PAGE_SIZE),
+            page: String(pageNumber),
+        });
+        if (sinceParam) params.append('since', sinceParam);
+        const response = await fetch(`/api/books?${params.toString()}`);
+        if (!response.ok) throw new Error('LOAD_FAILED');
+        return response.json();
+    };
+
+    const loadPage = (pageNumber: number) => {
         const id = ++requestId.current;
-        setIsLoading(true);
-        setLoadError(false);
-        try {
-            const params = new URLSearchParams({
-                recent: 'true',
-                limit: String(PAGE_SIZE),
-                page: String(pageNumber),
+        fetchPage(pageNumber)
+            .then((data) => {
+                if (id !== requestId.current) return;
+                const pageBooks: ListBook[] = data.books ?? [];
+                setBooks((prev) => {
+                    const seen = new Set(prev.map((book) => book.id));
+                    return [...prev, ...pageBooks.filter((book) => !seen.has(book.id))];
+                });
+                setTotal(typeof data.total === 'number' ? data.total : pageBooks.length);
+                setTotalPages(typeof data.totalPages === 'number' ? data.totalPages : 1);
+                setPage(pageNumber);
+                setIsLoading(false);
+            })
+            .catch((error) => {
+                console.error('Error loading recent books:', error);
+                if (id !== requestId.current) return;
+                setLoadError(true);
+                setIsLoading(false);
             });
-            if (sinceTouched && since) params.append('since', since);
-
-            const response = await fetch(`/api/books?${params.toString()}`);
-            if (!response.ok) throw new Error('LOAD_FAILED');
-            const data = await response.json();
-            if (id !== requestId.current) return;
-
-            const pageBooks: RecentBook[] = data.books ?? [];
-            setBooks((prev) => {
-                if (reset) return pageBooks;
-                const seen = new Set(prev.map((book) => book.id));
-                return [...prev, ...pageBooks.filter((book) => !seen.has(book.id))];
-            });
-            setTotal(typeof data.total === 'number' ? data.total : pageBooks.length);
-            setTotalPages(typeof data.totalPages === 'number' ? data.totalPages : 1);
-            setPage(pageNumber);
-        } catch (error) {
-            console.error('Error loading recent books:', error);
-            if (id === requestId.current) setLoadError(true);
-        } finally {
-            if (id === requestId.current) setIsLoading(false);
-        }
     };
 
-    const openPicker = () => {
-        setBooks([]);
-        setTotal(0);
-        setPage(0);
-        setTotalPages(0);
-        setChecked(new Set());
-        setOpen(true);
-        void loadPage(1, true);
-    };
+    // Le chargement initial ; `sinceParam` est figé le temps que la fenêtre
+    // est ouverte (elle est démontée à la fermeture).
+    useEffect(() => {
+        loadPage(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const inCurrentList = new Set(selectedBookIds);
-    const selectable = books.filter((book) => !inCurrentList.has(book.id));
+    const selectable = books.filter((book) => !inListIds.has(book.id));
     const allChecked = selectable.length > 0 && selectable.every((book) => checked.has(book.id));
 
     const toggle = (bookId: number) => {
@@ -167,168 +285,88 @@ export default function RecentBooksPicker({ selectedBookIds, membership, onAdd }
         });
     };
 
-    const toggleAll = (value: boolean) => {
-        setChecked(value ? new Set(selectable.map((book) => book.id)) : new Set());
-    };
-
-    // Filtré à la validation aussi : un livre coché puis ajouté entre-temps
-    // par un autre chemin ne doit pas partir deux fois.
-    const toAdd = books.filter((book) => checked.has(book.id) && !inCurrentList.has(book.id));
+    const toAdd = books.filter((book) => checked.has(book.id) && !inListIds.has(book.id));
     const checkedAlreadyListed = toAdd.filter((book) => membership.has(book.id)).length;
 
-    const commit = () => {
-        if (toAdd.length === 0) return;
-        onAdd(toAdd);
-        setOpen(false);
-    };
-
     return (
-        <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-            <div className="space-y-1">
-                <label htmlFor="since" className="text-sm font-medium text-foreground">
-                    Nouveautés depuis le
-                </label>
-                <Input
-                    type="date"
-                    id="since"
-                    value={since}
-                    max={parisDayKey(new Date())}
-                    onChange={(e) => {
-                        setSince(e.target.value);
-                        setSinceTouched(e.target.value !== '' && e.target.value !== defaultSinceDay);
-                    }}
-                    className="bg-card border-border text-foreground w-auto"
-                />
-            </div>
-            <Button
-                type="button"
-                onClick={openPicker}
-                className="bg-muted text-foreground border-border hover:bg-muted"
-            >
-                Voir les nouveautés
-            </Button>
-            <div className="flex-1 min-w-[16rem] text-sm text-muted-foreground">
-                {defaultWindow === null ? null : defaultWindow.since ? (
-                    <>
-                        {/* « créée », pas « publiée » : une liste dépubliée
-                            porte la coupure comme les autres. Elle est
-                            signalée comme telle, sans quoi le permanent
-                            chercherait en vain sur le site la liste que
-                            cette phrase nomme. */}
-                        Dernière liste
-                        {defaultWindow.label ? ` « ${defaultWindow.label} »` : ''} créée le{' '}
-                        {parisDate(defaultWindow.since)}
-                        {defaultWindow.active === false ? ' (dépubliée)' : ''}.{' '}
-                        {sinceTouched && defaultSinceDay && (
-                            <button
-                                type="button"
-                                className="underline hover:text-foreground"
-                                onClick={() => {
-                                    setSince(defaultSinceDay);
-                                    setSinceTouched(false);
-                                }}
-                            >
-                                Revenir à cette date
-                            </button>
-                        )}
-                    </>
-                ) : (
-                    "Aucune liste de livres n'a encore été créée."
-                )}
-            </div>
+        <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent className="flex max-h-[85dvh] max-w-4xl flex-col gap-0 p-0 bg-card border-border">
+                <DialogHeader className="border-b border-border px-6 py-4">
+                    <DialogTitle className="text-foreground">
+                        {appliedLabel ? `Nouveautés depuis le ${appliedLabel}` : 'Nouveautés'}
+                    </DialogTitle>
+                    <DialogDescription>
+                        Seuls les livres disponibles sont proposés : un enregistrement encore en
+                        cours n&apos;a rien à faire dans une liste. Cochez ceux à ajouter.
+                    </DialogDescription>
+                </DialogHeader>
 
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">
-                            {sinceTouched && since
-                                ? `Nouveautés depuis le ${parisDate(`${since}T12:00:00Z`)}`
-                                : defaultWindow?.since
-                                    ? `Nouveautés depuis le ${parisDate(defaultWindow.since)}`
-                                    : 'Nouveautés'}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Seuls les livres disponibles sont proposés : un enregistrement encore
-                            en cours n&apos;a rien à faire dans une liste. Cochez ceux à ajouter.
-                        </DialogDescription>
-                    </DialogHeader>
-
+                <div className="min-h-[12rem] flex-1 overflow-y-auto px-6 py-2">
                     {loadError ? (
-                        <p className="text-center py-4 text-destructive">
+                        <p className="py-10 text-center text-sm text-destructive">
                             Échec du chargement des nouveautés.
                         </p>
                     ) : isLoading && books.length === 0 ? (
-                        <p className="text-center py-4 text-foreground">Chargement...</p>
+                        <p className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Chargement des nouveautés…
+                        </p>
                     ) : books.length === 0 ? (
-                        <p className="text-center py-4 text-muted-foreground">
+                        <p className="py-10 text-center text-sm text-muted-foreground">
                             Aucune nouveauté disponible depuis cette date.
                         </p>
                     ) : (
-                        <div className="space-y-3">
+                        <>
                             <Table>
-                                <TableHeader className="bg-card">
-                                    <TableRow className="border-b border-border">
-                                        <TableHead className="text-foreground font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <Switch
-                                                    id="recent-select-all"
-                                                    checked={allChecked}
-                                                    onChange={toggleAll}
-                                                    disabled={selectable.length === 0}
-                                                />
-                                                <label htmlFor="recent-select-all" className="text-sm font-medium text-foreground">
-                                                    Tout cocher
-                                                </label>
-                                            </div>
+                                <TableHeader>
+                                    <TableRow className="border-b border-border hover:bg-transparent">
+                                        <TableHead className="w-10">
+                                            <Checkbox
+                                                aria-label="Tout cocher"
+                                                checked={allChecked}
+                                                onCheckedChange={(value) =>
+                                                    setChecked(value === true ? new Set(selectable.map((book) => book.id)) : new Set())
+                                                }
+                                                disabled={selectable.length === 0}
+                                            />
                                         </TableHead>
                                         <TableHead className="text-foreground font-medium">Titre</TableHead>
                                         <TableHead className="text-foreground font-medium">Auteur</TableHead>
-                                        <TableHead className="text-foreground font-medium">Date d&apos;ajout</TableHead>
+                                        <TableHead className="text-foreground font-medium whitespace-nowrap">Ajouté le</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {books.map((book) => {
-                                        const alreadyHere = inCurrentList.has(book.id);
+                                        const alreadyHere = inListIds.has(book.id);
                                         return (
                                             <TableRow
                                                 key={book.id}
-                                                className={`border-b border-border ${alreadyHere ? 'opacity-50' : 'cursor-pointer hover:bg-muted'}`}
-                                                onClick={() => {
-                                                    if (!alreadyHere) toggle(book.id);
-                                                }}
+                                                className={cn(
+                                                    'border-b border-border',
+                                                    alreadyHere ? 'opacity-60' : 'cursor-pointer hover:bg-muted/60',
+                                                    checked.has(book.id) && 'bg-primary/5'
+                                                )}
+                                                onClick={() => { if (!alreadyHere) toggle(book.id); }}
                                             >
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <Switch
-                                                        id={`recent-book-${book.id}`}
+                                                    <Checkbox
+                                                        aria-label={`Cocher « ${book.title} »`}
                                                         checked={alreadyHere || checked.has(book.id)}
-                                                        onChange={() => toggle(book.id)}
+                                                        onCheckedChange={() => toggle(book.id)}
                                                         disabled={alreadyHere}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
-                                                    <div className="flex flex-col">
-                                                        <span>
-                                                            {book.title}
-                                                            {book.hiddenFromCatalogue && (
-                                                                <span className="ml-2 text-xs text-muted-foreground">
-                                                                    (masqué du catalogue public)
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                        {alreadyHere && (
-                                                            <span className="text-sm text-muted-foreground">
-                                                                Déjà dans la liste en cours
-                                                            </span>
-                                                        )}
-                                                        {membership.has(book.id) && (
-                                                            <span className="text-sm text-amber-500">
-                                                                {membershipLabel(membership.get(book.id)!)}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    <div className="font-medium">{book.title}</div>
+                                                    <BookBadges
+                                                        book={book}
+                                                        membership={membership.get(book.id)}
+                                                        inCurrentList={alreadyHere}
+                                                    />
                                                 </TableCell>
-                                                <TableCell className="text-foreground">{book.author}</TableCell>
-                                                <TableCell className="text-foreground">{parisDate(book.createdAt)}</TableCell>
+                                                <TableCell className="text-muted-foreground">{book.author}</TableCell>
+                                                <TableCell className="text-muted-foreground whitespace-nowrap">
+                                                    {parisDate(book.createdAt)}
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     })}
@@ -336,54 +374,55 @@ export default function RecentBooksPicker({ selectedBookIds, membership, onAdd }
                             </Table>
 
                             {page < totalPages && (
-                                <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+                                <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
                                     {books.length} nouveautés chargées sur {total}.
                                     <Button
                                         type="button"
                                         variant="outline"
+                                        size="sm"
                                         disabled={isLoading}
-                                        onClick={() => void loadPage(page + 1, false)}
-                                        className="bg-field border-border text-foreground hover:bg-muted"
+                                        onClick={() => {
+                                            setIsLoading(true);
+                                            loadPage(page + 1);
+                                        }}
                                     >
-                                        {isLoading ? 'Chargement...' : 'Charger la suite'}
+                                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Charger la suite
                                     </Button>
                                 </div>
                             )}
-                        </div>
+                        </>
                     )}
+                </div>
 
-                    <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm text-muted-foreground">
-                            {toAdd.length === 0
-                                ? 'Aucun livre coché.'
-                                : `${toAdd.length} livre${toAdd.length > 1 ? 's' : ''} coché${toAdd.length > 1 ? 's' : ''}`}
-                            {checkedAlreadyListed > 0 && (
-                                <span className="text-amber-500">
-                                    {' '}— dont {checkedAlreadyListed} déjà dans une autre liste
-                                </span>
-                            )}
-                        </p>
-                        <div className="flex gap-2 justify-end">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setOpen(false)}
-                                className="bg-field border-border text-foreground hover:bg-muted"
-                            >
-                                Annuler
-                            </Button>
-                            <Button
-                                type="button"
-                                disabled={toAdd.length === 0}
-                                onClick={commit}
-                                className="bg-muted text-foreground border-border hover:bg-muted"
-                            >
-                                {toAdd.length > 1 ? `Ajouter les ${toAdd.length} livres` : 'Ajouter à la liste'}
-                            </Button>
-                        </div>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                <DialogFooter className="flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:space-x-0">
+                    <p className="text-sm text-muted-foreground">
+                        {toAdd.length === 0
+                            ? 'Aucun livre coché.'
+                            : `${toAdd.length} livre${toAdd.length > 1 ? 's' : ''} coché${toAdd.length > 1 ? 's' : ''}`}
+                        {checkedAlreadyListed > 0 && (
+                            <span className="text-amber-600 dark:text-amber-400">
+                                {' '}— dont {checkedAlreadyListed} déjà dans une autre liste
+                            </span>
+                        )}
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={onClose}>
+                            Annuler
+                        </Button>
+                        <Button
+                            type="button"
+                            disabled={toAdd.length === 0}
+                            onClick={() => {
+                                onAdd(toAdd);
+                                onClose();
+                            }}
+                        >
+                            {toAdd.length > 1 ? `Ajouter les ${toAdd.length} livres` : 'Ajouter à la liste'}
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

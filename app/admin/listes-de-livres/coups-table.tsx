@@ -19,6 +19,8 @@ import { CoupDeCoeurPDFButton } from "@/admin/CoupDeCoeurPDFButton";
 import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { Plus, Search } from 'lucide-react';
+import { ListStatusBadge } from './components/list-book';
 
 interface CoupsTableProps {
     initialItems: CoupDeCoeurWithBooks[];
@@ -80,26 +82,27 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle className="text-foreground">Gestion des listes de livres</CardTitle>
+                        <CardTitle className="text-2xl font-bold text-foreground">Listes de livres</CardTitle>
                         <AideLink section="liste-de-livres" />
                     </div>
-                    <CardDescription className="text-muted-foreground">
-                        Gérez et modifiez les listes de livres
+                    <CardDescription className="text-muted-foreground mt-1">
+                        Les sélections publiées sur le site, et leurs brouillons.
                     </CardDescription>
                 </div>
-                <Link href="/admin/listes-de-livres/new" className="w-full sm:w-auto">
-                    <Button className="w-full sm:w-auto bg-muted text-foreground border-border hover:bg-muted">
-                        Ajouter une liste de livres
-                    </Button>
-                </Link>
+                <Button asChild className="w-full sm:w-auto">
+                    <Link href="/admin/listes-de-livres/new">
+                        <Plus /> Nouvelle liste de livres
+                    </Link>
+                </Button>
             </CardHeader>
             <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
+                <div className="relative mb-4 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                        placeholder="Rechercher des listes de livres ou des livres..."
+                        placeholder="Rechercher une liste ou un livre…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="max-w-sm bg-card border-border text-foreground placeholder:text-muted-foreground"
+                        className="pl-9 bg-card border-border text-foreground placeholder:text-muted-foreground"
                     />
                 </div>
 
@@ -111,8 +114,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                                 <TableHead className="text-foreground font-medium">Ajouté par</TableHead>
                                 <TableHead className="text-foreground font-medium">Statut</TableHead>
                                 <TableHead className="text-foreground font-medium">Livres</TableHead>
-                                <TableHead className="text-foreground font-medium">Créé le</TableHead>
-                                <TableHead className="text-foreground font-medium">Actions</TableHead>
+                                <TableHead className="text-foreground font-medium">Créée le</TableHead>
                                 {/* Header text is for screen readers only, but the cell itself
                                     must stay in flow — an sr-only <th> is position:absolute and
                                     drops out of the column count, leaving the header one cell
@@ -123,35 +125,42 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                             </TableRow>
                         </TableHeader>
                         <TableBody>
+                            {items.length === 0 && (
+                                <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                                        {search ? 'Aucune liste de livres ne correspond à cette recherche.' : "Aucune liste de livres pour l'instant."}
+                                    </TableCell>
+                                </TableRow>
+                            )}
                             {items.map((item) => (
                                 <TableRow
                                     key={item.id}
-                                    className="border-b border-border hover:bg-muted cursor-pointer"
-                                    onClick={() => window.location.href = `/admin/listes-de-livres/${item.id}`}
+                                    className="border-b border-border hover:bg-muted/50 cursor-pointer"
+                                    // Navigation client : l'ancien `window.location.href`
+                                    // rechargeait toute l'application à chaque ouverture.
+                                    onClick={() => router.push(`/admin/listes-de-livres/${item.id}`)}
                                 >
-                                    <TableCell className="text-foreground">{item.title}</TableCell>
-                                    <TableCell className="text-foreground">{item.addedBy?.name || 'Inconnu'}</TableCell>
-                                    <TableCell className="text-foreground">{item.active ? 'Actif' : 'Inactif'}</TableCell>
-                                    <TableCell className="text-foreground">{item.books.length} livres</TableCell>
                                     <TableCell className="text-foreground">
-                                        {parisDate(item.createdAt, {
-                                            month: 'numeric',
-                                            day: 'numeric',
-                                            year: 'numeric'
-                                        })}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="bg-muted text-foreground border-border hover:bg-muted"
-                                            onClick={(e) => {
-                                                e.stopPropagation(); // Prevent row click when clicking the button
-                                                window.location.href = `/admin/listes-de-livres/${item.id}`;
-                                            }}
+                                        <Link
+                                            href={`/admin/listes-de-livres/${item.id}`}
+                                            className="font-medium hover:underline underline-offset-2"
+                                            onClick={(e) => e.stopPropagation()}
                                         >
-                                            Modifier
-                                        </Button>
+                                            {item.title}
+                                        </Link>
+                                        {item.description && (
+                                            <div className="mt-0.5 max-w-md truncate text-xs text-muted-foreground">
+                                                {item.description}
+                                            </div>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">{item.addedBy?.name || 'Inconnu'}</TableCell>
+                                    <TableCell><ListStatusBadge active={item.active} /></TableCell>
+                                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                                        {item.books.length} livre{item.books.length > 1 ? 's' : ''}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                                        {parisDate(item.createdAt)}
                                     </TableCell>
                                     {/* Impression directe, sans ouvrir la liste. */}
                                     <TableCell className="w-[1%] whitespace-nowrap text-right">
@@ -163,6 +172,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                     </Table>
                 </div>
 
+                {totalPages > 1 && (<>
                 <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
                     {Array.from({ length: totalPages }, (_, index) => (
                         <Button
@@ -181,6 +191,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                 <p className="text-center text-sm text-muted-foreground mt-2">
                     Page {currentPage} sur {totalPages}
                 </p>
+                </>)}
             </CardContent>
         </Card>
     );
