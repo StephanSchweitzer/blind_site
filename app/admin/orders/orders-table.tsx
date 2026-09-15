@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -549,6 +550,7 @@ export default function OrdersTable({
                                             <TableHead className="text-foreground font-medium">Livre</TableHead>
                                             <TableHead className="text-foreground font-medium">Date demande</TableHead>
                                             <TableHead className="text-foreground font-medium">Statut</TableHead>
+                                            <TableHead className="text-foreground font-medium">Attribution</TableHead>
                                             <TableHead className="text-foreground font-medium">Facturation</TableHead>
                                             {/* Header text is for screen readers only, but the cell
                                                 itself must stay in flow — an sr-only <th> is
@@ -617,6 +619,33 @@ export default function OrdersTable({
                                                                     : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
                                                             }`}>
                                                                 {getStatusDisplayName(order.status.name)}
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
+                                                    {/* Visible sans ouvrir la ligne : c'est en cherchant à qui
+                                                        une demande était déjà attribuée que les permanents
+                                                        restaient bloqués. Le lien arrête la propagation, sinon
+                                                        le clic ouvrirait aussi la demande. */}
+                                                    <TableCell className="whitespace-nowrap">
+                                                        {order.assignments[0] ? (
+                                                            <Link
+                                                                href={`/admin/assignments?assignment=${order.assignments[0].id}`}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="inline-flex flex-col text-sm"
+                                                            >
+                                                                <span className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">
+                                                                    #{order.assignments[0].id}
+                                                                </span>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {order.assignments[0].status.name}
+                                                                </span>
+                                                            </Link>
+                                                        ) : order.isDuplication ? (
+                                                            <span className="text-xs text-muted-foreground">Duplication</span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">
+                                                                <span aria-hidden>—</span>
+                                                                <span className="sr-only">Aucune attribution</span>
                                                             </span>
                                                         )}
                                                     </TableCell>

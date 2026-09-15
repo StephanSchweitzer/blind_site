@@ -44,6 +44,8 @@ Passons maintenant à l'ajout d'une demande. Nous suivons la même procédure et
 
 Nous pouvons aussi (1) en rechercher une autre si nous le souhaitons. (2) Cliquez sur la ligne correspondant à la demande que vous souhaitez associer à cette attribution.
 
+Une demande ne peut avoir qu'une seule attribution. Si elle en possède déjà une, sa ligne apparaît grisée avec la mention « Déjà attribuée : Attribution #… » : ce lien ouvre l'attribution existante dans un nouvel onglet, sans perdre le formulaire en cours. Les duplications apparaissent grisées elles aussi, car elles ne demandent pas d'attribution.
+
 ![Attributions - capture 8](/admin/aide/images/attributions-08.jpg)
 
 Une fois que vous aurez cliqué dessus, la demande et le livre associé à celle-ci seront ajoutés à notre formulaire d'attribution.

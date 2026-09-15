@@ -247,6 +247,10 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
         const data = validation.data;
         const assignment = existingOrder.assignments[0] ?? null;
+        // Joint aux refus causés par l'attribution, pour que le toast puisse y
+        // mener (même clé que POST /api/assignments) : « gérez-le sur l'attribution »
+        // sans dire laquelle laissait le permanent la chercher à la main.
+        const blockingAssignment = assignment ? { blockingAssignmentId: assignment.id } : {};
         const billState = existingOrder.bill?.state ?? null;
         const hasBill = existingOrder.billId != null;
 
@@ -349,7 +353,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 assignmentStatusId: assignment?.statusId ?? null,
             });
             if (!completionGuard.ok) {
-                return NextResponse.json({ message: completionGuard.message }, { status: completionGuard.httpStatus });
+                return NextResponse.json({ message: completionGuard.message, ...blockingAssignment }, { status: completionGuard.httpStatus });
             }
         }
 
@@ -370,7 +374,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         if (data.isDuplication !== undefined) {
             const flipGuard = guardDuplicationFlip(data.isDuplication, assignment !== null);
             if (!flipGuard.ok) {
-                return NextResponse.json({ message: flipGuard.message }, { status: flipGuard.httpStatus });
+                return NextResponse.json({ message: flipGuard.message, ...blockingAssignment }, { status: flipGuard.httpStatus });
             }
         }
 
@@ -390,7 +394,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 returnedToECADate: assignment.returnedToECADate,
             });
             if (!syncGuard.ok) {
-                return NextResponse.json({ message: syncGuard.message }, { status: syncGuard.httpStatus });
+                return NextResponse.json({ message: syncGuard.message, ...blockingAssignment }, { status: syncGuard.httpStatus });
             }
         }
 
@@ -653,8 +657,9 @@ export const DELETE = withAdmin(async (_request, { params }) => {
                 deletedAt: true,
                 bill: { select: { id: true, state: true } },
                 // Filtré : une attribution déjà supprimée ne doit pas empêcher de
-                // supprimer sa demande.
-                _count: { select: { assignments: { where: { deletedAt: null } } } },
+                // supprimer sa demande. Son numéro plutôt qu'un compte : le refus
+                // ci-dessous renvoie vers elle.
+                assignments: { where: { deletedAt: null }, select: { id: true }, take: 1 },
             },
         });
 
@@ -672,12 +677,11 @@ export const DELETE = withAdmin(async (_request, { params }) => {
             );
         }
 
-        if (existingOrder._count.assignments > 0) {
+        if (existingOrder.assignments.length > 0) {
             return NextResponse.json(
                 {
                     message: "Impossible de supprimer la demande car une attribution y est associée. Veuillez d'abord supprimer l'attribution.",
-                    hasAssignments: true,
-                    assignmentCount: existingOrder._count.assignments,
+                    blockingAssignmentId: existingOrder.assignments[0].id,
                 },
                 { status: 400 }
             );

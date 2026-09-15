@@ -18,6 +18,7 @@ import {
     type Book,
 } from '@/admin/OrderFormBackendBase';
 import { BillPrintNoticeDialog, type BillPrintNotice } from '@/admin/BillPrintNoticeDialog';
+import { ErrorToastBody } from '@/admin/AssignmentFormErrors';
 
 // Edit Order Form using the base
 export function EditOrderFormBackend({
@@ -150,7 +151,13 @@ export function EditOrderFormBackend({
                 variant: "destructive",
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{errorMessage}</span>,
+                description: (
+                    <ErrorToastBody
+                        message={errorMessage}
+                        lines={[]}
+                        blockingAssignmentId={errorData?.blockingAssignmentId}
+                    />
+                ),
                 className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
             });
             // Signal failure to the caller (keeps the modal open, resets loading)
@@ -181,7 +188,15 @@ export function EditOrderFormBackend({
                 variant: "destructive",
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{errorMessage}</span>,
+                // Un refus causé par l'attribution (statut, duplication, clôture)
+                // porte son numéro : le toast mène directement à elle.
+                description: (
+                    <ErrorToastBody
+                        message={errorMessage}
+                        lines={[]}
+                        blockingAssignmentId={errorData?.blockingAssignmentId}
+                    />
+                ),
                 className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
             });
             return Promise.reject();

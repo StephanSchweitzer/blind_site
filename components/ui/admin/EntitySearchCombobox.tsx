@@ -45,9 +45,17 @@ export interface EntitySearchComboboxProps<T> {
     /**
      * Rows the list must show but must not let the user pick — a demande that
      * already has an attribution, say. They render greyed and are skipped by
-     * the arrow keys. `renderItem` is still responsible for saying WHY.
+     * the arrow keys. Say WHY with `renderDisabledReason`.
      */
     isItemDisabled?: (item: T) => boolean;
+    /**
+     * Shown under a disabled row, NOT dimmed with it, and outside any button —
+     * a disabled `<button>` swallows clicks on its children, so this is the only
+     * place a row can carry a working link (« Attribution #123 → »). Pointing at
+     * what blocks the row is what turns « déjà prise » from a dead end into a way
+     * forward.
+     */
+    renderDisabledReason?: (item: T) => React.ReactNode;
     /**
      * Adjective for the count of pickable rows when some are disabled:
      * « 3 attribuables sur 12 ». Only used alongside `isItemDisabled`.
@@ -87,6 +95,7 @@ export function EntitySearchCombobox<T>({
     resultNoun = 'résultats',
     searchOnEmpty = false,
     isItemDisabled,
+    renderDisabledReason,
     selectableNoun = 'sélectionnables',
     emptyDefaultMessage,
     itemClassName,
@@ -320,25 +329,43 @@ export function EntitySearchCombobox<T>({
                             const key = getItemKey(item);
                             const isThisSelecting = selectingKey === key;
                             const itemDisabled = isItemDisabled?.(item) ?? false;
+                            if (itemDisabled) {
+                                // A div, not a disabled button: see renderDisabledReason.
+                                // Only the row's own content is dimmed, so the reason
+                                // (and its link) stays legible.
+                                return (
+                                    <div
+                                        key={key}
+                                        data-index={index}
+                                        aria-disabled
+                                        className={cn(
+                                            'w-full flex items-center gap-2 text-left px-4 py-2 text-foreground cursor-not-allowed',
+                                            itemClassName
+                                        )}
+                                    >
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block opacity-50">{renderItem(item)}</span>
+                                            {renderDisabledReason?.(item)}
+                                        </span>
+                                    </div>
+                                );
+                            }
                             return (
                                 <button
                                     key={key}
                                     type="button"
                                     data-index={index}
                                     onClick={() => handleSelect(item)}
-                                    // Disabled rows must not take the highlight
-                                    // on hover either, or the highlight becomes
-                                    // a promise the row can't keep.
-                                    onMouseEnter={() => !itemDisabled && setActiveIndex(index)}
-                                    disabled={isSelecting || itemDisabled}
-                                    aria-disabled={itemDisabled}
+                                    // Disabled rows (the div above) never take the
+                                    // highlight on hover, or it would become a
+                                    // promise the row can't keep.
+                                    onMouseEnter={() => setActiveIndex(index)}
+                                    disabled={isSelecting}
                                     className={cn(
                                         'w-full flex items-center gap-2 text-left px-4 py-2 text-foreground transition-colors',
-                                        itemDisabled
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : index === activeIndex && !isSelecting
-                                                ? 'bg-muted'
-                                                : 'hover:bg-muted',
+                                        index === activeIndex && !isSelecting
+                                            ? 'bg-muted'
+                                            : 'hover:bg-muted',
                                         isSelecting && !isThisSelecting && 'opacity-50',
                                         isSelecting && 'cursor-not-allowed',
                                         itemClassName

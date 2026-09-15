@@ -32,6 +32,8 @@ Vous pouvez rechercher des demandes existantes à l'aide de la barre de recherch
 
 ![Demandes - capture 2](/admin/aide/images/demandes-02.jpg)
 
+La colonne « Attribution » du tableau indique si la demande est déjà attribuée : elle affiche le numéro de l'attribution et son statut, et un clic sur ce numéro ouvre directement l'attribution. Une duplication, qui n'a jamais d'attribution, y est signalée comme telle ; un tiret signifie qu'aucune attribution n'existe encore.
+
 Vous pouvez filtrer votre recherche selon les critères suivants :
 
 1. Le statut de la demande
@@ -104,6 +106,8 @@ Le livre d'une demande reste modifiable, même une fois la demande terminée ou 
 - **Le coût** est recalculé sur le poids du nouveau livre tant que la demande n'est sur aucune facture ou sur un brouillon. Sur une facture **émise, payée ou soldée**, le coût facturé est conservé — l'auditeur n'a pas à payer une erreur des ECA. La facture n'est pas bloquée, mais elle est à réimprimer pour que le livre corresponde.
 
 La suppression est refusée dans deux cas : (1) si une attribution active est associée à la demande — supprimez d'abord l'attribution ; (2) si la demande figure sur une facture **déjà émise, payée ou soldée** — détachez-la de la facture, ou rouvrez celle-ci d'abord.
+
+Lorsqu'une modification ou une suppression est refusée à cause de l'attribution — suppression, passage en duplication, clôture alors que l'enregistrement n'est pas terminé, statut qui contredirait les dates de l'attribution — le message d'erreur comporte un lien « Voir l'attribution #… » qui l'ouvre dans un nouvel onglet.
 
 En revanche, une demande posée sur un simple **brouillon** peut être supprimée directement : elle sort d'elle-même du total de la facture.
 

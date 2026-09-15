@@ -9,6 +9,7 @@ import { withAdmin } from '@/lib/auth/guards';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { buildOrderSearchWhere } from '@/lib/search';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
+import { linkedAssignmentArgs } from '@/types/models/order.model';
 
 /**
  * Shape of a demande in a list response. Hoisted out of the query so the
@@ -44,10 +45,10 @@ const ORDER_LIST_SELECT = {
         select: { name: true },
     },
     // Lets the assignment form grey out orders that already have an
-    // attribution (one-assignment-per-order is enforced server-side).
-    _count: {
-        select: { assignments: true },
-    },
+    // attribution (one-assignment-per-order is enforced server-side) — and
+    // link to that attribution, which a bare `_count` couldn't: « elle est
+    // déjà prise » without saying by which one was a dead end for staff.
+    assignments: linkedAssignmentArgs,
 } satisfies Prisma.OrdersSelect;
 
 export const GET = withAdmin(async (request) => {
@@ -153,7 +154,10 @@ export const GET = withAdmin(async (request) => {
         // demandes instead of thinning out. Default behaviour is unchanged.
         const unassigned = searchParams.get('unassigned');
         if (unassigned === 'true') {
-            whereClause.assignments = { none: {} };
+            // `deletedAt: null`: a relation filter escapes the soft-delete
+            // extension, so a demande whose attribution was deleted stayed out of
+            // this list for good, although POST /api/assignments accepts a new one.
+            whereClause.assignments = { none: { deletedAt: null } };
         }
 
         // Retard filter (orders >3 months old and not closed)

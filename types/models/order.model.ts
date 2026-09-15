@@ -270,6 +270,22 @@ export const orderIncludeConfigs = {
 // Orders Table (list view) — shared shape for the admin orders page + table
 // ============================================================================
 
+/**
+ * L'attribution vivante d'une demande — il n'y en a qu'une (guardOrderHasNoAssignment),
+ * d'où `take: 1`. Le `where` n'est pas décoratif : une relation incluse échappe au
+ * filtre soft-delete de lib/prisma.ts, et sans lui une attribution supprimée ferait
+ * passer la demande pour encore attribuée — avec un lien vers une attribution
+ * introuvable. Partagé par la liste des demandes et le sélecteur de demande du
+ * formulaire d'attribution, qui en affichent tous deux le numéro.
+ */
+export const linkedAssignmentArgs = {
+    where: { deletedAt: null },
+    select: { id: true, status: { select: { name: true } } },
+    take: 1,
+} as const satisfies Prisma.Orders$assignmentsArgs;
+
+export type LinkedAssignment = Prisma.AssignmentGetPayload<{ select: typeof linkedAssignmentArgs.select }>;
+
 export const ordersTableInclude = {
     // firstName/lastName are what the row displays (getUserNameOnly); `name` is
     // the legacy column and only a fallback.
@@ -280,6 +296,9 @@ export const ordersTableInclude = {
     status: { select: { name: true } },
     mediaFormat: { select: { name: true } },
     bill: { select: { id: true, state: true } },
+    // La colonne « Attribution » : sans elle, savoir si une demande est déjà
+    // attribuée — et laquelle l'est — demandait d'ouvrir chaque ligne.
+    assignments: linkedAssignmentArgs,
 } as const satisfies Prisma.OrdersInclude;
 
 type OrdersTableRowRaw = Prisma.OrdersGetPayload<{ include: typeof ordersTableInclude }>;

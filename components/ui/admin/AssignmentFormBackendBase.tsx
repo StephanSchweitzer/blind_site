@@ -40,6 +40,7 @@ import { EntitySearchCombobox } from '@/admin/EntitySearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
+import type { LinkedAssignment } from '@/types/models/order.model';
 
 // N3 — required fields, visual top→bottom (book derives from the order picker).
 // `readerId` is required on creation only: an attribution always belongs to a
@@ -54,7 +55,8 @@ const ASSIGN_FIELD_ORDER = ['readerId', 'catalogueId', 'sentToReaderDate', 'retu
  * decide whether it can still take an attribution.
  */
 type OrderPickerRow = OrderSummary & {
-    _count?: { assignments: number };
+    /** The live attribution, at most one — see linkedAssignmentArgs. */
+    assignments?: LinkedAssignment[];
     isDuplication?: boolean;
 };
 
@@ -487,7 +489,7 @@ export function AssignmentFormBackendBase({
     const orderBlockReason = (order: OrderPickerRow): OrderBlockReason => {
         if (order.id === selectedOrder?.id) return null;
         if (order.isDuplication) return 'duplication';
-        if ((order._count?.assignments ?? 0) >= 1) return 'attributed';
+        if ((order.assignments?.length ?? 0) >= 1) return 'attributed';
         return null;
     };
 
@@ -977,8 +979,35 @@ export function AssignmentFormBackendBase({
                                     </span>
                                 </span>
                             )}
-                            renderItem={(order) => {
+                            renderDisabledReason={(order) => {
                                 const blockReason = orderBlockReason(order);
+                                if (blockReason === 'duplication') {
+                                    return (
+                                        <span className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-400">
+                                            Duplication — aucune attribution nécessaire
+                                        </span>
+                                    );
+                                }
+                                const blocking = order.assignments?.[0];
+                                if (blockReason !== 'attributed' || !blocking) return null;
+                                // Nouvel onglet : ce formulaire en cours de saisie reste
+                                // ouvert, comme « Voir la demande » plus bas.
+                                return (
+                                    <span className="mt-1 flex flex-wrap items-center gap-x-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                        Déjà attribuée :
+                                        <Link
+                                            href={`/admin/assignments?assignment=${blocking.id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 cursor-pointer text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                        >
+                                            Attribution #{blocking.id} ({blocking.status.name})
+                                            <ExternalLink className="h-3 w-3" />
+                                        </Link>
+                                    </span>
+                                );
+                            }}
+                            renderItem={(order) => {
                                 return (
                                     <span className="flex items-start justify-between gap-2">
                                         <span className="flex-1 min-w-0">
@@ -998,16 +1027,6 @@ export function AssignmentFormBackendBase({
                                                 <span className="block text-sm text-foreground">
                                                     {order.catalogue.title}
                                                     {order.catalogue.author && <span className="text-muted-foreground"> — {order.catalogue.author}</span>}
-                                                </span>
-                                            )}
-                                            {blockReason === 'attributed' && (
-                                                <span className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-400">
-                                                    Une attribution existe déjà
-                                                </span>
-                                            )}
-                                            {blockReason === 'duplication' && (
-                                                <span className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-400">
-                                                    Duplication — aucune attribution nécessaire
                                                 </span>
                                             )}
                                         </span>
