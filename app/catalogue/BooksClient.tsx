@@ -79,15 +79,13 @@ export function BooksClient({
                 filter,
                 page: page.toString(),
                 limit: ITEMS_PER_PAGE.toString(),
-                // Forces hidden books out of the response even when the
-                // visitor is a signed-in permanent browsing the public site —
-                // see the matching comment in /api/books.
-                scope: 'public',
             });
 
             genreIds.forEach(id => params.append('genres', id.toString()));
 
-            const response = await fetch(`/api/books?${params}`, {
+            // /api/catalogue, not /api/books: the public route never returns
+            // hidden books or internal fields, whoever is signed in.
+            const response = await fetch(`/api/catalogue?${params}`, {
                 signal: abortController.signal,
             });
 

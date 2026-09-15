@@ -17,7 +17,7 @@ interface CatalogueData {
  * Cached first page of the catalogue (books + genres + count) for zero-loading
  * static render. Invalidated on demand via the `catalogue` tag on any book or
  * genre write; `revalidate` is only a long fallback. Search / filter /
- * pagination continue to hit /api/books at runtime.
+ * pagination continue to hit /api/catalogue at runtime.
  *
  * May throw — the page catches and renders an empty state so a transient DB
  * error is not what gets cached for the fallback window.
@@ -42,7 +42,7 @@ export const getCatalogueData = unstable_cache(
         ]);
 
         return {
-            // This is the page's own first render, not a fetch to /api/books —
+            // This is the page's own first render, not a fetch to /api/catalogue —
             // easy to forget that the same trimming has to happen here too. See
             // lib/books/publicBook.ts for what's dropped and why.
             initialBooks: books.map(toPublicBook),

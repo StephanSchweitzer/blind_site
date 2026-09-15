@@ -225,7 +225,7 @@ export function buildPaymentSearchWhere(searchTerm: string): Prisma.PaymentWhere
  * Livres, for one token — the Prisma spelling of the field list.
  *
  * The book list has a THIRD implementation, the accent-insensitive raw SQL in
- * `app/api/books/route.ts`, which mirrors this set in SQL. Keep the three in
+ * `lib/books/bookList.ts`, which mirrors this set in SQL. Keep the three in
  * step: the count beside the list is built from this one, so a field that only
  * one of them searches shows up as a list and a count that disagree.
  */

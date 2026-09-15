@@ -33,8 +33,8 @@ async function bookIdFrom(params?: Promise<Record<string, string>>): Promise<num
 
 // Admin-only, including the read: this route exposes staff details (addedBy
 // name/email) and is only ever called from the back office. The public
-// catalogue reads through the collection route (`/api/books`), which stays
-// open — so guarding here costs the public pages nothing.
+// catalogue reads through `/api/catalogue` — so guarding here costs the public
+// pages nothing.
 export const GET = withAdmin(async (_req, { params }) => {
     const bookId = await bookIdFrom(params);
     if (bookId === null) return invalidId();

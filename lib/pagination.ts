@@ -29,7 +29,7 @@ export function parsePageParam(raw: string | string[] | null | undefined): numbe
 /**
  * Taille de page, bornée des deux côtés.
  *
- * Le plafond n'est pas décoratif : /api/books est servi au public, et un
+ * Le plafond n'est pas décoratif : /api/catalogue est servi au public, et un
  * `limit` non borné y transformait une requête anonyme en export du catalogue
  * entier. Le plancher évite `Math.ceil(total / 0)` → `Infinity`, que
  * `JSON.stringify` sérialise en `null` — c'est ce que `totalPages` valait pour

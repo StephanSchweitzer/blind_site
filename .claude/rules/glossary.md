@@ -19,7 +19,7 @@ these mostly kept their original English names even though the French rename hap
 | donors / benefactors | Donateurs *(bienfaiteur)* | `memberType: bienfaiteur` **(label "Donateur")**; users tab `bienfaiteurs` |
 | treasurer | Trésorière | `memberType: tresoriere` |
 | user / person / member | Personne / Membre | `User` model; `/admin/users`; `/api/user` |
-| catalogue / books | Catalogue / Livres | `Book` model; `/admin/books`; `/api/books`; public `/catalogue` |
+| catalogue / books | Catalogue / Livres | `Book` model; `/admin/books`; `/api/books` (admin); `/api/catalogue` (public); public page `/catalogue` |
 | staff picks / book list | Coups de cœur / "Liste des Livres" | `CoupsDeCoeur` model; `/admin/listes-de-livres`; `/api/listes-de-livres`; public `/listes-de-livres` |
 | orders / requests | Demandes | `Orders` model; `/admin/orders`; `/api/orders` *(formerly `commandes`)* |
 | assignments | Attributions | `Assignment` model; `/admin/assignments`; `/api/assignments` *(formerly `affectations`)* |
