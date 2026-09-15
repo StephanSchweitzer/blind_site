@@ -36,6 +36,7 @@ import {
 } from '@/types';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { parseEntityId } from '@/lib/search-query';
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
@@ -84,6 +85,12 @@ export default function AssignmentsTable({
 
     const currentPage = initialPage;
     const currentStatusId = searchParams.get('statusId') || 'all';
+
+    // A numeric search also matches the demande linked to the attribution
+    // (buildAssignmentSearchWhere, lib/search.ts) — `initialSearch`, not the
+    // live `searchTerm`, because it's the term that actually produced these
+    // rows: `searchTerm` can be mid-typing and not yet applied.
+    const matchedOrderId = parseEntityId(initialSearch);
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -366,7 +373,7 @@ export default function AssignmentsTable({
                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                                     <Input
                                         type="text"
-                                        placeholder="Rechercher par livre, lecteur, auditeur ou numéro..."
+                                        placeholder="Rechercher par livre, lecteur, auditeur, numéro d'attribution ou de demande..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -464,6 +471,11 @@ export default function AssignmentsTable({
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                     #{assignment.id}
                                                     <CopyIdButton id={assignment.id} label="de l'attribution" />
+                                                    {matchedOrderId !== null && matchedOrderId !== assignment.id && matchedOrderId === assignment.orderId && (
+                                                        <div className="text-xs font-normal text-muted-foreground">
+                                                            ↳ demande #{assignment.orderId}
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     {assignment.currentReader ? (

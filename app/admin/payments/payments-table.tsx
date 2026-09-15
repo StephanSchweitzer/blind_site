@@ -43,6 +43,7 @@ import { DeletePaymentModal } from '@/admin/DeletePaymentModal';
 import { CopyIdButton } from '@/admin/CopyableId';
 import type { SerializedPaymentTableRow as Payment } from '@/types/models/payment.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { parseEntityId } from '@/lib/search-query';
 import { parisDateDisplay } from '@/lib/paris-day';
 import { BillingStatus, getBillingStatusLabel, getBillingStatusColor } from '@/lib/billing-enums';
 // list-params, pas list-query : ce fichier est 'use client', et list-query
@@ -186,6 +187,10 @@ export default function PaymentsTable({
     // Le serveur a déjà validé chaque paramètre ; relire l'URL ici ferait afficher
     // comme actif un filtre que le serveur a écarté (« ?type=nimportequoi »).
     const { type: currentType, paymentMethod: currentMethod, sort, dir } = initialParams;
+    // Un token numérique matche aussi la facture réglée (buildPaymentSearchWhere,
+    // lib/search.ts) — `initialParams.search`, pas le `searchTerm` en cours de
+    // frappe, pour rester le terme qui a produit ces lignes.
+    const matchedBillId = parseEntityId(initialParams.search);
     const hasFilters = !isDefaultPaymentFilters(initialParams);
 
     // L'export part des paramètres ANALYSÉS, pas de l'URL du navigateur : dans
@@ -580,6 +585,11 @@ export default function PaymentsTable({
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                     #{payment.id}
                                                     <CopyIdButton id={payment.id} label="du paiement" />
+                                                    {matchedBillId !== null && matchedBillId !== payment.id && matchedBillId === payment.bill?.id && (
+                                                        <div className="text-xs font-normal text-muted-foreground">
+                                                            ↳ facture #{payment.bill?.id}
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     {payment.client ? (
