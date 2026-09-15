@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/custom-switch";
@@ -23,43 +23,15 @@ import { AddBookButtonBackend } from "@/admin/BookModalBackend";
 import { EditBookModal } from '@/admin/EditBookModal';
 import { BookFormData } from "@/admin/BookFormBackendBase";
 import { toast } from "@/hooks/use-toast";
-import { parisDate, parisDayKey } from '@/lib/paris-day';
+import { parisDate } from '@/lib/paris-day';
+import { ListRef, membershipLabel } from './list-membership';
+import RecentBooksPicker, { RecentBook } from './recent-books-picker';
 
-interface Book {
-    id: number;
-    title: string;
-    subtitle: string;
-    author: string;
-    isbn: string | null;
-    createdAt: Date;
-    hiddenFromCatalogue?: boolean;
-}
-
-/** Une liste de livres qui contient déjà un livre donné. */
-interface ListRef {
-    id: number;
-    title: string;
-    active: boolean;
-}
-
-/**
- * L'avertissement porté par une ligne : « Déjà dans « X » ».
- *
- * Une seule liste est nommée, la plus récente — les autres se comptent. Une
- * liste dépubliée est dite dépubliée : sans quoi le permanent irait vérifier
- * sur le site, n'y trouverait rien, et conclurait à une erreur.
- */
-function membershipLabel(refs: ListRef[]): string {
-    const [first, ...rest] = refs;
-    const name = `« ${first.title} »${first.active ? '' : ' (dépubliée)'}`;
-    if (rest.length === 0) return `Déjà dans ${name}`;
-    return `Déjà dans ${name} et ${rest.length} autre${rest.length > 1 ? 's' : ''} liste${rest.length > 1 ? 's' : ''}`;
-}
+type Book = RecentBook;
 
 interface BookSelectorProps {
     selectedBooks?: number[];
     onSelectedBooksChange: (bookIds: number[]) => void;
-    mode: 'edit' | 'create';
     coupDeCoeurId?: number;
     onDialogOpenChange?: (open: boolean) => void;
     isOpen?: boolean;
@@ -181,7 +153,6 @@ function BookTable({
 export default function BookSelector({
                                          selectedBooks = [],
                                          onSelectedBooksChange,
-                                         mode,
                                          coupDeCoeurId,
                                          onDialogOpenChange,
                                          isOpen = false
@@ -198,23 +169,6 @@ export default function BookSelector({
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [selectedBookForEdit, setSelectedBookForEdit] = useState<(Book & { formData: BookFormData }) | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-
-    // La fenêtre des nouveautés (mode création).
-    //
-    // `since` est le jour parisien affiché dans le champ ; vide tant que la
-    // première réponse n'a pas dit quelle coupure s'applique par défaut.
-    // `suggestedIdsRef` retient ce que la suggestion précédente avait apporté,
-    // pour qu'un changement de date remplace CES livres-là sans emporter ceux
-    // que le permanent a ajoutés à la main.
-    const [since, setSince] = useState('');
-    const [windowLabel, setWindowLabel] = useState<{ defaultSince: string | null; defaultLabel: string | null; defaultActive: boolean | null } | null>(null);
-    const [matchingTotal, setMatchingTotal] = useState<number | null>(null);
-    const [suggestedCount, setSuggestedCount] = useState(0);
-    // Vrai dès le départ en création : le montage enchaîne sur un chargement.
-    // Le poser ici plutôt que dans l'effet évite le rendu supplémentaire — et
-    // le setState synchrone que react-hooks/set-state-in-effect refuse.
-    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(mode === 'create');
-    const suggestedIdsRef = useRef<number[]>([]);
 
     // Les listes qui contiennent déjà chaque livre, la liste en cours
     // d'édition exclue — elle n'est pas « une autre liste ». Chargée une fois
@@ -255,13 +209,6 @@ export default function BookSelector({
         void loadMemberships();
     }, [coupDeCoeurId]);
 
-    // Miroir de la sélection courante, pour que loadSuggestions lise toujours
-    // la dernière valeur sans se recréer à chaque coche.
-    const selectedRef = useRef(selectedBooks);
-    useEffect(() => {
-        selectedRef.current = selectedBooks;
-    }, [selectedBooks]);
-
     useEffect(() => {
         document.body.style.cursor = isLoading ? 'wait' : 'default';
         return () => {
@@ -269,87 +216,17 @@ export default function BookSelector({
         };
     }, [isLoading]);
 
-    /**
-     * (Re)charge la suggestion « nouveautés depuis <date> ».
-     *
-     * Appelée au montage sans date — le serveur applique alors la dernière
-     * liste publiée et dit laquelle — puis à chaque changement du champ.
-     *
-     * Le remplacement est chirurgical : seuls les livres venus de la
-     * suggestion précédente s'en vont. Un livre ajouté à la main via
-     * « Ajouter un livre existant » ou « Ajouter un nouveau livre » reste
-     * affiché et coché, quelle que soit la date choisie ensuite — sans quoi
-     * déplacer la coupure ferait disparaître un ajout délibéré.
-     */
-    const loadSuggestions = useCallback(async (sinceDay: string | null) => {
-        try {
-            const params = new URLSearchParams({ recent: 'true', limit: '1000' });
-            if (sinceDay) params.append('since', sinceDay);
-
-            const response = await fetch(`/api/books?${params.toString()}`);
-            if (!response.ok) return;
-
-            const data = await response.json();
-            const books: Book[] = data.books ?? [];
-            const suggestedIds = books.map((book) => book.id);
-            const previous = suggestedIdsRef.current;
-
-            setBookDetailsMap((prev) => {
-                const next = new Map(prev);
-                books.forEach((book) => next.set(book.id, book));
-                return next;
-            });
-
-            const isSuggested = new Set(suggestedIds);
-            const wasSuggested = new Set(previous);
-
-            // Les ajouts manuels restent en tête : ce sont des choix
-            // délibérés, et les enterrer sous cent suggestions reviendrait
-            // presque à les perdre.
-            const keep = (id: number) => !wasSuggested.has(id) && !isSuggested.has(id);
-
-            setDisplayedBookIds((prev) => [
-                ...prev.filter(keep),
-                ...suggestedIds,
-            ]);
-
-            onSelectedBooksChange([
-                ...selectedRef.current.filter(keep),
-                ...suggestedIds,
-            ]);
-
-            suggestedIdsRef.current = suggestedIds;
-            setSuggestedCount(suggestedIds.length);
-            setMatchingTotal(typeof data.total === 'number' ? data.total : null);
-            if (data.recentWindow) {
-                setWindowLabel({
-                    defaultSince: data.recentWindow.defaultSince,
-                    defaultLabel: data.recentWindow.defaultLabel,
-                    defaultActive: data.recentWindow.defaultActive ?? null,
-                });
-                if (data.recentWindow.since) {
-                    setSince(parisDayKey(new Date(data.recentWindow.since)));
-                }
-            }
-        } catch (error) {
-            console.error('Error loading books:', error);
-        } finally {
-            setIsLoadingSuggestions(false);
-        }
-    }, [onSelectedBooksChange]);
-
     useEffect(() => {
         if (initialLoadDone.current) return;
         initialLoadDone.current = true;
 
         // Le fetch vit dans une fonction async définie ici, comme partout
         // ailleurs dans ce fichier : l'effet ne fait que la lancer.
+        //
+        // Rien n'est ajouté d'office : une nouvelle liste s'ouvre vide, une
+        // liste existante avec ses livres. Les nouveautés passent par
+        // RecentBooksPicker, où chaque titre se coche un par un.
         const fetchInitialBooks = async () => {
-            if (mode === 'create') {
-                await loadSuggestions(null);
-                return;
-            }
-
             if (selectedBooks.length === 0) return;
             try {
                 const response = await fetch(`/api/books?ids=${selectedBooks.join(',')}`);
@@ -366,7 +243,7 @@ export default function BookSelector({
         };
 
         void fetchInitialBooks();
-    }, [mode, coupDeCoeurId, loadSuggestions, selectedBooks]);
+    }, [selectedBooks]);
 
     useEffect(() => {
         const searchBooks = async () => {
@@ -436,6 +313,22 @@ export default function BookSelector({
                 variant: "destructive"
             });
         }
+    };
+
+    // Les nouveautés cochées dans RecentBooksPicker : en tête de liste, comme
+    // tout ajout délibéré, et cochées. Un livre déjà affiché mais décoché est
+    // remonté et recoché plutôt que dupliqué.
+    const handleRecentBooksAdded = (books: Book[]) => {
+        const ids = books.map((book) => book.id);
+        const added = new Set(ids);
+
+        setBookDetailsMap(prev => {
+            const next = new Map(prev);
+            books.forEach((book) => next.set(book.id, book));
+            return next;
+        });
+        setDisplayedBookIds(prev => [...ids, ...prev.filter(id => !added.has(id))]);
+        onSelectedBooksChange([...selectedBooks.filter(id => !added.has(id)), ...ids]);
     };
 
     const handleBookEdited = async () => {
@@ -576,17 +469,6 @@ export default function BookSelector({
         return books.length > 0 && books.every(book => selectedBooks.includes(book.id));
     };
 
-    // Le jour parisien de la coupure par défaut, pour comparer au champ et
-    // proposer d'y revenir.
-    const defaultSinceDay = windowLabel?.defaultSince
-        ? parisDayKey(new Date(windowLabel.defaultSince))
-        : null;
-
-    // Le plafond de /api/books (100 par page) peut couper la fenêtre. Comme
-    // tout ce qui est chargé part coché, une troncature silencieuse serait une
-    // liste tronquée : on la dit, chiffres à l'appui.
-    const isTruncated = matchingTotal !== null && matchingTotal > suggestedCount;
-
     // Les livres cochés qui figurent déjà ailleurs. Comptés sur la sélection,
     // pas sur l'affichage : c'est ce qui partira dans la liste qui compte.
     const alreadyListed = selectedBooks.filter((id) => membership.has(id));
@@ -599,7 +481,7 @@ export default function BookSelector({
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-foreground">
-                    {mode === 'edit' ? 'Livres sélectionnés' : 'Nouveautés disponibles'}
+                    Livres sélectionnés
                 </h3>
                 <div className="flex gap-2">
                     <AddBookButtonBackend onBookAdded={handleBookAdded} />
@@ -657,68 +539,11 @@ export default function BookSelector({
                 </div>
             </div>
 
-            {mode === 'create' && (
-                <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-                    <div className="space-y-1">
-                        <label htmlFor="since" className="text-sm font-medium text-foreground">
-                            Nouveautés depuis le
-                        </label>
-                        <Input
-                            type="date"
-                            id="since"
-                            value={since}
-                            max={parisDayKey(new Date())}
-                            onChange={(e) => {
-                                const day = e.target.value;
-                                setSince(day);
-                                if (day) {
-                                    setIsLoadingSuggestions(true);
-                                    void loadSuggestions(day);
-                                }
-                            }}
-                            className="bg-card border-border text-foreground w-auto"
-                        />
-                    </div>
-                    <div className="flex-1 min-w-[16rem] text-sm text-muted-foreground">
-                        {isLoadingSuggestions ? (
-                            'Chargement des nouveautés…'
-                        ) : (
-                            <>
-                                {windowLabel?.defaultSince && (
-                                    <>
-                                        {/* « créée », pas « publiée » : une liste dépubliée
-                                            porte la coupure comme les autres. Elle est
-                                            signalée comme telle, sans quoi le permanent
-                                            chercherait en vain sur le site la liste que
-                                            cette phrase nomme. */}
-                                        Par défaut, la date de la dernière liste créée
-                                        {windowLabel.defaultLabel ? ` (« ${windowLabel.defaultLabel} »)` : ''}
-                                        {windowLabel.defaultActive === false ? ', dépubliée' : ''} :{' '}
-                                        {parisDate(windowLabel.defaultSince)}.{' '}
-                                        {defaultSinceDay && since !== defaultSinceDay && (
-                                            <button
-                                                type="button"
-                                                className="underline hover:text-foreground"
-                                                onClick={() => {
-                                                    // Sans `since`, le serveur
-                                                    // réapplique l'instant exact
-                                                    // de la liste — pas son jour
-                                                    // arrondi, qui élargirait la
-                                                    // fenêtre de quelques heures.
-                                                    setIsLoadingSuggestions(true);
-                                                    void loadSuggestions(null);
-                                                }}
-                                            >
-                                                Revenir à cette date
-                                            </button>
-                                        )}
-                                    </>
-                                )}
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
+            <RecentBooksPicker
+                selectedBookIds={selectedBooks}
+                membership={membership}
+                onAdd={handleRecentBooksAdded}
+            />
 
             <div className="border border-border rounded-lg bg-card">
                 <BookTable
@@ -759,23 +584,6 @@ export default function BookSelector({
                             {alreadyListed.length === 1 ? 'Le décocher' : 'Les décocher'}
                         </button>
                     </p>
-                )}
-                {mode === 'create' && (
-                    <>
-                        {isTruncated && (
-                            <p className="text-sm text-amber-500">
-                                {matchingTotal} nouveautés correspondent à cette date, mais seules les{' '}
-                                {suggestedCount} plus récentes sont chargées — et donc seules
-                                celles-là partiront dans la liste. Choisissez une date plus
-                                proche pour toutes les voir.
-                            </p>
-                        )}
-                        <p className="text-sm text-muted-foreground">
-                            Seuls les livres disponibles sont proposés : un enregistrement encore
-                            en cours n&apos;a rien à faire dans une liste. Utilisez « Ajouter un
-                            livre existant » pour en ajouter un hors de cette fenêtre.
-                        </p>
-                    </>
                 )}
             </div>
 

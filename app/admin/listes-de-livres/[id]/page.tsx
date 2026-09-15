@@ -341,7 +341,6 @@ export default function EditCoupDeCoeurPage() {
                                             };
                                         });
                                     }}
-                                    mode="edit"
                                     coupDeCoeurId={parseInt(id as string)}
                                     onDialogOpenChange={setIsBookSelectorOpen}
                                     isOpen={isBookSelectorOpen}

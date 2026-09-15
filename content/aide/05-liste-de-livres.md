@@ -12,18 +12,21 @@ Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de l
 
 ![Liste de Livres - capture 1](/admin/aide/images/liste-de-livres-01.jpg)
 
-Si vous en ajoutez une nouvelle, vous serez redirigé vers une page distincte où s'affichent les « **Nouveautés disponibles** » : les livres ajoutés au catalogue depuis une date de coupure.
+Si vous en ajoutez une nouvelle, vous serez redirigé vers une page distincte. La liste y commence **vide** : aucun livre n'y est ajouté sans que vous l'ayez choisi.
 
-Cette coupure ne se subit plus, elle se choisit. Elle est proposée par défaut à la date de la **dernière liste créée — publiée ou non**, rappelée juste à côté. Le champ (1) « **Nouveautés depuis le …** » vous permet de la déplacer : cliquez dedans et choisissez une autre date dans le calendrier. Si vous voulez revenir à la date proposée par défaut après l'avoir changée, cliquez sur (2) « Revenir à cette date ». Dépublier une liste ne la retire donc pas de l'histoire : les livres qu'elle annonçait ne reviennent pas se proposer d'office.
+Pour retrouver les livres ajoutés au catalogue depuis la dernière liste, utilisez l'encadré « **Nouveautés depuis le …** », présent à l'identique sur la page d'ajout et sur la page de modification. La date est proposée par défaut à celle de la **dernière liste créée — publiée ou non**, rappelée juste à côté (« Dernière liste « … » créée le … »). Vous pouvez (1) la déplacer en cliquant dans le champ et en choisissant une autre date dans le calendrier, puis revenir à la date proposée avec « Revenir à cette date ». Cliquez ensuite sur (2) « **Voir les nouveautés** » : une fenêtre s'ouvre avec les nouveautés depuis cette date, **toutes décochées**. Cochez celles que vous voulez (ou « Tout cocher »), puis cliquez sur « Ajouter à la liste » : elles rejoignent la liste de la page, en tête et cochées.
 
 ![Liste de Livres - capture 10](/admin/aide/images/liste-de-livres-10.jpg)
 
-Deux garde-fous accompagnent cette sélection :
+*La capture ci-dessus montre encore l'ancien affichage, où les nouveautés étaient ajoutées d'office à la liste : le champ de date est au même endroit, le bouton « Voir les nouveautés » s'y ajoute.*
+
+Trois garde-fous accompagnent cette sélection :
 
 - Seuls les **livres disponibles** sont proposés — un enregistrement encore en cours n'a rien à faire dans une liste.
-- Un livre qui **figure déjà dans une autre liste** le signale (« Ce livre appartient déjà à la liste … ») avant que vous ne le repassiez.
+- Un livre qui **figure déjà dans une autre liste** le signale (« Déjà dans « … » ») avant que vous ne le repassiez.
+- Un livre **déjà dans la liste en cours** est affiché grisé (« Déjà dans la liste en cours ») et ne peut pas être ajouté deux fois.
 
-Si la date choisie ramène plus de nouveautés que la page n'en charge, un avertissement vous le dit : rapprochez la date pour toutes les voir.
+Si la date choisie ramène beaucoup de nouveautés, elles se chargent par centaines : cliquez sur « Charger la suite » en bas de la fenêtre pour voir les suivantes.
 
 ## Ajout des listes de livres
 

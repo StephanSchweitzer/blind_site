@@ -187,7 +187,6 @@ export default function AddCoupDeCoeur() {
                                                 onSelectedBooksChange={(bookIds) =>
                                                     setFormData(prev => ({...prev, bookIds}))
                                                 }
-                                                mode="create"
                                                 onDialogOpenChange={setIsBookSelectorOpen}
                                                 isOpen={isBookSelectorOpen}
                                             />
