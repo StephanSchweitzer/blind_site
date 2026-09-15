@@ -46,6 +46,8 @@ import type {
 import type { SerializedBlockingRecording } from '@/lib/orders/duplicationBlocked';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { BookFilterBadge } from '@/admin/BookFilterBadge';
+import type { BookFilter } from '@/lib/books/bookFilter';
 
 type OrdersTableProps = {
     initialOrders: SerializedOrderTableRow[];
@@ -58,6 +60,8 @@ type OrdersTableProps = {
     blockedDuplications?: Record<number, SerializedBlockingRecording>;
     hideSearch?: boolean;
     presetClient?: { id: number; name: string | null; email: string } | null;
+    /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
+    filterBook?: BookFilter | null;
 };
 
 export default function OrdersTable({
@@ -69,6 +73,7 @@ export default function OrdersTable({
                                         blockedDuplications = {},
                                         hideSearch = false,
                                         presetClient = null,
+                                        filterBook = null,
                                     }: OrdersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -519,6 +524,8 @@ export default function OrdersTable({
                             </Select>
                         </div>
                     </div>
+
+                    {filterBook && <BookFilterBadge book={filterBook} noun="demandes" />}
                 </div>
 
                 {/* Loading Overlay */}

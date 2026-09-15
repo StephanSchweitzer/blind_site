@@ -34,6 +34,7 @@ import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
+import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { STATUS } from '@/lib/statusSync';
 import { costSuggestion } from '@/lib/pricing';
@@ -704,6 +705,12 @@ export function OrderFormBackendBase({
                                 size="sm"
                             />
                         )}
+                        {/* Sur une demande existante seulement : les autres demandes et
+                            attributions de ce livre, pour démêler un doublon de saisie.
+                            Pas en création — ce n'est pas une mise en garde
+                            d'enregistrement, et celles-là passent par RecordingAdvice
+                            (.claude/rules/order-recording-warnings.md). */}
+                        {currentOrderId && selectedBook && <BookUsageLinks bookId={selectedBook.id} />}
                         {bookChanged && (initialAssignment || billIssued) && (
                             <div className="bg-amber-50 border border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200 p-3 rounded-lg text-sm space-y-2">
                                 {initialAssignment && (

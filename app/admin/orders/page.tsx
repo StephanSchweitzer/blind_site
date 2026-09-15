@@ -10,6 +10,7 @@ import {
     serializeBlockedDuplications,
 } from '@/lib/orders/duplicationBlocked';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { resolveBookFilter } from '@/lib/books/bookFilter';
 
 interface PageProps {
     searchParams: Promise<{
@@ -27,11 +28,17 @@ async function getOrders(
     statusId?: number,
     billingStatus?: string,
     isDuplication?: string,
-    retard?: string
+    retard?: string,
+    bookId?: number
 ) {
     const ordersPerPage = 10;
 
     const whereClause: Prisma.OrdersWhereInput = {};
+
+    // « Ce livre » — see lib/books/bookFilter.ts.
+    if (bookId) {
+        whereClause.catalogueId = bookId;
+    }
 
     // One definition, shared with /api/orders — the two used to carry separate
     // copies of this clause and had already drifted apart.
@@ -164,6 +171,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
         ? params.isDuplication[0]
         : params.isDuplication;
     const retard = Array.isArray(params.retard) ? params.retard[0] : params.retard;
+    const filterBook = await resolveBookFilter(params.bookId);
 
     let orders, totalOrders, totalPages, availableStatuses, blockedDuplications;
     try {
@@ -174,7 +182,8 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
             statusId,
             billingStatus,
             isDuplication,
-            retard
+            retard,
+            filterBook?.id
         ));
     } catch (error) {
         console.error('Error in Admin Orders page:', error);
@@ -200,6 +209,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                 availableStatuses={availableStatuses!}
                 initialTotalOrders={totalOrders!}
                 blockedDuplications={blockedDuplications!}
+                filterBook={filterBook}
             />
         </div>
     );

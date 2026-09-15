@@ -40,6 +40,8 @@ import { parseEntityId } from '@/lib/search-query';
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { BookFilterBadge } from '@/admin/BookFilterBadge';
+import type { BookFilter } from '@/lib/books/bookFilter';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -52,6 +54,8 @@ interface AssignmentsTableProps {
     presetClientId?: number | null;
     presetReader?: ReaderSummary | null;
     presetClient?: UserSummary | null;
+    /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
+    filterBook?: BookFilter | null;
 }
 
 export default function AssignmentsTable({
@@ -65,6 +69,7 @@ export default function AssignmentsTable({
                                              presetClientId = null,
                                              presetReader = null,
                                              presetClient = null,
+                                             filterBook = null,
                                          }: AssignmentsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -433,6 +438,8 @@ export default function AssignmentsTable({
                             </Select>
                         </div>
                     </div>
+
+                    {filterBook && <BookFilterBadge book={filterBook} noun="attributions" />}
                 </div>
 
                 {/* Table */}
@@ -440,7 +447,7 @@ export default function AssignmentsTable({
                     {initialAssignments.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground text-lg">
-                                {searchTerm || currentStatusId !== 'all'
+                                {searchTerm || currentStatusId !== 'all' || filterBook
                                     ? "Aucune attribution trouvée avec ces critères"
                                     : "Aucune attribution"}
                             </p>

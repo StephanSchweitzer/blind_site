@@ -86,6 +86,8 @@ Enfin, cliquez sur le bouton « Ajouter le livre » situé en bas de la page pou
 
 Lorsque vous cliquez sur la ligne d'un livre, le modal de modification du livre s'ouvre.
 
+Sous son titre, la ligne « Ce livre : 3 demandes · 1 attribution » indique ce qui existe déjà pour cet ouvrage. Chaque nombre est un lien qui ouvre, dans un nouvel onglet, la liste des [Demandes](/admin/aide/demandes) ou des [Attributions](/admin/aide/attributions) restreinte à ce livre.
+
 ![Catalogue - capture 17](/admin/aide/images/catalogue-17.jpg)
 
 Vous pouvez également ouvrir l'éditeur audio ici

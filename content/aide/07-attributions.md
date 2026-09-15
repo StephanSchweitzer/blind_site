@@ -92,7 +92,7 @@ Suivez la même procédure que précédemment pour attribuer un nouveau lecteur 
 
 Lorsque vous cliquez sur ce bouton, l'attribution est immédiatement mise à jour ; il n'est donc pas nécessaire d'enregistrer l'ensemble du formulaire par la suite. Veillez donc à bien réfléchir avant de cliquer dessus.
 
-Le reste de la fenêtre contextuelle fonctionne de la même manière que celle permettant d'ajouter une attribution.
+Le reste de la fenêtre contextuelle fonctionne de la même manière que celle permettant d'ajouter une attribution. Seul ajout : sous le livre, la ligne « Ce livre : … demandes · … attributions » ouvre, dans un nouvel onglet, la liste des demandes ou des attributions restreinte à ce livre. La même liste filtrée est accessible depuis la fiche du livre dans le [Catalogue](/admin/aide/catalogue) ; un bandeau rappelle le filtre, et « Retirer ce filtre » revient à la liste complète.
 
 Une attribution liée à une demande porte toujours le même livre qu'elle. Pour corriger ce livre, modifiez-le **sur la demande** : l'attribution est mise à jour en même temps (voir [Demandes](/admin/aide/demandes)).
 

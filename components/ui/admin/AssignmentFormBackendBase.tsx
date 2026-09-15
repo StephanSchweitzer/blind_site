@@ -38,6 +38,7 @@ import { MailingLabelButton } from '@/components/ui/admin/MailingLabelButton';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { EntitySearchCombobox } from '@/admin/EntitySearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
+import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
 import type { LinkedAssignment } from '@/types/models/order.model';
@@ -1081,6 +1082,9 @@ export function AssignmentFormBackendBase({
                                 onChanged={() => void loadBookAudioState(selectedBook.id)}
                             />
                         )}
+                        {/* En modification : les autres demandes et attributions de ce
+                            livre, un clic vers chaque liste filtrée. */}
+                        {isEditMode && selectedBook && <BookUsageLinks bookId={selectedBook.id} />}
                     </div>
 
                     {/* Date Fields — reception, then envoi, then retour: each later date

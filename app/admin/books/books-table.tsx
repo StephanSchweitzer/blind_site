@@ -27,6 +27,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackendBase';
+import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import { BookAudioModal } from '@/admin/BookAudioModal';
 import { CopyableId, CopyIdButton } from '@/admin/CopyableId';
 import {
@@ -1157,6 +1158,8 @@ export default function BooksTable({
                                 Modifier le livre
                                 <CopyableId id={selectedBook.id} label="du livre" />
                             </DialogTitle>
+                            {/* Ce qui existe déjà pour ce livre, un clic vers chaque liste. */}
+                            <BookUsageLinks bookId={selectedBook.id} />
                         </DialogHeader>
                         <div className="overflow-y-auto px-1">
                             {/* key: the form seeds its state from initialData on

@@ -34,6 +34,8 @@ Vous pouvez rechercher des demandes existantes à l'aide de la barre de recherch
 
 La colonne « Attribution » du tableau indique si la demande est déjà attribuée : elle affiche le numéro de l'attribution et son statut, et un clic sur ce numéro ouvre directement l'attribution. Une duplication, qui n'a jamais d'attribution, y est signalée comme telle ; un tiret signifie qu'aucune attribution n'existe encore.
 
+Pour voir toutes les demandes d'un même livre, suivez le lien « Ce livre : … demandes » depuis la fiche du livre dans le [Catalogue](/admin/aide/catalogue), ou depuis le modal d'une demande ou d'une attribution. La liste s'ouvre restreinte à ce livre, avec un bandeau qui le rappelle ; « Retirer ce filtre » revient à la liste complète. La recherche par numéro, elle, ne porte que sur les numéros de demande.
+
 Vous pouvez filtrer votre recherche selon les critères suivants :
 
 1. Le statut de la demande
@@ -91,6 +93,8 @@ En haut de la page, on peut voir les informations générales que nous avons ajo
 ![Demandes - capture 11](/admin/aide/images/demandes-11.jpg)
 
 En faisant défiler la page vers le bas, on trouve des informations et des liens permettant d'accéder à la (1) facture correspondante (s'il y en a déjà une) et à l'attribution correspondante (2), si la demande concernait un enregistrement.
+
+Sous le livre, la ligne « Ce livre : … demandes · … attributions » mène aux autres demandes et attributions portant sur le même ouvrage (la demande ouverte y est comptée) — utile pour repérer une demande saisie deux fois.
 
 ![Demandes - capture 12](/admin/aide/images/demandes-12.jpg)
 

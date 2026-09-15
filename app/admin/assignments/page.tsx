@@ -4,6 +4,7 @@ import { buildAssignmentSearchWhere } from '@/lib/search';
 import AssignmentsTable from './assignments-table';
 import { notFound } from 'next/navigation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { resolveBookFilter } from '@/lib/books/bookFilter';
 
 interface PageProps {
     searchParams: Promise<{
@@ -17,11 +18,17 @@ export const revalidate = 0;
 async function getAssignments(
     page: number,
     searchTerm: string,
-    statusId?: number
+    statusId?: number,
+    bookId?: number
 ) {
     const assignmentsPerPage = 10;
 
     const whereClause: Prisma.AssignmentWhereInput = {};
+
+    // « Ce livre » — see lib/books/bookFilter.ts.
+    if (bookId) {
+        whereClause.catalogueId = bookId;
+    }
 
     // Tokens AND-ed across the lecteur, the auditeur, the book and the number,
     // so « morvan instructions » finds the attribution joining that person to
@@ -112,13 +119,15 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
     const statusId = params.statusId
         ? parseInt(Array.isArray(params.statusId) ? params.statusId[0] : params.statusId)
         : undefined;
+    const filterBook = await resolveBookFilter(params.bookId);
 
     let assignments, totalAssignments, totalPages, availableStatuses;
     try {
         ({ assignments, totalAssignments, totalPages, availableStatuses } = await getAssignments(
             page,
             searchTerm,
-            statusId
+            statusId,
+            filterBook?.id
         ));
     } catch (error) {
         console.error('Error in Admin Assignments page:', error);
@@ -161,6 +170,7 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
                 totalPages={totalPages!}
                 availableStatuses={availableStatuses!}
                 initialTotalAssignments={totalAssignments!}
+                filterBook={filterBook}
             />
         </div>
     );
