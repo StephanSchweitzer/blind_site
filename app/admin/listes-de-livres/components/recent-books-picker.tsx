@@ -164,7 +164,7 @@ export function RecentBooksControl({ win, onOpen, size = 'toolbar' }: RecentBook
                     <span className="invisible">…</span>
                 ) : defaultWindow.since ? (
                     <>
-                        {/* « créée », pas « publiée » : une liste dépubliée
+                        {/* « créée », pas « visible » : une liste masquée
                             porte la coupure comme les autres. Elle est
                             signalée comme telle, sans quoi le permanent
                             chercherait en vain sur le site la liste que
@@ -172,7 +172,7 @@ export function RecentBooksControl({ win, onOpen, size = 'toolbar' }: RecentBook
                         Dernière liste
                         {defaultWindow.label ? ` « ${defaultWindow.label} »` : ''} créée le{' '}
                         {parisDate(defaultWindow.since)}
-                        {defaultWindow.active === false ? ' (dépubliée)' : ''}
+                        {defaultWindow.active === false ? ' (masquée)' : ''}
                         {sinceTouched && (
                             <>
                                 {' · '}

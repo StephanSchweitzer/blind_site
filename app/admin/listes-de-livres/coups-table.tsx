@@ -86,7 +86,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                         <AideLink section="liste-de-livres" />
                     </div>
                     <CardDescription className="text-muted-foreground mt-1">
-                        Les sélections publiées sur le site, et leurs brouillons.
+                        Les sélections de livres, visibles ou masquées sur le site public.
                     </CardDescription>
                 </div>
                 <Button asChild className="w-full sm:w-auto">

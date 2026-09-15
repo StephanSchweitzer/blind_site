@@ -60,13 +60,21 @@ export function BookBadges({
     );
 }
 
-/** Le statut d'une liste, identique dans le tableau et l'éditeur. */
+/**
+ * Le statut d'une liste, identique dans le tableau et l'éditeur.
+ *
+ * « Visible » / « Masquée » plutôt que « Publiée » / « Brouillon » ou
+ * « dépubliée » : l'interrupteur ne fait que montrer ou cacher la liste sur le
+ * site. Une ancienne liste retirée n'est pas un brouillon, et une liste jamais
+ * montrée n'a pas été « dépubliée ». C'est aussi le mot du catalogue
+ * (« Masqué du catalogue public »).
+ */
 export function ListStatusBadge({ active }: { active: boolean }) {
     return active ? (
         <span className={`${BADGE} bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300`}>
-            Publiée
+            Visible
         </span>
     ) : (
-        <span className={`${BADGE} bg-muted text-muted-foreground`}>Brouillon</span>
+        <span className={`${BADGE} bg-muted text-muted-foreground`}>Masquée</span>
     );
 }

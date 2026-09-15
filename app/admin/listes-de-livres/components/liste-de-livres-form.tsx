@@ -178,7 +178,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                 {isNew ? 'Nouvelle liste de livres' : 'Modifier la liste de livres'}
                             </h1>
                             {/* Pas de statut avant la création : une liste qui
-                                n'existe pas encore n'est ni publiée ni brouillon. */}
+                                n'existe pas encore n'est ni visible ni masquée. */}
                             {!isNew && <ListStatusBadge active={active} />}
                             <AideLink section="liste-de-livres" />
                         </div>
@@ -260,10 +260,10 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                             className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4"
                         >
                             <div>
-                                <div className="text-sm font-medium text-foreground">Publiée sur le site</div>
+                                <div className="text-sm font-medium text-foreground">Visible sur le site public</div>
                                 <p className="mt-0.5 text-xs text-muted-foreground">
-                                    Désactivée, la liste reste un brouillon visible seulement ici : vous pouvez la
-                                    composer à votre rythme et la publier une fois prête.
+                                    Désactivée, la liste n&apos;apparaît que dans l&apos;administration : vous pouvez
+                                    la composer à votre rythme et la rendre visible une fois prête.
                                 </p>
                             </div>
                             <Switch id="active" checked={active} onCheckedChange={setActive} />
@@ -366,7 +366,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                         <AlertDialogTitle className="text-foreground">Supprimer cette liste de livres ?</AlertDialogTitle>
                         <AlertDialogDescription>
                             La liste « {initialValues.title} » sera supprimée, et retirée du site si elle y est
-                            publiée. Les livres eux-mêmes restent au catalogue. Cette action est irréversible.
+                            visible. Les livres eux-mêmes restent au catalogue. Cette action est irréversible.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

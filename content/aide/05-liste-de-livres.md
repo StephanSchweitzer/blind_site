@@ -8,7 +8,7 @@ order: 5
 
 La page « Liste de Livres » est le nouveau nom de ce qui s'appelait auparavant « Coups de Cœurs ». Il s'agit d'une liste mise à jour régulièrement qui regroupe les livres préférés du moment sélectionnés par les membres permanents ; les listes définitives et accessibles au public sont publiées dans la partie publique du site. L'URL de cette page est https://eca-aveugles.fr/admin/listes-de-livres — l'ancienne adresse /admin/manage_coups_de_coeur y redirige toujours.
 
-Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de livres » existantes, par leur titre ou par le titre d'un livre qu'elles contiennent. Vous pouvez (2) créer une « Nouvelle liste de livres », ou (3) ouvrir une liste existante en cliquant sur sa ligne. Chaque ligne indique si la liste est **Publiée** sur le site ou reste un **Brouillon** ; l'icône d'impression, à droite, imprime la liste sans l'ouvrir.
+Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de livres » existantes, par leur titre ou par le titre d'un livre qu'elles contiennent. Vous pouvez (2) créer une « Nouvelle liste de livres », ou (3) ouvrir une liste existante en cliquant sur sa ligne. Chaque ligne indique si la liste est **Visible** sur le site public ou **Masquée** ; l'icône d'impression, à droite, imprime la liste sans l'ouvrir.
 
 ![Liste de Livres - capture 1](/admin/aide/images/liste-de-livres-01.jpg)
 
@@ -16,11 +16,11 @@ Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de l
 
 La création et la modification d'une liste se font sur la même page, organisée en trois blocs : **Informations**, **Présentation audio** et **Livres**, suivis d'une barre d'enregistrement.
 
-Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Publiée sur le site** » (4) décide si la liste est visible dans la partie publique du site.
+Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Visible sur le site public** » (4) décide si la liste apparaît dans la partie publique du site.
 
 ![Liste de Livres - capture 2](/admin/aide/images/liste-de-livres-02.jpg)
 
-Cet interrupteur existe parce que la création de la liste et la mise en forme selon vos souhaits prennent sans doute du temps. Désactivé, il fait de la liste un brouillon, visible seulement dans l'administration ; une fois que tout est à votre goût, activez-le pour la « publier ». Le statut s'affiche à côté du titre de la page (« Publiée » ou « Brouillon »).
+Cet interrupteur existe parce que la création de la liste et la mise en forme selon vos souhaits prennent sans doute du temps. Désactivé, il masque la liste : elle n'apparaît que dans l'administration. Une fois que tout est à votre goût, activez-le pour la rendre visible. Il sert aussi à retirer du site une ancienne liste sans la supprimer. Le statut s'affiche à côté du titre de la page (« Visible » ou « Masquée »).
 
 ## Enregistrement pour les listes des livres
 
@@ -56,7 +56,7 @@ Pour retrouver les livres ajoutés au catalogue depuis la dernière liste, utili
 
 ![Liste de Livres - capture 10](/admin/aide/images/liste-de-livres-10.jpg)
 
-La date est proposée par défaut à celle de la **dernière liste créée — publiée ou non**, rappelée juste en dessous (« Dernière liste « … » créée le … »). Vous pouvez (1) la déplacer en cliquant dans le champ et en choisissant une autre date dans le calendrier, puis revenir à la date proposée avec « Revenir à cette date ». Cliquez ensuite sur (2) « **Voir** » : une fenêtre s'ouvre avec les nouveautés depuis cette date, **toutes décochées**. Cochez celles que vous voulez (ou « Tout cocher »), puis cliquez sur « Ajouter à la liste » : elles rejoignent la liste, en tête.
+La date est proposée par défaut à celle de la **dernière liste créée — visible ou masquée**, rappelée juste en dessous (« Dernière liste « … » créée le … »). Vous pouvez (1) la déplacer en cliquant dans le champ et en choisissant une autre date dans le calendrier, puis revenir à la date proposée avec « Revenir à cette date ». Cliquez ensuite sur (2) « **Voir** » : une fenêtre s'ouvre avec les nouveautés depuis cette date, **toutes décochées**. Cochez celles que vous voulez (ou « Tout cocher »), puis cliquez sur « Ajouter à la liste » : elles rejoignent la liste, en tête.
 
 Trois garde-fous accompagnent cette sélection :
 
