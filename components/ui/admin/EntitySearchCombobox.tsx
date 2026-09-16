@@ -8,6 +8,9 @@ import { Loader2, Search } from 'lucide-react';
 import { useEntitySearch } from '@/hooks/useEntitySearch';
 import { meetsSearchMinLength, normalizeSearchQuery } from '@/lib/search-query';
 import { cn } from '@/lib/utils';
+import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { VocabularyDomain } from '@/lib/search-suggestion-types';
 
 export interface EntitySearchComboboxProps<T> {
     /** Currently selected item, shown on the trigger button. */
@@ -75,6 +78,13 @@ export interface EntitySearchComboboxProps<T> {
     triggerClassName?: string;
     contentClassName?: string;
     listClassName?: string;
+    /**
+     * Vocabulary to draw « Vouliez-vous dire … ? » from when a search finds
+     * nothing. Each candidate is checked through `fetcher` before it is shown,
+     * so the picker's own filters apply — see useVerifiedSuggestions. Omit to
+     * offer none.
+     */
+    suggestionDomains?: readonly VocabularyDomain[];
 }
 
 const DEFAULT_TRIGGER =
@@ -104,6 +114,7 @@ export function EntitySearchCombobox<T>({
     triggerClassName,
     contentClassName,
     listClassName,
+    suggestionDomains,
 }: EntitySearchComboboxProps<T>) {
     const [open, setOpen] = useState(false);
     const { query, setQuery, results, isSearching, reset } = useEntitySearch(fetcher, {
@@ -212,6 +223,15 @@ export function EntitySearchCombobox<T>({
     // being too short. Saying how many there are, and whether the API capped
     // them, is what actually makes the list feel complete.
     const showFooter = !showHint && !isSearching && results.length > 0;
+
+    // Only once this search has settled on nothing — never while typing.
+    const suggestions = useVerifiedSuggestions({
+        query,
+        active: open && !showHint && !isDefaultList && !isSearching && results.length === 0,
+        domains: suggestionDomains,
+        fetcher,
+        resultLimit,
+    });
     const isCapped = resultLimit !== undefined && results.length >= resultLimit;
 
     // When some rows can't be picked, the raw total is misleading in the other
@@ -321,9 +341,12 @@ export function EntitySearchCombobox<T>({
                             Tapez au moins {minLength} caractères, ou un numéro d&apos;identifiant
                         </div>
                     ) : results.length === 0 && !isSearching ? (
-                        <div className="p-4 text-center text-muted-foreground">
-                            {isDefaultList ? (emptyDefaultMessage ?? emptyMessage) : emptyMessage}
-                        </div>
+                        <>
+                            <div className="p-4 text-center text-muted-foreground">
+                                {isDefaultList ? (emptyDefaultMessage ?? emptyMessage) : emptyMessage}
+                            </div>
+                            <SearchSuggestions suggestions={suggestions} onPick={handleQueryChange} compact />
+                        </>
                     ) : (
                         results.map((item, index) => {
                             const key = getItemKey(item);

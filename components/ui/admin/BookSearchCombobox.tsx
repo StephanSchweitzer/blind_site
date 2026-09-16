@@ -2,6 +2,10 @@
 
 import React from 'react';
 import { EntitySearchCombobox } from '@/admin/EntitySearchCombobox';
+import type { VocabularyDomain } from '@/lib/search-suggestion-types';
+
+/** Where « Vouliez-vous dire … ? » looks when nothing is found. */
+const SUGGESTION_DOMAINS: readonly VocabularyDomain[] = ['books'];
 
 export interface BookSearchResult {
     id: number;
@@ -95,6 +99,7 @@ export function BookSearchCombobox<T extends BookSearchResult>({
             }
             resultLimit={BOOK_RESULT_LIMIT}
             resultNoun="livres"
+            suggestionDomains={SUGGESTION_DOMAINS}
             placeholder={placeholder}
             searchPlaceholder="Titre, auteur, ou numéro de livre..."
             emptyMessage="Aucun livre trouvé"

@@ -6,6 +6,7 @@ import { titlePrefixMatch } from '@/lib/books/title-match';
 import ReviewClient, { type ReviewBook, type ReviewPair } from './review-client';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { bookReviewIdClauses, buildBookReviewSearchWhere } from '@/lib/search';
+import { suggestSearches } from '@/lib/search-suggest';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -158,8 +159,16 @@ export default async function AdminReviewPage({ searchParams }: PageProps) {
             .filter((b) => b !== undefined),
     }));
 
+    // Only when the search found nothing in the queue — see lib/search-suggest.ts.
+    const searchSuggestions =
+        total === 0 && q
+            ? await suggestSearches(q, ['books'], (term) =>
+                prisma.book.count({ where: { needsReview: true, ...(buildSearchWhere(term) ?? {}) } }))
+            : [];
+
     return (
         <ReviewClient
+            searchSuggestions={searchSuggestions}
             pairs={pairs}
             page={page}
             totalPages={Math.max(1, Math.ceil(total / PER_PAGE))}

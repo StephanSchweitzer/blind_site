@@ -6,6 +6,7 @@ import { AUDIO_TRASH_RETENTION_DAYS } from '@/lib/audio/purge';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildDeletedAudioSearchWhere } from '@/lib/search';
 import TrashClient, { type TrashGroup, type TrashRow, type TrashTab } from './trash-client';
+import { suggestSearches } from '@/lib/search-suggest';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -89,11 +90,11 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
     const page = parsePageParam(one('page'));
     const q = one('q');
 
-    const searchWhere = buildSearchWhere(q);
-    const where: Prisma.DeletedAudioTrackWhereInput = {
+    const whereFor = (term: string): Prisma.DeletedAudioTrackWhereInput => ({
         ...TAB_WHERE[tab],
-        ...(searchWhere ?? {}),
-    };
+        ...(buildSearchWhere(term) ?? {}),
+    });
+    const where = whereFor(q);
 
     // La plus ancienne suppression d'abord dans les onglets actifs : c'est
     // celle que la purge prendra la première.
@@ -191,8 +192,17 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
 
     const totalFiles = groups.reduce((sum, g) => sum + g.rows.length, 0);
 
+    // Only when the search found nothing in this tab — see lib/search-suggest.ts.
+    // Counted in files, not books: only « finds something or not » matters here.
+    const searchSuggestions =
+        allGroups.length === 0 && q
+            ? await suggestSearches(q, ['trash', 'books'], (term) =>
+                prisma.deletedAudioTrack.count({ where: whereFor(term) }))
+            : [];
+
     return (
         <TrashClient
+            searchSuggestions={searchSuggestions}
             groups={groups}
             tab={tab}
             page={page}

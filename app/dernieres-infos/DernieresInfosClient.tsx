@@ -7,6 +7,8 @@ import { Tag, Filter, User, Calendar } from 'lucide-react';
 import type { NewsPost, NewsResponse, NewsType } from '@/types/news';
 import { newsTypeLabels, newsTypeColors, getNewsTypeColor, getNewsTypeTextColor } from '@/types/news';
 import { parisDate } from '@/lib/paris-day';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 interface DernieresInfosClientProps {
     initialData: NewsResponse;
@@ -22,6 +24,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
     const [showFilters, setShowFilters] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
     const isFirstRender = useRef(true);
     const filtersId = useId();
 
@@ -34,7 +37,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                 page: page.toString(),
                 limit: '5',
                 ...(selectedType !== 'all' && { type: selectedType }),
-                ...(searchTerm && { search: searchTerm })
+                ...(searchTerm && { search: searchTerm, suggest: '1' })
             });
 
             const response = await fetch(`/api/news?${queryParams}`);
@@ -80,6 +83,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
             if (data) {
                 setNewsPosts(data.items);
                 setTotalPages(data.totalPages);
+                setSuggestions(data.searchSuggestions ?? []);
                 setIsTransitioning(false);
                 if (currentPage !== 1) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -220,6 +224,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                             </svg>
                         </div>
                         <p className="text-gray-700 dark:text-gray-300 font-medium">Aucune actualité trouvée</p>
+                        {searchTerm && <SearchSuggestions suggestions={suggestions} onPick={handleSearchChange} />}
                     </div>
                 </div>
             ) : (

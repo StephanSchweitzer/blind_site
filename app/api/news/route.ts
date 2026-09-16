@@ -10,6 +10,7 @@ import {News, Prisma} from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
 import { withAdmin } from '@/lib/auth/guards';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
+import { suggestSearches } from '@/lib/search-suggest';
 
 export const POST = withAdmin(async (req, { me }) => {
     revalidateAdmin();
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
         const skip = pageSkip(page, limit);
 
         // Build the where clause based on filters
-        const where: Prisma.NewsWhereInput = {
+        const whereFor = (term: string): Prisma.NewsWhereInput => ({
             AND: [
                 // Add type filter if provided and not 'all'
                 ...(type && type !== 'all' ? [{
@@ -93,9 +94,10 @@ export async function GET(req: NextRequest) {
                 // Same engine as the back-office list — tokens, apostrophes, and
                 // the type reachable by its displayed French label. See
                 // buildNewsSearchWhere.
-                ...(buildNewsSearchWhere(search ?? '') ?? [])
+                ...(buildNewsSearchWhere(term) ?? [])
             ]
-        };
+        });
+        const where = whereFor(search ?? '');
 
         // Get total count for pagination
         const total = await prisma.news.count({ where });
@@ -117,11 +119,19 @@ export async function GET(req: NextRequest) {
             }
         });
 
+        // `?suggest=1`: « Vouliez-vous dire … ? » when the search found nothing —
+        // see lib/search-suggest.ts. Titles only: this route is public.
+        const searchSuggestions =
+            searchParams.get('suggest') === '1' && search && total === 0
+                ? await suggestSearches(search, ['news'], (q) => prisma.news.count({ where: whereFor(q) }))
+                : undefined;
+
         return NextResponse.json({
             items: news,
             totalPages: Math.ceil(total / limit),
             currentPage: page,
-            totalItems: total
+            totalItems: total,
+            ...(searchSuggestions ? { searchSuggestions } : {}),
         });
 
     } catch (error) {

@@ -42,6 +42,8 @@ import {
 import { calendarYear } from '@/lib/calendar-date';
 import { toast } from "@/hooks/use-toast";
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 const ITEMS_PER_PAGE = 10;
 const DEBOUNCE_DELAY = 300;
@@ -109,6 +111,8 @@ interface SearchResult {
     page: number;
     availableCount: number;
     unavailableCount: number;
+    /** « Vouliez-vous dire … ? » — present only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 interface BooksTableProps {
@@ -360,6 +364,8 @@ export default function BooksTable({
                 filter,
                 page: page.toString(),
                 limit: ITEMS_PER_PAGE.toString(),
+                // « Vouliez-vous dire … ? » when nothing is found — see lib/search-suggest.ts.
+                suggest: '1',
             });
 
             if (available !== 'all') params.set('available', available);
@@ -978,6 +984,12 @@ export default function BooksTable({
                                     ? 'Aucun résultat trouvé pour votre recherche'
                                     : 'Aucun livre disponible'}
                             </p>
+                            {searchTerm && (
+                                <SearchSuggestions
+                                    suggestions={searchResults.searchSuggestions}
+                                    onPick={handleSearchChange}
+                                />
+                            )}
                         </div>
                     ) : (
                         <div className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>

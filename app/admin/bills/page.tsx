@@ -5,6 +5,7 @@ import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { notFound } from 'next/navigation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { suggestSearches } from '@/lib/search-suggest';
 
 interface PageProps {
     searchParams: Promise<{
@@ -23,26 +24,31 @@ async function getBills(
 ) {
     const billsPerPage = 10;
 
-    // Hide soft-deleted bills from the listing.
-    const whereClause: Prisma.BillWhereInput = { isActive: true };
+    // The whole where clause for a given search term — a function so the
+    // « Vouliez-vous dire » check counts another term under the same filters.
+    const whereFor = (searchTerm: string): Prisma.BillWhereInput => {
+        // Hide soft-deleted bills from the listing.
+        const whereClause: Prisma.BillWhereInput = { isActive: true };
 
-    // Tokens AND-ed across the auditeur, the books on the demandes this facture
-    // covers, the payment reference and the number — so « morvan instructions »
-    // finds the facture carrying that demande. See buildBillSearchWhere.
-    if (searchTerm) {
-        const tokenClauses = buildBillSearchWhere(searchTerm);
-        if (tokenClauses) whereClause.AND = tokenClauses;
-    }
+        // Tokens AND-ed across the auditeur, the books on the demandes this facture
+        // covers, the payment reference and the number — so « morvan instructions »
+        // finds the facture carrying that demande. See buildBillSearchWhere.
+        if (searchTerm) {
+            const tokenClauses = buildBillSearchWhere(searchTerm);
+            if (tokenClauses) whereClause.AND = tokenClauses;
+        }
 
-    if (showLate) {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        whereClause.state = BillingStatus.BILLED;
-        whereClause.issueDate = { lt: thirtyDaysAgo };
-    } else if (status) {
-        whereClause.state = status;
-    }
-
+        if (showLate) {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            whereClause.state = BillingStatus.BILLED;
+            whereClause.issueDate = { lt: thirtyDaysAgo };
+        } else if (status) {
+            whereClause.state = status;
+        }
+        return whereClause;
+    };
+    const whereClause = whereFor(searchTerm);
     try {
         const [bills, totalBills] = await Promise.all([
             prisma.bill.findMany({
@@ -55,7 +61,15 @@ async function getBills(
             prisma.bill.count({ where: whereClause }),
         ]);
 
+        // Only when the search found nothing — see lib/search-suggest.ts.
+        const searchSuggestions =
+            totalBills === 0 && searchTerm
+                ? await suggestSearches(searchTerm, ['people', 'books'], (q) =>
+                    prisma.bill.count({ where: whereFor(q) }))
+                : [];
+
         return {
+            searchSuggestions,
             bills,
             totalBills,
             totalPages: Math.ceil(totalBills / billsPerPage),
@@ -92,7 +106,7 @@ export default async function AdminBillsPage({ searchParams }: PageProps) {
         notFound();
     }
 
-    const { bills, totalBills, totalPages, availableStatuses } = data;
+    const { bills, totalBills, totalPages, availableStatuses, searchSuggestions } = data;
 
     const serializedBills = bills.map(bill => ({
         ...bill,
@@ -111,6 +125,7 @@ export default async function AdminBillsPage({ searchParams }: PageProps) {
                 totalPages={totalPages}
                 availableStatuses={availableStatuses}
                 initialTotalBills={totalBills}
+                searchSuggestions={searchSuggestions}
             />
         </div>
     );

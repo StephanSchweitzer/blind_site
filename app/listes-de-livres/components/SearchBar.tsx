@@ -8,6 +8,8 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command";
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 interface SearchPreviewResult {
     id: number;
@@ -27,6 +29,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                                         onResultSelect,
                                                     }) => {
     const [results, setResults] = useState<SearchPreviewResult[]>([]);
+    const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [debouncedValue] = useDebounce(searchTerm, 300);
@@ -35,16 +38,20 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         const searchCoupsDeCoeur = async () => {
             if (!debouncedValue.trim()) {
                 setResults([]);
+                setSuggestions([]);
                 return;
             }
 
             setIsSearching(true);
             try {
-                const response = await fetch(`/api/listes-de-livres/preview?search=${encodeURIComponent(debouncedValue)}`);
+                // `suggest=1` : « Vouliez-vous dire … ? » quand rien n'est trouvé.
+                const response = await fetch(`/api/listes-de-livres/preview?search=${encodeURIComponent(debouncedValue)}&suggest=1`);
                 if (response.ok) {
-                    const data = await response.json();
-                    setResults(data);
-                    if (data.length > 0) {
+                    const data: { results: SearchPreviewResult[]; searchSuggestions: SearchSuggestion[] } =
+                        await response.json();
+                    setResults(data.results);
+                    setSuggestions(data.searchSuggestions);
+                    if (data.results.length > 0) {
                         setShowResults(true);
                     }
                 }
@@ -130,6 +137,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                     </svg>
                                 </div>
                                 <span className="text-gray-700 dark:text-gray-300 font-medium">Aucun résultat trouvé</span>
+                                <SearchSuggestions suggestions={suggestions} onPick={handleInputChange} className="px-4" />
                             </div>
                         </CommandEmpty>
                     ) : (

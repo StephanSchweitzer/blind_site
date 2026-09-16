@@ -21,15 +21,19 @@ import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { Plus, Search } from 'lucide-react';
 import { ListStatusBadge } from './components/list-book';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 interface CoupsTableProps {
     initialItems: CoupDeCoeurWithBooks[];
     initialPage: number;
     initialSearch: string;
     totalPages: number;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
-export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTableProps) {
+export function CoupsTable({ initialItems, initialSearch, totalPages, searchSuggestions }: CoupsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     // initialItems is the source of truth (re-passed by the server on navigation),
@@ -129,6 +133,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages }: CoupsTab
                                 <TableRow className="hover:bg-transparent">
                                     <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                                         {search ? 'Aucune liste de livres ne correspond à cette recherche.' : "Aucune liste de livres pour l'instant."}
+                                        <SearchSuggestions suggestions={searchSuggestions} onPick={setSearch} />
                                     </TableCell>
                                 </TableRow>
                             )}

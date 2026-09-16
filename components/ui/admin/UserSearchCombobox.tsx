@@ -3,6 +3,10 @@
 import React from 'react';
 import { EntitySearchCombobox } from '@/admin/EntitySearchCombobox';
 import { getUserDisplayName, type UserNameParts } from '@/lib/users/displayName';
+import type { VocabularyDomain } from '@/lib/search-suggestion-types';
+
+/** Where « Vouliez-vous dire … ? » looks when nobody is found. */
+const SUGGESTION_DOMAINS: readonly VocabularyDomain[] = ['people'];
 
 export interface UserSearchResult extends UserNameParts {
     id: number;
@@ -70,6 +74,7 @@ export function UserSearchCombobox<T extends UserSearchResult>({
             // /api/user/search takes 20 before deduping legacy rows.
             resultLimit={20}
             resultNoun="personnes"
+            suggestionDomains={SUGGESTION_DOMAINS}
             placeholder={placeholder}
             searchPlaceholder={searchPlaceholder}
             emptyMessage={emptyMessage}

@@ -49,6 +49,8 @@ import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import type { BookFilter } from '@/lib/books/bookFilter';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 type OrdersTableProps = {
     initialOrders: SerializedOrderTableRow[];
@@ -63,6 +65,8 @@ type OrdersTableProps = {
     presetClient?: { id: number; name: string | null; email: string } | null;
     /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
     filterBook?: BookFilter | null;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 };
 
 export default function OrdersTable({
@@ -73,6 +77,7 @@ export default function OrdersTable({
                                         availableStatuses,
                                         blockedDuplications = {},
                                         hideSearch = false,
+                                        searchSuggestions,
                                         presetClient = null,
                                         filterBook = null,
                                     }: OrdersTableProps) {
@@ -553,6 +558,15 @@ export default function OrdersTable({
                     {initialOrders.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground text-lg">Aucune demande trouvée</p>
+                            <SearchSuggestions
+                                suggestions={searchSuggestions}
+                                onPick={(q) => {
+                                    setSearchTerm(q);
+                                    startTransition(() => {
+                                        router.push(`?${createQueryString({ search: q })}`);
+                                    });
+                                }}
+                            />
                         </div>
                     ) : (
                         <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>

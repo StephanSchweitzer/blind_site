@@ -50,6 +50,11 @@ model User {
   /// LEGACY: superseded by UserActivityEvent.reason; no longer written. Refactor out.
   terminationReason         String?
   lastUpdated               DateTime?           @updatedAt
+  /// Lower-case, accent-folded « prénom nom name email », maintained by the
+  /// `user_search_key` trigger — never written by the app (whatever it writes is
+  /// overwritten). Searched through `searchKeyVariants` (lib/search-normalize.ts).
+  /// See prisma/migrations/manual/20260916150000_user_search_key.sql.
+  searchKey                 String              @default("")
   /// Soft-delete marker. When set, the user is treated as deleted everywhere:
   /// a global Prisma query extension (lib/prisma.ts) excludes rows with a
   /// non-null deletedAt from all user list/search reads.

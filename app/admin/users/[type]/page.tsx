@@ -11,6 +11,7 @@ import { LANGUAGE_VALUES } from '@/lib/user-enums';
 import { cotisationCoverageQuery } from '@/lib/cotisation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildUserNameSearch } from '@/lib/search';
+import { suggestSearches } from '@/lib/search-suggest';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -36,78 +37,85 @@ async function getUsers(
 ) {
     const usersPerPage = 10;
 
-    // Base filter: member type + free-text search. Status filter is applied
-    // separately so the active/inactive counts always reflect the full set.
-    const baseWhere: Prisma.UserWhereInput =
-        userType === 'auditeurs'  ? { memberType: 'auditeur' } :
-            userType === 'lecteurs'   ? { memberType: 'lecteur' } :
-                userType === 'bienfaiteurs' ? { memberType: 'bienfaiteur' } :
-                    { accessLevel: { in: ['admin', 'super_admin'] } };
+    // Every where clause of the page, for a given search term — built as a
+    // function so the « Vouliez-vous dire » check can count another term under
+    // exactly the same filters.
+    const wheresFor = (term: string) => {
+        // Base filter: member type + free-text search. Status filter is applied
+        // separately so the active/inactive counts always reflect the full set.
+        const baseWhere: Prisma.UserWhereInput =
+            userType === 'auditeurs'  ? { memberType: 'auditeur' } :
+                userType === 'lecteurs'   ? { memberType: 'lecteur' } :
+                    userType === 'bienfaiteurs' ? { memberType: 'bienfaiteur' } :
+                        { accessLevel: { in: ['admin', 'super_admin'] } };
 
-    // Tokens AND-ed, each satisfiable by any name column, so "Leila Be" matches
-    // firstName="Leila" + lastName="Bennour" and the order is irrelevant
-    // ("Bennour Leila" works too). Handed to the shared builder rather than
-    // spelled out here: this list used to carry its own copy, which left it the
-    // only people-search that ignored the legacy `name` column and matched
-    // apostrophes byte for byte. See buildUserNameSearch.
-    const nameSearch = buildUserNameSearch(searchTerm);
-    if (nameSearch?.AND) {
-        baseWhere.AND = nameSearch.AND;
-    }
+        // Tokens AND-ed, each satisfiable by any name column, so "Leila Be" matches
+        // firstName="Leila" + lastName="Bennour" and the order is irrelevant
+        // ("Bennour Leila" works too). Handed to the shared builder rather than
+        // spelled out here: this list used to carry its own copy, which left it the
+        // only people-search that ignored the legacy `name` column and matched
+        // apostrophes byte for byte. See buildUserNameSearch.
+        const nameSearch = buildUserNameSearch(term);
+        if (nameSearch?.AND) {
+            baseWhere.AND = nameSearch.AND;
+        }
 
-    // "Scoped" population: base + search + language + cotisation, but NOT the
-    // activity-status filter. The actifs/inactifs breakdown is computed over this
-    // set so the two counts always reflect the current filters AND always sum to
-    // the scoped total (active + inactive partitions it exactly).
-    const scopedWhere: Prisma.UserWhereInput = { ...baseWhere };
+        // "Scoped" population: base + search + language + cotisation, but NOT the
+        // activity-status filter. The actifs/inactifs breakdown is computed over this
+        // set so the two counts always reflect the current filters AND always sum to
+        // the scoped total (active + inactive partitions it exactly).
+        const scopedWhere: Prisma.UserWhereInput = { ...baseWhere };
 
-    if (languageFilter && (LANGUAGE_VALUES as readonly string[]).includes(languageFilter)) {
-        scopedWhere.languages = { some: { language: languageFilter as Language } };
-    }
+        if (languageFilter && (LANGUAGE_VALUES as readonly string[]).includes(languageFilter)) {
+            scopedWhere.languages = { some: { language: languageFilter as Language } };
+        }
 
-    // Cotisation filter: "à jour" = has an active cotisation still in coverage;
-    // "en retard" = none (covers both lapsed cotisations and no cotisation at all).
-    // Mirrors lib/cotisation.ts computeCotisationStatus: calendar-year coverage via
-    // cotisationYear, with the legacy rolling rule for rows that predate it.
-    if (cotisationFilter === 'a_jour' || cotisationFilter === 'en_retard') {
-        const { currentYear, legacyCutoff } = cotisationCoverageQuery();
-        const cotisationMatch: Prisma.PaymentWhereInput = {
-            type: 'COTISATION',
-            isActive: true,
-            OR: [
-                // Calendar-year: covers the current year or a prepaid future year.
-                { cotisationYear: { gte: currentYear } },
-                // Legacy rows without a cotisationYear: rolling 12 months.
-                {
-                    AND: [
-                        { cotisationYear: null },
-                        {
-                            OR: [
-                                { paymentDate: { gte: legacyCutoff } },
-                                { AND: [{ paymentDate: null }, { creationDate: { gte: legacyCutoff } }] },
-                            ],
-                        },
-                    ],
-                },
-            ],
+        // Cotisation filter: "à jour" = has an active cotisation still in coverage;
+        // "en retard" = none (covers both lapsed cotisations and no cotisation at all).
+        // Mirrors lib/cotisation.ts computeCotisationStatus: calendar-year coverage via
+        // cotisationYear, with the legacy rolling rule for rows that predate it.
+        if (cotisationFilter === 'a_jour' || cotisationFilter === 'en_retard') {
+            const { currentYear, legacyCutoff } = cotisationCoverageQuery();
+            const cotisationMatch: Prisma.PaymentWhereInput = {
+                type: 'COTISATION',
+                isActive: true,
+                OR: [
+                    // Calendar-year: covers the current year or a prepaid future year.
+                    { cotisationYear: { gte: currentYear } },
+                    // Legacy rows without a cotisationYear: rolling 12 months.
+                    {
+                        AND: [
+                            { cotisationYear: null },
+                            {
+                                OR: [
+                                    { paymentDate: { gte: legacyCutoff } },
+                                    { AND: [{ paymentDate: null }, { creationDate: { gte: legacyCutoff } }] },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+            scopedWhere.payments =
+                cotisationFilter === 'a_jour' ? { some: cotisationMatch } : { none: cotisationMatch };
+        }
+
+        // The list adds the activity-status filter on top of the scoped population.
+        // The filter matches the EFFECTIVE status (an unavailability whose window
+        // is not in force reads as Actif), so it is a `where` fragment, not a plain
+        // column comparison — wrapped in AND so it can't collide with the search's
+        // own AND on scopedWhere.
+        const statusWhere = activityStatusFilterWhere(statusFilter);
+        const listWhere: Prisma.UserWhereInput = statusWhere
+            ? { AND: [scopedWhere, statusWhere] }
+            : scopedWhere;
+        const activeWhere: Prisma.UserWhereInput = { AND: [scopedWhere, effectivelyActiveWhere()] };
+        const inactiveWhere: Prisma.UserWhereInput = {
+            AND: [scopedWhere, { NOT: effectivelyActiveWhere() }],
         };
-        scopedWhere.payments =
-            cotisationFilter === 'a_jour' ? { some: cotisationMatch } : { none: cotisationMatch };
-    }
-
-    // The list adds the activity-status filter on top of the scoped population.
-    // The filter matches the EFFECTIVE status (an unavailability whose window
-    // is not in force reads as Actif), so it is a `where` fragment, not a plain
-    // column comparison — wrapped in AND so it can't collide with the search's
-    // own AND on scopedWhere.
-    const statusWhere = activityStatusFilterWhere(statusFilter);
-    const listWhere: Prisma.UserWhereInput = statusWhere
-        ? { AND: [scopedWhere, statusWhere] }
-        : scopedWhere;
-    const activeWhere: Prisma.UserWhereInput = { AND: [scopedWhere, effectivelyActiveWhere()] };
-    const inactiveWhere: Prisma.UserWhereInput = {
-        AND: [scopedWhere, { NOT: effectivelyActiveWhere() }],
+        return { listWhere, activeWhere, inactiveWhere };
     };
+    const { listWhere, activeWhere, inactiveWhere } = wheresFor(searchTerm);
 
     try {
         const [users, totalUsers, activeCount, inactiveCount] = await Promise.all([
@@ -136,6 +144,13 @@ async function getUsers(
             prisma.user.count({ where: inactiveWhere }),
         ]);
 
+        // Only when the search found nobody — see lib/search-suggest.ts.
+        const searchSuggestions =
+            totalUsers === 0 && searchTerm
+                ? await suggestSearches(searchTerm, ['people'], (q) =>
+                    prisma.user.count({ where: wheresFor(q).listWhere }))
+                : [];
+
         return {
             users,
             totalUsers,
@@ -145,6 +160,7 @@ async function getUsers(
             activeCount,
             inactiveCount,
             totalPages: Math.ceil(totalUsers / usersPerPage),
+            searchSuggestions,
         };
     } catch (error) {
         console.error('Error fetching users:', error);
@@ -196,7 +212,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
         notFound();
     }
 
-    const { users, totalUsers, scopedTotal, totalPages, activeCount, inactiveCount } = data;
+    const { users, totalUsers, scopedTotal, totalPages, activeCount, inactiveCount, searchSuggestions } = data;
 
     const serializedUsers = users.map(user => ({
         ...user,
@@ -221,6 +237,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                 activeCount={activeCount}
                 inactiveCount={inactiveCount}
                 currentUserAccessLevel={me.accessLevel}
+                searchSuggestions={searchSuggestions}
             />
         </div>
     );

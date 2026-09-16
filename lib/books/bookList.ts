@@ -10,6 +10,8 @@ import { bookFieldsForToken, searchTokens } from '@/lib/search';
 import { searchVariants } from '@/lib/search-normalize';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 import { isParisDay, parisDayStartUtc } from '@/lib/paris-day';
+import { suggestSearches } from '@/lib/search-suggest';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 /**
  * La liste de livres paginée, et les deux seules façons d'y accéder.
@@ -284,6 +286,36 @@ async function countAvailabilityRaw(
     }
 }
 
+/**
+ * How many books a search finds, through the same accent-insensitive WHERE as
+ * the list — for checking a « Vouliez-vous dire » candidate. Falls back to the
+ * Prisma scope where, like the list does, if the raw path is unavailable.
+ */
+async function countBooksForSearch(
+    options: RawBookWhereOptions & { hiddenFilter?: boolean }
+): Promise<number> {
+    const { whereClause, params } = buildRawBookWhere(options);
+    try {
+        const rows = await prisma.$queryRawUnsafe<CountResult[]>(
+            `SELECT COUNT(*) as count FROM "Book" b ${whereClause}`,
+            ...params,
+        );
+        return Number(rows[0]?.count ?? 0);
+    } catch {
+        const scoped = buildBookScopeWhere({
+            searchTerm: options.search,
+            filter: options.filter,
+            genreIds: options.genres,
+            includeHidden: options.includeHidden,
+            hidden: options.hiddenFilter,
+            audio: options.audio,
+        });
+        return prisma.book.count({
+            where: { AND: [scoped, ...(options.available !== undefined ? [{ available: options.available }] : [])] },
+        });
+    }
+}
+
 // Perform accent-insensitive search using raw SQL
 async function performAccentInsensitiveSearch(
     search: string,
@@ -446,6 +478,13 @@ export interface BookListQuery {
     genres: number[];
     page: number;
     limit: number;
+    /**
+     * Calculer les « Vouliez-vous dire … ? » quand la recherche ne trouve rien.
+     * Opt-in (`?suggest=1`) : le sélecteur de livre passe par la même route et
+     * vérifie ses suggestions lui-même — les calculer ici aussi doublerait le
+     * travail. Voir lib/search-suggest.ts.
+     */
+    suggest?: boolean;
 }
 
 /** Ce que le back-office peut demander en plus. */
@@ -466,6 +505,8 @@ interface BookListPage<B> {
     availableCount: number;
     unavailableCount: number;
     recentWindow?: RecentWindow;
+    /** Seulement avec `suggest`, et seulement quand la recherche n'a rien trouvé. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 /**
@@ -482,6 +523,7 @@ export function parseBookListQuery(searchParams: URLSearchParams): BookListQuery
         page: parsePageParam(searchParams.get('page')),
         limit: parseLimitParam(searchParams.get('limit'), 9),
         genres: searchParams.getAll('genres').map(Number).filter(id => !isNaN(id)),
+        suggest: searchParams.get('suggest') === '1',
     };
 }
 
@@ -507,7 +549,7 @@ export function parseAdminBookListQuery(searchParams: URLSearchParams): AdminBoo
 async function listBooks(
     query: AdminBookListQuery & { includeHidden: boolean }
 ): Promise<BookListPage<BookWithGenres>> {
-    const { search, filter, genres, page, limit, available, audio, recent, since, includeHidden } = query;
+    const { search, filter, genres, page, limit, available, audio, recent, since, includeHidden, suggest } = query;
     // `hidden` only means something to a caller that may see hidden books.
     const hiddenFilter = includeHidden ? query.hidden : undefined;
     const skip = pageSkip(page, limit);
@@ -682,6 +724,14 @@ async function listBooks(
         ]);
     }
 
+    // Only when the search found nothing — see lib/search-suggest.ts. Counted
+    // through the same WHERE the list uses, every filter included.
+    const searchSuggestions =
+        suggest && search && total === 0
+            ? await suggestSearches(search, ['books', 'genres'], (q) =>
+                countBooksForSearch({ search: q, filter, genres, includeHidden, available, hiddenFilter, audio }))
+            : undefined;
+
     return {
         books,
         total,
@@ -690,6 +740,7 @@ async function listBooks(
         availableCount,
         unavailableCount,
         ...(recentWindow ? { recentWindow } : {}),
+        ...(searchSuggestions ? { searchSuggestions } : {}),
     };
 }
 
@@ -705,6 +756,7 @@ export async function listPublicBooks(query: BookListQuery): Promise<BookListPag
         genres: query.genres,
         page: query.page,
         limit: query.limit,
+        suggest: query.suggest,
         recent: false,
         since: null,
         includeHidden: false,

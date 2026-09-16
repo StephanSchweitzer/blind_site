@@ -125,8 +125,12 @@ export function isSecretField(field: string): boolean {
  * audioTrackCount, audioSizeKb) is handled one step further down, by
  * DERIVED_FIELDS: it stays readable next to a real edit, but can no longer put a
  * row in the journal by itself.
+ *
+ * `searchKey` too: a trigger rewrites it from the name columns on every write
+ * (see User.searchKey), so it only ever repeats, folded, a change the diff
+ * already shows.
  */
-const NOISE_FIELDS = new Set(['updatedAt', 'lastUpdated', 'lastSeenAt', 'audioCheckedAt']);
+const NOISE_FIELDS = new Set(['updatedAt', 'lastUpdated', 'lastSeenAt', 'audioCheckedAt', 'searchKey']);
 
 export function isNoiseField(field: string): boolean {
     return NOISE_FIELDS.has(field);

@@ -137,6 +137,69 @@ export function searchVariants(token: string): string[] {
 }
 
 /**
+ * The letters Postgres' unaccent TRANSLITERATES rather than strips, for the
+ * Latin-1 and Latin Extended-A blocks — read off the database (dev PG 18 and
+ * production PG 15 agree), not off a Unicode table.
+ *
+ * NFD alone gets « é » right and every one of these wrong: « Œ », « ß », « Ø »,
+ * « Ł » carry no combining mark to strip, so « Oeuvre » never found « Œuvre ».
+ * Symbols are in here too (« © », « ½ ») not because anyone searches for
+ * them but so the parity check can hold over whole blocks with no allowlist.
+ */
+const TRANSLITERATIONS: Record<string, string> = {
+    '¡': '!', '©': '(c)', 'ª': 'a', '­': '-', '®': '(r)', '±': '+/-',
+    'µ': 'μ', 'º': 'o', '¼': ' 1/4', '½': ' 1/2', '¾': ' 3/4', '¿': '?',
+    'Æ': 'AE', 'æ': 'ae', 'Ð': 'D', 'ð': 'd', '×': '*', '÷': '/',
+    'Ø': 'O', 'ø': 'o', 'Þ': 'TH', 'þ': 'th', 'ß': 'ss', 'ẞ': 'SS',
+    'Đ': 'D', 'đ': 'd', 'Ħ': 'H', 'ħ': 'h', 'ı': 'i', 'Ĳ': 'IJ', 'ĳ': 'ij',
+    'ĸ': 'q', 'Ŀ': 'L', 'ŀ': 'l', 'Ł': 'L', 'ł': 'l', 'ŉ': "'n", 'Ŋ': 'N',
+    'ŋ': 'n', 'Œ': 'OE', 'œ': 'oe', 'Ŧ': 'T', 'ŧ': 't', 'ſ': 's',
+    '…': '...',
+};
+const TRANSLITERATION_CLASS = new RegExp(`[${Object.keys(TRANSLITERATIONS).join('')}]`, 'g');
+
+/**
+ * The fold a `searchKey` column is built with, in JavaScript — the twin of the
+ * SQL function `search_fold` (prisma/migrations/manual/…_user_search_key.sql).
+ *
+ * The two MUST agree character for character. The column is folded by
+ * Postgres; the query is folded here, because Prisma cannot wrap a query
+ * parameter in a function either. Any character they fold differently is a
+ * search that silently misses — which is why `scripts/search-fold.e2e.ts`
+ * compares them over whole Unicode blocks and over every stored key.
+ *
+ * Both sides run the same punctuation pass FIRST (apostrophes, dashes, quotes,
+ * spaces — the SQL side translates the very same classes before unaccent
+ * sees them), so only letters are left for unaccent and this function to agree
+ * on.
+ */
+export function foldForSearchKey(str: string): string {
+    return normalizeSearchText(str)
+        .replace(TRANSLITERATION_CLASS, (ch) => TRANSLITERATIONS[ch])
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/**
+ * The spellings of one token to look for in a `searchKey` column.
+ *
+ * `searchVariants` still does the hyphen work (« Jean Pierre » ↔
+ * « Jean-Pierre »); folding each variant afterwards collapses the curly
+ * apostrophe forms onto the straight one the key stores, so they cost nothing.
+ */
+export function searchKeyVariants(token: string): string[] {
+    const out: string[] = [];
+    for (const variant of searchVariants(token)) {
+        const folded = foldForSearchKey(variant);
+        if (folded && !out.includes(folded)) out.push(folded);
+    }
+    return out;
+}
+
+/**
  * Lower-case, accent-stripped, apostrophe-folded — for comparing a typed token
  * against a French label held in memory.
  *

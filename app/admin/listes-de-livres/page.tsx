@@ -4,6 +4,7 @@ import { coupsDeCoeurIncludeConfigs } from '@/types/models/coups-de-coeur.model'
 import { CoupsTable } from './coups-table';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildCoupsDeCoeurSearchWhere } from '@/lib/search';
+import { suggestSearches } from '@/lib/search-suggest';
 
 interface PageProps {
     searchParams: Promise<{
@@ -35,10 +36,11 @@ async function getCoupsDeCoeur(page: number, searchTerm: string) {
 
     // Tokenisé : « camus liste » peut se satisfaire d'un auteur dans la liste
     // et d'un mot du titre de la liste — voir buildCoupsDeCoeurSearchWhere.
-    const tokenClauses = buildCoupsDeCoeurSearchWhere(searchTerm);
-    const whereClause: Prisma.CoupsDeCoeurWhereInput = tokenClauses
-        ? { AND: tokenClauses }
-        : {};
+    const whereFor = (term: string): Prisma.CoupsDeCoeurWhereInput => {
+        const tokenClauses = buildCoupsDeCoeurSearchWhere(term);
+        return tokenClauses ? { AND: tokenClauses } : {};
+    };
+    const whereClause = whereFor(searchTerm);
 
     const [items, totalItems] = await Promise.all([
         prisma.coupsDeCoeur.findMany({
@@ -53,7 +55,15 @@ async function getCoupsDeCoeur(page: number, searchTerm: string) {
         prisma.coupsDeCoeur.count({ where: whereClause }),
     ]);
 
+    // Only when the search found nothing — see lib/search-suggest.ts.
+    const searchSuggestions =
+        totalItems === 0 && searchTerm
+            ? await suggestSearches(searchTerm, ['listes', 'books', 'people'], (q) =>
+                prisma.coupsDeCoeur.count({ where: whereFor(q) }))
+            : [];
+
     return {
+        searchSuggestions,
         items,
         totalItems,
         totalPages: Math.ceil(totalItems / itemsPerPage)
@@ -72,7 +82,7 @@ export default async function CoupsDeCoeur({ searchParams }: PageProps) {
     const page = parsePageParam(pageParam);
     const searchTerm = searchParam;
 
-    const { items, totalPages } = await getCoupsDeCoeur(page, searchTerm);
+    const { items, totalPages, searchSuggestions } = await getCoupsDeCoeur(page, searchTerm);
 
     return (
         <div className="space-y-4">
@@ -81,6 +91,7 @@ export default async function CoupsDeCoeur({ searchParams }: PageProps) {
                 initialPage={page}
                 initialSearch={searchTerm}
                 totalPages={totalPages}
+                searchSuggestions={searchSuggestions}
             />
         </div>
     );

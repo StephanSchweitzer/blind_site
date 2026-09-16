@@ -58,6 +58,8 @@ import { formatCalendarDate } from '@/lib/calendar-date';
 import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 export interface ReviewBook {
     id: number;
@@ -101,6 +103,8 @@ interface Props {
     /** Size of the whole queue, regardless of the search. */
     queueTotal: number;
     search: string;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 /** For real instants (escalatedAt…), which belong in the reader's own timezone. */
@@ -163,7 +167,7 @@ interface EscalationTarget {
     audioConflict: boolean;
 }
 
-export default function ReviewClient({ pairs, page, totalPages, total, queueTotal, search }: Props) {
+export default function ReviewClient({ pairs, page, totalPages, total, queueTotal, search, searchSuggestions }: Props) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(search);
     const [pending, setPending] = useState<Pending>(null);
@@ -298,6 +302,13 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
                 <Card>
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
                         Aucun livre de la file ne correspond à « {search} ».
+                        <SearchSuggestions
+                            suggestions={searchSuggestions}
+                            onPick={(term) => {
+                                setSearchTerm(term);
+                                runSearch(term);
+                            }}
+                        />
                     </CardContent>
                 </Card>
             )}

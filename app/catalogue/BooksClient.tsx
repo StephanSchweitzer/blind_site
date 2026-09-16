@@ -7,6 +7,7 @@ import { BookModal } from '@/components/BookModal';
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import { SearchResult } from '@/types/book';
 import type { PublicBook } from '@/lib/books/publicBook';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
 
 const ITEMS_PER_PAGE = 9;
 const DEBOUNCE_DELAY = 300;
@@ -79,6 +80,8 @@ export function BooksClient({
                 filter,
                 page: page.toString(),
                 limit: ITEMS_PER_PAGE.toString(),
+                // « Vouliez-vous dire … ? » when nothing is found — see lib/search-suggest.ts.
+                suggest: '1',
             });
 
             genreIds.forEach(id => params.append('genres', id.toString()));
@@ -205,6 +208,13 @@ export function BooksClient({
                                 ? 'Aucun résultat trouvé pour votre recherche'
                                 : 'Aucun livre disponible'}
                         </p>
+                        {searchTerm && (
+                            <SearchSuggestions
+                                suggestions={searchResults.searchSuggestions}
+                                onPick={handleSearchChange}
+                                className="px-4"
+                            />
+                        )}
                     </div>
                 ) : (
                     <section

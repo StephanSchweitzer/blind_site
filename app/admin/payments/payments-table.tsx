@@ -55,6 +55,8 @@ import {
     type PaymentSortField,
 } from '@/lib/payments/list-params';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 interface PaymentsTableProps {
     initialPayments: Payment[];
@@ -68,6 +70,8 @@ interface PaymentsTableProps {
     initialTotalAmount: string;
     hideSearch?: boolean;
     presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null } | null;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 /**
@@ -163,6 +167,7 @@ export default function PaymentsTable({
                                           initialTotalAmount,
                                           hideSearch = false,
                                           presetClient = null,
+                                          searchSuggestions,
                                       }: PaymentsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -552,6 +557,13 @@ export default function PaymentsTable({
                     {initialPayments.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground text-lg">Aucun paiement trouvé</p>
+                            <SearchSuggestions
+                                suggestions={searchSuggestions}
+                                onPick={(q) => {
+                                    setSearchTerm(q);
+                                    updateUrl({ search: q, page: '1' });
+                                }}
+                            />
                         </div>
                     ) : (
                         <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>

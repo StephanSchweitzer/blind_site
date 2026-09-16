@@ -21,8 +21,24 @@ a demandé. L'ordre des mots n'a aucune importance : « lusson marie » donne le
 même résultat.
 
 En contrepartie, un mot en trop réduit la liste à rien : « bernard morvan
-facture » ne trouve rien si « facture » ne figure nulle part sur la ligne. Si
-une recherche ne rend rien alors qu'elle devrait, **enlevez un mot**.
+facture » ne trouve rien si « facture » ne figure nulle part sur la ligne.
+
+**Quand une recherche ne trouve rien, le site propose une autre recherche.**
+Sous « Aucun résultat », un encadré « Essayez plutôt » peut apparaître :
+
+- « Vouliez-vous dire « bernard morvan » ? » quand un mot semble mal
+  orthographié (« morvant ») et qu'un mot proche existe ;
+- « Chercher sans « facture » » quand la recherche trouve des lignes une fois
+  ce mot retiré.
+
+Chaque proposition indique combien de résultats elle donne : un clic la lance.
+Elle respecte les filtres déjà choisis, et n'apparaît que si elle trouve
+réellement quelque chose. Les noms et titres saisis le jour même ne sont
+proposés qu'à partir du lendemain, mais ils se cherchent tout de suite. Si
+rien n'est proposé, **enlevez un mot** vous-même.
+
+Les listes de personnes, de livres et de factures dans les formulaires font
+de même dans leur menu déroulant.
 
 **L'apostrophe n'a pas d'importance.** Celle du clavier (`'`), celle des
 traitements de texte (`’`), celle des vieilles fiches importées : les trois se
@@ -33,7 +49,10 @@ soit celle qui a été enregistrée dans la fiche.
 trouvent la même personne, que le nom ait été saisi avec un tiret ou sans.
 
 **Les majuscules et les accents ne comptent pas** dans le catalogue et les
-listes de livres : « etranger » trouve « L'Étranger ».
+listes de livres : « etranger » trouve « L'Étranger ». Il en va de même pour
+les noms de personnes, partout où l'on cherche quelqu'un — liste des membres,
+demandes, attributions, factures, paiements : « therese » trouve « Thérèse »,
+« muller » trouve « Müller », « oeuvre » trouverait « Œuvre ».
 
 **Un numéro cherche un numéro.** Tapé seul, il désigne la ligne portant ce
 numéro — la demande n° 1234, la facture n° 412 — et le « # » qu'affichent les

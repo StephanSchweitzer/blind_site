@@ -5,8 +5,10 @@
  *   pnpm tsx scripts/search-normalize.test.ts
  */
 import {
+    foldForSearchKey,
     normalizeApostrophes,
     normalizeSearchText,
+    searchKeyVariants,
     searchVariants,
 } from '../lib/search-normalize';
 import { searchTokens } from '../lib/search';
@@ -58,6 +60,20 @@ check(
 check('les deux : borné à douze', searchVariants("l'abbé-pierre").length, 12);
 check('chaîne vide', searchVariants('   '), []);
 check('tiret seul ne produit pas de motif vide', searchVariants('-'), ['-', ' ']);
+
+// ------------------------------------------------------ clé de recherche
+
+check('accents repliés', foldForSearchKey('Thérèse CLAVIÉ'), 'therese clavie');
+check('tréma', foldForSearchKey('Müller'), 'muller');
+check('ligature œ comme unaccent', foldForSearchKey('Œuvre'), 'oeuvre');
+check('ligature æ', foldForSearchKey('Lætitia'), 'laetitia');
+check('ß et ø translittérés', foldForSearchKey('Straße Østergaard'), 'strasse ostergaard');
+check('ł polonais', foldForSearchKey('Łukasz'), 'lukasz');
+check('apostrophe AZERTY repliée', foldForSearchKey('N´Diaye'), "n'diaye");
+check('espaces réduits', foldForSearchKey('  Noël   Jean '), 'noel jean');
+check('variantes : les apostrophes courbes se confondent', searchKeyVariants("N'Diaye"), ["n'diaye", 'n!diaye']);
+check('variantes : tirets conservés', searchKeyVariants('Jean-Pierre'), ['jean-pierre', 'jean pierre', 'jeanpierre']);
+check('variantes : mot simple', searchKeyVariants('Noël'), ['noel']);
 
 // --------------------------------------------------------------- tokenisation
 

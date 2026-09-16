@@ -58,6 +58,8 @@ import {
     unlinkOrphan,
     type ActionResult,
 } from './actions';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 export type OrphanTab = 'a-traiter' | 'rattaches' | 'ecartes';
 
@@ -120,6 +122,8 @@ interface Props {
     total: number;
     tabCounts: Record<OrphanTab, number>;
     search: string;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 const TAB_LABELS: Record<OrphanTab, string> = {
@@ -433,6 +437,7 @@ export default function OrphansClient({
     total,
     tabCounts,
     search,
+    searchSuggestions,
 }: Props) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(search);
@@ -600,6 +605,13 @@ export default function OrphansClient({
                         {search
                             ? `Aucun dossier ne correspond à « ${search} ».`
                             : 'Aucun dossier dans cet onglet.'}
+                        <SearchSuggestions
+                            suggestions={searchSuggestions}
+                            onPick={(term) => {
+                                setSearchTerm(term);
+                                runSearch(term);
+                            }}
+                        />
                     </CardContent>
                 </Card>
             )}

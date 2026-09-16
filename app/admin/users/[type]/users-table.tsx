@@ -52,6 +52,8 @@ import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/us
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 interface UsersTableProps {
     type: UserType;
@@ -79,6 +81,8 @@ interface UsersTableProps {
     activeCount: number;
     inactiveCount: number;
     currentUserAccessLevel?: string;
+    /** « Vouliez-vous dire … ? », computed only when the search found nobody. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 /**
@@ -118,6 +122,7 @@ export default function UsersTable({
                                        activeCount,
                                        inactiveCount,
                                        currentUserAccessLevel,
+                                       searchSuggestions,
                                    }: UsersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -461,6 +466,13 @@ export default function UsersTable({
                     {initialUsers.length === 0 ? (
                         <div className="py-20 flex flex-col items-center justify-center border border-border rounded-lg bg-card/50">
                             <p className="text-muted-foreground text-lg">Aucun {singular} trouv&#233;</p>
+                            <SearchSuggestions
+                                suggestions={searchSuggestions}
+                                onPick={(q) => {
+                                    setSearchTerm(q);
+                                    updateUrl({ search: q, page: '1' });
+                                }}
+                            />
                         </div>
                     ) : (
                         <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>

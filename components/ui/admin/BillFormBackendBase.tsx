@@ -25,6 +25,11 @@ import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { parisDate } from '@/lib/paris-day';
+import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { VocabularyDomain } from '@/lib/search-suggestion-types';
+
+const PEOPLE_DOMAIN: readonly VocabularyDomain[] = ['people'];
 
 // N3 — required fields top→bottom.
 const FIELD_ORDER = ['client', 'orders', 'issueDate'];
@@ -173,6 +178,19 @@ export function BillFormBackendBase({
         const debounce = setTimeout(searchUsers, 300);
         return () => clearTimeout(debounce);
     }, [userSearch]);
+
+    // « Vouliez-vous dire … ? » once the person search has settled on nobody —
+    // checked through the same route, see useVerifiedSuggestions.
+    const userSuggestions = useVerifiedSuggestions({
+        query: userSearch,
+        active: userSearch.length >= 2 && !isSearchingUsers && users.length === 0,
+        domains: PEOPLE_DOMAIN,
+        fetcher: async (q, signal) => {
+            const res = await fetch(`/api/user/search?q=${encodeURIComponent(q)}`, { signal });
+            return res.ok ? res.json() : [];
+        },
+        resultLimit: 20,
+    });
 
     // When client changes, load their eligible (unbilled) orders
     useEffect(() => {
@@ -336,7 +354,10 @@ export function BillFormBackendBase({
                                 <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                     {isSearchingUsers && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
                                     {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                        <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
+                                        <>
+                                            <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
+                                            <SearchSuggestions suggestions={userSuggestions} onPick={setUserSearch} compact />
+                                        </>
                                     )}
                                     {users.map((user) => (
                                         <button

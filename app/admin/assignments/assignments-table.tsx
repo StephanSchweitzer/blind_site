@@ -43,6 +43,8 @@ import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import type { BookFilter } from '@/lib/books/bookFilter';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -57,6 +59,8 @@ interface AssignmentsTableProps {
     presetClient?: UserSummary | null;
     /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
     filterBook?: BookFilter | null;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 export default function AssignmentsTable({
@@ -71,6 +75,7 @@ export default function AssignmentsTable({
                                              presetReader = null,
                                              presetClient = null,
                                              filterBook = null,
+                                             searchSuggestions,
                                          }: AssignmentsTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -453,6 +458,13 @@ export default function AssignmentsTable({
                                     ? "Aucune attribution trouvée avec ces critères"
                                     : "Aucune attribution"}
                             </p>
+                            <SearchSuggestions
+                                suggestions={searchSuggestions}
+                                onPick={(q) => {
+                                    setSearchTerm(q);
+                                    updateUrl({ search: q, page: '1' });
+                                }}
+                            />
                         </div>
                     ) : (
                         <div>

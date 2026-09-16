@@ -11,6 +11,7 @@ import {
 } from '@/lib/orders/duplicationBlocked';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
+import { suggestSearches } from '@/lib/search-suggest';
 
 interface PageProps {
     searchParams: Promise<{
@@ -33,90 +34,96 @@ async function getOrders(
 ) {
     const ordersPerPage = 10;
 
-    const whereClause: Prisma.OrdersWhereInput = {};
+    // The whole where clause for a given search term — a function so the
+    // « Vouliez-vous dire » check counts another term under the same filters.
+    const whereFor = (searchTerm: string): Prisma.OrdersWhereInput => {
+        const whereClause: Prisma.OrdersWhereInput = {};
 
-    // « Ce livre » — see lib/books/bookFilter.ts.
-    if (bookId) {
-        whereClause.catalogueId = bookId;
-    }
+        // « Ce livre » — see lib/books/bookFilter.ts.
+        if (bookId) {
+            whereClause.catalogueId = bookId;
+        }
 
-    // One definition, shared with /api/orders — the two used to carry separate
-    // copies of this clause and had already drifted apart.
-    if (searchTerm) {
-        const tokenClauses = buildOrderSearchWhere(searchTerm);
-        if (tokenClauses) whereClause.AND = tokenClauses;
-    }
+        // One definition, shared with /api/orders — the two used to carry separate
+        // copies of this clause and had already drifted apart.
+        if (searchTerm) {
+            const tokenClauses = buildOrderSearchWhere(searchTerm);
+            if (tokenClauses) whereClause.AND = tokenClauses;
+        }
 
-    if (filter === 'needsReturn') {
-        whereClause.AND = [
-            ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
-            { lentPhysicalBook: true },
-            { closureDate: null },
-        ];
-    } else if (filter === 'late') {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        whereClause.AND = [
-            ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
-            { requestReceivedDate: { lt: thirtyDaysAgo } },
-            { closureDate: null },
-        ];
-    }
+        if (filter === 'needsReturn') {
+            whereClause.AND = [
+                ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
+                { lentPhysicalBook: true },
+                { closureDate: null },
+            ];
+        } else if (filter === 'late') {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            whereClause.AND = [
+                ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
+                { requestReceivedDate: { lt: thirtyDaysAgo } },
+                { closureDate: null },
+            ];
+        }
 
-    if (statusId) {
-        whereClause.statusId = statusId;
-    }
+        if (statusId) {
+            whereClause.statusId = statusId;
+        }
 
-    if (billingStatus === 'PAID') {
-        whereClause.bill = { is: { state: BillingStatus.PAID } };
-    } else if (billingStatus && billingStatus !== 'all') {
-        whereClause.billingStatus = billingStatus as OrderBillingStatus;
-    }
+        if (billingStatus === 'PAID') {
+            whereClause.bill = { is: { state: BillingStatus.PAID } };
+        } else if (billingStatus && billingStatus !== 'all') {
+            whereClause.billingStatus = billingStatus as OrderBillingStatus;
+        }
 
-    if (isDuplication === 'true') {
-        whereClause.isDuplication = true;
-    } else if (isDuplication === 'false') {
-        whereClause.isDuplication = false;
-    } else if (isDuplication === 'blocked') {
-        // Duplications that can't start yet — the book is still being recorded.
-        Object.assign(whereClause, blockedDuplicationWhere);
-    }
+        if (isDuplication === 'true') {
+            whereClause.isDuplication = true;
+        } else if (isDuplication === 'false') {
+            whereClause.isDuplication = false;
+        } else if (isDuplication === 'blocked') {
+            // Duplications that can't start yet — the book is still being recorded.
+            Object.assign(whereClause, blockedDuplicationWhere);
+        }
 
-    if (retard === 'true') {
-        const existingConditions = Array.isArray(whereClause.AND)
-            ? whereClause.AND
-            : whereClause.AND
-                ? [whereClause.AND]
-                : [];
+        if (retard === 'true') {
+            const existingConditions = Array.isArray(whereClause.AND)
+                ? whereClause.AND
+                : whereClause.AND
+                    ? [whereClause.AND]
+                    : [];
 
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+            const threeMonthsAgo = new Date();
+            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-        whereClause.AND = [
-            ...existingConditions,
-            { requestReceivedDate: { lt: threeMonthsAgo } },
-            { statusId: { not: 3 } },
-        ];
-    } else if (retard === 'false') {
-        const existingConditions = Array.isArray(whereClause.AND)
-            ? whereClause.AND
-            : whereClause.AND
-                ? [whereClause.AND]
-                : [];
+            whereClause.AND = [
+                ...existingConditions,
+                { requestReceivedDate: { lt: threeMonthsAgo } },
+                { statusId: { not: 3 } },
+            ];
+        } else if (retard === 'false') {
+            const existingConditions = Array.isArray(whereClause.AND)
+                ? whereClause.AND
+                : whereClause.AND
+                    ? [whereClause.AND]
+                    : [];
 
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+            const threeMonthsAgo = new Date();
+            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-        whereClause.AND = [
-            ...existingConditions,
-            {
-                OR: [
-                    { requestReceivedDate: { gte: threeMonthsAgo } },
-                    { statusId: 3 },
-                ]
-            }
-        ];
-    }
+            whereClause.AND = [
+                ...existingConditions,
+                {
+                    OR: [
+                        { requestReceivedDate: { gte: threeMonthsAgo } },
+                        { statusId: 3 },
+                    ]
+                }
+            ];
+        }
+        return whereClause;
+    };
+    const whereClause = whereFor(searchTerm);
 
     try {
         const [orders, totalOrders, statuses] = await Promise.all([
@@ -139,6 +146,13 @@ async function getOrders(
             }),
         ]);
 
+        // Only when the search found nothing — see lib/search-suggest.ts.
+        const searchSuggestions =
+            totalOrders === 0 && searchTerm
+                ? await suggestSearches(searchTerm, ['people', 'books'], (q) =>
+                    prisma.orders.count({ where: whereFor(q) }))
+                : [];
+
         // Derived on read, one query for the page — see lib/orders/duplicationBlocked.ts.
         const blockedDuplications = await findBlockedDuplications(orders);
 
@@ -148,6 +162,7 @@ async function getOrders(
             totalPages: Math.ceil(totalOrders / ordersPerPage),
             availableStatuses: statuses,
             blockedDuplications: serializeBlockedDuplications(blockedDuplications),
+            searchSuggestions,
         };
     } catch (error) {
         console.error('Error fetching orders:', error);
@@ -173,9 +188,9 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     const retard = Array.isArray(params.retard) ? params.retard[0] : params.retard;
     const filterBook = await resolveBookFilter(params.bookId);
 
-    let orders, totalOrders, totalPages, availableStatuses, blockedDuplications;
+    let orders, totalOrders, totalPages, availableStatuses, blockedDuplications, searchSuggestions;
     try {
-        ({ orders, totalOrders, totalPages, availableStatuses, blockedDuplications } = await getOrders(
+        ({ orders, totalOrders, totalPages, availableStatuses, blockedDuplications, searchSuggestions } = await getOrders(
             page,
             searchTerm,
             filter,
@@ -210,6 +225,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                 initialTotalOrders={totalOrders!}
                 blockedDuplications={blockedDuplications!}
                 filterBook={filterBook}
+                searchSuggestions={searchSuggestions}
             />
         </div>
     );

@@ -5,6 +5,7 @@ import AssignmentsTable from './assignments-table';
 import { notFound } from 'next/navigation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
+import { suggestSearches } from '@/lib/search-suggest';
 
 interface PageProps {
     searchParams: Promise<{
@@ -23,25 +24,30 @@ async function getAssignments(
 ) {
     const assignmentsPerPage = 10;
 
-    const whereClause: Prisma.AssignmentWhereInput = {};
+    // The whole where clause for a given search term — a function so the
+    // « Vouliez-vous dire » check counts another term under the same filters.
+    const whereFor = (searchTerm: string): Prisma.AssignmentWhereInput => {
+        const whereClause: Prisma.AssignmentWhereInput = {};
 
-    // « Ce livre » — see lib/books/bookFilter.ts.
-    if (bookId) {
-        whereClause.catalogueId = bookId;
-    }
+        // « Ce livre » — see lib/books/bookFilter.ts.
+        if (bookId) {
+            whereClause.catalogueId = bookId;
+        }
 
-    // Tokens AND-ed across the lecteur, the auditeur, the book and the number,
-    // so « morvan instructions » finds the attribution joining that person to
-    // that title. See buildAssignmentSearchWhere.
-    if (searchTerm) {
-        const tokenClauses = buildAssignmentSearchWhere(searchTerm);
-        if (tokenClauses) whereClause.AND = tokenClauses;
-    }
+        // Tokens AND-ed across the lecteur, the auditeur, the book and the number,
+        // so « morvan instructions » finds the attribution joining that person to
+        // that title. See buildAssignmentSearchWhere.
+        if (searchTerm) {
+            const tokenClauses = buildAssignmentSearchWhere(searchTerm);
+            if (tokenClauses) whereClause.AND = tokenClauses;
+        }
 
-    if (statusId) {
-        whereClause.statusId = statusId;
-    }
-
+        if (statusId) {
+            whereClause.statusId = statusId;
+        }
+        return whereClause;
+    };
+    const whereClause = whereFor(searchTerm);
     try {
         const [assignments, totalAssignments, statuses] = await Promise.all([
             prisma.assignment.findMany({
@@ -99,7 +105,15 @@ async function getAssignments(
             }),
         ]);
 
+        // Only when the search found nothing — see lib/search-suggest.ts.
+        const searchSuggestions =
+            totalAssignments === 0 && searchTerm
+                ? await suggestSearches(searchTerm, ['people', 'books'], (q) =>
+                    prisma.assignment.count({ where: whereFor(q) }))
+                : [];
+
         return {
+            searchSuggestions,
             assignments,
             totalAssignments,
             totalPages: Math.ceil(totalAssignments / assignmentsPerPage),
@@ -121,9 +135,9 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
         : undefined;
     const filterBook = await resolveBookFilter(params.bookId);
 
-    let assignments, totalAssignments, totalPages, availableStatuses;
+    let assignments, totalAssignments, totalPages, availableStatuses, searchSuggestions;
     try {
-        ({ assignments, totalAssignments, totalPages, availableStatuses } = await getAssignments(
+        ({ assignments, totalAssignments, totalPages, availableStatuses, searchSuggestions } = await getAssignments(
             page,
             searchTerm,
             statusId,
@@ -171,6 +185,7 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
                 availableStatuses={availableStatuses!}
                 initialTotalAssignments={totalAssignments!}
                 filterBook={filterBook}
+                searchSuggestions={searchSuggestions}
             />
         </div>
     );

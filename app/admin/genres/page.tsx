@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { GenresTable } from './genres-table';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildGenreSearchWhere } from '@/lib/search';
+import { suggestSearches } from '@/lib/search-suggest';
 
 interface PageProps {
     searchParams: Promise<{
@@ -18,8 +19,11 @@ async function getGenres(page: number, searchTerm: string) {
 
     // Tokenisé et insensible aux apostrophes comme partout ailleurs —
     // voir buildGenreSearchWhere.
-    const tokenClauses = buildGenreSearchWhere(searchTerm);
-    const whereClause: Prisma.GenreWhereInput = tokenClauses ? { AND: tokenClauses } : {};
+    const whereFor = (term: string): Prisma.GenreWhereInput => {
+        const tokenClauses = buildGenreSearchWhere(term);
+        return tokenClauses ? { AND: tokenClauses } : {};
+    };
+    const whereClause = whereFor(searchTerm);
 
     const [genres, totalGenres] = await Promise.all([
         prisma.genre.findMany({
@@ -34,7 +38,14 @@ async function getGenres(page: number, searchTerm: string) {
         prisma.genre.count({ where: whereClause }),
     ]);
 
+    // Only when the search found nothing — see lib/search-suggest.ts.
+    const searchSuggestions =
+        totalGenres === 0 && searchTerm
+            ? await suggestSearches(searchTerm, ['genres'], (q) => prisma.genre.count({ where: whereFor(q) }))
+            : [];
+
     return {
+        searchSuggestions,
         genres,
         totalGenres,
         totalPages: Math.ceil(totalGenres / genresPerPage)
@@ -52,7 +63,7 @@ export default async function Genres({ searchParams }: PageProps) {
     const page = parsePageParam(pageParam);
     const searchTerm = searchParam;
 
-    const { genres, totalPages } = await getGenres(page, searchTerm);
+    const { genres, totalPages, searchSuggestions } = await getGenres(page, searchTerm);
 
     return (
         <div className="space-y-4">
@@ -64,6 +75,7 @@ export default async function Genres({ searchParams }: PageProps) {
                 initialPage={page}
                 initialSearch={searchTerm}
                 totalPages={totalPages}
+                searchSuggestions={searchSuggestions}
             />
         </div>
     );

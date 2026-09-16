@@ -22,6 +22,11 @@ import { BillPDFButton } from './BillPDFButton';
 import { CopyableId } from './CopyableId';
 import { BillHistory, BillEventDTO } from './BillHistory';
 import { parisDate } from '@/lib/paris-day';
+import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { VocabularyDomain } from '@/lib/search-suggestion-types';
+
+const BOOK_DOMAINS: readonly VocabularyDomain[] = ['books'];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -238,6 +243,23 @@ export function EditBillModal({
         }, 350);
         return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
     }, [showAddPanel, orderSearch, orderPage, bill, loadUnbilledOrders]);
+
+    // « Vouliez-vous dire … ? » when the demande search finds nothing — checked
+    // through the same route and filters (this client, non facturées).
+    const orderSuggestions = useVerifiedSuggestions({
+        query: orderSearch,
+        active: showAddPanel && !!bill && !!orderSearch.trim() && !isLoadingOrders && unbilledOrders.length === 0,
+        domains: BOOK_DOMAINS,
+        fetcher: async (q, signal) => {
+            if (!bill) return [];
+            const params = new URLSearchParams({ unbilled: 'true', aveugleId: String(bill.client.id), search: q });
+            const res = await fetch(`/api/orders?${params}`, { signal });
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data.orders ?? [];
+        },
+        resultLimit: 10,
+    });
 
     // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -885,7 +907,16 @@ export function EditBillModal({
                                                     <Loader2 className="h-4 w-4 animate-spin" /> Chargement…
                                                 </div>
                                             ) : unbilledOrders.length === 0 ? (
-                                                <div className="text-muted-foreground text-sm italic py-2">Aucune demande disponible</div>
+                                                <div>
+                                                    <div className="text-muted-foreground text-sm italic py-2">Aucune demande disponible</div>
+                                                    {orderSearch.trim() && (
+                                                        <SearchSuggestions
+                                                            suggestions={orderSuggestions}
+                                                            onPick={(q) => { setOrderSearch(q); setOrderPage(1); }}
+                                                            compact
+                                                        />
+                                                    )}
+                                                </div>
                                             ) : (
                                                 <div className="divide-y divide-border max-h-[200px] overflow-y-auto">
                                                     {unbilledOrders.map((o) => (

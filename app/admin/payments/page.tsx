@@ -10,6 +10,7 @@ import {
     buildPaymentListOrderBy,
     type PaymentListParams,
 } from '@/lib/payments/list-query';
+import { suggestSearches } from '@/lib/search-suggest';
 
 interface PageProps {
     searchParams: Promise<{
@@ -46,7 +47,16 @@ async function getPayments(page: number, params: PaymentListParams) {
             prisma.payment.aggregate({ where: whereClause, _sum: { amount: true } }),
         ]);
 
+        // Only when the search found nothing — see lib/search-suggest.ts. The
+        // count reuses every other filter of the list, with `q` as the search.
+        const searchSuggestions =
+            totalPayments === 0 && params.search
+                ? await suggestSearches(params.search, ['people'], (q) =>
+                    prisma.payment.count({ where: buildPaymentListWhere({ ...params, search: q }) }))
+                : [];
+
         return {
+            searchSuggestions,
             payments,
             totalPayments,
             totalAmount: (totals._sum.amount ?? new Prisma.Decimal(0)).toString(),
@@ -76,7 +86,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         notFound();
     }
 
-    const { payments, totalPayments, totalAmount, totalPages, availableTypes, availableMethods } = data;
+    const { payments, totalPayments, totalAmount, totalPages, availableTypes, availableMethods, searchSuggestions } = data;
 
     const serializedPayments = payments.map(payment => ({
         ...payment,
@@ -100,6 +110,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
                 availableMethods={availableMethods}
                 initialTotalPayments={totalPayments}
                 initialTotalAmount={totalAmount}
+                searchSuggestions={searchSuggestions}
             />
         </div>
     );

@@ -1,5 +1,10 @@
 import { Prisma } from '@prisma/client';
-import { foldForLabelMatch, normalizeSearchText, searchVariants } from '@/lib/search-normalize';
+import {
+    foldForLabelMatch,
+    normalizeSearchText,
+    searchKeyVariants,
+    searchVariants,
+} from '@/lib/search-normalize';
 import { newsTypeLabels } from '@/types/news';
 
 /**
@@ -34,34 +39,36 @@ export function fieldVariants<W>(token: string, build: (value: string) => W): W[
 }
 
 /**
- * The User columns a single token may match. Deliberately one token: callers
+ * The User clause a single token must satisfy. Deliberately one token: callers
  * that search across MORE than a person (a demande's auditeur *and* its book)
  * do their own token loop and hand each token in here, so a name and a title
  * can satisfy different tokens of the same query.
  *
- * Spelled out over `fieldVariants` so « Jean-Pierre » is found by « Jean Pierre »
- * and « N'Diaye » by « N’Diaye » — 77 of the 858 people on file carry a
- * hyphenated name, and nobody remembers which half took the hyphen.
+ * Matched against `searchKey` — prénom, nom, name and email in one column,
+ * lower-cased and accent-folded by a trigger — rather than the four columns
+ * themselves, because Prisma compares those byte for byte: « Muller » never
+ * found « Müller », nor « Noel » « Noël ». The token is folded the same way on
+ * this side (see foldForSearchKey), so the comparison is a plain, case-
+ * sensitive `contains`.
+ *
+ * `searchKeyVariants` keeps the hyphen expansion, so « Jean-Pierre » is still
+ * found by « Jean Pierre » — 77 of the 858 people on file carry a hyphenated
+ * name, and nobody remembers which half took the hyphen.
  */
 export function userNameFieldsForToken(token: string): Prisma.UserWhereInput {
     return {
-        OR: [
-            ...fieldVariants(token, (v) => ({ firstName: contains(v) })),
-            ...fieldVariants(token, (v) => ({ lastName: contains(v) })),
-            ...fieldVariants(token, (v) => ({ name: contains(v) })),
-            ...fieldVariants(token, (v) => ({ email: contains(v) })),
-        ],
+        OR: searchKeyVariants(token).map((v) => ({ searchKey: { contains: v } })),
     };
 }
 
 /**
- * Build a case-insensitive, multi-token name search over a User relation.
+ * Build a case- and accent-insensitive, multi-token name search over a User relation.
  *
  * The search is split on whitespace and the tokens are AND-ed together, so a
  * full-name query like "steffy ref" matches firstName="Steffy" + lastName="Ref"
  * — which a single `contains "steffy ref"` never could, because no one column
- * holds both words. Each token must match at least one of firstName / lastName /
- * name / email.
+ * holds both words. Each token must match somewhere in firstName / lastName /
+ * name / email (through `searchKey`).
  *
  * Returns null when the term has no usable tokens (empty / whitespace only), so
  * callers can skip adding a person clause entirely.

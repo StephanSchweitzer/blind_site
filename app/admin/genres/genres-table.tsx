@@ -19,6 +19,8 @@ import { AddGenreFormBackend, EditGenreFormBackend } from '@/admin/GenreFormBack
 import { CopyableId } from '@/admin/CopyableId';
 import type { Genre } from '@/types';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 export interface GenreRow extends Genre {
     /** Books already carrying this genre — surfaced in the edit dialogue. */
@@ -30,9 +32,11 @@ interface GenresTableProps {
     initialPage: number;
     initialSearch: string;
     totalPages: number;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
-export function GenresTable({ initialGenres, initialSearch, totalPages }: GenresTableProps) {
+export function GenresTable({ initialGenres, initialSearch, totalPages, searchSuggestions }: GenresTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [search, setSearch] = useState(initialSearch);
@@ -119,6 +123,13 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
                             </TableRow>
                         </TableHeader>
                         <TableBody>
+                            {initialGenres.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                                        Aucun genre trouvé
+                                    </TableCell>
+                                </TableRow>
+                            )}
                             {initialGenres.map((genre) => (
                                 <TableRow
                                     key={genre.id}
@@ -146,6 +157,9 @@ export function GenresTable({ initialGenres, initialSearch, totalPages }: Genres
                         </TableBody>
                     </Table>
                 </div>
+                {initialGenres.length === 0 && (
+                    <SearchSuggestions suggestions={searchSuggestions} onPick={handleSearch} />
+                )}
 
                 <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
                     {Array.from({ length: totalPages }, (_, index) => (

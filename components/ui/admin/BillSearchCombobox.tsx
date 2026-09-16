@@ -5,6 +5,10 @@ import { EntitySearchCombobox } from '@/admin/EntitySearchCombobox';
 import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import type { VocabularyDomain } from '@/lib/search-suggestion-types';
+
+/** Where « Vouliez-vous dire … ? » looks when nothing is found. */
+const SUGGESTION_DOMAINS: readonly VocabularyDomain[] = ['people', 'books'];
 
 export interface BillSearchResult {
     id: number;
@@ -71,6 +75,7 @@ export function BillSearchCombobox<T extends BillSearchResult>({
             renderItem={(bill) => <span>{billLabel(bill)}</span>}
             resultLimit={BILL_RESULT_LIMIT}
             resultNoun="factures"
+            suggestionDomains={SUGGESTION_DOMAINS}
             searchOnEmpty
             placeholder={placeholder}
             searchPlaceholder="N° de facture, auditeur, livre, auteur, ou référence de paiement..."

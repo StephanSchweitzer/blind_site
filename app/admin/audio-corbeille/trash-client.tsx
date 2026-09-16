@@ -22,6 +22,8 @@ import { toast } from '@/hooks/use-toast';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { formatBytes, formatDate } from '../audio-orphelins/format';
 import { restoreTrashedGroup, restoreTrashedTrack, type ActionResult } from './actions';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 export type TrashTab = 'a-purger' | 'sans-fiche' | 'restaurees' | 'purgees';
 
@@ -69,6 +71,8 @@ interface Props {
     tabCounts: Record<TrashTab, number>;
     retentionDays: number;
     search: string;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 const TAB_LABELS: Record<TrashTab, string> = {
@@ -141,6 +145,7 @@ export default function TrashClient({
     tabCounts,
     retentionDays,
     search,
+    searchSuggestions,
 }: Props) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(search);
@@ -285,6 +290,13 @@ export default function TrashClient({
                         {search
                             ? `Aucun fichier ne correspond à « ${search} ».`
                             : 'Aucun fichier dans cet onglet.'}
+                        <SearchSuggestions
+                            suggestions={searchSuggestions}
+                            onPick={(term) => {
+                                setSearchTerm(term);
+                                runSearch(term);
+                            }}
+                        />
                     </CardContent>
                 </Card>
             )}

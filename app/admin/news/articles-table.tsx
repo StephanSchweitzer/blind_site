@@ -28,6 +28,8 @@ import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { parsePageParam } from '@/lib/pagination';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 type Article = {
     id: number;
@@ -44,13 +46,16 @@ interface ArticlesTableProps {
     initialPage: number;
     initialSearch: string;
     totalPages: number;
+    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
+    searchSuggestions?: SearchSuggestion[];
 }
 
 export function ArticlesTable({
                                   initialArticles,
                                   initialPage = 1,
                                   initialSearch = '',
-                                  totalPages = 1
+                                  totalPages = 1,
+                                  searchSuggestions,
                               }: ArticlesTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -324,6 +329,7 @@ export function ArticlesTable({
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                                         {search ? 'Aucun article trouvé pour cette recherche' : 'Aucun article trouvé'}
+                                        <SearchSuggestions suggestions={searchSuggestions} onPick={setSearch} />
                                     </TableCell>
                                 </TableRow>
                             ) : (

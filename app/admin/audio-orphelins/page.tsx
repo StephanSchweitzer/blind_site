@@ -10,6 +10,7 @@ import OrphansClient, {
 } from './orphans-client';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildOrphanFolderSearchWhere } from '@/lib/search';
+import { suggestSearches } from '@/lib/search-suggest';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -121,11 +122,11 @@ export default async function AudioOrphansPage({ searchParams }: PageProps) {
     const page = parsePageParam(one('page'));
     const q = one('q');
 
-    const searchWhere = buildSearchWhere(q);
-    const where: Prisma.OrphanAudioFolderWhereInput = {
+    const whereFor = (term: string): Prisma.OrphanAudioFolderWhereInput => ({
         ...TAB_WHERE[tab],
-        ...(searchWhere ?? {}),
-    };
+        ...(buildSearchWhere(term) ?? {}),
+    });
+    const where = whereFor(q);
 
     const [rows, total, counts] = await Promise.all([
         prisma.orphanAudioFolder.findMany({
@@ -214,8 +215,15 @@ export default async function AudioOrphansPage({ searchParams }: PageProps) {
         };
     });
 
+    // Only when the search found nothing in this tab — see lib/search-suggest.ts.
+    const searchSuggestions =
+        total === 0 && q
+            ? await suggestSearches(q, ['orphans'], (term) => prisma.orphanAudioFolder.count({ where: whereFor(term) }))
+            : [];
+
     return (
         <OrphansClient
+            searchSuggestions={searchSuggestions}
             orphans={orphans}
             tab={tab}
             page={page}
