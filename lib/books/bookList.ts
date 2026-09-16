@@ -7,6 +7,7 @@ import { audioMissingWhere, audioPresentWhere, AUDIO_MISSING_STATUSES } from '@/
 import { AudioFilter, buildBookScopeWhere } from '@/lib/books/searchWhere';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { bookFieldsForToken, searchTokens } from '@/lib/search';
+import { searchVariants } from '@/lib/search-normalize';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 import { isParisDay, parisDayStartUtc } from '@/lib/paris-day';
 
@@ -119,9 +120,39 @@ function buildRawBookWhere({
     // remaining params (genres, skip, limit) are pushed after this loop and
     // numbered from wherever it left off.
     for (const token of searchTokens(search)) {
-        paramCount++;
-        params.push(`%${token.toLowerCase()}%`);
-        const p = `$${paramCount}`;
+        // One placeholder per typographic spelling of the token.
+        //
+        // `immutable_unaccent` already folds « ’ » and « ‘ » onto « ' » — which
+        // is the only reason the catalogue ever appeared to handle apostrophes
+        // — but it leaves « ´ » and « ` » alone, and it cannot turn
+        // « Jean-Pierre » into « Jean Pierre ». Expanding here rather than
+        // leaning on unaccent also keeps this engine looking for exactly the
+        // set `fieldVariants` looks for on the Prisma side: when the two
+        // disagree the list and the count printed beside it disagree with it,
+        // which is how « etranger » once listed 684 books above a count of 5.
+        const placeholders = searchVariants(token).map((variant) => {
+            paramCount++;
+            params.push(`%${variant.toLowerCase()}%`);
+            return `$${paramCount}`;
+        });
+        if (placeholders.length === 0) continue;
+
+        /**
+         * `expr` matches ANY spelling of this token. Parenthesised by every
+         * caller that sits next to an AND — OR binds loosest in SQL.
+         *
+         * `unaccent: false` is for the columns the search deliberately does not
+         * unaccent (isbn carries no accents; description is too large to fold
+         * on every row).
+         */
+        const anyVariant = (expr: string, unaccent = true) =>
+            placeholders
+                .map((ph) =>
+                    unaccent
+                        ? `LOWER(immutable_unaccent(${expr})) LIKE LOWER(immutable_unaccent(${ph}))`
+                        : `LOWER(${expr}) LIKE LOWER(${ph})`,
+                )
+                .join(' OR ');
 
         // Staff look books up by the id shown in « Modifier le livre #42 ».
         // Inlined rather than parameterised for the same reason the booleans
@@ -130,29 +161,26 @@ function buildRawBookWhere({
         const tokenId = parseEntityId(token);
         const idClause = tokenId !== null ? `b.id = ${tokenId} OR ` : '';
 
+        const genreExists = `
+                EXISTS (
+                    SELECT 1 FROM "BookGenre" bg
+                    JOIN "Genre" g ON bg."genreId" = g.id
+                    WHERE bg."bookId" = b.id AND (${anyVariant('g.name')})
+                )`;
+
         if (filter === 'all') {
             whereConditions.push(`(
                 ${idClause}
-                LOWER(immutable_unaccent(b.title)) LIKE LOWER(immutable_unaccent(${p})) OR
-                LOWER(immutable_unaccent(COALESCE(b.subtitle, ''))) LIKE LOWER(immutable_unaccent(${p})) OR
-                LOWER(immutable_unaccent(b.author)) LIKE LOWER(immutable_unaccent(${p})) OR
-                LOWER(immutable_unaccent(COALESCE(b.publisher, ''))) LIKE LOWER(immutable_unaccent(${p})) OR
-                (b.isbn IS NOT NULL AND LOWER(b.isbn) LIKE LOWER(${p})) OR
-                (b.description IS NOT NULL AND LOWER(b.description) LIKE LOWER(${p})) OR
-                EXISTS (
-                    SELECT 1 FROM "BookGenre" bg
-                    JOIN "Genre" g ON bg."genreId" = g.id
-                    WHERE bg."bookId" = b.id AND LOWER(immutable_unaccent(g.name)) LIKE LOWER(immutable_unaccent(${p}))
-                )
+                ${anyVariant('b.title')} OR
+                ${anyVariant("COALESCE(b.subtitle, '')")} OR
+                ${anyVariant('b.author')} OR
+                ${anyVariant("COALESCE(b.publisher, '')")} OR
+                (b.isbn IS NOT NULL AND (${anyVariant('b.isbn', false)})) OR
+                (b.description IS NOT NULL AND (${anyVariant('b.description', false)})) OR
+                ${genreExists}
             )`);
         } else if (filter === 'genre') {
-            whereConditions.push(`
-                EXISTS (
-                    SELECT 1 FROM "BookGenre" bg
-                    JOIN "Genre" g ON bg."genreId" = g.id
-                    WHERE bg."bookId" = b.id AND LOWER(immutable_unaccent(g.name)) LIKE LOWER(immutable_unaccent(${p}))
-                )
-            `);
+            whereConditions.push(genreExists);
         } else {
             const columnMap: Record<string, string> = {
                 'title': 'b.title',
@@ -166,12 +194,12 @@ function buildRawBookWhere({
 
             // Special handling for description due to size
             if (filter === 'description') {
-                whereConditions.push(`LOWER(b.description) LIKE LOWER(${p})`);
+                whereConditions.push(`(${anyVariant('b.description', false)})`);
             } else if (filter === 'isbn') {
                 // ISBN carries no accents; a plain LIKE is enough (and matches with/without hyphens).
-                whereConditions.push(`(b.isbn IS NOT NULL AND LOWER(b.isbn) LIKE LOWER(${p}))`);
+                whereConditions.push(`(b.isbn IS NOT NULL AND (${anyVariant('b.isbn', false)}))`);
             } else {
-                whereConditions.push(`LOWER(immutable_unaccent(COALESCE(${column}, ''))) LIKE LOWER(immutable_unaccent(${p}))`);
+                whereConditions.push(`(${anyVariant(`COALESCE(${column}, '')`)})`);
             }
         }
     }

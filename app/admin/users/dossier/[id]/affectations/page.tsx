@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { buildUserNameSearch } from '@/lib/search';
+import { buildAssignmentSearchWhere } from '@/lib/search';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 
 // ⚠️ ADJUST this import to wherever your assignments-table.tsx actually lives.
@@ -56,22 +56,12 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
         ? { readerHistory: { some: { readerId: userId } } }
         : { order: { is: { aveugleId: userId } } };
 
-    if (searchTerm) {
-        // Same tokenized search as /admin/assignments: matches firstName/lastName
-        // too, not just the legacy `name` column.
-        const readerSearch = buildUserNameSearch(searchTerm);
-        whereClause.OR = [
-            ...(readerSearch ? [{ readerHistory: { some: { reader: readerSearch } } }] : []),
-            {
-                catalogue: {
-                    OR: [
-                        { title: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                        { author: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                    ],
-                },
-            },
-        ];
-    }
+    // Exactement le moteur de /admin/assignments, et non plus une copie réduite :
+    // un mot pouvait y désigner le lecteur OU le livre, mais jamais l'un et
+    // l'autre dans la même saisie, et le sous-titre comme le numéro de demande
+    // en étaient absents. Voir buildAssignmentSearchWhere.
+    const tokenClauses = buildAssignmentSearchWhere(searchTerm);
+    if (tokenClauses) whereClause.AND = tokenClauses;
 
     if (statusId) whereClause.statusId = statusId;
     if (filterBook) whereClause.catalogueId = filterBook.id;

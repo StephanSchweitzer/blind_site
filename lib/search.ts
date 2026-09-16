@@ -1,4 +1,6 @@
 import { Prisma } from '@prisma/client';
+import { foldForLabelMatch, normalizeSearchText, searchVariants } from '@/lib/search-normalize';
+import { newsTypeLabels } from '@/types/news';
 
 /**
  * Split a query into search tokens.
@@ -6,13 +8,29 @@ import { Prisma } from '@prisma/client';
  * A leading « # » is dropped from each token, not just from the head of the
  * query, so « morvan #25485 » works as well as « #25485 » does — see
  * `lib/search-query.ts` for why the « # » has to go before an id is parsed.
+ *
+ * Normalized first so that a non-breaking space pasted out of Word splits the
+ * query the way a typed space does, and so every token reaches the field
+ * builders in one canonical spelling — see `lib/search-normalize.ts`.
  */
 export function searchTokens(searchTerm: string): string[] {
-    return searchTerm
-        .trim()
+    return normalizeSearchText(searchTerm)
         .split(/\s+/)
         .map((token) => token.replace(/^#+/, ''))
         .filter(Boolean);
+}
+
+/**
+ * One clause per typographic spelling of `token`, for a single field.
+ *
+ * Prisma compares raw bytes: there is no `unaccent(col)` to wrap the column in,
+ * so the only way to match a stored « d’éternité » from a typed « d'éternité »
+ * is to look for both. `searchVariants` returns exactly one string for a token
+ * with no apostrophe and no hyphen — almost every token — so the ordinary query
+ * builds the same single clause it always did.
+ */
+export function fieldVariants<W>(token: string, build: (value: string) => W): W[] {
+    return searchVariants(token).map(build);
 }
 
 /**
@@ -20,15 +38,18 @@ export function searchTokens(searchTerm: string): string[] {
  * that search across MORE than a person (a demande's auditeur *and* its book)
  * do their own token loop and hand each token in here, so a name and a title
  * can satisfy different tokens of the same query.
+ *
+ * Spelled out over `fieldVariants` so « Jean-Pierre » is found by « Jean Pierre »
+ * and « N'Diaye » by « N’Diaye » — 77 of the 858 people on file carry a
+ * hyphenated name, and nobody remembers which half took the hyphen.
  */
 export function userNameFieldsForToken(token: string): Prisma.UserWhereInput {
-    const mode = Prisma.QueryMode.insensitive;
     return {
         OR: [
-            { firstName: { contains: token, mode } },
-            { lastName: { contains: token, mode } },
-            { name: { contains: token, mode } },
-            { email: { contains: token, mode } },
+            ...fieldVariants(token, (v) => ({ firstName: contains(v) })),
+            ...fieldVariants(token, (v) => ({ lastName: contains(v) })),
+            ...fieldVariants(token, (v) => ({ name: contains(v) })),
+            ...fieldVariants(token, (v) => ({ email: contains(v) })),
         ],
     };
 }
@@ -90,6 +111,20 @@ export function buildTokenizedSearch<W>(
 }
 
 /**
+ * The AND clauses a where object already carries, as an array.
+ *
+ * Prisma types `AND` as a clause, an array of clauses, or absent, so every
+ * filter wanting to add one has to handle all three — and the inline spelling
+ * of that got copied around until somewhere got it wrong. The demandes tab of a
+ * dossier ASSIGNED `AND` for « à rendre » and « en retard », which silently
+ * discarded whatever the search had put there.
+ */
+export function andClauses<W>(where: { AND?: W | W[] | undefined }): W[] {
+    if (!where.AND) return [];
+    return Array.isArray(where.AND) ? where.AND : [where.AND];
+}
+
+/**
  * Per-list field maps.
  *
  * These live here, not in the routes, because every one of these lists is
@@ -102,10 +137,19 @@ export function buildTokenizedSearch<W>(
  * merge into an existing AND).
  */
 
-const contains = (token: string) => ({
-    contains: token,
+/**
+ * `contains`, case-insensitive — the comparison every text search here uses.
+ *
+ * Exported so a list that has to build its own field map spells the comparison
+ * the way the shared builders do; pair it with `fieldVariants`, never on its
+ * own, or that list is back to matching raw bytes.
+ */
+export const containsInsensitive = (value: string) => ({
+    contains: value,
     mode: Prisma.QueryMode.insensitive,
 });
+
+const contains = containsInsensitive;
 
 /**
  * A token read as a row number, or null.
@@ -123,11 +167,18 @@ function tokenAsId(token: string): number | null {
     return id;
 }
 
-/** Title / sous-titre / auteur of a Book, for one token. */
+/**
+ * Title / sous-titre / auteur of a Book, for one token.
+ *
+ * This is the set that made staff distrust the demandes and attributions bars:
+ * « L'étranger » typed with a straight apostrophe never reached a title stored
+ * with a curly one. `fieldVariants` is what closes that, here and everywhere
+ * else a book is searched through Prisma.
+ */
 const bookTextFieldsForToken = (token: string) => [
-    { title: contains(token) },
-    { subtitle: contains(token) },
-    { author: contains(token) },
+    ...fieldVariants(token, (v) => ({ title: contains(v) })),
+    ...fieldVariants(token, (v) => ({ subtitle: contains(v) })),
+    ...fieldVariants(token, (v) => ({ author: contains(v) })),
 ];
 
 /** Demandes: the auditeur, the book, and the demande's own number. */
@@ -178,7 +229,7 @@ export function buildBillSearchWhere(searchTerm: string): Prisma.BillWhereInput[
         const clauses: Prisma.BillWhereInput[] = [
             { client: userNameFieldsForToken(token) },
             { orders: { some: { catalogue: { OR: bookTextFieldsForToken(token) } } } },
-            { paymentReference: contains(token) },
+            ...fieldVariants(token, (v) => ({ paymentReference: contains(v) })),
         ];
         const id = tokenAsId(token);
         if (id !== null) clauses.push({ id });
@@ -205,9 +256,9 @@ export function buildPaymentSearchWhere(searchTerm: string): Prisma.PaymentWhere
     return buildTokenizedSearch<Prisma.PaymentWhereInput>(searchTerm, (token) => {
         const clauses: Prisma.PaymentWhereInput[] = [
             { client: userNameFieldsForToken(token) },
-            { paymentReference: contains(token) },
-            { receiptNumber: contains(token) },
-            { observations: contains(token) },
+            ...fieldVariants(token, (v) => ({ paymentReference: contains(v) })),
+            ...fieldVariants(token, (v) => ({ receiptNumber: contains(v) })),
+            ...fieldVariants(token, (v) => ({ observations: contains(v) })),
         ];
         const id = tokenAsId(token);
         if (id !== null) {
@@ -232,12 +283,163 @@ export function buildPaymentSearchWhere(searchTerm: string): Prisma.PaymentWhere
 export function bookFieldsForToken(token: string): Prisma.BookWhereInput[] {
     const clauses: Prisma.BookWhereInput[] = [
         ...bookTextFieldsForToken(token),
-        { publisher: contains(token) },
-        { isbn: contains(token) },
-        { description: contains(token) },
-        { genres: { some: { genre: { name: contains(token) } } } },
+        ...fieldVariants(token, (v) => ({ publisher: contains(v) })),
+        ...fieldVariants(token, (v) => ({ isbn: contains(v) })),
+        ...fieldVariants(token, (v) => ({ description: contains(v) })),
+        ...fieldVariants(token, (v) => ({ genres: { some: { genre: { name: contains(v) } } } })),
     ];
     const id = tokenAsId(token);
     if (id !== null) clauses.push({ id });
     return clauses;
+}
+
+/**
+ * Genres: nom et description.
+ *
+ * Tokenisé comme le reste depuis qu'il ne l'était pas : la recherche testait la
+ * saisie entière contre chaque colonne, si bien que « roman policier » ne
+ * trouvait pas le genre « Policier / Roman noir ».
+ */
+export function buildGenreSearchWhere(searchTerm: string): Prisma.GenreWhereInput[] | null {
+    return buildTokenizedSearch<Prisma.GenreWhereInput>(searchTerm, (token) => [
+        ...fieldVariants(token, (v) => ({ name: contains(v) })),
+        ...fieldVariants(token, (v) => ({ description: contains(v) })),
+    ]);
+}
+
+/**
+ * Les valeurs de type dont le LIBELLÉ FRANÇAIS contient ce token.
+ *
+ * `News.type` stocke la valeur brute (« EVENEMENT »), mais ce que le permanent
+ * lit à l'écran est « Événement » — et `contains` en base est insensible à la
+ * casse, pas aux accents : taper le mot affiché ne rendait donc rien. Le
+ * rapprochement se fait ici, en mémoire, où les accents peuvent être repliés
+ * proprement (voir foldForLabelMatch).
+ */
+function newsTypesMatchingLabel(token: string): string[] {
+    const needle = foldForLabelMatch(token);
+    if (!needle) return [];
+    return Object.entries(newsTypeLabels)
+        .filter(([, label]) => foldForLabelMatch(label).includes(needle))
+        .map(([value]) => value);
+}
+
+/** Dernières infos : titre, contenu, auteur, type (valeur brute ou libellé), numéro. */
+export function buildNewsSearchWhere(searchTerm: string): Prisma.NewsWhereInput[] | null {
+    return buildTokenizedSearch<Prisma.NewsWhereInput>(searchTerm, (token) => {
+        const clauses: Prisma.NewsWhereInput[] = [
+            ...fieldVariants(token, (v) => ({ title: contains(v) })),
+            ...fieldVariants(token, (v) => ({ content: contains(v) })),
+            ...fieldVariants(token, (v) => ({ author: { name: contains(v) } })),
+            // `type` est une colonne String, pas l'enum : le `contains` garde le
+            // comportement d'avant (« gen » trouve GENERAL).
+            ...fieldVariants(token, (v) => ({ type: contains(v) })),
+        ];
+        const labelled = newsTypesMatchingLabel(token);
+        if (labelled.length > 0) clauses.push({ type: { in: labelled } });
+        const id = tokenAsId(token);
+        if (id !== null) clauses.push({ id });
+        return clauses;
+    });
+}
+
+/** Listes de livres : le titre de la liste, sa description, qui l'a créée, les livres dedans. */
+export function buildCoupsDeCoeurSearchWhere(
+    searchTerm: string,
+): Prisma.CoupsDeCoeurWhereInput[] | null {
+    return buildTokenizedSearch<Prisma.CoupsDeCoeurWhereInput>(searchTerm, (token) => {
+        const clauses: Prisma.CoupsDeCoeurWhereInput[] = [
+            ...fieldVariants(token, (v) => ({ title: contains(v) })),
+            ...fieldVariants(token, (v) => ({ description: contains(v) })),
+            ...fieldVariants(token, (v) => ({ addedBy: { name: contains(v) } })),
+            { books: { some: { book: { OR: bookTextFieldsForToken(token) } } } },
+        ];
+        const id = tokenAsId(token);
+        if (id !== null) clauses.push({ id });
+        return clauses;
+    });
+}
+
+/**
+ * La même recherche, côté PUBLIC.
+ *
+ * Volontairement une fonction distincte plutôt qu'un drapeau : elle ne cherche
+ * ni le nom du permanent qui a créé la liste, ni les livres masqués du
+ * catalogue. Les deux contraintes sont écrites ici, comme `listPublicBooks`
+ * écrit les siennes (lib/books/bookList.ts), pour qu'aucun appelant public ne
+ * puisse oublier de les passer.
+ */
+export function buildPublicCoupsDeCoeurSearchWhere(
+    searchTerm: string,
+): Prisma.CoupsDeCoeurWhereInput[] | null {
+    return buildTokenizedSearch<Prisma.CoupsDeCoeurWhereInput>(searchTerm, (token) => [
+        ...fieldVariants(token, (v) => ({ title: contains(v) })),
+        ...fieldVariants(token, (v) => ({ description: contains(v) })),
+        {
+            books: {
+                some: {
+                    book: { OR: bookTextFieldsForToken(token), hiddenFromCatalogue: false },
+                },
+            },
+        },
+    ]);
+}
+
+/** Corbeille audio : le fichier, sa clé, le titre du livre d'origine, son numéro. */
+export function buildDeletedAudioSearchWhere(
+    searchTerm: string,
+): Prisma.DeletedAudioTrackWhereInput[] | null {
+    return buildTokenizedSearch<Prisma.DeletedAudioTrackWhereInput>(searchTerm, (token) => {
+        const clauses: Prisma.DeletedAudioTrackWhereInput[] = [
+            ...fieldVariants(token, (v) => ({ filename: contains(v) })),
+            ...fieldVariants(token, (v) => ({ originalKey: contains(v) })),
+            ...fieldVariants(token, (v) => ({ originBookTitle: contains(v) })),
+            ...fieldVariants(token, (v) => ({ book: { title: contains(v) } })),
+        ];
+        const id = tokenAsId(token);
+        if (id !== null) {
+            clauses.push({ originBookId: id });
+            clauses.push({ bookId: id });
+        }
+        return clauses;
+    });
+}
+
+/** Audio orphelin : le titre du dossier, son préfixe dans le bucket, son numéro. */
+export function buildOrphanFolderSearchWhere(
+    searchTerm: string,
+): Prisma.OrphanAudioFolderWhereInput[] | null {
+    return buildTokenizedSearch<Prisma.OrphanAudioFolderWhereInput>(searchTerm, (token) => {
+        const clauses: Prisma.OrphanAudioFolderWhereInput[] = [
+            ...fieldVariants(token, (v) => ({ title: contains(v) })),
+            ...fieldVariants(token, (v) => ({ prefix: contains(v) })),
+        ];
+        const id = tokenAsId(token);
+        if (id !== null) clauses.push({ folderNum: id });
+        return clauses;
+    });
+}
+
+/**
+ * Doublons : titre, auteur, ISBN — plus les trois numéros sous lesquels un
+ * livre de la file se connaît (le sien, celui de l'import Access, l'id_arbre
+ * qui désigne son jumeau).
+ */
+export function buildBookReviewSearchWhere(searchTerm: string): Prisma.BookWhereInput[] | null {
+    return buildTokenizedSearch<Prisma.BookWhereInput>(searchTerm, (token) => {
+        const clauses: Prisma.BookWhereInput[] = [
+            ...fieldVariants(token, (v) => ({ title: contains(v) })),
+            ...fieldVariants(token, (v) => ({ author: contains(v) })),
+            ...fieldVariants(token, (v) => ({ isbn: contains(v) })),
+        ];
+        clauses.push(...bookReviewIdClauses(token));
+        return clauses;
+    });
+}
+
+/** Les trois numéros d'un livre de la file des doublons, pour un token. */
+export function bookReviewIdClauses(token: string): Prisma.BookWhereInput[] {
+    const id = tokenAsId(token);
+    if (id === null) return [];
+    return [{ id }, { source_access_id: id }, { id_arbre: id }];
 }

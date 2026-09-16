@@ -12,7 +12,7 @@ Elles possèdent également leur propre statut, qui va de « en cours » à « t
 
 L'URL de cette page est https://eca-aveugles.fr/admin/assignments.
 
-La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, et (4) un filtre par statut.
+La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, et (4) un filtre par statut. La recherche porte sur le lecteur (actuel ou passé), sur l'auditeur, sur le livre et sur les numéros de l'attribution et de la demande dont elle provient ; les mots peuvent désigner plusieurs de ces éléments à la fois. Voir [La barre de recherche](/admin/aide/composants-de-base#la-barre-de-recherche).
 
 ![Attributions - capture 1](/admin/aide/images/attributions-01.jpg)
 

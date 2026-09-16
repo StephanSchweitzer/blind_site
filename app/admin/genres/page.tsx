@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { GenresTable } from './genres-table';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { buildGenreSearchWhere } from '@/lib/search';
 
 interface PageProps {
     searchParams: Promise<{
@@ -15,22 +16,10 @@ export const dynamic = 'force-dynamic';
 async function getGenres(page: number, searchTerm: string) {
     const genresPerPage = 10;
 
-    const whereClause: Prisma.GenreWhereInput = {
-        OR: [
-            {
-                name: {
-                    contains: searchTerm,
-                    mode: Prisma.QueryMode.insensitive
-                }
-            },
-            {
-                description: {
-                    contains: searchTerm,
-                    mode: Prisma.QueryMode.insensitive
-                }
-            }
-        ]
-    };
+    // Tokenisé et insensible aux apostrophes comme partout ailleurs —
+    // voir buildGenreSearchWhere.
+    const tokenClauses = buildGenreSearchWhere(searchTerm);
+    const whereClause: Prisma.GenreWhereInput = tokenClauses ? { AND: tokenClauses } : {};
 
     const [genres, totalGenres] = await Promise.all([
         prisma.genre.findMany({

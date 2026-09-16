@@ -28,7 +28,7 @@ L'URL de cette page est https://eca-aveugles.fr/admin/orders.
 
 ![Demandes - capture 1](/admin/aide/images/demandes-01.jpg)
 
-Vous pouvez rechercher des demandes existantes à l'aide de la barre de recherche située en haut de la page. La recherche porte sur les demandes associées aux noms et emails des auditeurs, et aux livres associées aux demandes.
+Vous pouvez rechercher des demandes existantes à l'aide de la barre de recherche située en haut de la page. La recherche porte sur l'auditeur (nom, prénom, adresse électronique), sur le livre (titre, sous-titre, auteur) et sur le numéro de la demande — et vous pouvez mélanger les trois dans une même saisie : « morvan étranger » trouve la demande de M. Morvan portant ce titre. Voir [La barre de recherche](/admin/aide/composants-de-base#la-barre-de-recherche).
 
 ![Demandes - capture 2](/admin/aide/images/demandes-02.jpg)
 

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import type { Prisma } from '@prisma/client';
+import { buildNewsSearchWhere } from '@/lib/search';
 
 export async function GET(req: NextRequest) {
     try {
@@ -13,22 +14,13 @@ export async function GET(req: NextRequest) {
             return NextResponse.json([]);
         }
 
-        const where: Prisma.NewsWhereInput = {
-            OR: [
-                {
-                    title: {
-                        contains: term,
-                        mode: 'insensitive'
-                    } as Prisma.StringFilter<"News">
-                },
-                {
-                    content: {
-                        contains: term,
-                        mode: 'insensitive'
-                    } as Prisma.StringFilter<"News">
-                }
-            ]
-        };
+        // Le même moteur que la liste et que /api/news, pour que l'autocomplétion
+        // et la page qu'elle mène ne trouvent jamais des choses différentes.
+        const tokenClauses = buildNewsSearchWhere(term);
+        if (!tokenClauses) {
+            return NextResponse.json([]);
+        }
+        const where: Prisma.NewsWhereInput = { AND: tokenClauses };
 
         const results = await prisma.news.findMany({
             where,

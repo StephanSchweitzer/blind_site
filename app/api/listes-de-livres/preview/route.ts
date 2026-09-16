@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
+import { buildPublicCoupsDeCoeurSearchWhere } from '@/lib/search';
 
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const search = searchParams.get('search') || '';
 
-        if (!search) {
+        // Tokenisé et insensible aux apostrophes comme le catalogue public —
+        // voir buildPublicCoupsDeCoeurSearchWhere.
+        const tokenClauses = buildPublicCoupsDeCoeurSearchWhere(search);
+        if (!tokenClauses) {
             return NextResponse.json([]);
         }
 
@@ -20,23 +24,7 @@ export async function GET(request: NextRequest) {
                 // reste du site (app/listes-de-livres/data.ts, et jusqu'à la
                 // route d'administration) ne lit QUE les listes actives.
                 active: true,
-                OR: [
-                    { title: { contains: search, mode: 'insensitive' } },
-                    { description: { contains: search, mode: 'insensitive' } },
-                    {
-                        books: {
-                            some: {
-                                book: {
-                                    OR: [
-                                        { title: { contains: search, mode: 'insensitive' } },
-                                        { author: { contains: search, mode: 'insensitive' } }
-                                    ],
-                                    hiddenFromCatalogue: false
-                                }
-                            }
-                        }
-                    }
-                ]
+                AND: tokenClauses,
             },
             select: {
                 id: true,

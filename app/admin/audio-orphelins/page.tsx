@@ -9,6 +9,7 @@ import OrphansClient, {
     type OrphanTab,
 } from './orphans-client';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { buildOrphanFolderSearchWhere } from '@/lib/search';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -47,19 +48,13 @@ const TAB_WHERE: Record<OrphanTab, Prisma.OrphanAudioFolderWhereInput> = {
  * is the natural thing to type.
  */
 function buildSearchWhere(q: string): Prisma.OrphanAudioFolderWhereInput | undefined {
-    const term = q.trim().replace(/^#/, '');
-    if (!term) return undefined;
-
-    const asNumber = Number(term);
-    const isNumeric = Number.isInteger(asNumber) && asNumber > 0;
-
-    return {
-        OR: [
-            { title: { contains: term, mode: 'insensitive' } },
-            { prefix: { contains: term, mode: 'insensitive' } },
-            ...(isNumeric ? [{ folderNum: asNumber }] : []),
-        ],
-    };
+    const tokenClauses = buildOrphanFolderSearchWhere(q);
+    // AND, et pas OR : l'onglet « à traiter » porte déjà son propre OR
+    // (`resolvedAt: null` OU ré-orphelin), et le `where` plus bas fusionne les
+    // deux par un spread. Une recherche qui rendait un OR l'écrasait donc
+    // purement et simplement — chercher dans « à traiter » faisait remonter des
+    // dossiers déjà rattachés.
+    return tokenClauses ? { AND: tokenClauses } : undefined;
 }
 
 /**

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { titlePrefixMatch } from '@/lib/books/title-match';
 import ReviewClient, { type ReviewBook, type ReviewPair } from './review-client';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { bookReviewIdClauses, buildBookReviewSearchWhere } from '@/lib/search';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,27 +45,18 @@ const BOOK_SELECT = {
  */
 function buildSearchWhere(q: string): Prisma.BookWhereInput | undefined {
     const raw = q.trim();
-    const term = raw.replace(/^#/, '');
-    if (!term) return undefined;
-
-    const asNumber = Number(term);
-    const isNumeric = Number.isInteger(asNumber) && asNumber > 0;
-    const idMatches: Prisma.BookWhereInput[] = isNumeric
-        ? [{ id: asNumber }, { source_access_id: asNumber }, { id_arbre: asNumber }]
-        : [];
 
     // "#123" is unambiguous: the permanent wants that record, not every title
     // containing "123". Without the hash, a number searches the text too.
-    if (raw.startsWith('#') && isNumeric) return { OR: idMatches };
+    if (raw.startsWith('#')) {
+        const idMatches = bookReviewIdClauses(raw.replace(/^#+/, ''));
+        if (idMatches.length > 0) return { OR: idMatches };
+    }
 
-    return {
-        OR: [
-            { title: { contains: term, mode: 'insensitive' } },
-            { author: { contains: term, mode: 'insensitive' } },
-            { isbn: { contains: term, mode: 'insensitive' } },
-            ...idMatches,
-        ],
-    };
+    // Tokenisé et insensible aux apostrophes comme les autres barres : un
+    // doublon se cherche autant par « camus etranger » que par son numéro.
+    const tokenClauses = buildBookReviewSearchWhere(raw);
+    return tokenClauses ? { AND: tokenClauses } : undefined;
 }
 
 interface PageProps {

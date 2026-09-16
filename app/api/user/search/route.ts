@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import { MemberType, AccessLevel } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
 import { meetsSearchMinLength, normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
+import { buildUserNameSearch } from '@/lib/search';
 
 
 export const GET = withAdmin(async (request) => {
@@ -26,17 +27,13 @@ export const GET = withAdmin(async (request) => {
         // Split on whitespace so multi-word queries ("stephan s") match across
         // fields: every term must hit at least one field (AND of ORs). This lets
         // "stephan" match firstName while "s" matches lastName.
-        const terms = query.trim().split(/\s+/).filter(Boolean);
-
-        const nameMatch: Prisma.UserWhereInput = {
-            AND: terms.map((term) => ({
-                OR: [
-                    { firstName: { contains: term, mode: Prisma.QueryMode.insensitive } },
-                    { lastName:  { contains: term, mode: Prisma.QueryMode.insensitive } },
-                    { email:     { contains: term, mode: Prisma.QueryMode.insensitive } },
-                ],
-            })),
-        };
+        //
+        // This is the route behind EVERY person picker in the back office, so it
+        // is the one place a divergence hurts most: it carried its own copy of
+        // the clause, which searched three columns where the lists searched four
+        // and compared apostrophes byte for byte. It now shares the lists'
+        // builder — see buildUserNameSearch.
+        const nameMatch: Prisma.UserWhereInput = buildUserNameSearch(query) ?? {};
 
         // Staff look people up by the id shown in « Modifier la personne #42 ».
         // OR-ed with the name search rather than replacing it: an all-digit

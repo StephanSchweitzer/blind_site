@@ -4,6 +4,7 @@ import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { AUDIO_TRASH_RETENTION_DAYS } from '@/lib/audio/purge';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { buildDeletedAudioSearchWhere } from '@/lib/search';
 import TrashClient, { type TrashRow, type TrashTab } from './trash-client';
 
 export const dynamic = 'force-dynamic';
@@ -45,23 +46,17 @@ const TAB_WHERE: Record<TrashTab, Prisma.DeletedAudioTrackWhereInput> = {
     purgees: { purgedAt: { not: null } },
 };
 
-/** Filtre libre : un nom de fichier, un titre de livre, un identifiant. */
+/**
+ * Filtre libre : un nom de fichier, un titre de livre, un identifiant.
+ *
+ * Rendu au moteur commun (buildDeletedAudioSearchWhere) : tokens, apostrophes
+ * et « # » s'y comportent comme dans toutes les autres barres. Le résultat est
+ * une clause AND et non OR — c'est ce qui lui permet de se combiner avec le
+ * filtre d'onglet au lieu de l'écraser.
+ */
 function buildSearchWhere(q: string): Prisma.DeletedAudioTrackWhereInput | undefined {
-    const term = q.trim().replace(/^#/, '');
-    if (!term) return undefined;
-
-    const asNumber = Number(term);
-    const isNumeric = Number.isInteger(asNumber) && asNumber > 0;
-
-    return {
-        OR: [
-            { filename: { contains: term, mode: 'insensitive' } },
-            { originalKey: { contains: term, mode: 'insensitive' } },
-            { originBookTitle: { contains: term, mode: 'insensitive' } },
-            { book: { title: { contains: term, mode: 'insensitive' } } },
-            ...(isNumeric ? [{ originBookId: asNumber }, { bookId: asNumber }] : []),
-        ],
-    };
+    const tokenClauses = buildDeletedAudioSearchWhere(q);
+    return tokenClauses ? { AND: tokenClauses } : undefined;
 }
 
 interface PageProps {

@@ -10,6 +10,7 @@ import { activityStatusFilterWhere, effectivelyActiveWhere } from '@/lib/users/a
 import { LANGUAGE_VALUES } from '@/lib/user-enums';
 import { cotisationCoverageQuery } from '@/lib/cotisation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { buildUserNameSearch } from '@/lib/search';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -43,21 +44,15 @@ async function getUsers(
                 userType === 'bienfaiteurs' ? { memberType: 'bienfaiteur' } :
                     { accessLevel: { in: ['admin', 'super_admin'] } };
 
-    if (searchTerm) {
-        // Split on whitespace so "Leila Be" matches firstName="Leila" + lastName="Bennour".
-        // Each token must match at least one field (AND across tokens, OR across fields),
-        // which also makes the order irrelevant ("Bennour Leila" works too).
-        const tokens = searchTerm.trim().split(/\s+/).filter(Boolean);
-
-        if (tokens.length > 0) {
-            baseWhere.AND = tokens.map((token) => ({
-                OR: [
-                    { firstName: { contains: token, mode: Prisma.QueryMode.insensitive } },
-                    { lastName:  { contains: token, mode: Prisma.QueryMode.insensitive } },
-                    { email:     { contains: token, mode: Prisma.QueryMode.insensitive } },
-                ],
-            }));
-        }
+    // Tokens AND-ed, each satisfiable by any name column, so "Leila Be" matches
+    // firstName="Leila" + lastName="Bennour" and the order is irrelevant
+    // ("Bennour Leila" works too). Handed to the shared builder rather than
+    // spelled out here: this list used to carry its own copy, which left it the
+    // only people-search that ignored the legacy `name` column and matched
+    // apostrophes byte for byte. See buildUserNameSearch.
+    const nameSearch = buildUserNameSearch(searchTerm);
+    if (nameSearch?.AND) {
+        baseWhere.AND = nameSearch.AND;
     }
 
     // "Scoped" population: base + search + language + cotisation, but NOT the

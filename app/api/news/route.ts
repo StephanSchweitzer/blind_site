@@ -4,6 +4,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
+import { buildNewsSearchWhere } from '@/lib/search';
 import { NextRequest } from 'next/server';
 import {News, Prisma} from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
@@ -89,28 +90,10 @@ export async function GET(req: NextRequest) {
                 ...(type && type !== 'all' ? [{
                     type: type as News['type']
                 }] : []),
-                // Add search filter if provided
-                ...(search ? [{
-                    OR: [
-                        {
-                            title: {
-                                contains: search,
-                                mode: 'insensitive' as Prisma.QueryMode
-                            }
-                        },
-                        {
-                            content: {
-                                contains: search,
-                                mode: 'insensitive' as Prisma.QueryMode
-                            }
-                        },
-                        {
-                            type: {
-                                equals: search.toUpperCase() as News['type']
-                            }
-                        }
-                    ]
-                }] : [])
+                // Same engine as the back-office list — tokens, apostrophes, and
+                // the type reachable by its displayed French label. See
+                // buildNewsSearchWhere.
+                ...(buildNewsSearchWhere(search ?? '') ?? [])
             ]
         };
 

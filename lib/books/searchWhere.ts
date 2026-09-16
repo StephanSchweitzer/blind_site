@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { audioMissingWhere, audioPresentWhere } from '@/lib/books/audioFilter';
-import { bookFieldsForToken, searchTokens } from '@/lib/search';
+import { bookFieldsForToken, fieldVariants, searchTokens } from '@/lib/search';
 
 export type AudioFilter = 'missing' | 'present' | undefined;
 
@@ -29,7 +29,13 @@ export function buildBookScopeWhere({
     audio,
 }: BookScopeOptions): Prisma.BookWhereInput {
     const mode = Prisma.QueryMode.insensitive;
+    const contains = (value: string) => ({ contains: value, mode });
     const clauses: Prisma.BookWhereInput[] = [];
+
+    /** One field, every spelling of the token — mirrors the raw SQL's anyVariant. */
+    const anyVariant = (token: string, build: (value: string) => Prisma.BookWhereInput) => ({
+        OR: fieldVariants(token, build),
+    });
 
     // Tokenized: every word must match something, but different words may match
     // different columns — « camus étranger » is an author and a title, and used
@@ -42,25 +48,25 @@ export function buildBookScopeWhere({
     for (const token of searchTokens(searchTerm ?? '')) {
         switch (filter) {
             case 'title':
-                clauses.push({ title: { contains: token, mode } });
+                clauses.push(anyVariant(token, (v) => ({ title: contains(v) })));
                 break;
             case 'author':
-                clauses.push({ author: { contains: token, mode } });
+                clauses.push(anyVariant(token, (v) => ({ author: contains(v) })));
                 break;
             case 'description':
-                clauses.push({ description: { contains: token, mode } });
+                clauses.push(anyVariant(token, (v) => ({ description: contains(v) })));
                 break;
             case 'subtitle':
-                clauses.push({ subtitle: { contains: token, mode } });
+                clauses.push(anyVariant(token, (v) => ({ subtitle: contains(v) })));
                 break;
             case 'publisher':
-                clauses.push({ publisher: { contains: token, mode } });
+                clauses.push(anyVariant(token, (v) => ({ publisher: contains(v) })));
                 break;
             case 'isbn':
-                clauses.push({ isbn: { contains: token, mode } });
+                clauses.push(anyVariant(token, (v) => ({ isbn: contains(v) })));
                 break;
             case 'genre':
-                clauses.push({ genres: { some: { genre: { name: { contains: token, mode } } } } });
+                clauses.push(anyVariant(token, (v) => ({ genres: { some: { genre: { name: contains(v) } } } })));
                 break;
             default:
                 clauses.push({ OR: bookFieldsForToken(token) });

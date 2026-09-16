@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { andClauses, buildOrderSearchWhere } from '@/lib/search';
 import { Prisma, OrderBillingStatus, BillingStatus } from '@prisma/client';
 import { ordersTableInclude } from '@/types/models/order.model';
 import {
@@ -45,33 +46,28 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
     const whereClause: Prisma.OrdersWhereInput = { aveugleId };
     if (filterBook) whereClause.catalogueId = filterBook.id;
 
-    if (searchTerm) {
-        whereClause.OR = [
-            {
-                aveugle: {
-                    OR: [
-                        { name: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                        { email: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                    ],
-                },
-            },
-            {
-                catalogue: {
-                    OR: [
-                        { title: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                        { author: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-                    ],
-                },
-            },
-        ];
-    }
+    // Le même moteur que la liste des demandes : tokens, apostrophes, sous-titre
+    // et numéro de demande compris. Cette page en portait une copie réduite à
+    // quatre colonnes, si bien qu'une recherche trouvait une demande dans la
+    // liste générale mais pas dans le dossier de la personne qui l'a passée.
+    // Voir buildOrderSearchWhere.
+    const tokenClauses = buildOrderSearchWhere(searchTerm);
+    if (tokenClauses) whereClause.AND = tokenClauses;
 
+    // Ces deux filtres ÉCRASAIENT `AND` au lieu de s'y ajouter. C'était sans
+    // conséquence tant que la recherche vivait dans `OR` ; elle vit maintenant
+    // dans `AND`, comme sur la liste générale des demandes, qui fusionne déjà
+    // de cette façon (app/admin/orders/page.tsx).
     if (filter === 'needsReturn') {
-        whereClause.AND = [{ lentPhysicalBook: true }, { closureDate: null }];
+        whereClause.AND = [...andClauses(whereClause), { lentPhysicalBook: true }, { closureDate: null }];
     } else if (filter === 'late') {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        whereClause.AND = [{ requestReceivedDate: { lt: thirtyDaysAgo } }, { closureDate: null }];
+        whereClause.AND = [
+            ...andClauses(whereClause),
+            { requestReceivedDate: { lt: thirtyDaysAgo } },
+            { closureDate: null },
+        ];
     }
 
     if (statusId) whereClause.statusId = statusId;
@@ -88,9 +84,7 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
     else if (isDuplication === 'blocked') Object.assign(whereClause, blockedDuplicationWhere);
 
     if (retard === 'true') {
-        const existing = Array.isArray(whereClause.AND)
-            ? whereClause.AND
-            : whereClause.AND ? [whereClause.AND] : [];
+        const existing = andClauses(whereClause);
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
         whereClause.AND = [
@@ -99,9 +93,7 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
             { statusId: { not: 3 } },
         ];
     } else if (retard === 'false') {
-        const existing = Array.isArray(whereClause.AND)
-            ? whereClause.AND
-            : whereClause.AND ? [whereClause.AND] : [];
+        const existing = andClauses(whereClause);
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
         whereClause.AND = [

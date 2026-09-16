@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { ArticlesTable } from './articles-table';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { buildNewsSearchWhere } from '@/lib/search';
 
 interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -14,38 +15,10 @@ async function getArticles(page: number, searchTerm: string) {
     const articlesPerPage = 10;
 
     try {
-        const whereClause: Prisma.NewsWhereInput = searchTerm
-            ? {
-                OR: [
-                    {
-                        title: {
-                            contains: searchTerm,
-                            mode: Prisma.QueryMode.insensitive
-                        }
-                    },
-                    {
-                        content: {
-                            contains: searchTerm,
-                            mode: Prisma.QueryMode.insensitive
-                        }
-                    },
-                    {
-                        type: {
-                            contains: searchTerm,
-                            mode: Prisma.QueryMode.insensitive
-                        }
-                    },
-                    {
-                        author: {
-                            name: {
-                                contains: searchTerm,
-                                mode: Prisma.QueryMode.insensitive
-                            }
-                        }
-                    }
-                ]
-            }
-            : {};
+        // Tokenisé, insensible aux apostrophes, et le type se cherche aussi par
+        // son libellé affiché (« Événement ») — voir buildNewsSearchWhere.
+        const tokenClauses = buildNewsSearchWhere(searchTerm);
+        const whereClause: Prisma.NewsWhereInput = tokenClauses ? { AND: tokenClauses } : {};
 
         const [articles, totalArticles] = await Promise.all([
             prisma.news.findMany({
