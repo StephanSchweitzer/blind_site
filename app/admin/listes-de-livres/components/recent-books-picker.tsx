@@ -276,6 +276,13 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
     const selectable = books.filter((book) => !inListIds.has(book.id));
     const allChecked = selectable.length > 0 && selectable.every((book) => checked.has(book.id));
 
+    // Décompte des livres CHARGÉS (pas seulement cochés) : de quoi voir d'un
+    // coup d'œil, avant même de cocher quoi que ce soit, combien de la fenêtre
+    // sont réellement inédits plutôt que déjà casés ailleurs.
+    const newCount = books.filter((book) => !inListIds.has(book.id) && !membership.has(book.id)).length;
+    const elsewhereCount = books.filter((book) => !inListIds.has(book.id) && membership.has(book.id)).length;
+    const hereCount = books.filter((book) => inListIds.has(book.id)).length;
+
     const toggle = (bookId: number) => {
         setChecked((prev) => {
             const next = new Set(prev);
@@ -299,6 +306,18 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
                         Seuls les livres disponibles sont proposés : un enregistrement encore en
                         cours n&apos;a rien à faire dans une liste. Cochez ceux à ajouter.
                     </DialogDescription>
+                    {books.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                            {books.length} livre{books.length > 1 ? 's' : ''} chargé{books.length > 1 ? 's' : ''}
+                            {total > books.length ? ` sur ${total}` : ''}
+                            {' · '}
+                            <span className="font-medium text-foreground">
+                                {newCount} nouveau{newCount > 1 ? 'x' : ''}
+                            </span>
+                            {elsewhereCount > 0 && ` · ${elsewhereCount} déjà dans une autre liste`}
+                            {hereCount > 0 && ` · ${hereCount} déjà ici`}
+                        </p>
+                    )}
                 </DialogHeader>
 
                 <div className="min-h-[12rem] flex-1 overflow-y-auto px-6 py-2">

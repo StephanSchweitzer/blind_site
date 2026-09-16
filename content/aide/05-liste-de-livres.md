@@ -58,6 +58,8 @@ Pour retrouver les livres ajoutés au catalogue depuis la dernière liste, utili
 
 La date est proposée par défaut à celle de la **dernière liste créée — visible ou masquée**, rappelée juste en dessous (« Dernière liste « … » créée le … »). Vous pouvez (1) la déplacer en cliquant dans le champ et en choisissant une autre date dans le calendrier, puis revenir à la date proposée avec « Revenir à cette date ». Cliquez ensuite sur (2) « **Voir** » : une fenêtre s'ouvre avec les nouveautés depuis cette date, **toutes décochées**. Cochez celles que vous voulez (ou « Tout cocher »), puis cliquez sur « Ajouter à la liste » : elles rejoignent la liste, en tête.
 
+En haut de la fenêtre, un compteur indique combien de livres sont chargés (sur le total trouvé depuis cette date) et, parmi eux, combien sont réellement nouveaux — jamais présents dans aucune liste — par opposition à ceux déjà casés ailleurs ou déjà ici.
+
 Trois garde-fous accompagnent cette sélection :
 
 - Seuls les **livres disponibles** sont proposés — un enregistrement encore en cours n'a rien à faire dans une liste.
