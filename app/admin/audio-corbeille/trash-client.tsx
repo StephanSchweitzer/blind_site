@@ -221,7 +221,7 @@ export default function TrashClient({
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
                             <CardTitle>Corbeille audio</CardTitle>
-                            <AideLink section="audio-orphelin" anchor="corbeille-audio" />
+                            <AideLink section="corbeille-audio" />
                         </div>
                         <CardDescription>
                             Tous les fichiers audio supprimés du catalogue, livre par livre ou avec

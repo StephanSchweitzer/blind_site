@@ -29,7 +29,7 @@ these mostly kept their original English names even though the French rename hap
 | duplicates / merge queue | Doublons | `Book.needsReview` / `id_arbre`; `/admin/review`; `BookMergeEvent` |
 | orphaned audio folders | Audio orphelin | `OrphanAudioFolder`; `/admin/audio-orphelins`; `/api/audio-orphans` |
 | audio tracks / recordings | Pistes / Enregistrement | bucket objects; `/api/books/[id]/audio/*`; `lib/audio/` |
-| trash / recycle bin (audio) | Corbeille | `DeletedAudioTrack`; `lib/audio/trash.ts` |
+| trash / recycle bin (audio) | Corbeille | `DeletedAudioTrack`; `/admin/audio-corbeille`; `lib/audio/trash.ts` |
 | availability / planning | Disponibilités | `/admin/disponibilites`; `/api/availability`; `lib/users/availability.ts` |
 | stats / audit log | Statistiques / Journal | `AuditEvent`; `/admin/stats`; `/api/stats/*`; `lib/audit/` |
 | site content pages | Pages | `SiteContact`, `TeamMember`, `HistoryEvent`, `PracticalInfo`, `MembershipOption` |

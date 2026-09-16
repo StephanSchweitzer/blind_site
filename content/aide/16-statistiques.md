@@ -1,7 +1,7 @@
 ---
 title: Statistiques
 slug: statistiques
-order: 15
+order: 16
 ---
 
 # Statistiques

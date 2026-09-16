@@ -1,7 +1,7 @@
 ---
 title: Pages publiques
 slug: pages-publiques
-order: 14
+order: 15
 ---
 
 # Pages publiques

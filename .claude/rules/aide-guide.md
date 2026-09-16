@@ -33,9 +33,10 @@ Concretely, when a change touches any of these, open the matching file:
 | member types, access levels, dossier, statuts | `10-membres.md` |
 | availability, calendrier, reader load | `11-disponibilites.md` |
 | doublons / fusion, audio orphelin | `12-doublons.md`, `13-audio-orphelin.md` |
-| public site content (news, contact, équipe…) | `14-pages-publiques.md` |
-| stats, journal des modifications | `15-statistiques.md` |
-| profile, own unavailability, own activity | `16-mon-compte.md` |
+| audio corbeille, purge, restauration | `14-corbeille-audio.md` |
+| public site content (news, contact, équipe…) | `15-pages-publiques.md` |
+| stats, journal des modifications | `16-statistiques.md` |
+| profile, own unavailability, own activity | `17-mon-compte.md` |
 
 Rules that keep it honest:
 

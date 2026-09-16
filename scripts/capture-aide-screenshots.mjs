@@ -646,6 +646,44 @@ const SPECS = [
         why: 'les trois onglets et la file a traiter',
     },
     {
+        name: 'corbeille-audio-01.jpg',
+        viewport: { width: 1440, height: 1000 },
+        url: '/admin/audio-corbeille',
+        waitFor: '.rounded-lg.border',
+        sleep: 1200,
+        // Le contenu tient dans plusieurs cartes (en-tete + une par livre), pas
+        // une seule bordee : on cadre donc sur l'enveloppe posee par
+        // app/admin/layout.tsx plutot que sur '.rounded-lg.border', qui ne
+        // choisirait qu'une seule carte au hasard.
+        clip: '.relative',
+        why: 'les quatre onglets, la recherche, et un groupe replie sur son resume',
+    },
+    {
+        name: 'corbeille-audio-02.jpg',
+        viewport: { width: 1440, height: 1100 },
+        url: '/admin/audio-corbeille',
+        waitFor: '.rounded-lg.border',
+        steps: [{ clickText: 'Voir les fichiers' }, { sleep: 900 }],
+        clip: '.relative',
+        annotations: [
+            { n: 1, label: 'Restaurer tout', self: true },
+            // Le libelle bascule sur « Reduire » une fois deplie — c'est ce
+            // texte-la qui est visible sur la capture.
+            { n: 2, label: 'Réduire', self: true },
+            { n: 3, label: 'Restaurer', self: true },
+        ],
+        why: 'le groupe deplie : fichier par fichier, chacun avec son propre bouton Restaurer',
+    },
+    {
+        name: 'corbeille-audio-03.jpg',
+        viewport: { width: 1440, height: 1000 },
+        url: '/admin/audio-corbeille',
+        waitFor: '.rounded-lg.border',
+        steps: [{ clickText: 'Restaurées' }, { sleep: 900 }],
+        clip: '.relative',
+        why: 'l\'onglet Restaurees : qui a remis le fichier en place, et quand',
+    },
+    {
         name: 'statistiques-01.jpg',
         url: '/admin/stats',
         waitFor: 'h1',

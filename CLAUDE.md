@@ -150,7 +150,7 @@ touch `app/`, `lib/` or `components/`. These are the rows where the three column
 | staff picks / book list | Coups de cœur / "Liste des Livres" | `CoupsDeCoeur` model; `/admin/listes-de-livres`; `/api/listes-de-livres`; public `/listes-de-livres` |
 | duplicates / merge queue | Doublons | `Book.needsReview` / `id_arbre`; `/admin/review`; `BookMergeEvent` |
 | bill / invoice | Facture | `Bill` model; `/admin/bills`; `/api/bills` |
-| trash / recycle bin (audio) | Corbeille | `DeletedAudioTrack`; `lib/audio/trash.ts` |
+| trash / recycle bin (audio) | Corbeille | `DeletedAudioTrack`; `/admin/audio-corbeille`; `lib/audio/trash.ts` |
 
 **Two separate "admin" axes — don't conflate them:**
 - `accessLevel` (permission): `member` → "Membre", `admin` → **"Permanent"**, `super_admin` → "Super Admin".
