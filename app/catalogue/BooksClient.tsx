@@ -97,6 +97,7 @@ export function BooksClient({
             }
 
             const data = await response.json();
+            if (abortControllerRef.current !== abortController) return;
             setSearchResults(data);
         } catch (err) {
             if (err instanceof Error && err.name !== 'AbortError') {
@@ -104,7 +105,13 @@ export function BooksClient({
                 console.error('Search error:', err);
             }
         } finally {
-            setIsSearching(false);
+            // A superseded request settles after its replacement has started:
+            // clearing the flag here would hide the spinner while the newer
+            // search is still in flight, leaving stale results on screen.
+            if (abortControllerRef.current === abortController) {
+                abortControllerRef.current = null;
+                setIsSearching(false);
+            }
         }
     }, [initialBooks, initialTotalBooks, initialTotalPages]);
 
@@ -136,6 +143,12 @@ export function BooksClient({
     }, []);
 
     const handleSearchChange = useCallback((value: string) => {
+        // Drop the in-flight request at the keystroke rather than when the
+        // debounce fires, so its older results can't land mid-typing, and show
+        // the pending state straight away instead of 300 ms later.
+        abortControllerRef.current?.abort();
+        abortControllerRef.current = null;
+        setIsSearching(true);
         setSearchTerm(value);
         if (currentPage !== 1) {
             setCurrentPage(1);
