@@ -1,12 +1,16 @@
 // components/AudioRecorder.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, Square, Trash2, Check, Upload } from 'lucide-react';
+import { Mic, Square, Trash2, Check, CheckCircle2, Upload } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 interface AudioRecorderProps {
     onConfirm: (blob: Blob) => void;
     onClear: () => void;
+    /** Le titre de l'état vide — « Nouvelle présentation audio » quand on remplace. */
+    idleTitle?: string;
+    className?: string;
 }
 
 interface AudioSegment {
@@ -20,7 +24,12 @@ interface AudioSegment {
 // too-large file is rejected here instead of after a slow upload.
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
-const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => {
+const AudioRecorder: React.FC<AudioRecorderProps> = ({
+    onConfirm,
+    onClear,
+    idleTitle = 'Aucune présentation audio',
+    className,
+}) => {
     const [isRecording, setIsRecording] = useState(false);
     const [segments, setSegments] = useState<AudioSegment[]>([]);
     const [recordingTime, setRecordingTime] = useState(0);
@@ -34,18 +43,34 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    // The take's length is measured from its start, not read from
+    // `recordingTime`: `onstop` is created with the state of the click that
+    // started the take, where the counter is still 0 — every take was saved
+    // as lasting 0 seconds.
+    const startedAtRef = useRef(0);
     const audioContextRef = useRef<AudioContext | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // The object URLs still alive, revoked on unmount only. The cleanup used to
+    // depend on `segments`, so it ran on every change and revoked the URLs of
+    // the takes still on screen: recording a second take broke the first one's
+    // player.
+    const liveUrlsRef = useRef<{ segments: AudioSegment[]; finalAudioUrl: string | null }>({ segments: [], finalAudioUrl: null });
+    useEffect(() => {
+        liveUrlsRef.current = { segments, finalAudioUrl };
+    }, [segments, finalAudioUrl]);
 
     useEffect(() => {
         audioContextRef.current = new AudioContext();
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
-            segments.forEach(segment => URL.revokeObjectURL(segment.url));
-            if (finalAudioUrl) URL.revokeObjectURL(finalAudioUrl);
-            if (audioContextRef.current) audioContextRef.current.close();
+            mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+            const live = liveUrlsRef.current;
+            live.segments.forEach(segment => URL.revokeObjectURL(segment.url));
+            if (live.finalAudioUrl) URL.revokeObjectURL(live.finalAudioUrl);
+            audioContextRef.current?.close();
         };
-    }, [finalAudioUrl, segments]);
+    }, []);
 
     const startRecording = async () => {
         try {
@@ -61,13 +86,15 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
             mediaRecorderRef.current.onstop = () => {
                 const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
                 const url = URL.createObjectURL(blob);
-                const duration = recordingTime;
+                const duration = Math.round((Date.now() - startedAtRef.current) / 1000);
 
                 setSegments(prev => [...prev, { blob, url, duration }]);
                 setRecordingTime(0);
             };
 
             mediaRecorderRef.current.start();
+            startedAtRef.current = Date.now();
+            setRecordingTime(0);
             setIsRecording(true);
 
             timerRef.current = setInterval(() => {
@@ -75,7 +102,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
             }, 1000);
         } catch (err) {
             console.error('Error accessing microphone:', err);
-            setError('Could not access microphone. Please check permissions.');
+            setError("Impossible d'accéder au micro. Vérifiez que le navigateur est autorisé à l'utiliser.");
         }
     };
 
@@ -131,14 +158,14 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
             });
 
             // Set the merged recording as the only confirmed segment
-            setSegments([{ blob: finalBlob, url, duration: 0, isConfirmed: true }]);
+            setSegments([{ blob: finalBlob, url, duration: Math.round(mergedBuffer.duration), isConfirmed: true }]);
 
             onConfirm(finalBlob);
             setSource('recording');
             setIsConfirmed(true);
         } catch (err) {
             console.error('Error merging audio:', err);
-            setError('Failed to merge audio segments');
+            setError("Échec de l'assemblage des prises. Réessayez, ou jetez-les et recommencez.");
         }
     };
 
@@ -254,120 +281,153 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onConfirm, onClear }) => 
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
 
+    const fileInput = (
+        <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/*"
+            className="hidden"
+            onChange={handleFileInputChange}
+        />
+    );
+
+    const isIdle = !isConfirmed && !isRecording && segments.length === 0;
+
     return (
-        <div className="space-y-4">
+        <div className={cn('flex flex-col gap-3', className)}>
             {error && (
                 <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}
 
-            {!isConfirmed && (
-                <>
-                    <div className="flex items-center gap-4">
-                        {!isRecording ? (
-                            <>
-                                <Button
-                                    type="button"
-                                    onClick={startRecording}
-                                    className="bg-red-500 hover:bg-red-600"
-                                >
-                                    <Mic className="w-4 h-4 mr-2" />
-                                    {segments.length > 0 ? 'Continuer l\'enregistrement' : 'Démarrer l\'enregistrement'}
-                                </Button>
-                                {segments.length === 0 && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        <Upload className="w-4 h-4 mr-2" />
-                                        Importer un fichier
-                                    </Button>
-                                )}
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="audio/*"
-                                    className="hidden"
-                                    onChange={handleFileInputChange}
-                                />
-                            </>
-                        ) : (
-                            <Button
-                                type="button"
-                                onClick={stopRecording}
-                                variant="destructive"
-                            >
-                                <Square className="w-4 h-4 mr-2" />
-                                Arrêter l&apos;enregistrement
-                            </Button>
-                        )}
-                        {isRecording && (
-                            <span className="text-sm font-medium">{formatTime(recordingTime)}</span>
-                        )}
+            {/* ── rien encore : les deux façons de commencer ─────────── */}
+            {isIdle && (
+                <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-6 text-center">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-500/10 text-red-600 dark:text-red-400">
+                        <Mic className="h-5 w-5" aria-hidden="true" />
                     </div>
+                    <div>
+                        <p className="text-sm font-medium text-foreground">{idleTitle}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Enregistrez-la au micro, ou importez un fichier déjà prêt (25 Mo maximum).
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-2">
+                        <Button type="button" onClick={startRecording} className="bg-red-600 text-white hover:bg-red-700">
+                            <Mic /> Démarrer l&apos;enregistrement
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                            <Upload /> Importer un fichier
+                        </Button>
+                    </div>
+                    {fileInput}
+                </div>
+            )}
 
-                    {segments.length > 0 && (
-                        <div className="space-y-4">
-                            {segments.map((segment, index) => (
-                                <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                                    <audio src={segment.url} controls className="flex-grow" />
-                                    {!segment.isConfirmed && (
+            {/* ── prise en cours ──────────────────────────────────────── */}
+            {isRecording && (
+                <div
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-500/40 bg-red-500/5 p-4"
+                    role="status"
+                >
+                    <div className="flex items-center gap-3">
+                        <span className="relative flex h-3 w-3" aria-hidden="true">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                            <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+                        </span>
+                        <div>
+                            <div className="text-xs font-medium text-red-700 dark:text-red-400">
+                                Enregistrement en cours
+                                {segments.length > 0 && ` · prise ${segments.filter(s => !s.isConfirmed).length + 1}`}
+                            </div>
+                            <div className="font-mono text-2xl font-semibold tabular-nums text-foreground">
+                                {formatTime(recordingTime)}
+                            </div>
+                        </div>
+                    </div>
+                    <Button type="button" onClick={stopRecording} variant="destructive">
+                        <Square className="fill-current" /> Arrêter l&apos;enregistrement
+                    </Button>
+                </div>
+            )}
+
+            {/* ── les prises, avant assemblage ────────────────────────── */}
+            {!isConfirmed && segments.length > 0 && (
+                <>
+                    <ol className="space-y-2">
+                        {segments.map((segment, index) => {
+                            const label = segment.isConfirmed
+                                ? source === 'import' ? 'Fichier importé' : 'Enregistrement précédent'
+                                : `Prise ${segments.slice(0, index + 1).filter(s => !s.isConfirmed).length}`;
+                            return (
+                                <li key={segment.url} className="flex items-center gap-2 rounded-md border border-border bg-muted/20 py-1.5 pl-3 pr-1.5">
+                                    <div className="w-20 shrink-0 leading-tight">
+                                        <div className="text-xs font-medium text-foreground">{label}</div>
+                                        {segment.duration > 0 && (
+                                            <div className="text-xs tabular-nums text-muted-foreground">{formatTime(segment.duration)}</div>
+                                        )}
+                                    </div>
+                                    <audio src={segment.url} controls className="h-9 min-w-0 flex-1" />
+                                    {segment.isConfirmed ? (
+                                        <span className="w-8 shrink-0" aria-hidden="true" />
+                                    ) : (
                                         <Button
                                             type="button"
-                                            variant="destructive"
-                                            size="sm"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                                             onClick={() => removeSegment(index)}
+                                            disabled={isRecording}
+                                            title="Supprimer cette prise"
+                                            aria-label={`Supprimer ${label.toLowerCase()}`}
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 />
                                         </Button>
                                     )}
-                                    {segment.isConfirmed && (
-                                        <span className="text-sm text-green-600 font-medium">Enregistrement précédent</span>
-                                    )}
-                                </div>
-                            ))}
+                                </li>
+                            );
+                        })}
+                    </ol>
 
-                            <div className="flex gap-2">
-                                <Button
-                                    type="button"
-                                    onClick={handleConfirm}
-                                    className="w-full bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
-                                >
-                                    <Check className="w-4 h-4 mr-2" />
-                                    Confirmer l&apos;enregistrement
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={handleDiscard}
-                                >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Jeter tout
-                                </Button>
-                            </div>
+                    {!isRecording && (
+                        <div className="flex flex-wrap gap-2">
+                            <Button type="button" size="sm" onClick={handleConfirm}>
+                                <Check /> Confirmer l&apos;enregistrement
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={startRecording}>
+                                <Mic /> Continuer l&apos;enregistrement
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+                                onClick={handleDiscard}
+                            >
+                                <Trash2 /> Jeter tout
+                            </Button>
                         </div>
                     )}
                 </>
             )}
 
+            {/* ── prêt à être envoyé ──────────────────────────────────── */}
             {isConfirmed && finalAudioUrl && (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-green-600">
+                <div className="flex flex-1 flex-col justify-center gap-3 rounded-lg border border-green-600/30 bg-green-500/5 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                             {source === 'import' ? 'Fichier importé' : 'Enregistrement confirmé'}
                         </span>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsConfirmed(false)}
-                        >
+                        <Button type="button" variant="outline" size="sm" onClick={() => setIsConfirmed(false)}>
                             {source === 'import' ? 'Remplacer le fichier' : 'Modifier l\'enregistrement'}
                         </Button>
                     </div>
                     <audio src={finalAudioUrl} controls className="w-full" />
+                    <p className="text-xs text-muted-foreground">
+                        Il sera envoyé avec la liste, lorsque vous l&apos;enregistrerez.
+                    </p>
                 </div>
             )}
         </div>

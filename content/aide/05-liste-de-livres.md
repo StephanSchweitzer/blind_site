@@ -14,9 +14,9 @@ Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de l
 
 ## Ajout des listes de livres
 
-La création et la modification d'une liste se font sur la même page, organisée en trois blocs : **Informations**, **Présentation audio** et **Livres**, suivis d'une barre d'enregistrement.
+La création et la modification d'une liste se font sur la même page, organisée en deux rangées : à gauche le bloc **Informations**, à droite l'interrupteur **Visible sur le site public** et la **Présentation audio** ; puis, en dessous, le bloc **Livres**, suivi d'une barre d'enregistrement.
 
-Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Visible sur le site public** » (4) décide si la liste apparaît dans la partie publique du site.
+Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Visible sur le site public** » (4) décide si la liste apparaît dans la partie publique du site. Sur la capture ci-dessous, il figure encore au bas du bloc Informations : il a depuis rejoint la colonne de droite, au-dessus de la présentation audio.
 
 ![Liste de Livres - capture 2](/admin/aide/images/liste-de-livres-02.jpg)
 
@@ -24,7 +24,7 @@ Cet interrupteur existe parce que la création de la liste et la mise en forme s
 
 ## Enregistrement pour les listes des livres
 
-Deux façons d'ajouter cet audio sont proposées côte à côte : l'enregistrer directement au micro de l'ordinateur, ou importer un fichier déjà préparé (par exemple monté dans un autre logiciel). Le bouton « Importer un fichier » n'apparaît pas encore sur les captures ci-dessous, mais se trouve juste à côté de « Démarrer l'enregistrement ».
+Deux façons d'ajouter cet audio sont proposées côte à côte : l'enregistrer directement au micro de l'ordinateur, ou importer un fichier déjà préparé (par exemple monté dans un autre logiciel). Le bouton « Importer un fichier » n'apparaît pas encore sur les captures ci-dessous, mais se trouve juste à côté de « Démarrer l'enregistrement ». Les captures montrent aussi une présentation plus ancienne : aujourd'hui, un compteur indique la durée de la prise en cours, et chaque prise terminée s'affiche avec son numéro (« Prise 1 », « Prise 2 »…) et sa durée.
 
 Lorsque vous cliquez sur le bouton « Démarrer l'enregistrement », l'enregistrement commence.
 
@@ -47,6 +47,8 @@ Vous pouvez (1) continuer à enregistrer des sections, (2) écouter une section 
 ![Liste de Livres - capture 7](/admin/aide/images/liste-de-livres-07.jpg)
 
 Si vous préférez importer un fichier déjà prêt plutôt que d'enregistrer au micro, cliquez sur « Importer un fichier » et choisissez-le sur votre ordinateur (25 Mo maximum). Il est accepté tel quel, sans être ré-encodé, puis s'affiche immédiatement comme un enregistrement confirmé, prêt à être réécouté ou remplacé via le bouton « Remplacer le fichier ».
+
+Un enregistrement confirmé ou un fichier importé n'est envoyé qu'au moment où vous enregistrez la liste : quitter la page avant le perd.
 
 ## Ajoutez des livres à la liste
 
@@ -83,6 +85,6 @@ Lorsque vous êtes prêt, cliquez sur « **Créer la liste** » (ou « **Enregis
 
 ## Modification des listes de livres
 
-La modification d'une liste s'effectue sur la même page que son ajout, qui contient alors les informations et les livres enregistrés auparavant. Deux gestes s'y ajoutent, en haut à droite : « Imprimer la liste de livres », et le bouton « ⋯ » qui propose « Supprimer la liste ». La suppression demande une confirmation ; les livres eux-mêmes restent au catalogue.
+La modification d'une liste s'effectue sur la même page que son ajout, qui contient alors les informations et les livres enregistrés auparavant ; le titre de la page est celui de la liste. Deux gestes s'y ajoutent, en haut à droite : « Imprimer la liste de livres », et le bouton « ⋯ » qui propose « Supprimer la liste ». La suppression demande une confirmation ; les livres eux-mêmes restent au catalogue.
 
 Pour une liste qui a déjà une présentation audio, le bloc Présentation audio affiche le lecteur avec deux boutons : « Remplacer » pour enregistrer ou importer un nouvel audio, et « Retirer » pour la supprimer de la liste.

@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ArrowLeft, AudioLines, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -174,8 +174,11 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-2xl font-bold text-foreground">
-                                {isNew ? 'Nouvelle liste de livres' : 'Modifier la liste de livres'}
+                            {/* Le titre de la liste plutôt que « Modifier la liste de
+                                livres » : le lien de retour dit déjà où l'on est, et
+                                le sous-titre répétait ce titre entre guillemets. */}
+                            <h1 className="break-words text-2xl font-bold text-foreground">
+                                {isNew ? 'Nouvelle liste de livres' : initialValues.title}
                             </h1>
                             {/* Pas de statut avant la création : une liste qui
                                 n'existe pas encore n'est ni visible ni masquée. */}
@@ -184,8 +187,8 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">
                             {isNew
-                                ? 'Choisissez les livres, ajoutez si vous le souhaitez une présentation audio, puis publiez la liste quand elle est prête.'
-                                : `« ${initialValues.title} »${createdAt ? ` · créée le ${parisDate(createdAt)}` : ''}`}
+                                ? 'Choisissez les livres, ajoutez si vous le souhaitez une présentation audio, puis rendez-la visible quand elle est prête.'
+                                : `Liste de livres${createdAt ? ` créée le ${parisDate(createdAt)}` : ''}`}
                         </p>
                     </div>
                     {!isNew && (
@@ -221,13 +224,17 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                 </Alert>
             )}
 
+            {/* Deux colonnes d'égale hauteur, sans vide : la visibilité rejoint
+                la présentation audio à droite, et la description, à gauche,
+                prend la hauteur qui reste. Seule, la carte audio s'étirait
+                jusqu'au bas des Informations autour de deux boutons. */}
             <div className="grid gap-6 lg:grid-cols-5">
                 {/* ── informations ────────────────────────────────────── */}
-                <Card className="bg-card border-border lg:col-span-3">
+                <Card className="flex min-w-0 flex-col bg-card border-border lg:col-span-3">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-lg text-foreground">Informations</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-5">
+                    <CardContent className="flex flex-1 flex-col gap-5">
                         <div className="space-y-2">
                             <label htmlFor="title" className="text-sm font-medium text-foreground">
                                 Titre <span className="text-muted-foreground">*</span>
@@ -242,7 +249,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                             />
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="flex flex-1 flex-col gap-2">
                             <label htmlFor="description" className="text-sm font-medium text-foreground">
                                 Description <span className="font-normal text-muted-foreground">(facultative)</span>
                             </label>
@@ -251,84 +258,93 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Informations générales affichées en haut de la liste de livres"
-                                className="min-h-[120px] bg-field border-border text-foreground placeholder:text-muted-foreground"
+                                className="min-h-[120px] flex-1 bg-field border-border text-foreground placeholder:text-muted-foreground"
                             />
                         </div>
+                    </CardContent>
+                </Card>
 
-                        <label
-                            htmlFor="active"
-                            className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4"
-                        >
+                <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
+                    {/* ── visibilité ──────────────────────────────────── */}
+                    <Card className="bg-card border-border">
+                        <label htmlFor="active" className="flex cursor-pointer items-start justify-between gap-4 p-5">
                             <div>
-                                <div className="text-sm font-medium text-foreground">Visible sur le site public</div>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                    Désactivée, la liste n&apos;apparaît que dans l&apos;administration : vous pouvez
-                                    la composer à votre rythme et la rendre visible une fois prête.
+                                <div className="text-base font-semibold text-foreground">Visible sur le site public</div>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {active
+                                        ? 'La liste apparaît dans la partie publique du site.'
+                                        : "La liste n'apparaît que dans l'administration : composez-la à votre rythme, puis rendez-la visible une fois prête."}
                                 </p>
                             </div>
-                            <Switch id="active" checked={active} onCheckedChange={setActive} />
+                            <Switch id="active" checked={active} onCheckedChange={setActive} className="mt-0.5" />
                         </label>
-                    </CardContent>
-                </Card>
+                    </Card>
 
-                {/* ── présentation audio ──────────────────────────────── */}
-                <Card className="bg-card border-border lg:col-span-2">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-lg text-foreground">Présentation audio</CardTitle>
-                        <CardDescription>
-                            Facultative : une brève introduction enregistrée pour les auditeurs.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {audioPath && !isReplacingAudio ? (
-                            <>
-                                <audio src={audioPath} controls className="w-full" />
-                                <div className="flex flex-wrap gap-2">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsReplacingAudio(true)}>
-                                        Remplacer
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
-                                        onClick={() => setAudioPath(null)}
-                                    >
-                                        Retirer
-                                    </Button>
+                    {/* ── présentation audio ──────────────────────────── */}
+                    <Card className="flex flex-1 flex-col bg-card border-border">
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-lg text-foreground">Présentation audio</CardTitle>
+                            <CardDescription>
+                                Facultative : une brève introduction enregistrée pour les auditeurs.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-1 flex-col gap-3">
+                            {audioPath && !isReplacingAudio ? (
+                                <div className="flex flex-1 flex-col justify-center gap-3 rounded-lg border border-border bg-muted/20 p-4">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                        <AudioLines className="h-4 w-4 text-primary" aria-hidden="true" />
+                                        Présentation enregistrée
+                                    </div>
+                                    <audio src={audioPath} controls className="w-full" />
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => setIsReplacingAudio(true)}>
+                                            Remplacer
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+                                            onClick={() => setAudioPath(null)}
+                                        >
+                                            Retirer
+                                        </Button>
+                                    </div>
                                 </div>
-                            </>
-                        ) : (
-                            <>
-                                <AudioRecorder
-                                    onConfirm={setTempAudioBlob}
-                                    onClear={() => setTempAudioBlob(null)}
-                                />
-                                {audioPath && isReplacingAudio && (
-                                    <button
-                                        type="button"
-                                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                                        onClick={() => {
-                                            setTempAudioBlob(null);
-                                            setIsReplacingAudio(false);
-                                        }}
-                                    >
-                                        Garder l&apos;audio actuel
-                                    </button>
-                                )}
-                                {!audioPath && initialValues.audioPath && (
-                                    <button
-                                        type="button"
-                                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                                        onClick={() => setAudioPath(initialValues.audioPath)}
-                                    >
-                                        Remettre l&apos;audio retiré
-                                    </button>
-                                )}
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                            ) : (
+                                <>
+                                    <AudioRecorder
+                                        className="flex-1"
+                                        idleTitle={audioPath && isReplacingAudio ? 'Nouvelle présentation audio' : undefined}
+                                        onConfirm={setTempAudioBlob}
+                                        onClear={() => setTempAudioBlob(null)}
+                                    />
+                                    {audioPath && isReplacingAudio && (
+                                        <button
+                                            type="button"
+                                            className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                                            onClick={() => {
+                                                setTempAudioBlob(null);
+                                                setIsReplacingAudio(false);
+                                            }}
+                                        >
+                                            Garder l&apos;audio actuel
+                                        </button>
+                                    )}
+                                    {!audioPath && initialValues.audioPath && (
+                                        <button
+                                            type="button"
+                                            className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                                            onClick={() => setAudioPath(initialValues.audioPath)}
+                                        >
+                                            Remettre l&apos;audio retiré
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
 
             {/* ── livres ──────────────────────────────────────────────── */}
@@ -345,9 +361,16 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                             <span className="text-foreground">Modifications non enregistrées</span>
                         </>
                     ) : (
-                        <span className="text-muted-foreground">Aucune modification</span>
+                        // Une liste pas encore créée n'a rien à modifier : seul ce
+                        // qui manque pour la créer y a sa place.
+                        !isNew && <span className="text-muted-foreground">Aucune modification</span>
                     )}
-                    {missing && <span className="text-muted-foreground">· {missing}</span>}
+                    {missing && (
+                        <span className="text-muted-foreground">
+                            {isDirty || !isNew ? '· ' : ''}
+                            {missing}
+                        </span>
+                    )}
                 </div>
                 <div className="ml-auto flex gap-2">
                     <Button type="button" variant="outline" onClick={leave} disabled={isSaving || isDeleting}>

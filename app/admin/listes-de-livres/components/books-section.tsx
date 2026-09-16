@@ -200,6 +200,17 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
 
     const isEmpty = books.length === 0;
 
+    const addButtons = (
+        <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => setIsSearchOpen(true)}>
+                <Search /> Rechercher un livre
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => setIsCreateOpen(true)}>
+                <BookPlus /> Créer une fiche
+            </Button>
+        </div>
+    );
+
     return (
         <Card className="bg-card border-border">
             <CardHeader className="gap-4 space-y-0 border-b border-border pb-4">
@@ -215,16 +226,17 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                             Les livres présents ici sont ceux qui seront enregistrés dans la liste.
                         </CardDescription>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => setIsSearchOpen(true)}>
-                            <Search /> Rechercher un livre
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setIsCreateOpen(true)}>
-                            <BookPlus /> Créer une fiche
-                        </Button>
-                    </div>
+                    {isEmpty && addButtons}
                 </div>
-                {!isEmpty && <RecentBooksControl win={win} onOpen={() => setIsRecentOpen(true)} />}
+                {/* Les trois façons d'ajouter un livre sur une même ligne. Tant
+                    que la liste est vide, les nouveautés s'affichent en grand
+                    plus bas et les deux boutons restent seuls en haut. */}
+                {!isEmpty && (
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <RecentBooksControl win={win} onOpen={() => setIsRecentOpen(true)} />
+                        {addButtons}
+                    </div>
+                )}
             </CardHeader>
 
             <CardContent className="p-0">
