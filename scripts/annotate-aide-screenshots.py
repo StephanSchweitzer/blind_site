@@ -79,6 +79,14 @@ def dessiner(chemin_image, reperes):
         dessin.rounded_rectangle([x0, y0, x1, y1], radius=RAYON,
                                  outline=VERT, width=EPAISSEUR)
 
+        # Un cadre SANS numero : quand le texte nomme le bouton sans renvoyer a
+        # un chiffre (« cliquez sur Demarrer l'enregistrement »), une pastille
+        # « 1 » ferait chercher au lecteur un (1) qui n'existe nulle part.
+        if repere.get('n') is None:
+            if repere.get('fleche'):
+                fleche(dessin, x_pointe=x0 - 12, y=(y0 + y1) // 2)
+            continue
+
         numero = str(repere['n'])
         boite = dessin.textbbox((0, 0), numero, font=fonte)
         largeur, hauteur = boite[2] - boite[0], boite[3] - boite[1]
@@ -116,7 +124,10 @@ def dessiner(chemin_image, reperes):
 
     suffixe = chemin_image.suffix.lower()
     if suffixe in ('.jpg', '.jpeg'):
-        image.save(chemin_image, quality=90, optimize=True)
+        # 4:4:4 (`subsampling=0`), comme optimize-aide-images.py : le 4:2:0 par
+        # defaut de Pillow bave sur le texte fin et les bordures d'un pixel —
+        # et sur le vert des reperes eux-memes.
+        image.save(chemin_image, quality=90, subsampling=0, optimize=True)
     else:
         image.save(chemin_image)
     return dessines

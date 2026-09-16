@@ -457,6 +457,91 @@ const SPECS = [
         ],
         why: 'informations, présentation audio et publication',
     },
+    // L'enregistreur, prise par prise. Chrome est lance avec un micro factice
+    // (--use-fake-device-for-media-stream) : sans lui, getUserMedia echoue en
+    // mode sans tete et seul le message d'erreur se laisse photographier. Les
+    // durees attendues sont celles que le compteur et les prises affichent.
+    // Cadrees sur la colonne de droite seulement : la grille entiere fait
+    // 1384 px, que le PDF ramene a 499 pt, et l'enregistreur n'y occupait plus
+    // qu'un tiers de la largeur — son texte devenait illisible a l'impression.
+    // La capture 02 montre deja ou se trouve cette colonne dans la page.
+    {
+        name: 'liste-de-livres-03.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/new',
+        waitFor: '#title',
+        steps: [{ sleep: 1200 }],
+        clip: 'form > .grid > div:last-child',
+        densite: 2,
+        annotations: [{ label: "Démarrer l'enregistrement", self: true, fleche: true }],
+        why: "le bouton « Démarrer l'enregistrement »",
+    },
+    {
+        name: 'liste-de-livres-04.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/new',
+        waitFor: '#title',
+        steps: [{ sleep: 1200 }, { clickText: "Démarrer l'enregistrement" }, { sleep: 3400 }],
+        clip: 'form > .grid > div:last-child',
+        densite: 2,
+        annotations: [{ label: "Arrêter l'enregistrement", self: true, fleche: true }],
+        why: "l'enregistrement en cours et « Arrêter l'enregistrement »",
+    },
+    {
+        name: 'liste-de-livres-05.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/new',
+        waitFor: '#title',
+        steps: [
+            { sleep: 1200 },
+            { clickText: "Démarrer l'enregistrement" }, { sleep: 5200 },
+            { clickText: "Arrêter l'enregistrement" }, { waitFor: 'form ol li audio' }, { sleep: 800 },
+        ],
+        clip: 'form > .grid > div:last-child',
+        densite: 2,
+        why: 'une première prise enregistrée',
+    },
+    {
+        name: 'liste-de-livres-06.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/new',
+        waitFor: '#title',
+        steps: [
+            { sleep: 1200 },
+            { clickText: "Démarrer l'enregistrement" }, { sleep: 5200 },
+            { clickText: "Arrêter l'enregistrement" }, { waitFor: 'form ol li audio' }, { sleep: 800 },
+            { clickText: "Continuer l'enregistrement" }, { sleep: 2200 },
+            { clickText: "Arrêter l'enregistrement" }, { waitFor: 'form ol li:nth-child(2) audio' }, { sleep: 800 },
+        ],
+        clip: 'form > .grid > div:last-child',
+        densite: 2,
+        annotations: [{ label: "Continuer l'enregistrement", self: true }],
+        why: 'une seconde prise, ajoutée par « Continuer l’enregistrement »',
+    },
+    {
+        name: 'liste-de-livres-07.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/new',
+        waitFor: '#title',
+        steps: [
+            { sleep: 1200 },
+            { clickText: "Démarrer l'enregistrement" }, { sleep: 5200 },
+            { clickText: "Arrêter l'enregistrement" }, { waitFor: 'form ol li audio' }, { sleep: 800 },
+            { clickText: "Continuer l'enregistrement" }, { sleep: 2200 },
+            { clickText: "Arrêter l'enregistrement" }, { waitFor: 'form ol li:nth-child(2) audio' }, { sleep: 800 },
+        ],
+        clip: 'form > .grid > div:last-child',
+        densite: 2,
+        annotations: [
+            { n: 1, label: "Continuer l'enregistrement", self: true, coin: 'hd' },
+            { n: 2, selector: 'form ol li:nth-child(1) audio', self: true },
+            { n: 2, selector: 'form ol li:nth-child(2) audio', self: true },
+            { n: 3, selector: 'form ol li:nth-child(1) button[aria-label^="Supprimer"]', self: true, coin: 'hd' },
+            { n: 4, label: "Confirmer l'enregistrement", self: true },
+            { n: 5, label: 'Jeter tout', self: true },
+        ],
+        why: 'les cinq gestes de l’enregistreur',
+    },
     {
         name: 'liste-de-livres-08.jpg',
         viewport: { width: 1440, height: 1600 },
@@ -465,7 +550,7 @@ const SPECS = [
         steps: [{ sleep: 1500 }],
         clip: 'form > .rounded-lg.border:not(.sticky)',
         annotations: [
-            { n: 1, label: 'Voir', self: true },
+            { n: 1, label: 'Voir', self: true, coin: 'hd' },
             { n: 2, label: 'Rechercher un livre', self: true },
             { n: 3, label: 'Créer une fiche', self: true },
             { n: 4, selector: 'form table tbody tr:first-child button[role="checkbox"]', self: true },
@@ -847,7 +932,7 @@ async function clipFor(selector) {
  * (CSS) — ce second chemin sert aux boutons icone seul, dont le libelle
  * accessible n'est pas un texte fixe.
  */
-async function reperesPour(annotations, clip) {
+async function reperesPour(annotations, clip, densite = 1) {
     const trouves = [];
     for (const a of annotations) {
         const rect = await evaluate(`(() => {
@@ -903,10 +988,12 @@ async function reperesPour(annotations, clip) {
         }
         trouves.push({
             n: a.n,
-            x: Math.round(rect.x - (clip ? clip.x : 0)),
-            y: Math.round(rect.y - (clip ? clip.y : 0)),
-            w: Math.round(rect.w),
-            h: Math.round(rect.h),
+            // En pixels de l'IMAGE : a densite 2, un bouton de 40 px CSS en
+            // occupe 80 dans la capture.
+            x: Math.round((rect.x - (clip ? clip.x : 0)) * densite),
+            y: Math.round((rect.y - (clip ? clip.y : 0)) * densite),
+            w: Math.round(rect.w * densite),
+            h: Math.round(rect.h * densite),
             ...(a.fleche ? { fleche: true } : {}),
             // Le coin qui porte la pastille — voir annotate-aide-screenshots.py.
             ...(a.coin ? { coin: a.coin } : {}),
@@ -1089,17 +1176,19 @@ async function anonymiser(pseudonymes = []) {
     }
 }
 
-async function capture(name, clipSelector, annotations = []) {
+async function capture(name, clipSelector, annotations = [], densite = 1) {
     let clip;
     if (clipSelector) {
         clip = await clipFor(clipSelector);
         if (clip) clip = { ...clip, scale: 1 };
     }
-    const reperes = annotations.length ? await reperesPour(annotations, clip) : [];
+    const reperes = annotations.length ? await reperesPour(annotations, clip, densite) : [];
 
     const { data } = await send('Page.captureScreenshot', {
         format: 'jpeg',
-        quality: 85,
+        // 100 plutot que 85 : la capture est reencodee ensuite (reperes,
+        // optimisation). Partir d'un JPEG deja degrade additionne les pertes.
+        quality: 100,
         ...(clip ? { clip } : {}),
     });
     const file = path.join(OUT_DIR, name);
@@ -1216,6 +1305,10 @@ async function main() {
         '--hide-scrollbars',
         '--no-first-run',
         '--force-device-scale-factor=1',
+        // Un micro et une autorisation factices, pour photographier l'enregistreur
+        // des listes de livres (liste-de-livres-03 a 07).
+        '--use-fake-device-for-media-stream',
+        '--use-fake-ui-for-media-stream',
         'about:blank',
     ], { stdio: 'ignore' });
 
@@ -1246,7 +1339,14 @@ async function main() {
                 await send('Emulation.setDeviceMetricsOverride', {
                     width: spec.viewport?.width ?? VIEWPORT.width,
                     height: spec.viewport?.height ?? VIEWPORT.height,
-                    deviceScaleFactor: 1,
+                    /**
+                     * `densite` : les captures ETROITES (une colonne, pas la
+                     * page). /admin/aide etire chaque image a la largeur du
+                     * texte, environ 735 px : une capture de 548 px y etait
+                     * agrandie, donc floue. A densite 2 elle en fait 1096, que
+                     * l'ecran reduit et que le PDF imprime net.
+                     */
+                    deviceScaleFactor: spec.densite ?? 1,
                     mobile: false,
                 });
                 await goto(BASE + spec.url);
@@ -1267,7 +1367,7 @@ async function main() {
                 // Juste avant la photo : apres toute la navigation, donc plus
                 // rien ne peut recharger de vraies donnees par-dessus.
                 await anonymiser(spec.pseudonymes ?? []);
-                const size = await capture(spec.name, spec.clip, spec.annotations ?? []);
+                const size = await capture(spec.name, spec.clip, spec.annotations ?? [], spec.densite ?? 1);
                 console.log(`  ✓ ${spec.name.padEnd(26)} ${String(Math.round(size / 1024)).padStart(4)} Ko   ${spec.why}`);
             } catch (error) {
                 failures.push([spec.name, error.message]);

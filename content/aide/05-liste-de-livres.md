@@ -16,7 +16,7 @@ Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de l
 
 La création et la modification d'une liste se font sur la même page, organisée en deux rangées : à gauche le bloc **Informations**, à droite l'interrupteur **Visible sur le site public** et la **Présentation audio** ; puis, en dessous, le bloc **Livres**, suivi d'une barre d'enregistrement.
 
-Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Visible sur le site public** » (4) décide si la liste apparaît dans la partie publique du site. Sur la capture ci-dessous, il figure encore au bas du bloc Informations : il a depuis rejoint la colonne de droite, au-dessus de la présentation audio.
+Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Visible sur le site public** » (4) décide si la liste apparaît dans la partie publique du site.
 
 ![Liste de Livres - capture 2](/admin/aide/images/liste-de-livres-02.jpg)
 
@@ -24,7 +24,7 @@ Cet interrupteur existe parce que la création de la liste et la mise en forme s
 
 ## Enregistrement pour les listes des livres
 
-Deux façons d'ajouter cet audio sont proposées côte à côte : l'enregistrer directement au micro de l'ordinateur, ou importer un fichier déjà préparé (par exemple monté dans un autre logiciel). Le bouton « Importer un fichier » n'apparaît pas encore sur les captures ci-dessous, mais se trouve juste à côté de « Démarrer l'enregistrement ». Les captures montrent aussi une présentation plus ancienne : aujourd'hui, un compteur indique la durée de la prise en cours, et chaque prise terminée s'affiche avec son numéro (« Prise 1 », « Prise 2 »…) et sa durée.
+Deux façons d'ajouter cet audio sont proposées côte à côte : l'enregistrer directement au micro de l'ordinateur, ou importer un fichier déjà préparé (par exemple monté dans un autre logiciel). Le bouton « Importer un fichier » se trouve juste à côté de « Démarrer l'enregistrement ». Pendant l'enregistrement, un compteur indique la durée de la prise en cours, et chaque prise terminée s'affiche avec son numéro (« Prise 1 », « Prise 2 »…) et sa durée.
 
 Lorsque vous cliquez sur le bouton « Démarrer l'enregistrement », l'enregistrement commence.
 
