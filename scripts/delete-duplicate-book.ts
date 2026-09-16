@@ -6,18 +6,24 @@
  *
  * Without --confirm nothing is written: it checks and reports only.
  *
- * ## Why a script rather than the back office
+ * ## The back office now does this — prefer it
  *
- * The DELETE route soft-deletes every track to the corbeille one at a time
- * (app/api/books/[id]/route.ts). For a 77-track, 748 Mio folder that is 77
- * server-side copies inside a single serverless request — it does not finish,
- * and if it did it would duplicate the recording a THIRD time to protect a copy
- * that is already redundant.
+ * This script existed because the DELETE route soft-deleted every track to the
+ * corbeille, one folder at a time, with no way to say otherwise: for a 77-track,
+ * 748 Mio folder that is 77 server-side copies inside a single serverless
+ * request — it does not finish, and if it did it would duplicate the recording a
+ * THIRD time to protect a copy that is already redundant.
  *
- * So this clears audio_filepath first: the route's track loop has nothing to
- * walk, the row goes, and the folder is simply left in the bucket. It then shows
- * up in /admin/audio-orphelins, the screen that already exists for deciding what
- * to do with a folder no book claims. Nothing here touches the bucket.
+ * Deleting a fiche from /admin/books now asks what to do with the folder, and
+ * « laisser le dossier » — exactly what this script does by hand — is the
+ * default (lib/books/deleteBookWithAudio.ts). Doublons' own delete button does
+ * the same. So reach for the screen first; this stays for the case the screen
+ * cannot serve: the byte-for-byte comparison of two folders below, which is what
+ * proves the duplicate is a duplicate.
+ *
+ * What it does, once that is proven: clear audio_filepath, delete the row, and
+ * leave the folder in the bucket, where /admin/audio-orphelins picks it up at the
+ * next sync run. Nothing here touches the bucket.
  *
  * ## What it refuses to do
  *
@@ -147,7 +153,8 @@ async function main() {
         console.log('\n  Simulation (--confirm absent). Serait exécuté :');
         console.log(`    1. sauvegarde de la fiche #${DUPLICATE} sur disque`);
         console.log(`    2. audio_filepath vidé (pour qu’aucune copie en corbeille ne soit faite)`);
-        console.log(`    3. suppression de la fiche #${DUPLICATE}`);
+        console.log(`    3. empreinte du livre posée sur ses lignes de corbeille audio`);
+        console.log(`    4. suppression de la fiche #${DUPLICATE}`);
         console.log(`    → le dossier ${dup!.audio_filepath} restera dans le bucket`);
         console.log('      et apparaîtra dans /admin/audio-orphelins.');
         return;
@@ -164,7 +171,22 @@ async function main() {
     // Cleared first and in its own statement: the value is in the snapshot, and
     // this is what stops any later delete path from walking the folder.
     await prisma.book.update({ where: { id: DUPLICATE }, data: { audio_filepath: null } });
+
+    // Qui était le livre, pendant que la ligne existe encore : DeletedAudioTrack
+    // .bookId est SetNull, et /admin/audio-corbeille lit ces deux colonnes pour
+    // nommer une piste dont la fiche a disparu. Même écriture que markTrashOrigin
+    // (lib/audio/trash.ts), refaite ici parce que ce script tourne sous Node avec
+    // son propre client, sans les modules `server-only`.
+    const stamped = await prisma.deletedAudioTrack.updateMany({
+        where: { bookId: DUPLICATE },
+        data: { originBookId: DUPLICATE, originBookTitle: dup!.title },
+    });
+
     await prisma.book.delete({ where: { id: DUPLICATE } });
+
+    if (stamped.count) {
+        console.log(`  ${stamped.count} ligne(s) de corbeille audio marquée(s) au nom du livre.`);
+    }
 
     console.log(`  ✓ Fiche #${DUPLICATE} supprimée.`);
     console.log(`  Le dossier reste dans le bucket et sera listé comme orphelin`);

@@ -826,6 +826,25 @@ model DeletedAudioTrack {
   /// row that existed when the purge feature shipped; defaults false for
   /// everything soft-deleted afterwards.
   retainForever Boolean   @default(false)
+  /// Qui était le livre, quand il n'y en a plus.
+  ///
+  /// `bookId` est SetNull : la ligne survit à la fiche, mais devient anonyme —
+  /// et le seul lecteur de la corbeille (GET /api/books/[id]/audio/trash) filtre
+  /// sur `bookId`. Une piste supprimée depuis une fiche elle-même supprimée
+  /// ensuite n'apparaissait donc plus nulle part, alors que purgeExpiredAudioTrash
+  /// (lib/audio/purge.ts) efface l'objet pour de bon au bout de 14 jours sans
+  /// regarder ce null : la promesse « un livre supprimé laisse ses enregistrements
+  /// récupérables » était fausse depuis le back-office.
+  ///
+  /// Volontairement SANS relation : une clé étrangère ne peut pas survivre à la
+  /// ligne qu'elle nomme, et c'est précisément ce qu'on veut ici. Le journal
+  /// d'audit n'est pas un recours non plus : il se purge à 14 jours lui aussi
+  /// (7 sous pression), donc la même fenêtre ou moins.
+  ///
+  /// Écrit par markTrashOrigin (lib/audio/trash.ts) depuis chaque chemin qui
+  /// supprime un Book, juste avant que l'information disparaisse.
+  originBookId    Int?
+  originBookTitle String?
   book          Book?     @relation("BookDeletedAudioTracks", fields: [bookId], references: [id], onDelete: SetNull)
   deletedBy     User?     @relation("AudioTracksDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
   restoredBy    User?     @relation("AudioTracksRestoredBy", fields: [restoredById], references: [id], onDelete: SetNull)

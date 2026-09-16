@@ -26,6 +26,7 @@ const navGroups: NavGroup[] = [
             { href: '/admin/listes-de-livres', label: 'Listes de livres', icon: '⭐' },
             { href: '/admin/review', label: 'Doublons', icon: '🔀' },
             { href: '/admin/audio-orphelins', label: 'Audio orphelin', icon: '🎧' },
+            { href: '/admin/audio-corbeille', label: 'Corbeille audio', icon: '🗑️' },
         ],
     },
     {

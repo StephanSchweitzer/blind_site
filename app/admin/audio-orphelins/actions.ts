@@ -7,7 +7,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { listRawObjects } from '@/lib/audio/bucket';
 import { refreshBookAudioState } from '@/lib/audio/state';
-import { parisDate } from '@/lib/paris-day';
+import { appendOrphanNote } from '@/lib/audio/orphanFolders';
 
 /**
  * Rattachement d'un dossier audio orphelin à un livre.
@@ -41,12 +41,6 @@ const asAdminAction = (body: (me: CurrentUser) => Promise<ActionResult>) => asAd
  */
 const isLinked = (o: { resolvedAt: Date | null; linkedBookId: number | null }): boolean =>
     o.resolvedAt !== null && o.linkedBookId !== null;
-
-/** Append a dated line to the row's note rather than overwriting the previous one. */
-function appendNote(existing: string | null, line: string): string {
-    const stamped = `${parisDate(new Date())} — ${line}`;
-    return existing?.trim() ? `${existing.trim()}\n${stamped}` : stamped;
-}
 
 /**
  * Does this folder hold something worth protecting?
@@ -132,7 +126,7 @@ export async function linkOrphanToBook(
                         message: `CONFIRM_REPLACE:${existing}`,
                     };
                 }
-                note = appendNote(note, `ancien chemin du livre #${book.id} remplacé (dossier vide) : ${existing}`);
+                note = appendOrphanNote(note, `ancien chemin du livre #${book.id} remplacé (dossier vide) : ${existing}`);
             }
 
             await prisma.book.update({
@@ -149,7 +143,7 @@ export async function linkOrphanToBook(
                     linkedBookId: bookId,
                     resolvedAt: new Date(),
                     dismissedAt: null,
-                    note: appendNote(note, `rattaché au livre #${bookId} par ${me.email ?? `#${me.id}`}`),
+                    note: appendOrphanNote(note, `rattaché au livre #${bookId} par ${me.email ?? `#${me.id}`}`),
                 },
             });
 
@@ -243,7 +237,7 @@ export async function createBookForOrphan(
                     linkedBookId: book.id,
                     resolvedAt: new Date(),
                     dismissedAt: null,
-                    note: appendNote(
+                    note: appendOrphanNote(
                         orphan.note,
                         `livre #${book.id} créé pour ce dossier par ${me.email ?? `#${me.id}`}` +
                             (numberTaken ? ` (n° ${orphan.folderNum} déjà pris, non repris)` : ''),
@@ -300,7 +294,7 @@ export async function unlinkOrphan(orphanId: number): Promise<ActionResult> {
                 data: {
                     linkedBookId: null,
                     resolvedAt: null,
-                    note: appendNote(
+                    note: appendOrphanNote(
                         orphan.note,
                         `rattachement au livre #${orphan.linkedBookId} annulé par ${me.email ?? `#${me.id}`}`,
                     ),
@@ -343,7 +337,7 @@ export async function dismissOrphan(orphanId: number, reason: string): Promise<A
                 where: { id: orphanId },
                 data: {
                     dismissedAt: new Date(),
-                    note: appendNote(orphan.note, `écarté par ${me.email ?? `#${me.id}`} : ${motif}`),
+                    note: appendOrphanNote(orphan.note, `écarté par ${me.email ?? `#${me.id}`} : ${motif}`),
                 },
             });
 
@@ -369,7 +363,7 @@ export async function restoreOrphan(orphanId: number): Promise<ActionResult> {
                 where: { id: orphanId },
                 data: {
                     dismissedAt: null,
-                    note: appendNote(orphan.note, `remis dans la file par ${me.email ?? `#${me.id}`}`),
+                    note: appendOrphanNote(orphan.note, `remis dans la file par ${me.email ?? `#${me.id}`}`),
                 },
             });
 

@@ -4,22 +4,19 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
-import { resolvePrefix } from '@/lib/audio/state';
-import { listBookTracks } from '@/lib/audio/bucket';
-import { softDeleteTracks } from '@/lib/audio/trash';
 import { resolveMergedBook } from '@/lib/books/merged';
 import {
-    readBookUsage,
-    bookUsageBlocksDeletion,
-    bookUsageRefusal,
-    bookUsageLinks,
-} from '@/lib/books/deletionGuard';
-import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
+    deleteBookWithAudio,
+    type AudioDisposition,
+    type AudioDispositionMode,
+} from '@/lib/books/deleteBookWithAudio';
 import { BookUpdateInputSchema } from '@/types/api/book.api';
 
 /**
  * Applies to every handler in this file (GET/PUT are quick single-row
- * queries; only DELETE's audio cascade needs headroom). softDeleteTracks
+ * queries; only DELETE's audio cascade needs headroom — and only now that a
+ * permanent asks for it explicitly, « envoyer à la corbeille » being one of
+ * three dispositions rather than a silent side effect). softDeleteTracks
  * copies 10-wide, and the largest folder sampled in the corpus
  * (audit-audio-files.ts) held 77 tracks — ~8 pooled batches. 45s keeps real
  * margin over that for an unusually large folder, while staying inside the
@@ -268,120 +265,89 @@ export const PUT = withAdmin(async (req, { params }) => {
     }
 });
 
+/** Les trois dispositions, telles qu'un client peut les nommer. */
+const AUDIO_MODES = new Set<AudioDispositionMode>(['leave', 'transfer', 'trash']);
+
 /**
- * Deleting a book also removes its audio from the bucket — through the same
- * corbeille path as a manual track delete, not a raw bucket wipe, so a book
- * deleted by mistake still leaves its recordings recoverable for the same 14
- * days as everything else in lib/audio/purge.ts.
+ * La décision audio portée par le corps de la requête, ou null s'il n'y en a pas.
  *
- * Order matters: tracks are moved to the corbeille BEFORE the book row is
- * deleted, because DeletedAudioTrack.bookId is a real foreign key — it can
- * only be set on insert while the book still exists (onDelete: SetNull only
- * fires afterwards, once, on rows that already reference it). Deleting the
- * book first and soft-deleting after would violate that constraint.
- *
- * Two things are refused up front, before the bucket is touched, because a
- * book that turns out to be undeletable must not have had its folder emptied
- * for nothing:
- *
- *  - any demande or attribution naming it. Orders/Assignment reference Book in
- *    RESTRICT, so Postgres would refuse anyway — INCLUDING for the rows the
- *    soft-delete filter hides, which is what used to turn this into an opaque
- *    500. See lib/books/deletionGuard.ts for why the counts are split.
- *  - a folder shared with another fiche, which the deletion would empty on its
- *    behalf. See lib/audio/sharedFolder.ts.
+ * Un corps absent ou illisible vaut « pas de décision » : la suppression n'est
+ * alors acceptée que si le dossier est vide (voir deleteBookWithAudio), au lieu
+ * de tout envoyer à la corbeille comme le faisait le silence.
  */
-export const DELETE = withAdmin(async (_request, { params, me }) => {
+function readDisposition(body: unknown): AudioDisposition | null {
+    const audio = (body as { audio?: unknown } | null)?.audio;
+    if (!audio || typeof audio !== 'object') return null;
+    const { mode, targetBookId, confirmReplaceTarget, confirmTrackCount } = audio as {
+        mode?: unknown;
+        targetBookId?: unknown;
+        confirmReplaceTarget?: unknown;
+        confirmTrackCount?: unknown;
+    };
+    if (typeof mode !== 'string' || !AUDIO_MODES.has(mode as AudioDispositionMode)) return null;
+    return {
+        mode: mode as AudioDispositionMode,
+        ...(Number.isInteger(targetBookId) ? { targetBookId: targetBookId as number } : {}),
+        ...(confirmReplaceTarget === true ? { confirmReplaceTarget: true } : {}),
+        ...(Number.isInteger(confirmTrackCount)
+            ? { confirmTrackCount: confirmTrackCount as number }
+            : {}),
+    };
+}
+
+/**
+ * Supprimer une fiche livre, l'enregistrement étant une décision explicite.
+ *
+ * La suppression déplaçait tout le dossier audio vers la corbeille, sans le
+ * demander : lent au point de ne pas finir sur un gros dossier, et une troisième
+ * copie d'un enregistrement que plus aucune fiche ne réclamerait. Le corps de la
+ * requête porte donc `audio.mode` — `leave` (le dossier reste dans le bucket et
+ * rejoint /admin/audio-orphelins), `transfer` (une autre fiche en hérite) ou
+ * `trash` (l'ancien comportement, désormais choisi). Sans décision alors que le
+ * dossier contient des pistes : 400, et la fenêtre de confirmation la demande.
+ *
+ * Tout le reste — les refus (demandes / attributions, dossier partagé avec une
+ * autre fiche), l'ordre des écritures, la trace laissée à la corbeille — vit dans
+ * lib/books/deleteBookWithAudio.ts, avec la suppression depuis Doublons.
+ */
+export const DELETE = withAdmin(async (request, { params, me }) => {
     revalidateAdmin();
     const bookId = await bookIdFrom(params);
     if (bookId === null) return invalidId();
 
     try {
-        const book = await prisma.book.findUnique({
-            where: { id: bookId },
-            select: { audio_filepath: true },
+        const result = await deleteBookWithAudio({
+            bookId,
+            performedById: me.id,
+            disposition: readDisposition(await request.json().catch(() => null)),
         });
-        if (!book) {
-            return NextResponse.json({ error: 'Livre introuvable' }, { status: 404 });
-        }
 
-        const usage = await readBookUsage(bookId);
-        if (bookUsageBlocksDeletion(usage)) {
+        if (!result.ok) {
             return NextResponse.json(
-                {
-                    error: bookUsageRefusal(usage),
-                    usage,
-                    links: bookUsageLinks(bookId),
-                },
-                { status: 409 }
+                { error: result.error, ...(result.extra ?? {}) },
+                { status: result.status },
             );
         }
-
-        const sharing = await booksSharingAudioFolder(bookId, book.audio_filepath);
-        if (sharing.length) {
-            return NextResponse.json(
-                {
-                    error: sharedFolderRefusal(sharing, 'supprimer ce livre'),
-                    sharedWith: sharing,
-                },
-                { status: 409 }
-            );
-        }
-
-        const audioFailures: string[] = [];
-        const prefix = resolvePrefix(book.audio_filepath);
-        if (prefix) {
-            const tracks = await listBookTracks(prefix);
-            const result = await softDeleteTracks({
-                bookId,
-                prefix,
-                tracks: tracks.map((t) => ({
-                    key: t.key,
-                    name: t.name,
-                    sizeBytes: t.sizeBytes,
-                })),
-                userId: me.id,
-                // Nothing will be left to hold a placeholder for, or to describe.
-                skipFinalisation: true,
-            });
-            audioFailures.push(...result.failed.map((f) => f.filename));
-
-            // Refuse rather than delete the book over the top of tracks still in
-            // its folder. Doing so used to leave the recording stranded under a
-            // prefix no record pointed at, and no way to tell how far the move
-            // had got. The move is resumable, so the honest answer is to say
-            // what is stuck and let the permanent press Supprimer again.
-            if (result.failed.length) {
-                return NextResponse.json(
-                    {
-                        error:
-                            `${result.failed.length} fichier(s) audio n’ont pas pu être déplacés ` +
-                            'vers la corbeille. Le livre n’a pas été supprimé. Relancez la ' +
-                            'suppression : les fichiers déjà déplacés ne le seront pas deux fois.',
-                        audioFailures,
-                        details: result.failed,
-                    },
-                    { status: 502 },
-                );
-            }
-        }
-
-        await prisma.book.delete({
-            where: { id: bookId }
-        });
 
         revalidateCatalogue();
 
         return NextResponse.json(
-            { success: true, audioFailures },
-            { status: 200 }
+            {
+                success: true,
+                audio: result.audio,
+                // Conservé pour la fiche livre, qui sait déjà le dire : plus rien
+                // ne le remplit, le mode `trash` refusant la suppression tant
+                // qu'un fichier n'a pas rejoint la corbeille.
+                audioFailures: [],
+            },
+            { status: 200 },
         );
     } catch (error) {
         console.error('Error deleting book:', error);
         // Filet : plus aucune clé étrangère connue ne devrait arriver ici (le
-        // contrôle ci-dessus couvre les deux relations en RESTRICT), mais une
-        // contrainte ajoutée demain n'a pas à ressortir en « 500 Failed to
-        // delete book » — c'est exactement le message qui n'apprenait rien.
+        // contrôle de deleteBookWithAudio couvre les deux relations en RESTRICT),
+        // mais une contrainte ajoutée demain n'a pas à ressortir en « 500 Failed
+        // to delete book » — c'est exactement le message qui n'apprenait rien.
         if (isForeignKeyViolation(error)) {
             return NextResponse.json(
                 {

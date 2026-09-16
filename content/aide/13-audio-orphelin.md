@@ -54,3 +54,32 @@ peut être **restauré** depuis l'onglet « Écartés ».
 
 Sur un dossier rattaché, « détacher » défait le lien sans toucher aux fichiers : le dossier
 retourne dans « À traiter ». À utiliser quand le rattachement s'est fait sur le mauvais livre.
+
+## Corbeille audio
+
+L'URL de cette page est https://eca-aveugles.fr/admin/audio-corbeille
+
+Supprimer un fichier audio ne l'efface pas : il est d'abord copié dans une corbeille, la copie
+est vérifiée, et seulement ensuite le fichier quitte le dossier du livre. Cette page réunit
+**tous** les fichiers ainsi mis de côté, pour l'ensemble du catalogue — l'éditeur audio d'un
+livre ne montre que les siens.
+
+Quatre onglets :
+
+- **Dans la corbeille** — les fichiers encore récupérables, du plus anciennement supprimé au
+  plus récent, c'est-à-dire dans l'ordre où la purge les prendra.
+- **Sans fiche** — ceux dont le livre a été supprimé depuis. Ils restent nommés au titre et à
+  l'identifiant qu'avait la fiche au moment de la suppression.
+- **Restaurées** — remises en place, avec qui l'a fait et quand.
+- **Purgées** — définitivement supprimées du stockage. La ligne reste, le fichier non.
+
+Chaque ligne dit quand le fichier sera supprimé du stockage ; un délai de trois jours ou moins
+est signalé. Les fichiers supprimés avant la mise en place de cette purge automatique en sont
+exemptés et portent la mention « conservé indéfiniment ».
+
+« **Restaurer** » remet le fichier à l'emplacement exact d'où il venait. La restauration est
+refusée si un autre fichier occupe désormais cette place — l'écraser reviendrait à détruire un
+enregistrement en croyant en sauver un autre. Quand le livre n'existe plus, le fichier est tout
+de même remis dans son dossier d'origine : ce dossier n'appartenant à personne, il apparaît
+ensuite dans la file « À traiter » de cette page, où il peut être rattaché à un livre.
+

@@ -98,13 +98,58 @@ Le reste du formulaire fonctionne de la même manière que le formulaire d'ajout
 
 Pour enregistrer le livre, rendez-vous en bas de la page et cliquez sur « Mettre à jour le livre ». Pour le supprimer, rendez-vous en bas de la page et cliquez sur « Supprimer le livre ».
 
-### Quand la suppression est refusée
+### Supprimer un livre
 
-Un livre ne se supprime que si rien ne s'y rattache. Le refus s'affiche en rouge dans le formulaire et dit précisément ce qui bloque :
+Le bouton ouvre une fenêtre qui commence par **vérifier** si la fiche peut être supprimée. La
+vérification a lieu avant toute question : il n'y a plus à confirmer une suppression pour
+apprendre ensuite qu'elle était impossible.
 
-- **Des demandes ou des attributions nomment ce livre.** Le message donne leur nombre et leurs identifiants, et la ligne « Ce livre : … » juste en dessous mène aux listes filtrées sur cet ouvrage. Traitez-les d'abord — supprimez-les, ou rattachez-les à un autre livre.
-- **Le livre garde l'historique de demandes ou d'attributions supprimées.** Cet historique est conservé volontairement : la fiche ne peut plus être supprimée, même si ces demandes n'apparaissent plus dans les listes. Pour retirer l'ouvrage du catalogue public et des listes de livres, cochez « Masqué du catalogue public » au lieu de le supprimer — la fiche reste utilisable par les permanents.
-- **Le dossier audio est aussi celui d'un autre livre.** Le message nomme la ou les autres fiches avec leur identifiant. Supprimer ici viderait aussi leur dossier, l'enregistrement étant le même : réglez d'abord le doublon depuis [Doublons](/admin/aide/doublons), ou détachez le dossier de l'autre fiche.
+Quand quelque chose l'empêche, la fenêtre l'affiche en rouge, n'offre aucune option, et dit
+précisément ce qui bloque :
+
+- **Des demandes ou des attributions nomment ce livre.** Le message donne leur nombre et leurs
+  identifiants, et la ligne « Ce livre : … » juste en dessous mène aux listes filtrées sur cet
+  ouvrage. Traitez-les d'abord — supprimez-les, ou rattachez-les à un autre livre.
+- **Le livre garde l'historique de demandes ou d'attributions supprimées.** Cet historique est
+  conservé volontairement : la fiche ne peut plus être supprimée, même si ces demandes
+  n'apparaissent plus dans les listes. Pour retirer l'ouvrage du catalogue public et des listes
+  de livres, cochez « Masqué du catalogue public » au lieu de le supprimer — la fiche reste
+  utilisable par les permanents.
+- **Le dossier audio est aussi celui d'un autre livre.** Le message nomme la ou les autres
+  fiches, avec leur identifiant et un lien vers chacune. Supprimer ici viderait aussi leur
+  dossier, l'enregistrement étant le même : réglez d'abord le doublon depuis
+  [Doublons](/admin/aide/doublons), ou détachez le dossier de l'autre fiche.
+
+### Que devient l'enregistrement audio
+
+Si la fiche est supprimable et que son dossier contient des pistes, la fenêtre affiche ce
+dossier — nombre de fichiers, poids, chemin — et demande **ce qu'il faut en faire**. Trois
+possibilités, la première étant celle à choisir dans le doute :
+
+- **Laisser le dossier dans le stockage** *(conseillé)*. Rien n'est copié, rien n'est supprimé.
+  Le dossier n'appartient plus à aucune fiche et apparaît aussitôt dans
+  [Audio orphelin](/admin/aide/audio-orphelin), où il peut être rattaché à un autre livre ou
+  écarté. C'est le bon choix pour un doublon : l'enregistrement est déjà sur la fiche que vous
+  gardez.
+- **Transférer vers un autre livre.** Vous choisissez le livre qui hérite du dossier ; il pointe
+  dessus à la place de la fiche supprimée, et son poids, sa durée et son état audio sont
+  recalculés dans la foulée. Le transfert est **refusé si ce livre possède déjà des pistes** —
+  un dossier n'appartient qu'à un seul livre, et en écraser un reviendrait à perdre de vue
+  l'enregistrement qu'il contenait.
+- **Envoyer les pistes à la corbeille.** Chaque fichier est copié dans la corbeille, vérifié,
+  puis retiré du dossier. Il reste restaurable 14 jours depuis
+  [Corbeille audio](/admin/aide/audio-orphelin#corbeille-audio), après quoi il est supprimé du
+  stockage définitivement. Sur un gros dossier, l'opération peut ne pas aboutir du premier coup :
+  relancez la suppression, les fichiers déjà déplacés ne le sont pas deux fois.
+
+Quand le dossier est vide, ou que la fiche n'en porte aucun, aucune question n'est posée.
+
+Si des pistes de ce livre étaient **déjà** dans la corbeille, la fenêtre le signale : elles y
+restent, au nom de la fiche supprimée, et se retrouvent dans l'onglet « Sans fiche » de
+[Corbeille audio](/admin/aide/audio-orphelin#corbeille-audio).
+
+La fiche elle-même, en revanche, est supprimée définitivement. Une suppression faite par erreur
+se rejoue depuis le [journal des modifications](/admin/aide/statistiques) dans les 14 jours.
 
 ## Éditeur audio
 

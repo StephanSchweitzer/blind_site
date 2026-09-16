@@ -282,6 +282,40 @@ export async function softDeleteTrack(opts: {
     return { trashId, trashKey, sizeBytes };
 }
 
+/**
+ * Inscrit sur les lignes de corbeille d'un livre QUI il était, juste avant que
+ * sa fiche disparaisse.
+ *
+ * `DeletedAudioTrack.bookId` est `onDelete: SetNull` — la corbeille survit à la
+ * fiche, ce qui est voulu — mais son seul lecteur (GET
+ * /api/books/[id]/audio/trash) filtre sur `bookId`. Une piste envoyée à la
+ * corbeille depuis l'éditeur audio, puis dont la fiche était supprimée, ne
+ * s'affichait donc plus nulle part, alors que purgeExpiredAudioTrash
+ * (./purge.ts) efface l'objet pour de bon au bout de 14 jours sans regarder ce
+ * null : « le livre supprimé laisse ses enregistrements récupérables » était
+ * faux dès qu'on passait par le back-office.
+ *
+ * Le journal d'audit ne rattrapait rien : il se purge à 14 jours lui aussi
+ * (7 sous pression), donc dans la même fenêtre ou moins.
+ *
+ * À appeler depuis TOUT chemin qui supprime une ligne Book, pendant qu'elle
+ * existe encore (la route DELETE du livre, la suppression depuis Doublons,
+ * scripts/delete-duplicate-book.ts). Les lignes restent lisibles et
+ * restaurables depuis /admin/audio-corbeille.
+ *
+ * Une fusion ne passe PAS par ici : elle réattribue les lignes au livre
+ * survivant, comme elle réattribue les demandes et les attributions — le
+ * travail est le même ouvrage, donc la corbeille de la fiche conservée est le
+ * bon endroit (voir fuseBooks).
+ */
+export async function markTrashOrigin(bookId: number, title: string): Promise<number> {
+    const { count } = await prisma.deletedAudioTrack.updateMany({
+        where: { bookId },
+        data: { originBookId: bookId, originBookTitle: title },
+    });
+    return count;
+}
+
 /** Put a track back where it came from. */
 export async function restoreTrack(opts: {
     trashId: number;

@@ -9,17 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {Card, CardHeader, CardTitle, CardContent, CardDescription} from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { DeleteBookModal } from '@/admin/DeleteBookModal';
 import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
 import YearCommandSelect from "@/components/ui/year-select";
 import { calendarMonth, calendarYear } from '@/lib/calendar-date';
@@ -62,7 +52,8 @@ export default function EditionLivre() {
     const [rechercheQuery, setRechercheQuery] = useState('');
     const [erreur, setErreur] = useState<string | null>(null);
     const [chargement, setChargement] = useState(false);
-    const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+    /** La fenêtre de suppression, qui porte refus, décision audio et appel. */
+    const [suppressionOuverte, setSuppressionOuverte] = useState(false);
 
     // Récupérer les genres disponibles
     useEffect(() => {
@@ -182,50 +173,20 @@ export default function EditionLivre() {
         }
     };
 
-    const gererSuppression = async () => {
-        setSuppressionEnCours(true);
-        setErreur(null);
-
-        try {
-            const res = await fetch(`/api/books/${id}`, {
-                method: 'DELETE',
-            });
-
-            const data = await res.json().catch(() => null);
-
-            if (!res.ok) {
-                throw new Error(data?.error || 'Échec de la suppression du livre');
-            }
-
-            const audioFailures = (data?.audioFailures ?? []) as string[];
-            if (audioFailures.length > 0) {
-                // The book is gone regardless — these specific files just
-                // couldn't be moved to the corbeille and stay in the bucket,
-                // where the orphan-folder scan will surface them for review.
-                toast({
-                    variant: 'destructive',
-                    // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Livre supprimé, audio incomplet</span>,
-                    description: (
-                        <span className="text-xl mt-2">
-                            {audioFailures.length} fichier{audioFailures.length > 1 ? 's' : ''} n’
-                            {audioFailures.length > 1 ? 'ont' : 'a'} pas pu être déplacé
-                            {audioFailures.length > 1 ? 's' : ''} vers la corbeille et
-                            reste{audioFailures.length > 1 ? 'nt' : ''} dans le bucket : à retrouver
-                            dans /admin/audio-orphelins.
-                        </span>
-                    ),
-                    className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
-                });
-            }
-
-            router.push('/admin/books');
-            router.refresh();
-        } catch (err) {
-            console.error('Delete error:', err);
-            setErreur(err instanceof Error ? err.message : 'Échec de la suppression du livre');
-            setSuppressionEnCours(false);
-        }
+    /**
+     * La suppression est portée par DeleteBookModal : elle lit d'abord ce qui
+     * l'empêche (demandes, attributions, dossier audio partagé avec une autre
+     * fiche), puis demande ce que devient l'enregistrement — laissé en place,
+     * transféré à un autre livre, ou envoyé à la corbeille.
+     *
+     * Cette page affichait un avertissement qui annonçait le seul comportement
+     * de l'époque : « le dossier sera déplacé vers la corbeille audio, puis
+     * supprimé définitivement du stockage sous 14 jours ». Ce n'est plus ce qui
+     * se passe, et ce n'était de toute façon pas tenable sur un gros dossier.
+     */
+    const apresSuppression = () => {
+        router.push('/admin/books');
+        router.refresh();
     };
 
     return (
@@ -447,73 +408,36 @@ export default function EditionLivre() {
                         <div className="flex gap-4">
                             <Button
                                 type="submit"
-                                disabled={chargement || suppressionEnCours}
+                                disabled={chargement}
                                 className="flex-1 bg-muted hover:bg-muted text-foreground"
                             >
                                 {chargement && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                 {chargement ? 'Mise à jour en cours...' : 'Mettre à jour le livre'}
                             </Button>
 
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                            disabled={chargement || suppressionEnCours}
-                                            className="bg-red-600 hover:bg-red-700 text-white"
-                                        >
-                                            {suppressionEnCours && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                            {suppressionEnCours ? 'Suppression...' : 'Supprimer le livre'}
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent className="bg-card border-border">
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle className="text-foreground">
-                                                Confirmer la suppression
-                                            </AlertDialogTitle>
-                                            <AlertDialogDescription className="text-muted-foreground" asChild>
-                                                <div className="space-y-2">
-                                                    <p>
-                                                        Êtes-vous sûr de vouloir supprimer ce livre ? Cette action
-                                                        est irréversible.
-                                                    </p>
-                                                    {formData.audio_filepath && (
-                                                        <p className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-red-600 dark:text-red-300">
-                                                            Le dossier audio associé{' '}
-                                                            <span className="font-mono break-all">
-                                                                « {formData.audio_filepath} »
-                                                            </span>
-                                                            {typeof formData.audioTrackCount === 'number' &&
-                                                                formData.audioTrackCount > 0 &&
-                                                                ` (${formData.audioTrackCount} piste${formData.audioTrackCount > 1 ? 's' : ''})`}{' '}
-                                                            est lié à ce livre et sera déplacé vers la corbeille
-                                                            audio, puis supprimé définitivement du stockage sous 14
-                                                            jours. Êtes-vous sûr ?
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel
-                                                className="bg-muted text-foreground border-border hover:bg-muted"
-                                            >
-                                                Annuler
-                                            </AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={gererSuppression}
-                                                className="bg-red-600 hover:bg-red-700 text-white"
-                                            >
-                                                Supprimer
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={chargement}
+                                onClick={() => setSuppressionOuverte(true)}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                                Supprimer le livre
+                            </Button>
+
                             </div>
                     </form>
-                    s
                 </CardContent>
             </Card>
+
+            <DeleteBookModal
+                isOpen={suppressionOuverte}
+                onOpenChange={setSuppressionOuverte}
+                bookId={Number(id)}
+                bookTitle={formData.title}
+                onDeleted={apresSuppression}
+            />
+
         </div>
     );
 }

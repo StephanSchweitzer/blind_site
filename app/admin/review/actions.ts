@@ -9,6 +9,7 @@ import { refreshBookAudioState } from '@/lib/audio/state';
 import { isDoubleRecording } from '@/lib/audio-enums';
 import { sendReviewEscalation } from '@/lib/email/sendReviewEscalation';
 import { getUserDisplayName } from '@/lib/users/displayName';
+import { deleteBookWithAudio } from '@/lib/books/deleteBookWithAudio';
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -173,6 +174,20 @@ export async function fuseBooks(
                 });
                 await tx.coupsDeCoeurBooks.updateMany({ where: { bookId: removedId }, data: { bookId: survivorId } });
 
+                // La corbeille audio du doublon suit, elle aussi. `bookId` est
+                // onDelete: SetNull et son unique écran filtre sur lui : sans ce
+                // déplacement, une piste supprimée depuis la fiche absorbée
+                // devenait invisible partout, puis était purgée pour de bon au
+                // bout de 14 jours. Réattribuée plutôt que juste étiquetée (voir
+                // markTrashOrigin, pour les suppressions sans survivant) : c'est
+                // le même ouvrage, donc la corbeille de la fiche conservée est le
+                // bon endroit. Les clés d'origine peuvent nommer le dossier du
+                // doublon — la ligne les affiche, donc cela reste lisible.
+                await tx.deletedAudioTrack.updateMany({
+                    where: { bookId: removedId },
+                    data: { bookId: survivorId },
+                });
+
                 // 2. Snapshot + delete the removed book BEFORE writing scalars onto the survivor,
                 //    so pulling the removed book's @unique isbn can't collide with the still-live row.
                 // `pairing` dit qui a décidé que ces deux fiches allaient ensemble.
@@ -248,16 +263,44 @@ export async function fuseBooks(
     });
 }
 
-/** DELETE: hard-delete one book. Blocked (with a clear message) if it's referenced by demandes/attributions. */
+/**
+ * DELETE: hard-delete one book, en laissant son dossier audio dans le bucket.
+ *
+ * Passe par deleteBookWithAudio, comme la route DELETE du livre. Avant, cet
+ * écran supprimait la ligne sèchement et comptait sur Postgres pour refuser :
+ *  - le refus arrivait en P2003 sans dire QUELLE demande bloquait, et laissait
+ *    passer l'historique supprimé (le filtre soft-delete de lib/prisma.ts le
+ *    cachait au contrôle mais pas à la contrainte) ;
+ *  - rien ne vérifiait qu'une AUTRE fiche revendiquait le même dossier audio —
+ *    or c'est précisément l'écran des doublons, donc le cas nominal ;
+ *  - le dossier restait dans le bucket sans que rien ne l'annonce, et les
+ *    pistes déjà en corbeille perdaient la trace de leur livre.
+ *
+ * Pas de choix offert ici : « laisser le dossier » est le seul sort raisonnable
+ * pour un doublon, l'enregistrement étant justement celui que le jumeau garde.
+ */
 export async function deleteBook(bookId: number): Promise<ActionResult> {
-    return asAdminAction(async () => {
+    return asAdminAction(async (me) => {
         if (!Number.isInteger(bookId)) return { ok: false, message: 'Identifiant invalide' };
 
         try {
-            await prisma.book.delete({ where: { id: bookId } });
+            const result = await deleteBookWithAudio({
+                bookId,
+                performedById: me.id,
+                disposition: { mode: 'leave' },
+            });
+            if (!result.ok) return { ok: false, message: result.error };
+
             revalidateAdmin();
             revalidateCatalogue();
-            return { ok: true, message: 'Livre supprimé avec succès' };
+            return {
+                ok: true,
+                message: result.audio.orphanedPrefix
+                    ? `Livre supprimé. Son dossier audio (${result.audio.trackCount} piste` +
+                      `${result.audio.trackCount > 1 ? 's' : ''}) est resté dans le stockage et ` +
+                      `attend dans Audio orphelins.`
+                    : 'Livre supprimé avec succès',
+            };
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 if (error.code === 'P2025') return { ok: false, message: 'Livre introuvable' };

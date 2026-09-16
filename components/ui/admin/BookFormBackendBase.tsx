@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X, AlertCircle } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
 import { BookAudioButton } from '@/admin/BookAudioButton';
-import { BookUsageLinks } from '@/admin/BookUsageLinks';
+import { DeleteBookModal } from '@/admin/DeleteBookModal';
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
 import { useFormToast } from "@/hooks/useFormToast";
@@ -72,7 +72,12 @@ interface BookFormBackendBaseProps {
     loadingText: string;
     title: string;
     onSuccess?: (bookId: number, isDeleted?: boolean) => void;
-    onDelete?: () => Promise<void>;
+    /**
+     * La fiche vient d'être supprimée pour de bon. Le formulaire n'appelle plus
+     * la route lui-même : DeleteBookModal porte le contrôle préalable, la
+     * décision sur le dossier audio et l'appel (voir handleDeleteClick).
+     */
+    onDeleted?: () => void;
     showDelete?: boolean;
     /** Existing book — enables the audio editor. Absent while creating one. */
     audioBookId?: number;
@@ -95,7 +100,7 @@ export function BookFormBackendBase({
                                         loadingText,
                                         title,
                                         onSuccess,
-                                        onDelete,
+                                        onDeleted,
                                         showDelete,
                                         audioBookId,
                                         dirtyRef
@@ -132,12 +137,8 @@ export function BookFormBackendBase({
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    /**
-     * La suppression vient d'être refusée. Le refus cite déjà les identifiants
-     * (route DELETE, lib/books/deletionGuard.ts) ; la ligne de liens rend ces
-     * demandes et attributions atteignables sans quitter le formulaire.
-     */
-    const [deleteBlocked, setDeleteBlocked] = useState(false);
+    /** La fenêtre de suppression, qui porte refus, décision audio et appel. */
+    const [deleteOpen, setDeleteOpen] = useState(false);
     const { toastError } = useFormToast();
 
     useEffect(() => {
@@ -248,7 +249,6 @@ export function BookFormBackendBase({
         e.stopPropagation();
         setIsLoading(true);
         setError(null);
-        setDeleteBlocked(false);
 
         try {
             const newBookId = await onSubmit(formData);
@@ -267,34 +267,20 @@ export function BookFormBackendBase({
         }
     };
 
-    const handleDeleteClick = async () => {
-        if (!onDelete) return;
-
-        if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
-            setIsLoading(true);
-            setError(null);
-            setDeleteBlocked(false);
-            // The book is going away; unsaved edits to it are moot.
-            if (dirtyRef) dirtyRef.current = false;
-            try {
-                await onDelete();
-            } catch (err) {
-                const msg = err instanceof Error ? err.message : 'Échec de la suppression du livre';
-                setError(msg);
-                setDeleteBlocked(true);
-                toastError(msg);
-                // Rien n'a été supprimé : les modifications en cours comptent
-                // de nouveau, sinon fermer la fenêtre les perdrait sans rien dire.
-                if (dirtyRef) {
-                    dirtyRef.current = JSON.stringify(formDataRef.current) !== pristineRef.current;
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        }
-    };
+    /**
+     * Plus de `window.confirm` : la fenêtre de suppression commence par LIRE ce
+     * qui empêche de supprimer (demandes et attributions, dossier audio partagé
+     * avec une autre fiche) et demande ce que devient l'enregistrement. Elle
+     * appelle la route elle-même ; ici il ne reste qu'à l'ouvrir.
+     *
+     * `dirtyRef` n'est pas remis à zéro tant que rien n'est supprimé : le refus
+     * est maintenant le cas le plus probable de cette fenêtre, et perdre une
+     * saisie en cours pour un refus serait une double peine.
+     */
+    const handleDeleteClick = () => setDeleteOpen(true);
 
     return (
+        <>
         <Card className="bg-card border-border">
             <CardHeader className="border-b border-border">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -316,9 +302,6 @@ export function BookFormBackendBase({
                             <AlertTitle className="text-red-600 dark:text-red-400">Erreur</AlertTitle>
                             <AlertDescription className="text-foreground mt-1">
                                 {error}
-                                {deleteBlocked && audioBookId != null && (
-                                    <BookUsageLinks bookId={audioBookId} className="mt-2" />
-                                )}
                             </AlertDescription>
                         </Alert>
                     )}
@@ -601,7 +584,7 @@ export function BookFormBackendBase({
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
 
-                        {showDelete && onDelete && (
+                        {showDelete && onDeleted && audioBookId != null && (
                             <Button
                                 type="button"
                                 variant="destructive"
@@ -616,6 +599,23 @@ export function BookFormBackendBase({
                 </form>
             </CardContent>
         </Card>
+
+        {onDeleted && audioBookId != null && (
+            <DeleteBookModal
+                isOpen={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                bookId={audioBookId}
+                bookTitle={formData.title}
+                onDeleted={() => {
+                    // La fiche n'existe plus : les modifications en cours sont
+                    // sans objet, et prévenir « vous allez perdre vos changements »
+                    // en fermant serait faux.
+                    if (dirtyRef) dirtyRef.current = false;
+                    onDeleted();
+                }}
+            />
+        )}
+        </>
     );
 }
 
@@ -697,40 +697,15 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }
 }) {
     const { toast } = useToast();
 
-    const handleDelete = async (): Promise<void> => {
-        try {
-            const response = await fetch(`/api/books/${bookId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                // Le message de la route, pas un texte en dur : c'est lui qui dit
-                // POURQUOI — demandes ou attributions liées (avec leurs
-                // identifiants), historique supprimé, dossier audio partagé. Le
-                // « Failed to delete book » qui vivait ici écrasait les trois, y
-                // compris le refus déjà rédigé en français, et un permanent n'avait
-                // plus qu'un échec anglais sans cause. Voir la fiche livre
-                // (app/admin/books/[id]/page.tsx), qui lisait déjà `error`.
-                const data = await response.json().catch(() => null);
-                throw new Error(
-                    data?.error || data?.message || 'La suppression du livre a échoué.',
-                );
-            }
-
-            toast({
-                // @ts-expect-error same jsx problem
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">Le livre a été supprimé avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
-            });
-
-            if (onSuccess) {
-                onSuccess(parseInt(bookId), true);
-            }
-        } catch (error) {
-            console.error('Delete error:', error);
-            throw error;
-        }
+    /**
+     * L'appel de suppression, le refus et le sort du dossier audio vivent
+     * maintenant dans DeleteBookModal — y compris le toast, qui doit dire ce
+     * qu'est devenu l'enregistrement (laissé en place, transféré, mis en
+     * corbeille) et non un « supprimé avec succès » qui passait le sujet sous
+     * silence. Il ne reste ici qu'à refermer la fenêtre de modification.
+     */
+    const handleDeleted = () => {
+        if (onSuccess) onSuccess(parseInt(bookId), true);
     };
 
     const handleSubmit = async (formData: BookFormData): Promise<number> => {
@@ -806,7 +781,7 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }
         <BookFormBackendBase
             initialData={initialData}
             onSubmit={handleSubmit}
-            onDelete={handleDelete}
+            onDeleted={handleDeleted}
             showDelete={true}
             submitButtonText="Mettre à jour le livre"
             loadingText="En cours de mise à jour..."

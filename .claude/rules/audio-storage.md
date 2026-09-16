@@ -27,6 +27,20 @@ of that.
   the cache on a mere re-read would re-synthesize, and re-pay for, the whole catalogue.
   Both columns are `DERIVED_FIELDS` (`lib/audit/config.ts`), which is what lets that write
   stay inside `withoutAudit` without losing a journal entry.
+- **Deleting a book does NOT trash its audio.** `deleteBookWithAudio` (`lib/books/`) makes it
+  an explicit decision — *laisser le dossier* (default: nothing is copied, the folder is queued
+  in `OrphanAudioFolder` and shows up on `/admin/audio-orphelins`), *transférer* (the target
+  book's `audio_filepath` is repointed, refused when it already holds tracks, and its
+  `AudioTrackDuration` cache rows move with the folder), or *envoyer à la corbeille* (the old
+  behaviour, now opt-in and gated on the track count). `readBookDeletionCheck`
+  (`lib/books/deletionPreflight.ts`) is the one place the refusals are computed, read both by
+  the confirmation dialogue and by the DELETE route.
+- **Every path that deletes a `Book` row must call `markTrashOrigin` first** (`./trash.ts`), or
+  stamp the same two columns by hand (`scripts/delete-duplicate-book.ts`).
+  `DeletedAudioTrack.bookId` is `SetNull`, so without `originBookId`/`originBookTitle` the rows
+  go anonymous — invisible on every screen while the nightly purge still deletes their objects
+  at 14 days. A fusion is the exception: it reassigns them to the survivor. All corbeille rows,
+  with or without a book, are visible on `/admin/audio-corbeille`.
 - **Never delete a bucket object directly.** Removal goes through `softDeleteTrack` /
   `softDeleteTracks`: copy to `corbeille/`, verify the copy at the right size, write the
   `DeletedAudioTrack` row, *then* remove the original. The only real deletion is the nightly

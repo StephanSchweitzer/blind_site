@@ -207,3 +207,45 @@ export type BookFilter = z.infer<typeof BookFilterSchema>;
 
 // Export the include configs for use in API handlers
 export { bookIncludeConfigs };
+// ============================================================================
+// Suppression d'une fiche livre — contrôle préalable
+// ============================================================================
+
+/**
+ * Ce que GET /api/books/[id]/deletion-check renvoie, et ce que la fenêtre de
+ * suppression lit — décrit ici plutôt que dans lib/books/deletionPreflight.ts
+ * (module `server-only`) pour que le composant client puisse en dépendre.
+ */
+export interface BookDeletionUsage {
+    orderIds: number[];
+    assignmentIds: number[];
+    deletedOrderIds: number[];
+    deletedAssignmentIds: number[];
+}
+
+export interface BookDeletionAudioState {
+    /** Chaîne vide quand la fiche ne porte aucun chemin. */
+    prefix: string;
+    trackCount: number;
+    sizeBytes: number;
+    /** Les autres fiches qui revendiquent ce même dossier. */
+    sharedWith: { id: number; title: string }[];
+    /** Refus dû au partage : aucune option ne doit être proposée. */
+    sharedRefusal: string | null;
+    /** Pistes déjà dans la corbeille de ce livre. */
+    trashCount: number;
+}
+
+export interface BookDeletionPreflightResponse {
+    bookId: number;
+    title: string;
+    /** Refus dû aux demandes / attributions, déjà rédigé en français. */
+    usageRefusal: string | null;
+    usage: BookDeletionUsage;
+    links: { orders: string; assignments: string };
+    audio: BookDeletionAudioState;
+    blocked: boolean;
+}
+
+/** Les trois sorts possibles du dossier audio, envoyés dans le corps du DELETE. */
+export type BookAudioDispositionMode = 'leave' | 'transfer' | 'trash';
