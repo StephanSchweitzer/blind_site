@@ -10,7 +10,9 @@
  * Covers what lib/books/deleteBookWithAudio.ts decides: the two refusals
  * (demandes / attributions, folder shared with another fiche), the refusal to
  * act with no disposition at all, then `leave` / `transfer` / `trash`. The route
- * on top of it is a body parser; the rules live here.
+ * on top of it is a body parser; the rules live here. Then the way back:
+ * reattachAudioAfterBookRestore, which the journal's restore route calls when a
+ * deleted fiche is replayed.
  *
  * Works in its own scratch prefixes under the root `2022/` tree — the
  * cancelled-upload copy, NOT the live `dirt/` catalogue — creates its own books
@@ -35,6 +37,7 @@ import {
 } from '../lib/audio/bucket';
 import { readBookDeletionCheck } from '../lib/books/deletionPreflight';
 import { deleteBookWithAudio } from '../lib/books/deleteBookWithAudio';
+import { reattachAudioAfterBookRestore } from '../lib/books/restoreBookAudio';
 
 /**
  * Un préfixe neuf à chaque exécution. Réutiliser les mêmes clés d'un run à
@@ -437,7 +440,83 @@ async function main() {
         2,
     );
 
-    // --- 7. fiche sans dossier du tout ------------------------------------
+    // --- 7. la fiche revient : sa corbeille et son dossier avec elle --------
+    //
+    // /admin/stats rejoue une suppression de moins de 14 jours et recrée la
+    // ligne à SON identifiant d'origine (il refuse si la place est prise), ce
+    // qui est exactement ce qui rend ce rattachement possible. On rejoue ici la
+    // seule partie qui nous concerne : la fiche est recréée à la main, comme le
+    // ferait la restauration, puis on vérifie ce que le livre récupère.
+    const revived = await withoutAudit(() =>
+        prisma.book.create({
+            data: {
+                id: left.id,
+                title: left.title,
+                author: 'Test',
+                audio_filepath: SCRATCH_LEAVE,
+                available: true,
+                addedById: actorId,
+            },
+            select: { id: true },
+        }),
+    );
+    // Une ligne appartenant à un AUTRE livre, marquée du même identifiant
+    // d'origine : le garde-fou `bookId: null` doit la laisser tranquille.
+    const keeper = await makeBook('déjà rattachée', null, actorId);
+    await withoutAudit(() =>
+        prisma.deletedAudioTrack.create({
+            data: {
+                bookId: keeper.id,
+                originBookId: left.id,
+                originBookTitle: left.title,
+                originalKey: `${SCRATCH_LEAVE}9200 99- Déjà rattachée.mp3`,
+                trashKey: `corbeille/${keeper.id}/${RUN}-99-Deja.mp3`,
+                filename: '9200 99- Déjà rattachée.mp3',
+                sizeBytes: BigInt(1024),
+                deletedById: actorId,
+            },
+        }),
+    );
+
+    const restored = await reattachAudioAfterBookRestore(revived.id, SCRATCH_LEAVE);
+    check('restauration : les deux lignes reviennent', restored.reattachedTracks, 2);
+    check('restauration : le dossier n’est plus orphelin', restored.clearedOrphan, true);
+    check(
+        'restauration : la corbeille du livre est de nouveau lisible',
+        await prisma.deletedAudioTrack.count({ where: { bookId: revived.id } }),
+        2,
+    );
+    check(
+        'restauration : plus rien « sans fiche » pour ce livre',
+        await prisma.deletedAudioTrack.count({
+            where: { bookId: null, originBookId: left.id },
+        }),
+        0,
+    );
+    check(
+        'restauration : la ligne d’un autre livre n’a pas été reprise',
+        (
+            await prisma.deletedAudioTrack.findFirst({
+                where: { filename: '9200 99- Déjà rattachée.mp3' },
+                select: { bookId: true },
+            })
+        )?.bookId,
+        keeper.id,
+    );
+    check(
+        'restauration : la file des orphelins est vidée de ce dossier',
+        await prisma.orphanAudioFolder.count({ where: { prefix: SCRATCH_LEAVE } }),
+        0,
+    );
+    // Rejouée, elle ne défait rien et ne reprend rien.
+    const again = await reattachAudioAfterBookRestore(revived.id, SCRATCH_LEAVE);
+    check('restauration : rejouée, sans effet', [again.reattachedTracks, again.clearedOrphan], [
+        0,
+        false,
+    ]);
+
+    // --- 8. fiche sans dossier du tout ------------------------------------
+
     const bare = await makeBook('sans dossier', null, actorId);
     const bareGone = await deleteBookWithAudio({ bookId: bare.id, performedById: actorId });
     check('sans dossier : supprimée sans rien demander', bareGone.ok, true);

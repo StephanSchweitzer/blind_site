@@ -101,6 +101,14 @@ Certaines modifications peuvent être **annulées** depuis le journal. Toutes ne
 quand la remise en état n'est plus possible — parce que ce qui a été modifié depuis rendrait
 le retour incohérent — le système le dit plutôt que de faire semblant.
 
+Restaurer un **livre** supprimé lui rend aussi son audio : les fichiers de sa corbeille lui
+sont rattachés de nouveau — ils étaient jusque-là dans l'onglet « Sans fiche » de
+[Corbeille audio](/admin/aide/audio-orphelin#corbeille-audio) — et son dossier cesse d'être
+listé dans [Audio orphelin](/admin/aide/audio-orphelin). Le message de confirmation dit ce qui
+est revenu. Deux choses ne bougent pas, et c'est voulu : un fichier déjà rattaché à un autre
+livre y reste, et un dossier sur lequel quelqu'un s'est prononcé — rattaché à une autre fiche
+ou écarté — garde cette décision.
+
 **Le journal ne conserve pas tout indéfiniment.** La base a une limite de taille, et au-delà
 elle passerait en lecture seule : le journal se rogne donc tout seul, les lignes les plus
 anciennes en premier. L'en-tête l'annonce sans détour — le nombre d'événements conservés, la

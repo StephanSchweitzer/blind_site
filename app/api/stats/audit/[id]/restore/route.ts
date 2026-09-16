@@ -8,6 +8,7 @@ import { withoutAudit } from '@/lib/audit/context';
 import { TRUNCATION_MARKER_RE, modelLabel } from '@/lib/audit/labels';
 import { resolveRecordLabels } from '@/lib/audit/record-labels';
 import { resolveMergedBook } from '@/lib/books/merged';
+import { reattachAudioAfterBookRestore } from '@/lib/books/restoreBookAudio';
 import type { AuditChangeMap, AuditRestoreResponse } from '@/types';
 
 /**
@@ -129,6 +130,27 @@ export const POST = withSuperAdmin(async (request, ctx) => {
             FROM (SELECT pg_get_serial_sequence(${quoted}, 'id') AS seq) s
             WHERE s.seq IS NOT NULL`;
 
+        // La corbeille et le dossier audio de la fiche lui reviennent — voir
+        // reattachAudioAfterBookRestore, qui porte les deux garde-fous.
+        //
+        // Au pire effort, et après la création : le livre est restauré, une
+        // erreur de rattachement ne doit pas le faire croire perdu, et les deux
+        // tables concernées se corrigent d'elles-mêmes au prochain passage de
+        // scripts/sync-audio-links.ts.
+        let reattachedTracks = 0;
+        let clearedOrphan = false;
+        if (event.model === 'Book') {
+            try {
+                ({ reattachedTracks, clearedOrphan } = await reattachAudioAfterBookRestore(
+                    recordId,
+                    typeof snapshot.audio_filepath === 'string' ? snapshot.audio_filepath : null,
+                ));
+            } catch (error) {
+                console.error('Restauration : rattachement audio impossible', recordId, error);
+            }
+        }
+
+
         const changes: AuditChangeMap = { _source: [null, event.id] };
         for (const [field, value] of Object.entries(snapshot)) {
             if (field === 'id') continue;
@@ -155,6 +177,17 @@ export const POST = withSuperAdmin(async (request, ctx) => {
         const caveat = event.model === 'User'
             ? ' Le mot de passe n’a pas été conservé : la personne devra le réinitialiser.'
             : '';
+        // Dit ce qui est revenu AVEC la fiche : sinon le rattachement des
+        // fichiers se fait en silence, et le permanent va les chercher dans la
+        // corbeille générale alors qu'ils sont de nouveau sous le livre.
+        const audioNote =
+            reattachedTracks > 0
+                ? ` ${reattachedTracks} fichier${reattachedTracks > 1 ? 's' : ''} de sa corbeille ` +
+                  `audio lui ${reattachedTracks > 1 ? 'ont' : 'a'} été rattaché${reattachedTracks > 1 ? 's' : ''}.`
+                : '';
+        const orphanNote = clearedOrphan
+            ? ' Son dossier audio n’est plus listé comme orphelin.'
+            : '';
         // The snapshot just written back is exactly what would name this record
         // in the journal — reused here so the toast reads « Le Ventre de Paris »
         // rather than the id alone.
@@ -167,7 +200,7 @@ export const POST = withSuperAdmin(async (request, ctx) => {
             : `${modelLabel(event.model)} n°${recordId}`;
         return NextResponse.json<AuditRestoreResponse>({
             success: true,
-            message: `${named} restauré.${caveat}`,
+            message: `${named} restauré.${caveat}${audioNote}${orphanNote}`,
         });
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {

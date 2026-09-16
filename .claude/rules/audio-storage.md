@@ -35,6 +35,11 @@ of that.
   behaviour, now opt-in and gated on the track count). `readBookDeletionCheck`
   (`lib/books/deletionPreflight.ts`) is the one place the refusals are computed, read both by
   the confirmation dialogue and by the DELETE route.
+- **A book restored from the journal takes its audio back.** `/admin/stats` replays a deletion
+  at the record's original id, so `reattachAudioAfterBookRestore`
+  (`lib/books/restoreBookAudio.ts`) hands the corbeille rows back and drops the folder from the
+  orphan queue — the mirror of `markTrashOrigin` + `queueOrphanFolder`. It only ever touches
+  rows nobody else claimed (`bookId: null`) and an orphan row nobody has decided on.
 - **Every path that deletes a `Book` row must call `markTrashOrigin` first** (`./trash.ts`), or
   stamp the same two columns by hand (`scripts/delete-duplicate-book.ts`).
   `DeletedAudioTrack.bookId` is `SetNull`, so without `originBookId`/`originBookTitle` the rows
