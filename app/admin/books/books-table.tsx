@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
@@ -199,7 +199,6 @@ export default function BooksTable({
                                        initialAvailableCount = 0,
                                        initialUnavailableCount = 0
                                    }: BooksTableProps) {
-    const router = useRouter();
     const searchParams = useSearchParams();
 
     // Search state
@@ -302,9 +301,12 @@ export default function BooksTable({
         if (audio !== 'all') params.set('audio', audio);
         if (page > 1) params.set('page', page.toString());
 
-        const url = `/admin/books${params.toString() ? `?${params.toString()}` : ''}`;
-        router.replace(url, { scroll: false });
-    }, [router]);
+        // History API, not router.replace: the table fetches its own results
+        // from /api/books, and a router navigation would re-render page.tsx on
+        // the server — five more queries per keystroke, racing the fetch.
+        const qs = params.toString();
+        window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
+    }, []);
 
     // Perform search with debouncing and caching
     const performSearch = useCallback(async (
@@ -392,6 +394,7 @@ export default function BooksTable({
             }
 
             const data = await response.json();
+            if (abortControllerRef.current !== abortController) return;
             setSearchResults(data);
 
             if (forceRefresh && !term && genreIds.length === 0 && page === 1 && filter === 'all' && available === 'all' && hidden === 'all' && audio === 'all') {
@@ -410,7 +413,13 @@ export default function BooksTable({
                 console.error('Search error:', err);
             }
         } finally {
-            setIsSearching(false);
+            // A superseded request settles after its replacement has started:
+            // clearing the flag here would hide the spinner while the newer
+            // search is still in flight, leaving stale rows on screen.
+            if (abortControllerRef.current === abortController) {
+                abortControllerRef.current = null;
+                setIsSearching(false);
+            }
         }
     }, [updateURL]);
 
@@ -444,6 +453,12 @@ export default function BooksTable({
     }, []);
 
     const handleSearchChange = useCallback((value: string) => {
+        // Drop the in-flight request at the keystroke rather than when the
+        // debounce fires, so its older results can't land mid-typing, and show
+        // the pending state straight away instead of 300 ms later.
+        abortControllerRef.current?.abort();
+        abortControllerRef.current = null;
+        setIsSearching(true);
         setSearchTerm(value);
         if (currentPage !== 1) {
             setCurrentPage(1);
