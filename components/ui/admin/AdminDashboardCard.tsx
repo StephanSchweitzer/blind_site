@@ -24,6 +24,7 @@ import {
     Info,
     Handshake,
     BarChart3,
+    Trash2,
     LucideIcon,
 } from 'lucide-react';
 
@@ -111,6 +112,7 @@ const iconMap: Record<string, LucideIcon> = {
     'Auditeurs': Headphones,
     'Donateurs': HeartHandshake,
     'Audio orphelin': FolderX,
+    'Corbeille audio': Trash2,
     'Paiements': CreditCard,
     'Permanents': KeyRound,
     'Disponibilités': CalendarClock,

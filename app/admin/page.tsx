@@ -18,6 +18,7 @@ export default async function Dashboard() {
             coupsDeCoeurCount,
             reviewCount,
             orphanAudioCount,
+            audioTrashCount,
             lecteursCount,
             auditeursCount,
             bienfaiteursCount,
@@ -45,6 +46,10 @@ export default async function Dashboard() {
             prisma.book.count({ where: { needsReview: true } }),
             // Folders in the bucket no book claims, minus those already handled.
             prisma.orphanAudioFolder.count({ where: { resolvedAt: null, dismissedAt: null } }),
+            // Fichiers encore récupérables : ni restaurés, ni purgés. Le même
+            // décompte que l'onglet « Dans la corbeille », et le seul qui porte
+            // une échéance — passé 14 jours, la purge les supprime du stockage.
+            prisma.deletedAudioTrack.count({ where: { restoredAt: null, purgedAt: null } }),
             prisma.user.count({ where: { memberType: 'lecteur' } }),
             prisma.user.count({ where: { memberType: 'auditeur' } }),
             prisma.user.count({ where: { memberType: 'bienfaiteur' } }),
@@ -103,6 +108,13 @@ export default async function Dashboard() {
                         href="/admin/audio-orphelins"
                         buttonText="Dossiers audio du stockage qu’aucun livre ne revendique"
                         accentColor="teal"
+                    />
+                    <AdminDashboardCard
+                        title="Corbeille audio"
+                        count={audioTrashCount}
+                        href="/admin/audio-corbeille"
+                        buttonText="Fichiers audio supprimés, restaurables 14 jours"
+                        accentColor="red"
                     />
                 </div>
             </div>
