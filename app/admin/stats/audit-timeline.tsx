@@ -69,17 +69,35 @@ import { type EventGroup, groupEvents, headOf, isAudioBurst, isBulkAudio } from 
 const OPERATIONS: AuditOperation[] = ['CREATE', 'UPDATE', 'DELETE', 'RESTORE'];
 
 /**
+ * True when this UPDATE is really a soft delete: User/Book/Orders/Assignment
+ * are never hard-deleted at the Prisma level (lib/prisma.ts hides rows with a
+ * non-null deletedAt from list reads instead), so the audit extension logs
+ * the write that sets `deletedAt` as an ordinary UPDATE. A reader shouldn't
+ * have to know that to recognize a deletion when they see one.
+ */
+function isSoftDelete(event: AuditEventItem): boolean {
+    if (event.operation !== 'UPDATE') return false;
+    const [before, after] = event.changes.deletedAt ?? [null, null];
+    return before == null && after != null;
+}
+
+/**
  * What to badge a row with. An AudioTrackEvent row is always a CREATE at the
  * storage level — it's a log entry being inserted, never the track itself
  * being deleted in place — so `event.operation` alone would badge a deletion
  * burst « Création ». The action the row actually describes (upload / rename
  * / delete / restore) lives in `changes.action` instead; that's what a reader
- * needs to see.
+ * needs to see. A soft delete is the mirror case: `event.operation` alone
+ * would badge it « Modification » when the field that changed is the record
+ * being deleted.
  */
 function operationBadge(event: AuditEventItem): { label: string; tint: string } {
     const action = event.model === 'AudioTrackEvent' ? event.changes.action?.[1] : null;
     if (typeof action === 'string' && action in AUDIO_ACTION_LABEL) {
         return { label: AUDIO_ACTION_LABEL[action], tint: AUDIO_ACTION_TINT[action] };
+    }
+    if (isSoftDelete(event)) {
+        return { label: OPERATION_LABELS.DELETE, tint: OPERATION_TINT.DELETE };
     }
     return { label: OPERATION_LABELS[event.operation], tint: OPERATION_TINT[event.operation] };
 }
