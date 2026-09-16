@@ -5,12 +5,25 @@ import { prisma } from '@/lib/prisma';
 import { AUDIO_TRASH_RETENTION_DAYS } from '@/lib/audio/purge';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildDeletedAudioSearchWhere } from '@/lib/search';
-import TrashClient, { type TrashRow, type TrashTab } from './trash-client';
+import TrashClient, { type TrashGroup, type TrashRow, type TrashTab } from './trash-client';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+// Livres (groupes) par page, pas fichiers — voir le commentaire sur GROUP_BY.
 const PER_PAGE = 25;
+
+/**
+ * Ce qui identifie « le même livre » pour une ligne de corbeille : la fiche si
+ * elle existe encore, sinon l'empreinte laissée par markTrashOrigin. Les trois
+ * colonnes ensemble forment la clé de regroupement (voir son usage plus bas,
+ * dans `AudioCorbeillePage`).
+ */
+const GROUP_BY: Prisma.DeletedAudioTrackScalarFieldEnum[] = ['bookId', 'originBookId', 'originBookTitle'];
+
+function groupKey(row: { bookId: number | null; originBookId: number | null; originBookTitle: string | null }): string {
+    return `${row.bookId ?? ''}|${row.originBookId ?? ''}|${row.originBookTitle ?? ''}`;
+}
 
 /**
  * La corbeille audio de TOUT le corpus.
@@ -82,27 +95,57 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         ...(searchWhere ?? {}),
     };
 
-    const [rows, total, counts] = await Promise.all([
-        prisma.deletedAudioTrack.findMany({
+    // La plus ancienne suppression d'abord dans les onglets actifs : c'est
+    // celle que la purge prendra la première.
+    const oldestFirst = tab === 'a-purger' || tab === 'sans-fiche';
+
+    /**
+     * Un livre supprimé en bloc peut laisser 60-80 lignes dans la corbeille —
+     * les lister une par une noie les autres livres sous des doublons du même
+     * dossier et éclate un seul livre sur plusieurs pages. La pagination porte
+     * donc sur les LIVRES (groupés sur bookId/originBookId/originBookTitle,
+     * seule combinaison qui identifie "le même livre" une fois la fiche
+     * partie — voir GROUP_BY), pas sur les lignes : un `groupBy` choisit les
+     * groupes de cette page et leur ordre, puis une seconde requête ramène
+     * toutes les lignes de ces groupes-là pour le détail dépliable.
+     */
+    const [pageGroups, allGroups, counts] = await Promise.all([
+        prisma.deletedAudioTrack.groupBy({
+            by: GROUP_BY,
             where,
-            // La plus ancienne suppression d'abord dans les onglets actifs :
-            // c'est celle que la purge prendra la première.
-            orderBy: tab === 'a-purger' || tab === 'sans-fiche'
-                ? [{ deletedAt: 'asc' }, { id: 'asc' }]
-                : [{ deletedAt: 'desc' }, { id: 'desc' }],
+            orderBy: oldestFirst ? { _min: { deletedAt: 'asc' } } : { _max: { deletedAt: 'desc' } },
             skip: pageSkip(page, PER_PAGE),
             take: PER_PAGE,
-            include: {
-                book: { select: { id: true, title: true } },
-                deletedBy: { select: { name: true, email: true } },
-                restoredBy: { select: { name: true, email: true } },
-            },
         }),
-        prisma.deletedAudioTrack.count({ where }),
+        // Compte des groupes distincts pour la pagination — une seule ligne
+        // d'agrégats par livre, donc un résultat de la taille du nombre de
+        // livres jamais passés par la corbeille, pas du nombre de fichiers.
+        prisma.deletedAudioTrack.groupBy({ by: GROUP_BY, where }),
         Promise.all(TABS.map((t) => prisma.deletedAudioTrack.count({ where: TAB_WHERE[t] }))),
     ]);
 
-    const items: TrashRow[] = rows.map((r) => ({
+    const rows = pageGroups.length
+        ? await prisma.deletedAudioTrack.findMany({
+              where: {
+                  ...where,
+                  OR: pageGroups.map((g) => ({
+                      bookId: g.bookId,
+                      originBookId: g.originBookId,
+                      originBookTitle: g.originBookTitle,
+                  })),
+              },
+              orderBy: oldestFirst
+                  ? [{ deletedAt: 'asc' }, { id: 'asc' }]
+                  : [{ deletedAt: 'desc' }, { id: 'desc' }],
+              include: {
+                  book: { select: { id: true, title: true } },
+                  deletedBy: { select: { name: true, email: true } },
+                  restoredBy: { select: { name: true, email: true } },
+              },
+          })
+        : [];
+
+    const toTrashRow = (r: (typeof rows)[number]): TrashRow => ({
         id: r.id,
         filename: r.filename,
         originalKey: r.originalKey,
@@ -124,15 +167,38 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         originBookTitle: r.originBookTitle,
         deletedBy: r.deletedBy,
         restoredBy: r.restoredBy,
-    }));
+    });
+
+    const rowsByGroup = new Map<string, TrashRow[]>();
+    for (const r of rows) {
+        const key = groupKey(r);
+        const list = rowsByGroup.get(key);
+        if (list) list.push(toTrashRow(r));
+        else rowsByGroup.set(key, [toTrashRow(r)]);
+    }
+
+    const groups: TrashGroup[] = pageGroups.map((g) => {
+        const key = groupKey(g);
+        const groupRows = rowsByGroup.get(key) ?? [];
+        return {
+            key,
+            book: groupRows.find((r) => r.book)?.book ?? null,
+            originBookId: g.originBookId,
+            originBookTitle: g.originBookTitle,
+            rows: groupRows,
+        };
+    });
+
+    const totalFiles = groups.reduce((sum, g) => sum + g.rows.length, 0);
 
     return (
         <TrashClient
-            items={items}
+            groups={groups}
             tab={tab}
             page={page}
-            totalPages={Math.max(1, Math.ceil(total / PER_PAGE))}
-            total={total}
+            totalPages={Math.max(1, Math.ceil(allGroups.length / PER_PAGE))}
+            totalGroups={allGroups.length}
+            totalFiles={totalFiles}
             tabCounts={{
                 'a-purger': counts[0],
                 'sans-fiche': counts[1],

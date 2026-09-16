@@ -73,9 +73,16 @@ Quatre onglets :
 - **Restaurées** — remises en place, avec qui l'a fait et quand.
 - **Purgées** — définitivement supprimées du stockage. La ligne reste, le fichier non.
 
-Chaque ligne dit quand le fichier sera supprimé du stockage ; un délai de trois jours ou moins
-est signalé. Les fichiers supprimés avant la mise en place de cette purge automatique en sont
-exemptés et portent la mention « conservé indéfiniment ».
+Les fichiers d'un même livre sont regroupés sous une seule carte — une suppression en bloc peut
+en laisser 60 ou 80 d'un coup, et les lister un par un noierait tous les autres livres de la
+page. Un livre avec un seul fichier en corbeille s'affiche directement ; à partir de deux,
+la carte se replie sur un résumé (nombre de fichiers, poids total, échéance la plus proche).
+« Restaurer tout » remet en place tous les fichiers encore récupérables du groupe en un clic ;
+« Voir les fichiers » déplie le détail, fichier par fichier, avec son propre bouton
+« Restaurer » pour n'en reprendre qu'un seul. Chaque fichier dit quand il sera supprimé du
+stockage ; un délai de trois jours ou moins est signalé. Les fichiers supprimés avant la mise
+en place de cette purge automatique en sont exemptés et portent la mention « conservé
+indéfiniment ».
 
 « **Restaurer** » remet le fichier à l'emplacement exact d'où il venait. La restauration est
 refusée si un autre fichier occupe désormais cette place — l'écraser reviendrait à détruire un

@@ -307,15 +307,31 @@ export interface BulkRestoreResult {
  * restoreTrack reste le chemin une-piste, pour le bouton de la boîte de
  * dialogue audio.
  */
-export async function restoreTracks(opts: {
-    bookId: number;
+/**
+ * Ramène un lot explicite de lignes de corbeille à leur emplacement d'origine,
+ * quel que soit leur `bookId` — y compris `null` (le cas « sans-fiche » de
+ * /admin/audio-corbeille, où il n'y a justement plus de livre pour filtrer
+ * dessus). `restoreTracks` (ci-dessous) n'est que ce chemin appliqué à
+ * l'ensemble des lignes actives d'un livre encore vivant.
+ *
+ * Mêmes garanties que restoreTrack à l'unité, aux mêmes optimisations que
+ * softDeleteTracks : copies vérifiées en parallèle, une seule mise à jour des
+ * lignes, une seule suppression groupée des copies de corbeille. L'état audio
+ * n'est rafraîchi qu'une fois par livre distinct rencontré parmi les lignes
+ * restaurées — un groupe de corbeille n'en tient jamais qu'un seul en
+ * pratique (toutes ses lignes partagent le même bookId), mais rien ici ne le
+ * suppose.
+ */
+export async function restoreTracksByIds(opts: {
+    trashIds: number[];
     userId: number | null;
 }): Promise<BulkRestoreResult> {
-    const { bookId, userId } = opts;
+    const { trashIds, userId } = opts;
+    if (!trashIds.length) return { restored: 0, failed: [] };
 
     const rows = await prisma.deletedAudioTrack.findMany({
-        where: { bookId, restoredAt: null },
-        select: { id: true, trashKey: true, originalKey: true, filename: true, sizeBytes: true },
+        where: { id: { in: trashIds }, restoredAt: null },
+        select: { id: true, bookId: true, trashKey: true, originalKey: true, filename: true, sizeBytes: true },
     });
     if (!rows.length) return { restored: 0, failed: [] };
 
@@ -351,7 +367,7 @@ export async function restoreTracks(opts: {
             }
             return row;
         } catch (e) {
-            console.error('restoreTracks: copie impossible', row.originalKey, e);
+            console.error('restoreTracksByIds: copie impossible', row.originalKey, e);
             failed.push({ filename: row.filename, reason: 'copie depuis la corbeille impossible' });
             return null;
         }
@@ -371,12 +387,12 @@ export async function restoreTracks(opts: {
     // perte de données.
     const { failed: notDeleted } = await deleteTracks(ok.map((r) => r.trashKey));
     if (notDeleted.length) {
-        console.error('restoreTracks: copies de corbeille non supprimées', notDeleted);
+        console.error('restoreTracksByIds: copies de corbeille non supprimées', notDeleted);
     }
 
     await prisma.audioTrackEvent.createMany({
         data: ok.map((r) => ({
-            bookId,
+            bookId: r.bookId,
             action: 'RESTORE' as const,
             filename: r.filename,
             sizeBytes: r.sizeBytes,
@@ -384,9 +400,23 @@ export async function restoreTracks(opts: {
         })),
     });
 
-    await refreshBookAudioState(bookId, userId);
+    const distinctBookIds = [...new Set(ok.map((r) => r.bookId).filter((id): id is number => id !== null))];
+    await Promise.all(distinctBookIds.map((id) => refreshBookAudioState(id, userId)));
 
     return { restored: ok.length, failed };
+}
+
+export async function restoreTracks(opts: {
+    bookId: number;
+    userId: number | null;
+}): Promise<BulkRestoreResult> {
+    const { bookId, userId } = opts;
+
+    const rows = await prisma.deletedAudioTrack.findMany({
+        where: { bookId, restoredAt: null },
+        select: { id: true },
+    });
+    return restoreTracksByIds({ trashIds: rows.map((r) => r.id), userId });
 }
 
 /**

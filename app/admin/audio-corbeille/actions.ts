@@ -3,7 +3,7 @@
 import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
-import { restoreTrack, AudioTrashError } from '@/lib/audio/trash';
+import { restoreTrack, restoreTracksByIds, AudioTrashError } from '@/lib/audio/trash';
 
 /**
  * Restaurer une piste depuis la corbeille audio générale.
@@ -48,6 +48,52 @@ export async function restoreTrashedTrack(trashId: number): Promise<ActionResult
         } catch (e) {
             if (e instanceof AudioTrashError) return { ok: false, message: e.message };
             console.error('restoreTrashedTrack error:', e);
+            return { ok: false, message: 'La restauration a échoué.' };
+        }
+    });
+}
+
+/**
+ * Restaurer d'un coup toutes les lignes d'un groupe (un livre) affiché sur
+ * cet écran — le pendant « tout le livre » de restoreTrashedTrack ci-dessus,
+ * pour la carte dépliée d'un livre qui a laissé plusieurs fichiers en
+ * corbeille.
+ *
+ * Passe par restoreTracksByIds plutôt que restoreTracks(bookId) : un groupe
+ * « sans fiche » n'a justement plus de bookId à filtrer dessus, et
+ * restoreTracks(bookId: null) restaurerait tous les orphelins du système au
+ * lieu du seul groupe affiché. Les ids viennent directement de ce que le
+ * client a sous les yeux — la même population que celle sur laquelle il
+ * propose déjà un bouton Restaurer par fichier.
+ */
+export async function restoreTrashedGroup(trashIds: number[]): Promise<ActionResult> {
+    return asAdminAction(async (me) => {
+        const ids = trashIds.filter((id) => Number.isInteger(id));
+        if (!ids.length) return { ok: false, message: 'Identifiants invalides' };
+
+        try {
+            const { restored, failed } = await restoreTracksByIds({ trashIds: ids, userId: me.id });
+            revalidateAdmin();
+            if (restored > 0) revalidateCatalogue();
+
+            if (failed.length === 0) {
+                return {
+                    ok: true,
+                    message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}.`,
+                };
+            }
+            if (restored === 0) {
+                return {
+                    ok: false,
+                    message: `Aucun fichier restauré — ${failed[0].reason}${failed.length > 1 ? ` (et ${failed.length - 1} autre${failed.length > 2 ? 's' : ''})` : ''}.`,
+                };
+            }
+            return {
+                ok: true,
+                message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}, ${failed.length} échec${failed.length > 1 ? 's' : ''} (${failed[0].reason}).`,
+            };
+        } catch (e) {
+            console.error('restoreTrashedGroup error:', e);
             return { ok: false, message: 'La restauration a échoué.' };
         }
     });

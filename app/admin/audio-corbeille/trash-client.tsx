@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
     AlertTriangle,
+    ChevronDown,
     ChevronLeft,
     ChevronRight,
+    ChevronUp,
     Loader2,
     RotateCcw,
     Search,
@@ -19,7 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { formatBytes, formatDate } from '../audio-orphelins/format';
-import { restoreTrashedTrack, type ActionResult } from './actions';
+import { restoreTrashedGroup, restoreTrashedTrack, type ActionResult } from './actions';
 
 export type TrashTab = 'a-purger' | 'sans-fiche' | 'restaurees' | 'purgees';
 
@@ -43,12 +45,27 @@ export interface TrashRow {
     restoredBy: { name: string | null; email: string | null } | null;
 }
 
+/**
+ * Toutes les lignes de corbeille du même livre, dans le même onglet (donc au
+ * même statut — voir la note dans page.tsx). Un livre supprimé en bloc peut en
+ * tenir 60-80 : c'est ce groupe, pas la ligne individuelle, qui est l'unité de
+ * pagination et d'affichage par défaut.
+ */
+export interface TrashGroup {
+    key: string;
+    book: { id: number; title: string } | null;
+    originBookId: number | null;
+    originBookTitle: string | null;
+    rows: TrashRow[];
+}
+
 interface Props {
-    items: TrashRow[];
+    groups: TrashGroup[];
     tab: TrashTab;
     page: number;
     totalPages: number;
-    total: number;
+    totalGroups: number;
+    totalFiles: number;
     tabCounts: Record<TrashTab, number>;
     retentionDays: number;
     search: string;
@@ -90,12 +107,37 @@ const isUrgent = (item: TrashRow): boolean =>
     item.purgedAt === null &&
     daysUntil(item.purgeEligibleAt) <= 3;
 
+/** À quel livre ce groupe appartenait — la fiche si elle existe encore, sinon
+ *  l'empreinte laissée à la suppression, sinon rien du tout. */
+function BookIdentity({ group }: { group: TrashGroup }) {
+    if (group.book) {
+        return (
+            <Link
+                href={`/admin/books/${group.book.id}`}
+                className="text-blue-600 hover:text-blue-500 dark:text-blue-400 underline underline-offset-2"
+            >
+                « {group.book.title} » (#{group.book.id})
+            </Link>
+        );
+    }
+    if (group.originBookTitle) {
+        return (
+            <span className="text-muted-foreground">
+                fiche supprimée — « {group.originBookTitle} »
+                {group.originBookId != null && ` (#${group.originBookId})`}
+            </span>
+        );
+    }
+    return <span className="text-muted-foreground">fiche supprimée — livre inconnu</span>;
+}
+
 export default function TrashClient({
-    items,
+    groups,
     tab,
     page,
     totalPages,
-    total,
+    totalGroups,
+    totalFiles,
     tabCounts,
     retentionDays,
     search,
@@ -103,6 +145,8 @@ export default function TrashClient({
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(search);
     const [restoringId, setRestoringId] = useState<number | null>(null);
+    const [restoringGroupKey, setRestoringGroupKey] = useState<string | null>(null);
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [isPending, startTransition] = useTransition();
     const [isNavPending, startNav] = useTransition();
 
@@ -118,6 +162,20 @@ export default function TrashClient({
                 variant: res.ok ? undefined : 'destructive',
             });
             setRestoringId(null);
+            if (res.ok) router.refresh();
+        });
+    };
+
+    const runGroup = (key: string, trashIds: number[]) => {
+        setRestoringGroupKey(key);
+        startTransition(async () => {
+            const res = await restoreTrashedGroup(trashIds);
+            toast({
+                title: res.ok ? 'Succès' : 'Erreur',
+                description: res.message,
+                variant: res.ok ? undefined : 'destructive',
+            });
+            setRestoringGroupKey(null);
             if (res.ok) router.refresh();
         });
     };
@@ -141,6 +199,14 @@ export default function TrashClient({
             if (term.trim()) sp.set('q', term.trim());
             else sp.delete('q');
             sp.delete('page');
+        });
+
+    const toggle = (key: string) =>
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
         });
 
     return (
@@ -213,7 +279,7 @@ export default function TrashClient({
                 </CardHeader>
             </Card>
 
-            {items.length === 0 && (
+            {groups.length === 0 && (
                 <Card>
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
                         {search
@@ -223,100 +289,29 @@ export default function TrashClient({
                 </Card>
             )}
 
-            {items.map((item) => (
-                <Card key={item.id}>
-                    <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
-                        <div className="min-w-0 flex-1 space-y-1">
-                            <p className="font-mono text-sm text-foreground break-all">
-                                {item.filename}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                {formatBytes(item.sizeBytes)} · supprimé le{' '}
-                                {formatDate(item.deletedAt)} par {personLabel(item.deletedBy)}
-                            </p>
-
-                            {/* De quel livre venait ce fichier : la fiche si elle
-                                existe encore, sinon l'empreinte laissée à la
-                                suppression — ou rien du tout pour une ligne
-                                antérieure à ces colonnes. */}
-                            <p className="text-xs">
-                                {item.book ? (
-                                    <Link
-                                        href={`/admin/books/${item.book.id}`}
-                                        className="text-blue-600 hover:text-blue-500 dark:text-blue-400 underline underline-offset-2"
-                                    >
-                                        « {item.book.title} » (#{item.book.id})
-                                    </Link>
-                                ) : item.originBookTitle ? (
-                                    <span className="text-muted-foreground">
-                                        fiche supprimée — « {item.originBookTitle} »
-                                        {item.originBookId != null && ` (#${item.originBookId})`}
-                                    </span>
-                                ) : (
-                                    <span className="text-muted-foreground">
-                                        fiche supprimée — livre inconnu
-                                    </span>
-                                )}
-                            </p>
-
-                            <p className="font-mono text-xs text-muted-foreground break-all">
-                                {item.originalKey}
-                            </p>
-
-                            {item.restoredAt ? (
-                                <p className="text-xs text-muted-foreground">
-                                    restauré le {formatDate(item.restoredAt)} par{' '}
-                                    {personLabel(item.restoredBy)}
-                                </p>
-                            ) : item.purgedAt ? (
-                                <p className="text-xs text-red-600 dark:text-red-400">
-                                    supprimé définitivement du stockage le {formatDate(item.purgedAt)}
-                                </p>
-                            ) : (
-                                <p
-                                    className={
-                                        isUrgent(item)
-                                            ? 'flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300'
-                                            : 'text-xs text-muted-foreground'
-                                    }
-                                >
-                                    {isUrgent(item) && (
-                                        <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
-                                    )}
-                                    {retentionLabel(item)}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="flex-shrink-0">
-                            {item.restoredAt ? (
-                                <span className="text-xs text-muted-foreground">Restauré</span>
-                            ) : item.purgedAt ? (
-                                <span className="inline-flex items-center gap-1.5 text-xs text-red-500">
-                                    <Trash2 className="h-3.5 w-3.5" aria-hidden /> Purgé
-                                </span>
-                            ) : (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={busy}
-                                    onClick={() => run(item.id, () => restoreTrashedTrack(item.id))}
-                                >
-                                    {restoringId === item.id ? (
-                                        <span className="flex items-center gap-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" /> Restauration…
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center gap-2">
-                                            <RotateCcw className="h-4 w-4" /> Restaurer
-                                        </span>
-                                    )}
-                                </Button>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
+            {groups.map((group) =>
+                group.rows.length === 1 ? (
+                    <FileCard
+                        key={group.key}
+                        item={group.rows[0]}
+                        restoringId={restoringId}
+                        busy={busy}
+                        onRestore={(id) => run(id, () => restoreTrashedTrack(id))}
+                    />
+                ) : (
+                    <GroupCard
+                        key={group.key}
+                        group={group}
+                        isOpen={expanded.has(group.key)}
+                        onToggle={() => toggle(group.key)}
+                        restoringId={restoringId}
+                        isRestoringGroup={restoringGroupKey === group.key}
+                        busy={busy}
+                        onRestore={(id) => run(id, () => restoreTrashedTrack(id))}
+                        onRestoreGroup={(ids) => runGroup(group.key, ids)}
+                    />
+                ),
+            )}
 
             {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-3 pt-2">
@@ -330,7 +325,8 @@ export default function TrashClient({
                     </Button>
                     <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                         {isNavPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                        Page {page} / {totalPages} — {total} fichier{total > 1 ? 's' : ''}
+                        Page {page} / {totalPages} — {totalGroups} livre{totalGroups > 1 ? 's' : ''},{' '}
+                        {totalFiles} fichier{totalFiles > 1 ? 's' : ''}
                     </span>
                     <Button
                         variant="outline"
@@ -343,5 +339,227 @@ export default function TrashClient({
                 </div>
             )}
         </div>
+    );
+}
+
+interface FileRowProps {
+    item: TrashRow;
+    restoringId: number | null;
+    busy: boolean;
+    onRestore: (id: number) => void;
+}
+
+/** Le corps d'une ligne de corbeille : détails du fichier + bouton Restaurer. */
+function FileRowBody({ item, restoringId, busy, onRestore }: FileRowProps) {
+    return (
+        <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1 space-y-1">
+                <p className="font-mono text-sm text-foreground break-all">{item.filename}</p>
+                <p className="text-xs text-muted-foreground">
+                    {formatBytes(item.sizeBytes)} · supprimé le {formatDate(item.deletedAt)} par{' '}
+                    {personLabel(item.deletedBy)}
+                </p>
+                <p className="font-mono text-xs text-muted-foreground break-all">{item.originalKey}</p>
+
+                {item.restoredAt ? (
+                    <p className="text-xs text-muted-foreground">
+                        restauré le {formatDate(item.restoredAt)} par {personLabel(item.restoredBy)}
+                    </p>
+                ) : item.purgedAt ? (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                        supprimé définitivement du stockage le {formatDate(item.purgedAt)}
+                    </p>
+                ) : (
+                    <p
+                        className={
+                            isUrgent(item)
+                                ? 'flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300'
+                                : 'text-xs text-muted-foreground'
+                        }
+                    >
+                        {isUrgent(item) && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
+                        {retentionLabel(item)}
+                    </p>
+                )}
+            </div>
+
+            <div className="flex-shrink-0">
+                {item.restoredAt ? (
+                    <span className="text-xs text-muted-foreground">Restauré</span>
+                ) : item.purgedAt ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-red-500">
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden /> Purgé
+                    </span>
+                ) : (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => onRestore(item.id)}
+                    >
+                        {restoringId === item.id ? (
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Restauration…
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-2">
+                                <RotateCcw className="h-4 w-4" /> Restaurer
+                            </span>
+                        )}
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/** Un livre qui n'a qu'un seul fichier en corbeille : pas de dépliant, c'est
+ *  déjà toute l'information. */
+function FileCard({ item, restoringId, busy, onRestore }: FileRowProps) {
+    return (
+        <Card>
+            <CardContent className="py-4">
+                <FileRowBody item={item} restoringId={restoringId} busy={busy} onRestore={onRestore} />
+            </CardContent>
+        </Card>
+    );
+}
+
+interface GroupCardProps {
+    group: TrashGroup;
+    isOpen: boolean;
+    onToggle: () => void;
+    restoringId: number | null;
+    isRestoringGroup: boolean;
+    busy: boolean;
+    onRestore: (id: number) => void;
+    onRestoreGroup: (trashIds: number[]) => void;
+}
+
+/**
+ * Un livre avec plusieurs fichiers en corbeille — le cas d'une suppression en
+ * bloc, jusqu'à 60-80 pistes vues dans le corpus. Replié par défaut : seul le
+ * résumé (nombre de fichiers, poids total, échéance la plus proche) s'affiche
+ * tant qu'on ne déplie pas, pour ne pas noyer les autres livres de la page
+ * sous les fichiers d'un seul.
+ */
+function GroupCard({
+    group,
+    isOpen,
+    onToggle,
+    restoringId,
+    isRestoringGroup,
+    busy,
+    onRestore,
+    onRestoreGroup,
+}: GroupCardProps) {
+    const { rows } = group;
+    const totalSize = rows.reduce((sum, r) => sum + r.sizeBytes, 0);
+    const anyUrgent = rows.some(isUrgent);
+    const allRestored = rows.every((r) => r.restoredAt !== null);
+    const allPurged = rows.every((r) => r.purgedAt !== null);
+    // Un groupe n'est restaurable en bloc que dans les onglets actifs — même
+    // condition que le bouton Restaurer par fichier ci-dessous, appliquée à
+    // l'ensemble du groupe plutôt qu'à une ligne.
+    const restorableIds = rows.filter((r) => !r.restoredAt && !r.purgedAt).map((r) => r.id);
+
+    // La ligne la plus proche de sa purge résume l'urgence du groupe entier.
+    const soonestPurgeEligible = rows
+        .filter((r) => !r.retainForever && r.purgeEligibleAt && !r.restoredAt && !r.purgedAt)
+        .map((r) => r.purgeEligibleAt as string)
+        .sort()[0];
+
+    let statusLine: string;
+    if (allRestored) {
+        statusLine = `${rows.length} fichiers restaurés`;
+    } else if (allPurged) {
+        statusLine = `${rows.length} fichiers supprimés définitivement du stockage`;
+    } else if (soonestPurgeEligible) {
+        const left = daysUntil(soonestPurgeEligible);
+        statusLine =
+            left <= 0
+                ? 'le plus ancien sera supprimé du stockage au prochain passage de la purge'
+                : `le plus ancien part dans ${left} jour${left > 1 ? 's' : ''}`;
+    } else {
+        statusLine = 'conservés indéfiniment (supprimés avant la mise en place de la purge)';
+    }
+
+    return (
+        <Card>
+            <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
+                <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-sm text-foreground">
+                        <BookIdentity group={group} />
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        {rows.length} fichiers · {formatBytes(totalSize)}
+                    </p>
+                    <p
+                        className={
+                            anyUrgent
+                                ? 'flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300'
+                                : 'text-xs text-muted-foreground'
+                        }
+                    >
+                        {anyUrgent && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
+                        {statusLine}
+                    </p>
+                </div>
+
+                <div className="flex flex-shrink-0 flex-col items-end gap-2">
+                    {restorableIds.length > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => onRestoreGroup(restorableIds)}
+                        >
+                            {isRestoringGroup ? (
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Restauration…
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    <RotateCcw className="h-4 w-4" /> Restaurer tout
+                                </span>
+                            )}
+                        </Button>
+                    )}
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={onToggle}
+                        className="text-xs text-muted-foreground"
+                    >
+                        {isOpen ? (
+                            <>
+                                Réduire <ChevronUp className="h-4 w-4" aria-hidden />
+                            </>
+                        ) : (
+                            <>
+                                Voir les fichiers <ChevronDown className="h-4 w-4" aria-hidden />
+                            </>
+                        )}
+                    </Button>
+                </div>
+            </CardContent>
+
+            {isOpen && (
+                <CardContent className="space-y-3 border-t pt-4">
+                    {rows.map((item) => (
+                        <div key={item.id} className="border-b pb-3 last:border-b-0 last:pb-0">
+                            <FileRowBody
+                                item={item}
+                                restoringId={restoringId}
+                                busy={busy}
+                                onRestore={onRestore}
+                            />
+                        </div>
+                    ))}
+                </CardContent>
+            )}
+        </Card>
     );
 }
