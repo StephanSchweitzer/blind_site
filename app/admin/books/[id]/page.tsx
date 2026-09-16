@@ -10,6 +10,7 @@ import {Card, CardHeader, CardTitle, CardContent, CardDescription} from '@/compo
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DeleteBookModal } from '@/admin/DeleteBookModal';
+import BookDeletedNotice from '@/admin/BookDeletedNotice';
 import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
 import YearCommandSelect from "@/components/ui/year-select";
 import { calendarMonth, calendarYear } from '@/lib/calendar-date';
@@ -36,6 +37,8 @@ interface Livre {
     available: boolean;
     audio_filepath?: string | null;
     audioTrackCount?: number | null;
+    /** ISO string, présent seulement sur une fiche supprimée (lib/prisma.ts la cache ailleurs). */
+    deletedAt?: string | null;
 }
 
 
@@ -121,6 +124,8 @@ export default function EditionLivre() {
         </div>;
     }
 
+    const estSupprime = Boolean(formData.deletedAt);
+
     const gererChangement = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
@@ -191,6 +196,16 @@ export default function EditionLivre() {
 
     return (
         <div className="space-y-4">
+            {estSupprime && (
+                <BookDeletedNotice
+                    bookId={Number(id)}
+                    title={formData.title}
+                    deletedAt={formData.deletedAt!}
+                    onRestored={() =>
+                        setFormData(prev => (prev ? { ...prev, deletedAt: null } : prev))
+                    }
+                />
+            )}
             <Card className="bg-card border-border">
                 <CardHeader className="border-b border-border">
                     <CardTitle className="text-foreground">Modifier le livre</CardTitle>
@@ -205,6 +220,7 @@ export default function EditionLivre() {
                                 <AlertDescription>{erreur}</AlertDescription>
                             </Alert>
                         )}
+                        <fieldset disabled={estSupprime} className="space-y-6 disabled:opacity-60">
 
                         <div className="grid gap-6">
                             <div className="space-y-2">
@@ -426,6 +442,7 @@ export default function EditionLivre() {
                             </Button>
 
                             </div>
+                        </fieldset>
                     </form>
                 </CardContent>
             </Card>

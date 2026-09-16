@@ -378,7 +378,15 @@ export function buildPublicCoupsDeCoeurSearchWhere(
         {
             books: {
                 some: {
-                    book: { OR: bookTextFieldsForToken(token), hiddenFromCatalogue: false },
+                    // A nested relation filter, not a top-level Book read: the global
+                    // soft-delete extension (lib/prisma.ts) only patches direct
+                    // `book.*` calls, so `deletedAt` needs stating here explicitly —
+                    // same reason `hiddenFromCatalogue` already is, just below it.
+                    book: {
+                        OR: bookTextFieldsForToken(token),
+                        hiddenFromCatalogue: false,
+                        deletedAt: null,
+                    },
                 },
             },
         },

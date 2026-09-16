@@ -33,7 +33,10 @@ export const getCoupsDeCoeurPage = unstable_cache(
                     description: true,
                     audioPath: true,
                     books: {
-                        where: { book: { hiddenFromCatalogue: false } },
+                        // Nested relation filter: the global soft-delete extension
+                        // (lib/prisma.ts) only patches direct `book.*` calls, so
+                        // deletedAt needs stating here too, same as hiddenFromCatalogue.
+                        where: { book: { hiddenFromCatalogue: false, deletedAt: null } },
                         select: {
                             book: {
                                 include: {

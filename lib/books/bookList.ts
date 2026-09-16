@@ -204,6 +204,12 @@ function buildRawBookWhere({
         }
     }
 
+    // Soft-deleted books never appear, admin or not: this path runs raw SQL,
+    // which bypasses the global Prisma extension (lib/prisma.ts) that hides
+    // them everywhere else. Unconditional, unlike hiddenFromCatalogue below —
+    // there is no "includeDeleted" caller, deleted means gone from every list.
+    whereConditions.push(`b."deletedAt" IS NULL`);
+
     // Exclude books hidden from the public catalogue, unless the caller is admin
     if (!includeHidden) {
         whereConditions.push(`b."hiddenFromCatalogue" = false`);

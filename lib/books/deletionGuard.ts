@@ -15,14 +15,17 @@ import { prisma } from '@/lib/prisma';
  * « 500 Failed to delete book » que rien n'expliquait.
  *
  * D'où les DEUX comptes par relation, chacun avec un `deletedAt` explicite —
- * l'injection n'a lieu que si l'appelant ne mentionne pas la colonne. Les deux
- * situations n'appellent d'ailleurs pas la même réponse :
- *   - des demandes / attributions vivantes : il y a quelque chose à traiter
- *     d'abord, et les listes filtrées par `?bookId=` le montrent ;
- *   - uniquement de l'historique supprimé : il n'y a plus rien à traiter, la
- *     fiche est définitivement non supprimable (la suppression logique existe
- *     précisément pour garder cet historique) et la bonne manœuvre est de la
- *     masquer du catalogue.
+ * l'injection n'a lieu que si l'appelant ne mentionne pas la colonne.
+ *
+ * Seules les lignes VIVANTES bloquent désormais. Un livre qui ne garde que de
+ * l'historique supprimé n'a plus rien à traiter — et depuis que le livre
+ * lui-même se supprime en douceur (`Book.deletedAt`, lib/prisma.ts) plutôt que
+ * d'être réellement effacé, le bloquer n'avait plus de sens : la fiche ne
+ * quittait jamais Postgres, seule l'API refusait d'agir dessus alors que rien
+ * n'empêchait plus la garder cachée. `deletedOrderIds` / `deletedAssignmentIds`
+ * restent sur `BookUsage` — la forme de readBookDeletionCheck (deletionPreflight.ts)
+ * les porte déjà — mais ne comptent plus dans `bookUsageBlocksDeletion` ni dans
+ * `bookUsageRefusal`.
  */
 
 /** Au-delà, la phrase énumère les premiers identifiants puis abrège. */
@@ -70,10 +73,7 @@ export async function readBookUsage(bookId: number): Promise<BookUsage> {
 }
 
 export const bookUsageBlocksDeletion = (u: BookUsage): boolean =>
-    u.orderIds.length > 0 ||
-    u.assignmentIds.length > 0 ||
-    u.deletedOrderIds.length > 0 ||
-    u.deletedAssignmentIds.length > 0;
+    u.orderIds.length > 0 || u.assignmentIds.length > 0;
 
 /** « 3 demandes (#12, #13, #14) » — les identifiants, parce qu'ils se retrouvent. */
 function countWithIds(ids: number[], singular: string, plural: string): string {
@@ -84,52 +84,27 @@ function countWithIds(ids: number[], singular: string, plural: string): string {
 }
 
 /** « 3 demandes (#12…) et 1 attribution (#7) », l'une ou l'autre moitié omise si vide. */
-function joinUsage(orderIds: number[], assignmentIds: number[], deleted = false): string {
+function joinUsage(orderIds: number[], assignmentIds: number[]): string {
     const parts: string[] = [];
-    if (orderIds.length) {
-        parts.push(
-            deleted
-                ? countWithIds(orderIds, 'demande supprimée', 'demandes supprimées')
-                : countWithIds(orderIds, 'demande', 'demandes'),
-        );
-    }
-    if (assignmentIds.length) {
-        parts.push(
-            deleted
-                ? countWithIds(assignmentIds, 'attribution supprimée', 'attributions supprimées')
-                : countWithIds(assignmentIds, 'attribution', 'attributions'),
-        );
-    }
+    if (orderIds.length) parts.push(countWithIds(orderIds, 'demande', 'demandes'));
+    if (assignmentIds.length) parts.push(countWithIds(assignmentIds, 'attribution', 'attributions'));
     return parts.join(' et ');
 }
 
 /**
- * Le refus, en français et avec les identifiants. Les liens ne sont pas dans la
- * phrase : ils voyagent à part (`links`) et sont rendus par le formulaire, qui
- * les ouvre dans un onglet — et surtout, une demande supprimée n'apparaît dans
- * aucune liste, donc son identifiant est tout ce qu'on peut honnêtement donner.
+ * Le refus, en français et avec les identifiants — uniquement pour de l'usage
+ * VIVANT désormais (voir le commentaire d'en-tête). Les liens ne sont pas dans
+ * la phrase : ils voyagent à part (`links`) et sont rendus par le formulaire,
+ * qui les ouvre dans un onglet.
  */
 export function bookUsageRefusal(u: BookUsage): string {
     const live = joinUsage(u.orderIds, u.assignmentIds);
-    const dead = joinUsage(u.deletedOrderIds, u.deletedAssignmentIds, true);
-    const phrases: string[] = [];
-
-    if (live) {
-        const pronoun = u.orderIds.length + u.assignmentIds.length > 1 ? 'les' : 'la';
-        phrases.push(
-            `Ce livre est nommé par ${live}. Supprimez-${pronoun} ou rattachez-${pronoun} ` +
-                `à un autre livre avant de supprimer la fiche.`,
-        );
-    }
-    if (dead) {
-        phrases.push(
-            `${live ? 'Il garde aussi' : 'Ce livre garde'} l'historique de ${dead}, ` +
-                `conservé volontairement : la fiche ne peut donc plus être supprimée. ` +
-                `Cochez « Masqué du catalogue public » pour la retirer du catalogue et des ` +
-                `listes de livres — elle reste utilisable par les permanents.`,
-        );
-    }
-    return phrases.join(' ');
+    if (!live) return '';
+    const pronoun = u.orderIds.length + u.assignmentIds.length > 1 ? 'les' : 'la';
+    return (
+        `Ce livre est nommé par ${live}. Supprimez-${pronoun} ou rattachez-${pronoun} ` +
+        `à un autre livre avant de supprimer la fiche.`
+    );
 }
 
 /** Les listes filtrées sur ce livre (lib/books/bookFilter.ts). */

@@ -107,18 +107,16 @@ apprendre ensuite qu'elle était impossible.
 Quand quelque chose l'empêche, la fenêtre l'affiche en rouge, n'offre aucune option, et dit
 précisément ce qui bloque :
 
-- **Des demandes ou des attributions nomment ce livre.** Le message donne leur nombre et leurs
-  identifiants, et la ligne « Ce livre : … » juste en dessous mène aux listes filtrées sur cet
-  ouvrage. Traitez-les d'abord — supprimez-les, ou rattachez-les à un autre livre.
-- **Le livre garde l'historique de demandes ou d'attributions supprimées.** Cet historique est
-  conservé volontairement : la fiche ne peut plus être supprimée, même si ces demandes
-  n'apparaissent plus dans les listes. Pour retirer l'ouvrage du catalogue public et des listes
-  de livres, cochez « Masqué du catalogue public » au lieu de le supprimer — la fiche reste
-  utilisable par les permanents.
+- **Des demandes ou des attributions vivantes nomment ce livre.** Le message donne leur nombre
+  et leurs identifiants, et la ligne « Ce livre : … » juste en dessous mène aux listes filtrées
+  sur cet ouvrage. Traitez-les d'abord — supprimez-les, ou rattachez-les à un autre livre.
 - **Le dossier audio est aussi celui d'un autre livre.** Le message nomme la ou les autres
   fiches, avec leur identifiant et un lien vers chacune. Supprimer ici viderait aussi leur
   dossier, l'enregistrement étant le même : réglez d'abord le doublon depuis
   [Doublons](/admin/aide/doublons), ou détachez le dossier de l'autre fiche.
+
+Un livre qui ne garde que de l'**historique** de demandes ou d'attributions supprimées, sans
+plus rien de vivant, ne bloque plus rien — voir plus bas ce qu'il devient.
 
 ### Que devient l'enregistrement audio
 
@@ -126,11 +124,10 @@ Si la fiche est supprimable et que son dossier contient des pistes, la fenêtre 
 dossier — nombre de fichiers, poids, chemin — et demande **ce qu'il faut en faire**. Trois
 possibilités, la première étant celle à choisir dans le doute :
 
-- **Laisser le dossier dans le stockage** *(conseillé)*. Rien n'est copié, rien n'est supprimé.
-  Le dossier n'appartient plus à aucune fiche et apparaît aussitôt dans
-  [Audio orphelin](/admin/aide/audio-orphelin), où il peut être rattaché à un autre livre ou
-  écarté. C'est le bon choix pour un doublon : l'enregistrement est déjà sur la fiche que vous
-  gardez.
+- **Laisser le dossier dans le stockage** *(conseillé)*. Rien n'est copié, rien n'est supprimé,
+  et le dossier reste attaché à la fiche — il revient avec elle si elle est restaurée. Pour
+  libérer l'enregistrement pour de bon (un doublon confirmé, par exemple), choisissez plutôt
+  « Transférer » ou « Envoyer à la corbeille ».
 - **Transférer vers un autre livre.** Vous choisissez le livre qui hérite du dossier ; il pointe
   dessus à la place de la fiche supprimée, et son poids, sa durée et son état audio sont
   recalculés dans la foulée. Le transfert est **refusé si ce livre possède déjà des pistes** —
@@ -148,8 +145,13 @@ Si des pistes de ce livre étaient **déjà** dans la corbeille, la fenêtre le 
 restent, au nom de la fiche supprimée, et se retrouvent dans l'onglet « Sans fiche » de
 [Corbeille audio](/admin/aide/audio-orphelin#corbeille-audio).
 
-La fiche elle-même, en revanche, est supprimée définitivement. Une suppression faite par erreur
-se rejoue depuis le [journal des modifications](/admin/aide/statistiques) dans les 14 jours.
+La fiche elle-même, elle, n'est jamais réellement effacée : « Supprimer » la fait disparaître de
+partout — listes, recherches, menus déroulants — sans la retirer de la base, précisément parce
+qu'une demande ou une attribution supprimée peut encore la nommer. Rouvrez-la par son ancienne
+adresse (`/admin/books/<id>`, par exemple depuis un ancien lien ou le journal des modifications)
+pour retrouver un bandeau rouge « Fiche supprimée » avec un bouton **Restaurer** — sans limite de
+temps, contrairement à la restauration depuis le
+[journal des modifications](/admin/aide/statistiques), qui n'a que 14 jours de recul.
 
 ## Éditeur audio
 

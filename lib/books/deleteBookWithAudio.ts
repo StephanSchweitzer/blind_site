@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma';
 import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
 import { refreshBookAudioState, resolvePrefix } from '@/lib/audio/state';
 import { softDeleteTracks, markTrashOrigin } from '@/lib/audio/trash';
-import { queueOrphanFolder } from '@/lib/audio/orphanFolders';
 import { readBookDeletionCheck } from './deletionPreflight';
 
 /**
@@ -27,9 +26,20 @@ import { readBookDeletionCheck } from './deletionPreflight';
  *     purgées pour de bon au bout de 14 jours. Voir markTrashOrigin.
  *
  * D'où trois dispositions explicites, et « laisser le dossier » par défaut :
- * rien n'est copié, rien n'est supprimé du stockage, et le dossier rejoint la
- * file de /admin/audio-orphelins — l'écran qui existe déjà pour décider du sort
- * d'un dossier que plus aucune fiche ne réclame.
+ * rien n'est copié, rien n'est supprimé du stockage.
+ *
+ * ## La fiche elle-même ne disparaît plus de Postgres
+ *
+ * « Supprimer » pose `Book.deletedAt` (lib/prisma.ts la cache alors partout)
+ * plutôt que d'effacer la ligne — voir lib/books/deletionGuard.ts pour
+ * pourquoi : `Orders.catalogueId` / `Assignment.catalogueId` sont RESTRICT, et
+ * l'historique supprimé les nomme quand même. Ce qui suit change avec ça :
+ * « laisser le dossier » ne met donc PLUS le dossier dans la file de
+ * /admin/audio-orphelins — `audio_filepath` reste sur une fiche qui existe
+ * toujours, restaurable, et le dossier n'est pas orphelin tant qu'elle ne l'est
+ * pas. `transfer` et `trash` restent des choix explicites à part entière : le
+ * permanent qui sait vouloir libérer l'enregistrement (fusion, doublon confirmé)
+ * peut toujours le dire.
  *
  * ## Une seule implémentation
  *
@@ -56,7 +66,7 @@ export interface AudioDisposition {
 export interface DeleteBookAudioOutcome {
     mode: AudioDispositionMode;
     trackCount: number;
-    /** Dossier laissé en place, et mis dans la file des orphelins. */
+    /** Dossier laissé en place, toujours attaché à la fiche (masquée, restaurable). */
     orphanedPrefix?: string;
     /** Livre qui a hérité du dossier, et son titre. */
     targetBookId?: number;
@@ -108,7 +118,7 @@ export async function deleteBookWithAudio(opts: {
         };
     }
 
-    const { prefix, sizeBytes } = preflight.audio;
+    const { prefix } = preflight.audio;
     const tracks = toOrderedTracks(objects, prefix);
 
     /**
@@ -262,7 +272,9 @@ export async function deleteBookWithAudio(opts: {
                 data: { bookId: targetId },
             });
 
-            await tx.book.delete({ where: { id: bookId } });
+            // Soft delete : voir plus bas pour la raison, identique dans les deux
+            // branches de cette fonction.
+            await tx.book.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
         });
 
         // HORS transaction, et volontairement : refreshBookAudioState atteint le
@@ -292,23 +304,11 @@ export async function deleteBookWithAudio(opts: {
         };
     }
 
-    // `audio_filepath` n'est PAS vidé avant la suppression : le snapshot du
-    // journal des modifications garde ainsi le chemin, qui est la seule façon de
-    // retrouver le dossier si la suppression était une erreur.
-    await prisma.book.delete({ where: { id: bookId } });
-
-    if (mode === 'leave' && tracks.length > 0) {
-        // Le dossier n'appartient plus à personne : il rejoint la file de
-        // /admin/audio-orphelins tout de suite, et non au prochain passage manuel
-        // de scripts/sync-audio-links.ts.
-        await queueOrphanFolder({
-            prefix,
-            title: book.title,
-            trackCount: tracks.length,
-            bytes: sizeBytes,
-            note: `dossier laissé en place par la suppression de la fiche #${bookId} « ${book.title} »`,
-        });
-    }
+    // Soft delete, pas suppression : `audio_filepath` reste tel quel, la fiche
+    // n'a jamais cessé d'exister pour le réclamer. Pas de file d'orphelins à
+    // alimenter ici — POST /api/books/[id]/restore rend la fiche, et son
+    // dossier avec, sans rien à rattacher.
+    await prisma.book.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
 
     return {
         ok: true,

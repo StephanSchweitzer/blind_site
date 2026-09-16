@@ -77,6 +77,13 @@ const adapter = new PrismaPg({
  * - Orders additionally carries `isActive`, which predates this and is what the
  *   billing sums filter on (recomputeBillTotal, ADJUSTABLE_ORDER_WHERE). The two
  *   are written together on every soft delete; neither replaces the other.
+ * - Book joined later, for the same reason as the other two: a book that still
+ *   had history — Orders/Assignment rows, live or already soft-deleted, both
+ *   RESTRICT — turned out to be physically undeletable, Postgres refusing the
+ *   row while anything still names it. Deleting a book now sets its own
+ *   `deletedAt` instead of touching the row, which needs the same list-wide
+ *   hiding to actually disappear rather than sit in every list forever. See
+ *   lib/books/deleteBookWithAudio.ts.
  */
 const FILTERED_READS = new Set([
     'findMany',
@@ -93,7 +100,7 @@ const FILTERED_READS = new Set([
  * Prisma types its `query` map by delegate name and a computed key erases that.
  * Keep the two in step.
  */
-const SOFT_DELETED_MODELS = ['user', 'orders', 'assignment'] as const;
+const SOFT_DELETED_MODELS = ['user', 'orders', 'assignment', 'book'] as const;
 export type SoftDeletedModel = (typeof SOFT_DELETED_MODELS)[number];
 
 function makePrisma() {
@@ -138,6 +145,7 @@ function makePrisma() {
                 user: { $allOperations: hideSoftDeleted },
                 orders: { $allOperations: hideSoftDeleted },
                 assignment: { $allOperations: hideSoftDeleted },
+                book: { $allOperations: hideSoftDeleted },
             },
         })
         .$extends(auditExtension(base));

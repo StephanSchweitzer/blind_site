@@ -38,9 +38,13 @@ import type {
  *    fiche ne réclamera, c'est long, coûteux, et souvent inutile. Les trois
  *    sorts possibles sont donc proposés, « laisser le dossier » en premier.
  *
- * La suppression reste irréversible côté fiche : c'est le journal des
- * modifications (/admin/stats, 14 jours) qui permet de la rejouer, et le
- * dossier audio, lui, n'est jamais supprimé du stockage par cette fenêtre.
+ * La fiche elle-même n'est jamais réellement effacée : « Supprimer » la masque
+ * partout (listes, recherches, menus déroulants) plutôt que de l'ôter de la
+ * base, précisément parce que Postgres refuse toute suppression tant qu'une
+ * demande ou une attribution — même supprimée — la nomme encore. Restaurable
+ * sans limite de temps depuis sa fiche (bouton « Restaurer »), pas seulement
+ * pendant les 14 jours du journal des modifications. Le dossier audio, lui,
+ * n'est jamais supprimé du stockage par cette fenêtre.
  */
 
 interface DeleteBookModalProps {
@@ -218,7 +222,8 @@ export function DeleteBookModal({
                         {preflight && !blocked && (
                             <>
                                 {' '}
-                                — la fiche est supprimée définitivement. Ce qu’elle garde de
+                                — la fiche disparaît des listes, recherches et menus déroulants
+                                (restaurable ensuite depuis sa fiche). Ce qu’elle garde de
                                 l’enregistrement audio se décide ci-dessous.
                             </>
                         )}
@@ -307,17 +312,10 @@ export function DeleteBookModal({
                                             <span className="text-muted-foreground">(conseillé)</span>
                                         </span>
                                         <span className="block text-muted-foreground mt-0.5">
-                                            Rien n’est copié ni supprimé. Le dossier n’appartient plus
-                                            à aucune fiche et apparaît aussitôt dans{' '}
-                                            <Link
-                                                href="/admin/audio-orphelins"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="underline underline-offset-2"
-                                            >
-                                                Audio orphelins
-                                            </Link>
-                                            , où il peut être rattaché à un livre ou écarté.
+                                            Rien n’est copié ni supprimé. Le dossier reste attaché à
+                                            la fiche, qui le garde si elle est restaurée. Pour
+                                            libérer l’enregistrement pour de bon, choisissez plutôt
+                                            « Transférer » ou « Envoyer à la corbeille ».
                                         </span>
                                     </span>
                                 </label>
@@ -532,7 +530,7 @@ function describeOutcome(outcome: {
         );
     }
     return (
-        `La fiche a été supprimée. Son dossier audio (${tracksLabel(count)}) est resté dans le ` +
-        `stockage et attend dans Audio orphelins.`
+        `La fiche a été supprimée. Son dossier audio (${tracksLabel(count)}) reste attaché à la ` +
+        `fiche dans le stockage.`
     );
 }
