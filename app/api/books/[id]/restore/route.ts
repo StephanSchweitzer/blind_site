@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { restoreTracks } from '@/lib/audio/trash';
 
 /**
  * Undo a soft deletion — the counterpart of DELETE /api/books/[id].
@@ -20,8 +21,26 @@ import { revalidateCatalogue } from '@/lib/revalidate-public';
  *
  * Undo belongs to the domain model. The journal only records that it
  * happened, which the audit extension does on its own for this update.
+ *
+ * ## Restaurer ramène aussi ce que « envoyer à la corbeille » en avait détaché
+ *
+ * `deleteBookWithAudio` en mode `trash` ne touche jamais `audio_filepath` — la
+ * fiche continue de pointer sur son dossier, désormais vidé de ses pistes,
+ * parties en corbeille (voir son commentaire). Sans ceci, restaurer la fiche
+ * la ramenait avec un dossier vide : il fallait ensuite se rappeler d'aller
+ * les restaurer une à une depuis /admin/audio-corbeille, ou vivre avec un
+ * livre « actif » sans aucun enregistrement. `restoreTracks` ne touche que les
+ * lignes déjà rattachées à CE livre (`bookId`), jamais celles d'un autre —
+ * une fusion ou un transfert les a réattribuées ailleurs, et ce n'est pas à
+ * cette route de les leur reprendre.
+ *
+ * Best-effort : une piste qui ne peut pas revenir (copie de corbeille purgée,
+ * emplacement d'origine réoccupé) ne bloque pas la restauration de la fiche —
+ * elle reste listée dans /admin/audio-corbeille, restaurable à la main.
  */
-export const POST = withAdmin(async (_request, { params }) => {
+export const maxDuration = 45; // même marge que DELETE /api/books/[id], même raison : jusqu'à ~77 pistes, copiées 10 de front.
+
+export const POST = withAdmin(async (_request, { params, me }) => {
     const { id } = await params!;
     const bookId = parseInt(id, 10);
     if (Number.isNaN(bookId)) {
@@ -55,11 +74,27 @@ export const POST = withAdmin(async (_request, { params }) => {
             select: { id: true },
         });
 
+        // Après, pas avant : restoreTracks ne fait rien d'irréversible sur la
+        // fiche elle-même, mais la fiche doit déjà exister « active » pour que
+        // refreshBookAudioState (appelé dedans) la retrouve normalement.
+        const { restored, failed } = await restoreTracks({ bookId, userId: me.id });
+
+        let message = `« ${book.title} » a été restauré. La fiche réapparaît dans les listes et les recherches.`;
+        if (restored > 0) {
+            message += ` ${restored} piste${restored > 1 ? 's' : ''} audio restaurée${restored > 1 ? 's' : ''} depuis la corbeille.`;
+        }
+        if (failed.length > 0) {
+            message +=
+                ` ${failed.length} piste${failed.length > 1 ? 's' : ''} n’ont pas pu être ramenée${failed.length > 1 ? 's' : ''} ` +
+                `automatiquement — voir Corbeille audio.`;
+        }
+
         revalidateAdmin();
         revalidateCatalogue();
         return NextResponse.json({
-            message: `« ${book.title} » a été restauré. La fiche réapparaît dans les listes et les recherches.`,
+            message,
             restoredId: bookId,
+            audio: { restoredTracks: restored, failedTracks: failed.length },
         });
     } catch (error) {
         console.error('Error restoring book:', error);

@@ -153,6 +153,13 @@ pour retrouver un bandeau rouge « Fiche supprimée » avec un bouton **Restaure
 temps, contrairement à la restauration depuis le
 [journal des modifications](/admin/aide/statistiques), qui n'a que 14 jours de recul.
 
+Si « Envoyer les pistes à la corbeille » avait été choisi, **Restaurer** les ramène avec la
+fiche — pas seulement la ligne, les fichiers aussi : chaque piste encore en corbeille pour ce
+livre est recopiée à son emplacement d'origine dans la foulée, sans repasser par
+[Corbeille audio](/admin/aide/audio-orphelin#corbeille-audio). Une piste qui ne peut plus revenir
+(copie de corbeille déjà purgée, emplacement réoccupé entre-temps) ne bloque pas la restauration
+de la fiche — le message le dit, et elle reste restaurable à la main depuis cet écran.
+
 ## Éditeur audio
 
 Lorsque vous cliquez sur l'éditeur audio depuis la page d'accueil ou depuis le modal « Modifier le livre », le modal de « L'éditeur audio » s'ouvre. Pour cet exemple, j'utilise un livre qui est déjà disponible en version audio.

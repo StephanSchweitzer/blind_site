@@ -117,7 +117,8 @@ export default function BookDeletedNotice({
                         <AlertDialogTitle>Restaurer « {title} » ?</AlertDialogTitle>
                         <AlertDialogDescription>
                             La fiche redeviendra visible partout aux ECA : listes, recherches et
-                            menus déroulants. Rien d’autre n’est modifié.
+                            menus déroulants. Les pistes de son dossier encore en corbeille sont
+                            ramenées avec elle.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
