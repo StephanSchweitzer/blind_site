@@ -18,7 +18,7 @@ Au-dessus, vous avez le niveau d'accès « permanent », qui permet d'accéder �
 
 Enfin, le niveau d'accès offrant le plus de privilèges est celui de « Super Admin ». Le Super Admin a le pouvoir de créer de nouveaux permanents, de supprimer des permanents, d'accéder à toutes les pages et de modifier les mots de passe des autres utilisateurs.
 
-**À ce jour, la création de membres est réservée aux Super Admins** — quel que soit le type de membre, et pas seulement pour les permanents. Un permanent qui ne voit pas le bouton « Ajouter un membre » n'a rien fait de travers : c'est cette restriction, demandée par la direction, qui s'applique. De la même manière, le niveau d'accès ne peut être modifié que par un Super Admin, **dans les deux sens** — promouvoir comme rétrograder.
+**La création d'un nouveau permanent est réservée aux Super Admins.** Un permanent qui ne voit pas le bouton « Ajouter un membre » sur la page des permanents n'a rien fait de travers : c'est cette restriction qui s'applique. Sur les autres pages (auditeurs, lecteurs, donateurs), en revanche, tout permanent peut créer un nouveau membre. De la même manière, le niveau d'accès ne peut être modifié que par un Super Admin, **dans les deux sens** — promouvoir comme rétrograder.
 
 Assez parlé des rôles et des niveaux d'accès.
 

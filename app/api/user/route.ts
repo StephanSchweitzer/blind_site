@@ -9,7 +9,6 @@ import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 import { UserCreateInput } from '@/types/api/user.api';
 import { AddressCreateInput } from '@/types/api/common.api';
 import { MemberType, AccessLevel, Language } from '@prisma/client';
-import { ADMINS_CAN_CREATE_USERS } from '@/lib/feature-flags';
 
 export const GET = withAdmin(async () => {
     try {
@@ -48,11 +47,6 @@ interface UserCreateRequestBody extends Omit<UserCreateInput, 'password'> {
 export const POST = withAdmin(async (request, { me }) => {
     revalidateAdmin();
     try {
-        // TEMP (see lib/feature-flags.ts): only super_admins may create users.
-        if (!ADMINS_CAN_CREATE_USERS && me.accessLevel !== 'super_admin') {
-            return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
-        }
-
         const body = await request.json() as UserCreateRequestBody;
 
         // Normalize the email once, up front: trim + lowercase so casing can never

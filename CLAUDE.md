@@ -193,8 +193,16 @@ invalidation, code style.
 
 ### Temporary toggles
 `lib/feature-flags.ts` holds leadership-requested switches that are expected to be reverted
-(currently `ADMINS_CAN_CREATE_USERS = false`). Keep them self-contained with the rollback
-written next to the flag, so reverting is one edit rather than an archaeology dig.
+(none currently active). Keep them self-contained with the rollback written next to the flag,
+so reverting is one edit rather than an archaeology dig.
+
+### Who can create which users
+`POST /api/user` lets `admin` and `super_admin` create non-login records (auditeurs,
+lecteurs, bienfaiteurs). Creating a **login-capable account** — `accessLevel: admin` or
+`super_admin`, i.e. a permanent — is `super_admin`-only (`isLoginAccount` check in
+`app/api/user/route.ts`), consistent with "`accessLevel` only ever moves under a super admin"
+above. The `/admin/users/permanents` tab's "Ajouter un membre" button is hidden from plain
+admins for the same reason; other tabs show it to any admin.
 
 ## The mode d'emploi follows the code (IMPORTANT)
 
