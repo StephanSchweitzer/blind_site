@@ -27,25 +27,40 @@ of that.
   the cache on a mere re-read would re-synthesize, and re-pay for, the whole catalogue.
   Both columns are `DERIVED_FIELDS` (`lib/audit/config.ts`), which is what lets that write
   stay inside `withoutAudit` without losing a journal entry.
-- **Deleting a book does NOT trash its audio.** `deleteBookWithAudio` (`lib/books/`) makes it
-  an explicit decision — *laisser le dossier* (default: nothing is copied, the folder is queued
-  in `OrphanAudioFolder` and shows up on `/admin/audio-orphelins`), *transférer* (the target
-  book's `audio_filepath` is repointed, refused when it already holds tracks, and its
+- **Deleting a book does NOT trash its audio, and no longer deletes the row either.**
+  `deleteBookWithAudio` (`lib/books/`) sets `Book.deletedAt` — a soft delete, hidden from every
+  list read by the `lib/prisma.ts` extension, restorable without a time limit — rather than
+  ever calling `prisma.book.delete`. The audio disposition on top is still an explicit choice:
+  *laisser le dossier* (default: nothing is copied and nothing is queued anywhere —
+  `audio_filepath` stays on the fiche, which still claims it), *transférer* (the target book's
+  `audio_filepath` is repointed, refused when it already holds tracks, and its
   `AudioTrackDuration` cache rows move with the folder), or *envoyer à la corbeille* (the old
   behaviour, now opt-in and gated on the track count). `readBookDeletionCheck`
   (`lib/books/deletionPreflight.ts`) is the one place the refusals are computed, read both by
   the confirmation dialogue and by the DELETE route.
-- **A book restored from the journal takes its audio back.** `/admin/stats` replays a deletion
-  at the record's original id, so `reattachAudioAfterBookRestore`
-  (`lib/books/restoreBookAudio.ts`) hands the corbeille rows back and drops the folder from the
-  orphan queue — the mirror of `markTrashOrigin` + `queueOrphanFolder`. It only ever touches
-  rows nobody else claimed (`bookId: null`) and an orphan row nobody has decided on.
+- **Two ways back, and they don't do the same work.** `POST /api/books/[id]/restore` is the
+  ordinary undo of a `deleteBookWithAudio` soft delete: it lifts `deletedAt` and calls
+  `restoreTracks` — no reattachment needed, because the row never actually left and
+  `DeletedAudioTrack.bookId` was never detached from it (see the next bullet).
+  `reattachAudioAfterBookRestore` (`lib/books/restoreBookAudio.ts`) is for the other case,
+  where the book row really was gone — a real `DELETE` (`scripts/delete-duplicate-book.ts` is
+  the current one) — and gets recreated at the same id: `/admin/stats` does this, replaying a
+  deletion less than 14 days old from the journal. It hands the now-anonymous corbeille rows
+  back and drops the folder from the orphan queue, touching only rows nobody else claimed
+  (`bookId: null`) and an orphan row nobody has decided on. A fusion never needs this — it
+  reassigns the removed book's corbeille to the survivor before deleting the row (see below),
+  so there's nothing left anonymous to reattach.
 - **Every path that deletes a `Book` row must call `markTrashOrigin` first** (`./trash.ts`), or
-  stamp the same two columns by hand (`scripts/delete-duplicate-book.ts`).
-  `DeletedAudioTrack.bookId` is `SetNull`, so without `originBookId`/`originBookTitle` the rows
-  go anonymous — invisible on every screen while the nightly purge still deletes their objects
-  at 14 days. A fusion is the exception: it reassigns them to the survivor. All corbeille rows,
-  with or without a book, are visible on `/admin/audio-corbeille`.
+  stamp the same two columns by hand (`scripts/delete-duplicate-book.ts`). `DeletedAudioTrack
+  .bookId` is `SetNull`, but that constraint only fires on a real row `DELETE` — a
+  `deleteBookWithAudio` soft delete never triggers it, so `bookId` stays pointed at the
+  (hidden, restorable) book through `trash`/`leave`/`transfer` alike, and
+  `originBookId`/`originBookTitle` are written anyway, ready for the day the row is really
+  deleted. Only an actual `DELETE` (`scripts/delete-duplicate-book.ts`) anonymizes the rows for
+  real — invisible on every screen except by `originBookId`, while the nightly purge still
+  deletes their objects at 14 days. A fusion reassigns them to the survivor instead, before its
+  own `DELETE` runs, so they never go anonymous at all. All corbeille rows, with or without a
+  book, are visible on `/admin/audio-corbeille`.
 - **Never delete a bucket object directly.** Removal goes through `softDeleteTrack` /
   `softDeleteTracks`: copy to `corbeille/`, verify the copy at the right size, write the
   `DeletedAudioTrack` row, *then* remove the original. The only real deletion is the nightly

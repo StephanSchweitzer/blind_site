@@ -10,9 +10,15 @@
  * Covers what lib/books/deleteBookWithAudio.ts decides: the two refusals
  * (demandes / attributions, folder shared with another fiche), the refusal to
  * act with no disposition at all, then `leave` / `transfer` / `trash`. The route
- * on top of it is a body parser; the rules live here. Then the way back:
- * reattachAudioAfterBookRestore, which the journal's restore route calls when a
- * deleted fiche is replayed.
+ * on top of it is a body parser; the rules live here. Deleting a book is a soft
+ * delete (`Book.deletedAt`) now, never a real row delete, so `DeletedAudioTrack
+ * .bookId` is never nulled by it either — the corbeille stays attached to the
+ * (hidden, restorable) fiche. Then the two ways back: the plain undo (POST
+ * /api/books/[id]/restore, lifting `deletedAt` and calling `restoreTracks` —
+ * no reattachment needed, `bookId` was never detached), and
+ * reattachAudioAfterBookRestore, for the one case where a book row really is
+ * gone — a hard delete (scripts/delete-duplicate-book.ts, a fusion) — and the
+ * journal's restore route recreates it at its original id.
  *
  * Works in its own scratch prefixes under the root `2022/` tree — the
  * cancelled-upload copy, NOT the live `dirt/` catalogue — creates its own books
@@ -38,6 +44,7 @@ import {
 import { readBookDeletionCheck } from '../lib/books/deletionPreflight';
 import { deleteBookWithAudio } from '../lib/books/deleteBookWithAudio';
 import { reattachAudioAfterBookRestore } from '../lib/books/restoreBookAudio';
+import { markTrashOrigin, restoreTracks } from '../lib/audio/trash';
 
 /**
  * Un préfixe neuf à chaque exécution. Réutiliser les mêmes clés d'un run à
@@ -339,11 +346,16 @@ async function main() {
             select: { id: true, bookId: true, originBookTitle: true, trashKey: true },
         });
         check('corbeille : 3 lignes marquées', stamped.length, 3);
+        // Suppression = soft delete désormais : la fiche ne quitte jamais
+        // Postgres, donc le SetNull de la contrainte ne se déclenche jamais.
+        // `bookId` reste sur le livre — c'est justement ce qui permet à la
+        // restauration douce ci-dessous de retrouver ses pistes sans rien
+        // réattacher.
         // `every` sur un tableau vide vaut true : on exige donc les trois lignes,
         // sinon un échec de copie ferait passer les deux contrôles suivants.
         check(
-            'corbeille : le livre n’est plus nommé (SetNull)',
-            stamped.length === 3 && stamped.every((r) => r.bookId === null),
+            'corbeille : la ligne reste rattachée à la fiche (masquée, pas effacée)',
+            stamped.length === 3 && stamped.every((r) => r.bookId === target.id),
             true,
         );
         check(
@@ -353,9 +365,45 @@ async function main() {
         );
         const firstCopy = stamped.length ? await headTrack(stamped[0].trashKey) : null;
         check('corbeille : la copie de sauvegarde existe', firstCopy !== null, true);
+
+        const softDeletedTarget = await prisma.book.findUnique({
+            where: { id: target.id },
+            select: { deletedAt: true },
+        });
+        check('corbeille : la fiche existe toujours, masquée', softDeletedTarget !== null, true);
+        check('corbeille : et marquée supprimée', softDeletedTarget?.deletedAt !== null, true);
+
+        // --- 5 bis. restauration douce : la fiche ET sa corbeille reviennent --
+        //
+        // POST /api/books/[id]/restore (app/api/books/[id]/restore/route.ts)
+        // fait exactement ceci : lever `deletedAt`, puis restoreTracks — qui
+        // n'a rien à réattacher, `bookId` n'a jamais bougé.
+        await prisma.book.update({ where: { id: target.id }, data: { deletedAt: null } });
+        check(
+            'restauration douce : la fiche redevient visible',
+            await prisma.book.count({ where: { id: target.id } }),
+            1,
+        );
+        const { restored: softRestored, failed: softFailed } = await restoreTracks({
+            bookId: target.id,
+            userId: actorId,
+        });
+        check('restauration douce : les 3 pistes reviennent', softRestored, 3);
+        check('restauration douce : rien en échec', softFailed.length, 0);
+        check(
+            'restauration douce : plus rien « en corbeille » pour ce livre',
+            await prisma.deletedAudioTrack.count({ where: { bookId: target.id, restoredAt: null } }),
+            0,
+        );
+        await waitForCount(SCRATCH, 3);
+        check(
+            'restauration douce : les 3 pistes sont revenues dans le dossier',
+            (await listBookTracks(SCRATCH)).length,
+            3,
+        );
     }
 
-    // --- 5 bis. l'empreinte laissée à la corbeille, sans dépendre d'une copie
+    // --- 5 ter. l'empreinte laissée à la corbeille, sans dépendre d'une copie
     //
     // C'est LE correctif de la perte de données : une piste envoyée à la
     // corbeille depuis l'éditeur audio, dont la fiche est supprimée ensuite,
@@ -401,59 +449,113 @@ async function main() {
         await prisma.deletedAudioTrack.count({ where: { originBookId: left.id } }),
         2,
     );
-    const orphan = await prisma.orphanAudioFolder.findUnique({
-        where: { prefix: SCRATCH_LEAVE },
-        select: { trackCount: true, bytes: true, note: true, resolvedAt: true, linkedBookId: true },
+    // Soft delete : la fiche ne quitte jamais Postgres, donc il n'y a plus de
+    // dossier orphelin à mettre en file — `audio_filepath` reste sur une fiche
+    // qui existe toujours et le revendique encore.
+    const softDeletedLeft = await prisma.book.findUnique({
+        where: { id: left.id },
+        select: { deletedAt: true, audio_filepath: true },
     });
-    check('laisser : mis dans la file des orphelins', orphan !== null, true);
-    check('laisser : pistes comptées', orphan?.trackCount, 1);
-    check('laisser : poids enregistré', Number(orphan?.bytes ?? -1), 3072);
-    check('laisser : à traiter (ni résolu ni rattaché)', [orphan?.resolvedAt, orphan?.linkedBookId], [
-        null,
-        null,
-    ]);
-    checkIncludes('laisser : la note dit d’où vient le dossier', orphan?.note, `#${left.id}`);
+    check('laisser : la fiche existe toujours, masquée', softDeletedLeft !== null, true);
+    check('laisser : et marquée supprimée', softDeletedLeft?.deletedAt !== null, true);
+    check('laisser : le dossier lui reste attaché', softDeletedLeft?.audio_filepath, SCRATCH_LEAVE);
+    check(
+        'laisser : aucun orphelin mis en file (la fiche le revendique encore)',
+        await prisma.orphanAudioFolder.count({ where: { prefix: SCRATCH_LEAVE } }),
+        0,
+    );
 
-    // L'empreinte posée par markTrashOrigin sur les lignes du 5 bis.
+    // L'empreinte posée par markTrashOrigin sur les lignes du 5 ter — elle
+    // s'écrit toujours, même quand la fiche ne disparaît plus vraiment : elle
+    // sert le jour où le livre finit par être réellement effacé (fusion,
+    // scripts/delete-duplicate-book.ts), le seul cas où `bookId` devient NULL
+    // pour de vrai (voir section 7).
     const orphanedTrash = await prisma.deletedAudioTrack.findMany({
         where: { originBookId: left.id },
         select: { bookId: true, originBookTitle: true },
     });
     check('empreinte : les deux lignes sont marquées', orphanedTrash.length, 2);
     check(
-        'empreinte : le livre n’est plus nommé (SetNull)',
-        orphanedTrash.length === 2 && orphanedTrash.every((r) => r.bookId === null),
+        'empreinte : la ligne reste rattachée à la fiche (masquée, pas effacée)',
+        orphanedTrash.length === 2 && orphanedTrash.every((r) => r.bookId === left.id),
         true,
     );
     check(
-        'empreinte : le titre du livre survit à sa fiche',
+        'empreinte : le titre du livre survit aussi',
         orphanedTrash.length === 2 && orphanedTrash.every((r) => r.originBookTitle === left.title),
         true,
     );
-    // Exactement la requête de l'onglet « Sans fiche » de /admin/audio-corbeille :
-    // avant ces colonnes, ces lignes n'étaient lisibles depuis aucun écran.
+    // La corbeille « sans fiche » de /admin/audio-corbeille ne doit RIEN
+    // montrer ici : la fiche existe encore, ces lignes ne sont pas orphelines.
     check(
-        'empreinte : visibles dans la corbeille générale',
+        'empreinte : absente de la corbeille « sans fiche »',
         await prisma.deletedAudioTrack.count({
             where: { bookId: null, restoredAt: null, purgedAt: null, originBookId: left.id },
         }),
-        2,
+        0,
     );
 
-    // --- 7. la fiche revient : sa corbeille et son dossier avec elle --------
+    // --- 7. reattachAudioAfterBookRestore : le chemin qui reste ------------
     //
-    // /admin/stats rejoue une suppression de moins de 14 jours et recrée la
-    // ligne à SON identifiant d'origine (il refuse si la place est prise), ce
-    // qui est exactement ce qui rend ce rattachement possible. On rejoue ici la
-    // seule partie qui nous concerne : la fiche est recréée à la main, comme le
-    // ferait la restauration, puis on vérifie ce que le livre récupère.
+    // deleteBookWithAudio ne fait plus jamais disparaître une ligne Book — ce
+    // module ne sert donc plus une suppression normale. Il reste vivant pour
+    // l'AUTRE façon dont un livre s'efface, encore bien réelle : un vrai
+    // DELETE (scripts/delete-duplicate-book.ts, une fusion depuis Doublons),
+    // suivi d'une restauration qui recrée la ligne à SON identifiant d'origine
+    // — /admin/stats rejoue ainsi une suppression de moins de 14 jours. C'est
+    // le seul cas où `DeletedAudioTrack.bookId` devient NULL pour de vrai (la
+    // contrainte SetNull ne se déclenche que sur un DELETE, jamais sur le
+    // simple `deletedAt` posé par deleteBookWithAudio). Aucun appel au bucket
+    // ici : reattachAudioAfterBookRestore ne touche que Postgres.
+    const HARD_PREFIX = `2022/_eca-test-suppression-${RUN}-dure/`;
+    const hard = await makeBook('effacée pour de bon', HARD_PREFIX, actorId);
+    await withoutAudit(() =>
+        prisma.deletedAudioTrack.create({
+            data: {
+                bookId: hard.id,
+                originalKey: `${HARD_PREFIX}9300 01- Dure.mp3`,
+                trashKey: `corbeille/${hard.id}/${RUN}-dure.mp3`,
+                filename: '9300 01- Dure.mp3',
+                sizeBytes: BigInt(1024),
+                deletedById: actorId,
+            },
+        }),
+    );
+    // La même empreinte que markTrashOrigin pose d'ordinaire (ou que
+    // scripts/delete-duplicate-book.ts écrit à la main, sans elle).
+    await markTrashOrigin(hard.id, hard.title);
+    // Le dossier, mis en attente comme le ferait scripts/sync-audio-links.ts
+    // après le passage d'un vrai DELETE.
+    await withoutAudit(() =>
+        prisma.orphanAudioFolder.create({
+            data: {
+                prefix: HARD_PREFIX,
+                title: hard.title,
+                trackCount: 1,
+                bytes: BigInt(1024),
+                note: `dossier laissé en place par la suppression de la fiche #${hard.id} « ${hard.title} »`,
+            },
+        }),
+    );
+
+    // L'effacement réel : ici, et seulement ici, Postgres déclenche le SetNull.
+    await withoutAudit(() => prisma.book.delete({ where: { id: hard.id } }));
+    const anonymized = await prisma.deletedAudioTrack.findFirst({
+        where: { trashKey: `corbeille/${hard.id}/${RUN}-dure.mp3` },
+        select: { bookId: true, originBookId: true },
+    });
+    check('effacement réel : bookId anonymisé par la contrainte (SetNull)', anonymized?.bookId, null);
+    check('effacement réel : l’empreinte a suivi', anonymized?.originBookId, hard.id);
+
+    // La reconstruction que /admin/stats fait, à l'identique : recréer la
+    // ligne à SON identifiant d'origine.
     const revived = await withoutAudit(() =>
         prisma.book.create({
             data: {
-                id: left.id,
-                title: left.title,
+                id: hard.id,
+                title: hard.title,
                 author: 'Test',
-                audio_filepath: SCRATCH_LEAVE,
+                audio_filepath: HARD_PREFIX,
                 available: true,
                 addedById: actorId,
             },
@@ -467,29 +569,29 @@ async function main() {
         prisma.deletedAudioTrack.create({
             data: {
                 bookId: keeper.id,
-                originBookId: left.id,
-                originBookTitle: left.title,
-                originalKey: `${SCRATCH_LEAVE}9200 99- Déjà rattachée.mp3`,
+                originBookId: hard.id,
+                originBookTitle: hard.title,
+                originalKey: `${HARD_PREFIX}9300 99- Déjà rattachée.mp3`,
                 trashKey: `corbeille/${keeper.id}/${RUN}-99-Deja.mp3`,
-                filename: '9200 99- Déjà rattachée.mp3',
+                filename: '9300 99- Déjà rattachée.mp3',
                 sizeBytes: BigInt(1024),
                 deletedById: actorId,
             },
         }),
     );
 
-    const restored = await reattachAudioAfterBookRestore(revived.id, SCRATCH_LEAVE);
-    check('restauration : les deux lignes reviennent', restored.reattachedTracks, 2);
+    const restored = await reattachAudioAfterBookRestore(revived.id, HARD_PREFIX);
+    check('restauration : la ligne revient', restored.reattachedTracks, 1);
     check('restauration : le dossier n’est plus orphelin', restored.clearedOrphan, true);
     check(
         'restauration : la corbeille du livre est de nouveau lisible',
         await prisma.deletedAudioTrack.count({ where: { bookId: revived.id } }),
-        2,
+        1,
     );
     check(
         'restauration : plus rien « sans fiche » pour ce livre',
         await prisma.deletedAudioTrack.count({
-            where: { bookId: null, originBookId: left.id },
+            where: { bookId: null, originBookId: hard.id },
         }),
         0,
     );
@@ -497,7 +599,7 @@ async function main() {
         'restauration : la ligne d’un autre livre n’a pas été reprise',
         (
             await prisma.deletedAudioTrack.findFirst({
-                where: { filename: '9200 99- Déjà rattachée.mp3' },
+                where: { filename: '9300 99- Déjà rattachée.mp3' },
                 select: { bookId: true },
             })
         )?.bookId,
@@ -505,11 +607,11 @@ async function main() {
     );
     check(
         'restauration : la file des orphelins est vidée de ce dossier',
-        await prisma.orphanAudioFolder.count({ where: { prefix: SCRATCH_LEAVE } }),
+        await prisma.orphanAudioFolder.count({ where: { prefix: HARD_PREFIX } }),
         0,
     );
     // Rejouée, elle ne défait rien et ne reprend rien.
-    const again = await reattachAudioAfterBookRestore(revived.id, SCRATCH_LEAVE);
+    const again = await reattachAudioAfterBookRestore(revived.id, HARD_PREFIX);
     check('restauration : rejouée, sans effet', [again.reattachedTracks, again.clearedOrphan], [
         0,
         false,
@@ -538,7 +640,7 @@ async function main() {
         where: { id: { in: trashRows.map((r) => r.id) } },
     });
     await prisma.orphanAudioFolder.deleteMany({
-        where: { prefix: { in: [SCRATCH, SCRATCH_BUSY, SCRATCH_LEAVE] } },
+        where: { prefix: { in: [SCRATCH, SCRATCH_BUSY, SCRATCH_LEAVE, HARD_PREFIX] } },
     });
     await prisma.audioTrackEvent.deleteMany({
         where: { bookId: null, filename: { in: [...FILES, '9100 01- Occupée.mp3', '9200 01- Laissée.mp3'] } },
