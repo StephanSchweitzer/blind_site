@@ -509,7 +509,31 @@ export default function AssignmentsTable({
                                                 <TableCell className="text-foreground">
                                                     {assignment.currentReader ? (
                                                         <div>
-                                                            <div className="font-medium">{getUserNameOnly(assignment.currentReader) || 'Sans nom'}</div>
+                                                            {/* Vers le dossier du lecteur, onglet attributions —
+                                                                celui qu'on lisait. Même raison que le nom de
+                                                                l'auditeur sur la liste des demandes : une
+                                                                attribution n'a qu'un lecteur courant, et son
+                                                                dossier ne s'atteignait que par la liste des
+                                                                membres.
+
+                                                                Pas de lien dans le dossier D'UN LECTEUR
+                                                                (`presetReader`) : toutes les lignes y sont les
+                                                                siennes. Dans celui d'un auditeur, en revanche,
+                                                                les lecteurs varient d'une ligne à l'autre et le
+                                                                lien garde tout son sens. */}
+                                                            <div className="font-medium">
+                                                                {presetReader ? (
+                                                                    getUserNameOnly(assignment.currentReader) || 'Sans nom'
+                                                                ) : (
+                                                                    <Link
+                                                                        href={`/admin/users/dossier/${assignment.currentReader.id}/affectations`}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                                                    >
+                                                                        {getUserNameOnly(assignment.currentReader) || 'Sans nom'}
+                                                                    </Link>
+                                                                )}
+                                                            </div>
                                                             <div className="text-sm text-muted-foreground">
                                                                 {assignment.currentReader.email}
                                                             </div>

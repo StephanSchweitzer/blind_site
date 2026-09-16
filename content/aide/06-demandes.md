@@ -32,6 +32,8 @@ Vous pouvez rechercher des demandes existantes à l'aide de la barre de recherch
 
 ![Demandes - capture 2](/admin/aide/images/demandes-02.jpg)
 
+Le nom de l'auditeur, dans le tableau, mène à son [dossier](/admin/aide/membres) — onglet « Demandes », celui que vous étiez en train de consulter. C'est le chemin le plus court vers tout ce qui le concerne : ses demandes, ses factures, ses paiements et ses attributions.
+
 La colonne « Attribution » du tableau indique si la demande est déjà attribuée : elle affiche le numéro de l'attribution et son statut, et un clic sur ce numéro ouvre directement l'attribution. Une duplication, qui n'a jamais d'attribution, y est signalée comme telle ; un tiret signifie qu'aucune attribution n'existe encore.
 
 Pour voir toutes les demandes d'un même livre, utilisez le filtre « Livre » au-dessus du tableau : cherchez le livre par titre, par auteur ou par numéro, puis choisissez-le dans la liste proposée. Chaque résultat affiche son numéro, ce qui permet de distinguer deux volumes d'une même série qui portent le même titre. La liste se restreint alors à ce livre, avec un bandeau qui le rappelle ; « Retirer ce filtre » revient à la liste complète.

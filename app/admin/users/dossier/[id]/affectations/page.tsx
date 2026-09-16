@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { buildUserNameSearch } from '@/lib/search';
+import { resolveBookFilter } from '@/lib/books/bookFilter';
 
 // ⚠️ ADJUST this import to wherever your assignments-table.tsx actually lives.
 import AssignmentsTable from '@/app/admin/assignments/assignments-table';
@@ -26,6 +27,10 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
     const statusId = sp.statusId
         ? parseInt(Array.isArray(sp.statusId) ? sp.statusId[0] : sp.statusId)
         : undefined;
+    // Cet onglet honore TOUS les filtres de la liste — seule la recherche libre
+    // y est masquee. Le champ « Livre » en fait partie : sans cela il s'affiche
+    // ici (c'est la meme AssignmentsTable) sans rien filtrer.
+    const filterBook = await resolveBookFilter(sp.bookId);
 
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -69,6 +74,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
     }
 
     if (statusId) whereClause.statusId = statusId;
+    if (filterBook) whereClause.catalogueId = filterBook.id;
 
     const [assignments, totalAssignments, statuses] = await Promise.all([
         prisma.assignment.findMany({
@@ -138,6 +144,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
             presetClientId={isReader ? null : userId}
             presetReader={presetReader}
             presetClient={presetClient}
+            filterBook={filterBook}
         />
     );
 }

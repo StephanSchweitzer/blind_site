@@ -20,6 +20,8 @@ Le filtre « Filtrer par livre » restreint la liste aux attributions d'un seul 
 
 Ce filtre est séparé de la barre de recherche à dessein : un numéro tapé dans la recherche désigne une attribution ou la demande dont elle provient, jamais un livre.
 
+Le nom du lecteur mène à son [dossier](/admin/aide/membres) — onglet « Attributions », celui que vous étiez en train de consulter — d'où l'on voit tout ce qu'il a lu. Dans le dossier d'un lecteur, ce lien disparaît : la liste n'y montre déjà que ses attributions.
+
 Sous le numéro de chaque attribution figure celui de la demande dont elle provient — « ↳ demande n°… ». Un clic l'ouvre directement, sans ouvrir l'attribution. C'est le pendant de la colonne « Attribution » de la liste des [Demandes](/admin/aide/demandes), qui fait le chemin inverse.
 
 ## Ajout des attributions

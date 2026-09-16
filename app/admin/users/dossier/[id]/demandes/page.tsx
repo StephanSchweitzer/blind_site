@@ -10,6 +10,7 @@ import {
 // ⚠️ ADJUST this import to wherever your orders-table.tsx actually lives.
 import OrdersTable from '@/app/admin/orders/orders-table';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { resolveBookFilter } from '@/lib/books/bookFilter';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,9 +36,14 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
     const billingStatus = Array.isArray(sp.billingStatus) ? sp.billingStatus[0] : sp.billingStatus;
     const isDuplication = Array.isArray(sp.isDuplication) ? sp.isDuplication[0] : sp.isDuplication;
     const retard = Array.isArray(sp.retard) ? sp.retard[0] : sp.retard;
+    // Cet onglet honore TOUS les filtres de la liste — seule la recherche libre
+    // y est masquee. Le champ « Livre » en fait partie : sans cela il s'affiche
+    // ici (c'est la meme OrdersTable) sans rien filtrer.
+    const filterBook = await resolveBookFilter(sp.bookId);
 
     // Same filtering as the global orders page, locked to this user (as aveugle).
     const whereClause: Prisma.OrdersWhereInput = { aveugleId };
+    if (filterBook) whereClause.catalogueId = filterBook.id;
 
     if (searchTerm) {
         whereClause.OR = [
@@ -148,6 +154,7 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
             blockedDuplications={serializeBlockedDuplications(blockedDuplications)}
             hideSearch
             presetClient={presetClient}
+            filterBook={filterBook}
         />
     );
 }

@@ -138,6 +138,8 @@ Pour les donateurs et tous les autres types de membres, consultez les sections �
 
 Comme indiqué précédemment, la page du dossier peut être ouverte en cliquant sur le lien « Voir le dossier » dans le modal de modification d'un membre donné.
 
+Il existe un second chemin, plus court quand c'est un nom que vous avez sous les yeux : dans la liste des [Demandes](/admin/aide/demandes), le nom de l'auditeur mène directement à son dossier, et dans celle des [Attributions](/admin/aide/attributions), celui du lecteur fait de même. Inutile, donc, de repasser par la liste des membres pour retrouver quelqu'un dont vous lisez déjà une demande ou une attribution.
+
 ![Membres - capture 19](/admin/aide/images/membres-19.jpg)
 
 Lorsque vous cliquez dessus, vous accédez au dossier de ce membre.

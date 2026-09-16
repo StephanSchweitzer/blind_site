@@ -595,8 +595,29 @@ export default function OrdersTable({
                                                     </TableCell>
                                                     <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
                                                         <div>
+                                                            {/* Le nom mène au dossier de l'auditeur. C'était le
+                                                                chemin manquant : une demande n'a qu'un auditeur —
+                                                                donc un lien, pas un filtre — et son dossier ne
+                                                                s'atteignait que par la liste des membres, alors
+                                                                que c'est ici qu'on tombe sur son nom. Comme pour
+                                                                la colonne « Attribution », stopPropagation :
+                                                                sinon le clic ouvrirait aussi la demande.
+
+                                                                Pas de lien dans un dossier (`presetClient`) : la
+                                                                liste y est déjà celle de cette personne, chaque
+                                                                ligne renverrait donc à la page ouverte. */}
                                                             <div className="font-medium">
-                                                                {aveugleName || order.aveugle.email}
+                                                                {presetClient ? (
+                                                                    aveugleName || order.aveugle.email
+                                                                ) : (
+                                                                    <Link
+                                                                        href={`/admin/users/dossier/${order.aveugleId}/demandes`}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                                                    >
+                                                                        {aveugleName || order.aveugle.email}
+                                                                    </Link>
+                                                                )}
                                                             </div>
                                                             {aveugleName && (
                                                                 <div className={`text-sm ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
