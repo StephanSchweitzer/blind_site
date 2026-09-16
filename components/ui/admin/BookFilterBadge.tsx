@@ -3,6 +3,7 @@
 import { useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, X } from 'lucide-react';
+import { bookLabel } from '@/admin/BookSearchCombobox';
 
 /**
  * Le badge du filtre « ce livre » (lib/books/bookFilter.ts). Toujours visible
@@ -13,7 +14,8 @@ export function BookFilterBadge({
     book,
     noun,
 }: {
-    book: { id: number; title: string; author: string };
+    /** Le sous-titre distingue des volumes autrement identiques — voir BookFilter. */
+    book: { id: number; title: string; subtitle?: string | null; author: string };
     /** « demandes » / « attributions » — ce que la liste montre. */
     noun: string;
 }) {
@@ -33,7 +35,7 @@ export function BookFilterBadge({
             <BookOpen className="h-4 w-4 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1">
                 Seules les {noun} du livre{' '}
-                <span className="font-semibold">« {book.title} »</span>
+                <span className="font-semibold">« {bookLabel(book)} »</span>
                 {book.author && <span className="text-blue-800/80 dark:text-blue-300/80"> — {book.author}</span>}
                 <span className="text-blue-800/80 dark:text-blue-300/80"> (n°{book.id})</span> sont affichées.
             </span>

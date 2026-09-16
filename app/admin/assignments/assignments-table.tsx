@@ -3,6 +3,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,11 +37,11 @@ import {
 } from '@/types';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
-import { parseEntityId } from '@/lib/search-query';
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
+import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import type { BookFilter } from '@/lib/books/bookFilter';
 
 interface AssignmentsTableProps {
@@ -90,12 +91,6 @@ export default function AssignmentsTable({
 
     const currentPage = initialPage;
     const currentStatusId = searchParams.get('statusId') || 'all';
-
-    // A numeric search also matches the demande linked to the attribution
-    // (buildAssignmentSearchWhere, lib/search.ts) — `initialSearch`, not the
-    // live `searchTerm`, because it's the term that actually produced these
-    // rows: `searchTerm` can be mid-typing and not yet applied.
-    const matchedOrderId = parseEntityId(initialSearch);
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -402,6 +397,13 @@ export default function AssignmentsTable({
                                 </Button>
                             </div>
                         )}
+                        {/* Sans étiquette, comme le statut à côté : ici les filtres
+                            s'annoncent par leur placeholder, pas par un label. */}
+                        <BookFilterPicker
+                            book={filterBook}
+                            placeholder="Filtrer par livre"
+                            className="w-full sm:w-64"
+                        />
                         <div className="w-full sm:w-64">
                             <Select
                                 value={currentStatusId}
@@ -478,9 +480,29 @@ export default function AssignmentsTable({
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                     #{assignment.id}
                                                     <CopyIdButton id={assignment.id} label="de l'attribution" />
-                                                    {matchedOrderId !== null && matchedOrderId !== assignment.id && matchedOrderId === assignment.orderId && (
-                                                        <div className="text-xs font-normal text-muted-foreground">
-                                                            ↳ demande #{assignment.orderId}
+                                                    {/* La demande d'origine, toujours affichée. Elle ne
+                                                        l'était qu'en réponse à une recherche par son
+                                                        numéro, pour expliquer pourquoi la ligne sortait ;
+                                                        mais la question « de quelle demande vient cette
+                                                        attribution ? » se pose tout le temps, et la
+                                                        réponse n'existait autrement qu'en ouvrant la
+                                                        fiche. La demande, elle, montre son attribution
+                                                        depuis sa liste — c'est le retour manquant.
+                                                        Sous le numéro plutôt qu'en colonne : la cellule
+                                                        empile déjà, donc cela ne coûte aucune largeur, et
+                                                        `orderId` est nullable — une colonne serait vide
+                                                        pour toute attribution sans demande.
+                                                        stopPropagation, sinon le clic ouvrirait aussi
+                                                        l'attribution sous le lien. */}
+                                                    {assignment.orderId && (
+                                                        <div className="text-xs font-normal">
+                                                            <Link
+                                                                href={`/admin/orders?order=${assignment.orderId}`}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                                            >
+                                                                ↳ demande #{assignment.orderId}
+                                                            </Link>
                                                         </div>
                                                     )}
                                                 </TableCell>

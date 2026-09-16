@@ -47,6 +47,7 @@ import type { SerializedBlockingRecording } from '@/lib/orders/duplicationBlocke
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
+import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import type { BookFilter } from '@/lib/books/bookFilter';
 
 type OrdersTableProps = {
@@ -440,8 +441,15 @@ export default function OrdersTable({
                         </div>
                     )}
 
-                    {/* Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Filters — 6 colonnes pour que « Livre » en occupe deux :
+                        un titre tient mal dans la largeur d'un select de statut. */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                        <BookFilterPicker
+                            book={filterBook}
+                            label="Livre"
+                            className="md:col-span-2"
+                        />
+
                         <div>
                             <label className="text-sm text-muted-foreground mb-1.5 block">Statut de la demande</label>
                             <Select

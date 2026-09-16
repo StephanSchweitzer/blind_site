@@ -12,9 +12,15 @@ Elles possèdent également leur propre statut, qui va de « en cours » à « t
 
 L'URL de cette page est https://eca-aveugles.fr/admin/assignments.
 
-La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, et (3) un filtre par statut.
+La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, et (4) un filtre par statut.
 
 ![Attributions - capture 1](/admin/aide/images/attributions-01.jpg)
+
+Le filtre « Filtrer par livre » restreint la liste aux attributions d'un seul livre. Cherchez-le par titre, par auteur ou par numéro, puis choisissez-le dans la liste proposée : chaque résultat affiche son numéro, ce qui permet de distinguer deux volumes d'une même série qui portent le même titre. Un bandeau rappelle le livre retenu, et « Retirer ce filtre » revient à la liste complète. C'est le même filtre que celui du lien « Ce livre : … attributions » de la fiche du livre dans le [Catalogue](/admin/aide/catalogue).
+
+Ce filtre est séparé de la barre de recherche à dessein : un numéro tapé dans la recherche désigne une attribution ou la demande dont elle provient, jamais un livre.
+
+Sous le numéro de chaque attribution figure celui de la demande dont elle provient — « ↳ demande n°… ». Un clic l'ouvre directement, sans ouvrir l'attribution. C'est le pendant de la colonne « Attribution » de la liste des [Demandes](/admin/aide/demandes), qui fait le chemin inverse.
 
 ## Ajout des attributions
 

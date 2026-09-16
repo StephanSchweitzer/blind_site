@@ -34,17 +34,23 @@ Vous pouvez rechercher des demandes existantes à l'aide de la barre de recherch
 
 La colonne « Attribution » du tableau indique si la demande est déjà attribuée : elle affiche le numéro de l'attribution et son statut, et un clic sur ce numéro ouvre directement l'attribution. Une duplication, qui n'a jamais d'attribution, y est signalée comme telle ; un tiret signifie qu'aucune attribution n'existe encore.
 
-Pour voir toutes les demandes d'un même livre, suivez le lien « Ce livre : … demandes » depuis la fiche du livre dans le [Catalogue](/admin/aide/catalogue), ou depuis le modal d'une demande ou d'une attribution. La liste s'ouvre restreinte à ce livre, avec un bandeau qui le rappelle ; « Retirer ce filtre » revient à la liste complète. La recherche par numéro, elle, ne porte que sur les numéros de demande.
+Pour voir toutes les demandes d'un même livre, utilisez le filtre « Livre » au-dessus du tableau : cherchez le livre par titre, par auteur ou par numéro, puis choisissez-le dans la liste proposée. Chaque résultat affiche son numéro, ce qui permet de distinguer deux volumes d'une même série qui portent le même titre. La liste se restreint alors à ce livre, avec un bandeau qui le rappelle ; « Retirer ce filtre » revient à la liste complète.
+
+C'est le même filtre qui s'applique lorsque vous suivez le lien « Ce livre : … demandes » depuis la fiche du livre dans le [Catalogue](/admin/aide/catalogue), ou depuis le modal d'une demande ou d'une attribution.
+
+Ce filtre est séparé de la barre de recherche à dessein : un numéro tapé dans la recherche désigne une **demande**, jamais un livre. Les deux séries de numéros se chevauchent, et les confondre ramènerait la demande cherchée noyée parmi celles du livre portant le même numéro.
 
 Vous pouvez filtrer votre recherche selon les critères suivants :
 
-1. Le statut de la demande
+1. Le livre concerné
 
-2. Le statut de la facturation de la demande
+2. Le statut de la demande
 
-3. Le type de la demande (enregistrement et duplication)
+3. Le statut de la facturation de la demande
 
-4. Si la demande est en retard ou non (une demande est considérée comme en retard si elle a été déposée il y a plus de 3 mois)
+4. Le type de la demande (enregistrement et duplication)
+
+5. Si la demande est en retard ou non (une demande est considérée comme en retard si elle a été déposée il y a plus de 3 mois)
 
 ![Demandes - capture 3](/admin/aide/images/demandes-03.jpg)
 

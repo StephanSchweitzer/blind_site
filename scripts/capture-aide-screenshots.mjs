@@ -180,6 +180,75 @@ const SPECS = [
         clip: '[role="alertdialog"], [role="dialog"]',
         why: 'la confirmation de suppression, et ce qu\'elle annonce',
     },
+    /**
+     * Les captures des LISTES (demandes 01-03, attributions 01).
+     *
+     * Elles etaient les dernieres encore prises a la main, et cela se voyait :
+     * les noms y etaient masques au rectangle noir, la colonne « Auditeur »
+     * entiere sous un aplat, et le libelle « Facturation » emporte avec. Une
+     * colonne noircie n'apprend rien au lecteur sur ce qu'il verra a l'ecran,
+     * la ou un pseudonyme, lui, montre la vraie mise en page. Les voila donc
+     * declarees ici : l'anonymiser les traite comme les autres, et le
+     * garde-fou refuse la capture s'il reste un nom.
+     */
+    {
+        name: 'demandes-01.jpg',
+        // Assez haut pour que la carte entiere tienne dans la fenetre : le
+        // cadrage est plafonne par `window.innerHeight` (voir clipFor), et une
+        // liste de dix lignes deborde les 900 px par defaut.
+        viewport: { width: 1440, height: 1500 },
+        url: '/admin/orders',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.rounded-lg.border',
+        why: 'la liste entiere : les cinq filtres, la colonne Attribution, la pagination',
+    },
+    {
+        name: 'demandes-02.jpg',
+        url: '/admin/orders',
+        waitFor: 'table tbody tr',
+        sleep: 1000,
+        // Le bloc recherche + filtres de CardContent, sans le tableau.
+        clip: '.space-y-6 > .space-y-4',
+        annotations: [{ n: 1, selector: 'input[placeholder^="Rechercher par auditeur"]' }],
+        why: 'la barre de recherche, et les filtres qui la completent',
+    },
+    {
+        name: 'demandes-03.jpg',
+        url: '/admin/orders',
+        waitFor: 'table tbody tr',
+        sleep: 1000,
+        clip: '.space-y-6 > .space-y-4',
+        // Les numeros reprennent ceux de la liste de 06-demandes.md.
+        annotations: [
+            // Pastilles a droite : a gauche elles couvriraient les etiquettes,
+            // « Livre » en entier (voir annotate-aide-screenshots.py).
+            { n: 1, label: 'Livre', coin: 'hd' },
+            { n: 2, label: 'Statut de la demande', coin: 'hd' },
+            { n: 3, label: 'Facturation', coin: 'hd' },
+            { n: 4, label: 'Type', coin: 'hd' },
+            { n: 5, label: 'Retard', coin: 'hd' },
+        ],
+        why: 'les cinq filtres, dans l\'ordre du texte — « Livre » compris',
+    },
+    {
+        name: 'attributions-01.jpg',
+        viewport: { width: 1440, height: 1500 },
+        url: '/admin/assignments',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.rounded-lg.border',
+        // Les numeros reprennent ceux du paragraphe de 07-attributions.md.
+        annotations: [
+            { n: 1, selector: 'table' },
+            { n: 2, selector: 'input[placeholder^="Rechercher par livre"]' },
+            // Par leur texte : les deux champs sont des `role="combobox"`, et
+            // seul leur libelle les distingue l'un de l'autre.
+            { n: 3, label: 'Filtrer par livre' },
+            { n: 4, label: 'Tous les statuts' },
+        ],
+        why: 'tableau, recherche, filtre par livre, filtre par statut',
+    },
     {
         name: 'demandes-07.jpg',
         url: '/admin/orders',
@@ -839,6 +908,8 @@ async function reperesPour(annotations, clip) {
             w: Math.round(rect.w),
             h: Math.round(rect.h),
             ...(a.fleche ? { fleche: true } : {}),
+            // Le coin qui porte la pastille — voir annotate-aide-screenshots.py.
+            ...(a.coin ? { coin: a.coin } : {}),
         });
     }
     return trouves;

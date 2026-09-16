@@ -95,8 +95,16 @@ def dessiner(chemin_image, reperes):
         # La pastille est centree sur le COIN du cadre : a cheval dessus, elle
         # ne mord que l'angle, la ou aucun libelle ne commence. Le chiffre passe
         # en blanc sur le vert, lisible sur une interface claire comme sombre.
+        #
+        # Reste un cas que le coin haut-gauche ne sert pas : une RANGEE de
+        # champs etiquetes, comme les cinq filtres des demandes. La, le coin
+        # haut-gauche est le premier caractere de l'etiquette, et une etiquette
+        # courte disparait entierement dessous — « Livre » mesure moins large
+        # que la pastille. Le coin haut-DROIT, lui, donne sur le blanc qui suit
+        # l'etiquette. D'ou « coin »: 'hd', pose par la spec de la capture.
         rayon = max(largeur, hauteur) // 2 + 9
-        cx = min(max(x0, rayon), image.width - rayon - 1)
+        ancre_x = x1 if repere.get('coin') == 'hd' else x0
+        cx = min(max(ancre_x, rayon), image.width - rayon - 1)
         cy = min(max(y0, rayon), image.height - rayon - 1)
         dessin.ellipse([cx - rayon, cy - rayon, cx + rayon, cy + rayon],
                        fill=VERT, outline=(255, 255, 255), width=2)
