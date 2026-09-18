@@ -134,8 +134,8 @@ export function CopyIdButton({ id, label, className }: CopyableIdProps) {
                     // cell (orders-table's overdue red) and the button must not
                     // paint over that at rest — only the hover state below is
                     // its own opinion.
-                    'text-inherit hover:scale-105 hover:bg-muted hover:text-primary',
-                    'focus-visible:scale-105 focus-visible:bg-muted focus-visible:text-primary',
+                    'text-inherit hover:scale-105 hover:bg-muted hover:text-blue-600 dark:hover:text-blue-400',
+                    'focus-visible:scale-105 focus-visible:bg-muted focus-visible:text-blue-600 dark:focus-visible:text-blue-400',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     className
                 )}
