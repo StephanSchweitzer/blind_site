@@ -14,4 +14,7 @@ export const ORG = {
     addr: ['71 avenue de Breteuil', '75015 PARIS'],
     phone: '01 88 32 31 47 / 48',
     email: 'ecapermanence@gmail.com',
+    // Compte de règlement imprimé sur la facture et sur la facture pro-forma.
+    iban: 'FR76 1820 6004 6565 0607 5246 408',
+    bic: 'AGRIFRPP882',
 } as const;

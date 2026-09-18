@@ -78,6 +78,21 @@ Au bas de la page, vous pouvez (1) ajouter des commentaires supplémentaires si 
 
 ![Demandes - capture 9](/admin/aide/images/demandes-09.jpg)
 
+### Une demande tarifée à la page
+
+Certains clients — des associations comme l'UNADEV, pour un numéro de magazine — ne paient pas au CD mais **à la page lue**. Pour un ouvrage de type « Enregistrement », cochez alors « **Tarifer à la page (facture pro-forma)** » sous les boutons Enregistrement / Duplication, puis renseignez :
+
+- **Pages lues** (obligatoire) : le nombre de pages du document ;
+- **Pages comptées (si différent)** : à remplir seulement quand on facture moins de pages qu'on n'en a lu. Par exemple, 42 pages lues comptées comme 14 pages. Laissé vide, ce sont les pages lues qui sont facturées ;
+- **Prix par page** : 3,00 € par défaut, modifiable pour cette demande ;
+- **Frais d'envoi (WeTransfer)** : le montant, ou rien si l'envoi est gratuit — la facture n'a alors pas de ligne d'envoi.
+
+Le coût de la demande se calcule tout seul, sous les champs : *pages comptées (à défaut, pages lues) × prix par page + frais d'envoi*. Il ne se saisit plus à la main, et il n'est plus recalculé d'après le poids de l'enregistrement.
+
+Une duplication ne peut pas être tarifée à la page : elle n'a pas de lecture à compter. Et une fois la demande rattachée à une facture, on ne peut plus la faire passer d'une tarification au poids à une tarification à la page (ni l'inverse) : détachez-la d'abord.
+
+Quand la demande passe à « Terminé », sa **facture pro-forma** est créée et émise d'office — voir [Factures](/admin/aide/factures).
+
 ## Modification des demandes
 
 Pour modifier une demande, cliquez sur la ligne correspondante.

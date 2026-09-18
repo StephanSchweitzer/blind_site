@@ -1,5 +1,5 @@
 // lib/billing.ts
-import { Prisma, OrderBillingStatus, BillingStatus, BillEventType } from '@prisma/client';
+import { Prisma, OrderBillingStatus, BillingStatus, BillEventType, BillKind } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getBillingStatusLabel, HAND_TYPED_SETTLEMENT_ARCHIVED } from '@/lib/billing-enums';
 import { STATUS, type GuardResult } from '@/lib/statusSync';
@@ -314,8 +314,10 @@ export async function getOrCreateOpenDraft(
     clientId: number,
     performedById: number | null = null
 ): Promise<{ id: number }> {
+    // STANDARD seulement : une pro-forma remise en brouillon est un DRAFT actif du
+    // même client, et l'accrual d'une demande au poids irait s'y rattacher.
     const existing = await tx.bill.findFirst({
-        where: { clientId, state: BillingStatus.DRAFT, isActive: true },
+        where: { clientId, state: BillingStatus.DRAFT, isActive: true, kind: BillKind.STANDARD },
         orderBy: { creationDate: 'desc' },
         select: { id: true },
     });
@@ -353,13 +355,21 @@ export async function accrueOrderToOpenDraft(
     tx: TransactionClient,
     orderId: number,
     performedById: number | null = null
-): Promise<{ billId: number } | null> {
+): Promise<{ billId: number; proformaTotal?: number } | null> {
     const order = await tx.orders.findUnique({
         where: { id: orderId },
-        select: { id: true, aveugleId: true, billId: true, isActive: true, billingStatus: true },
+        select: { id: true, aveugleId: true, billId: true, isActive: true, billingStatus: true, pages: true },
     });
     if (!order || !order.isActive || order.billId != null) return null;
     if (order.billingStatus === OrderBillingStatus.UNBILLABLE) return null;
+
+    // Une demande tarifée à la page ne rejoint jamais un brouillon : elle a sa
+    // propre facture, une pro-forma, émise d'emblée. `proforma` sert à l'appelant à
+    // annoncer l'émission, comme le fait issueDraftIfOverThreshold.
+    if (order.pages != null) {
+        const proforma = await accrueOrderToProforma(tx, order.id, performedById);
+        return proforma ? { billId: proforma.billId, proformaTotal: proforma.total } : null;
+    }
 
     const draft = await getOrCreateOpenDraft(tx, order.aveugleId, performedById);
     await tx.orders.update({
@@ -374,6 +384,98 @@ export async function accrueOrderToOpenDraft(
         performedById,
     });
     return { billId: draft.id };
+}
+
+/**
+ * Une demande tarifée à la page passe « Terminé » : elle reçoit sa propre facture
+ * pro-forma, créée directement ÉMISE (BILLED) — jamais de brouillon, jamais de
+ * seuil. C'est le pendant de accrueOrderToOpenDraft pour ce genre de demande, et
+ * le même moment : la clôture de la demande, c'est-à-dire l'envoi des fichiers.
+ *
+ * Une pro-forma = une demande. Deux demandes du même client donnent deux
+ * pro-formas.
+ *
+ * Son numéro est Bill.id, comme celui d'une facture standard : une pro-forma
+ * n'a aucune valeur comptable, donc pas de suite continue à tenir, et un seul
+ * numéro dans l'application comme sur le papier — celui que le client reporte
+ * sur son chèque ou son virement se retrouve tel quel dans la liste des factures.
+ *
+ * La facture NAÎT au bon montant (comme POST /api/bills) : invoiceAmount est un
+ * DERIVED_FIELD, la seule ligne que le journal verra jamais est celle de la
+ * création. La demande passe « Facturé » d'emblée, et elle est donc verrouillée
+ * comme toute facture émise (hors ADJUSTABLE_ORDER_WHERE de toute façon, ses pages
+ * l'en excluaient déjà).
+ *
+ * Sans effet si la demande est déjà rattachée, inactive, « Non facturable » ou
+ * sans pages — les mêmes sorties que l'accrual au brouillon.
+ */
+export async function accrueOrderToProforma(
+    tx: TransactionClient,
+    orderId: number,
+    performedById: number | null = null
+): Promise<{ billId: number; total: number } | null> {
+    const order = await tx.orders.findUnique({
+        where: { id: orderId },
+        select: { id: true, aveugleId: true, billId: true, isActive: true, billingStatus: true, pages: true, cost: true },
+    });
+    if (!order || !order.isActive || order.billId != null || order.pages == null) return null;
+    if (order.billingStatus === OrderBillingStatus.UNBILLABLE) return null;
+
+    const now = new Date();
+    const bill = await tx.bill.create({
+        data: {
+            clientId: order.aveugleId,
+            kind: BillKind.PROFORMA,
+            state: BillingStatus.BILLED,
+            creationDate: now,
+            issueDate: now,
+            invoiceAmount: order.cost ?? new Prisma.Decimal(0),
+            isActive: true,
+        },
+        select: { id: true },
+    });
+    await logBillEvent(tx, {
+        billId: bill.id,
+        type: BillEventType.CREATED,
+        toState: BillingStatus.BILLED,
+        payload: { reason: 'proforma' },
+        performedById,
+    });
+
+    await tx.orders.update({
+        where: { id: order.id },
+        data: { billId: bill.id, billingStatus: OrderBillingStatus.BILLED },
+    });
+    // AVANT l'événement : logBillEvent relit invoiceAmount pour tamponner amountAtEvent.
+    const total = await recomputeBillTotal(tx, bill.id);
+    await logBillEvent(tx, {
+        billId: bill.id,
+        type: BillEventType.ORDER_ATTACHED,
+        payload: { orderId: order.id, reason: 'accrual' },
+        performedById,
+    });
+    return { billId: bill.id, total: Number(total) };
+}
+
+/**
+ * Une pro-forma ne porte que des demandes à la page, une facture standard que des
+ * demandes au poids : c'est ce qui rend « Bill.kind » fiable. Les deux chemins de
+ * rattachement à la main (POST /api/bills, PATCH addOrder) le vérifient, faute de
+ * quoi une demande au poids finissait sur une pro-forma, ou l'inverse.
+ */
+export function guardOrderMatchesBillKind(args: {
+    orderPages: number | null;
+    billKind: BillKind;
+}): GuardResult {
+    const orderIsPageBased = args.orderPages != null;
+    const billIsProforma = args.billKind === BillKind.PROFORMA;
+    if (orderIsPageBased === billIsProforma) return { ok: true };
+    return billFail(
+        409,
+        orderIsPageBased
+            ? 'Cette demande est tarifée à la page : elle relève d’une facture pro-forma, émise à sa clôture, et ne se rattache pas à une facture standard.'
+            : 'Cette demande est tarifée au poids : elle ne peut pas être rattachée à une facture pro-forma.'
+    );
 }
 
 /**
@@ -393,8 +495,10 @@ export async function issueDraftIfOverThreshold(
     const threshold = user?.paymentThreshold != null ? Number(user.paymentThreshold) : null;
     if (threshold == null || threshold <= 0) return null;
 
+    // Le seuil ne concerne que les factures STANDARD : une pro-forma n'a pas de
+    // seuil, elle part à la clôture de sa demande (accrueOrderToProforma).
     const draft = await tx.bill.findFirst({
-        where: { clientId, state: BillingStatus.DRAFT, isActive: true },
+        where: { clientId, state: BillingStatus.DRAFT, isActive: true, kind: BillKind.STANDARD },
         orderBy: { creationDate: 'desc' },
         select: { id: true },
     });
@@ -478,6 +582,10 @@ export const INVOICE_VISIBLE_ORDER_FIELDS = [
     'closureDate',
     'isDuplication',
     'cost',
+    // Pro-forma : le nombre de pages lues et comptées s'impriment (le coût, lui,
+    // couvre le prix par page et les frais d'envoi, dont il est dérivé).
+    'pages',
+    'billedPages',
 ] as const;
 
 /** An order is BILLED once its bill is issued (anything past DRAFT); a draft (brouillon) leaves it UNBILLED. */

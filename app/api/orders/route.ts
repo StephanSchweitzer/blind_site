@@ -11,6 +11,7 @@ import { buildOrderSearchWhere } from '@/lib/search';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 import { linkedAssignmentArgs } from '@/types/models/order.model';
 import { guardLiveBooks } from '@/lib/books/liveBookGuard';
+import { resolvePagePricing, type PagePricingState } from '@/lib/orders/pagePricing';
 
 /**
  * Shape of a demande in a list response. Hoisted out of the query so the
@@ -332,6 +333,7 @@ export const POST = withAdmin(async (request, { me }) => {
                 isDuplication: boolean;
                 lentPhysicalBook: boolean;
                 cost: Prisma.Decimal | null;
+                pricing: PagePricingState | undefined;
                 closureDate: Date | null;
             }[] = [];
 
@@ -413,6 +415,22 @@ export const POST = withAdmin(async (request, { me }) => {
                     }
                 }
 
+                // Tarification à la page, ligne par ligne : une pro-forma = une demande,
+                // donc « plusieurs ouvrages » donne plusieurs pro-formas, une chacune.
+                const linePricing = resolvePagePricing({
+                    current: { pages: null, billedPages: null, pricePerPage: null, transferFee: null },
+                    input: { pages: b.pages, billedPages: b.billedPages, pricePerPage: b.pricePerPage, transferFee: b.transferFee },
+                    isDuplication: !!b.isDuplication,
+                    billId: null,
+                });
+                if (!linePricing.ok) {
+                    return NextResponse.json(
+                        { error: 'Invalid page pricing', message: linePricing.message, field: linePricing.field },
+                        { status: linePricing.httpStatus }
+                    );
+                }
+                if (linePricing.isPageBased) lineCost = new Prisma.Decimal(linePricing.cost!);
+
                 preparedLines.push({
                     catalogueId: parseInt(String(b.catalogueId)),
                     statusId: lineStatusId,
@@ -420,6 +438,7 @@ export const POST = withAdmin(async (request, { me }) => {
                     isDuplication: !!b.isDuplication,
                     lentPhysicalBook: !!b.lentPhysicalBook,
                     cost: lineCost,
+                    pricing: linePricing.write,
                     // A line created straight into « Terminé » is closed today.
                     closureDate:
                         resolveClosureDate({
@@ -460,6 +479,7 @@ export const POST = withAdmin(async (request, { me }) => {
                             updatedAt: batchNow,
                             closureDate: l.closureDate,
                             cost: l.cost,
+                            ...(l.pricing ?? {}),
                             billingStatus: batchBillingStatus,
                             lentPhysicalBook: l.lentPhysicalBook,
                             notes: notes || null,
@@ -511,6 +531,10 @@ export const POST = withAdmin(async (request, { me }) => {
             deliveryMethod,
             closureDate,
             cost,
+            pages,
+            billedPages,
+            pricePerPage,
+            transferFee,
             billingStatus,
             lentPhysicalBook,
             notes,
@@ -640,6 +664,22 @@ export const POST = withAdmin(async (request, { me }) => {
             }
         }
 
+        // Tarification à la page : le coût en est dérivé et remplace tout `cost` reçu.
+        // `undefined` pour chaque champ absent, pour ne rien créer sur une demande au poids.
+        const pagePricing = resolvePagePricing({
+            current: { pages: null, billedPages: null, pricePerPage: null, transferFee: null },
+            input: { pages, billedPages, pricePerPage, transferFee },
+            isDuplication: !!isDuplication,
+            billId: null,
+        });
+        if (!pagePricing.ok) {
+            return NextResponse.json(
+                { error: 'Invalid page pricing', message: pagePricing.message, field: pagePricing.field },
+                { status: pagePricing.httpStatus }
+            );
+        }
+        if (pagePricing.isPageBased) parsedCost = new Prisma.Decimal(pagePricing.cost!);
+
         // Validate billingStatus against OrderBillingStatus enum
         const finalBillingStatus: OrderBillingStatus = billingStatus || OrderBillingStatus.UNBILLED;
         if (!Object.values(OrderBillingStatus).includes(finalBillingStatus)) {
@@ -703,6 +743,7 @@ export const POST = withAdmin(async (request, { me }) => {
             closureDate: resolvedClosureDate,
             updatedAt: new Date(),
             cost: parsedCost,
+            ...(pagePricing.write ?? {}),
             billingStatus: finalBillingStatus,
             lentPhysicalBook: lentPhysicalBook || false,
             notes: notes || null,

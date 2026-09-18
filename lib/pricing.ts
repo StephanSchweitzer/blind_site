@@ -100,5 +100,36 @@ export function bytesToKb(bytes: number): number {
 export const ADJUSTABLE_ORDER_WHERE: Prisma.OrdersWhereInput = {
     isActive: true,
     billingStatus: 'UNBILLED',
+    // Une demande tarifée à la page n'a pas de tarif « au poids » : son coût vient
+    // de ses pages (pageCostEuros). Avant « Terminé » elle est sur AUCUNE facture,
+    // donc exactement dans le cas normal que ce filtre laisse passer — sans cette
+    // ligne, le dépôt de l'audio la retarifierait au CD derrière le dos du permanent.
+    pages: null,
     OR: [{ billId: null }, { bill: { state: 'DRAFT' } }],
 };
+
+/** Prix conseillé d'une page, en euros — modifiable demande par demande. */
+export const PRICE_PER_PAGE_EUR = 3;
+
+/** Arrondi au centime, sans passer par des Decimal (ce module reste importable des scripts). */
+const toCents = (euros: number): number => Math.round(euros * 100) / 100;
+
+/**
+ * Coût d'une demande tarifée à la page : (pages comptées, à défaut pages lues) ×
+ * prix par page, plus les frais d'envoi s'il y en a.
+ *
+ * Aucune règle « 3 pages comptées pour 1 » ici : `billedPages` est saisi. Le
+ * rapport varie d'un document à l'autre (42 → 14 pour un numéro de Lumen, 12 → 12
+ * pour Colin Maillard), et l'inventer reviendrait à figer une règle que personne
+ * n'a énoncée.
+ */
+export function pageCostEuros(args: {
+    pages: number;
+    billedPages?: number | null;
+    pricePerPage?: number | null;
+    transferFee?: number | null;
+}): number {
+    const counted = args.billedPages ?? args.pages;
+    const price = args.pricePerPage ?? PRICE_PER_PAGE_EUR;
+    return toCents(counted * price + (args.transferFee ?? 0));
+}

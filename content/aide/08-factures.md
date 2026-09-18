@@ -115,6 +115,21 @@ Seul un brouillon peut être supprimé. « Supprimer la facture » vous demande 
 
 ![Factures - capture 13](/admin/aide/images/factures-13.jpg)
 
+## Les factures pro-forma
+
+Une demande **tarifée à la page** (voir [Demandes](/admin/aide/demandes)) ne rejoint jamais le brouillon de l'auditeur et n'attend pas son seuil de facturation. Quand elle passe à « Terminé », elle reçoit **sa propre facture pro-forma**, créée et **émise d'office**. Son numéro est celui de la facture dans l'application : le « n° » imprimé sur le PDF est le même que dans le tableau, et c'est celui que le client reporte sur son chèque ou son virement. Une pro-forma porte une seule demande ; deux demandes donnent deux pro-formas.
+
+Dans le tableau, une pro-forma se reconnaît à la mention « Pro-forma » sous son numéro. Elle suit ensuite le même chemin que les autres factures : paiement, « Payée », « Soldée », historique.
+
+Le PDF est celui d'une pro-forma : l'adresse du client, « Paris, le … », le titre de l'ouvrage, l'adresse d'envoi WeTransfer (celle du client), la ligne de lecture (« Lecture de 42 pages, comptées comme 14 pages à 3,00 € »), les frais d'envoi s'il y en a, le total, puis les modalités de règlement.
+
+Quelques règles propres aux pro-formas :
+
+- une demande à la page ne se rattache qu'à une pro-forma, et une demande au poids qu'à une facture standard : le rattachement à la main l'interdit ;
+- la facture pro-forma ne se coche pas dans « Ajouter une facture » ;
+- la pro-forma étant déjà émise, on ne peut plus faire revenir la demande en arrière depuis « Terminé » : remettez d'abord la facture en brouillon ;
+- une pro-forma remise en brouillon puis supprimée n'est pas recréée toute seule : sortez la demande de « Terminé », puis remettez-la-y.
+
 ## L'avis d'impression
 
-Lorsqu'une facture doit être imprimée — par exemple quand le seuil de facturation vient de l'émettre —, une fenêtre s'ouvre avec le bouton d'impression. Imprimez-la et envoyez-la à l'auditeur.
+Lorsqu'une facture doit être imprimée — par exemple quand le seuil de facturation vient de l'émettre, ou quand une demande à la page vient de recevoir sa pro-forma —, une fenêtre s'ouvre avec le bouton d'impression. Imprimez-la et envoyez-la à l'auditeur.

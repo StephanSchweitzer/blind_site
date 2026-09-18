@@ -38,6 +38,8 @@ export const GET = withAdmin(async (request) => {
                 billId: null,
                 isActive: true,
                 billingStatus: { not: 'UNBILLABLE' },
+                // Une demande à la page a sa pro-forma : elle ne se coche pas sur une facture standard.
+                pages: null,
             },
             orderBy: { requestReceivedDate: 'desc' },
             select: {

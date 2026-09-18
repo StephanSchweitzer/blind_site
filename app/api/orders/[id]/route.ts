@@ -39,6 +39,7 @@ import {
     leavesTermine,
     detachOrderFromBill,
 } from '@/lib/billing';
+import { resolvePagePricing } from '@/lib/orders/pagePricing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
 import { guardLiveBooks } from '@/lib/books/liveBookGuard';
@@ -54,6 +55,9 @@ type BillNotice =
     | { billId: number; billState: BillingStatus; kind: 'COST'; newTotal: string | null }
     | { billId: number; billState: BillingStatus; kind: 'VISIBLE' }
     | { billId: number; billState: BillingStatus; kind: 'ISSUED'; total: string }
+    // PROFORMA = the demande is priced by the page, so completing it created its own
+    // pro-forma, issued on the spot (no brouillon, no seuil).
+    | { billId: number; billState: BillingStatus; kind: 'PROFORMA'; total: string }
     | { billId: number; billState: BillingStatus; kind: 'DETACHED'; newTotal: string | null };
 
 // Normalize a cost input to a number or null (treats '' / null / undefined / NaN as null).
@@ -217,6 +221,10 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 isDuplication: true,
                 billId: true,
                 cost: true,
+                pages: true,
+                billedPages: true,
+                pricePerPage: true,
+                transferFee: true,
                 catalogueId: true,
                 requestReceivedDate: true,
                 closureDate: true,
@@ -401,8 +409,38 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
         // ── Detect invoice-relevant changes ──────────────────────────────────────
         const oldCost = existingOrder.cost != null ? Number(existingOrder.cost) : null;
-        const newCost = parseCost(data.cost);
-        const costChanged = data.cost !== undefined && newCost !== oldCost;
+
+        // Demande tarifée à la page : le coût vient de ses pages, pas du formulaire.
+        // Résolu AVANT costChanged, parce que c'est ce coût dérivé — et non un
+        // `data.cost` éventuellement reçu — qui doit passer par le verrou PAID/SOLDE,
+        // le recalcul du total et l'avis de réimpression plus bas.
+        const pagePricing = resolvePagePricing({
+            current: {
+                pages: existingOrder.pages,
+                billedPages: existingOrder.billedPages,
+                pricePerPage: existingOrder.pricePerPage != null ? Number(existingOrder.pricePerPage) : null,
+                transferFee: existingOrder.transferFee != null ? Number(existingOrder.transferFee) : null,
+            },
+            input: {
+                pages: data.pages,
+                billedPages: data.billedPages,
+                pricePerPage: data.pricePerPage,
+                transferFee: data.transferFee,
+            },
+            isDuplication: data.isDuplication ?? existingOrder.isDuplication,
+            billId: existingOrder.billId,
+        });
+        if (!pagePricing.ok) {
+            return NextResponse.json(
+                { message: pagePricing.message, field: pagePricing.field },
+                { status: pagePricing.httpStatus }
+            );
+        }
+
+        const newCost = pagePricing.isPageBased ? pagePricing.cost : parseCost(data.cost);
+        const costChanged = pagePricing.isPageBased
+            ? newCost !== oldCost
+            : data.cost !== undefined && newCost !== oldCost;
 
         const catalogueChanged = data.catalogueId !== undefined && data.catalogueId !== existingOrder.catalogueId;
         if (catalogueChanged) {
@@ -474,7 +512,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         const closureChanged =
             closureDate !== undefined &&
             (closureDate?.getTime() ?? null) !== (existingOrder.closureDate?.getTime() ?? null);
-        const visibleChanged = catalogueChanged || dupChanged || closureChanged;
+        const visibleChanged = catalogueChanged || dupChanged || closureChanged || pagePricing.visibleChanged;
 
         const updateData: Prisma.OrdersUncheckedUpdateInput = {
             aveugleId: data.aveugleId,
@@ -496,14 +534,15 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 data.processedByStaffId === undefined ? undefined : (data.processedByStaffId || null),
             createdDate: data.createdDate === undefined ? undefined : (data.createdDate ? new Date(data.createdDate) : null),
             closureDate,
-            cost: data.cost !== undefined ? newCost : undefined,
+            cost: pagePricing.isPageBased || data.cost !== undefined ? newCost : undefined,
+            ...(pagePricing.write ?? {}),
             billingStatus: data.billingStatus,
             // billId is intentionally NOT set here: an order's bill membership is managed
             // by the bill route (addOrder/removeOrder) and by accrual — never by an order edit.
             notes: data.notes === undefined ? undefined : (data.notes || null),
         };
 
-        const { order, newTotal, issued } = await prisma.$transaction(async (tx) => {
+        const { order, newTotal, issued, proforma } = await prisma.$transaction(async (tx) => {
             const order = await tx.orders.update({
                 where: { id: orderId },
                 data: updateData,
@@ -586,8 +625,15 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // in this same transaction, past the point where the reprice may still
             // touch it.
             const justCompletedAndUnbilled = existingOrder.billId == null && resultingStatusId === STATUS.TERMINE;
+            // Une demande tarifée à la page ne rejoint pas un brouillon : accrueOrderToOpenDraft
+            // lui crée sa pro-forma, émise d'emblée, et le dit par `proforma`. Elle n'est
+            // donc soumise ni au seuil (branche suivante) ni au brouillon de l'auditeur.
+            let proforma: { billId: number; total: number } | null = null;
             if (justCompletedAndUnbilled) {
-                await accrueOrderToOpenDraft(tx, orderId, performedById);
+                const accrued = await accrueOrderToOpenDraft(tx, orderId, performedById);
+                if (accrued?.proformaTotal !== undefined) {
+                    proforma = { billId: accrued.billId, total: accrued.proformaTotal };
+                }
             }
 
             // A DRAFT may have crossed the seuil (new cost, or a freshly accrued order).
@@ -596,7 +642,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // Jamais après un détachement : le total vient de BAISSER, émettre la
             // facture à ce moment-là serait déclencher un envoi sur un retour en arrière.
             let issued: { billId: number; total: number } | null = null;
-            if (!detachFromDraft && (justCompletedAndUnbilled || billState === BillingStatus.DRAFT)) {
+            if (!detachFromDraft && !proforma && (justCompletedAndUnbilled || billState === BillingStatus.DRAFT)) {
                 issued = await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
@@ -612,7 +658,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 await syncAssignmentToStatus(tx, assignment.id, data.statusId, performedById);
             }
 
-            return { order, newTotal, issued };
+            return { order, newTotal, issued, proforma };
         });
 
         // Reprint notice for issued bills (never for DRAFT — nothing has been sent).
@@ -623,6 +669,13 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 billState: BillingStatus.DRAFT,
                 kind: 'DETACHED',
                 newTotal: newTotal?.toString() ?? null,
+            };
+        } else if (proforma) {
+            billNotice = {
+                billId: proforma.billId,
+                billState: BillingStatus.BILLED,
+                kind: 'PROFORMA',
+                total: proforma.total.toString(),
             };
         } else if (issued) {
             // The bill this demande just accrued onto tipped over the seuil in this

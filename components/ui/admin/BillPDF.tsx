@@ -55,9 +55,17 @@ interface BillOrderLite {
     isDuplication: boolean;
     cost: number | string | null;
     catalogue: { title: string; author: string };
+    /** Facture pro-forma seulement (ProformaPDF) : la tarification à la page de la demande. */
+    pages: number | null;
+    billedPages: number | null;
+    pricePerPage: number | string | null;
+    transferFee: number | string | null;
+    mediaFormat: { name: string } | null;
 }
 export interface BillPDFData {
     id: number;
+    /** Choisit le document : BillPDF pour STANDARD, ProformaPDF pour PROFORMA. */
+    kind: 'STANDARD' | 'PROFORMA';
     state: BillingStatus;
     issueDate: string | null;
     paymentDate: string | null;
@@ -344,8 +352,8 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
                 <View style={s.payInfoBox} wrap={false}>
                     <Text style={s.payInfoLine}>Association (loi 1901) non assujettie à la TVA.</Text>
                     <Text style={s.payInfoLine}>Règlement par chèque ou par virement bancaire :</Text>
-                    <Text style={s.payInfoLine}>IBAN : FR76 1820 6004 6565 0607 5246 408</Text>
-                    <Text style={s.payInfoLine}>BIC : AGRIFRPP882</Text>
+                    <Text style={s.payInfoLine}>IBAN : {ORG.iban}</Text>
+                    <Text style={s.payInfoLine}>BIC : {ORG.bic}</Text>
                     <Text style={s.payInfoLine}>Merci de reporter le numéro de la facture au dos du chèque ou en référence du virement.</Text>
                 </View>
                 )}

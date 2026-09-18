@@ -127,6 +127,12 @@ export const OrderUpdateInputSchema = z.object({
     createdDate: z.string().datetime().nullable().optional(),
     closureDate: z.string().datetime().nullable().optional(),
     cost: z.number().or(z.string()).nullable().optional(),
+    // Tarification à la page (lib/orders/pagePricing.ts) : validée et bornée là-bas,
+    // ici seulement le type — le formulaire peut envoyer des chaînes.
+    pages: z.number().or(z.string()).nullable().optional(),
+    billedPages: z.number().or(z.string()).nullable().optional(),
+    pricePerPage: z.number().or(z.string()).nullable().optional(),
+    transferFee: z.number().or(z.string()).nullable().optional(),
     billingStatus: z.nativeEnum(OrderBillingStatus).optional(),
     billId: z.number().int().positive().nullable().optional(),
     lentPhysicalBook: z.boolean().optional(),

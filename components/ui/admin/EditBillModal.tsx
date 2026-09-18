@@ -39,10 +39,17 @@ interface BillOrder {
     cost: number | string | null;
     billingStatus: string;
     catalogue: { title: string; author: string };
+    // Imprimés sur une pro-forma (ProformaPDF).
+    pages: number | null;
+    billedPages: number | null;
+    pricePerPage: number | string | null;
+    transferFee: number | string | null;
+    mediaFormat: { name: string } | null;
 }
 
 interface BillDetail {
     id: number;
+    kind: 'STANDARD' | 'PROFORMA';
     state: BillingStatus;
     creationDate: string;
     issueDate: string | null;
@@ -402,7 +409,7 @@ export function EditBillModal({
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-3 pr-8">
                         <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
-                            Facture
+                            {bill?.kind === 'PROFORMA' ? 'Facture pro-forma' : 'Facture'}
                             {billId && <CopyableId id={billId} label="de la facture" />}
                         </DialogTitle>
                         {bill && !isLoading && (

@@ -19,6 +19,7 @@ import {
 } from '@/admin/OrderFormBackendBase';
 import { BillPrintNoticeDialog, type BillPrintNotice } from '@/admin/BillPrintNoticeDialog';
 import { ErrorToastBody } from '@/admin/AssignmentFormErrors';
+import { pagePricingToPayload } from '@/lib/orders/pagePricingForm';
 
 // Edit Order Form using the base
 export function EditOrderFormBackend({
@@ -55,6 +56,7 @@ export function EditOrderFormBackend({
         | { billId: number; billState: string; kind: 'COST'; newTotal?: string | null }
         | { billId: number; billState: string; kind: 'VISIBLE' }
         | { billId: number; billState: string; kind: 'ISSUED'; total: string }
+        | { billId: number; billState: string; kind: 'PROFORMA'; total: string }
         | { billId: number; billState: string; kind: 'DETACHED'; newTotal?: string | null };
     const [notice, setNotice] = useState<Notice | null>(null);
     const resolveRef = useRef<((id: number) => void) | null>(null);
@@ -76,6 +78,24 @@ export function EditOrderFormBackend({
                             En passant cette demande à « Terminé », elle a été rattachée à la facture
                             #{notice.billId}, qui a atteint le seuil de facturation du client et vient
                             d&apos;être émise (total : {formatEuro2(notice.total)} €).
+                        </>
+                    ),
+                    footnote: (
+                        <>
+                            Elle est à imprimer et à envoyer au client. Rien n&apos;est perdu si vous fermez :
+                            elle vous attend dans les factures, au statut « Émise ».
+                        </>
+                    ),
+                };
+            case 'PROFORMA':
+                return {
+                    billId: notice.billId,
+                    title: `Facture pro-forma n° ${notice.billId} émise`,
+                    description: (
+                        <>
+                            Cette demande est tarifée à la page : en la passant à « Terminé », sa facture
+                            pro-forma (n° {notice.billId}) a été créée et émise d&apos;office
+                            (total : {formatEuro2(notice.total)} €).
                         </>
                     ),
                     footnote: (
@@ -175,10 +195,13 @@ export function EditOrderFormBackend({
     };
 
     const handleSubmit = async (formData: OrderFormData): Promise<number> => {
+        // Le formulaire garde la tarification à la page dans un seul objet ; le
+        // serveur attend quatre champs à plat, `null` partout quand la case est décochée.
+        const { pagePricing, ...rest } = formData;
         const response = await fetch(`/api/orders/${orderId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
+            body: JSON.stringify({ ...rest, ...pagePricingToPayload(pagePricing) }),
         });
 
         if (!response.ok) {

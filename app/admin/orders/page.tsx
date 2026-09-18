@@ -208,6 +208,8 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     const serializedOrders = orders!.map(order => ({
         ...order,
         cost: order.cost ? Number(order.cost) : null,
+        pricePerPage: order.pricePerPage != null ? Number(order.pricePerPage) : null,
+        transferFee: order.transferFee != null ? Number(order.transferFee) : null,
         requestReceivedDate: order.requestReceivedDate.toISOString(),
         closureDate: order.closureDate ? order.closureDate.toISOString() : null,
         createdAt: order.createdDate ? order.createdDate.toISOString() : null,

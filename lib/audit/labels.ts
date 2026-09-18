@@ -7,7 +7,7 @@
  */
 
 import { AUDIO_TRACK_ACTION_LABELS } from '@/lib/audio-enums';
-import { BILLING_STATUS_LABELS, ORDER_BILLING_STATUS_LABELS } from '@/lib/billing-enums';
+import { BILLING_STATUS_LABELS, ORDER_BILLING_STATUS_LABELS, BILL_KIND_LABELS } from '@/lib/billing-enums';
 import { PAYMENT_METHOD_LABELS, PAYMENT_TYPE_LABELS } from '@/lib/payment-enums';
 import { TEAM_SECTION_LABELS } from '@/lib/team-enums';
 import { USER_ACTIVITY_STATUS_LABELS } from '@/lib/user-activity-enums';
@@ -246,6 +246,11 @@ const FIELD_LABELS: Record<string, string> = {
     amount: 'Montant',
     type: 'Type',
     cost: 'Coût',
+    pages: 'Pages lues',
+    billedPages: 'Pages comptées',
+    pricePerPage: 'Prix par page',
+    transferFee: 'Frais d’envoi',
+    kind: 'Type de facture',
     currentBalance: 'Solde',
     paymentThreshold: 'Seuil de paiement',
     receiptNumber: 'Numéro de reçu',
@@ -368,6 +373,7 @@ const ENUM_VALUE_LABELS: Record<string, Record<string, string>> = {
     'User.saveType':                SAVE_TYPE_LABELS,
     'Book.audioLinkStatus':         AUDIO_LINK_STATUS_LABELS,
     'Bill.state':                   BILLING_STATUS_LABELS,
+    'Bill.kind':                    BILL_KIND_LABELS,
     'Payment.type':                 PAYMENT_TYPE_LABELS,
     'Payment.paymentMethod':        PAYMENT_METHOD_LABELS,
     'Orders.deliveryMethod':        DELIVERY_METHOD_LABELS,

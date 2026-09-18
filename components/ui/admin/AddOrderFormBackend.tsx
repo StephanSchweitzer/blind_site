@@ -38,6 +38,13 @@ import {
 } from '@/admin/OrderFormBackendBase';
 import { STATUS } from '@/lib/statusSync';
 import { costSuggestion } from '@/lib/pricing';
+import { PagePricingFields } from '@/admin/PagePricingFields';
+import {
+    type PagePricingForm,
+    emptyPagePricing,
+    pagePricingToPayload,
+    pagePricingError,
+} from '@/lib/orders/pagePricingForm';
 
 // N3 — required fields, visual top→bottom. Per-line media format fields are
 // appended dynamically at validation time (one per open line).
@@ -54,6 +61,8 @@ interface OrderBookLine {
     book: Book | null;
     type: OrderLineType;
     cost: string;
+    /** Seulement pour un enregistrement : une duplication n'a pas de lecture à compter. */
+    pagePricing: PagePricingForm;
     mediaFormatId: number | null; // required per line at submit; null until chosen
 }
 
@@ -63,6 +72,7 @@ const makeLine = (cost: string): OrderBookLine => ({
     book: null,
     type: 'DUPLICATION',
     cost,
+    pagePricing: emptyPagePricing(),
     mediaFormatId: null,
 });
 
@@ -288,6 +298,17 @@ export function AddOrderFormBackend({
             return;
         }
 
+        const pageErrorLine = lines.findIndex(
+            (l) => l.type === 'ENREGISTREMENT' && pagePricingError(l.pagePricing) !== null
+        );
+        if (pageErrorLine !== -1) {
+            const msg = `Ligne ${pageErrorLine + 1} : ${pagePricingError(lines[pageErrorLine].pagePricing)}`;
+            setError(msg);
+            toastError(msg);
+            setIsLoading(false);
+            return;
+        }
+
         const books = lines.map(l => ({
             catalogueId: l.book!.id,
             isDuplication: l.type === 'DUPLICATION',
@@ -295,6 +316,8 @@ export function AddOrderFormBackend({
             statusId: statusForType(l.type),
             mediaFormatId: l.mediaFormatId!,
             cost: l.cost || '3.00',
+            // Le coût ci-dessus est ignoré du serveur quand les pages sont renseignées.
+            ...(l.type === 'ENREGISTREMENT' && l.pagePricing.pageBased ? pagePricingToPayload(l.pagePricing) : {}),
         }));
 
         // Warn before creating recording demande(s) for book(s) that already have
@@ -467,7 +490,7 @@ export function AddOrderFormBackend({
                                             className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-100 border-amber-400 text-amber-900 dark:bg-amber-700/30 dark:border-amber-600 dark:text-amber-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Enregistrement
                                     </button>
-                                    <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION' })}
+                                    <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION', pagePricing: emptyPagePricing() })}
                                             className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-100 border-green-400 text-green-900 dark:bg-green-700/30 dark:border-green-600 dark:text-green-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Duplication
                                     </button>
@@ -475,6 +498,15 @@ export function AddOrderFormBackend({
 
                                 {/* #2 — audio déjà présent / demande d'enregistrement concurrente */}
                                 <RecordingAdviceNotice advice={recordingAdviceFor(recordingLines[idx])} />
+
+                                {/* Tarification à la page — un enregistrement seulement */}
+                                {line.type === 'ENREGISTREMENT' && (
+                                    <PagePricingFields
+                                        compact
+                                        value={line.pagePricing}
+                                        onChange={(pagePricing) => updateLine(line.key, { pagePricing })}
+                                    />
+                                )}
 
                                 {/* Per-ouvrage format — required per line, seeded from the auditeur's préférence */}
                                 <div className="grid grid-cols-2 gap-2">
@@ -490,6 +522,7 @@ export function AddOrderFormBackend({
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                    {!(line.type === 'ENREGISTREMENT' && line.pagePricing.pageBased) && (
                                     <div className="space-y-1">
                                         <label className="text-xs text-muted-foreground">Coût</label>
                                         <div className="relative">
@@ -519,6 +552,7 @@ export function AddOrderFormBackend({
                                             );
                                         })()}
                                     </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

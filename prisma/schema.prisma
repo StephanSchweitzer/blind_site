@@ -295,6 +295,10 @@ model Bill {
   paymentDate      DateTime?
   paymentReference String?
   invoiceAmount    Decimal       @db.Decimal(10, 2)
+  /// Jamais modifié après la création. Les accruals automatiques (getOrCreateOpenDraft,
+  /// issueDraftIfOverThreshold) ne regardent que STANDARD : sans ça, une pro-forma
+  /// remise en brouillon serait ramassée comme « le brouillon de l'auditeur ».
+  kind             BillKind      @default(STANDARD)
   isActive         Boolean       @default(true)
   deletedAt        DateTime?
   client           User          @relation(fields: [clientId], references: [id])
@@ -303,6 +307,7 @@ model Bill {
   events           BillEvent[]
 
   @@index([clientId])
+  @@index([kind])
   @@index([state])
   @@index([creationDate])
   @@index([isActive])
@@ -360,6 +365,16 @@ model Orders {
   createdDate         DateTime?
   closureDate         DateTime?
   cost                Decimal?           @db.Decimal(10, 2)
+  /// Tarification à la page. `pages` non nul = demande tarifée à la page, et rien
+  /// d'autre : c'est LE marqueur (pas de second drapeau qui pourrait diverger). Dès
+  /// lors `cost` est DÉRIVÉ (pageCostEuros, lib/pricing.ts) et non saisi, la demande
+  /// sort de la retarification au poids (ADJUSTABLE_ORDER_WHERE) et sa facture est une
+  /// pro-forma. `billedPages` : pages comptées, quand elles diffèrent des pages lues
+  /// (« 42 pages comptées comme 14 »). `transferFee` : frais d'envoi, nul = gratuit.
+  pages               Int?
+  billedPages         Int?
+  pricePerPage        Decimal?           @db.Decimal(10, 2)
+  transferFee         Decimal?           @db.Decimal(10, 2)
   billingStatus       OrderBillingStatus @default(UNBILLED)
   billId              Int?
   lentPhysicalBook    Boolean
@@ -482,6 +497,15 @@ enum BillingStatus {
   BILLED
   PAID
   SOLDE
+}
+
+/// STANDARD : la facture d'un auditeur, alimentée par le brouillon et son seuil.
+/// PROFORMA : une facture pro-forma, une demande à page tarifée, émise d'office
+/// à la clôture de cette demande — jamais rattachée à un brouillon, jamais soumise
+/// au seuil. Voir accrueOrderToProforma (lib/billing.ts).
+enum BillKind {
+  STANDARD
+  PROFORMA
 }
 
 enum OrderBillingStatus {

@@ -39,6 +39,8 @@ import { getUserDisplayName } from '@/lib/users/displayName';
 import { STATUS } from '@/lib/statusSync';
 import { costSuggestion } from '@/lib/pricing';
 import { parisDate } from '@/lib/paris-day';
+import { PagePricingFields } from '@/admin/PagePricingFields';
+import { type PagePricingForm, emptyPagePricing, pagePricingError } from '@/lib/orders/pagePricingForm';
 
 // N3 — required fields, visual top→bottom.
 const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'statusId', 'mediaFormatId', 'deliveryMethod'];
@@ -85,6 +87,8 @@ export interface OrderFormData {
     // createdDate: Date | null;
     closureDate: Date | null;
     cost: string;
+    /** Tarification à la page ; décochée, la demande se tarife au poids et `cost` reste saisi. */
+    pagePricing: PagePricingForm;
     billingStatus: 'UNBILLED' | 'BILLED' | 'UNBILLABLE';
     lentPhysicalBook: boolean;
     notes: string;
@@ -211,6 +215,7 @@ export function OrderFormBackendBase({
                 //createdDate: new Date(),
                 closureDate: null,
                 cost: '3.00',
+                pagePricing: emptyPagePricing(),
                 billingStatus: 'UNBILLED',
                 lentPhysicalBook: false,
                 notes: '',
@@ -509,6 +514,14 @@ export function OrderFormBackendBase({
                 setIsLoading(false);
                 return;
             }
+        }
+
+        const pageError = pagePricingError(formData.pagePricing);
+        if (pageError) {
+            setError(pageError);
+            toastError(pageError);
+            setIsLoading(false);
+            return;
         }
 
         try {
@@ -1133,7 +1146,30 @@ export function OrderFormBackendBase({
                         </div>
                     )}
 
-                    {/* Cost */}
+                    {/* Tarification à la page. La case ne bouge plus une fois la demande
+                        sur une facture (le serveur refuse : une pro-forma et une facture
+                        standard ne portent pas les mêmes demandes), ni sur une duplication
+                        (elle n'a pas de lecture à compter). Les champs se figent avec le
+                        coût quand la facture est payée ou soldée. */}
+                    <PagePricingFields
+                        value={formData.pagePricing}
+                        onChange={(pagePricing) => setFormData({ ...formData, pagePricing })}
+                        toggleDisabledReason={
+                            hasBill
+                                ? `Modifiable seulement tant que la demande n'est pas rattachée à une facture (#${initialBill?.id}). Détachez-la d'abord.`
+                                : formData.isDuplication
+                                    ? "Une duplication n'a pas de lecture : elle ne se tarife pas à la page."
+                                    : null
+                        }
+                        fieldsDisabledReason={
+                            costLocked
+                                ? `Tarif verrouillé : la facture #${initialBill?.id} est ${initialBill?.state === 'PAID' ? 'payée' : 'soldée'}. Rouvrez-la pour le modifier.`
+                                : null
+                        }
+                    />
+
+                    {/* Cost — dérivé des pages quand la demande est tarifée à la page */}
+                    {!formData.pagePricing.pageBased && (
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Coût</label>
                         <div className="relative">
@@ -1172,6 +1208,7 @@ export function OrderFormBackendBase({
                             </div>
                         )}
                     </div>
+                    )}
 
                     {/* Notes */}
                     <div className="space-y-2">

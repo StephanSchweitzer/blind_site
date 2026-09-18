@@ -32,6 +32,7 @@ import { getOrderBillingStatusLabel } from '@/lib/billing-enums';
 import { AddOrderFormBackend } from '@/admin/AddOrderFormBackend';
 import { EditOrderModal } from '@/admin/EditOrderModal';
 import { OrderFormData } from '@/admin/OrderFormBackendBase';
+import { pagePricingFromRow } from '@/lib/orders/pagePricingForm';
 import { useToast } from '@/hooks/use-toast';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
@@ -219,6 +220,7 @@ export default function OrdersTable({
                 processedByStaffId: order.processedByStaffId,
                 closureDate: order.closureDate ? new Date(order.closureDate) : null,
                 cost: order.cost?.toString() || '0.00',
+                pagePricing: pagePricingFromRow(order),
                 billingStatus: order.billingStatus,
                 lentPhysicalBook: order.lentPhysicalBook,
                 notes: order.notes || '',

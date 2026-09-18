@@ -47,8 +47,8 @@ interface BillPDFButtonProps {
 const FULL_TEXT = 'Imprimer la facture';
 
 /** Only used by the download fallback in printPdfBlob — see lib/print-pdf.ts. */
-const fileNameFor = (id: number, draft: boolean) =>
-    `facture-${id}${draft ? '-BROUILLON' : ''}.pdf`;
+const fileNameFor = (data: BillPDFData, draft: boolean) =>
+    `${data.kind === 'PROFORMA' ? 'facture-proforma' : 'facture'}-${data.id}${draft ? '-BROUILLON' : ''}.pdf`;
 
 export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
     bill,
@@ -68,17 +68,24 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
 
     const print = async (data: BillPDFData, draft: boolean) => {
         // The PDF library is heavy and only needed on print — load it on demand.
-        const [{ pdf }, { BillPDF }] = await Promise.all([
+        const [{ pdf }, { BillPDF }, { ProformaPDF }] = await Promise.all([
             import('@react-pdf/renderer'),
             import('./BillPDF'),
+            import('./ProformaPDF'),
         ]);
-        const blob = await pdf(<BillPDF bill={data} draft={draft} />).toBlob();
+        // Une pro-forma n'a pas la mise en page d'une facture : un seul titre, sa
+        // ligne de lecture, ses frais d'envoi. Le type de la facture choisit le document.
+        const document =
+            data.kind === 'PROFORMA'
+                ? <ProformaPDF bill={data} draft={draft} />
+                : <BillPDF bill={data} draft={draft} />;
+        const blob = await pdf(document).toBlob();
         // Straight to the print dialog. Nothing is lost by skipping the
         // download: « Enregistrer au format PDF » is a destination in that same
         // dialog, so anyone who wanted the file still gets it — in one step
         // instead of two, and without a Téléchargements folder full of
         // near-identical factures.
-        await printPdfBlob(blob, fileNameFor(data.id, draft));
+        await printPdfBlob(blob, fileNameFor(data, draft));
     };
 
     const fetchBill = async (id: number): Promise<BillPDFData> => {

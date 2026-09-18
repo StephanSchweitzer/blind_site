@@ -270,12 +270,16 @@ export const POST = withAdmin(async (request, { me }) => {
                         billingStatus: true,
                         isActive: true,
                         cost: true,
+                        pages: true,
                     },
                 });
                 if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
                 if (order.aveugleId !== parsedClientId) throw new Error('CLIENT_MISMATCH');
                 if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
                 if (order.billingStatus === OrderBillingStatus.UNBILLABLE) throw new Error('ORDER_UNBILLABLE');
+                // Cette route ne crée que des factures STANDARD : une demande à la page a
+                // sa pro-forma, émise à sa clôture (accrueOrderToProforma).
+                if (order.pages != null) throw new Error('ORDER_PAGE_PRICED');
                 orders.push({ id: order.id, cost: order.cost });
             }
             // Même arithmétique que recomputeBillTotal, faite plus tôt parce que la
@@ -427,6 +431,10 @@ export const POST = withAdmin(async (request, { me }) => {
             CLIENT_MISMATCH: ['Une des demandes sélectionnées n\'appartient pas à cet auditeur', 400],
             ORDER_ALREADY_BILLED: ['Une des demandes sélectionnées est déjà rattachée à une facture', 400],
             ORDER_UNBILLABLE: ['Une des demandes sélectionnées est marquée non-facturable', 400],
+            ORDER_PAGE_PRICED: [
+                'Une des demandes sélectionnées est tarifée à la page : elle a sa propre facture pro-forma, émise quand la demande passe « Terminé »',
+                409,
+            ],
             SETTLED_ZERO_TOTAL: [
                 'Une facture à 0,00 € ne peut pas être enregistrée comme déjà réglée : son paiement n\'aurait pas de montant. ' +
                     'Renseignez le tarif des demandes, ou créez-la simplement émise.',

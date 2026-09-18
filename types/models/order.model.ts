@@ -306,11 +306,14 @@ type OrdersTableRowRaw = Prisma.OrdersGetPayload<{ include: typeof ordersTableIn
 // JSON-safe row as sent to client components (Date -> ISO string, Decimal -> number)
 export type SerializedOrderTableRow = Omit<
     OrdersTableRowRaw,
-    'requestReceivedDate' | 'closureDate' | 'createdDate' | 'updatedAt' | 'deletedAt' | 'cost'
+    'requestReceivedDate' | 'closureDate' | 'createdDate' | 'updatedAt' | 'deletedAt' | 'cost' | 'pricePerPage' | 'transferFee'
 > & {
     requestReceivedDate: string;
     closureDate: string | null;
     cost: number | null;
+    // Decimal → number, comme `cost` : un Decimal ne traverse pas la frontière serveur/client.
+    pricePerPage: number | null;
+    transferFee: number | null;
     createdAt: string | null;
     updatedAt: string | null;
 };

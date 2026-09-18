@@ -15,6 +15,7 @@ import {
     paymentPrecedesIssue,
     summarizeBillPayments,
     syncBillPaymentInfo,
+    guardOrderMatchesBillKind,
 } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
 
@@ -68,6 +69,12 @@ export const GET = withAdmin(async (_request, context) => {
                         isDuplication: true,
                         cost: true,
                         billingStatus: true,
+                        // Imprimés sur une pro-forma (ProformaPDF).
+                        pages: true,
+                        billedPages: true,
+                        pricePerPage: true,
+                        transferFee: true,
+                        mediaFormat: { select: { name: true } },
                         catalogue: { select: { title: true, author: true } },
                     },
                     // Trié sur la date imprimée, sinon la colonne « Livraison » de la
@@ -385,7 +392,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             await prisma.$transaction(async (tx) => {
                 const bill = await tx.bill.findUnique({
                     where: { id: billId, isActive: true },
-                    select: { state: true, clientId: true },
+                    select: { state: true, clientId: true, kind: true },
                 });
                 if (!bill) throw new Error('BILL_NOT_FOUND');
                 if (bill.state !== 'DRAFT') throw new Error('BILL_NOT_DRAFT');
@@ -399,12 +406,15 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 // rattachée : l'accepter par ici revenait à contourner le garde.
                 const order = await tx.orders.findUnique({
                     where: { id: parseInt(orderId) },
-                    select: { aveugleId: true, billId: true, isActive: true, billingStatus: true },
+                    select: { aveugleId: true, billId: true, isActive: true, billingStatus: true, pages: true },
                 });
                 if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
                 if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
                 if (order.aveugleId !== bill.clientId) throw new Error('CLIENT_MISMATCH');
                 if (order.billingStatus === OrderBillingStatus.UNBILLABLE) throw new Error('ORDER_UNBILLABLE');
+                if (!guardOrderMatchesBillKind({ orderPages: order.pages, billKind: bill.kind }).ok) {
+                    throw new Error('BILL_KIND_MISMATCH');
+                }
 
                 await tx.orders.update({
                     where: { id: parseInt(orderId) },
@@ -492,6 +502,10 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             ORDER_ALREADY_BILLED: ['Cette demande est déjà rattachée à une facture', 400],
             CLIENT_MISMATCH: ['Cette demande n\'appartient pas au client de cette facture', 400],
             ORDER_UNBILLABLE: ['Cette demande est marquée « Non facturable » et ne peut pas être rattachée à une facture', 400],
+            BILL_KIND_MISMATCH: [
+                'Une demande tarifée à la page ne se rattache qu’à une facture pro-forma, et une demande au poids qu’à une facture standard',
+                409,
+            ],
         };
         if (errorMap[msg]) {
             return NextResponse.json({ error: msg, message: errorMap[msg][0] }, { status: errorMap[msg][1] });
