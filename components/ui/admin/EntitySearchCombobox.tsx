@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Loader2, Search } from 'lucide-react';
+import { ExternalLink, Loader2, Search } from 'lucide-react';
 import { useEntitySearch } from '@/hooks/useEntitySearch';
 import { meetsSearchMinLength, normalizeSearchQuery } from '@/lib/search-query';
 import { cn } from '@/lib/utils';
@@ -85,6 +86,18 @@ export interface EntitySearchComboboxProps<T> {
      * offer none.
      */
     suggestionDomains?: readonly VocabularyDomain[];
+    /**
+     * Where the currently selected item "lives" — its own page, e.g. a
+     * person's dossier or a book's catalogue entry. Renders as a small
+     * link-out icon beside the trigger, opening in a new tab, so staff can
+     * jump to the full record without losing the form they're mid-edit on.
+     * Returns null/undefined to hide it for a given item (e.g. no dossier
+     * route for a not-yet-saved entity). Omit the prop entirely for
+     * entities with no "home" page to link to.
+     */
+    viewHref?: (item: T) => string | null | undefined;
+    /** Accessible label for the link-out icon. Defaults to « Voir la fiche ». */
+    viewHrefLabel?: string;
 }
 
 const DEFAULT_TRIGGER =
@@ -115,6 +128,8 @@ export function EntitySearchCombobox<T>({
     contentClassName,
     listClassName,
     suggestionDomains,
+    viewHref,
+    viewHrefLabel = 'Voir la fiche',
 }: EntitySearchComboboxProps<T>) {
     const [open, setOpen] = useState(false);
     const { query, setQuery, results, isSearching, reset } = useEntitySearch(fetcher, {
@@ -256,7 +271,10 @@ export function EntitySearchCombobox<T>({
             ? `Affichage limité à ${results.length} ${resultNoun} — affinez la recherche`
             : `${results.length} ${agree(results.length, resultNoun)}`;
 
+    const resolvedViewHref = value ? viewHref?.(value) : null;
+
     return (
+        <div className="flex items-center gap-1.5">
         <Popover open={open} onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild>
                 <Button
@@ -410,5 +428,18 @@ export function EntitySearchCombobox<T>({
                 )}
             </PopoverContent>
         </Popover>
+        {resolvedViewHref && (
+            <Link
+                href={resolvedViewHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={viewHrefLabel}
+                aria-label={viewHrefLabel}
+                className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+                <ExternalLink className="h-4 w-4" />
+            </Link>
+        )}
+        </div>
     );
 }

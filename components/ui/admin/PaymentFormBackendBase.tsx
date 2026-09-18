@@ -336,6 +336,7 @@ export function PaymentFormBackendBase({
                                     onSelect={handleClientSelect}
                                     triggerRef={registerField('client')}
                                     placeholder={getPaymentClientSearchPlaceholder(type)}
+                                    viewHref={(user) => `/admin/users/dossier/${user.id}`}
                                 />
                             </div>
                             {selectedClient && (

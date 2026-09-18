@@ -808,6 +808,7 @@ export function AssignmentFormBackendBase({
                                             searchPlaceholder="Nom, email, ou numéro de personne..."
                                             emptyMessage="Aucun lecteur trouvé"
                                             listClassName="max-h-[300px]"
+                                            viewHref={(reader) => `/admin/users/dossier/${reader.id}`}
                                         />
                                         {selectedReader && (
                                             <Button
@@ -839,6 +840,7 @@ export function AssignmentFormBackendBase({
                                                     searchPlaceholder="Nom, email, ou numéro de personne..."
                                                     emptyMessage="Aucun lecteur trouvé"
                                                     listClassName="max-h-[300px]"
+                                                    viewHref={(reader) => `/admin/users/dossier/${reader.id}`}
                                                 />
                                             </div>
 
@@ -931,6 +933,7 @@ export function AssignmentFormBackendBase({
                                     emptyMessage="Aucun lecteur trouvé"
                                     listClassName="max-h-[300px]"
                                     triggerRef={registerField('readerId')}
+                                    viewHref={(reader) => `/admin/users/dossier/${reader.id}`}
                                 />
                                 {!selectedReaderId && (
                                     <p className="text-sm text-amber-700 dark:text-amber-400">

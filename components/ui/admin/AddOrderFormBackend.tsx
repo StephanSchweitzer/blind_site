@@ -385,6 +385,7 @@ export function AddOrderFormBackend({
                             value={selectedUser}
                             onSelect={handleUserSelect}
                             triggerRef={registerField('aveugleId')}
+                            viewHref={(user) => `/admin/users/dossier/${user.id}`}
                         />
                     </div>
 

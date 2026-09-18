@@ -26,6 +26,8 @@ interface UserSearchComboboxProps<T extends UserSearchResult> {
     triggerRef?: React.Ref<HTMLButtonElement>;
     triggerClassName?: string;
     listClassName?: string;
+    /** Link-out to the selected person's dossier, next to the trigger. Omit to show none. */
+    viewHref?: (user: T) => string | null | undefined;
 }
 
 export function UserSearchCombobox<T extends UserSearchResult>({
@@ -39,6 +41,7 @@ export function UserSearchCombobox<T extends UserSearchResult>({
     triggerRef,
     triggerClassName,
     listClassName,
+    viewHref,
 }: UserSearchComboboxProps<T>) {
     const fetcher = async (query: string, signal: AbortSignal): Promise<T[]> => {
         const params = new URLSearchParams({ q: query });
@@ -82,6 +85,8 @@ export function UserSearchCombobox<T extends UserSearchResult>({
             triggerRef={triggerRef}
             triggerClassName={triggerClassName}
             listClassName={listClassName}
+            viewHref={viewHref}
+            viewHrefLabel="Voir le dossier"
         />
     );
 }

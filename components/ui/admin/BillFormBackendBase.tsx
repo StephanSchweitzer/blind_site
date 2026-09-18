@@ -326,6 +326,7 @@ export function BillFormBackendBase({
                         <label className="text-sm font-medium text-foreground">
                             Auditeur <span className="text-red-500">*</span>
                         </label>
+                        <div className="flex items-center gap-1.5">
                         <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
@@ -373,6 +374,19 @@ export function BillFormBackendBase({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                        {selectedClient && (
+                            <a
+                                href={`/admin/users/dossier/${selectedClient.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Voir le dossier"
+                                aria-label="Voir le dossier"
+                                className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            >
+                                <ExternalLink className="h-4 w-4" />
+                            </a>
+                        )}
+                        </div>
                     </div>
 
                     {/* Eligible orders */}

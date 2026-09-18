@@ -653,6 +653,7 @@ export function OrderFormBackendBase({
                             onSelect={handleUserSelect}
                             disabled={hasBill}
                             triggerRef={registerField('aveugleId')}
+                            viewHref={(user) => `/admin/users/dossier/${user.id}`}
                         />
                         {hasBill && initialBill && (
                             <p className="text-xs text-amber-700 dark:text-amber-400">
