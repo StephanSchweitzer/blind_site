@@ -1103,6 +1103,7 @@ function MatchPicker({
                             onSelect={(b) => setManual(b)}
                             renderValue={(b) => `#${b.id} — ${bookLabel(b)} · ${b.author}`}
                             placeholder="Titre, auteur, ISBN ou numéro…"
+                            viewHref={(b) => `/admin/books?book=${b.id}`}
                         />
                     </div>
                     <Button

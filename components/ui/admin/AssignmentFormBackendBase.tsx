@@ -1038,18 +1038,9 @@ export function AssignmentFormBackendBase({
                                     </span>
                                 );
                             }}
+                            viewHref={(order) => `/admin/orders?order=${order.id}`}
+                            viewHrefLabel="Voir la demande"
                         />
-                        {selectedOrder && (
-                            <Link
-                                href={`/admin/orders?order=${selectedOrder.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2"
-                            >
-                                <ExternalLink className="h-3.5 w-3.5" />
-                                Voir la demande
-                            </Link>
-                        )}
                     </div>
 
                     {/* Book — read-only: derived from the selected order (one book per order) */}

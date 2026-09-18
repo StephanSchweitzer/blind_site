@@ -10,6 +10,7 @@ import { Check, X, AlertCircle } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { DeleteBookModal } from '@/admin/DeleteBookModal';
+import BookDeletedNotice from '@/admin/BookDeletedNotice';
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
 import { useFormToast } from "@/hooks/useFormToast";
@@ -91,6 +92,8 @@ interface BookFormBackendBaseProps {
      * character to answer a question nobody is asking yet.
      */
     dirtyRef?: React.RefObject<boolean>;
+    /** The book is soft-deleted: every field and action below is disabled until it's restored. */
+    readOnly?: boolean;
 }
 
 export function BookFormBackendBase({
@@ -103,7 +106,8 @@ export function BookFormBackendBase({
                                         onDeleted,
                                         showDelete,
                                         audioBookId,
-                                        dirtyRef
+                                        dirtyRef,
+                                        readOnly = false,
                                     }: BookFormBackendBaseProps) {
     const [formData, setFormDataState] = useState<BookFormData>(initialData || EMPTY_FORM);
 
@@ -290,6 +294,7 @@ export function BookFormBackendBase({
                             bookId={audioBookId}
                             bookTitle={formData.title}
                             size="sm"
+                            disabled={readOnly}
                         />
                     )}
                 </div>
@@ -308,6 +313,7 @@ export function BookFormBackendBase({
 
                     {!initialData && <BookSearch onBookSelect={handleBookSelect}/>}
 
+                    <fieldset disabled={readOnly} className="space-y-6 disabled:opacity-60">
                     <div className="grid gap-6">
                         <div className="space-y-2">
                             <label htmlFor="title" className="text-sm font-medium text-foreground">
@@ -596,6 +602,7 @@ export function BookFormBackendBase({
                             </Button>
                         )}
                     </div>
+                    </fieldset>
                 </form>
             </CardContent>
         </Card>
@@ -689,13 +696,18 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
     );
 }
 
-export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }: {
+export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess, onRestored, dirtyRef }: {
     bookId: string,
     initialData: BookFormData,
+    /** ISO string when this fiche is soft-deleted; null/undefined otherwise. */
+    deletedAt?: string | null,
     onSuccess?: (bookId: number, isDeleted?: boolean) => void,
+    /** Fires once the fiche is restored, so a parent list can refresh its cached rows. */
+    onRestored?: () => void,
     dirtyRef?: React.RefObject<boolean>
 }) {
     const { toast } = useToast();
+    const [isDeleted, setIsDeleted] = useState(Boolean(deletedAt));
 
     /**
      * L'appel de suppression, le refus et le sort du dossier audio vivent
@@ -778,17 +790,33 @@ export function EditBookFormBackend({ bookId, initialData, onSuccess, dirtyRef }
     };
 
     return (
-        <BookFormBackendBase
-            initialData={initialData}
-            onSubmit={handleSubmit}
-            onDeleted={handleDeleted}
-            showDelete={true}
-            submitButtonText="Mettre à jour le livre"
-            loadingText="En cours de mise à jour..."
-            title="Modifier le livre"
-            onSuccess={onSuccess}
-            audioBookId={Number.isInteger(Number(bookId)) ? Number(bookId) : undefined}
-            dirtyRef={dirtyRef}
-        />
+        <>
+            {isDeleted && deletedAt && (
+                <div className="mb-4">
+                    <BookDeletedNotice
+                        bookId={Number(bookId)}
+                        title={initialData.title}
+                        deletedAt={deletedAt}
+                        onRestored={() => {
+                            setIsDeleted(false);
+                            onRestored?.();
+                        }}
+                    />
+                </div>
+            )}
+            <BookFormBackendBase
+                initialData={initialData}
+                onSubmit={handleSubmit}
+                onDeleted={handleDeleted}
+                showDelete={true}
+                submitButtonText="Mettre à jour le livre"
+                loadingText="En cours de mise à jour..."
+                title="Modifier le livre"
+                onSuccess={onSuccess}
+                audioBookId={Number.isInteger(Number(bookId)) ? Number(bookId) : undefined}
+                dirtyRef={dirtyRef}
+                readOnly={isDeleted}
+            />
+        </>
     );
 }

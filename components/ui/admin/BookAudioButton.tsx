@@ -26,6 +26,8 @@ interface BookAudioButtonProps {
     audioTrackCount?: number | null;
     size?: 'sm' | 'default';
     className?: string;
+    /** Grey out and refuse to open — a soft-deleted book's fiche is read-only until restored. */
+    disabled?: boolean;
 }
 
 interface AudioState {
@@ -58,6 +60,7 @@ export function BookAudioButton({
     audioTrackCount,
     size = 'default',
     className,
+    disabled = false,
 }: BookAudioButtonProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [state, setState] = useState<AudioState | null>(
@@ -96,6 +99,7 @@ export function BookAudioButton({
                 type="button"
                 variant="outline"
                 size={size}
+                disabled={disabled}
                 onClick={() => setIsOpen(true)}
                 aria-label={
                     bookTitle

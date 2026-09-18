@@ -93,6 +93,14 @@ interface Book {
     audioLinkStatus?: AudioLinkStatus;
     /** Tracks counted at the last check; null when there is nothing to count. */
     audioTrackCount?: number | null;
+    /**
+     * When this fiche is soft-deleted (lib/prisma.ts hides it from every list,
+     * but findUnique — and so this row once fetched by id — still sees it);
+     * null otherwise. A `Date` on the server-rendered initial rows (always
+     * null there — the list read filters them out), an ISO string once this
+     * came back through `fetch(...).json()` in openBookById.
+     */
+    deletedAt?: Date | string | null;
 }
 
 interface BookWithFormData extends Book {
@@ -686,6 +694,14 @@ export default function BooksTable({
         setIsAddModalOpen(true);
     };
 
+    // The fiche just came back from Restaurer — the modal stays open (read-only
+    // lifts in place), but the list behind it still excludes the row, so it
+    // needs the same refresh a save or a delete already gets.
+    const handleBookRestored = () => {
+        cacheInvalidatedRef.current = true;
+        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
+    };
+
     const handleBookEdited = async (bookId: number, isDeleted = false) => {
         cacheInvalidatedRef.current = true;
 
@@ -1204,7 +1220,13 @@ export default function BooksTable({
                                 key={selectedBook.openSeq}
                                 bookId={selectedBook.id.toString()}
                                 initialData={selectedBook.formData}
+                                deletedAt={
+                                    selectedBook.deletedAt
+                                        ? new Date(selectedBook.deletedAt).toISOString()
+                                        : null
+                                }
                                 onSuccess={handleBookEdited}
+                                onRestored={handleBookRestored}
                                 dirtyRef={editDirtyRef}
                             />
                         </div>

@@ -455,6 +455,7 @@ export function AddOrderFormBackend({
                                             onSelect={(b) => selectBookForLine(line.key, b)}
                                             placeholder="Rechercher un livre existant ..."
                                             renderValue={(b) => clip(`${b.title} — ${b.author}`)}
+                                            viewHref={(b) => `/admin/books?book=${b.id}`}
                                         />
                                     </div>
                                     <CreateBookDialog onCreated={(b) => selectBookForLine(line.key, b)} />

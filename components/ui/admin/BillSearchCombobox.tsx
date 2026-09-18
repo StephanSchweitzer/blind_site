@@ -31,6 +31,8 @@ interface BillSearchComboboxProps<T extends BillSearchResult> {
      * paiement refusent de s'y rattacher — autant ne pas le proposer.
      */
     excludeDrafts?: boolean;
+    /** Link-out to the selected bill, next to the trigger. Omit to show none. */
+    viewHref?: (bill: T) => string | null | undefined;
 }
 
 // Matches GET /api/bills' own default page size, so the empty-query open and
@@ -54,6 +56,7 @@ export function BillSearchCombobox<T extends BillSearchResult>({
     triggerRef,
     triggerClassName,
     excludeDrafts = false,
+    viewHref,
 }: BillSearchComboboxProps<T>) {
     const fetcher = async (query: string, signal: AbortSignal): Promise<T[]> => {
         const params = new URLSearchParams({ clientId: String(clientId), limit: String(BILL_RESULT_LIMIT) });
@@ -83,6 +86,7 @@ export function BillSearchCombobox<T extends BillSearchResult>({
             emptyDefaultMessage={excludeDrafts ? 'Aucune facture émise pour ce client' : 'Aucune facture pour ce client'}
             triggerRef={triggerRef}
             triggerClassName={triggerClassName}
+            viewHref={viewHref}
         />
     );
 }

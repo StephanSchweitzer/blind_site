@@ -383,6 +383,7 @@ function OrphanCard({
                                         renderItem={(b) => <BookHitRow book={b} />}
                                         renderValue={(b) => `#${b.id} — ${bookLabel(b)} · ${b.author}`}
                                         placeholder="Rechercher un livre du catalogue…"
+                                        viewHref={(b) => `/admin/books?book=${b.id}`}
                                     />
                                 </div>
                                 <Button

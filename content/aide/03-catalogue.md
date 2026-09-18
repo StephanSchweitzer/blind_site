@@ -148,10 +148,11 @@ restent, au nom de la fiche supprimée, et se retrouvent dans l'onglet « Sans f
 La fiche elle-même, elle, n'est jamais réellement effacée : « Supprimer » la fait disparaître de
 partout — listes, recherches, menus déroulants — sans la retirer de la base, précisément parce
 qu'une demande ou une attribution supprimée peut encore la nommer. Rouvrez-la par son ancienne
-adresse (`/admin/books/<id>`, par exemple depuis un ancien lien ou le journal des modifications)
-pour retrouver un bandeau rouge « Fiche supprimée » avec un bouton **Restaurer** — sans limite de
-temps, contrairement à la restauration depuis le
-[journal des modifications](/admin/aide/statistiques), qui n'a que 14 jours de recul.
+adresse (`/admin/books?book=<id>`, par exemple depuis un ancien lien ou le journal des
+modifications) pour retrouver, dans le modal « Modifier le livre », un bandeau rouge « Fiche
+supprimée » avec un bouton **Restaurer** — sans limite de temps, contrairement à la restauration
+depuis le [journal des modifications](/admin/aide/statistiques), qui n'a que 14 jours de recul. Le
+reste du modal reste en lecture seule tant qu'elle n'est pas restaurée.
 
 Si « Envoyer les pistes à la corbeille » avait été choisi, **Restaurer** les ramène avec la
 fiche — pas seulement la ligne, les fichiers aussi : chaque piste encore en corbeille pour ce

@@ -117,7 +117,7 @@ function BookIdentity({ group }: { group: TrashGroup }) {
     if (group.book) {
         return (
             <Link
-                href={`/admin/books/${group.book.id}`}
+                href={`/admin/books?book=${group.book.id}`}
                 className="text-blue-600 hover:text-blue-500 dark:text-blue-400 underline underline-offset-2"
             >
                 « {group.book.title} » (#{group.book.id})

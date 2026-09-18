@@ -258,7 +258,7 @@ export function DeleteBookModal({
                                 {preflight.audio.sharedWith.map((b) => (
                                     <li key={b.id}>
                                         <Link
-                                            href={`/admin/books/${b.id}`}
+                                            href={`/admin/books?book=${b.id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1 font-medium underline underline-offset-2"
@@ -359,6 +359,7 @@ export function DeleteBookModal({
                                                 setTarget(book);
                                             }}
                                             placeholder="Choisir le livre qui hérite du dossier…"
+                                            viewHref={(book) => `/admin/books?book=${book.id}`}
                                         />
                                         {replacePrompt && (
                                             <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500 dark:bg-amber-900/20 dark:text-amber-100">

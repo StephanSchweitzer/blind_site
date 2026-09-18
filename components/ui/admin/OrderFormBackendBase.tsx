@@ -696,6 +696,7 @@ export function OrderFormBackendBase({
                             value={selectedBook}
                             onSelect={handleBookSelect}
                             triggerRef={registerField('catalogueId')}
+                            viewHref={(b) => `/admin/books?book=${b.id}`}
                         />
                         {/* The recordings of the book this demande is about, without
                             leaving the form. */}

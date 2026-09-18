@@ -365,6 +365,7 @@ export function PaymentFormBackendBase({
                                 clientId={selectedClient.id}
                                 triggerRef={registerField('bill')}
                                 excludeDrafts
+                                viewHref={(bill) => `/admin/bills?bill=${bill.id}`}
                             />
                         </div>
                     )}

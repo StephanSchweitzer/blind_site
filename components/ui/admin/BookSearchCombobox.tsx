@@ -30,6 +30,8 @@ interface BookSearchComboboxProps<T extends BookSearchResult> {
     renderItem?: (book: T) => React.ReactNode;
     triggerRef?: React.Ref<HTMLButtonElement>;
     triggerClassName?: string;
+    /** Link-out to the selected book's catalogue entry, next to the trigger. Omit to show none. */
+    viewHref?: (book: T) => string | null | undefined;
 }
 
 /**
@@ -59,6 +61,7 @@ export function BookSearchCombobox<T extends BookSearchResult>({
     renderItem,
     triggerRef,
     triggerClassName,
+    viewHref,
 }: BookSearchComboboxProps<T>) {
     const fetcher = async (query: string, signal: AbortSignal): Promise<T[]> => {
         const res = await fetch(
@@ -105,6 +108,7 @@ export function BookSearchCombobox<T extends BookSearchResult>({
             emptyMessage="Aucun livre trouvé"
             triggerRef={triggerRef}
             triggerClassName={triggerClassName}
+            viewHref={viewHref}
         />
     );
 }
