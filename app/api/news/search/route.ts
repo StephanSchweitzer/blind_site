@@ -1,47 +1,30 @@
 // app/api/news/search/route.ts
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { NextRequest } from 'next/server';
-import type { Prisma } from '@prisma/client';
-import { buildNewsSearchWhere } from '@/lib/search';
+import { withAdmin } from '@/lib/auth/guards';
+import { listAdminNews, parseAdminNewsQuery } from '@/lib/news/newsList';
 
-export async function GET(req: NextRequest) {
+/**
+ * La recherche des dernières infos du back-office, pendant la frappe.
+ *
+ * Cette route existait sans garde et sans appelant — une autocomplétion que plus
+ * rien n'utilisait. Elle sert désormais la table de /admin/news, qui la
+ * rappelle à chaque changement de recherche, de champ, de type ou de page au
+ * lieu de refaire le rendu serveur de la page : voir lib/news/newsList.ts pour
+ * le moteur, partagé avec ce premier rendu.
+ *
+ * Admin : elle cherche aussi par auteur, c'est-à-dire par permanent. Le site
+ * public lit /api/news.
+ */
+export const GET = withAdmin(async (req) => {
     try {
-        const searchParams = new URL(req.url).searchParams;
-        const term = searchParams.get('term');
-
-        if (!term) {
-            return NextResponse.json([]);
-        }
-
-        // Le même moteur que la liste et que /api/news, pour que l'autocomplétion
-        // et la page qu'elle mène ne trouvent jamais des choses différentes.
-        const tokenClauses = buildNewsSearchWhere(term);
-        if (!tokenClauses) {
-            return NextResponse.json([]);
-        }
-        const where: Prisma.NewsWhereInput = { AND: tokenClauses };
-
-        const results = await prisma.news.findMany({
-            where,
-            take: 5,
-            orderBy: {
-                publishedAt: 'desc'
-            },
-            select: {
-                id: true,
-                title: true,
-                publishedAt: true
-            }
-        });
-
-        return NextResponse.json(results);
-
+        const params = req.nextUrl.searchParams;
+        const result = await listAdminNews(parseAdminNewsQuery((key) => params.get(key)));
+        return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
     } catch (error) {
         console.error('Error searching news:', error);
         return NextResponse.json(
-            { error: 'Failed to search news' },
+            { error: 'Failed to search news', message: 'La recherche des dernières infos a échoué' },
             { status: 500 }
         );
     }
-}
+});

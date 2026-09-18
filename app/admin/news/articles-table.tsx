@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -13,94 +13,186 @@ import {
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useDebounce } from 'use-debounce';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { NewsType } from '@/types/news';
+import { newsTypeLabels, type NewsType } from '@/types/news';
 import NewsTypeBadge from '@/components/NewsTypeBadge';
-import { CopyableId } from '@/admin/CopyableId';
+import { CopyableId, CopyIdButton } from '@/admin/CopyableId';
 import {
     AddNewsFormBackend,
     EditNewsFormBackend,
     type NewsFormData,
 } from '@/admin/NewsFormBackendBase';
 import { toast } from '@/hooks/use-toast';
-import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
-import { parsePageParam } from '@/lib/pagination';
+import { ChevronLeft, ChevronRight, CircleX, Loader2, Plus, Search } from 'lucide-react';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import {
+    ADMIN_NEWS_PAGE_SIZE,
+    NEWS_SEARCH_FIELDS,
+    NEWS_SEARCH_FIELD_LABELS,
+    type AdminNewsQuery,
+    type AdminNewsResult,
+    type NewsSearchField,
+} from '@/lib/news/news-list-types';
 
-type Article = {
-    id: number;
-    title: string;
-    publishedAt: Date;
-    type: NewsType;
-    author: {
-        name: string | null;
-    } | null;
-};
+const DEBOUNCE_DELAY = 300;
+const NEWS_TYPES = Object.keys(newsTypeLabels) as NewsType[];
 
 interface ArticlesTableProps {
-    initialArticles: Article[];
-    initialPage: number;
-    initialSearch: string;
-    totalPages: number;
-    /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    /** Server-rendered results for `initialQuery` — the first paint needs no fetch. */
+    initial: AdminNewsResult;
+    initialQuery: AdminNewsQuery;
 }
 
-export function ArticlesTable({
-                                  initialArticles,
-                                  initialPage = 1,
-                                  initialSearch = '',
-                                  totalPages = 1,
-                                  searchSuggestions,
-                              }: ArticlesTableProps) {
-    const router = useRouter();
+/** The part of a query that decides the results — what the fetch is keyed on. */
+type ListQuery = Pick<AdminNewsQuery, 'search' | 'field' | 'type' | 'page'>;
+const queryKey = (q: ListQuery) => JSON.stringify([q.search.trim(), q.field, q.type, q.page]);
+
+/**
+ * Les dernières infos du back-office.
+ *
+ * La recherche suit le modèle de la table des livres (app/admin/books/
+ * books-table.tsx), et pour les mêmes raisons. Elle naviguait avec
+ * `router.push` à chaque frappe, ce qui refaisait tout le rendu serveur de la
+ * page : la table se vidait puis se remplissait, et une réponse lente pouvait
+ * arriver après une plus récente. Ici la table interroge /api/news/search
+ * elle-même, annule la requête dépassée, et garde l'URL à jour par l'History API
+ * — recharger ou partager le lien redonne la même vue.
+ */
+export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
     const searchParams = useSearchParams();
-    const [search, setSearch] = useState(initialSearch);
-    const [prevUrlSearch, setPrevUrlSearch] = useState(initialSearch);
-    const [debouncedSearch] = useDebounce(search, 300);
+
+    const [searchTerm, setSearchTerm] = useState(initialQuery.search);
+    const [field, setField] = useState<NewsSearchField>(initialQuery.field);
+    const [type, setType] = useState<NewsType | null>(initialQuery.type);
+    const [currentPage, setCurrentPage] = useState(initialQuery.page);
+    const [results, setResults] = useState<AdminNewsResult>(initial);
+    const [isSearching, setIsSearching] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
     const [isAddOpen, setIsAddOpen] = useState(false);
     /** Article open in the edit dialogue, with the content the list doesn't carry. */
     const [editing, setEditing] = useState<{ id: number; data: NewsFormData } | null>(null);
     const [isLoadingArticle, setIsLoadingArticle] = useState(false);
 
-// Sync from URL during render instead of in an effect
-    const urlSearch = searchParams.get('search') || '';
-    if (urlSearch !== prevUrlSearch) {
-        setPrevUrlSearch(urlSearch);
-        setSearch(urlSearch);
-    }
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    /** The query `results` currently answers; a matching query skips the fetch. */
+    const shownKeyRef = useRef(queryKey(initialQuery));
 
-    // Page courante depuis l'URL, à défaut initialPage. Via parsePageParam :
-    // `Math.max(1, parseInt('abc'))` vaut NaN, pas 1 — voir lib/pagination.ts.
-    const currentPage = parsePageParam(searchParams.get('page') ?? initialPage.toString());
+    // History API, not router.replace: a router navigation would re-render
+    // page.tsx on the server — the very flicker this table exists to avoid.
+    // The `news` deep-link survives, so a dialogue opened by it isn't orphaned.
+    const updateURL = useCallback((q: ListQuery) => {
+        const params = new URLSearchParams();
+        if (q.search.trim()) params.set('search', q.search);
+        if (q.field !== 'all') params.set('field', q.field);
+        if (q.type) params.set('type', q.type);
+        if (q.page > 1) params.set('page', q.page.toString());
+        const deepLink = new URLSearchParams(window.location.search).get('news');
+        if (deepLink) params.set('news', deepLink);
+        const qs = params.toString();
+        window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
+    }, []);
 
-    // Handle debounced search with navigation
-    useEffect(() => {
-        const currentSearch = searchParams.get('search') || '';
-        if (debouncedSearch !== currentSearch) {
-            const params = new URLSearchParams(searchParams);
-            if (debouncedSearch.trim()) {
-                params.set('search', debouncedSearch);
-            } else {
-                params.delete('search');
-            }
-            params.set('page', '1'); // Reset to first page on search
-            router.push(`?${params.toString()}`, { scroll: false });
+    const performSearch = useCallback(async (q: ListQuery, force = false) => {
+        const key = queryKey(q);
+        if (!force && key === shownKeyRef.current) {
+            abortControllerRef.current?.abort();
+            abortControllerRef.current = null;
+            setIsSearching(false);
+            return;
         }
-    }, [debouncedSearch, router, searchParams]);
 
-    // Improved page change handler
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        updateURL(q);
+        setIsSearching(true);
+        setError(null);
+
+        try {
+            const params = new URLSearchParams({
+                search: q.search,
+                field: q.field,
+                page: q.page.toString(),
+                limit: ADMIN_NEWS_PAGE_SIZE.toString(),
+                // « Vouliez-vous dire … ? » when nothing is found — see lib/search-suggest.ts.
+                suggest: '1',
+            });
+            if (q.type) params.set('type', q.type);
+
+            const response = await fetch(`/api/news/search?${params}`, {
+                signal: controller.signal,
+                cache: 'no-store',
+            });
+            if (!response.ok) throw new Error('Search failed');
+            const data = (await response.json()) as AdminNewsResult;
+            if (abortControllerRef.current !== controller) return;
+            setResults(data);
+            shownKeyRef.current = key;
+        } catch (err) {
+            if (err instanceof Error && err.name !== 'AbortError') {
+                setError('Une erreur s’est produite lors de la recherche.');
+                console.error('News search error:', err);
+            }
+        } finally {
+            // A superseded request settles after its replacement started:
+            // clearing the flag here would hide the spinner too early.
+            if (abortControllerRef.current === controller) {
+                abortControllerRef.current = null;
+                setIsSearching(false);
+            }
+        }
+    }, [updateURL]);
+
+    // Debounced while a term is typed, immediate for a click on a filter or a page.
+    useEffect(() => {
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = setTimeout(() => {
+            void performSearch({ search: searchTerm, field, type, page: currentPage });
+        }, searchTerm ? DEBOUNCE_DELAY : 0);
+        return () => {
+            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        };
+    }, [searchTerm, field, type, currentPage, performSearch]);
+
+    useEffect(() => () => {
+        abortControllerRef.current?.abort();
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    }, []);
+
+    const handleSearchChange = useCallback((value: string) => {
+        // Drop the in-flight request at the keystroke rather than when the
+        // debounce fires, so its older results can't land mid-typing.
+        abortControllerRef.current?.abort();
+        abortControllerRef.current = null;
+        setIsSearching(true);
+        setSearchTerm(value);
+        setCurrentPage(1);
+    }, []);
+
+    const handleFieldChange = useCallback((value: NewsSearchField) => {
+        setField(value);
+        setCurrentPage(1);
+    }, []);
+
+    /** A type pill toggles: clicking the selected one clears the filter. */
+    const handleTypeClick = useCallback((value: NewsType | null) => {
+        setType((current) => (current === value ? null : value));
+        setCurrentPage(1);
+    }, []);
+
     const handlePageChange = useCallback((newPage: number) => {
-        if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+        if (newPage < 1 || newPage > results.totalPages || newPage === currentPage) return;
+        setCurrentPage(newPage);
+    }, [currentPage, results.totalPages]);
 
-        const params = new URLSearchParams(searchParams);
-        params.set('page', newPage.toString());
-        router.push(`?${params.toString()}`, { scroll: false });
-    }, [currentPage, totalPages, searchParams, router]);
+    /** After a save or a deletion: same view, fresh rows and counts. */
+    const refresh = useCallback(() => {
+        void performSearch({ search: searchTerm, field, type, page: currentPage }, true);
+    }, [performSearch, searchTerm, field, type, currentPage]);
 
     // The list only carries title/type/date — the content comes from the API
     // when the dialogue opens, the same way the catalogue loads a book.
@@ -131,12 +223,8 @@ export function ArticlesTable({
         }
     }, []);
 
-    const handleRowClick = useCallback((articleId: number) => {
-        void openArticle(articleId);
-    }, [openArticle]);
-
     // Deep-link: open the edit dialogue directly from /admin/news?news=<id>.
-    // openedRef prevents re-firing on router.refresh() / re-render for the same id.
+    // openedRef prevents re-firing on re-render for the same id.
     const newsParam = searchParams.get('news');
     const openedNewsRef = useRef<string | null>(null);
 
@@ -151,15 +239,16 @@ export function ArticlesTable({
 
     // Strip the `news` param so closing/reopening behaves cleanly and the
     // deep-link state doesn't linger after the dialogue is dismissed.
-    const clearNewsParam = () => {
-        if (!searchParams.get('news')) return;
-        const params = new URLSearchParams(searchParams.toString());
+    // Read from the live URL rather than `searchParams`: the table rewrites the
+    // query string itself (updateURL), and this must keep what it wrote.
+    const clearNewsParam = useCallback(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has('news')) return;
         params.delete('news');
         const qs = params.toString();
         window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
-    };
+    }, []);
 
-    // Handle edit button click with event propagation stop
     const handleEditClick = useCallback((e: React.MouseEvent, articleId: number) => {
         e.stopPropagation();
         void openArticle(articleId);
@@ -168,21 +257,23 @@ export function ArticlesTable({
     const handleSaved = useCallback(() => {
         setEditing(null);
         setIsAddOpen(false);
-        router.refresh();
-    }, [router]);
+        clearNewsParam();
+        refresh();
+    }, [refresh, clearNewsParam]);
 
-    // Generate pagination buttons with improved UX
+    const totalPages = results.totalPages;
+
     const generatePaginationButtons = () => {
         const buttons = [];
         const maxVisiblePages = 5;
 
-        // Previous button
         buttons.push(
             <Button
                 key="prev"
                 variant="outline"
                 size="sm"
                 disabled={currentPage === 1}
+                aria-label="Page précédente"
                 className="bg-card text-foreground border-border hover:bg-muted disabled:opacity-50"
                 onClick={() => handlePageChange(currentPage - 1)}
             >
@@ -190,42 +281,28 @@ export function ArticlesTable({
             </Button>
         );
 
-        // Page number buttons
         let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
         const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-        // Adjust start if we're near the end
         if (endPage - startPage < maxVisiblePages - 1) {
             startPage = Math.max(1, endPage - maxVisiblePages + 1);
         }
 
-        // First page and ellipsis
         if (startPage > 1) {
             buttons.push(
-                <Button
-                    key={1}
-                    variant="outline"
-                    size="sm"
-                    className="bg-card text-foreground border-border hover:bg-muted"
-                    onClick={() => handlePageChange(1)}
-                >
+                <Button key={1} variant="outline" size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(1)}>
                     1
                 </Button>
             );
-            if (startPage > 2) {
-                buttons.push(
-                    <span key="ellipsis1" className="text-muted-foreground px-2">...</span>
-                );
-            }
+            if (startPage > 2) buttons.push(<span key="ellipsis1" className="text-muted-foreground px-2">...</span>);
         }
 
-        // Main page buttons
         for (let i = startPage; i <= endPage; i++) {
             buttons.push(
                 <Button
                     key={i}
                     variant={currentPage === i ? "default" : "outline"}
                     size="sm"
+                    aria-current={currentPage === i ? 'page' : undefined}
                     className={currentPage === i
                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
                         : "bg-card text-foreground border-border hover:bg-muted"}
@@ -236,33 +313,22 @@ export function ArticlesTable({
             );
         }
 
-        // Last page and ellipsis
         if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                buttons.push(
-                    <span key="ellipsis2" className="text-muted-foreground px-2">...</span>
-                );
-            }
+            if (endPage < totalPages - 1) buttons.push(<span key="ellipsis2" className="text-muted-foreground px-2">...</span>);
             buttons.push(
-                <Button
-                    key={totalPages}
-                    variant="outline"
-                    size="sm"
-                    className="bg-card text-foreground border-border hover:bg-muted"
-                    onClick={() => handlePageChange(totalPages)}
-                >
+                <Button key={totalPages} variant="outline" size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(totalPages)}>
                     {totalPages}
                 </Button>
             );
         }
 
-        // Next button
         buttons.push(
             <Button
                 key="next"
                 variant="outline"
                 size="sm"
-                disabled={currentPage === totalPages}
+                disabled={currentPage >= totalPages}
+                aria-label="Page suivante"
                 className="bg-card text-foreground border-border hover:bg-muted disabled:opacity-50"
                 onClick={() => handlePageChange(currentPage + 1)}
             >
@@ -273,17 +339,58 @@ export function ArticlesTable({
         return buttons;
     };
 
+    const items = results.items;
+    const hasFilters = !!searchTerm.trim() || type !== null;
+    // Types worth a pill: those the current search finds, plus the selected one
+    // even at zero — otherwise the only way to clear it would vanish.
+    const typePills = NEWS_TYPES.filter((t) => results.typeCounts[t] > 0 || t === type);
+
     return (
         <Card className="bg-card border-border">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle className="text-foreground">Gérer les dernières info</CardTitle>
+                        <CardTitle className="text-foreground">Gérer les dernières infos</CardTitle>
                         <AideLink section="pages-publiques" />
                     </div>
                     <CardDescription className="text-muted-foreground">
-                        Gérer et modifier les informations affichées sur dernières info
+                        Gérer et modifier les informations affichées sur Dernières infos
                     </CardDescription>
+                    <div className="text-sm text-muted-foreground mt-2 flex flex-wrap items-center gap-x-1 gap-y-1">
+                        <button
+                            type="button"
+                            aria-pressed={type === null}
+                            onClick={() => handleTypeClick(null)}
+                            title="Tous les types"
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium transition-colors ${
+                                type === null
+                                    ? 'bg-muted text-foreground ring-1 ring-inset ring-border'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                        >
+                            {results.allCount} info{results.allCount !== 1 ? 's' : ''}
+                            {searchTerm.trim() ? ' trouvée' + (results.allCount !== 1 ? 's' : '') : ' au total'}
+                        </button>
+                        {typePills.map((t) => (
+                            <span key={t} className="contents">
+                                <span aria-hidden className="text-muted-foreground/50">&#8226;</span>
+                                <button
+                                    type="button"
+                                    aria-pressed={type === t}
+                                    onClick={() => handleTypeClick(t)}
+                                    title={type === t ? 'Retirer le filtre' : `Afficher uniquement : ${newsTypeLabels[t]}`}
+                                    className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
+                                        type === t
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    }`}
+                                >
+                                    {newsTypeLabels[t]}
+                                    <span className="tabular-nums">{results.typeCounts[t]}</span>
+                                </button>
+                            </span>
+                        ))}
+                    </div>
                 </div>
                 <Button
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90"
@@ -294,53 +401,98 @@ export function ArticlesTable({
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                    <Input
-                        placeholder="Rechercher les dernières infos..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="max-w-sm bg-card border-border text-foreground placeholder:text-muted-foreground"
-                    />
-                    {search && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSearch('')}
-                            className="bg-card text-foreground border-border hover:bg-muted"
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:items-end mb-4">
+                    <div className="relative w-full sm:flex-1 sm:max-w-xl">
+                        <Input
+                            value={searchTerm}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            placeholder="Rechercher les dernières infos..."
+                            aria-label="Rechercher les dernières infos"
+                            className="pl-10 pr-10 bg-card text-foreground border-border placeholder:text-muted-foreground"
+                        />
+                        <Search className="absolute left-3 top-2.5 text-muted-foreground" size={20} aria-hidden="true" />
+                        {isSearching && searchTerm.length > 0 && (
+                            <Loader2 className="absolute right-3 top-2.5 text-muted-foreground animate-spin" size={20} aria-hidden="true" />
+                        )}
+                        {!isSearching && searchTerm.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => handleSearchChange('')}
+                                aria-label="Effacer la recherche"
+                                className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors rounded-full"
+                            >
+                                <CircleX aria-hidden="true" size={20} />
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-1 w-full sm:w-44">
+                        <label htmlFor="news-search-field" className="text-xs font-medium text-muted-foreground">
+                            Rechercher dans
+                        </label>
+                        <select
+                            id="news-search-field"
+                            value={field}
+                            onChange={(e) => handleFieldChange(e.target.value as NewsSearchField)}
+                            className="w-full px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
                         >
-                            Effacer
-                        </Button>
-                    )}
+                            {NEWS_SEARCH_FIELDS.map((f) => (
+                                <option key={f} value={f}>{NEWS_SEARCH_FIELD_LABELS[f]}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
-                <div className="rounded-md border border-border bg-card">
-                    <Table>
-                        <TableHeader className="bg-card">
-                            <TableRow className="border-b border-border">
-                                <TableHead className="text-foreground font-medium">Titre</TableHead>
-                                <TableHead className="text-foreground font-medium">Type</TableHead>
-                                <TableHead className="text-foreground font-medium">Auteur</TableHead>
-                                <TableHead className="text-foreground font-medium">Date de Publication</TableHead>
-                                <TableHead className="text-foreground font-medium">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {initialArticles.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                                        {search ? 'Aucun article trouvé pour cette recherche' : 'Aucun article trouvé'}
-                                        <SearchSuggestions suggestions={searchSuggestions} onPick={setSearch} />
-                                    </TableCell>
+                {error && (
+                    <div role="alert" className="text-center py-4 bg-red-50 text-red-700 rounded-lg border border-red-200 mb-4 dark:bg-red-900/50 dark:text-red-200 dark:border-red-800">
+                        {error}
+                    </div>
+                )}
+
+                {isSearching && items.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 bg-card rounded-lg">
+                        <Loader2 className="animate-spin h-10 w-10 text-muted-foreground" />
+                        <p className="mt-4 text-foreground">Recherche en cours...</p>
+                    </div>
+                ) : items.length === 0 ? (
+                    <div className="text-center py-12 bg-card rounded-lg border border-border">
+                        <p className="text-foreground">
+                            {hasFilters ? 'Aucune info trouvée pour cette recherche' : 'Aucune info publiée'}
+                        </p>
+                        {searchTerm.trim() && (
+                            <SearchSuggestions suggestions={results.searchSuggestions} onPick={handleSearchChange} />
+                        )}
+                    </div>
+                ) : (
+                    <div className={`rounded-md border border-border bg-card transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
+                        <Table>
+                            <TableHeader className="bg-card">
+                                <TableRow className="border-b border-border">
+                                    <TableHead className="text-foreground font-medium">ID</TableHead>
+                                    <TableHead className="text-foreground font-medium">Titre</TableHead>
+                                    <TableHead className="text-foreground font-medium">Type</TableHead>
+                                    <TableHead className="text-foreground font-medium">Auteur</TableHead>
+                                    <TableHead className="text-foreground font-medium">Date de publication</TableHead>
+                                    <TableHead className="text-foreground font-medium">Actions</TableHead>
                                 </TableRow>
-                            ) : (
-                                initialArticles.map((article) => (
+                            </TableHeader>
+                            <TableBody>
+                                {items.map((article) => (
                                     <TableRow
                                         key={article.id}
-                                        className="border-b border-border hover:bg-muted cursor-pointer transition-colors"
-                                        onClick={() => handleRowClick(article.id)}
+                                        className="group border-b border-border hover:bg-muted cursor-pointer transition-colors"
+                                        onClick={() => void openArticle(article.id)}
                                     >
-                                        <TableCell className="text-foreground font-medium">
-                                            {article.title}
+                                        <TableCell className="font-medium text-foreground whitespace-nowrap">
+                                            <CopyIdButton id={article.id} label="de l'information" />
+                                        </TableCell>
+                                        <TableCell className="text-foreground">
+                                            <div className="font-medium">{article.title}</div>
+                                            {article.excerpt && (
+                                                <div className="mt-0.5 max-w-xl text-sm text-muted-foreground line-clamp-2">
+                                                    {article.excerpt}
+                                                </div>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <NewsTypeBadge type={article.type} />
@@ -348,7 +500,7 @@ export function ArticlesTable({
                                         <TableCell className="text-foreground">
                                             {article.author?.name || 'Inconnu'}
                                         </TableCell>
-                                        <TableCell className="text-foreground">
+                                        <TableCell className="text-foreground whitespace-nowrap">
                                             {parisDate(article.publishedAt, {
                                                 year: 'numeric',
                                                 month: 'short',
@@ -366,19 +518,19 @@ export function ArticlesTable({
                                             </Button>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
 
                 {totalPages > 1 && (
                     <div className="mt-6">
-                        <div className="flex justify-center items-center gap-1">
+                        <div className="flex flex-wrap justify-center items-center gap-1">
                             {generatePaginationButtons()}
                         </div>
                         <p className="text-center text-sm text-muted-foreground mt-2">
-                            Page {currentPage} sur {totalPages} ({initialArticles.length} article{initialArticles.length !== 1 ? 's' : ''})
+                            Page {currentPage} sur {totalPages} ({results.total} info{results.total !== 1 ? 's' : ''})
                         </p>
                     </div>
                 )}

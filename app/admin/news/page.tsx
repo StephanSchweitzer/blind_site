@@ -1,10 +1,6 @@
 // app/admin/news/page.tsx
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
 import { ArticlesTable } from './articles-table';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
-import { buildNewsSearchWhere } from '@/lib/search';
-import { suggestSearches } from '@/lib/search-suggest';
+import { listAdminNews, parseAdminNewsQuery, type AdminNewsResult } from '@/lib/news/newsList';
 
 interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -12,87 +8,33 @@ interface PageProps {
 
 export const dynamic = 'force-dynamic';
 
-async function getArticles(page: number, searchTerm: string) {
-    const articlesPerPage = 10;
+/**
+ * Premier rendu seulement : ensuite la table interroge /api/news/search
+ * elle-même, pendant la frappe, sans refaire cette page — le même partage que
+ * /admin/books. Les deux passent par listAdminNews (lib/news/newsList.ts).
+ */
+export default async function Articles({ searchParams }: PageProps) {
+    const params = await searchParams;
+    const query = parseAdminNewsQuery((key) => params[key]);
 
+    let initial: AdminNewsResult;
     try {
-        // Tokenisé, insensible aux apostrophes, et le type se cherche aussi par
-        // son libellé affiché (« Événement ») — voir buildNewsSearchWhere.
-        const whereFor = (term: string): Prisma.NewsWhereInput => {
-            const tokenClauses = buildNewsSearchWhere(term);
-            return tokenClauses ? { AND: tokenClauses } : {};
-        };
-        const whereClause = whereFor(searchTerm);
-
-        const [articles, totalArticles] = await Promise.all([
-            prisma.news.findMany({
-                where: whereClause,
-                select: {
-                    id: true,
-                    title: true,
-                    publishedAt: true,
-                    type: true,
-                    author: {
-                        select: {
-                            name: true
-                        }
-                    }
-                },
-                orderBy: {
-                    publishedAt: 'desc'
-                },
-                skip: pageSkip(page, articlesPerPage),
-                take: articlesPerPage,
-            }),
-            prisma.news.count({ where: whereClause }),
-        ]);
-
-        // Only when the search found nothing — see lib/search-suggest.ts.
-        const searchSuggestions =
-            totalArticles === 0 && searchTerm
-                ? await suggestSearches(searchTerm, ['news', 'people'], (q) =>
-                    prisma.news.count({ where: whereFor(q) }))
-                : [];
-
-        return {
-            articles,
-            totalArticles,
-            totalPages: Math.ceil(totalArticles / articlesPerPage),
-            searchSuggestions,
-        };
+        initial = await listAdminNews({ ...query, suggest: true });
     } catch (error) {
         console.error('Error fetching articles:', error);
-        return {
-            articles: [],
-            totalArticles: 0,
+        initial = {
+            items: [],
+            total: 0,
+            page: query.page,
             totalPages: 0,
-            searchSuggestions: [],
+            typeCounts: { GENERAL: 0, EVENEMENT: 0, ANNONCE: 0, ACTUALITE: 0, PROGRAMMATION: 0 },
+            allCount: 0,
         };
     }
-}
-
-export default async function Articles({ searchParams }: PageProps) {
-    // Await searchParams before accessing its properties
-    const params = await searchParams;
-
-    // Parse page parameter
-    const pageStr = Array.isArray(params.page) ? params.page[0] : params.page ?? '1';
-    const page = parsePageParam(pageStr);
-
-    // Parse search parameter
-    const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search ?? '';
-
-    const { articles, totalPages, searchSuggestions } = await getArticles(page, searchTerm);
 
     return (
         <div className="space-y-4">
-            <ArticlesTable
-                initialArticles={articles}
-                initialPage={page}
-                initialSearch={searchTerm}
-                totalPages={totalPages}
-                searchSuggestions={searchSuggestions}
-            />
+            <ArticlesTable initial={initial} initialQuery={query} />
         </div>
     );
 }

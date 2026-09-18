@@ -323,7 +323,7 @@ export function buildGenreSearchWhere(searchTerm: string): Prisma.GenreWhereInpu
  * rapprochement se fait ici, en mémoire, où les accents peuvent être repliés
  * proprement (voir foldForLabelMatch).
  */
-function newsTypesMatchingLabel(token: string): string[] {
+export function newsTypesMatchingLabel(token: string): string[] {
     const needle = foldForLabelMatch(token);
     if (!needle) return [];
     return Object.entries(newsTypeLabels)
