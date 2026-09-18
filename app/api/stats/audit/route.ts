@@ -49,6 +49,40 @@ const AUDIO_ACTION_FOR_OPERATION: Record<AuditOperation, string> = {
     RESTORE: 'RESTORE',
 };
 
+/**
+ * The same question for every other model, where a soft delete is the catch.
+ *
+ * User / Book / Orders / Assignment are never hard-deleted: the audit
+ * extension records the write that sets `deletedAt` as an UPDATE, and the one
+ * that clears it (POST /api/books/[id]/restore, /api/user/[id]/restore) as an
+ * UPDATE too. The timeline badges them « Suppression » / « Restauration »
+ * (isSoftDelete / isSoftRestore in audit-timeline.tsx), so the filter has to
+ * sort them the same way — filtering on the stored column alone left
+ * « Suppression » missing nearly every deletion in the trail, and
+ * « Modification » listing rows badged « Suppression ».
+ *
+ * Mirrors the client test exactly: `deletedAt` in the diff, null → set is a
+ * deletion, set → null a restore. A JSON null reads back as SQL NULL via #>>.
+ */
+const SOFT_DELETE = Prisma.sql`(e.operation = 'UPDATE' AND e.changes ? 'deletedAt'
+    AND (e.changes #>> '{deletedAt,0}') IS NULL AND (e.changes #>> '{deletedAt,1}') IS NOT NULL)`;
+const SOFT_RESTORE = Prisma.sql`(e.operation = 'UPDATE' AND e.changes ? 'deletedAt'
+    AND (e.changes #>> '{deletedAt,0}') IS NOT NULL AND (e.changes #>> '{deletedAt,1}') IS NULL)`;
+
+function storedOperationMatches(op: AuditOperation): Prisma.Sql {
+    const stored = Prisma.sql`e.operation = ${op}::"AuditOperation"`;
+    switch (op) {
+        case 'DELETE':
+            return Prisma.sql`(${stored} OR ${SOFT_DELETE})`;
+        case 'RESTORE':
+            return Prisma.sql`(${stored} OR ${SOFT_RESTORE})`;
+        case 'UPDATE':
+            return Prisma.sql`(${stored} AND NOT ${SOFT_DELETE} AND NOT ${SOFT_RESTORE})`;
+        default:
+            return stored;
+    }
+}
+
 interface AuditRaw {
     id: number;
     at: string;
@@ -178,7 +212,7 @@ export const GET = withSuperAdmin(async (request) => {
         if (operation) {
             const op = operation as AuditOperation;
             filters.push(Prisma.sql`(
-                (e.model <> 'AudioTrackEvent' AND e.operation = ${op}::"AuditOperation")
+                (e.model <> 'AudioTrackEvent' AND ${storedOperationMatches(op)})
                 OR (e.model = 'AudioTrackEvent' AND (e.changes #>> '{action,1}') = ${AUDIO_ACTION_FOR_OPERATION[op]})
             )`);
         }

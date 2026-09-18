@@ -82,6 +82,18 @@ function isSoftDelete(event: AuditEventItem): boolean {
 }
 
 /**
+ * The mirror: the UPDATE that clears `deletedAt` (POST /api/books/[id]/restore,
+ * /api/user/[id]/restore) is a restoration. Keep both tests in step with
+ * storedOperationMatches in app/api/stats/audit/route.ts, which filters the
+ * same way this badges.
+ */
+function isSoftRestore(event: AuditEventItem): boolean {
+    if (event.operation !== 'UPDATE' || !event.changes.deletedAt) return false;
+    const [before, after] = event.changes.deletedAt;
+    return before != null && after == null;
+}
+
+/**
  * What to badge a row with. An AudioTrackEvent row is always a CREATE at the
  * storage level — it's a log entry being inserted, never the track itself
  * being deleted in place — so `event.operation` alone would badge a deletion
@@ -98,6 +110,9 @@ function operationBadge(event: AuditEventItem): { label: string; tint: string } 
     }
     if (isSoftDelete(event)) {
         return { label: OPERATION_LABELS.DELETE, tint: OPERATION_TINT.DELETE };
+    }
+    if (isSoftRestore(event)) {
+        return { label: OPERATION_LABELS.RESTORE, tint: OPERATION_TINT.RESTORE };
     }
     return { label: OPERATION_LABELS[event.operation], tint: OPERATION_TINT[event.operation] };
 }

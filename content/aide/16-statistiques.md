@@ -38,7 +38,9 @@ Cette carte compte les membres, avec un filtre **Tous / Lecteurs / Auditeurs / A
 
 Le journal enregistre chaque modification faite dans Arbre Rose : qui, quand, sur quelle fiche, et ce qui a changé. Vous pouvez le filtrer par fiche, par type, par auteur, par opération et par période.
 
-Cliquez sur la flèche à gauche d'une ligne pour voir le détail des champs modifiés. Certaines modifications peuvent être annulées depuis le journal, par exemple pour restaurer un livre supprimé.
+Le filtre « Suppression » montre toutes les suppressions, y compris celles des livres, des personnes, des demandes et des attributions, qui ne sont que masquées et restent restaurables. De même, « Restauration » inclut leur retour.
+
+Cliquez sur la flèche à gauche d'une ligne pour voir le détail des champs modifiés. Certaines suppressions définitives peuvent être annulées depuis le journal. Un livre supprimé, lui, se restaure depuis sa propre fiche : voir [Restaurer un livre supprimé](/admin/aide/catalogue#restaurer-un-livre-supprime).
 
 Le journal ne conserve pas tout indéfiniment : l'en-tête indique jusqu'à quelle date il remonte.
 
