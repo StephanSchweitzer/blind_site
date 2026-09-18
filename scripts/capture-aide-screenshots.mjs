@@ -494,8 +494,30 @@ const SPECS = [
             { n: 2, selector: '#description', self: true },
             { n: 3, label: "Démarrer l'enregistrement", self: true },
             { n: 4, selector: 'label[for="active"]', self: true },
+            { n: 5, label: 'Importer un fichier', self: true, coin: 'hd' },
         ],
         why: 'informations, présentation audio et publication',
+    },
+    // Un fichier deja pret, importe au lieu d'etre enregistre au micro. Le WAV
+    // est fabrique par le script (wavMuet) : seul compte l'etat « Fichier
+    // importé » qu'il fait apparaitre.
+    {
+        name: 'liste-de-livres-11.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/listes-de-livres/new',
+        waitFor: '#title',
+        steps: [
+            { sleep: 1200 },
+            { importAudio: 'form input[type="file"][accept="audio/*"]' },
+            { waitFor: 'form audio' }, { sleep: 1200 },
+        ],
+        clip: 'form > .grid > div:last-child',
+        densite: 2,
+        annotations: [
+            { n: 1, selector: 'form .grid > div:last-child audio', self: true },
+            { n: 2, label: 'Remplacer le fichier', self: true },
+        ],
+        why: 'un fichier audio importé, prêt à partir avec la liste',
     },
     // L'enregistreur, prise par prise. Chrome est lance avec un micro factice
     // (--use-fake-device-for-media-stream) : sans lui, getUserMedia echoue en
@@ -981,6 +1003,47 @@ async function clickSelector(selector) {
     if (!clicked) throw new Error(`élément ${selector} introuvable`);
 }
 
+/**
+ * Depose un fichier dans un <input type="file">, sans passer par la fenetre
+ * du systeme — qu'un Chrome sans tete n'ouvre de toute facon pas. Le champ
+ * est cache (le bouton « Importer un fichier » le declenche) : on le vise
+ * donc directement, et React recoit l'evenement `change` comme d'un vrai choix.
+ */
+async function importFile(selector, filePath) {
+    const { result } = await send('Runtime.evaluate', {
+        expression: `document.querySelector(${JSON.stringify(selector)})`,
+    });
+    if (!result?.objectId) throw new Error(`champ ${selector} introuvable`);
+    await send('DOM.setFileInputFiles', { files: [filePath], objectId: result.objectId });
+}
+
+/**
+ * Un WAV muet de quelques secondes, fabrique a la volee : la capture n'a
+ * besoin que d'un fichier que le navigateur reconnaisse comme audio, pas d'un
+ * enregistrement a versionner dans le depot.
+ */
+function wavMuet(secondes = 20) {
+    const frequence = 8000;
+    const donnees = frequence * secondes * 2; // mono, 16 bits
+    const wav = Buffer.alloc(44 + donnees);
+    wav.write('RIFF', 0);
+    wav.writeUInt32LE(36 + donnees, 4);
+    wav.write('WAVE', 8);
+    wav.write('fmt ', 12);
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);            // PCM
+    wav.writeUInt16LE(1, 22);            // mono
+    wav.writeUInt32LE(frequence, 24);
+    wav.writeUInt32LE(frequence * 2, 28);
+    wav.writeUInt16LE(2, 32);
+    wav.writeUInt16LE(16, 34);
+    wav.write('data', 36);
+    wav.writeUInt32LE(donnees, 40);
+    const fichier = path.join(os.tmpdir(), 'aide-presentation-audio.wav');
+    fs.writeFileSync(fichier, wav);
+    return fichier;
+}
+
 /** Le rectangle de l'élément visible, ramené dans la fenêtre. */
 async function clipFor(selector) {
     return evaluate(`(() => {
@@ -1440,6 +1503,7 @@ async function main() {
                     if (step.clickExact) await clickText(step.clickExact, true);
                     if (step.clickSelector) await clickSelector(step.clickSelector);
                     if (step.typeIn) await typeIn(step.typeIn.selector, step.typeIn.value);
+                    if (step.importAudio) await importFile(step.importAudio, wavMuet());
                     if (step.scrollToText) await scrollToText(step.scrollToText);
                     if (step.searchFor) await searchFor(step.searchFor);
                     if (step.waitFor) await waitFor(step.waitFor);

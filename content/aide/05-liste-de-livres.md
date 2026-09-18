@@ -14,7 +14,7 @@ Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de l
 
 ## Ajout des listes de livres
 
-Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Visible sur le site public** » (4) décide si la liste apparaît dans la partie publique du site.
+Vous devez attribuer un titre à la liste (1). La description (2) est facultative, tout comme la présentation audio (3). Une ancienne permanente avait pour habitude d'enregistrer une brève explication et de lire les titres à voix haute pour les auditeurs qui ne savaient pas lire, afin qu'ils puissent savoir ce qui était populaire à l'époque aux ECA. L'interrupteur « **Visible sur le site public** » (4) décide si la liste apparaît dans la partie publique du site. Si la présentation audio est déjà enregistrée ailleurs, « **Importer un fichier** » (5) permet de l'ajouter sans passer par le micro (voir « Importer un fichier audio » plus bas).
 
 ![Liste de Livres - capture 2](/admin/aide/images/liste-de-livres-02.jpg)
 
@@ -42,9 +42,17 @@ Vous pouvez (1) continuer à enregistrer des sections, (2) écouter une section 
 
 ![Liste de Livres - capture 7](/admin/aide/images/liste-de-livres-07.jpg)
 
-Si vous avez déjà un fichier audio prêt, cliquez plutôt sur « Importer un fichier », à côté de « Démarrer l'enregistrement ».
-
 L'audio n'est envoyé qu'au moment où vous enregistrez la liste.
+
+## Importer un fichier audio
+
+Si la présentation a déjà été enregistrée (sur un téléphone, un dictaphone ou un ordinateur), inutile de la refaire au micro : cliquez sur « **Importer un fichier** », à côté de « Démarrer l'enregistrement » (repère 5 de la capture 2), puis choisissez le fichier sur votre ordinateur. Tous les formats audio courants sont acceptés (mp3, m4a, wav…), jusqu'à 25 Mo.
+
+Le cadre passe au vert et indique « **Fichier importé** ». (1) Vous pouvez l'écouter pour vérifier que c'est le bon. (2) « **Remplacer le fichier** » rouvre l'enregistreur : « Jeter tout » l'écarte pour en importer un autre, et « Continuer l'enregistrement » ajoute une prise au micro à la suite du fichier.
+
+![Liste de Livres - capture 11](/admin/aide/images/liste-de-livres-11.jpg)
+
+Comme pour un enregistrement, le fichier n'est envoyé qu'au moment où vous enregistrez la liste.
 
 ## Ajoutez des livres à la liste
 
