@@ -39,8 +39,12 @@ of that.
   (`lib/books/deletionPreflight.ts`) is the one place the refusals are computed, read both by
   the confirmation dialogue and by the DELETE route.
 - **Two ways back, and they don't do the same work.** `POST /api/books/[id]/restore` is the
-  ordinary undo of a `deleteBookWithAudio` soft delete: it lifts `deletedAt` and calls
-  `restoreTracks` — no reattachment needed, because the row never actually left and
+  ordinary undo of a `deleteBookWithAudio` soft delete: it lifts `deletedAt` and restores
+  **only the corbeille tracks the permanent ticked** (`restoreTracksByIds`) — never "everything
+  the corbeille holds for this book", which includes bad takes deliberately removed weeks
+  earlier. `readBookRestorePreview` (`lib/books/restorePreview.ts`) proposes the tracks trashed
+  *with* the deletion (ticked) apart from older ones (unticked), and refuses when a live book
+  now holds the same ISBN. No reattachment needed, because the row never actually left and
   `DeletedAudioTrack.bookId` was never detached from it (see the next bullet).
   `reattachAudioAfterBookRestore` (`lib/books/restoreBookAudio.ts`) is for the other case,
   where the book row really was gone — a real `DELETE` (`scripts/delete-duplicate-book.ts` is

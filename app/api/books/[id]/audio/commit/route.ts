@@ -174,8 +174,12 @@ export const POST = withAdmin(async (req, { params, me }) => {
         });
     }
 
+    // Only what actually left the folder counts as moved: a file that could not
+    // be copied or removed is still there, and both the message and the
+    // listing handed to the refresh below have to say so.
+    const misSizedRemoved = new Set<string>();
     if (misSized.length) {
-        await softDeleteTracks({
+        const moved = await softDeleteTracks({
             bookId,
             prefix,
             tracks: misSized,
@@ -184,6 +188,17 @@ export const POST = withAdmin(async (req, { params, me }) => {
             // it already holds — see refreshBookAudioState's `objects` param.
             skipFinalisation: true,
         });
+        for (const p of moved.parked) misSizedRemoved.add(p.key);
+        for (const f of failed) {
+            const name = f.key.slice(prefix.length);
+            const stuck = moved.failed.find((m) => m.filename === name);
+            if (stuck && !misSizedRemoved.has(f.key)) {
+                f.reason = f.reason.replace(
+                    'fichier incomplet déplacé vers la corbeille',
+                    `fichier incomplet resté dans le dossier (${stuck.reason}) : supprimez-le puis renvoyez-le`,
+                );
+            }
+        }
     }
 
     // Probe what actually landed from its own header bytes rather than trusting
@@ -202,10 +217,9 @@ export const POST = withAdmin(async (req, { params, me }) => {
     }
 
     const confirmed = candidates.map((c) => c.key);
-    const misSizedKeys = new Set(misSized.map((m) => m.key));
-    // The mis-sized keys were just moved out of the folder; reflect that in
-    // the listing handed to the refresh below rather than listing again.
-    const remainingObjects = objects.filter((o) => !misSizedKeys.has(o.key));
+    // The mis-sized keys that were just moved out of the folder; reflect that
+    // in the listing handed to the refresh below rather than listing again.
+    const remainingObjects = objects.filter((o) => !misSizedRemoved.has(o.key));
 
     // This is where the weight of a recording finally becomes known, so it is
     // also where the demandes still waiting on a tarif get theirs — the reader

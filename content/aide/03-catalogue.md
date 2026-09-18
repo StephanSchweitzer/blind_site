@@ -106,7 +106,18 @@ Si le livre est encore lié à des demandes ou à des attributions, la suppressi
 
 Si le livre possède un enregistrement audio, la fenêtre vous demande ce qu'il faut en faire. Dans le doute, choisissez « Laisser le dossier dans le stockage ».
 
-En cas d'erreur, un Super Admin peut restaurer le livre depuis le [journal des modifications](/admin/aide/statistiques#le-journal-des-modifications).
+### Restaurer un livre supprimé
+
+Un livre supprimé n'est pas effacé : il disparaît des listes, des recherches et des menus, mais sa fiche reste ouvrable depuis un lien, par exemple depuis une ancienne demande ou attribution, ou depuis le [journal des modifications](/admin/aide/statistiques#le-journal-des-modifications). Un bandeau rouge « Fiche supprimée le … » s'affiche alors en haut de la fiche, avec un bouton « **Restaurer** ».
+
+Si des fichiers audio de ce livre sont dans la corbeille, la fenêtre de confirmation vous demande lesquels ramener :
+
+- les fichiers envoyés à la corbeille **avec la suppression** du livre : cochés par défaut ;
+- les fichiers **supprimés avant**, un par un, depuis l'éditeur audio : décochés par défaut, car ce sont souvent des prises ratées ou remplacées.
+
+Les fichiers non cochés restent dans la [corbeille audio](/admin/aide/corbeille-audio), d'où vous pourrez les restaurer plus tard.
+
+Si un autre livre porte aujourd'hui le même ISBN, la restauration est refusée et la fenêtre indique lequel. C'est souvent le même livre, saisi de nouveau : gardez alors cette autre fiche.
 
 ## Éditeur audio
 

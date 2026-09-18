@@ -59,10 +59,10 @@ export async function restoreTrashedTrack(trashId: number): Promise<ActionResult
  * pour la carte dépliée d'un livre qui a laissé plusieurs fichiers en
  * corbeille.
  *
- * Passe par restoreTracksByIds plutôt que restoreTracks(bookId) : un groupe
- * « sans fiche » n'a justement plus de bookId à filtrer dessus, et
- * restoreTracks(bookId: null) restaurerait tous les orphelins du système au
- * lieu du seul groupe affiché. Les ids viennent directement de ce que le
+ * Par identifiants plutôt que par livre : un groupe « sans fiche » n'a
+ * justement plus de bookId à filtrer dessus, et filtrer sur `bookId: null`
+ * restaurerait tous les orphelins du système au lieu du seul groupe affiché.
+ * Les ids viennent directement de ce que le
  * client a sous les yeux — la même population que celle sur laquelle il
  * propose déjà un bouton Restaurer par fichier.
  */

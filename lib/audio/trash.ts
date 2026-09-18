@@ -36,6 +36,13 @@ export class AudioTrashError extends Error {}
 /** Copies run this many at a time. CopyObject has no batch form; everything else here does. */
 const COPY_CONCURRENCY = 10;
 
+/**
+ * How much older than its corbeille row a file must be to count as the leftover
+ * of an interrupted move rather than a new upload under the same name. See the
+ * resume note in softDeleteTracks.
+ */
+export const LEFTOVER_MARGIN_MS = 2 * 60 * 1000;
+
 export interface BulkTrashResult {
     /** Tracks moved to the corbeille by this call. */
     moved: number;
@@ -44,10 +51,11 @@ export interface BulkTrashResult {
     /** Tracks still sitting in the folder, with why. */
     failed: { filename: string; reason: string }[];
     /**
-     * Per-track detail for what THIS call actually moved — keyed by the
-     * original key, so a single-track caller (softDeleteTrack) can pull its
-     * own trashId/trashKey back out without a second query. Empty for
-     * tracks skipped as already-parked (`skipped`, not `moved`).
+     * Per-track detail for every track this call took out of the folder —
+     * keyed by the original key, so a single-track caller (softDeleteTrack)
+     * can pull its own trashId/trashKey back out without a second query.
+     * Includes the leftovers of an interrupted attempt that this call finished
+     * removing (counted in `skipped`, not `moved`: their copy already existed).
      */
     parked: { key: string; trashId: number; trashKey: string; sizeBytes: number }[];
 }
@@ -78,8 +86,10 @@ export interface BulkTrashResult {
  *
  * ## Resumable on purpose
  *
- * Tracks already recorded in the corbeille are skipped, so a call that ran out
- * of time can simply be made again and continues where it stopped. That is what
+ * A track an earlier attempt already copied is not copied twice: its original
+ * is recognised as that attempt's leftover (see the resume note in the body)
+ * and simply removed, so a call that ran out of time can be made again and
+ * continues where it stopped. That is what
  * makes a timeout survivable rather than a half-emptied folder nobody can
  * account for — and it is why the caller must not delete the book until `failed`
  * comes back empty.
@@ -116,20 +126,82 @@ export async function softDeleteTracks(opts: {
     const { bookId, prefix, tracks, userId, skipFinalisation = false, priorObjects } = opts;
     if (!tracks.length) return { moved: 0, skipped: 0, failed: [], parked: [] };
 
-    // Resume: anything an earlier attempt already parked is done.
+    const failed: BulkTrashResult['failed'] = [];
+
+    // --- Resume: finish what an interrupted attempt left behind.
+    //
+    // A corbeille row naming this key is NOT enough to call the file « already
+    // done ». The row outlives the deletion for 14 days (and forever for the
+    // retainForever backfill), so a file deleted, re-recorded and re-uploaded
+    // under the same name matched it too: the new file could then never be
+    // deleted (« déjà dans la corbeille »), and a mis-sized re-upload stayed in
+    // the folder while the commit route reported it moved.
+    //
+    // A leftover is the parked object itself, still sitting in the folder
+    // because the attempt that copied it stopped before removing it: same
+    // size, last written well BEFORE the row was created (LEFTOVER_MARGIN_MS),
+    // with its corbeille copy still present. Anything else under that key is a new file and is moved
+    // like any other, into a fresh corbeille row. A leftover's original is
+    // removed now — its verified copy already exists — which is what « the
+    // next attempt deletes it » below has always promised.
     const already = await prisma.deletedAudioTrack.findMany({
         where: {
             bookId,
             restoredAt: null,
+            purgedAt: null,
             originalKey: { in: tracks.map((t) => t.key) },
         },
-        select: { originalKey: true },
+        select: { id: true, originalKey: true, trashKey: true, sizeBytes: true, deletedAt: true },
+        orderBy: { deletedAt: 'desc' },
     });
-    const done = new Set(already.map((r) => r.originalKey));
-    const todo = tracks.filter((t) => !done.has(t.key));
-    if (!todo.length) return { moved: 0, skipped: done.size, failed: [], parked: [] };
+    const parkedByKey = new Map<string, (typeof already)[number]>();
+    for (const row of already) {
+        if (!parkedByKey.has(row.originalKey)) parkedByKey.set(row.originalKey, row);
+    }
 
-    const failed: BulkTrashResult['failed'] = [];
+    const leftovers: { key: string; name: string; sizeBytes: number; trashId: number; trashKey: string }[] = [];
+    const leftoverKeys = new Set<string>();
+    // Already parked AND already gone from the folder: nothing left to do. The
+    // caller's listing can still show a key B2 has just removed (its LIST lags
+    // behind a delete), so a retry built from a fresh listing lands here too.
+    const doneKeys = new Set<string>();
+    if (parkedByKey.size) {
+        await pool(
+            tracks.filter((t) => parkedByKey.has(t.key)),
+            COPY_CONCURRENCY,
+            async (track) => {
+                const row = parkedByKey.get(track.key)!;
+                try {
+                    const original = await headTrack(track.key);
+                    if (!original) {
+                        doneKeys.add(track.key);
+                        return;
+                    }
+                    if (Number(row.sizeBytes) !== track.sizeBytes) return;
+                    // Two clocks meet here — B2's lastModified, Postgres' deletedAt —
+                    // and the two ways of being wrong are not equal: a leftover
+                    // taken for a new file costs one extra corbeille copy, a new
+                    // file taken for a leftover would be removed with no copy of
+                    // its own. Hence a margin far beyond any clock skew.
+                    const writtenBeforeRow =
+                        !!original.lastModified &&
+                        original.lastModified.getTime() < row.deletedAt.getTime() - LEFTOVER_MARGIN_MS;
+                    if (!writtenBeforeRow) return;
+                    const copy = await headTrack(row.trashKey);
+                    if (copy?.sizeBytes === track.sizeBytes) {
+                        leftovers.push({ ...track, trashId: row.id, trashKey: row.trashKey });
+                        leftoverKeys.add(track.key);
+                    }
+                } catch (e) {
+                    // Undecidable: treated as a new file below, which costs a
+                    // second copy at worst and never removes an uncopied original.
+                    console.error('softDeleteTracks: reprise non vérifiable', track.key, e);
+                }
+            },
+        );
+    }
+
+    const todo = tracks.filter((t) => !leftoverKeys.has(t.key) && !doneKeys.has(t.key));
 
     // --- Copy and verify, in parallel. Nothing is destroyed in this phase. ---
     const copied = await pool(todo, COPY_CONCURRENCY, async (track) => {
@@ -160,33 +232,43 @@ export async function softDeleteTracks(opts: {
     });
 
     const ok = copied.filter((c): c is NonNullable<typeof c> => c !== null);
-    if (!ok.length) return { moved: 0, skipped: done.size, failed, parked: [] };
+    if (!ok.length && !leftovers.length) return { moved: 0, skipped: doneKeys.size, failed, parked: [] };
 
     // --- Record BEFORE removing anything, so a crash between the two leaves a
     //     recoverable trace rather than an orphaned copy nobody can find. Also
     //     required by the foreign key: bookId can only be set while the book row
     //     still exists. *AndReturn so a single-track caller (softDeleteTrack)
-    //     can hand back its own trashId without a second query.
-    const createdRows = await prisma.deletedAudioTrack.createManyAndReturn({
-        data: ok.map((t) => ({
-            bookId,
-            originalKey: t.key,
-            trashKey: t.trashKey,
-            filename: t.name,
-            sizeBytes: BigInt(t.sizeBytes),
-            deletedById: userId,
-        })),
-        select: { id: true, originalKey: true },
-    });
+    //     can hand back its own trashId without a second query. Leftovers
+    //     already have their row.
+    const createdRows = ok.length
+        ? await prisma.deletedAudioTrack.createManyAndReturn({
+              data: ok.map((t) => ({
+                  bookId,
+                  originalKey: t.key,
+                  trashKey: t.trashKey,
+                  filename: t.name,
+                  sizeBytes: BigInt(t.sizeBytes),
+                  deletedById: userId,
+              })),
+              select: { id: true, originalKey: true },
+          })
+        : [];
     const rowIdByKey = new Map(createdRows.map((r) => [r.originalKey, r.id]));
 
+    // Everything this call takes out of the folder: the fresh copies and the
+    // leftovers, whose copy an earlier attempt already verified.
+    const leaving = [
+        ...ok.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes, trashKey: t.trashKey, trashId: rowIdByKey.get(t.key)! })),
+        ...leftovers,
+    ];
+
     // --- Only now remove the originals, in as few calls as B2 allows.
-    const { failed: notDeleted } = await deleteTracks(ok.map((t) => t.key));
+    const { failed: notDeleted } = await deleteTracks(leaving.map((t) => t.key));
     const notDeletedKeys = new Set(notDeleted);
     for (const key of notDeletedKeys) {
-        const track = ok.find((t) => t.key === key);
+        const track = leaving.find((t) => t.key === key);
         // The copy and the row both exist, so nothing is lost — the original
-        // simply outlived the call and will be skipped as already-parked on the
+        // simply outlived the call and is recognised as a leftover by the
         // next attempt, which then deletes it.
         failed.push({
             filename: track?.name ?? key,
@@ -197,24 +279,27 @@ export async function softDeleteTracks(opts: {
     // A track only counts as genuinely `parked` once its original is gone —
     // `notDeletedKeys` is still sitting in the folder, its row and corbeille
     // copy notwithstanding, so it is reported through `failed` above, not here.
-    const parked = ok
+    const parked = leaving
         .filter((t) => !notDeletedKeys.has(t.key))
         .map((t) => ({
             key: t.key,
-            trashId: rowIdByKey.get(t.key)!,
+            trashId: t.trashId,
             trashKey: t.trashKey,
             sizeBytes: t.sizeBytes,
         }));
 
-    await prisma.audioTrackEvent.createMany({
-        data: ok.map((t) => ({
-            bookId,
-            action: 'DELETE' as const,
-            filename: t.name,
-            sizeBytes: BigInt(t.sizeBytes),
-            performedById: userId,
-        })),
-    });
+    // Leftovers were logged by the attempt that copied them.
+    if (ok.length) {
+        await prisma.audioTrackEvent.createMany({
+            data: ok.map((t) => ({
+                bookId,
+                action: 'DELETE' as const,
+                filename: t.name,
+                sizeBytes: BigInt(t.sizeBytes),
+                performedById: userId,
+            })),
+        });
+    }
 
     // --- Per-folder work, done once.
     if (!skipFinalisation) {
@@ -227,13 +312,13 @@ export async function softDeleteTracks(opts: {
         // MINUS the keys just genuinely removed (copied out AND deleted;
         // `notDeletedKeys` are still sitting in the folder) — so neither call
         // below needs to list the prefix again.
-        const removedKeys = new Set(ok.filter((t) => !notDeletedKeys.has(t.key)).map((t) => t.key));
+        const removedKeys = new Set(parked.map((t) => t.key));
         const remaining = priorObjects?.filter((o) => !removedKeys.has(o.key));
         await ensureFolderPlaceholder(prefix, remaining);
         await refreshBookAudioState(bookId, null, true, remaining);
     }
 
-    return { moved: ok.length, skipped: done.size, failed, parked };
+    return { moved: ok.length, skipped: leftovers.length + doneKeys.size, failed, parked };
 }
 
 /**
@@ -269,12 +354,8 @@ export async function softDeleteTrack(opts: {
         throw new AudioTrashError(result.failed[0].reason);
     }
     if (!result.parked.length) {
-        // Resumable by design: a track already recorded in the corbeille
-        // (restoredAt: null) is skipped, not re-parked — see the "resume"
-        // note above. This single-track path is always a fresh admin
-        // action, never a retry of a partial bulk run, so landing here means
-        // the file was already moved a moment ago; say so rather than claim
-        // to have just done it again.
+        // Defensive: a track that is neither parked nor failed should not
+        // exist. Say what is known rather than claim a move that didn't happen.
         throw new AudioTrashError('Ce fichier est déjà dans la corbeille.');
     }
 
@@ -290,29 +371,23 @@ export interface BulkRestoreResult {
 }
 
 /**
- * Ramène toutes les pistes actuellement en corbeille d'un livre à leur
- * emplacement d'origine — le pendant, côté restauration, de softDeleteTracks.
- *
- * Même raison d'être : POST /api/books/[id]/restore ramène une fiche entière
- * dont TOUTES les pistes ont pu partir à la corbeille ensemble (disposition
- * « envoyer à la corbeille » de deleteBookWithAudio) — jusqu'à 77 pistes vu
- * dans le corpus. Boucler sur restoreTrack coûterait le même prix par piste
- * que softDeleteTracks refusait de payer à la suppression (HEAD, HEAD, COPY,
- * UPDATE, DELETE, et un refreshBookAudioState — donc une LIST complète du
- * dossier — répétés piste par piste). Ici pareil : les copies tournent en
- * parallèle, les lignes sont mises à jour en un seul updateMany, les copies
- * de corbeille sont supprimées en un seul DeleteObjects, et
- * refreshBookAudioState ne tourne qu'une fois à la fin.
- *
- * restoreTrack reste le chemin une-piste, pour le bouton de la boîte de
- * dialogue audio.
- */
-/**
  * Ramène un lot explicite de lignes de corbeille à leur emplacement d'origine,
  * quel que soit leur `bookId` — y compris `null` (le cas « sans-fiche » de
  * /admin/audio-corbeille, où il n'y a justement plus de livre pour filtrer
- * dessus). `restoreTracks` (ci-dessous) n'est que ce chemin appliqué à
- * l'ensemble des lignes actives d'un livre encore vivant.
+ * dessus). Le pendant, côté restauration, de softDeleteTracks.
+ *
+ * Un lot explicite, jamais « tout ce que la corbeille tient pour ce livre » :
+ * elle garde aussi les prises ratées qu'un permanent a retirées exprès, des
+ * semaines avant. POST /api/books/[id]/restore passe donc les pistes que le
+ * permanent a choisi de ramener avec la fiche, et rien d'autre.
+ *
+ * Boucler sur restoreTrack coûterait par piste ce que softDeleteTracks
+ * refusait de payer à la suppression (HEAD, HEAD, COPY, UPDATE, DELETE, et un
+ * refreshBookAudioState — donc une LIST complète du dossier) : ici les copies
+ * tournent en parallèle, les lignes sont mises à jour en un seul updateMany,
+ * les copies de corbeille sont supprimées en un seul DeleteObjects, et
+ * refreshBookAudioState ne tourne qu'une fois par livre. restoreTrack reste le
+ * chemin une-piste, pour le bouton de la boîte de dialogue audio.
  *
  * Mêmes garanties que restoreTrack à l'unité, aux mêmes optimisations que
  * softDeleteTracks : copies vérifiées en parallèle, une seule mise à jour des
@@ -329,36 +404,62 @@ export async function restoreTracksByIds(opts: {
     const { trashIds, userId } = opts;
     if (!trashIds.length) return { restored: 0, failed: [] };
 
-    const rows = await prisma.deletedAudioTrack.findMany({
-        where: { id: { in: trashIds }, restoredAt: null },
+    // Purged rows have no copy left to bring back.
+    const found = await prisma.deletedAudioTrack.findMany({
+        where: { id: { in: trashIds }, restoredAt: null, purgedAt: null },
         select: { id: true, bookId: true, trashKey: true, originalKey: true, filename: true, sizeBytes: true },
+        orderBy: { deletedAt: 'desc' },
     });
-    if (!rows.length) return { restored: 0, failed: [] };
+    if (!found.length) return { restored: 0, failed: [] };
 
     const failed: BulkRestoreResult['failed'] = [];
 
+    // One row per destination key. A file deleted, re-uploaded under the same
+    // name and deleted again leaves two rows naming the same key; restored in
+    // parallel, both would pass the « emplacement libre » check before either
+    // copied, and the second copy would silently overwrite the first — whose
+    // corbeille copy is then deleted as « restored ». The most recent version
+    // wins; the older one stays in the corbeille, restorable by hand.
+    const rows: typeof found = [];
+    const claimedKeys = new Set<string>();
+    for (const row of found) {
+        if (claimedKeys.has(row.originalKey)) {
+            failed.push({
+                filename: row.filename,
+                reason: 'une version plus récente du même fichier est restaurée à sa place',
+            });
+            continue;
+        }
+        claimedKeys.add(row.originalKey);
+        rows.push(row);
+    }
+
     // --- Copy and verify, in parallel. Nothing in the corbeille is touched yet.
     const copied = await pool(rows, COPY_CONCURRENCY, async (row) => {
-        const inTrash = await headTrack(row.trashKey);
-        if (!inTrash) {
-            failed.push({
-                filename: row.filename,
-                reason: 'copie de sauvegarde introuvable dans la corbeille',
-            });
-            return null;
-        }
-        // Même refus qu'à l'unité : un fichier peut avoir été redéposé sous
-        // cette clé pendant que le livre était supprimé — l'écraser détruirait
-        // un enregistrement en semblant en restaurer un autre.
-        const occupied = await headTrack(row.originalKey);
-        if (occupied) {
-            failed.push({
-                filename: row.filename,
-                reason: 'un fichier occupe déjà cet emplacement — restauration annulée pour ne pas l’écraser',
-            });
-            return null;
-        }
+        // Tout sous le try, les HEAD compris : B2 répond une part de ses
+        // requêtes en 5xx, et une seule exception sortie d'ici abandonnait le
+        // lot entier — lignes déjà recopiées comprises, jamais marquées
+        // restaurées.
         try {
+            const inTrash = await headTrack(row.trashKey);
+            if (!inTrash) {
+                failed.push({
+                    filename: row.filename,
+                    reason: 'copie de sauvegarde introuvable dans la corbeille',
+                });
+                return null;
+            }
+            // Même refus qu'à l'unité : un fichier peut avoir été redéposé sous
+            // cette clé pendant que le livre était supprimé — l'écraser détruirait
+            // un enregistrement en semblant en restaurer un autre.
+            const occupied = await headTrack(row.originalKey);
+            if (occupied) {
+                failed.push({
+                    filename: row.filename,
+                    reason: 'un fichier occupe déjà cet emplacement — restauration annulée pour ne pas l’écraser',
+                });
+                return null;
+            }
             await copyTrack(row.trashKey, row.originalKey);
             const restored = await headTrack(row.originalKey);
             if (!restored || restored.sizeBytes !== Number(row.sizeBytes)) {
@@ -404,19 +505,6 @@ export async function restoreTracksByIds(opts: {
     await Promise.all(distinctBookIds.map((id) => refreshBookAudioState(id, userId)));
 
     return { restored: ok.length, failed };
-}
-
-export async function restoreTracks(opts: {
-    bookId: number;
-    userId: number | null;
-}): Promise<BulkRestoreResult> {
-    const { bookId, userId } = opts;
-
-    const rows = await prisma.deletedAudioTrack.findMany({
-        where: { bookId, restoredAt: null },
-        select: { id: true },
-    });
-    return restoreTracksByIds({ trashIds: rows.map((r) => r.id), userId });
 }
 
 /**

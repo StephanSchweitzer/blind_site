@@ -81,8 +81,9 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     // The per-track cached-state refresh used to force this loop to be
     // sequential; softDeleteTracks does that refresh once at the end instead, so
     // the copies can run in parallel and the removals collapse into a single
-    // DeleteObjects call. Already-parked tracks are skipped, so a run that timed
-    // out half way is finished simply by confirming again.
+    // DeleteObjects call. A track an earlier run already copied is not copied
+    // again (its leftover original is just removed), so a run that timed out
+    // half way is finished simply by confirming again.
     const result = await softDeleteTracks({
         bookId,
         prefix,
@@ -93,7 +94,9 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
         priorObjects: objects,
     });
 
-    const deleted = { length: result.moved + result.skipped };
+    // `parked`: what actually left the folder — fresh moves and an earlier
+    // attempt's leftovers alike, never a track whose removal failed.
+    const deleted = { length: result.parked.length };
     const failed = result.failed.map((f) => ({ name: f.filename, message: f.reason }));
 
     return NextResponse.json({

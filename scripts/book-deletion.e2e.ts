@@ -14,7 +14,7 @@
  * delete (`Book.deletedAt`) now, never a real row delete, so `DeletedAudioTrack
  * .bookId` is never nulled by it either — the corbeille stays attached to the
  * (hidden, restorable) fiche. Then the two ways back: the plain undo (POST
- * /api/books/[id]/restore, lifting `deletedAt` and calling `restoreTracks` —
+ * /api/books/[id]/restore, lifting `deletedAt` and calling `restoreTracksByIds` on the tracks the permanent ticked —
  * no reattachment needed, `bookId` was never detached), and
  * reattachAudioAfterBookRestore, for the one case where a book row really is
  * gone — a hard delete (scripts/delete-duplicate-book.ts, a fusion) — and the
@@ -44,7 +44,8 @@ import {
 import { readBookDeletionCheck } from '../lib/books/deletionPreflight';
 import { deleteBookWithAudio } from '../lib/books/deleteBookWithAudio';
 import { reattachAudioAfterBookRestore } from '../lib/books/restoreBookAudio';
-import { markTrashOrigin, restoreTracks } from '../lib/audio/trash';
+import { markTrashOrigin, restoreTracksByIds } from '../lib/audio/trash';
+import { readBookRestorePreview } from '../lib/books/restorePreview';
 
 /**
  * Un préfixe neuf à chaque exécution. Réutiliser les mêmes clés d'un run à
@@ -376,16 +377,25 @@ async function main() {
         // --- 5 bis. restauration douce : la fiche ET sa corbeille reviennent --
         //
         // POST /api/books/[id]/restore (app/api/books/[id]/restore/route.ts)
-        // fait exactement ceci : lever `deletedAt`, puis restoreTracks — qui
-        // n'a rien à réattacher, `bookId` n'a jamais bougé.
+        // fait exactement ceci : lire l'aperçu, lever `deletedAt`, puis
+        // restoreTracksByIds sur les pistes cochées — ici celles parties avec la
+        // suppression, cochées par défaut. Rien à réattacher, `bookId` n'a
+        // jamais bougé.
+        const restorePreview = await readBookRestorePreview(target.id);
+        check(
+            'restauration douce : les 3 pistes sont proposées comme parties avec la suppression',
+            restorePreview?.audio.withDeletion.length,
+            3,
+        );
+        check('restauration douce : aucune piste plus ancienne proposée', restorePreview?.audio.earlier.length, 0);
         await prisma.book.update({ where: { id: target.id }, data: { deletedAt: null } });
         check(
             'restauration douce : la fiche redevient visible',
             await prisma.book.count({ where: { id: target.id } }),
             1,
         );
-        const { restored: softRestored, failed: softFailed } = await restoreTracks({
-            bookId: target.id,
+        const { restored: softRestored, failed: softFailed } = await restoreTracksByIds({
+            trashIds: (restorePreview?.audio.withDeletion ?? []).map((t) => t.id),
             userId: actorId,
         });
         check('restauration douce : les 3 pistes reviennent', softRestored, 3);

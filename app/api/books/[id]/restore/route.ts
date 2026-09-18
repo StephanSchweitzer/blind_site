@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
-import { restoreTracks } from '@/lib/audio/trash';
+import { restoreTracksByIds } from '@/lib/audio/trash';
+import { isbnConflictMessage, readBookRestorePreview } from '@/lib/books/restorePreview';
 
 /**
  * Undo a soft deletion — the counterpart of DELETE /api/books/[id].
@@ -22,43 +23,84 @@ import { restoreTracks } from '@/lib/audio/trash';
  * Undo belongs to the domain model. The journal only records that it
  * happened, which the audit extension does on its own for this update.
  *
- * ## Restaurer ramène aussi ce que « envoyer à la corbeille » en avait détaché
+ * ## L'audio revient sur décision, piste par piste
  *
- * `deleteBookWithAudio` en mode `trash` ne touche jamais `audio_filepath` — la
- * fiche continue de pointer sur son dossier, désormais vidé de ses pistes,
- * parties en corbeille (voir son commentaire). Sans ceci, restaurer la fiche
- * la ramenait avec un dossier vide : il fallait ensuite se rappeler d'aller
- * les restaurer une à une depuis /admin/audio-corbeille, ou vivre avec un
- * livre « actif » sans aucun enregistrement. `restoreTracks` ne touche que les
- * lignes déjà rattachées à CE livre (`bookId`), jamais celles d'un autre —
- * une fusion ou un transfert les a réattribuées ailleurs, et ce n'est pas à
- * cette route de les leur reprendre.
+ * GET dit ce que la restauration va rencontrer : les pistes de ce livre encore
+ * en corbeille, séparées entre celles parties AVEC la suppression et celles
+ * retirées avant — voir lib/books/restorePreview.ts pour pourquoi la
+ * restauration ne les ramène plus toutes d'office. POST ne ramène que les
+ * `audioTrackIds` que le permanent a cochés ; sans eux, la fiche revient seule
+ * et la corbeille garde tout, restaurable plus tard depuis /admin/audio-corbeille.
  *
- * Best-effort : une piste qui ne peut pas revenir (copie de corbeille purgée,
- * emplacement d'origine réoccupé) ne bloque pas la restauration de la fiche —
- * elle reste listée dans /admin/audio-corbeille, restaurable à la main.
+ * Best-effort pour l'audio : une piste qui ne peut pas revenir (emplacement
+ * d'origine réoccupé, copie introuvable) ne bloque pas la restauration de la
+ * fiche — elle reste listée dans /admin/audio-corbeille.
+ *
+ * ## L'ISBN a pu être repris entre-temps
+ *
+ * Il n'est unique que parmi les fiches vivantes. Refus nommant la fiche qui le
+ * porte, plutôt que l'erreur de contrainte de la base en 500.
  */
 export const maxDuration = 45; // même marge que DELETE /api/books/[id], même raison : jusqu'à ~77 pistes, copiées 10 de front.
 
-export const POST = withAdmin(async (_request, { params, me }) => {
-    const { id } = await params!;
-    const bookId = parseInt(id, 10);
-    if (Number.isNaN(bookId)) {
+async function bookIdFrom(params?: Promise<Record<string, string>>): Promise<number | null> {
+    const { id } = (await params) ?? {};
+    const bookId = Number(id);
+    return Number.isInteger(bookId) && bookId > 0 ? bookId : null;
+}
+
+/** Contrainte d'unicité, quelle que soit la couche qui l'a signalée (voir isForeignKeyViolation). */
+function isUniqueViolation(error: unknown): boolean {
+    const seen = new Set<unknown>();
+    let node: unknown = error;
+    while (node && typeof node === 'object' && !seen.has(node)) {
+        seen.add(node);
+        const o = node as { code?: unknown; originalCode?: unknown; cause?: unknown };
+        if (o.code === 'P2002' || o.code === '23505' || o.originalCode === '23505') return true;
+        node = o.cause;
+    }
+    return false;
+}
+
+export const GET = withAdmin(async (_request, { params }) => {
+    const bookId = await bookIdFrom(params);
+    if (bookId === null) {
         return NextResponse.json({ message: 'Identifiant de livre invalide' }, { status: 400 });
     }
 
     try {
-        // findUnique is deliberately NOT soft-delete-filtered, which is the whole
-        // reason a deleted book is still reachable by id — and why this can
-        // answer idempotently instead of 404-ing on the row it is meant to fix.
-        const book = await prisma.book.findUnique({
-            where: { id: bookId },
-            select: { id: true, title: true, deletedAt: true },
+        const preview = await readBookRestorePreview(bookId);
+        if (!preview) return NextResponse.json({ message: 'Livre introuvable' }, { status: 404 });
+        return NextResponse.json({
+            ...preview,
+            isbnConflict: preview.isbnHolder ? isbnConflictMessage(preview.isbnHolder) : null,
         });
+    } catch (error) {
+        console.error('Error reading book restore preview:', error);
+        return NextResponse.json(
+            { message: 'Impossible de préparer la restauration de ce livre' },
+            { status: 500 },
+        );
+    }
+});
 
-        if (!book) {
+export const POST = withAdmin(async (request, { params, me }) => {
+    const bookId = await bookIdFrom(params);
+    if (bookId === null) {
+        return NextResponse.json({ message: 'Identifiant de livre invalide' }, { status: 400 });
+    }
+
+    const body = (await request.json().catch(() => null)) as { audioTrackIds?: unknown } | null;
+    const requestedIds = Array.isArray(body?.audioTrackIds)
+        ? body.audioTrackIds.filter((v): v is number => Number.isInteger(v))
+        : [];
+
+    try {
+        const preview = await readBookRestorePreview(bookId);
+        if (!preview) {
             return NextResponse.json({ message: 'Livre introuvable' }, { status: 404 });
         }
+        const { book } = preview;
 
         if (!book.deletedAt) {
             return NextResponse.json({
@@ -68,16 +110,45 @@ export const POST = withAdmin(async (_request, { params, me }) => {
             });
         }
 
-        await prisma.book.update({
-            where: { id: bookId },
-            data: { deletedAt: null },
-            select: { id: true },
-        });
+        if (preview.isbnHolder) {
+            return NextResponse.json(
+                { message: isbnConflictMessage(preview.isbnHolder), isbnHolderId: preview.isbnHolder.id },
+                { status: 409 },
+            );
+        }
 
-        // Après, pas avant : restoreTracks ne fait rien d'irréversible sur la
-        // fiche elle-même, mais la fiche doit déjà exister « active » pour que
+        // Seules les pistes de CE livre, encore restaurables, peuvent être
+        // demandées : un identifiant d'une autre fiche est ignoré, pas obéi.
+        const restorable = new Set(
+            [...preview.audio.withDeletion, ...preview.audio.earlier].map((t) => t.id),
+        );
+        const trashIds = [...new Set(requestedIds)].filter((id) => restorable.has(id));
+
+        try {
+            await prisma.book.update({
+                where: { id: bookId },
+                data: { deletedAt: null },
+                select: { id: true },
+            });
+        } catch (error) {
+            // L'ISBN a été repris entre la lecture ci-dessus et l'écriture.
+            if (isUniqueViolation(error)) {
+                const again = await readBookRestorePreview(bookId);
+                if (again?.isbnHolder) {
+                    return NextResponse.json(
+                        { message: isbnConflictMessage(again.isbnHolder), isbnHolderId: again.isbnHolder.id },
+                        { status: 409 },
+                    );
+                }
+            }
+            throw error;
+        }
+
+        // Après, pas avant : la fiche doit déjà exister « active » pour que
         // refreshBookAudioState (appelé dedans) la retrouve normalement.
-        const { restored, failed } = await restoreTracks({ bookId, userId: me.id });
+        const { restored, failed } = trashIds.length
+            ? await restoreTracksByIds({ trashIds, userId: me.id })
+            : { restored: 0, failed: [] };
 
         let message = `« ${book.title} » a été restauré. La fiche réapparaît dans les listes et les recherches.`;
         if (restored > 0) {
@@ -85,8 +156,8 @@ export const POST = withAdmin(async (_request, { params, me }) => {
         }
         if (failed.length > 0) {
             message +=
-                ` ${failed.length} piste${failed.length > 1 ? 's' : ''} n’ont pas pu être ramenée${failed.length > 1 ? 's' : ''} ` +
-                `automatiquement — voir Corbeille audio.`;
+                ` ${failed.length} piste${failed.length > 1 ? 's' : ''} n’${failed.length > 1 ? 'ont' : 'a'} pas pu être ramenée${failed.length > 1 ? 's' : ''} ` +
+                `(${failed[0].reason}) — voir Corbeille audio.`;
         }
 
         revalidateAdmin();

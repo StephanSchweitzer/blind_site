@@ -12,9 +12,16 @@
  */
 import 'dotenv/config';
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { getS3, AUDIO_BUCKET, listBookTracks, listRawObjects, headTrack } from '../lib/audio/bucket';
+import { getS3, AUDIO_BUCKET, listBookTracks, listRawObjects, headTrack, copyTrack } from '../lib/audio/bucket';
 import { refreshBookAudioState, isKeyInsidePrefix, resolvePrefix } from '../lib/audio/state';
-import { softDeleteTrack, softDeleteTracks, restoreTrack } from '../lib/audio/trash';
+import {
+    softDeleteTrack,
+    softDeleteTracks,
+    restoreTrack,
+    restoreTracksByIds,
+    trashKeyFor,
+    LEFTOVER_MARGIN_MS,
+} from '../lib/audio/trash';
 import { prisma } from '../lib/prisma';
 
 const SCRATCH = '2022/_eca-test-audio/';
@@ -246,6 +253,84 @@ async function main() {
     });
     for (const p of parkedAgain) await restoreTrack({ trashId: p.id, userId: 1 });
     check('restaurées après le test priorObjects', (await listBookTracks(SCRATCH)).length, 3);
+
+    // --- re-upload under a name still in the corbeille ----------------------
+    // A corbeille row naming the key used to make ANY later file under that key
+    // count as « déjà dans la corbeille »: a re-recorded track could never be
+    // deleted again. Same size on purpose — the case size alone can't tell apart.
+    const re = back[1];
+    const reFirst = await softDeleteTrack({ bookId, key: re.key, filename: re.name, userId: 1 });
+    await putScratch(re.name, re.sizeBytes); // re-recorded, re-uploaded, same byte count
+    let reError = '';
+    let reSecond: Awaited<ReturnType<typeof softDeleteTrack>> | null = null;
+    try {
+        reSecond = await softDeleteTrack({ bookId, key: re.key, filename: re.name, userId: 1 });
+    } catch (e) {
+        reError = (e as Error).message;
+    }
+    check('réenvoi : la nouvelle version se supprime aussi', reError, '');
+    check('réenvoi : nouvelle entrée de corbeille', !!reSecond && reSecond.trashId !== reFirst.trashId, true);
+    check('réenvoi : retirée du dossier', await headTrack(re.key), null);
+    check(
+        'réenvoi : deux versions en corbeille pour la même clé',
+        await prisma.deletedAudioTrack.count({ where: { bookId, originalKey: re.key, restoredAt: null } }),
+        2,
+    );
+
+    // Restored together, the two versions would race for the same key: the
+    // most recent one wins, the older stays in the corbeille.
+    const both = await restoreTracksByIds({ trashIds: [reFirst.trashId, reSecond!.trashId], userId: 1 });
+    check('deux versions : une seule restaurée', both.restored, 1);
+    check(
+        'deux versions : l’autre refusée, avec la raison',
+        both.failed.length === 1 && both.failed[0].reason.includes('plus récente'),
+        true,
+    );
+    const [firstRow, secondRow] = await Promise.all([
+        prisma.deletedAudioTrack.findUnique({ where: { id: reFirst.trashId }, select: { restoredAt: true } }),
+        prisma.deletedAudioTrack.findUnique({ where: { id: reSecond!.trashId }, select: { restoredAt: true } }),
+    ]);
+    check('deux versions : c’est la plus récente qui revient', !!secondRow?.restoredAt, true);
+    check('deux versions : l’ancienne reste en corbeille', firstRow?.restoredAt ?? null, null);
+    check('deux versions : la copie de l’ancienne existe toujours', (await headTrack(reFirst.trashKey)) !== null, true);
+    check('deux versions : le fichier est revenu', (await headTrack(re.key))?.sizeBytes, re.sizeBytes);
+
+    // --- leftover of an interrupted move -------------------------------------
+    // Copy and row written, original never removed: the next attempt must
+    // finish the job — remove the original, no second copy, no second row.
+    // The row is dated past the margin, as a move made well after the upload.
+    const lo = back[0];
+    const loTrashKey = trashKeyFor(bookId, lo.name);
+    await copyTrack(lo.key, loTrashKey);
+    const loRow = await prisma.deletedAudioTrack.create({
+        data: {
+            bookId,
+            originalKey: lo.key,
+            trashKey: loTrashKey,
+            filename: lo.name,
+            sizeBytes: BigInt(lo.sizeBytes),
+            deletedById: 1,
+            deletedAt: new Date(Date.now() + LEFTOVER_MARGIN_MS + 60_000),
+        },
+    });
+    const resumed = await softDeleteTracks({
+        bookId,
+        prefix: SCRATCH,
+        tracks: [{ key: lo.key, name: lo.name, sizeBytes: lo.sizeBytes }],
+        userId: 1,
+    });
+    check('reprise d’un déplacement interrompu : rien recopié', resumed.moved, 0);
+    check('reprise : reconnu comme reste', resumed.skipped, 1);
+    check('reprise : aucun échec', resumed.failed.length, 0);
+    check('reprise : rattaché à la ligne existante', resumed.parked[0]?.trashId, loRow.id);
+    check('reprise : original retiré', await headTrack(lo.key), null);
+    check(
+        'reprise : pas de seconde ligne',
+        await prisma.deletedAudioTrack.count({ where: { bookId, originalKey: lo.key, restoredAt: null } }),
+        1,
+    );
+    await restoreTrack({ trashId: loRow.id, userId: 1 });
+    check('reprise : restauré ensuite', (await headTrack(lo.key))?.sizeBytes, lo.sizeBytes);
 
     // --- restore refuses to overwrite --------------------------------------
     const again = await softDeleteTrack({
