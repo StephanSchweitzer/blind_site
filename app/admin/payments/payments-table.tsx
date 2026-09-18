@@ -595,7 +595,6 @@ export default function PaymentsTable({
                                                 className="group border-b border-border cursor-pointer hover:bg-muted"
                                             >
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
-                                                    #{payment.id}
                                                     <CopyIdButton id={payment.id} label="du paiement" />
                                                     {matchedBillId !== null && matchedBillId !== payment.id && matchedBillId === payment.bill?.id && (
                                                         <div className="text-xs font-normal text-muted-foreground">

@@ -490,7 +490,6 @@ export default function AssignmentsTable({
                                                 className="group border-b border-border hover:bg-muted cursor-pointer transition-colors"
                                             >
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
-                                                    #{assignment.id}
                                                     <CopyIdButton id={assignment.id} label="de l'attribution" />
                                                     {/* La demande d'origine, toujours affichée. Elle ne
                                                         l'était qu'en réponse à une recherche par son

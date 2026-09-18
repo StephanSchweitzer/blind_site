@@ -8,7 +8,8 @@ const CONFIRM_MS = 1500;
 interface UseCopyToClipboardResult {
     /** True for a moment after a copy that actually succeeded. */
     copied: boolean;
-    copy: (value: string) => Promise<void>;
+    /** Resolves to whether the copy actually succeeded, so callers can gate a toast on it. */
+    copy: (value: string) => Promise<boolean>;
 }
 
 /**
@@ -62,11 +63,12 @@ export function useCopyToClipboard(): UseCopyToClipboardResult {
             }
         }
 
-        if (!ok) return;
+        if (!ok) return false;
 
         setCopied(true);
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => setCopied(false), CONFIRM_MS);
+        return true;
     }, []);
 
     return { copied, copy };

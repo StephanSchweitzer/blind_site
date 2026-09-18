@@ -345,7 +345,6 @@ export default function BillsTable({
                                                     }`}
                                                 >
                                                     <TableCell className="font-medium text-foreground whitespace-nowrap">
-                                                        #{bill.id}
                                                         <CopyIdButton id={bill.id} label="de la facture" />
                                                     </TableCell>
                                                     <TableCell className="text-foreground">

@@ -604,7 +604,6 @@ export default function OrdersTable({
                                                     }`}
                                                 >
                                                     <TableCell className={`font-medium whitespace-nowrap ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-foreground'}`}>
-                                                        #{order.id}
                                                         <CopyIdButton id={order.id} label="de la demande" />
                                                     </TableCell>
                                                     <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>

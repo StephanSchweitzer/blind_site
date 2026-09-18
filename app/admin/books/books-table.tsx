@@ -1054,7 +1054,6 @@ export default function BooksTable({
                                                 onClick={() => openBookEditModal(book)}
                                             >
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
-                                                    #{book.id}
                                                     <CopyIdButton id={book.id} label="du livre" />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">

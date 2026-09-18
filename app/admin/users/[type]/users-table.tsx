@@ -502,7 +502,6 @@ export default function UsersTable({
                                                 className="group border-b border-border hover:bg-muted cursor-pointer"
                                             >
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
-                                                    #{user.id}
                                                     <CopyIdButton id={user.id} label="de la personne" />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
