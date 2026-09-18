@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { CopyIdButton } from '@/admin/CopyableId';
 import {
     Dialog,
     DialogContent,
@@ -537,7 +538,7 @@ function PairCard({
                 <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
                     <div>
                         <CardTitle className="text-base">
-                            {flagged.title} <span className="text-muted-foreground font-normal">#{flagged.id}</span>
+                            {flagged.title} <CopyIdButton id={flagged.id} label="du livre" className="text-muted-foreground font-normal" />
                         </CardTitle>
                         <CardDescription>{flagged.author}</CardDescription>
                     </div>
@@ -835,10 +836,10 @@ function PairCard({
                                     <tr className="border-b border-border text-left">
                                         <th className="py-2 pr-4 font-medium text-muted-foreground w-40">Champ</th>
                                         <th className="py-2 px-3 font-medium">
-                                            {flagged.title} <span className="text-muted-foreground font-normal">#{flagged.id}</span>
+                                            {flagged.title} <CopyIdButton id={flagged.id} label="du livre" className="text-muted-foreground font-normal" />
                                         </th>
                                         <th className="py-2 px-3 font-medium">
-                                            {matched.title} <span className="text-muted-foreground font-normal">#{matched.id}</span>
+                                            {matched.title} <CopyIdButton id={matched.id} label="du livre" className="text-muted-foreground font-normal" />
                                         </th>
                                     </tr>
                                 </thead>
@@ -998,7 +999,7 @@ function BookHead({
     return (
         <div className={align === 'right' ? 'sm:text-right' : ''}>
             <div className="font-semibold">
-                {book.title} <span className="text-muted-foreground font-normal">#{book.id}</span>
+                {book.title} <CopyIdButton id={book.id} label="du livre" className="text-muted-foreground font-normal" />
             </div>
             <div className="text-sm text-muted-foreground">{book.author}</div>
             <div
@@ -1070,7 +1071,7 @@ function MatchPicker({
                         >
                             <div className="min-w-0">
                                 <div className="text-sm">
-                                    #{b.id} — {b.title}
+                                    <CopyIdButton id={b.id} label="du livre" /> — {b.title}
                                     {b.subtitle?.trim() && (
                                         <span className="italic text-muted-foreground"> {b.subtitle}</span>
                                     )}
@@ -1164,5 +1165,9 @@ function ListenButton({ book, onListen }: { book: ReviewBook; onListen: (book: R
 }
 
 function ColHeader({ book }: { book: ReviewBook }) {
-    return <th className="py-2 px-3 font-normal text-muted-foreground">#{book.id}</th>;
+    return (
+        <th className="py-2 px-3 font-normal text-muted-foreground">
+            <CopyIdButton id={book.id} label="du livre" />
+        </th>
+    );
 }
