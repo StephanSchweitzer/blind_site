@@ -199,10 +199,21 @@ export async function deleteBookWithAudio(opts: {
 
         const found = await prisma.book.findUnique({
             where: { id: targetBookId! },
-            select: { id: true, title: true, audio_filepath: true },
+            select: { id: true, title: true, audio_filepath: true, deletedAt: true },
         });
         if (!found) {
             return { ok: false, status: 409, error: 'Le livre de destination est introuvable.' };
+        }
+        // findUnique voit les fiches supprimées : un transfert vers l'une d'elles
+        // rangerait l'enregistrement sous un livre que plus rien n'affiche.
+        if (found.deletedAt) {
+            return {
+                ok: false,
+                status: 409,
+                error:
+                    `« ${found.title} » a été supprimé : il ne peut pas hériter du dossier audio. ` +
+                    `Choisissez un autre livre, ou restaurez d’abord cette fiche.`,
+            };
         }
         target = { id: found.id, title: found.title };
 

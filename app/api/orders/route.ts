@@ -10,6 +10,7 @@ import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { buildOrderSearchWhere } from '@/lib/search';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 import { linkedAssignmentArgs } from '@/types/models/order.model';
+import { guardLiveBooks } from '@/lib/books/liveBookGuard';
 
 /**
  * Shape of a demande in a list response. Hoisted out of the query so the
@@ -429,6 +430,14 @@ export const POST = withAdmin(async (request, { me }) => {
                 });
             }
 
+            const batchBookGuard = await guardLiveBooks(preparedLines.map((l) => l.catalogueId));
+            if (!batchBookGuard.ok) {
+                return NextResponse.json(
+                    { error: 'Book deleted', message: batchBookGuard.message, field: 'catalogueId' },
+                    { status: batchBookGuard.httpStatus }
+                );
+            }
+
             const batchNow = new Date();
             const batchStaffId = me.id;
             const batchAveugleId = parseInt(String(aveugleId));
@@ -516,6 +525,14 @@ export const POST = withAdmin(async (request, { me }) => {
                     required: ['aveugleId', 'catalogueId', 'requestReceivedDate', 'statusId', 'mediaFormatId', 'deliveryMethod'],
                 },
                 { status: 400 }
+            );
+        }
+
+        const bookGuard = await guardLiveBooks([parseInt(catalogueId)]);
+        if (!bookGuard.ok) {
+            return NextResponse.json(
+                { error: 'Book deleted', message: bookGuard.message, field: 'catalogueId' },
+                { status: bookGuard.httpStatus }
             );
         }
 

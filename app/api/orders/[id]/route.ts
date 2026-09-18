@@ -41,6 +41,7 @@ import {
 } from '@/lib/billing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
+import { guardLiveBooks } from '@/lib/books/liveBookGuard';
 
 // Reprint notice returned to the client when an invoice-relevant field changes on a
 // non-DRAFT (issued) bill. COST = total recomputed; VISIBLE = printed field changed.
@@ -404,6 +405,12 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         const costChanged = data.cost !== undefined && newCost !== oldCost;
 
         const catalogueChanged = data.catalogueId !== undefined && data.catalogueId !== existingOrder.catalogueId;
+        if (catalogueChanged) {
+            const bookGuard = await guardLiveBooks([data.catalogueId!]);
+            if (!bookGuard.ok) {
+                return NextResponse.json({ message: bookGuard.message }, { status: bookGuard.httpStatus });
+            }
+        }
         const dupChanged = data.isDuplication !== undefined && data.isDuplication !== existingOrder.isDuplication;
         // La troisième — la date de clôture — se lit plus bas : elle est dérivée du
         // statut (resolveClosureDate) et pas seulement reçue, donc la comparaison

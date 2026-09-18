@@ -24,6 +24,7 @@ import {
 import { bookHasWeighedAudio } from '@/lib/audio/state';
 import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
 import { withAdmin } from '@/lib/auth/guards';
+import { guardLiveBooks } from '@/lib/books/liveBookGuard';
 import {
     guardOrderLeavingTermineOnBill,
     leavesTermine,
@@ -229,6 +230,16 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 { message: dateSequenceGuard.message },
                 { status: dateSequenceGuard.httpStatus }
             );
+        }
+
+        if (
+            validation.data.catalogueId !== undefined &&
+            validation.data.catalogueId !== existingAssignment.catalogueId
+        ) {
+            const liveBookGuard = await guardLiveBooks([validation.data.catalogueId]);
+            if (!liveBookGuard.ok) {
+                return NextResponse.json({ message: liveBookGuard.message }, { status: liveBookGuard.httpStatus });
+            }
         }
 
         // If still linked to an order, the resulting book must match that order's book.

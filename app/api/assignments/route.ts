@@ -20,6 +20,7 @@ import { bookHasWeighedAudio } from '@/lib/audio/state';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
+import { guardLiveBooks } from '@/lib/books/liveBookGuard';
 
 export const GET = withAdmin(async (request: NextRequest) => {
     try {
@@ -138,6 +139,11 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
                 { error: 'Le livre du catalogue est requis' },
                 { status: 400 }
             );
+        }
+
+        const liveBookGuard = await guardLiveBooks([parseInt(catalogueId)]);
+        if (!liveBookGuard.ok) {
+            return NextResponse.json({ message: liveBookGuard.message }, { status: liveBookGuard.httpStatus });
         }
 
         if (!statusId) {

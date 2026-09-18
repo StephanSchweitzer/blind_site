@@ -82,6 +82,7 @@ async function loadItems(
                 SELECT b.id, b.title, b.author, b."needsReview", ${isoUtc(Prisma.sql`b."createdAt"`)} AS at
                 FROM "Book" b
                 WHERE b."addedById" = ${actorId}
+                  AND b."deletedAt" IS NULL -- même règle que METRIC_SOURCES.books (lib/stats.ts)
                   AND b."createdAt" >= ${from} AND b."createdAt" < ${to}
                 ORDER BY b."createdAt" ASC
                 LIMIT ${DETAILS_LIMIT}`;

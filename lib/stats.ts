@@ -50,7 +50,9 @@ export const METRIC_SOURCES: Record<TrendMetric, MetricSource> = {
         table: Prisma.sql`"Book"`,
         dateColumn: Prisma.sql`"createdAt"`,
         actorExpr: Prisma.sql`"addedById"`,
-        extraWhere: Prisma.empty,
+        // Raw SQL bypasses the soft-delete extension, as for newMembers below:
+        // a deleted fiche no longer counts, and its detail link would lead nowhere.
+        extraWhere: Prisma.sql`AND "deletedAt" IS NULL`,
         typeColumn: null,
     },
     billEvents: {
