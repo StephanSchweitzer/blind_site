@@ -162,7 +162,13 @@ export function CoupsTable({ initialItems, initialSearch, totalPages, searchSugg
                                     <TableCell className="text-muted-foreground">{item.addedBy?.name || 'Inconnu'}</TableCell>
                                     <TableCell><ListStatusBadge active={item.active} /></TableCell>
                                     <TableCell className="text-muted-foreground whitespace-nowrap">
-                                        {item.books.length} livre{item.books.length > 1 ? 's' : ''}
+                                        {(() => {
+                                            // Les fiches supprimées restent rattachées (elles reviennent
+                                            // si on les restaure) mais ne comptent pas : elles ne
+                                            // paraissent ni sur le site ni à l'impression.
+                                            const n = item.books.filter(({ book }) => !book.deletedAt).length;
+                                            return `${n} livre${n > 1 ? 's' : ''}`;
+                                        })()}
                                     </TableCell>
                                     <TableCell className="text-muted-foreground whitespace-nowrap">
                                         {parisDate(item.createdAt)}

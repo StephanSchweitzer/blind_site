@@ -11,6 +11,8 @@ export interface ListBook {
     createdAt: Date | string;
     available?: boolean;
     hiddenFromCatalogue?: boolean;
+    /** Fiche supprimée (soft delete) : elle reste dans la liste, masquée du site et de l'impression. */
+    deletedAt?: Date | string | null;
 }
 
 const BADGE = 'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-4';
@@ -30,13 +32,21 @@ export function BookBadges({
     inCurrentList?: boolean;
 }) {
     const hasAny =
-        !!book.subtitle || inCurrentList || !!membership?.length || book.hiddenFromCatalogue || book.available === false;
+        !!book.subtitle || inCurrentList || !!membership?.length || book.hiddenFromCatalogue || book.available === false || !!book.deletedAt;
     if (!hasAny) return null;
 
     return (
         <div className="mt-0.5 space-y-1">
             {book.subtitle && <div className="text-xs text-muted-foreground">{book.subtitle}</div>}
             <div className="flex flex-wrap gap-1 empty:hidden">
+                {book.deletedAt && (
+                    <span
+                        className={`${BADGE} bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300`}
+                        title="Fiche supprimée : elle n'apparaît ni sur le site ni dans la liste imprimée, et revient si elle est restaurée."
+                    >
+                        Supprimé
+                    </span>
+                )}
                 {inCurrentList && (
                     <span className={`${BADGE} bg-muted text-muted-foreground`}>Déjà dans la liste en cours</span>
                 )}

@@ -87,3 +87,5 @@ Lorsque vous êtes prêt, cliquez sur « **Créer la liste** » (ou « **Enregis
 La modification d'une liste s'effectue de la même manière que son ajout. La seule différence réside dans le fait que la liste contient déjà des informations et des livres enregistrés auparavant.
 
 En haut à droite, vous pouvez imprimer la liste, ou la supprimer avec le bouton « ⋯ ». Les livres eux-mêmes restent au catalogue.
+
+La liste imprimée contient exactement ce que montre le site public : les livres masqués du catalogue et les livres supprimés n'y figurent pas. Un livre supprimé reste dans la liste avec l'étiquette « **Supprimé** » : il reviendra tout seul si sa fiche est restaurée.

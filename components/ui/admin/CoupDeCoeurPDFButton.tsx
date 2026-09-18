@@ -64,7 +64,19 @@ export const CoupDeCoeurPDFButton: React.FC<CoupDeCoeurPDFButtonProps> = ({
                 import('@react-pdf/renderer'),
                 import('@/listes-de-livres/CoupDeCoeurPDF'),
             ]);
-            const content = [data as CoupDeCoeur];
+            // The editor's route returns every book still attached to the list,
+            // including soft-deleted ones (badged « Supprimé » there, so they come
+            // back if the fiche is restored) and titles hidden from the public
+            // catalogue. The printed list goes to auditeurs: it gets exactly what
+            // the public export prints (app/listes-de-livres/data.ts), no more.
+            type AdminListBook = { book: CoupDeCoeur['books'][number]['book'] & { deletedAt?: string | null; hiddenFromCatalogue?: boolean } };
+            const list = data as Omit<CoupDeCoeur, 'books'> & { books: AdminListBook[] };
+            const content: CoupDeCoeur[] = [
+                {
+                    ...list,
+                    books: list.books.filter(({ book }) => !book.deletedAt && !book.hiddenFromCatalogue),
+                },
+            ];
             const blob = await pdf(<CoupDeCoeurPDF content={content} />).toBlob();
             // Straight to the print dialog — same reasoning as BillPDFButton /
             // MailingLabelButton: nothing is lost, « Enregistrer au format PDF »
