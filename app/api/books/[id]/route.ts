@@ -93,20 +93,25 @@ export const GET = withAdmin(async (_req, { params }) => {
             if (merged) {
                 return NextResponse.json(
                     {
-                        error: 'Book merged',
+                        error: `Ce livre a été fusionné dans le livre n°${merged.canonicalId}.`,
                         mergedInto: merged.canonicalId,
                         mergedAt: merged.mergedAt.toISOString(),
                     },
                     { status: 404 }
                 );
             }
-            return NextResponse.json({ error: 'Book not found' }, { status: 404 });
+            return NextResponse.json({ error: 'Livre introuvable' }, { status: 404 });
         }
 
         return NextResponse.json(book);
     } catch (error) {
-        console.error('Failed to fetch book:', error);
-        return NextResponse.json({ error: 'Failed to fetch book' }, { status: 400 });
+        // Était un 400 « Failed to fetch book » : une panne lue comme un refus, en anglais.
+        return unexpectedErrorResponse({
+            where: `GET /api/books/${bookId}`,
+            error,
+            what: 'Impossible de charger ce livre.',
+            outcome: 'Rien n’a été modifié.',
+        });
     }
 });
 

@@ -70,6 +70,7 @@ function mailtoFor(error: UserFacingError, action?: string): string {
         ...(error.ref ? [`Référence : ${error.ref}`] : []),
         ...(error.status ? [`Code HTTP : ${error.status}`] : []),
         `Message : ${error.message}`,
+        ...(error.detail ? [`Détail technique : ${error.detail}`] : []),
     ];
     const subject = `Erreur portail ECA${error.ref ? ` — ${error.ref}` : ''}`;
     return (

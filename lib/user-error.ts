@@ -37,13 +37,23 @@ export class UserFacingError extends Error {
     readonly ref?: string;
     /** Code HTTP, pour le courriel — absent quand la requête n'a pas abouti. */
     readonly status?: number;
+    /**
+     * Texte technique d'origine (souvent en anglais, écrit par le navigateur) :
+     * mis dans le courriel, JAMAIS dans le toast, qui reste entièrement en français.
+     */
+    readonly detail?: string;
 
-    constructor(message: string, kind: UserErrorKind, extra: { ref?: string; status?: number } = {}) {
+    constructor(
+        message: string,
+        kind: UserErrorKind,
+        extra: { ref?: string; status?: number; detail?: string } = {},
+    ) {
         super(message);
         this.name = 'UserFacingError';
         this.kind = kind;
         this.ref = extra.ref;
         this.status = extra.status;
+        this.detail = extra.detail;
     }
 }
 
@@ -176,9 +186,11 @@ export function toUserFacingError(err: unknown): UserFacingError {
             'network',
         );
     }
-    const detail = err instanceof Error && err.message ? ` (${err.message})` : '';
+    // Le message du navigateur (« Cannot read properties of null… ») est en
+    // anglais : il part dans le courriel via `detail`, pas dans le toast.
     return new UserFacingError(
-        `Une erreur inattendue s’est produite dans la page${detail}. ${OUTCOME_UNKNOWN}`,
+        `Une erreur inattendue s’est produite dans la page. ${OUTCOME_UNKNOWN}`,
         'unexpected',
+        { detail: err instanceof Error && err.message ? `${err.name}: ${err.message}` : String(err) },
     );
 }

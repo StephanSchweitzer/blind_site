@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
+import { unexpectedErrorResponse } from '@/lib/api-errors';
 
 /**
  * Combien de demandes et d'attributions nomment ce livre — ce que BookUsageLinks
@@ -26,7 +27,11 @@ export const GET = withAdmin(async (_req, { params }) => {
         ]);
         return NextResponse.json({ orderCount, assignmentCount });
     } catch (error) {
-        console.error('Failed to count book usage:', error);
-        return NextResponse.json({ error: 'Failed to count book usage' }, { status: 500 });
+        return unexpectedErrorResponse({
+            where: `GET /api/books/${bookId}/usage`,
+            error,
+            what: 'Impossible de compter les demandes et attributions de ce livre.',
+            outcome: 'Rien n’a été modifié.',
+        });
     }
 });
