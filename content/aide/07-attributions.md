@@ -12,17 +12,11 @@ Elles possèdent également leur propre statut, qui va de « en cours » à « t
 
 L'URL de cette page est https://eca-aveugles.fr/admin/assignments.
 
-La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, et (4) un filtre par statut. La recherche porte sur le lecteur (actuel ou passé), sur l'auditeur, sur le livre et sur les numéros de l'attribution et de la demande dont elle provient ; les mots peuvent désigner plusieurs de ces éléments à la fois. Voir [La barre de recherche](/admin/aide/composants-de-base#la-barre-de-recherche).
+La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, et (4) un filtre par statut. La recherche porte sur le lecteur, l'auditeur, le livre et le numéro de l'attribution.
 
 ![Attributions - capture 1](/admin/aide/images/attributions-01.jpg)
 
-Le filtre « Filtrer par livre » restreint la liste aux attributions d'un seul livre. Cherchez-le par titre, par auteur ou par numéro, puis choisissez-le dans la liste proposée : chaque résultat affiche son numéro, ce qui permet de distinguer deux volumes d'une même série qui portent le même titre. Un bandeau rappelle le livre retenu, et « Retirer ce filtre » revient à la liste complète. C'est le même filtre que celui du lien « Ce livre : … attributions » de la fiche du livre dans le [Catalogue](/admin/aide/catalogue).
-
-Ce filtre est séparé de la barre de recherche à dessein : un numéro tapé dans la recherche désigne une attribution ou la demande dont elle provient, jamais un livre.
-
-Le nom du lecteur mène à son [dossier](/admin/aide/membres) — onglet « Attributions », celui que vous étiez en train de consulter — d'où l'on voit tout ce qu'il a lu. Dans le dossier d'un lecteur, ce lien disparaît : la liste n'y montre déjà que ses attributions.
-
-Sous le numéro de chaque attribution figure celui de la demande dont elle provient — « ↳ demande n°… ». Un clic l'ouvre directement, sans ouvrir l'attribution. C'est le pendant de la colonne « Attribution » de la liste des [Demandes](/admin/aide/demandes), qui fait le chemin inverse.
+Dans le tableau, cliquez sur le nom du lecteur pour ouvrir son [dossier](/admin/aide/membres#le-dossier), ou sur « ↳ demande n°… » pour ouvrir la demande liée.
 
 ## Ajout des attributions
 
@@ -38,7 +32,7 @@ Cela ouvrira le modal « Créer une attribution ».
 
 ![Attributions - capture 4](/admin/aide/images/attributions-04.jpg)
 
-- Recherchez votre lecteur et (2) cliquez sur la ligne que vous souhaitez ajouter
+(1) Recherchez votre lecteur et (2) cliquez sur la ligne que vous souhaitez ajouter
 
 ![Attributions - capture 5](/admin/aide/images/attributions-05.jpg)
 
@@ -50,9 +44,9 @@ Passons maintenant à l'ajout d'une demande. Nous suivons la même procédure et
 
 ![Attributions - capture 7](/admin/aide/images/attributions-07.jpg)
 
-Nous pouvons aussi (1) en rechercher une autre si nous le souhaitons. (2) Cliquez sur la ligne correspondant à la demande que vous souhaitez associer à cette attribution.
+Une demande qui a déjà une attribution apparaît grisée et ne peut pas être choisie.
 
-Une demande ne peut avoir qu'une seule attribution. Si elle en possède déjà une, sa ligne apparaît grisée avec la mention « Déjà attribuée : Attribution #… » : ce lien ouvre l'attribution existante dans un nouvel onglet, sans perdre le formulaire en cours. Les duplications apparaissent grisées elles aussi, car elles ne demandent pas d'attribution.
+Nous pouvons aussi (1) en rechercher une autre si nous le souhaitons. (2) Cliquez sur la ligne correspondant à la demande que vous souhaitez associer à cette attribution.
 
 ![Attributions - capture 8](/admin/aide/images/attributions-08.jpg)
 
@@ -64,13 +58,9 @@ En faisant défiler la page vers le bas, on peut voir d’autres champs, notamme
 
 Ainsi, si seule la (1) « Date de réception » est renseignée, le statut est « en attente d'envoi au lecteur ». Si (2) la « Date d'envoi au lecteur » est renseignée, le statut est « en cours », et lorsque (3) la « Date de retour aux ECA » est renseignée, le statut est « Terminé ». Pour modifier une date, il suffit de cliquer sur le champ correspondant.
 
-Ces trois dates se remplissent **dans cet ordre**. Chacune affirme que le livre est physiquement passé par l'étape précédente, si bien qu'une date de retour sans date d'envoi est refusée.
-
-**Une attribution ne peut pas passer « Terminé » tant qu'aucun enregistrement n'a été déposé pour le livre.** Le système répond alors : « Impossible de terminer l'attribution : aucun enregistrement n'a été déposé pour ce livre. » Déposez l'audio dans le dossier du livre — l'éditeur audio du [Catalogue](/admin/aide/catalogue) — puis repassez l'attribution « Terminé ».
-
-Ce contrôle existe parce que le coût de la demande se calcule sur le poids de l'enregistrement : terminer une attribution sans audio figerait un tarif plancher sur une facture que l'on ne pourrait plus corriger. L'inverse n'est volontairement pas vrai — déposer l'audio ne termine jamais une attribution tout seul, car le retour du lecteur est un fait qu'un permanent constate.
-
 ![Attributions - capture 10](/admin/aide/images/attributions-10.jpg)
+
+Ces trois dates se remplissent dans cet ordre. Une attribution ne peut pas passer « Terminé » tant que l'enregistrement n'a pas été déposé dans l'éditeur audio du livre, depuis le [Catalogue](/admin/aide/catalogue).
 
 Pour l'enregistrer, cliquez sur le bouton « Créer l'attribution » situé tout en bas du modal.
 
@@ -100,10 +90,8 @@ Suivez la même procédure que précédemment pour attribuer un nouveau lecteur 
 
 Lorsque vous cliquez sur ce bouton, l'attribution est immédiatement mise à jour ; il n'est donc pas nécessaire d'enregistrer l'ensemble du formulaire par la suite. Veillez donc à bien réfléchir avant de cliquer dessus.
 
-Le reste de la fenêtre contextuelle fonctionne de la même manière que celle permettant d'ajouter une attribution. Seul ajout : sous le livre, la ligne « Ce livre : … demandes · … attributions » ouvre, dans un nouvel onglet, la liste des demandes ou des attributions restreinte à ce livre. La même liste filtrée est accessible depuis la fiche du livre dans le [Catalogue](/admin/aide/catalogue) ; un bandeau rappelle le filtre, et « Retirer ce filtre » revient à la liste complète.
+Le reste de la fenêtre contextuelle fonctionne de la même manière que celle permettant d'ajouter une attribution. Pour corriger le livre, modifiez-le sur la [demande](/admin/aide/demandes) : l'attribution suit automatiquement.
 
-Une attribution liée à une demande porte toujours le même livre qu'elle. Pour corriger ce livre, modifiez-le **sur la demande** : l'attribution est mise à jour en même temps (voir [Demandes](/admin/aide/demandes)).
-
-En bas de la fenêtre, vous trouverez (1) le bouton « Mettre à jour l'attribution », qui enregistrera vos modifications, et (2) le bouton « Supprimer l'attribution ». Là aussi il s'agit d'une **suppression logique** : l'attribution quitte les listes, son historique est conservé.
+En bas de la fenêtre, vous trouverez (1) le bouton « Mettre à jour l'attribution », qui enregistrera vos modifications, et (2) le bouton « Supprimer l'attribution », qui supprimera l'attribution.
 
 ![Attributions - capture 16](/admin/aide/images/attributions-16.jpg)

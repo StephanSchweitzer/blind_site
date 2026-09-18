@@ -6,21 +6,9 @@ order: 15
 
 # Pages publiques
 
-Le groupe « Pages » de la barre de navigation ne gère pas le back-office : il gère **ce que
-voient les visiteurs du site public**. Le texte de ces pages n'est écrit nulle part dans le
-code — il est en base, et il se modifie ici.
+Le groupe « Pages » de la barre de navigation permet de modifier ce que voient les visiteurs du site public. Tout ce que vous enregistrez ici est **immédiatement en ligne** : relisez-vous avant d'enregistrer.
 
-Deux conséquences pratiques :
-
-- vous n'avez besoin de personne pour corriger une adresse, ajouter un membre de l'équipe ou
-  publier une information ;
-- une faute de frappe enregistrée ici est **en ligne**, visible de tous, sans autre validation.
-
-Après un enregistrement, la page publique correspondante se rafraîchit d'elle-même. Il n'y a
-rien à « publier » dans un second temps, et inutile de vider un cache : c'est fait.
-
-**Qui voit quoi.** Seuls les Super Admins voient l'ensemble de ce groupe. Un permanent n'y
-trouve que « Dernières infos ».
+Seuls les Super Admins voient l'ensemble de ce groupe. Un permanent n'y trouve que « Dernières infos ».
 
 ## Les six pages
 
@@ -37,18 +25,13 @@ trouve que « Dernières infos ».
 
 ## Ce qu'elles ont en commun
 
-Toutes fonctionnent de la même manière, ce qui vous évite d'apprendre six écrans :
+Toutes ces pages fonctionnent de la même manière :
 
-- une **liste** de ce qui est déjà publié, avec le nombre d'entrées dans le titre de la carte ;
+- une **liste** de ce qui est déjà publié ;
 - un bouton pour **ajouter** une entrée ;
 - un clic sur une ligne pour la **modifier** ;
-- un **glisser-déposer** pour changer l'ordre d'affichage. L'ordre du back-office est l'ordre
-  du site public : ce que vous remontez ici remonte là-bas.
+- un **glisser-déposer** pour changer l'ordre d'affichage sur le site public.
 
 ## Dernières infos
 
-C'est la seule de ces pages qu'un permanent peut modifier, et la plus utilisée. Une actualité
-porte un type, qui détermine la façon dont elle s'affiche sur le site public.
-
-Écrivez-y comme on écrit pour être lu à voix haute : beaucoup de nos auditeurs découvrent ces
-textes par un lecteur d'écran ou par une synthèse vocale.
+C'est la page la plus utilisée. Écrivez simplement : beaucoup de nos auditeurs écoutent ces textes avec un lecteur d'écran.

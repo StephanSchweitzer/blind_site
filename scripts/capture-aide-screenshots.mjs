@@ -45,12 +45,21 @@ const CHROME_CANDIDATES = [
 const SPECS = [
     {
         name: 'factures-01.jpg',
+        // Assez haut pour que la carte tienne entiere : sinon son en-tete
+        // passe sous la barre de navigation fixe.
+        viewport: { width: 1440, height: 1500 },
         url: '/admin/bills',
         waitFor: 'table tbody tr',
         // Filtre sur le compte de test : la base de dev porte de VRAIS auditeurs,
         // et public/ n'est pas derriere l'authentification.
         steps: [{ searchFor: 'stef' }, { sleep: 2500 }],
         clip: '.rounded-lg.border',
+        // Les numeros reprennent ceux du paragraphe de 08-factures.md.
+        annotations: [
+            { n: 1, selector: 'table' },
+            { n: 2, selector: 'input[placeholder="Rechercher par auditeur..."]' },
+            { n: 3, selector: 'div.flex-wrap.items-center.gap-3:has(> label)' },
+        ],
         why: 'états Payée/Soldée et le filtre « Factures en retard »',
     },
     {
@@ -128,11 +137,11 @@ const SPECS = [
         waitFor: '[role="dialog"]',
         sleep: 2200,
         clip: '[role="dialog"]',
+        // « Enregistrer un paiement » n'existe plus sur un brouillon.
         annotations: [
-            { n: 1, label: 'Enregistrer un paiement', self: true },
-            { n: 2, label: 'Émettre la facture', self: true },
-            { n: 3, label: 'Ajouter une demande', self: true },
-            { n: 4, label: 'Supprimer la facture', self: true },
+            { n: 1, label: 'Émettre la facture', self: true },
+            { n: 2, label: 'Ajouter une demande', self: true },
+            { n: 3, label: 'Supprimer la facture', self: true },
         ],
         why: 'un BROUILLON : « Ajouter une demande » n\'existe que là',
     },
@@ -255,6 +264,12 @@ const SPECS = [
         waitFor: 'table tbody tr',
         steps: [{ clickText: 'Ajouter une demande' }, { waitFor: '[role="dialog"]' }, { sleep: 800 }],
         clip: '[role="dialog"]',
+        // Les numeros reprennent ceux du paragraphe de 06-demandes.md.
+        annotations: [
+            { n: 1, selector: '[role="dialog"] .flex-1.min-w-0 button[role="combobox"]' },
+            { n: 2, label: 'Nouveau livre', self: true },
+            { n: 3, label: 'Ajouter un ouvrage', self: true },
+        ],
         why: 'le coût conseillé par CD',
     },
     {
@@ -266,6 +281,12 @@ const SPECS = [
             { scrollToText: "Date d'envoi au lecteur" }, { sleep: 400 },
         ],
         clip: '[role="dialog"]',
+        // Les numeros reprennent ceux du paragraphe de 07-attributions.md.
+        annotations: [
+            { n: 1, label: 'Date de réception' },
+            { n: 2, label: "Date d'envoi au lecteur" },
+            { n: 3, label: 'Date de retour aux ECA' },
+        ],
         why: 'les trois dates, dans leur ordre',
     },
     {
@@ -337,7 +358,26 @@ const SPECS = [
         why: 'le champ client selon le type (Donateur / Personne)',
     },
     {
+        name: 'paiements-00.jpg',
+        viewport: { width: 1440, height: 1600 },
+        url: '/admin/payments',
+        waitFor: 'table tbody tr',
+        steps: [{ typeIn: { selector: 'input[placeholder*="paiement"]', value: 'stef' } }, { sleep: 2200 }],
+        clip: '.rounded-lg.border',
+        // Les numeros reprennent ceux du paragraphe d'ouverture de 09-paiements.md.
+        annotations: [
+            { n: 1, selector: 'table' },
+            { n: 2, label: 'Ajouter un paiement', self: true },
+            { n: 3, selector: 'input[placeholder*="paiement"]' },
+            { n: 4, label: 'Filtres', self: true },
+        ],
+        why: 'la page : tableau, ajout, recherche, filtres',
+    },
+    {
         name: 'paiements-01.jpg',
+        // Assez haut pour que la carte tienne entiere : sinon « Exporter (CSV) »
+        // passe sous la barre de navigation fixe.
+        viewport: { width: 1440, height: 1600 },
         url: '/admin/payments',
         waitFor: 'table tbody tr',
         // Le panneau de filtres part replie : sans ce clic, « Periode sur »
@@ -758,6 +798,11 @@ const SPECS = [
             { scrollToText: 'Supprimer la personne' }, { sleep: 400 },
         ],
         clip: '[role="dialog"]',
+        // Les numeros reprennent ceux du paragraphe de 10-membres.md.
+        annotations: [
+            { n: 1, label: 'Mettre à jour la personne', self: true },
+            { n: 2, label: 'Supprimer la personne', self: true },
+        ],
         why: 'la suppression, logique',
     },
 ];

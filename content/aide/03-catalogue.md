@@ -100,66 +100,13 @@ Pour enregistrer le livre, rendez-vous en bas de la page et cliquez sur « Mettr
 
 ### Supprimer un livre
 
-Le bouton ouvre une fenêtre qui commence par **vérifier** si la fiche peut être supprimée. La
-vérification a lieu avant toute question : il n'y a plus à confirmer une suppression pour
-apprendre ensuite qu'elle était impossible.
+Lorsque vous cliquez sur « Supprimer le livre », une fenêtre de confirmation s'ouvre.
 
-Quand quelque chose l'empêche, la fenêtre l'affiche en rouge, n'offre aucune option, et dit
-précisément ce qui bloque :
+Si le livre est encore lié à des demandes ou à des attributions, la suppression est refusée et la fenêtre vous indique lesquelles. Traitez-les d'abord, puis recommencez.
 
-- **Des demandes ou des attributions vivantes nomment ce livre.** Le message donne leur nombre
-  et leurs identifiants, et la ligne « Ce livre : … » juste en dessous mène aux listes filtrées
-  sur cet ouvrage. Traitez-les d'abord — supprimez-les, ou rattachez-les à un autre livre.
-- **Le dossier audio est aussi celui d'un autre livre.** Le message nomme la ou les autres
-  fiches, avec leur identifiant et un lien vers chacune. Supprimer ici viderait aussi leur
-  dossier, l'enregistrement étant le même : réglez d'abord le doublon depuis
-  [Doublons](/admin/aide/doublons), ou détachez le dossier de l'autre fiche.
+Si le livre possède un enregistrement audio, la fenêtre vous demande ce qu'il faut en faire. Dans le doute, choisissez « Laisser le dossier dans le stockage ».
 
-Un livre qui ne garde que de l'**historique** de demandes ou d'attributions supprimées, sans
-plus rien de vivant, ne bloque plus rien — voir plus bas ce qu'il devient.
-
-### Que devient l'enregistrement audio
-
-Si la fiche est supprimable et que son dossier contient des pistes, la fenêtre affiche ce
-dossier — nombre de fichiers, poids, chemin — et demande **ce qu'il faut en faire**. Trois
-possibilités, la première étant celle à choisir dans le doute :
-
-- **Laisser le dossier dans le stockage** *(conseillé)*. Rien n'est copié, rien n'est supprimé,
-  et le dossier reste attaché à la fiche — il revient avec elle si elle est restaurée. Pour
-  libérer l'enregistrement pour de bon (un doublon confirmé, par exemple), choisissez plutôt
-  « Transférer » ou « Envoyer à la corbeille ».
-- **Transférer vers un autre livre.** Vous choisissez le livre qui hérite du dossier ; il pointe
-  dessus à la place de la fiche supprimée, et son poids, sa durée et son état audio sont
-  recalculés dans la foulée. Le transfert est **refusé si ce livre possède déjà des pistes** —
-  un dossier n'appartient qu'à un seul livre, et en écraser un reviendrait à perdre de vue
-  l'enregistrement qu'il contenait.
-- **Envoyer les pistes à la corbeille.** Chaque fichier est copié dans la corbeille, vérifié,
-  puis retiré du dossier. Il reste restaurable 14 jours depuis
-  [Corbeille audio](/admin/aide/audio-orphelin#corbeille-audio), après quoi il est supprimé du
-  stockage définitivement. Sur un gros dossier, l'opération peut ne pas aboutir du premier coup :
-  relancez la suppression, les fichiers déjà déplacés ne le sont pas deux fois.
-
-Quand le dossier est vide, ou que la fiche n'en porte aucun, aucune question n'est posée.
-
-Si des pistes de ce livre étaient **déjà** dans la corbeille, la fenêtre le signale : elles y
-restent, au nom de la fiche supprimée, et se retrouvent dans l'onglet « Sans fiche » de
-[Corbeille audio](/admin/aide/audio-orphelin#corbeille-audio).
-
-La fiche elle-même, elle, n'est jamais réellement effacée : « Supprimer » la fait disparaître de
-partout — listes, recherches, menus déroulants — sans la retirer de la base, précisément parce
-qu'une demande ou une attribution supprimée peut encore la nommer. Rouvrez-la par son ancienne
-adresse (`/admin/books?book=<id>`, par exemple depuis un ancien lien ou le journal des
-modifications) pour retrouver, dans le modal « Modifier le livre », un bandeau rouge « Fiche
-supprimée » avec un bouton **Restaurer** — sans limite de temps, contrairement à la restauration
-depuis le [journal des modifications](/admin/aide/statistiques), qui n'a que 14 jours de recul. Le
-reste du modal reste en lecture seule tant qu'elle n'est pas restaurée.
-
-Si « Envoyer les pistes à la corbeille » avait été choisi, **Restaurer** les ramène avec la
-fiche — pas seulement la ligne, les fichiers aussi : chaque piste encore en corbeille pour ce
-livre est recopiée à son emplacement d'origine dans la foulée, sans repasser par
-[Corbeille audio](/admin/aide/audio-orphelin#corbeille-audio). Une piste qui ne peut plus revenir
-(copie de corbeille déjà purgée, emplacement réoccupé entre-temps) ne bloque pas la restauration
-de la fiche — le message le dit, et elle reste restaurable à la main depuis cet écran.
+En cas d'erreur, un Super Admin peut restaurer le livre depuis le [journal des modifications](/admin/aide/statistiques#le-journal-des-modifications).
 
 ## Éditeur audio
 

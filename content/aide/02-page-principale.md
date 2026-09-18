@@ -26,6 +26,6 @@ Enfin, si vous cliquez sur le bouton « Mon Compte », vous serez redirigé vers
 
 ![Page principale - capture 4](/admin/aide/images/page-principale-04.jpg)
 
-La barre de navigation comporte aussi un lien « Aide », qui ouvre le mode d'emploi dans un nouvel onglet — celui de la page sur laquelle vous vous trouvez au moment de cliquer. Vous gardez ainsi votre page de travail ouverte à côté.
+La barre de navigation comporte aussi un lien « Aide », qui ouvre ce mode d'emploi dans un nouvel onglet, à la page qui correspond à celle où vous vous trouvez.
 
 ![Page principale - capture 5](/admin/aide/images/page-principale-05.jpg)

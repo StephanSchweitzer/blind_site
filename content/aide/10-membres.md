@@ -18,7 +18,7 @@ Au-dessus, vous avez le niveau d'accès « permanent », qui permet d'accéder �
 
 Enfin, le niveau d'accès offrant le plus de privilèges est celui de « Super Admin ». Le Super Admin a le pouvoir de créer de nouveaux permanents, de supprimer des permanents, d'accéder à toutes les pages et de modifier les mots de passe des autres utilisateurs.
 
-**La création d'un nouveau permanent est réservée aux Super Admins.** Un permanent qui ne voit pas le bouton « Ajouter un membre » sur la page des permanents n'a rien fait de travers : c'est cette restriction qui s'applique. Sur les autres pages (auditeurs, lecteurs, donateurs), en revanche, tout permanent peut créer un nouveau membre. De la même manière, le niveau d'accès ne peut être modifié que par un Super Admin, **dans les deux sens** — promouvoir comme rétrograder.
+Seul un Super Admin peut créer un nouveau permanent ou changer le niveau d'accès d'un membre. Sur les autres pages (auditeurs, lecteurs, donateurs), tout permanent peut ajouter un membre.
 
 Assez parlé des rôles et des niveaux d'accès.
 
@@ -100,7 +100,7 @@ En bas du modal, la différence réside dans la présence d'une section « Statu
 
 ![Membres - capture 13](/admin/aide/images/membres-13.jpg)
 
-Si vous apportez des modifications, enregistrez-les (1) en cliquant sur le bouton « Mettre à jour la personne » ; si vous souhaitez retirer cette personne de notre système, (2) cliquez sur le bouton « Supprimer la personne ». Il s'agit d'une **suppression logique** : la fiche disparaît des listes et des recherches, mais son historique — demandes, factures, paiements — reste attaché et consultable.
+Si vous apportez des modifications, enregistrez-les (1) en cliquant sur le bouton « Mettre à jour la personne » ; si vous souhaitez retirer cette personne de notre système, (2) cliquez sur le bouton « Supprimer la personne ». Son historique reste consultable.
 
 ![Membres - capture 14](/admin/aide/images/membres-14.jpg)
 
@@ -138,8 +138,6 @@ Pour les donateurs et tous les autres types de membres, consultez les sections �
 
 Comme indiqué précédemment, la page du dossier peut être ouverte en cliquant sur le lien « Voir le dossier » dans le modal de modification d'un membre donné.
 
-Il existe un second chemin, plus court quand c'est un nom que vous avez sous les yeux : dans la liste des [Demandes](/admin/aide/demandes), le nom de l'auditeur mène directement à son dossier, et dans celle des [Attributions](/admin/aide/attributions), celui du lecteur fait de même. Inutile, donc, de repasser par la liste des membres pour retrouver quelqu'un dont vous lisez déjà une demande ou une attribution.
-
 ![Membres - capture 19](/admin/aide/images/membres-19.jpg)
 
 Lorsque vous cliquez dessus, vous accédez au dossier de ce membre.
@@ -151,6 +149,8 @@ Lorsque vous cliquez dessus, vous accédez au dossier de ce membre.
 ![Membres - capture 21](/admin/aide/images/membres-21.jpg)
 
 Tous ces onglets fonctionnent presque exactement de la même manière que les sections correspondantes. Si vous avez besoin d'explications, veuillez vous reporter à ces sections.
+
+Vous pouvez aussi ouvrir un dossier en cliquant sur le nom d'une personne dans la liste des [Demandes](/admin/aide/demandes) ou des [Attributions](/admin/aide/attributions).
 
 ## Section « statut »
 
