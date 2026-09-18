@@ -4,13 +4,11 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
-import { buildNewsSearchWhere } from '@/lib/search';
+import { listPublicNews, parsePublicNewsQuery } from '@/lib/news/newsList';
 import { NextRequest } from 'next/server';
-import {News, Prisma} from '@prisma/client';
+import { News } from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
 import { withAdmin } from '@/lib/auth/guards';
-import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
-import { suggestSearches } from '@/lib/search-suggest';
 
 export const POST = withAdmin(async (req, { me }) => {
     revalidateAdmin();
@@ -76,69 +74,15 @@ export const POST = withAdmin(async (req, { me }) => {
 
 export async function GET(req: NextRequest) {
     try {
-        const searchParams = new URL(req.url).searchParams;
-        const page = parsePageParam(searchParams.get('page'));
-        const limit = parseLimitParam(searchParams.get('limit'), 5);
-        const type = searchParams.get('type');
-        const search = searchParams.get('search');
-
-        const skip = pageSkip(page, limit);
-
-        // Build the where clause based on filters
-        const whereFor = (term: string): Prisma.NewsWhereInput => ({
-            AND: [
-                // Add type filter if provided and not 'all'
-                ...(type && type !== 'all' ? [{
-                    type: type as News['type']
-                }] : []),
-                // Same engine as the back-office list — tokens, apostrophes, and
-                // the type reachable by its displayed French label. See
-                // buildNewsSearchWhere.
-                ...(buildNewsSearchWhere(term) ?? [])
-            ]
-        });
-        const where = whereFor(search ?? '');
-
-        // Get total count for pagination
-        const total = await prisma.news.count({ where });
-
-        // Get paginated news posts
-        const news = await prisma.news.findMany({
-            where,
-            skip,
-            take: limit,
-            orderBy: {
-                publishedAt: 'desc'
-            },
-            include: {
-                author: {
-                    select: {
-                        name: true
-                    }
-                }
-            }
-        });
-
-        // `?suggest=1`: « Vouliez-vous dire … ? » when the search found nothing —
-        // see lib/search-suggest.ts. Titles only: this route is public.
-        const searchSuggestions =
-            searchParams.get('suggest') === '1' && search && total === 0
-                ? await suggestSearches(search, ['news'], (q) => prisma.news.count({ where: whereFor(q) }))
-                : undefined;
-
-        return NextResponse.json({
-            items: news,
-            totalPages: Math.ceil(total / limit),
-            currentPage: page,
-            totalItems: total,
-            ...(searchSuggestions ? { searchSuggestions } : {}),
-        });
-
+        // Same engine as the back-office list, in its public form: titles,
+        // contents, types and the author's DISPLAYED name only, and an explicit
+        // whitelist of returned fields. See listPublicNews.
+        const { searchParams } = new URL(req.url);
+        return NextResponse.json(await listPublicNews(parsePublicNewsQuery((key) => searchParams.get(key))));
     } catch (error) {
         console.error('Error fetching news:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch news', details: error instanceof Error ? error.message : 'Unknown error' },
-            { status: 500 }
-        );
+        // No `details`: this route is public, and an exception message can carry
+        // database internals.
+        return NextResponse.json({ error: 'Failed to fetch news' }, { status: 500 });
     }
 }

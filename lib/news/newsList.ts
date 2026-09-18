@@ -7,7 +7,7 @@ import { normalizeApostrophes, searchKeyVariants, searchVariants } from '@/lib/s
 import { parseEntityId } from '@/lib/search-query';
 import { parseLimitParam, parsePageParam } from '@/lib/pagination';
 import { suggestSearches } from '@/lib/search-suggest';
-import { newsTypeLabels, type NewsType } from '@/types/news';
+import { newsTypeLabels, type NewsResponse, type NewsType } from '@/types/news';
 import {
     ADMIN_NEWS_PAGE_SIZE,
     NEWS_SEARCH_FIELDS,
@@ -34,9 +34,19 @@ export * from './news-list-types';
  * /admin/news (page.tsx) et par GET /api/news/search pendant la frappe. Deux
  * copies d'une recherche, ce sont deux recherches qui divergent.
  *
- * La route PUBLIQUE, /api/news, n'est pas concernée : elle garde son moteur
- * Prisma et ne connaît ni le choix du champ ni les comptes par type.
+ * Le site public (/api/news et le premier rendu de /dernieres-infos) passe par
+ * le même moteur, via `listPublicNews`. Deux moteurs, c'était une recherche
+ * insensible aux accents pour les permanents et pas pour les visiteurs.
+ *
+ * L'AUDIENCE EST ÉCRITE DANS LE MOTEUR, pas passée en drapeau par l'appelant :
+ * `listPublicNews` cherche l'auteur par son nom AFFICHÉ seulement. `User.searchKey`
+ * contient aussi le prénom, le nom et l'e-mail — l'ouvrir au public ferait de la
+ * recherche un oracle (« jean@… a-t-il écrit une info ? »). Elle ne propose pas
+ * non plus de personnes en « Vouliez-vous dire », et ne renvoie jamais
+ * d'identifiant d'auteur.
  */
+
+type Audience = 'admin' | 'public';
 
 const NEWS_TYPES = Object.keys(newsTypeLabels) as NewsType[];
 
@@ -79,7 +89,13 @@ function authorContains(token: string): Prisma.Sql[] {
     );
 }
 
-function tokenClause(token: string, field: NewsSearchField): Prisma.Sql {
+/** L'auteur tel qu'un visiteur le voit : son nom affiché, jamais l'e-mail ni le nom civil. */
+function publicAuthorContains(token: string): Prisma.Sql[] {
+    return unaccentedContains(Prisma.sql`COALESCE(u.name, '')`, token);
+}
+
+function tokenClause(token: string, field: NewsSearchField, audience: Audience): Prisma.Sql {
+    const authorClauses = audience === 'admin' ? authorContains : publicAuthorContains;
     const title = Prisma.sql`n.title`;
     const content = Prisma.sql`n.content`;
     let clauses: Prisma.Sql[];
@@ -91,13 +107,13 @@ function tokenClause(token: string, field: NewsSearchField): Prisma.Sql {
             clauses = unaccentedContains(content, token);
             break;
         case 'author':
-            clauses = authorContains(token);
+            clauses = authorClauses(token);
             break;
         default: {
             clauses = [
                 ...unaccentedContains(title, token),
                 ...unaccentedContains(content, token),
-                ...authorContains(token),
+                ...authorClauses(token),
                 // La valeur brute (« gen » trouve GENERAL) et le libellé affiché
                 // (« evenement » trouve EVENEMENT), comme buildNewsSearchWhere.
                 Prisma.sql`LOWER(n.type) LIKE LOWER(${`%${escapeLike(token)}%`})`,
@@ -113,18 +129,23 @@ function tokenClause(token: string, field: NewsSearchField): Prisma.Sql {
 }
 
 /** Tous les mots doivent trouver quelque chose — pas forcément dans le même champ. */
-function searchWhere(search: string, field: NewsSearchField): Prisma.Sql {
+function searchWhere(search: string, field: NewsSearchField, audience: Audience): Prisma.Sql {
     const tokens = searchTokens(search);
     if (!tokens.length) return Prisma.sql`TRUE`;
-    return Prisma.join(tokens.map((token) => tokenClause(token, field)), ' AND ');
+    return Prisma.join(tokens.map((token) => tokenClause(token, field, audience)), ' AND ');
 }
 
 const FROM = Prisma.sql`FROM "News" n LEFT JOIN "User" u ON u.id = n."authorId"`;
 
-async function countFor(search: string, field: NewsSearchField, type: NewsType | null): Promise<number> {
+async function countFor(
+    search: string,
+    field: NewsSearchField,
+    type: string | null,
+    audience: Audience,
+): Promise<number> {
     const typeWhere = type ? Prisma.sql`AND n.type = ${type}` : Prisma.empty;
     const [row] = await prisma.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*)::int AS count ${FROM} WHERE ${searchWhere(search, field)} ${typeWhere}`;
+        SELECT COUNT(*)::int AS count ${FROM} WHERE ${searchWhere(search, field, audience)} ${typeWhere}`;
     return row?.count ?? 0;
 }
 
@@ -189,7 +210,7 @@ const titleHasEveryToken = (title: string, tokens: string[]) => {
 
 export async function listAdminNews(query: AdminNewsQuery): Promise<AdminNewsResult> {
     const { search, field, type, page, limit } = query;
-    const where = searchWhere(search, field);
+    const where = searchWhere(search, field, 'admin');
     const typeWhere = type ? Prisma.sql`AND n.type = ${type}` : Prisma.empty;
 
     const [rows, perType] = await Promise.all([
@@ -234,7 +255,7 @@ export async function listAdminNews(query: AdminNewsQuery): Promise<AdminNewsRes
 
     const searchSuggestions =
         query.suggest && total === 0 && search.trim()
-            ? await suggestSearches(search, ['news', 'people'], (q) => countFor(q, field, type))
+            ? await suggestSearches(search, ['news', 'people'], (q) => countFor(q, field, type, 'admin'))
             : undefined;
 
     return {
@@ -244,6 +265,82 @@ export async function listAdminNews(query: AdminNewsQuery): Promise<AdminNewsRes
         totalPages: Math.ceil(total / limit),
         typeCounts,
         allCount,
+        ...(searchSuggestions ? { searchSuggestions } : {}),
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Côté public
+// ---------------------------------------------------------------------------
+
+export const PUBLIC_NEWS_PAGE_SIZE = 5;
+
+export interface PublicNewsQuery {
+    search: string;
+    /** Une valeur brute (« EVENEMENT »), ou null pour tous les types. Inconnue : aucun résultat. */
+    type: string | null;
+    page: number;
+    limit: number;
+    suggest: boolean;
+}
+
+/** Lit la requête publique : `type=all` ou absent veut dire tous les types. */
+export function parsePublicNewsQuery(get: (key: string) => string | null | undefined): PublicNewsQuery {
+    const type = get('type');
+    return {
+        search: get('search') ?? '',
+        type: type && type !== 'all' ? type : null,
+        page: parsePageParam(get('page')),
+        limit: parseLimitParam(get('limit') ?? null, PUBLIC_NEWS_PAGE_SIZE),
+        suggest: get('suggest') === '1',
+    };
+}
+
+/**
+ * Les dernières infos du site public. Une liste blanche de champs — titre,
+ * contenu, type, date, nom affiché de l'auteur — écrite ici pour qu'une colonne
+ * ajoutée un jour à `News` ne parte pas au public sans que quelqu'un le décide.
+ */
+export async function listPublicNews(query: PublicNewsQuery): Promise<NewsResponse> {
+    const { search, type, page, limit } = query;
+    const where = searchWhere(search, 'all', 'public');
+    const typeWhere = type ? Prisma.sql`AND n.type = ${type}` : Prisma.empty;
+
+    const [rows, total] = await Promise.all([
+        prisma.$queryRaw<{
+            id: number;
+            title: string;
+            content: string;
+            type: string;
+            publishedAt: Date;
+            authorName: string | null;
+        }[]>`
+            SELECT n.id, n.title, n.content, n.type, n."publishedAt", u.name AS "authorName"
+            ${FROM}
+            WHERE ${where} ${typeWhere}
+            ORDER BY n."publishedAt" DESC, n.id DESC
+            LIMIT ${limit} OFFSET ${(page - 1) * limit}`,
+        countFor(search, 'all', type, 'public'),
+    ]);
+
+    // Titres seulement : la route est publique.
+    const searchSuggestions =
+        query.suggest && total === 0 && search.trim()
+            ? await suggestSearches(search, ['news'], (q) => countFor(q, 'all', type, 'public'))
+            : undefined;
+
+    return {
+        items: rows.map((row) => ({
+            id: row.id,
+            title: row.title,
+            content: row.content,
+            type: row.type as NewsType,
+            publishedAt: row.publishedAt,
+            author: { name: row.authorName ?? '' },
+        })),
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        totalItems: total,
         ...(searchSuggestions ? { searchSuggestions } : {}),
     };
 }

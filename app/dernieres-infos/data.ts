@@ -1,9 +1,9 @@
 import { unstable_cache } from 'next/cache';
-import { prisma } from '@/lib/prisma';
+import { listPublicNews, PUBLIC_NEWS_PAGE_SIZE } from '@/lib/news/newsList';
 import { CACHE_TAGS } from '@/lib/cache-tags';
-import type { NewsPost, NewsResponse } from '@/types/news';
+import type { NewsResponse } from '@/types/news';
 
-export const NEWS_PAGE_SIZE = 5;
+export const NEWS_PAGE_SIZE = PUBLIC_NEWS_PAGE_SIZE;
 
 /**
  * Cached default view of the news feed (page 1, all types, no search) used to
@@ -14,28 +14,8 @@ export const NEWS_PAGE_SIZE = 5;
  * to hit /api/news at runtime.
  */
 export const getInitialNews = unstable_cache(
-    async (): Promise<NewsResponse> => {
-        const [rows, total] = await Promise.all([
-            prisma.news.findMany({
-                take: NEWS_PAGE_SIZE,
-                orderBy: { publishedAt: 'desc' },
-                include: { author: { select: { name: true } } },
-            }),
-            prisma.news.count(),
-        ]);
-
-        const items: NewsPost[] = rows.map((n) => ({
-            ...n,
-            author: { name: n.author.name ?? '' },
-        }));
-
-        return {
-            items,
-            totalPages: Math.ceil(total / NEWS_PAGE_SIZE),
-            currentPage: 1,
-            totalItems: total,
-        };
-    },
+    (): Promise<NewsResponse> =>
+        listPublicNews({ search: '', type: null, page: 1, limit: NEWS_PAGE_SIZE, suggest: false }),
     ['dernieres-infos-initial-v1'],
     { tags: [CACHE_TAGS.news], revalidate: 3600 },
 );

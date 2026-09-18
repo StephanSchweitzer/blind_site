@@ -331,25 +331,6 @@ export function newsTypesMatchingLabel(token: string): string[] {
         .map(([value]) => value);
 }
 
-/** Dernières infos : titre, contenu, auteur, type (valeur brute ou libellé), numéro. */
-export function buildNewsSearchWhere(searchTerm: string): Prisma.NewsWhereInput[] | null {
-    return buildTokenizedSearch<Prisma.NewsWhereInput>(searchTerm, (token) => {
-        const clauses: Prisma.NewsWhereInput[] = [
-            ...fieldVariants(token, (v) => ({ title: contains(v) })),
-            ...fieldVariants(token, (v) => ({ content: contains(v) })),
-            ...fieldVariants(token, (v) => ({ author: { name: contains(v) } })),
-            // `type` est une colonne String, pas l'enum : le `contains` garde le
-            // comportement d'avant (« gen » trouve GENERAL).
-            ...fieldVariants(token, (v) => ({ type: contains(v) })),
-        ];
-        const labelled = newsTypesMatchingLabel(token);
-        if (labelled.length > 0) clauses.push({ type: { in: labelled } });
-        const id = tokenAsId(token);
-        if (id !== null) clauses.push({ id });
-        return clauses;
-    });
-}
-
 /** Listes de livres : le titre de la liste, sa description, qui l'a créée, les livres dedans. */
 export function buildCoupsDeCoeurSearchWhere(
     searchTerm: string,

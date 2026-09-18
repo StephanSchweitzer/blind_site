@@ -1,9 +1,20 @@
 // types/news.ts
 import { News } from '@prisma/client';
+import type { SearchSuggestion } from '@/lib/search-suggestion-types';
 
 export type NewsType = News['type'];
 
-export interface NewsPost extends Omit<News, 'author'> {
+/**
+ * What a visitor receives. Deliberately NOT `News` minus something: `authorId`
+ * is an internal user id, and a type built by omission would let the next column
+ * added to `News` reach the public silently. See `listPublicNews`.
+ */
+export interface NewsPost {
+    id: number;
+    title: string;
+    content: string;
+    type: NewsType;
+    publishedAt: Date;
     author: {
         name: string;
     };
@@ -14,6 +25,7 @@ export interface NewsResponse {
     totalPages: number;
     currentPage: number;
     totalItems: number;
+    searchSuggestions?: SearchSuggestion[];
 }
 
 export const newsTypeLabels: Record<NewsType, string> = {

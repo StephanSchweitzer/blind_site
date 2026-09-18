@@ -46,11 +46,15 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
             );
         }
 
-        return NextResponse.json(article);
+        // Whitelist, not the row: this GET is public and `authorId` is an internal
+        // user id. The admin edit form only needs these fields.
+        const { id: articleId, title, content, publishedAt, type, author } = article;
+        return NextResponse.json({ id: articleId, title, content, publishedAt, type, author });
     } catch (error) {
         console.error('Error fetching article:', error);
         return NextResponse.json(
-            { error: 'Échec de la récupération de l\'article', details: error instanceof Error ? error.message : 'Erreur inconnue' },
+            // No `details`: this GET is public.
+            { error: 'Échec de la récupération de l\'article' },
             { status: 500 }
         );
     }

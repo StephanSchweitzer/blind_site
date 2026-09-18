@@ -49,7 +49,7 @@ Access control lives in `middleware.ts` (protects `/admin/*`, `/profile`, `/auth
 **Every API route is guarded, but not all of them by a wrapper.** The exceptions are deliberate and each says so in its own header comment — treat anything *not* on this list as a bug:
 
 - **Public by necessity** — `password-reset` and `password-reset/confirm` (someone locked out cannot authenticate; knowledge of the single-use token *is* the authentication), and `auth/[...nextauth]`.
-- **Public reads serving public pages** — `polly`, `news/search`, `listes-de-livres/preview` and `listes-de-livres/position`. They take reference input only, and respect `hiddenFromCatalogue` like every other public query.
+- **Public reads serving public pages** — `polly`, `news` (GET on the list and on `news/[id]`; whitelisted fields, author by displayed name only), `listes-de-livres/preview` and `listes-de-livres/position`. They take reference input only, and respect `hiddenFromCatalogue` like every other public query.
 - **Secret-authenticated** — `cron/*`, on `CRON_SECRET` (§8).
 - **Guarded by hand rather than by a wrapper**, because the rule isn't a flat access level: `user/[id]` GET (admins see anyone; a member only their own record, capped at `basic`) and `upload-audio` (`getCurrentUser` + `isAdmin`).
 
