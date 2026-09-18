@@ -131,7 +131,7 @@ export const PUT = withAdmin(async (req, { params }) => {
     } catch (error) {
         console.error('Error updating article:', error);
         return NextResponse.json(
-            { error: 'Échec de la mise à jour de l\'article', details: error instanceof Error ? error.message : 'Erreur inconnue' },
+            { error: 'Échec de la mise à jour de l\'article' },
             { status: 500 }
         );
     }
@@ -177,7 +177,7 @@ export const DELETE = withAdmin(async (_req, { params }) => {
     } catch (error) {
         console.error('Error deleting article:', error);
         return NextResponse.json(
-            { error: 'Échec de la suppression de l\'article', details: error instanceof Error ? error.message : 'Erreur inconnue' },
+            { error: 'Échec de la suppression de l\'article' },
             { status: 500 }
         );
     }
