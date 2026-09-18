@@ -1,0 +1,20 @@
+* text=auto eol=lf
+
+# Windows scripts must stay CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaries
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.docx binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.zip binary
