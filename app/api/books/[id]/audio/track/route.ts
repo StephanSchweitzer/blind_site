@@ -6,6 +6,7 @@ import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
 import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
 import { renameTrack, AudioRenameError } from '@/lib/audio/rename';
 import { splitExtension } from '@/lib/audio/naming';
+import { unexpectedErrorResponse } from '@/lib/api-errors';
 
 /**
  * Remove one track from a book's folder — into the corbeille, not out of
@@ -92,11 +93,17 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
         if (e instanceof AudioTrashError) {
             return NextResponse.json({ message: e.message }, { status: 409 });
         }
-        console.error('Suppression audio échouée', e);
-        return NextResponse.json(
-            { message: 'La suppression a échoué. Le fichier est intact.' },
-            { status: 500 },
-        );
+        // « Le fichier est intact » était faux une fois sur deux : le journal
+        // (AudioTrackEvent), le fichier témoin et la relecture de l'état audio
+        // s'écrivent APRÈS le retrait de l'original. On ne sait pas où ça a lâché.
+        return unexpectedErrorResponse({
+            where: `DELETE /api/books/${bookId}/audio/track`,
+            error: e,
+            what: `La suppression de « ${filename} » a échoué.`,
+            outcome:
+                'La piste a pu être déplacée dans la corbeille malgré tout : rouvrez l’éditeur ' +
+                'audio pour voir où elle est avant de recommencer.',
+        });
     }
 });
 
@@ -180,10 +187,16 @@ export const PATCH = withAdmin(async (req, { params, me }) => {
         if (e instanceof AudioRenameError) {
             return NextResponse.json({ message: e.message }, { status: 409 });
         }
-        console.error('Renommage audio échoué', e);
-        return NextResponse.json(
-            { message: 'Le renommage a échoué. Le fichier est intact.' },
-            { status: 500 },
-        );
+        // Même raison que pour la suppression : la copie peut avoir abouti
+        // sans que l'original soit retiré (la piste existe alors sous ses deux
+        // noms), ou tout peut être fait sauf le journal et l'état audio.
+        return unexpectedErrorResponse({
+            where: `PATCH /api/books/${bookId}/audio/track`,
+            error: e,
+            what: `Le renommage de « ${filename} » a échoué.`,
+            outcome:
+                'Il a pu aboutir en partie — la piste peut même apparaître sous ses deux noms : ' +
+                'rouvrez l’éditeur audio pour vérifier avant de recommencer.',
+        });
     }
 });

@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertTriangle, Loader2, Undo2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { apiErrorToast } from '@/admin/ApiErrorMessage';
+import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
 
 export interface AudioTrackTarget {
     order: number;
@@ -71,7 +73,7 @@ export function DeleteAudioTrackModal({
                 body: JSON.stringify({ key: track.key, filename: track.name }),
             });
             const data = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(data?.message || 'Échec de la suppression');
+            if (!res.ok) throw userErrorFromResponse(res, data);
 
             toast({
                 // @ts-expect-error jsx in toast
@@ -87,17 +89,20 @@ export function DeleteAudioTrackModal({
             onDeleted?.();
             onOpenChange(false);
         } catch (err) {
-            toast({
-                variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: (
-                    <span className="text-xl mt-2">
-                        {err instanceof Error ? err.message : 'Erreur inattendue'}
-                    </span>
-                ),
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
-            });
+            toast(
+                apiErrorToast(err, {
+                    title: 'Suppression impossible',
+                    action: `Supprimer la piste n° ${track.order} « ${track.name} » du livre #${bookId}`,
+                }),
+            );
+            // Issue inconnue : le fichier a pu bouger malgré l'erreur. On referme et
+            // on relit le dossier, pour que la liste montre l'état réel plutôt
+            // que celui d'avant la tentative. Un refus connu, lui, n'a rien
+            // changé — la fenêtre reste ouverte.
+            if (toUserFacingError(err).kind !== 'known') {
+                onDeleted?.();
+                onOpenChange(false);
+            }
         } finally {
             setIsDeleting(false);
         }

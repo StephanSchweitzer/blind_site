@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { readBookDeletionCheck } from '@/lib/books/deletionPreflight';
+import { unexpectedErrorResponse } from '@/lib/api-errors';
 
 /**
  * Ce qui empêche de supprimer cette fiche, et ce qu'il reste à décider — AVANT
@@ -35,18 +36,19 @@ export const GET = withAdmin(async (_req, { params }) => {
         }
         return NextResponse.json(preflight);
     } catch (error) {
-        // Le stockage est injoignable : on ne peut pas dire ce que contient le
-        // dossier, donc on ne prétend pas le savoir. La fenêtre le dit et
-        // n'offre aucune option — décider du dossier sans pouvoir le lire est
-        // exactement ce qu'il ne faut pas faire ici.
-        console.error('Contrôle de suppression impossible pour le livre', bookId, error);
-        return NextResponse.json(
-            {
-                error:
-                    'Impossible de lire le dossier audio de ce livre : le stockage est ' +
-                    'injoignable. Réessayez dans un instant — rien n’a été modifié.',
-            },
-            { status: 503 },
-        );
+        // On ne peut pas dire ce que contient le dossier, donc on ne prétend pas
+        // le savoir : la fenêtre le dit et n'offre aucune option — décider du
+        // dossier sans pouvoir le lire est exactement ce qu'il ne faut pas faire.
+        // Le plus souvent le stockage (B2 répond 5xx par intermittence), mais
+        // la base peut aussi être en cause : le message n'affirme ni l'un ni
+        // l'autre, et la référence permet de trancher dans les journaux.
+        return unexpectedErrorResponse({
+            where: `GET /api/books/${bookId}/deletion-check`,
+            error,
+            what:
+                'Impossible de vérifier ce que ce livre contient (dossier audio, demandes, ' +
+                'attributions) : le stockage ou la base n’a pas répondu.',
+            outcome: 'Rien n’a été modifié. Fermez la fenêtre et réessayez dans un instant.',
+        });
     }
 });

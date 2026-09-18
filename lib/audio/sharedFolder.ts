@@ -2,6 +2,7 @@ import 'server-only';
 
 import { prisma } from '@/lib/prisma';
 import { resolvePrefix } from './state';
+import { TECH_CONTACT_EMAIL } from '@/lib/user-error';
 
 /**
  * Les autres livres qui pointent sur le MÊME dossier audio.
@@ -56,10 +57,17 @@ export function describeSharingBooks(books: FolderSharingBook[]): string {
 }
 
 /**
- * Le refus, formulé une fois. `action` complète « Impossible de … » : la phrase
- * doit dire ce qui a été empêché, puis quoi faire — la fusion sur /admin/review
- * pour deux fiches du même ouvrage, le rattachement pour un dossier mal
- * attribué.
+ * Le refus d'une suppression de PISTES, formulé une fois. `action` complète
+ * « Impossible de … ».
+ *
+ * La phrase doit finir sur un geste que le permanent peut réellement faire.
+ * Elle renvoyait à « la fusion depuis Doublons » et à « détacher le dossier de
+ * l'autre fiche » : la première ne trouve que les paires que l'import a
+ * signalées (`needsReview`), et aucun écran ne permet la seconde — un permanent
+ * s'est retrouvé devant deux portes fermées. Le geste qui marche toujours pour
+ * deux fiches du même ouvrage est de supprimer celle en trop en laissant le
+ * dossier (voir bookDeletionSharedNotice) ; le reste — deux ouvrages distincts
+ * sur un même dossier — est une réparation à la main, d'où l'adresse.
  */
 export function sharedFolderRefusal(books: FolderSharingBook[], action: string): string {
     const plural = books.length > 1;
@@ -67,7 +75,48 @@ export function sharedFolderRefusal(books: FolderSharingBook[], action: string):
         `Impossible de ${action} : ce dossier audio est aussi celui de ` +
         `${describeSharingBooks(books)}. Un dossier ne peut appartenir qu'à un seul livre — ` +
         `supprimer ici viderait aussi ${plural ? 'ces fiches' : 'cette fiche'}. ` +
-        `Réglez d'abord le doublon (fusion depuis Doublons), ou détachez le dossier ` +
-        `${plural ? 'des autres fiches' : "de l'autre fiche"}.`
+        `Si les fiches décrivent le même livre, supprimez celle qui est en trop en choisissant ` +
+        `« Laisser le dossier dans le stockage » : l'enregistrement restera à l'autre. ` +
+        `Sinon, écrivez à ${TECH_CONTACT_EMAIL} pour faire séparer les dossiers.`
+    );
+}
+
+/**
+ * Supprimer une fiche dont le dossier est partagé : possible, mais seulement en
+ * le laissant en place.
+ *
+ * La suppression d'un livre est une suppression douce (`deletedAt`) : « laisser
+ * le dossier » ne copie ni ne retire rien du stockage, et la fiche masquée
+ * disparaît de booksSharingAudioFolder (lib/prisma.ts filtre `deletedAt`) — le
+ * jumeau reste seul propriétaire, intact. C'est donc le moyen de régler un
+ * doublon. Le transfert (le jumeau partagerait alors avec la destination) et la
+ * corbeille (qui vide le dossier du jumeau) restent refusés.
+ *
+ * Ce refus bloquait auparavant la suppression entière, héritage du temps où
+ * supprimer une fiche vidait son dossier : la seule option sans danger était
+ * justement celle qu'il interdisait.
+ */
+export function bookDeletionSharedNotice(books: FolderSharingBook[]): string {
+    const plural = books.length > 1;
+    return (
+        `Ce dossier audio est aussi celui de ${describeSharingBooks(books)}. Il ne peut donc ` +
+        `qu'être laissé en place : le transférer ou l'envoyer à la corbeille le retirerait aussi ` +
+        `à ${plural ? 'ces fiches' : 'cette fiche'}. Supprimer cette fiche-ci ne touche pas à ` +
+        `l'enregistrement, que ${plural ? 'les autres fiches gardent' : "l'autre fiche garde"}.`
+    );
+}
+
+/** Le refus serveur quand un appelant demande quand même transfert ou corbeille. */
+export function bookDeletionSharedRefusal(
+    books: FolderSharingBook[],
+    mode: 'transfer' | 'trash',
+): string {
+    const plural = books.length > 1;
+    return (
+        `Impossible de ${mode === 'transfer' ? 'transférer ce dossier audio' : 'mettre ces pistes à la corbeille'} : ` +
+        `le dossier est aussi celui de ${describeSharingBooks(books)}, ` +
+        `qui ${plural ? 'le perdraient' : 'le perdrait'}. Choisissez « Laisser le dossier dans le ` +
+        `stockage » : la fiche sera supprimée et l'enregistrement restera à ` +
+        `${plural ? 'ces fiches' : 'cette fiche'}. Rien n'a été modifié.`
     );
 }

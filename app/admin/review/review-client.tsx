@@ -44,6 +44,8 @@ import {
     AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import { apiErrorToast } from '@/admin/ApiErrorMessage';
+import { UserFacingError } from '@/lib/user-error';
 import { BookAudioModal } from '@/admin/BookAudioModal';
 import {
     AudioLinkStatus,
@@ -182,14 +184,30 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
     // controls until the next page's data has loaded.
     const [isNavPending, startNav] = useTransition();
 
-    const run = (fn: () => Promise<ActionResult>, onSuccess?: () => void) => {
+    const run = (fn: () => Promise<ActionResult>, onSuccess?: () => void, action?: string) => {
         startTransition(async () => {
-            const res = await fn();
-            toast({
-                title: res.ok ? 'Succès' : 'Erreur',
-                description: res.message,
-                variant: res.ok ? undefined : 'destructive',
-            });
+            let res: ActionResult;
+            try {
+                res = await fn();
+            } catch (error) {
+                // L'action elle-même n'a pas répondu (réseau, plantage hors de son
+                // try) : sans ce catch, rien ne s'affichait du tout.
+                toast(apiErrorToast(error, { action }));
+                setPending(null);
+                return;
+            }
+            if (res.ok) {
+                toast({ title: 'Succès', description: res.message });
+            } else {
+                toast(
+                    apiErrorToast(
+                        new UserFacingError(res.message, res.unexpected ? 'unexpected' : 'known', {
+                            ref: res.ref,
+                        }),
+                        { action },
+                    ),
+                );
+            }
             setPending(null);
             if (res.ok) {
                 onSuccess?.();
@@ -214,17 +232,21 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
             () => {
                 setEscalation(null);
                 setNote('');
-            }
+            },
+            `Doublons : signaler #${flaggedId} / #${matchedId}`,
         );
     };
 
     const confirm = () => {
         if (!pending) return;
         if (pending.kind === 'fuse')
-            run(() =>
-                fuseBooks(pending.survivorId, pending.removedId, pending.overrides, pending.proposedMatchId),
+            run(
+                () =>
+                    fuseBooks(pending.survivorId, pending.removedId, pending.overrides, pending.proposedMatchId),
+                undefined,
+                `Doublons : fusionner #${pending.removedId} dans #${pending.survivorId}`,
             );
-        else run(() => deleteBook(pending.bookId));
+        else run(() => deleteBook(pending.bookId), undefined, `Doublons : supprimer #${pending.bookId}`);
     };
 
     const goto = (p: number) => {

@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertTriangle, Loader2, Undo2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { apiErrorToast } from '@/admin/ApiErrorMessage';
+import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
 
 interface DeleteAllAudioTracksModalProps {
     isOpen: boolean;
@@ -52,18 +54,32 @@ export function DeleteAllAudioTracksModal({
                 body: JSON.stringify({ confirmCount: trackCount }),
             });
             const data = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(data?.message || 'Échec de la suppression');
+            if (!res.ok) throw userErrorFromResponse(res, data);
 
             const failed = (data?.failed ?? []) as { name: string; message: string }[];
             toast({
-                ...(failed.length > 0 ? { variant: 'destructive' as const } : {}),
+                ...(failed.length > 0
+                    ? // Une suppression partielle reste à l'écran : elle dit quoi relancer.
+                      { variant: 'destructive' as const, duration: Infinity }
+                    : {}),
                 // @ts-expect-error jsx in toast
                 title: (
                     <span className="text-2xl font-bold">
                         {failed.length > 0 ? 'Suppression partielle' : 'Déplacées dans la corbeille'}
                     </span>
                 ),
-                description: <span className="text-xl mt-2">{data.message}</span>,
+                description: (
+                    <span className="text-xl mt-2">
+                        {data?.message ?? 'Les pistes ont été déplacées dans la corbeille.'}
+                        {failed.length > 0 && (
+                            <span className="block mt-2 text-base">
+                                En échec : {failed.map((f) => `« ${f.name} » (${f.message})`).join(', ')}.
+                                Relancez la suppression : les fichiers déjà déplacés ne le seront pas
+                                deux fois.
+                            </span>
+                        )}
+                    </span>
+                ),
                 className:
                     failed.length > 0
                         ? 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6'
@@ -74,17 +90,21 @@ export function DeleteAllAudioTracksModal({
             onOpenChange(false);
             setTyped('');
         } catch (err) {
-            toast({
-                variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: (
-                    <span className="text-xl mt-2">
-                        {err instanceof Error ? err.message : 'Erreur inattendue'}
-                    </span>
-                ),
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
-            });
+            toast(
+                apiErrorToast(err, {
+                    title: 'Suppression impossible',
+                    action: `Supprimer les ${trackCount} pistes du livre #${bookId}`,
+                }),
+            );
+            // Issue inconnue : le fichier a pu bouger malgré l'erreur. On referme et
+            // on relit le dossier, pour que la liste montre l'état réel plutôt
+            // que celui d'avant la tentative. Un refus connu, lui, n'a rien
+            // changé — la fenêtre reste ouverte.
+            if (toUserFacingError(err).kind !== 'known') {
+                onDeleted?.();
+                onOpenChange(false);
+                setTyped('');
+            }
         } finally {
             setIsDeleting(false);
         }

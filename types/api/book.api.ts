@@ -230,8 +230,11 @@ export interface BookDeletionAudioState {
     sizeBytes: number;
     /** Les autres fiches qui revendiquent ce même dossier. */
     sharedWith: { id: number; title: string }[];
-    /** Refus dû au partage : aucune option ne doit être proposée. */
-    sharedRefusal: string | null;
+    /**
+     * Le dossier est partagé : seule « laisser le dossier » est proposée, et
+     * cette phrase dit pourquoi. N'empêche pas la suppression.
+     */
+    sharedNotice: string | null;
     /** Pistes déjà dans la corbeille de ce livre. */
     trashCount: number;
 }

@@ -4,6 +4,7 @@ import { BookOpen, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { listAideSections } from '@/lib/aide';
 import { AidePdfButton } from '@/components/aide/AidePdfButton';
+import { TECH_CONTACT_EMAIL } from '@/lib/user-error';
 
 export const metadata = {
     title: "Mode d'emploi — Arbre Rose",
@@ -81,10 +82,10 @@ export default function AidePage() {
                         Quelque chose vous semble faux dans ces pages ? Envoyez la page concernée
                         et une capture d&apos;écran à{' '}
                         <a
-                            href="mailto:steezefanschweitzer@gmail.com"
+                            href={`mailto:${TECH_CONTACT_EMAIL}`}
                             className="text-primary hover:underline"
                         >
-                            steezefanschweitzer@gmail.com
+                            {TECH_CONTACT_EMAIL}
                         </a>{' '}
                         pour le faire corriger ou vous l&apos;expliquer.
                     </p>

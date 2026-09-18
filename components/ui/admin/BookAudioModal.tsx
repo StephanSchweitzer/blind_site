@@ -47,6 +47,8 @@ import { DeleteAllAudioTracksModal } from '@/admin/DeleteAllAudioTracksModal';
 import { RenameAudioTrackModal, type AudioTrackRenameTarget } from '@/admin/RenameAudioTrackModal';
 import { MissingDemandeNotice } from '@/admin/MissingDemandeNotice';
 import { parisDate } from '@/lib/paris-day';
+import { ApiErrorMessage, apiErrorToast } from '@/admin/ApiErrorMessage';
+import { toUserFacingError, userErrorFromResponse, type UserFacingError } from '@/lib/user-error';
 
 interface Track {
     order: number;
@@ -308,7 +310,14 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const [data, setData] = useState<ManageResponse | null>(null);
     const [trash, setTrash] = useState<TrashItem[]>([]);
     const [loading, setLoading] = useState(false);
-    const [loadError, setLoadError] = useState<string | null>(null);
+    const [loadError, setLoadError] = useState<UserFacingError | null>(null);
+    /**
+     * La corbeille n'a pas pu être lue. Distinct de `loadError` : les pistes,
+     * elles, sont là. Avant, un échec ici s'affichait « Aucun fichier supprimé
+     * pour ce livre » — une corbeille vide mensongère, précisément quand on la
+     * cherche après une suppression qui a mal tourné.
+     */
+    const [trashError, setTrashError] = useState<UserFacingError | null>(null);
     const [playingKey, setPlayingKey] = useState<string | null>(null);
     const [target, setTarget] = useState<AudioTrackTarget | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -350,19 +359,25 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const load = useCallback(async () => {
         setLoading(true);
         setLoadError(null);
+        setTrashError(null);
         try {
             const [mRes, tRes] = await Promise.all([
                 fetch(`/api/books/${bookId}/audio/manage`),
                 fetch(`/api/books/${bookId}/audio/trash`),
             ]);
             const mData = await mRes.json().catch(() => null);
-            if (!mRes.ok) throw new Error(mData?.message || 'Chargement impossible');
+            if (!mRes.ok) throw userErrorFromResponse(mRes, mData);
             setData(mData as ManageResponse);
 
             const tData = await tRes.json().catch(() => null);
-            setTrash(tRes.ok ? ((tData?.items ?? []) as TrashItem[]) : []);
+            if (tRes.ok) {
+                setTrash((tData?.items ?? []) as TrashItem[]);
+            } else {
+                setTrash([]);
+                setTrashError(userErrorFromResponse(tRes, tData));
+            }
         } catch (e) {
-            setLoadError(e instanceof Error ? e.message : 'Erreur inattendue');
+            setLoadError(toUserFacingError(e));
         } finally {
             setLoading(false);
         }
@@ -478,7 +493,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                 body: JSON.stringify({ trashId: item.id }),
             });
             const d = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(d?.message || 'Restauration impossible');
+            if (!res.ok) throw userErrorFromResponse(res, d);
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Restauré</span>,
@@ -487,7 +502,15 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             });
             await refreshAll();
         } catch (e) {
-            notifyError(e instanceof Error ? e.message : 'Erreur inattendue');
+            toast(
+                apiErrorToast(e, {
+                    title: 'Restauration impossible',
+                    action: `Restaurer « ${item.filename} » depuis la corbeille (livre #${bookId})`,
+                }),
+            );
+            // Issue inconnue : le fichier a pu revenir malgré l'erreur — relire
+            // montre l'état réel plutôt que la ligne d'avant.
+            if (toUserFacingError(e).kind !== 'known') await refreshAll();
         } finally {
             setRestoringId(null);
         }
@@ -664,7 +687,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             onClick={() => setTab('corbeille')}
                             className={tab === 'corbeille' ? '' : 'bg-field border-border text-foreground hover:bg-muted'}
                         >
-                            Corbeille ({activeTrash.length})
+                            Corbeille ({trashError ? '?' : activeTrash.length})
                         </Button>
 
                         {/* Re-fetches the folder listing. Order itself is never cached —
@@ -811,7 +834,10 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                         {loadError && !loading && (
                             <div className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-300">
                                 <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                <span>{loadError}</span>
+                                <ApiErrorMessage
+                                    error={loadError}
+                                    action={`Ouvrir l’éditeur audio du livre #${bookId}`}
+                                />
                             </div>
                         )}
 
@@ -1227,7 +1253,22 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                         {/* --- Trash --------------------------------------------------- */}
                         {!loading && !loadError && tab === 'corbeille' && (
                             <div className="space-y-2">
-                                {trash.length === 0 && (
+                                {trashError && (
+                                    <div className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-300">
+                                        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                        <span>
+                                            <span className="block font-medium">
+                                                La corbeille n’a pas pu être lue — elle n’est pas
+                                                forcément vide.
+                                            </span>
+                                            <ApiErrorMessage
+                                                error={trashError}
+                                                action={`Lire la corbeille du livre #${bookId}`}
+                                            />
+                                        </span>
+                                    </div>
+                                )}
+                                {trash.length === 0 && !trashError && (
                                     <p className="text-sm text-muted-foreground">
                                         Aucun fichier supprimé pour ce livre.
                                     </p>

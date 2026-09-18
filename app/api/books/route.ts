@@ -4,6 +4,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { BookWithGenres } from '@/types/book';
 import { withAdmin } from '@/lib/auth/guards';
+import { unexpectedErrorResponse } from '@/lib/api-errors';
 import { findAdminBooksByIds, listAdminBooks, parseAdminBookListQuery } from '@/lib/books/bookList';
 
 /**
@@ -79,6 +80,7 @@ interface CreateBookResponse {
 
 export const POST = withAdmin(async (req, { me }): Promise<Response> => {
     revalidateAdmin();
+    let created: CreateBookResponse;
     try {
         const userId = me.id;
         const formData: CreateBookRequest = await req.json();
@@ -96,7 +98,9 @@ export const POST = withAdmin(async (req, { me }): Promise<Response> => {
             if (existingBook) {
                 const conflictResponse: CreateBookResponse = {
                     success: false,
-                    message: 'A book with this ISBN already exists'
+                    message:
+                        `Un livre porte déjà cet ISBN : « ${existingBook.title} » (#${existingBook.id}). ` +
+                        `Vérifiez l’ISBN, ou modifiez la fiche existante. Aucun livre n’a été créé.`,
                 };
                 return new Response(JSON.stringify(conflictResponse), {
                     status: 409,
@@ -132,28 +136,31 @@ export const POST = withAdmin(async (req, { me }): Promise<Response> => {
             }
         });
 
+        // Hors du try : le livre existe, une panne ici ne doit pas faire croire
+        // qu'il n'a pas été créé — on le recréerait en double.
         const successResponse: CreateBookResponse = {
             success: true,
             message: 'Book added successfully',
             book: newBook
         };
-
-        revalidateCatalogue();
-
-        return new Response(JSON.stringify(successResponse), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-        });
-
+        created = successResponse;
     } catch (error) {
-        console.error('API Error:', error);
-        const errorResponse: CreateBookResponse = {
-            success: false,
-            message: error instanceof Error ? error.message : 'Failed to add book'
-        };
-        return new Response(JSON.stringify(errorResponse), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
+        // Renvoyait 400 avec `error.message` tel quel : le texte brut d'une
+        // exception Prisma, en anglais, affiché dans le toast comme s'il
+        // s'agissait d'un refus de validation. create() est l'unique écriture,
+        // atomique avec ses genres : s'il a jeté, rien n'existe.
+        return unexpectedErrorResponse({
+            where: 'POST /api/books',
+            error,
+            what: 'La création du livre a échoué.',
+            outcome: 'Aucun livre n’a été créé.',
         });
     }
+
+    revalidateCatalogue();
+
+    return new Response(JSON.stringify(created), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+    });
 });

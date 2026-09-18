@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { apiErrorToast } from '@/admin/ApiErrorMessage';
+import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
 
 export interface AudioTrackRenameTarget {
     order: number;
@@ -83,29 +85,36 @@ export function RenameAudioTrackModal({
                 body: JSON.stringify({ key: track.key, filename: track.name, newName }),
             });
             const data = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(data?.message || 'Échec du renommage');
+            if (!res.ok) throw userErrorFromResponse(res, data);
 
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Renommé</span>,
-                description: <span className="text-xl mt-2">{data.message}</span>,
+                description: (
+                    <span className="text-xl mt-2">
+                        {data?.message ?? `« ${track.name} » a été renommé en « ${newName} ».`}
+                    </span>
+                ),
                 className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
             });
 
             onRenamed?.();
             onOpenChange(false);
         } catch (err) {
-            toast({
-                variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: (
-                    <span className="text-xl mt-2">
-                        {err instanceof Error ? err.message : 'Erreur inattendue'}
-                    </span>
-                ),
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
-            });
+            toast(
+                apiErrorToast(err, {
+                    title: 'Renommage impossible',
+                    action: `Renommer la piste « ${track.name} » en « ${newName} » (livre #${bookId})`,
+                }),
+            );
+            // Issue inconnue : le fichier a pu bouger malgré l'erreur. On referme et
+            // on relit le dossier, pour que la liste montre l'état réel plutôt
+            // que celui d'avant la tentative. Un refus connu, lui, n'a rien
+            // changé — la fenêtre reste ouverte.
+            if (toUserFacingError(err).kind !== 'known') {
+                onRenamed?.();
+                onOpenChange(false);
+            }
         } finally {
             setIsRenaming(false);
         }

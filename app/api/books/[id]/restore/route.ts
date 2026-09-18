@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { unexpectedErrorResponse } from '@/lib/api-errors';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
@@ -76,11 +77,12 @@ export const GET = withAdmin(async (_request, { params }) => {
             isbnConflict: preview.isbnHolder ? isbnConflictMessage(preview.isbnHolder) : null,
         });
     } catch (error) {
-        console.error('Error reading book restore preview:', error);
-        return NextResponse.json(
-            { message: 'Impossible de préparer la restauration de ce livre' },
-            { status: 500 },
-        );
+        return unexpectedErrorResponse({
+            where: `GET /api/books/${bookId}/restore`,
+            error,
+            what: 'Impossible de préparer la restauration de ce livre.',
+            outcome: 'Rien n’a été modifié.',
+        });
     }
 });
 
@@ -95,6 +97,9 @@ export const POST = withAdmin(async (request, { params, me }) => {
         ? body.audioTrackIds.filter((v): v is number => Number.isInteger(v))
         : [];
 
+    // Posé dès que la fiche est réellement ressortie : à partir de là, une
+    // exception ne doit plus se lire « la restauration a échoué ».
+    let bookRestored = false;
     try {
         const preview = await readBookRestorePreview(bookId);
         if (!preview) {
@@ -143,6 +148,7 @@ export const POST = withAdmin(async (request, { params, me }) => {
             }
             throw error;
         }
+        bookRestored = true;
 
         // Après, pas avant : la fiche doit déjà exister « active » pour que
         // refreshBookAudioState (appelé dedans) la retrouve normalement.
@@ -168,10 +174,16 @@ export const POST = withAdmin(async (request, { params, me }) => {
             audio: { restoredTracks: restored, failedTracks: failed.length },
         });
     } catch (error) {
-        console.error('Error restoring book:', error);
-        return NextResponse.json(
-            { message: 'Erreur lors de la restauration du livre' },
-            { status: 500 }
-        );
+        return unexpectedErrorResponse({
+            where: `POST /api/books/${bookId}/restore`,
+            error,
+            what: bookRestored
+                ? 'La fiche a bien été restaurée, mais la restauration des pistes audio s’est interrompue.'
+                : 'La restauration du livre a échoué.',
+            outcome: bookRestored
+                ? 'Une partie des pistes a pu revenir : ouvrez l’éditeur audio et la Corbeille audio ' +
+                  'pour voir ce qui reste à restaurer.'
+                : 'La fiche est toujours supprimée.',
+        });
     }
 });

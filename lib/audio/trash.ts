@@ -351,7 +351,12 @@ export async function softDeleteTrack(opts: {
     });
 
     if (result.failed.length) {
-        throw new AudioTrashError(result.failed[0].reason);
+        // `reason` est un fragment (« copie vers la corbeille impossible ») écrit
+        // pour la liste d'échecs du retrait en masse ; seul dans un toast, il ne
+        // disait pas ce qui avait échoué.
+        throw new AudioTrashError(
+            `Impossible de déplacer ce fichier dans la corbeille : ${result.failed[0].reason}.`,
+        );
     }
     if (!result.parked.length) {
         // Defensive: a track that is neither parked nor failed should not

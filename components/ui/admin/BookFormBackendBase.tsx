@@ -14,6 +14,8 @@ import BookDeletedNotice from '@/admin/BookDeletedNotice';
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
 import { useFormToast } from "@/hooks/useFormToast";
+import { apiErrorToast } from '@/admin/ApiErrorMessage';
+import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
 
 interface Genre {
     id: string;
@@ -262,7 +264,8 @@ export function BookFormBackendBase({
                 onSuccess(newBookId);
             }
         } catch (err) {
-            // Wrapper (Add/Edit) already toasts the detailed error; inline only here.
+            // Wrapper (Add/Edit) already toasts the detailed error — with the
+            // contact line when the cause is unknown; inline only here.
             const msg = err instanceof Error ? err.message : 'Échec du traitement du livre';
             setError(msg);
             return;
@@ -648,27 +651,13 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
                 }),
             });
 
-            const data = await response.json();
+            // `.catch` : une page d'erreur de l'hébergeur (délai, 502) n'est pas du
+            // JSON, et le `response.json()` nu jetait alors une SyntaxError qui
+            // finissait en « Échec du traitement du livre » sans toast.
+            const data = await response.json().catch(() => null);
 
-            if (!response.ok) {
-                let errorMessage = 'Échec de la création du livre';
-
-                if (response.status === 409) {
-                    errorMessage = 'Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.';
-                } else if (data?.message) {
-                    errorMessage = data.message;
-                }
-
-                toast({
-                    variant: "destructive",
-                    // @ts-expect-error same jsx problem
-                    title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <span className="text-xl mt-2">{errorMessage}</span>,
-                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
-                });
-
-                return Promise.reject();
-            }
+            // Le serveur nomme lui-même le livre qui porte déjà l'ISBN (409).
+            if (!response.ok) throw userErrorFromResponse(response, data);
 
             toast({
                 // @ts-expect-error same jsx problem
@@ -679,8 +668,11 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
 
             return data.book.id;
         } catch (error) {
-            console.error('Submit error:', error);
-            return Promise.reject();
+            // Une coupure réseau passait ici sans AUCUN toast : seul un
+            // « Échec du traitement du livre » s'affichait en bas du formulaire.
+            const e = toUserFacingError(error);
+            toast(apiErrorToast(e, { title: 'Création impossible', action: `Créer le livre « ${formData.title} »` }));
+            throw e;
         }
     };
 
@@ -755,24 +747,8 @@ export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess,
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                let errorMessage = 'Échec de la mise à jour du livre';
-
-                if (response.status === 409) {
-                    errorMessage = 'Un livre avec cet ISBN existe déjà dans la base de données. Veuillez vérifier l\'ISBN ou mettre à jour le livre existant.';
-                } else if (errorData?.message) {
-                    errorMessage = errorData.message;
-                }
-
-                toast({
-                    variant: "destructive",
-                    // @ts-expect-error same jsx problem
-                    title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <span className="text-xl mt-2">{errorMessage}</span>,
-                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
-                });
-
-                return Promise.reject();
+                // Le serveur nomme lui-même le livre qui porte déjà l'ISBN (409).
+                throw userErrorFromResponse(response, await response.json().catch(() => null));
             }
 
             toast({
@@ -784,8 +760,9 @@ export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess,
 
             return parseInt(bookId);
         } catch (error) {
-            console.error('Submit error:', error);
-            return Promise.reject();
+            const e = toUserFacingError(error);
+            toast(apiErrorToast(e, { title: 'Enregistrement impossible', action: `Modifier le livre #${bookId}` }));
+            throw e;
         }
     };
 

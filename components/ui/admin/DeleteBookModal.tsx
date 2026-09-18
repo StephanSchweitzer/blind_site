@@ -17,6 +17,12 @@ import { useToast } from '@/hooks/use-toast';
 import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import { BookSearchCombobox, type BookSearchResult } from '@/admin/BookSearchCombobox';
 import { bytesToKb, formatSizeKb } from '@/lib/pricing';
+import { ApiErrorMessage } from '@/admin/ApiErrorMessage';
+import {
+    toUserFacingError,
+    userErrorFromResponse,
+    UserFacingError,
+} from '@/lib/user-error';
 import type {
     BookAudioDispositionMode,
     BookDeletionPreflightResponse,
@@ -32,7 +38,9 @@ import type {
  *    partageait son dossier audio — après avoir confirmé, en lisant l'erreur d'un
  *    appel qui n'a rien fait. Le contrôle (GET /api/books/[id]/deletion-check) est
  *    donc lu à l'ouverture : quand il refuse, la fenêtre le dit et n'offre
- *    AUCUNE option.
+ *    AUCUNE option. Un dossier partagé avec une autre fiche n'est PAS un refus :
+ *    seules les deux options qui le videraient pour le jumeau sont grisées, et
+ *    « laisser le dossier » reste — c'est ainsi qu'on règle un doublon.
  * 2. Le dossier audio partait à la corbeille en silence. Copier 77 pistes et
  *    748 Mio dans une requête de 45 s pour protéger une copie que plus aucune
  *    fiche ne réclamera, c'est long, coûteux, et souvent inutile. Les trois
@@ -58,12 +66,19 @@ interface DeleteBookModalProps {
 }
 
 interface DeleteFailure {
-    error: string;
+    error?: string;
     /** Le livre visé par un transfert porte un chemin, vide, qu'il faut confirmer d'écraser. */
     requiresTargetReplaceConfirm?: boolean;
 }
 
 const tracksLabel = (n: number) => `${n} piste${n > 1 ? 's' : ''}`;
+
+/** Pour le courriel d'une erreur inconnue : quelle option était choisie. */
+const MODE_LABEL: Record<BookAudioDispositionMode, string> = {
+    leave: 'laisser le dossier',
+    transfer: 'transférer le dossier',
+    trash: 'envoyer à la corbeille',
+};
 
 /** « 3 pistes · 748,0 Mo » — le poids passe par le formateur commun (lib/pricing.ts). */
 const folderSummary = (trackCount: number, sizeBytes: number) =>
@@ -86,7 +101,7 @@ export function DeleteBookModal({
      * interdit ici, et la fermeture est un gestionnaire d'évènement.
      */
     const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState<string | null>(null);
+    const [loadError, setLoadError] = useState<UserFacingError | null>(null);
 
     const [mode, setMode] = useState<BookAudioDispositionMode>('leave');
     const [target, setTarget] = useState<BookSearchResult | null>(null);
@@ -95,7 +110,7 @@ export function DeleteBookModal({
     const [typedCount, setTypedCount] = useState('');
 
     const [isDeleting, setIsDeleting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<UserFacingError | null>(null);
 
     const reset = useCallback(() => {
         setPreflight(null);
@@ -117,14 +132,12 @@ export function DeleteBookModal({
         fetch(`/api/books/${bookId}/deletion-check`, { signal: controller.signal })
             .then(async (res) => {
                 const data = await res.json().catch(() => null);
-                if (!res.ok) {
-                    throw new Error(data?.error || 'Contrôle de suppression impossible.');
-                }
+                if (!res.ok) throw userErrorFromResponse(res, data);
                 setPreflight(data as BookDeletionPreflightResponse);
             })
             .catch((e) => {
                 if (e instanceof DOMException && e.name === 'AbortError') return;
-                setLoadError(e instanceof Error ? e.message : 'Contrôle de suppression impossible.');
+                setLoadError(toUserFacingError(e));
             })
             .finally(() => setLoading(false));
         return () => controller.abort();
@@ -134,6 +147,8 @@ export function DeleteBookModal({
     const trackCount = audio?.trackCount ?? 0;
     const hasFolder = trackCount > 0;
     const blocked = preflight?.blocked ?? false;
+    /** Dossier partagé : seul « laisser le dossier » est proposé (voir bookDeletionSharedNotice). */
+    const leaveOnly = hasFolder && (audio?.sharedWith.length ?? 0) > 0;
 
     /** Les garde-fous propres à chaque option, avant d'autoriser le bouton rouge. */
     const ready =
@@ -141,8 +156,8 @@ export function DeleteBookModal({
         !blocked &&
         (!hasFolder ||
             (mode === 'leave' ||
-                (mode === 'transfer' && target !== null) ||
-                (mode === 'trash' && typedCount.trim() === String(trackCount))));
+                (!leaveOnly && mode === 'transfer' && target !== null) ||
+                (!leaveOnly && mode === 'trash' && typedCount.trim() === String(trackCount))));
 
     const handleDelete = async () => {
         if (!ready || !preflight) return;
@@ -170,10 +185,10 @@ export function DeleteBookModal({
                 // Le livre visé porte un chemin dont le dossier est vide : on
                 // demande une confirmation plutôt que de l'écraser en silence,
                 // exactement comme le rattachement d'un dossier orphelin.
-                if (data?.requiresTargetReplaceConfirm) {
+                if (data?.requiresTargetReplaceConfirm && data.error) {
                     setReplacePrompt(data.error);
                 } else {
-                    setError(data?.error || 'La suppression du livre a échoué.');
+                    setError(userErrorFromResponse(res, data));
                 }
                 return;
             }
@@ -183,6 +198,7 @@ export function DeleteBookModal({
                 trackCount?: number;
                 targetTitle?: string;
                 orphanedPrefix?: string;
+                keptBy?: { id: number; title: string }[];
                 targetStateStale?: boolean;
             };
             toast({
@@ -195,7 +211,7 @@ export function DeleteBookModal({
             reset();
             onDeleted();
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'La suppression du livre a échoué.');
+            setError(toUserFacingError(e));
         } finally {
             setIsDeleting(false);
         }
@@ -238,8 +254,14 @@ export function DeleteBookModal({
                     )}
 
                     {loadError && (
-                        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-500 dark:bg-red-900/20 dark:text-red-200">
-                            {loadError}
+                        <div
+                            role="alert"
+                            className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-500 dark:bg-red-900/20 dark:text-red-200"
+                        >
+                            <ApiErrorMessage
+                                error={loadError}
+                                action={`Ouvrir la suppression du livre #${bookId}`}
+                            />
                         </div>
                     )}
 
@@ -251,9 +273,10 @@ export function DeleteBookModal({
                         </div>
                     )}
 
-                    {preflight?.audio.sharedRefusal && (
-                        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-500 dark:bg-red-900/20 dark:text-red-200">
-                            <p>{preflight.audio.sharedRefusal}</p>
+                    {/* --- Dossier partagé : pas un refus, une seule option ------- */}
+                    {preflight && !blocked && leaveOnly && audio!.sharedNotice && (
+                        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500 dark:bg-amber-900/20 dark:text-amber-100">
+                            <p>{audio!.sharedNotice}</p>
                             <ul className="mt-2 space-y-1">
                                 {preflight.audio.sharedWith.map((b) => (
                                     <li key={b.id}>
@@ -320,12 +343,18 @@ export function DeleteBookModal({
                                     </span>
                                 </label>
 
-                                <label className="flex gap-3 rounded-md border border-border bg-field p-3 cursor-pointer">
+                                {/* Grisées plutôt que retirées quand le dossier est
+                                    partagé : le permanent voit qu'elles existent et
+                                    lit juste au-dessus pourquoi elles sont exclues. */}
+                                <label
+                                    className={`flex gap-3 rounded-md border border-border bg-field p-3 ${leaveOnly ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                >
                                     <input
                                         type="radio"
                                         name="audio-disposition"
                                         value="transfer"
                                         checked={mode === 'transfer'}
+                                        disabled={leaveOnly}
                                         onChange={() => setMode('transfer')}
                                         aria-label="Transférer le dossier vers un autre livre"
                                         className="mt-1 flex-shrink-0"
@@ -342,14 +371,17 @@ export function DeleteBookModal({
                                     </span>
                                 </label>
 
-                                {mode === 'transfer' && (
+                                {mode === 'transfer' && !leaveOnly && (
                                     <div className="ml-7 space-y-2">
                                         <BookSearchCombobox<BookSearchResult>
                                             value={target}
                                             onSelect={(book) => {
                                                 if (book.id === bookId) {
                                                     setError(
-                                                        'Le dossier ne peut pas être transféré au livre qu’on supprime.',
+                                                        new UserFacingError(
+                                                            'Le dossier ne peut pas être transféré au livre qu’on supprime.',
+                                                            'known',
+                                                        ),
                                                     );
                                                     return false;
                                                 }
@@ -378,12 +410,15 @@ export function DeleteBookModal({
                                     </div>
                                 )}
 
-                                <label className="flex gap-3 rounded-md border border-border bg-field p-3 cursor-pointer">
+                                <label
+                                    className={`flex gap-3 rounded-md border border-border bg-field p-3 ${leaveOnly ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                >
                                     <input
                                         type="radio"
                                         name="audio-disposition"
                                         value="trash"
                                         checked={mode === 'trash'}
+                                        disabled={leaveOnly}
                                         onChange={() => setMode('trash')}
                                         aria-label="Envoyer les pistes à la corbeille"
                                         className="mt-1 flex-shrink-0"
@@ -410,7 +445,7 @@ export function DeleteBookModal({
                                     </span>
                                 </label>
 
-                                {mode === 'trash' && (
+                                {mode === 'trash' && !leaveOnly && (
                                     <div className="ml-7">
                                         <label
                                             htmlFor="confirm-track-count"
@@ -466,8 +501,14 @@ export function DeleteBookModal({
                     )}
 
                     {error && (
-                        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-500 dark:bg-red-900/20 dark:text-red-200">
-                            {error}
+                        <div
+                            role="alert"
+                            className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-500 dark:bg-red-900/20 dark:text-red-200"
+                        >
+                            <ApiErrorMessage
+                                error={error}
+                                action={`Supprimer le livre #${bookId} (${MODE_LABEL[mode]})`}
+                            />
                         </div>
                     )}
                 </div>
@@ -511,6 +552,7 @@ function describeOutcome(outcome: {
     trackCount?: number;
     targetTitle?: string;
     orphanedPrefix?: string;
+    keptBy?: { id: number; title: string }[];
     targetStateStale?: boolean;
 }): string {
     const count = outcome.trackCount ?? 0;
@@ -528,6 +570,13 @@ function describeOutcome(outcome: {
         return (
             `La fiche a été supprimée et ses ${tracksLabel(count)} sont dans la corbeille, ` +
             `restaurables pendant 14 jours depuis Corbeille audio.`
+        );
+    }
+    if (outcome.keptBy?.length) {
+        const names = outcome.keptBy.map((b) => `« ${b.title} » (#${b.id})`).join(', ');
+        return (
+            `La fiche a été supprimée. Le dossier audio (${tracksLabel(count)}) n’a pas bougé : ` +
+            `il reste celui de ${names}.`
         );
     }
     return (

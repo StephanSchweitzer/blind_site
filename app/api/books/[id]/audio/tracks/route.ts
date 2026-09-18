@@ -5,6 +5,7 @@ import { resolvePrefix } from '@/lib/audio/state';
 import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
 import { softDeleteTracks } from '@/lib/audio/trash';
 import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
+import { unexpectedErrorResponse } from '@/lib/api-errors';
 
 /**
  * softDeleteTracks copies 10-wide; the largest folder sampled in the corpus
@@ -61,7 +62,17 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     }
 
     const prefix = resolvePrefix(book.audio_filepath);
-    const objects = prefix ? await listRawObjects(prefix) : [];
+    let objects: { key: string; size: number }[];
+    try {
+        objects = prefix ? await listRawObjects(prefix) : [];
+    } catch (e) {
+        return unexpectedErrorResponse({
+            where: `DELETE /api/books/${bookId}/audio/tracks (listing)`,
+            error: e,
+            what: 'Impossible de lire le dossier audio : le stockage n’a pas répondu.',
+            outcome: 'Rien n’a été déplacé. Réessayez dans un instant.',
+        });
+    }
     const tracks = toOrderedTracks(objects, prefix);
 
     if (!tracks.length) {
@@ -84,15 +95,31 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     // DeleteObjects call. A track an earlier run already copied is not copied
     // again (its leftover original is just removed), so a run that timed out
     // half way is finished simply by confirming again.
-    const result = await softDeleteTracks({
-        bookId,
-        prefix,
-        tracks: tracks.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes })),
-        userId: me.id,
-        // The listing above already covers the whole prefix, so the
-        // placeholder check and the final state refresh don't need a second one.
-        priorObjects: objects,
-    });
+    let result: Awaited<ReturnType<typeof softDeleteTracks>>;
+    try {
+        result = await softDeleteTracks({
+            bookId,
+            prefix,
+            tracks: tracks.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes })),
+            userId: me.id,
+            // The listing above already covers the whole prefix, so the
+            // placeholder check and the final state refresh don't need a second one.
+            priorObjects: objects,
+        });
+    } catch (e) {
+        // Per-track copy failures come back in `failed`; an exception here is
+        // the bookkeeping around them (rows, journal, placeholder, state), so
+        // some tracks may already be gone from the folder.
+        return unexpectedErrorResponse({
+            where: `DELETE /api/books/${bookId}/audio/tracks`,
+            error: e,
+            what: 'La suppression des pistes s’est interrompue.',
+            outcome:
+                'Une partie des pistes a pu être déjà déplacée dans la corbeille : rouvrez ' +
+                'l’éditeur audio pour voir ce qui reste, puis relancez — les fichiers déjà ' +
+                'déplacés ne le seront pas deux fois.',
+        });
+    }
 
     // `parked`: what actually left the folder — fresh moves and an earlier
     // attempt's leftovers alike, never a track whose removal failed.

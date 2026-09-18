@@ -11,6 +11,7 @@ import {
     type AudioDispositionMode,
 } from '@/lib/books/deleteBookWithAudio';
 import { BookUpdateInputSchema } from '@/types/api/book.api';
+import { isRecordNotFound, unexpectedErrorResponse } from '@/lib/api-errors';
 
 /**
  * Applies to every handler in this file (GET/PUT are quick single-row
@@ -164,14 +165,15 @@ export const PUT = withAdmin(async (req, { params }) => {
         if (existingBook) {
             return NextResponse.json(
                 {
-                    error: 'Another book with this ISBN already exists',
-                    message: 'Another book with this ISBN already exists'
+                    error: `Un autre livre porte déjà cet ISBN : « ${existingBook.title} » (#${existingBook.id}). Rien n’a été modifié.`,
+                    message: `Un autre livre porte déjà cet ISBN : « ${existingBook.title} » (#${existingBook.id}). Rien n’a été modifié.`,
                 },
                 { status: 409 }
             );
         }
     }
 
+    let updatedBook;
     try {
         // L'annonce vocale du livre est un CACHE, et il faut l'invalider ici.
         //
@@ -202,7 +204,7 @@ export const PUT = withAdmin(async (req, { params }) => {
             (author !== undefined && author !== current.author) ||
             (description !== undefined && (description ?? null) !== current.description);
 
-        const updatedBook = await prisma.book.update({
+        updatedBook = await prisma.book.update({
             where: { id: bookId },
             data: {
                 title,
@@ -252,17 +254,39 @@ export const PUT = withAdmin(async (req, { params }) => {
                 }
             }
         });
-
-        revalidateCatalogue();
-
-        return NextResponse.json({
-            message: 'Book updated successfully',
-            book: updatedBook
-        });
     } catch (error) {
-        console.error('Failed to update book:', error);
-        return NextResponse.json({ error: 'Failed to update book' }, { status: 400 });
+        // Un livre supprimé (ou fusionné) dans un autre onglet entre-temps.
+        if (isRecordNotFound(error)) {
+            return NextResponse.json(
+                {
+                    error:
+                        'Ce livre, ou l’un des genres choisis, n’existe plus : il a pu être ' +
+                        'supprimé ou fusionné dans un autre onglet. Rechargez la page. ' +
+                        'Rien n’a été modifié.',
+                },
+                { status: 404 }
+            );
+        }
+        // Répondait 400 « Failed to update book » : une panne se lisait comme un
+        // refus de validation, en anglais, et sans rien pour la retrouver.
+        // L'update est l'unique écriture et elle est atomique (écritures
+        // imbriquées comprises) : si elle a jeté, rien n'est enregistré.
+        return unexpectedErrorResponse({
+            where: `PUT /api/books/${bookId}`,
+            error,
+            what: 'L’enregistrement du livre a échoué.',
+            outcome: 'La modification n’a pas été enregistrée.',
+        });
     }
+
+    // Hors du try : la modification est faite, une panne ici ne doit pas se
+    // lire « pas enregistrée » (le filet de withAdmin le dira « inconnue »).
+    revalidateCatalogue();
+
+    return NextResponse.json({
+        message: 'Book updated successfully',
+        book: updatedBook
+    });
 });
 
 /** Les trois dispositions, telles qu'un client peut les nommer. */
@@ -306,8 +330,9 @@ function readDisposition(body: unknown): AudioDisposition | null {
  * `trash` (l'ancien comportement, désormais choisi). Sans décision alors que le
  * dossier contient des pistes : 400, et la fenêtre de confirmation la demande.
  *
- * Tout le reste — les refus (demandes / attributions, dossier partagé avec une
- * autre fiche), l'ordre des écritures, la trace laissée à la corbeille — vit dans
+ * Tout le reste — les refus (demandes / attributions ; dossier partagé avec une
+ * autre fiche, qui n'autorise que `leave`), l'ordre des écritures, la trace
+ * laissée à la corbeille — vit dans
  * lib/books/deleteBookWithAudio.ts, avec la suppression depuis Doublons.
  */
 export const DELETE = withAdmin(async (request, { params, me }) => {
@@ -315,40 +340,22 @@ export const DELETE = withAdmin(async (request, { params, me }) => {
     const bookId = await bookIdFrom(params);
     if (bookId === null) return invalidId();
 
+    const disposition = readDisposition(await request.json().catch(() => null));
+
+    // Le try n'entoure QUE la suppression : ce que dit le catch (« la fiche n'a
+    // pas été supprimée ») n'est vrai que là. Le `deletedAt` est la dernière
+    // écriture de deleteBookWithAudio (dans la transaction, pour un transfert) :
+    // une exception qui en sort l'a donc précédée.
+    let result: Awaited<ReturnType<typeof deleteBookWithAudio>>;
     try {
-        const result = await deleteBookWithAudio({
-            bookId,
-            performedById: me.id,
-            disposition: readDisposition(await request.json().catch(() => null)),
-        });
-
-        if (!result.ok) {
-            return NextResponse.json(
-                { error: result.error, ...(result.extra ?? {}) },
-                { status: result.status },
-            );
-        }
-
-        revalidateCatalogue();
-
-        return NextResponse.json(
-            {
-                success: true,
-                audio: result.audio,
-                // Conservé pour la fiche livre, qui sait déjà le dire : plus rien
-                // ne le remplit, le mode `trash` refusant la suppression tant
-                // qu'un fichier n'a pas rejoint la corbeille.
-                audioFailures: [],
-            },
-            { status: 200 },
-        );
+        result = await deleteBookWithAudio({ bookId, performedById: me.id, disposition });
     } catch (error) {
-        console.error('Error deleting book:', error);
         // Filet : plus aucune clé étrangère connue ne devrait arriver ici (le
         // contrôle de deleteBookWithAudio couvre les deux relations en RESTRICT),
         // mais une contrainte ajoutée demain n'a pas à ressortir en « 500 Failed
         // to delete book » — c'est exactement le message qui n'apprenait rien.
         if (isForeignKeyViolation(error)) {
+            console.error('Error deleting book:', error);
             return NextResponse.json(
                 {
                     error:
@@ -358,9 +365,39 @@ export const DELETE = withAdmin(async (request, { params, me }) => {
                 { status: 409 }
             );
         }
+        return unexpectedErrorResponse({
+            where: `DELETE /api/books/${bookId}`,
+            error,
+            what: 'La suppression du livre a échoué.',
+            // La corbeille déplace piste par piste AVANT de supprimer la fiche :
+            // une panne en chemin a pu en déplacer une partie.
+            outcome:
+                disposition?.mode === 'trash'
+                    ? 'La fiche n’a pas été supprimée, mais une partie des pistes a pu être ' +
+                      'déjà déplacée dans la corbeille : rouvrez l’éditeur audio pour vérifier ' +
+                      'avant de recommencer.'
+                    : 'La fiche n’a pas été supprimée et le dossier audio n’a pas bougé.',
+        });
+    }
+
+    if (!result.ok) {
         return NextResponse.json(
-            { error: 'La suppression du livre a échoué. Le livre n’a pas été supprimé.' },
-            { status: 500 }
+            { error: result.error, ...(result.extra ?? {}) },
+            { status: result.status },
         );
     }
+
+    revalidateCatalogue();
+
+    return NextResponse.json(
+        {
+            success: true,
+            audio: result.audio,
+            // Conservé pour la fiche livre, qui sait déjà le dire : plus rien
+            // ne le remplit, le mode `trash` refusant la suppression tant
+            // qu'un fichier n'a pas rejoint la corbeille.
+            audioFailures: [],
+        },
+        { status: 200 },
+    );
 });

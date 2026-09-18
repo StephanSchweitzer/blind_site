@@ -30,4 +30,4 @@ Si les deux fiches ont chacune un enregistrement différent, la fusion est impos
 
 ## Supprimer une fiche
 
-Vous pouvez aussi supprimer une fiche vide qui n'a rien à fusionner. Cette suppression est **irréversible**.
+Vous pouvez aussi supprimer une fiche vide qui n'a rien à fusionner. Son dossier audio reste dans le stockage : s'il est partagé avec l'autre fiche, celle-ci le garde. La fiche supprimée disparaît des listes mais reste [restaurable](/admin/aide/catalogue#restaurer-un-livre-supprime) depuis sa page.

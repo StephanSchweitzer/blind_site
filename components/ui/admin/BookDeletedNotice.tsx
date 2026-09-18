@@ -18,6 +18,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { parisDateTimeDisplay } from '@/lib/paris-day';
 import { formatSizeKb } from '@/lib/pricing';
+import { ApiErrorMessage, apiErrorToast } from '@/admin/ApiErrorMessage';
+import { toUserFacingError, userErrorFromResponse, type UserFacingError } from '@/lib/user-error';
 
 /**
  * La « cette fiche est supprimée » de la fiche livre — même rôle et même forme
@@ -111,7 +113,7 @@ export default function BookDeletedNotice({
     const [isRestoring, setIsRestoring] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [preview, setPreview] = useState<RestorePreview | null>(null);
-    const [previewError, setPreviewError] = useState<string | null>(null);
+    const [previewError, setPreviewError] = useState<UserFacingError | null>(null);
     const [withDeletionChecked, setWithDeletionChecked] = useState(true);
     const [earlierChecked, setEarlierChecked] = useState(false);
 
@@ -131,12 +133,10 @@ export default function BookDeletedNotice({
         try {
             const response = await fetch(`/api/books/${bookId}/restore`, { cache: 'no-store' });
             const body = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(body?.message ?? 'Échec du chargement');
+            if (!response.ok) throw userErrorFromResponse(response, body);
             setPreview(body as RestorePreview);
         } catch (error) {
-            setPreviewError(
-                error instanceof Error ? error.message : 'Impossible de préparer la restauration.',
-            );
+            setPreviewError(toUserFacingError(error));
         }
     };
 
@@ -158,9 +158,7 @@ export default function BookDeletedNotice({
                 body: JSON.stringify({ audioTrackIds: chosen.map((t) => t.id) }),
             });
             const body = await response.json().catch(() => null);
-            if (!response.ok) {
-                throw new Error(body?.message ?? 'Échec de la restauration');
-            }
+            if (!response.ok) throw userErrorFromResponse(response, body);
             toast({
                 title: 'Fiche restaurée',
                 description: body?.message ?? `« ${title} » a été restauré.`,
@@ -168,12 +166,12 @@ export default function BookDeletedNotice({
             setConfirmOpen(false);
             onRestored();
         } catch (error) {
-            toast({
-                title: 'Erreur',
-                description:
-                    error instanceof Error ? error.message : 'Échec de la restauration.',
-                variant: 'destructive',
-            });
+            toast(
+                apiErrorToast(error, {
+                    title: 'Restauration impossible',
+                    action: `Restaurer le livre #${bookId} (${chosen.length} piste(s) cochée(s))`,
+                }),
+            );
         } finally {
             setIsRestoring(false);
         }
@@ -234,7 +232,12 @@ export default function BookDeletedNotice({
                     )}
 
                     {previewError && (
-                        <p className="text-sm text-red-700 dark:text-red-300">{previewError}</p>
+                        <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+                            <ApiErrorMessage
+                                error={previewError}
+                                action={`Préparer la restauration du livre #${bookId}`}
+                            />
+                        </p>
                     )}
 
                     {preview?.isbnConflict && (

@@ -10,8 +10,15 @@ import { isDoubleRecording } from '@/lib/audio-enums';
 import { sendReviewEscalation } from '@/lib/email/sendReviewEscalation';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { deleteBookWithAudio } from '@/lib/books/deleteBookWithAudio';
+import { unexpectedErrorResult } from '@/lib/api-errors';
 
-export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
+/**
+ * `unexpected` + `ref` : l'échec n'a pas de cause connue — le toast le dit et
+ * donne à qui écrire, avec la référence journalisée (voir unexpectedErrorResult).
+ */
+export type ActionResult =
+    | { ok: true; message: string }
+    | { ok: false; message: string; unexpected?: true; ref?: string };
 
 const DENIED: ActionResult = { ok: false, message: 'Permissions insuffisantes' };
 
@@ -144,6 +151,9 @@ export async function fuseBooks(
 
         const fields = [...new Set(overrides)].filter((f) => OVERRIDABLE.has(f));
 
+        // Posé à la fin de la transaction : après, une exception ne peut plus se
+        // dire « aucune modification enregistrée ».
+        let committed = false;
         try {
             // Settled BEFORE the transaction, because deciding it reaches the
             // bucket and refreshBookAudioState must not run inside one.
@@ -231,6 +241,7 @@ export async function fuseBooks(
                     data: { canonicalId: survivorId, duplicateId: removedId, snapshot, performedById: me.id },
                 });
             });
+            committed = true;
 
             // The audio columns are a cache of the bucket, and a fusion can hand the
             // survivor a folder it never pointed at. Re-read it now so every badge that
@@ -257,8 +268,23 @@ export async function fuseBooks(
                     'Le stockage est injoignable : impossible de vérifier les enregistrements des deux fiches. ' +
                     'Aucune modification enregistrée — réessayez dans un instant.',
             };
-            console.error('fuseBooks error:', error);
-            return { ok: false, message: map[msg] ?? 'Échec de la fusion. Aucune modification enregistrée.' };
+            if (map[msg]) {
+                console.error('fuseBooks error:', error);
+                return { ok: false, message: map[msg] };
+            }
+            return {
+                ok: false,
+                ...unexpectedErrorResult({
+                    where: `fuseBooks(${survivorId} ← ${removedId})`,
+                    error,
+                    what: committed
+                        ? 'La fusion est enregistrée, mais la mise à jour des pages qui suit a échoué.'
+                        : 'La fusion a échoué.',
+                    outcome: committed
+                        ? 'Rechargez la page pour voir la fiche conservée.'
+                        : 'Aucune modification enregistrée.',
+                }),
+            };
         }
     });
 }
@@ -277,7 +303,9 @@ export async function fuseBooks(
  *    pistes déjà en corbeille perdaient la trace de leur livre.
  *
  * Pas de choix offert ici : « laisser le dossier » est le seul sort raisonnable
- * pour un doublon, l'enregistrement étant justement celui que le jumeau garde.
+ * pour un doublon, l'enregistrement étant justement celui que le jumeau garde —
+ * et c'est aussi le seul que deleteBookWithAudio accepte quand les deux fiches
+ * partagent le dossier, le cas le plus courant sur cet écran.
  */
 export async function deleteBook(bookId: number): Promise<ActionResult> {
     return asAdminAction(async (me) => {
@@ -293,13 +321,19 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
 
             revalidateAdmin();
             revalidateCatalogue();
+            // « attend dans Audio orphelins » : faux depuis la suppression douce —
+            // le dossier reste attaché à la fiche masquée (voir deleteBookWithAudio).
+            const { trackCount, keptBy, orphanedPrefix } = result.audio;
+            const pistes = `${trackCount} piste${trackCount > 1 ? 's' : ''}`;
             return {
                 ok: true,
-                message: result.audio.orphanedPrefix
-                    ? `Livre supprimé. Son dossier audio (${result.audio.trackCount} piste` +
-                      `${result.audio.trackCount > 1 ? 's' : ''}) est resté dans le stockage et ` +
-                      `attend dans Audio orphelins.`
-                    : 'Livre supprimé avec succès',
+                message: keptBy?.length
+                    ? `Livre supprimé. Le dossier audio (${pistes}) n’a pas bougé : il reste celui de ` +
+                      `${keptBy.map((b) => `« ${b.title} » (#${b.id})`).join(', ')}.`
+                    : orphanedPrefix
+                      ? `Livre supprimé. Son dossier audio (${pistes}) est resté dans le stockage, ` +
+                        `attaché à la fiche supprimée : il revient avec elle si on la restaure.`
+                      : 'Livre supprimé avec succès',
             };
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -311,8 +345,17 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
                     };
                 }
             }
-            console.error('deleteBook error:', error);
-            return { ok: false, message: 'Échec de la suppression' };
+            // deleteBookWithAudio ne pose `deletedAt` qu'en dernière écriture, et
+            // en « laisser le dossier » rien ne touche au stockage avant.
+            return {
+                ok: false,
+                ...unexpectedErrorResult({
+                    where: `deleteBook(${bookId}) depuis Doublons`,
+                    error,
+                    what: 'La suppression du livre a échoué.',
+                    outcome: 'La fiche n’a pas été supprimée et le dossier audio n’a pas bougé.',
+                }),
+            };
         }
     });
 }
@@ -408,8 +451,19 @@ export async function escalateReview(
             revalidateAdmin();
             return { ok: true, message: 'Doublon signalé à Stéphan pour traitement manuel' };
         } catch (error) {
-            console.error('escalateReview error:', error);
-            return { ok: false, message: "Échec de l'envoi. Le doublon n'a pas été signalé." };
+            // L'e-mail part AVANT l'écriture d'`escalatedAt` : une panne ici a pu
+            // survenir après l'envoi.
+            return {
+                ok: false,
+                ...unexpectedErrorResult({
+                    where: `escalateReview(${flaggedId}, ${matchedId})`,
+                    error,
+                    what: 'Le signalement a échoué.',
+                    outcome:
+                        'L’e-mail a pu partir malgré tout, mais le doublon n’apparaîtra peut-être ' +
+                        'pas comme signalé : rechargez la page avant de recommencer.',
+                }),
+            };
         }
     });
 }
@@ -427,8 +481,15 @@ export async function dismissReview(bookId: number): Promise<ActionResult> {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
                 return { ok: false, message: 'Livre introuvable' };
             }
-            console.error('dismissReview error:', error);
-            return { ok: false, message: 'Échec de la mise à jour' };
+            return {
+                ok: false,
+                ...unexpectedErrorResult({
+                    where: `dismissReview(${bookId})`,
+                    error,
+                    what: 'Le retrait de la file a échoué.',
+                    outcome: 'Rien n’a été modifié.',
+                }),
+            };
         }
     });
 }

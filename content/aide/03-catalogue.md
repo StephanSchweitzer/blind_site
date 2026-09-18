@@ -106,6 +106,8 @@ Si le livre est encore lié à des demandes ou à des attributions, la suppressi
 
 Si le livre possède un enregistrement audio, la fenêtre vous demande ce qu'il faut en faire. Dans le doute, choisissez « Laisser le dossier dans le stockage ».
 
+Si ce dossier audio est aussi celui d'une autre fiche — cas des doublons issus de l'ancienne base —, un cadre orange nomme cette autre fiche et seule l'option « Laisser le dossier dans le stockage » reste possible : les deux autres la priveraient de son enregistrement. Supprimez alors la fiche en trop : l'enregistrement n'est ni copié ni effacé, et l'autre fiche le garde.
+
 ### Restaurer un livre supprimé
 
 Un livre supprimé n'est pas effacé : il disparaît des listes, des recherches et des menus, mais sa fiche reste ouvrable depuis un lien, par exemple depuis une ancienne demande ou attribution, ou depuis le [journal des modifications](/admin/aide/statistiques#le-journal-des-modifications). Un bandeau rouge « Fiche supprimée le … » s'affiche alors en haut de la fiche, avec un bouton « **Restaurer** ».
@@ -127,7 +129,7 @@ Lorsque vous cliquez sur l'éditeur audio depuis la page d'accueil ou depuis le 
 
 Vous pouvez ici importer des fichiers ou des dossiers, ainsi que supprimer des fichiers ou des dossiers. Pour tout télécharger ou tout supprimer, utilisez les deux boutons correspondants situés en haut de la page.
 
-Si le dossier audio est partagé avec une autre fiche — cas des doublons issus de l'ancienne base —, toute suppression de piste est refusée, qu'elle porte sur un seul fichier ou sur l'ensemble : le message nomme l'autre livre et son identifiant. L'enregistrement étant le même pour les deux fiches, il faut d'abord régler le doublon depuis [Doublons](/admin/aide/doublons).
+Si le dossier audio est partagé avec une autre fiche — cas des doublons issus de l'ancienne base —, toute suppression de piste est refusée, qu'elle porte sur un seul fichier ou sur l'ensemble : le message nomme l'autre livre et son identifiant. L'enregistrement étant le même pour les deux fiches, réglez d'abord le doublon : si les deux fiches décrivent le même livre, [supprimez celle qui est en trop](#supprimer-un-livre) en laissant le dossier dans le stockage. Sinon, écrivez à l'informaticien (adresse indiquée dans le message) pour faire séparer les dossiers.
 
 ![Catalogue - capture 20](/admin/aide/images/catalogue-20.jpg)
 

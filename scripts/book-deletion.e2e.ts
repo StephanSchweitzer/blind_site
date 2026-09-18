@@ -7,9 +7,9 @@
  * (the react-server condition stubs out `server-only`, so lib/books/* and
  * lib/audio/* — the actual production modules — run under plain Node.)
  *
- * Covers what lib/books/deleteBookWithAudio.ts decides: the two refusals
- * (demandes / attributions, folder shared with another fiche), the refusal to
- * act with no disposition at all, then `leave` / `transfer` / `trash`. The route
+ * Covers what lib/books/deleteBookWithAudio.ts decides: the refusal on
+ * demandes / attributions, the folder shared with another fiche (only `leave`
+ * allowed), the refusal to act with no disposition at all, then `leave` / `transfer` / `trash`. The route
  * on top of it is a body parser; the rules live here. Deleting a book is a soft
  * delete (`Book.deletedAt`) now, never a real row delete, so `DeletedAudioTrack
  * .bookId` is never nulled by it either — the corbeille stays attached to the
@@ -206,36 +206,75 @@ async function main() {
         }),
     );
 
-    // --- 1. dossier partagé : refus avant toute option ---------------------
+    // --- 1. dossier partagé : seule « laisser le dossier » passe -----------
+    //
+    // Le partage bloquait toute suppression, héritage du temps où supprimer une
+    // fiche vidait son dossier : les deux fiches se bloquaient mutuellement, et
+    // le permanent n'avait aucun moyen d'en finir (Doublons ne trouve que les
+    // paires signalées, et rien ne permet de « détacher » un dossier).
     const shared = await readBookDeletionCheck(source.id);
     check('partage détecté', shared.preflight?.audio.sharedWith.map((b) => b.id), [twin.id]);
-    check('partage : bloqué', shared.preflight?.blocked, true);
+    check('partage : PAS bloqué', shared.preflight?.blocked, false);
     checkIncludes(
-        'partage : le refus nomme le jumeau',
-        shared.preflight?.audio.sharedRefusal,
+        'partage : l’avertissement nomme le jumeau',
+        shared.preflight?.audio.sharedNotice,
         `(#${twin.id})`,
     );
     check('partage : 3 pistes comptées', shared.preflight?.audio.trackCount, 3);
 
-    const refusedShared = await deleteBookWithAudio({
-        bookId: source.id,
-        performedById: actorId,
-        disposition: { mode: 'leave' },
-    });
-    check('partage : suppression refusée', refusedShared.ok, false);
+    for (const mode of ['transfer', 'trash'] as const) {
+        const refused = await deleteBookWithAudio({
+            bookId: source.id,
+            performedById: actorId,
+            disposition:
+                mode === 'transfer'
+                    ? { mode, targetBookId: target.id }
+                    : { mode, confirmTrackCount: 3 },
+        });
+        check(`partage : ${mode} refusé`, refused.ok, false);
+        check(`partage : ${mode} en 409`, refused.ok === false ? refused.status : null, 409);
+        checkIncludes(
+            `partage : le refus ${mode} nomme le jumeau`,
+            refused.ok === false ? refused.error : null,
+            `(#${twin.id})`,
+        );
+    }
     check(
-        'partage : refus en 409',
-        refusedShared.ok === false ? refusedShared.status : null,
-        409,
-    );
-    check(
-        'partage : la fiche est toujours là',
+        'partage : après les refus, la source est toujours active',
         (await prisma.book.count({ where: { id: source.id } })) === 1,
         true,
     );
+    check('partage : après les refus, rien déplacé', (await listBookTracks(SCRATCH)).length, 3);
 
-    // Le jumeau s'en va (chemin vidé à la main : c'est une préparation, pas le
-    // code sous test — les deux fiches se bloquant mutuellement).
+    // « Laisser » passe : c'est le jumeau qui s'en va, la source garde le dossier.
+    const leftShared = await deleteBookWithAudio({
+        bookId: twin.id,
+        performedById: actorId,
+        disposition: { mode: 'leave' },
+    });
+    check('partage : laisser le dossier accepté', leftShared.ok, true);
+    check(
+        'partage : le toast saura qui garde le dossier',
+        leftShared.ok ? leftShared.audio.keptBy?.map((b) => b.id) : null,
+        [source.id],
+    );
+    check(
+        'partage : le jumeau est masqué (suppression douce)',
+        (await prisma.book.count({ where: { id: twin.id } })) === 0,
+        true,
+    );
+    check('partage : aucune piste n’a bougé', (await listBookTracks(SCRATCH)).length, 3);
+    check(
+        'partage : la source garde son chemin',
+        (await prisma.book.findUnique({ where: { id: source.id }, select: { audio_filepath: true } }))
+            ?.audio_filepath,
+        SCRATCH,
+    );
+    const afterTwin = await readBookDeletionCheck(source.id);
+    check('partage : la source ne partage plus', afterTwin.preflight?.audio.sharedWith, []);
+
+    // Le jumeau masqué disparaît pour de bon : il réclame encore SCRATCH, et
+    // la suite transfère ce dossier (préparation, pas le code sous test).
     await withoutAudit(() =>
         prisma.book.update({ where: { id: twin.id }, data: { audio_filepath: null } }),
     );

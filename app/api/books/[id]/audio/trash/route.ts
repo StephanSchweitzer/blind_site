@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { restoreTrack, AudioTrashError } from '@/lib/audio/trash';
+import { unexpectedErrorResponse } from '@/lib/api-errors';
 import { AUDIO_TRASH_RETENTION_DAYS } from '@/lib/audio/purge';
 
 /**
@@ -86,7 +87,15 @@ export const POST = withAdmin(async (req, { params, me }) => {
         if (e instanceof AudioTrashError) {
             return NextResponse.json({ message: e.message }, { status: 409 });
         }
-        console.error('Restauration audio échouée', e);
-        return NextResponse.json({ message: 'La restauration a échoué.' }, { status: 500 });
+        // La copie de retour, la ligne de corbeille, le retrait de la copie et
+        // l'état audio s'écrivent l'un après l'autre : on ne sait pas où ça a lâché.
+        return unexpectedErrorResponse({
+            where: `POST /api/books/${bookId}/audio/trash`,
+            error: e,
+            what: 'La restauration a échoué.',
+            outcome:
+                'Le fichier a pu revenir dans le dossier malgré tout : rouvrez l’éditeur audio ' +
+                'pour vérifier avant de recommencer.',
+        });
     }
 });

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
 import { refreshBookAudioState, resolvePrefix } from '@/lib/audio/state';
 import { softDeleteTracks, markTrashOrigin } from '@/lib/audio/trash';
+import { bookDeletionSharedRefusal } from '@/lib/audio/sharedFolder';
 import { readBookDeletionCheck } from './deletionPreflight';
 
 /**
@@ -45,10 +46,10 @@ import { readBookDeletionCheck } from './deletionPreflight';
  *
  * La route DELETE du livre ET la suppression depuis Doublons passent par ici :
  * la seconde supprimait la ligne sans le moindre contrôle audio, en laissant un
- * dossier que rien n'annonçait. Les refus (demandes / attributions, dossier
- * partagé) viennent de readBookDeletionCheck, le même contrôle que la fenêtre de
- * confirmation a lu à son ouverture — refait ici, parce qu'une minute a pu
- * passer entre les deux.
+ * dossier que rien n'annonçait. Les refus (demandes / attributions ; dossier
+ * partagé, qui n'admet que `leave`) viennent de readBookDeletionCheck, le même
+ * contrôle que la fenêtre de confirmation a lu à son ouverture — refait ici,
+ * parce qu'une minute a pu passer entre les deux.
  */
 
 export type AudioDispositionMode = 'leave' | 'transfer' | 'trash';
@@ -68,6 +69,8 @@ export interface DeleteBookAudioOutcome {
     trackCount: number;
     /** Dossier laissé en place, toujours attaché à la fiche (masquée, restaurable). */
     orphanedPrefix?: string;
+    /** Dossier partagé laissé en place : les fiches qui le gardent. */
+    keptBy?: { id: number; title: string }[];
     /** Livre qui a hérité du dossier, et son titre. */
     targetBookId?: number;
     targetTitle?: string;
@@ -99,8 +102,8 @@ export async function deleteBookWithAudio(opts: {
         return { ok: false, status: 404, error: 'Livre introuvable' };
     }
 
-    // Les deux refus d'abord, avant de toucher au stockage : une fiche qui se
-    // révèle non supprimable ne doit pas avoir vu son dossier vidé pour rien.
+    // Les refus d'abord, avant de toucher au stockage : une fiche qui se révèle
+    // non supprimable ne doit pas avoir vu son dossier vidé pour rien.
     if (preflight.usageRefusal) {
         return {
             ok: false,
@@ -109,17 +112,22 @@ export async function deleteBookWithAudio(opts: {
             extra: { usage: preflight.usage, links: preflight.links },
         };
     }
-    if (preflight.audio.sharedRefusal) {
+
+    const { prefix, sharedWith } = preflight.audio;
+    const tracks = toOrderedTracks(objects, prefix);
+
+    // Dossier partagé : la fiche part, le dossier reste — c'est le seul sort
+    // qui ne retire rien au jumeau (voir bookDeletionSharedNotice). Vérifié
+    // ICI, pas seulement dans la fenêtre : Doublons appelle aussi cette
+    // fonction, et un client périmé pourrait encore demander autre chose.
+    if (sharedWith.length && tracks.length > 0 && disposition && disposition.mode !== 'leave') {
         return {
             ok: false,
             status: 409,
-            error: preflight.audio.sharedRefusal,
-            extra: { sharedWith: preflight.audio.sharedWith },
+            error: bookDeletionSharedRefusal(sharedWith, disposition.mode),
+            extra: { sharedWith },
         };
     }
-
-    const { prefix } = preflight.audio;
-    const tracks = toOrderedTracks(objects, prefix);
 
     /**
      * Pas de décision alors qu'il y a un enregistrement à la clé : refus.
@@ -328,6 +336,7 @@ export async function deleteBookWithAudio(opts: {
             mode,
             trackCount: tracks.length,
             ...(mode === 'leave' && tracks.length > 0 ? { orphanedPrefix: prefix } : {}),
+            ...(mode === 'leave' && tracks.length > 0 && sharedWith.length ? { keptBy: sharedWith } : {}),
         },
     };
 }

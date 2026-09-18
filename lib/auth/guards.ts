@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { runWithAuditActor, setAuditActor } from '@/lib/audit/context';
+// The server build of `unstable_rethrow`, not `next/navigation`: that entry
+// point pulls in the client router (React.createContext) outside Next's
+// bundler, which breaks every script and test that runs these guards under Node.
+import { unstable_rethrow } from 'next/dist/client/components/unstable-rethrow.server';
+import { unexpectedErrorResponse } from '@/lib/api-errors';
+import { OUTCOME_NOTHING_CHANGED } from '@/lib/user-error';
 
 export interface CurrentUser {
     id: number;
@@ -48,16 +54,35 @@ type RouteHandler = (req: NextRequest, ctx: RouteCtx) => Promise<Response> | Res
 /**
  * Runs the guarded handler inside the audit-actor scope, so every write it makes
  * — however deep — is attributed without any call site passing an actorId.
+ *
+ * Also the last net under every guarded route: an exception nobody caught used
+ * to reach Next, which answers 500 with an empty body — and the toast then fell
+ * back to a « Échec de la suppression » that said nothing, not even that the
+ * cause was unknown. It now becomes an `unexpectedErrorResponse`: logged with a
+ * reference, and worded so the permanent knows to write in with it. A read can
+ * say nothing changed; a write can't know how far it got.
  */
-function runAttributed(
+async function runAttributed(
     me: CurrentUser,
     handler: GuardedHandler,
     req: NextRequest,
     ctx: RouteCtx
-): Promise<Response> | Response {
-    return runWithAuditActor({ actorId: me.id, actorEmail: me.email }, () =>
-        handler(req, { ...ctx, me })
-    );
+): Promise<Response> {
+    try {
+        return await runWithAuditActor({ actorId: me.id, actorEmail: me.email }, () =>
+            handler(req, { ...ctx, me })
+        );
+    } catch (error) {
+        // notFound()/redirect() and Next's dynamic-rendering signals travel as
+        // exceptions and are Next's to handle.
+        unstable_rethrow(error);
+        const isRead = req.method === 'GET' || req.method === 'HEAD';
+        return unexpectedErrorResponse({
+            where: `${req.method} ${req.nextUrl?.pathname ?? req.url}`,
+            error,
+            ...(isRead ? { outcome: OUTCOME_NOTHING_CHANGED } : {}),
+        });
+    }
 }
 
 /** Wrap a handler to require any authenticated user. Passes `me` through ctx. */

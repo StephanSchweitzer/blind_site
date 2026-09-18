@@ -3,7 +3,7 @@ import 'server-only';
 import { prisma } from '@/lib/prisma';
 import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
 import { resolvePrefix } from '@/lib/audio/state';
-import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
+import { booksSharingAudioFolder, bookDeletionSharedNotice } from '@/lib/audio/sharedFolder';
 import {
     readBookUsage,
     bookUsageBlocksDeletion,
@@ -41,9 +41,11 @@ import type { BookDeletionPreflightResponse } from '@/types/api/book.api';
  * Ce qu'il porte, et pourquoi :
  *  - `usageRefusal` / `usage` / `links` : les demandes et attributions, vivantes
  *    et supprimées, avec de quoi les atteindre ;
- *  - `audio.sharedRefusal` : le dossier est aussi celui d'une autre fiche, donc
- *    aucune option ne doit être proposée — supprimer ici viderait le dossier du
- *    jumeau, dont l'enregistrement est souvent la seule copie ;
+ *  - `audio.sharedNotice` : le dossier est aussi celui d'une autre fiche. La
+ *    fiche reste supprimable, mais SEULEMENT en laissant le dossier : transférer
+ *    ou mettre à la corbeille viderait le dossier du jumeau, dont
+ *    l'enregistrement est souvent la seule copie. Ce n'est pas un blocage — voir
+ *    bookDeletionSharedNotice ;
  *  - `audio.trashCount` : des pistes sont déjà en corbeille pour ce livre. Elles
  *    perdent leur fiche avec lui (`bookId` est SetNull) et ne restent lisibles
  *    que par l'empreinte de markTrashOrigin — la fenêtre le dit.
@@ -78,9 +80,7 @@ export async function readBookDeletionCheck(bookId: number): Promise<BookDeletio
     const tracks = toOrderedTracks(objects, prefix);
 
     const usageRefusal = bookUsageBlocksDeletion(usage) ? bookUsageRefusal(usage) : null;
-    const sharedRefusal = sharedWith.length
-        ? sharedFolderRefusal(sharedWith, 'supprimer ce livre')
-        : null;
+    const sharedNotice = sharedWith.length ? bookDeletionSharedNotice(sharedWith) : null;
 
     return {
         book: { id: book.id, title: book.title, audioFilepath: book.audio_filepath },
@@ -96,10 +96,10 @@ export async function readBookDeletionCheck(bookId: number): Promise<BookDeletio
                 trackCount: tracks.length,
                 sizeBytes: tracks.reduce((total, t) => total + t.sizeBytes, 0),
                 sharedWith,
-                sharedRefusal,
+                sharedNotice,
                 trashCount,
             },
-            blocked: usageRefusal !== null || sharedRefusal !== null,
+            blocked: usageRefusal !== null,
         },
     };
 }
