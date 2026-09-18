@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2, SlidersHorizontal } from 'lucide-react';
+import { Search, X, CircleX, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -821,6 +821,16 @@ export default function BooksTable({
                             <Search className="absolute left-3 top-2.5 text-muted-foreground" size={20} />
                             {isSearching && searchTerm.length > 0 && (
                                 <Loader2 className="absolute right-3 top-2.5 text-muted-foreground animate-spin" size={20} />
+                            )}
+                            {!isSearching && searchTerm.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleSearchChange('')}
+                                    aria-label="Effacer la recherche"
+                                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors rounded-full"
+                                >
+                                    <CircleX aria-hidden="true" size={20} />
+                                </button>
                             )}
                         </div>
 
