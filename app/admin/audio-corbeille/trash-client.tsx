@@ -38,6 +38,8 @@ export interface TrashRow {
     retainForever: boolean;
     /** Quand la purge prendra ce fichier — null pour une ligne exemptée. */
     purgeEligibleAt: string | null;
+    /** Purge imminente — calculé côté serveur, même seuil que `urgentCount`. */
+    urgent: boolean;
     /** Le livre, s'il existe encore. */
     book: { id: number; title: string } | null;
     /** Ce qu'il en reste sinon (markTrashOrigin, lib/audio/trash.ts). */
@@ -70,6 +72,9 @@ interface Props {
     totalFiles: number;
     tabCounts: Record<TrashTab, number>;
     retentionDays: number;
+    /** Fichiers de l'onglet que la purge prendra d'ici `urgentDays` jours. */
+    urgentCount: number;
+    urgentDays: number;
     search: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
     searchSuggestions?: SearchSuggestion[];
@@ -103,13 +108,45 @@ function retentionLabel(item: TrashRow): string {
     return `supprimé du stockage dans ${left} jour${left > 1 ? 's' : ''}`;
 }
 
-/** Une purge imminente mérite d'être signalée, pas juste écrite. */
-const isUrgent = (item: TrashRow): boolean =>
-    !item.retainForever &&
-    item.purgeEligibleAt !== null &&
-    item.restoredAt === null &&
-    item.purgedAt === null &&
-    daysUntil(item.purgeEligibleAt) <= 3;
+/**
+ * Quand et par qui les fichiers d'un livre ont été supprimés, en une ligne.
+ * Une suppression en bloc tient en une date et une personne ; un livre vidé en
+ * plusieurs fois montre l'intervalle plutôt que de choisir une date au hasard.
+ */
+function deletionSummary(rows: TrashRow[]): string {
+    const days = [...new Set(rows.map((r) => formatDate(r.deletedAt)))];
+    // Les lignes arrivent triées par piste, pas par date : extrêmes explicites.
+    const times = rows.map((r) => r.deletedAt).sort();
+    const when =
+        days.length === 1
+            ? `Supprimés le ${days[0]}`
+            : `Supprimés entre le ${formatDate(times[0])} et le ${formatDate(times[times.length - 1])}`;
+    const people = [...new Set(rows.map((r) => personLabel(r.deletedBy)))];
+    const others = people.length - 1;
+    const who =
+        others === 0 ? people[0] : `${people[0]} et ${others} autre${others > 1 ? 's' : ''}`;
+    return `${when} par ${who}`;
+}
+
+/**
+ * Un fichier sans fiche ne retourne pas dans un livre : restaurer le remet
+ * dans le stockage, où il ressort comme dossier orphelin (voir actions.ts).
+ * Le dire avant le clic plutôt que laisser chercher où il est passé.
+ */
+function OrphanRestoreHint({ plural = false }: { plural?: boolean }) {
+    return (
+        <p className="text-xs text-muted-foreground">
+            {plural ? 'seront restaurés' : 'sera restauré'} dans{' '}
+            <Link
+                href="/admin/audio-orphelins"
+                className="text-blue-600 hover:text-blue-500 dark:text-blue-400 underline underline-offset-2"
+            >
+                Audio orphelin
+            </Link>
+            , faute de fiche où le rattacher
+        </p>
+    );
+}
 
 /** À quel livre ce groupe appartenait — la fiche si elle existe encore, sinon
  *  l'empreinte laissée à la suppression, sinon rien du tout. */
@@ -144,6 +181,8 @@ export default function TrashClient({
     totalFiles,
     tabCounts,
     retentionDays,
+    urgentCount,
+    urgentDays,
     search,
     searchSuggestions,
 }: Props) {
@@ -284,6 +323,23 @@ export default function TrashClient({
                 </CardHeader>
             </Card>
 
+            {/* Le tri met les suppressions les plus anciennes — celles que la
+                purge prendra d'abord — en fin de liste, parfois sur la dernière
+                page : ce bandeau les empêche de partir sans que personne ne les
+                voie. Compté sur tout l'onglet, indépendamment de la recherche. */}
+            {urgentCount > 0 && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden />
+                    <p>
+                        {urgentCount === 1
+                            ? '1 fichier de cet onglet sera supprimé'
+                            : `${urgentCount} fichiers de cet onglet seront supprimés`}{' '}
+                        définitivement dans les {urgentDays} prochains jours. Ce sont les plus
+                        anciens, en fin de liste, signalés en ambre.
+                    </p>
+                </div>
+            )}
+
             {groups.length === 0 && (
                 <Card>
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -361,15 +417,20 @@ interface FileRowProps {
     onRestore: (id: number) => void;
 }
 
+interface FileRowBodyProps extends FileRowProps {
+    /** Dans un groupe déplié, la carte du livre porte déjà la mention. */
+    hideOrphanHint?: boolean;
+}
+
 /** Le corps d'une ligne de corbeille : détails du fichier + bouton Restaurer. */
-function FileRowBody({ item, restoringId, busy, onRestore }: FileRowProps) {
+function FileRowBody({ item, restoringId, busy, onRestore, hideOrphanHint }: FileRowBodyProps) {
     return (
         <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1 space-y-1">
                 <p className="font-mono text-sm text-foreground break-all">{item.filename}</p>
-                <p className="text-xs text-muted-foreground">
-                    {formatBytes(item.sizeBytes)} · supprimé le {formatDate(item.deletedAt)} par{' '}
-                    {personLabel(item.deletedBy)}
+                <p className="text-sm text-foreground">
+                    Supprimé le {formatDate(item.deletedAt)} par {personLabel(item.deletedBy)}
+                    <span className="text-xs text-muted-foreground"> · {formatBytes(item.sizeBytes)}</span>
                 </p>
                 <p className="font-mono text-xs text-muted-foreground break-all">{item.originalKey}</p>
 
@@ -382,16 +443,19 @@ function FileRowBody({ item, restoringId, busy, onRestore }: FileRowProps) {
                         supprimé définitivement du stockage le {formatDate(item.purgedAt)}
                     </p>
                 ) : (
-                    <p
-                        className={
-                            isUrgent(item)
-                                ? 'flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300'
-                                : 'text-xs text-muted-foreground'
-                        }
-                    >
-                        {isUrgent(item) && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
-                        {retentionLabel(item)}
-                    </p>
+                    <>
+                        <p
+                            className={
+                                item.urgent
+                                    ? 'flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300'
+                                    : 'text-xs text-muted-foreground'
+                            }
+                        >
+                            {item.urgent && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
+                            {retentionLabel(item)}
+                        </p>
+                        {!item.book && !hideOrphanHint && <OrphanRestoreHint />}
+                    </>
                 )}
             </div>
 
@@ -467,7 +531,7 @@ function GroupCard({
 }: GroupCardProps) {
     const { rows } = group;
     const totalSize = rows.reduce((sum, r) => sum + r.sizeBytes, 0);
-    const anyUrgent = rows.some(isUrgent);
+    const anyUrgent = rows.some((r) => r.urgent);
     const allRestored = rows.every((r) => r.restoredAt !== null);
     const allPurged = rows.every((r) => r.purgedAt !== null);
     // Un groupe n'est restaurable en bloc que dans les onglets actifs — même
@@ -503,8 +567,12 @@ function GroupCard({
                     <p className="text-sm text-foreground">
                         <BookIdentity group={group} />
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                        {rows.length} fichiers · {formatBytes(totalSize)}
+                    <p className="text-sm text-foreground">
+                        {deletionSummary(rows)}
+                        <span className="text-xs text-muted-foreground">
+                            {' '}
+                            · {rows.length} fichiers · {formatBytes(totalSize)}
+                        </span>
                     </p>
                     <p
                         className={
@@ -516,6 +584,7 @@ function GroupCard({
                         {anyUrgent && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
                         {statusLine}
                     </p>
+                    {!group.book && restorableIds.length > 0 && <OrphanRestoreHint plural />}
                 </div>
 
                 <div className="flex flex-shrink-0 flex-col items-end gap-2">
@@ -567,6 +636,7 @@ function GroupCard({
                                 restoringId={restoringId}
                                 busy={busy}
                                 onRestore={onRestore}
+                                hideOrphanHint
                             />
                         </div>
                     ))}

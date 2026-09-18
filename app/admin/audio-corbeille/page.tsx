@@ -14,6 +14,10 @@ export const revalidate = 0;
 // Livres (groupes) par page, pas fichiers — voir le commentaire sur GROUP_BY.
 const PER_PAGE = 25;
 
+/** Un fichier à ce nombre de jours ou moins de sa purge est signalé en ambre. */
+const URGENT_DAYS = 3;
+const DAY_MS = 86_400_000;
+
 /**
  * Ce qui identifie « le même livre » pour une ligne de corbeille : la fiche si
  * elle existe encore, sinon l'empreinte laissée par markTrashOrigin. Les trois
@@ -96,9 +100,8 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
     });
     const where = whereFor(q);
 
-    // La plus ancienne suppression d'abord dans les onglets actifs : c'est
-    // celle que la purge prendra la première.
-    const oldestFirst = tab === 'a-purger' || tab === 'sans-fiche';
+    const active = tab === 'a-purger' || tab === 'sans-fiche';
+    const now = new Date();
 
     /**
      * Un livre supprimé en bloc peut laisser 60-80 lignes dans la corbeille —
@@ -109,12 +112,19 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
      * partie — voir GROUP_BY), pas sur les lignes : un `groupBy` choisit les
      * groupes de cette page et leur ordre, puis une seconde requête ramène
      * toutes les lignes de ces groupes-là pour le détail dépliable.
+     *
+     * La suppression la plus récente d'abord, dans tous les onglets : on ouvre
+     * la corbeille pour rattraper une erreur qu'on vient de faire, et on la
+     * cherche en haut. Les onglets actifs triaient autrefois du plus ancien au
+     * plus récent (ce que la purge prendra en premier) ; cette urgence-là est
+     * désormais portée par le bandeau `urgentCount` et le liseré ambre, plus
+     * par l'ordre.
      */
-    const [pageGroups, allGroups, counts] = await Promise.all([
+    const [pageGroups, allGroups, counts, urgentCount] = await Promise.all([
         prisma.deletedAudioTrack.groupBy({
             by: GROUP_BY,
             where,
-            orderBy: oldestFirst ? { _min: { deletedAt: 'asc' } } : { _max: { deletedAt: 'desc' } },
+            orderBy: { _max: { deletedAt: 'desc' } },
             skip: pageSkip(page, PER_PAGE),
             take: PER_PAGE,
         }),
@@ -123,6 +133,22 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         // livres jamais passés par la corbeille, pas du nombre de fichiers.
         prisma.deletedAudioTrack.groupBy({ by: GROUP_BY, where }),
         Promise.all(TABS.map((t) => prisma.deletedAudioTrack.count({ where: TAB_WHERE[t] }))),
+        // Ce que la purge prendra d'ici URGENT_DAYS jours, dans tout l'onglet —
+        // pas seulement la page affichée, puisque le tri met ces fichiers-là en
+        // fin de liste. Même seuil que `urgent` dans toTrashRow.
+        active
+            ? prisma.deletedAudioTrack.count({
+                  where: {
+                      ...TAB_WHERE[tab],
+                      retainForever: false,
+                      deletedAt: {
+                          lte: new Date(
+                              now.getTime() - (AUDIO_TRASH_RETENTION_DAYS - URGENT_DAYS) * DAY_MS,
+                          ),
+                      },
+                  },
+              })
+            : Promise.resolve(0),
     ]);
 
     const rows = pageGroups.length
@@ -135,9 +161,7 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
                       originBookTitle: g.originBookTitle,
                   })),
               },
-              orderBy: oldestFirst
-                  ? [{ deletedAt: 'asc' }, { id: 'asc' }]
-                  : [{ deletedAt: 'desc' }, { id: 'desc' }],
+              orderBy: [{ deletedAt: 'desc' }, { id: 'desc' }],
               include: {
                   book: { select: { id: true, title: true } },
                   deletedBy: { select: { name: true, email: true } },
@@ -146,29 +170,38 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
           })
         : [];
 
-    const toTrashRow = (r: (typeof rows)[number]): TrashRow => ({
-        id: r.id,
-        filename: r.filename,
-        originalKey: r.originalKey,
-        // BigInt ne survit pas à la sérialisation vers le client.
-        sizeBytes: Number(r.sizeBytes),
-        deletedAt: r.deletedAt.toISOString(),
-        restoredAt: r.restoredAt?.toISOString() ?? null,
-        purgedAt: r.purgedAt?.toISOString() ?? null,
-        retainForever: r.retainForever,
-        purgeEligibleAt: r.retainForever
+    const toTrashRow = (r: (typeof rows)[number]): TrashRow => {
+        const purgeEligibleAt = r.retainForever
             ? null
-            : new Date(
-                  r.deletedAt.getTime() + AUDIO_TRASH_RETENTION_DAYS * 86_400_000,
-              ).toISOString(),
-        book: r.book,
-        // L'empreinte laissée par markTrashOrigin : c'est tout ce qui reste du
-        // livre quand sa fiche a été supprimée.
-        originBookId: r.originBookId,
-        originBookTitle: r.originBookTitle,
-        deletedBy: r.deletedBy,
-        restoredBy: r.restoredBy,
-    });
+            : new Date(r.deletedAt.getTime() + AUDIO_TRASH_RETENTION_DAYS * DAY_MS);
+        return {
+            id: r.id,
+            filename: r.filename,
+            originalKey: r.originalKey,
+            // BigInt ne survit pas à la sérialisation vers le client.
+            sizeBytes: Number(r.sizeBytes),
+            deletedAt: r.deletedAt.toISOString(),
+            restoredAt: r.restoredAt?.toISOString() ?? null,
+            purgedAt: r.purgedAt?.toISOString() ?? null,
+            retainForever: r.retainForever,
+            purgeEligibleAt: purgeEligibleAt?.toISOString() ?? null,
+            // Calculé ici plutôt que dans le client : c'est le même seuil que le
+            // compte `urgentCount`, et le bandeau ne doit pas dire autre chose que
+            // les liserés.
+            urgent:
+                purgeEligibleAt !== null &&
+                r.restoredAt === null &&
+                r.purgedAt === null &&
+                purgeEligibleAt.getTime() - now.getTime() <= URGENT_DAYS * DAY_MS,
+            book: r.book,
+            // L'empreinte laissée par markTrashOrigin : c'est tout ce qui reste du
+            // livre quand sa fiche a été supprimée.
+            originBookId: r.originBookId,
+            originBookTitle: r.originBookTitle,
+            deletedBy: r.deletedBy,
+            restoredBy: r.restoredBy,
+        };
+    };
 
     const rowsByGroup = new Map<string, TrashRow[]>();
     for (const r of rows) {
@@ -176,6 +209,15 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         const list = rowsByGroup.get(key);
         if (list) list.push(toTrashRow(r));
         else rowsByGroup.set(key, [toTrashRow(r)]);
+    }
+    // Dans un livre, l'ordre des pistes et non celui des suppressions : une
+    // suppression en bloc donne à 60-80 fichiers le même instant à la
+    // milliseconde près, ce qui revenait à un ordre quelconque. Tri « naturel »
+    // pour que « 2 » passe avant « 10 » ; à nom égal (un même fichier supprimé
+    // deux fois), la suppression la plus récente d'abord, ordre de la requête.
+    const byTrack = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
+    for (const list of rowsByGroup.values()) {
+        list.sort((a, b) => byTrack.compare(a.filename, b.filename));
     }
 
     const groups: TrashGroup[] = pageGroups.map((g) => {
@@ -215,6 +257,8 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
                 restaurees: counts[2],
                 purgees: counts[3],
             }}
+            urgentCount={urgentCount}
+            urgentDays={URGENT_DAYS}
             retentionDays={AUDIO_TRASH_RETENTION_DAYS}
             search={q}
         />

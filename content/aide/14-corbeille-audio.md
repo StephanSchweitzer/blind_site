@@ -19,13 +19,15 @@ L'URL de cette page est https://eca-aveugles.fr/admin/audio-corbeille
 - **Restaurées** — les fichiers remis en place.
 - **Purgées** — les fichiers supprimés définitivement.
 
+Les suppressions les plus récentes apparaissent en premier, dans tous les onglets.
+
 La barre de recherche permet de retrouver un fichier par son nom ou par le titre du livre.
 
 ## Un groupe par livre
 
-Les fichiers d'un même livre sont regroupés sur une seule carte. Cliquez sur « **Voir les fichiers** » pour afficher le détail.
+Les fichiers d'un même livre sont regroupés sur une seule carte, qui indique la date de suppression et qui l'a faite. Cliquez sur « **Voir les fichiers** » pour afficher le détail, dans l'ordre des pistes.
 
-Chaque fichier indique qui l'a supprimé, quand, et dans combien de jours il sera supprimé définitivement. Un liseré ambre signale qu'il reste trois jours ou moins.
+Chaque fichier indique qui l'a supprimé, quand, et dans combien de jours il sera supprimé définitivement. Un liseré ambre signale qu'il reste trois jours ou moins. S'il y en a, un bandeau ambre en haut de l'onglet les compte : ce sont les suppressions les plus anciennes, donc en fin de liste.
 
 ## Restaurer
 
@@ -33,4 +35,4 @@ Chaque fichier indique qui l'a supprimé, quand, et dans combien de jours il ser
 
 ![Corbeille audio - un groupe déplié, fichier par fichier](/admin/aide/images/corbeille-audio-02.jpg)
 
-Si le livre n'existe plus, le fichier restauré apparaît dans la page [Audio orphelin](/admin/aide/audio-orphelin), où vous pourrez le rattacher à un livre.
+Si le livre n'existe plus, la carte le signale avant le clic : le fichier restauré apparaît dans la page [Audio orphelin](/admin/aide/audio-orphelin), où vous pourrez le rattacher à un livre.
