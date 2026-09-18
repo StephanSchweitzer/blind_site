@@ -72,7 +72,8 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
         };
     }, []);
 
-    const startRecording = async () => {
+    /** Resolves false when the mic could not be opened (error already shown). */
+    const startRecording = async (): Promise<boolean> => {
         try {
             setError('');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -100,10 +101,23 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
             timerRef.current = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
+            return true;
         } catch (err) {
             console.error('Error accessing microphone:', err);
             setError("Impossible d'accéder au micro. Vérifiez que le navigateur est autorisé à l'utiliser.");
+            return false;
         }
+    };
+
+    /**
+     * « Ajouter une prise au micro » on an imported file: reopen the takes
+     * list with the file as its first entry and start recording straight
+     * away, so the admin doesn't have to find « Continuer l'enregistrement »
+     * first. If the mic can't be opened, the file stays confirmed as it was.
+     */
+    const addTakeAfterImport = async () => {
+        setIsConfirmed(false);
+        if (!(await startRecording())) setIsConfirmed(true);
     };
 
     const stopRecording = () => {
@@ -174,9 +188,10 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
      * `handleConfirm`: it becomes the one confirmed segment and is handed
      * straight to `onConfirm`, with no re-encoding — unlike a recording,
      * which is always merged down to WAV, an imported file keeps whatever
-     * format (mp3, m4a, wav…) the admin produced it in. It can still be
-     * extended afterwards: clicking « Continuer l'enregistrement » adds a
-     * mic segment behind it, and « Confirmer l'enregistrement » merges both
+     * format (mp3, m4a, wav…) the admin produced it in. « Remplacer le
+     * fichier » comes back here through the same hidden input. It can still
+     * be extended afterwards: « Ajouter une prise au micro » records a mic
+     * segment behind it, and « Confirmer l'enregistrement » merges both
      * through the same WAV path as any other multi-segment recording.
      */
     const handleFileSelected = (file: File) => {
@@ -295,6 +310,10 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
     return (
         <div className={cn('flex flex-col gap-3', className)}>
+            {/* Mounted in every state: « Importer un fichier » (idle) and
+                « Remplacer le fichier » (imported) both open it. */}
+            {fileInput}
+
             {error && (
                 <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
@@ -321,7 +340,6 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
                             <Upload /> Importer un fichier
                         </Button>
                     </div>
-                    {fileInput}
                 </div>
             )}
 
@@ -415,16 +433,28 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
             {/* ── prêt à être envoyé ──────────────────────────────────── */}
             {isConfirmed && finalAudioUrl && (
                 <div className="flex flex-1 flex-col justify-center gap-3 rounded-lg border border-green-600/30 bg-green-500/5 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 dark:text-green-400">
-                            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                            {source === 'import' ? 'Fichier importé' : 'Enregistrement confirmé'}
-                        </span>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setIsConfirmed(false)}>
-                            {source === 'import' ? 'Remplacer le fichier' : 'Modifier l\'enregistrement'}
-                        </Button>
-                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 dark:text-green-400">
+                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                        {source === 'import' ? 'Fichier importé' : 'Enregistrement confirmé'}
+                    </span>
                     <audio src={finalAudioUrl} controls className="w-full" />
+                    <div className="flex flex-wrap gap-2">
+                        {source === 'import' ? (
+                            <>
+                                {/* Straight to the file picker; cancelling it keeps the current file. */}
+                                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                                    <Upload /> Remplacer le fichier
+                                </Button>
+                                <Button type="button" variant="outline" size="sm" onClick={addTakeAfterImport}>
+                                    <Mic /> Ajouter une prise au micro
+                                </Button>
+                            </>
+                        ) : (
+                            <Button type="button" variant="outline" size="sm" onClick={() => setIsConfirmed(false)}>
+                                Modifier l&apos;enregistrement
+                            </Button>
+                        )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                         Il sera envoyé avec la liste, lorsque vous l&apos;enregistrerez.
                     </p>

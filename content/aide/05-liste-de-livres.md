@@ -48,7 +48,11 @@ L'audio n'est envoyé qu'au moment où vous enregistrez la liste.
 
 Si la présentation a déjà été enregistrée (sur un téléphone, un dictaphone ou un ordinateur), inutile de la refaire au micro : cliquez sur « **Importer un fichier** », à côté de « Démarrer l'enregistrement » (repère 5 de la capture 2), puis choisissez le fichier sur votre ordinateur. Tous les formats audio courants sont acceptés (mp3, m4a, wav…), jusqu'à 25 Mo.
 
-Le cadre passe au vert et indique « **Fichier importé** ». (1) Vous pouvez l'écouter pour vérifier que c'est le bon. (2) « **Remplacer le fichier** » rouvre l'enregistreur : « Jeter tout » l'écarte pour en importer un autre, et « Continuer l'enregistrement » ajoute une prise au micro à la suite du fichier.
+Le cadre passe au vert et indique « **Fichier importé** ». Vous pouvez alors :
+
+- (1) l'écouter pour vérifier que c'est le bon ;
+- (2) cliquer sur « **Remplacer le fichier** » pour en choisir un autre. Si vous fermez la fenêtre sans rien choisir, le fichier actuel est conservé ;
+- (3) cliquer sur « **Ajouter une prise au micro** » pour enregistrer une suite au fichier, par exemple la lecture des titres. L'enregistrement démarre aussitôt ; cliquez ensuite sur « Confirmer l'enregistrement » pour réunir le fichier et la prise en un seul enregistrement.
 
 ![Liste de Livres - capture 11](/admin/aide/images/liste-de-livres-11.jpg)
 

@@ -516,6 +516,7 @@ const SPECS = [
         annotations: [
             { n: 1, selector: 'form .grid > div:last-child audio', self: true },
             { n: 2, label: 'Remplacer le fichier', self: true },
+            { n: 3, label: 'Ajouter une prise au micro', self: true, coin: 'hd' },
         ],
         why: 'un fichier audio importé, prêt à partir avec la liste',
     },
