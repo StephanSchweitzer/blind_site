@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Trash2, X, Plus, ChevronLeft, ChevronRight, RotateCcw, History, ExternalLink } from 'lucide-react';
 import {
     BillingStatus,
+    BILL_KIND_LABELS,
     getBillingStatusColor,
     getBillingStatusLabel,
 } from '@/lib/billing-enums';
@@ -409,7 +410,12 @@ export function EditBillModal({
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-3 pr-8">
                         <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
-                            {bill?.kind === 'PROFORMA' ? 'Facture pro-forma' : 'Facture'}
+                            Facture
+                            {bill?.kind === 'PROFORMA' && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-700/30 dark:text-amber-300">
+                                    {BILL_KIND_LABELS.PROFORMA}
+                                </span>
+                            )}
                             {billId && <CopyableId id={billId} label="de la facture" />}
                         </DialogTitle>
                         {bill && !isLoading && (

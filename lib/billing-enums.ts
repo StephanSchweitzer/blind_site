@@ -17,7 +17,7 @@ export type BillKind = typeof BillKind[keyof typeof BillKind];
 
 export const BILL_KIND_LABELS: Record<BillKind, string> = {
     STANDARD: 'Facture',
-    PROFORMA: 'Facture pro-forma',
+    PROFORMA: 'Revue',
 };
 
 export const BILLING_STATUS_LABELS: Record<BillingStatus, string> = {

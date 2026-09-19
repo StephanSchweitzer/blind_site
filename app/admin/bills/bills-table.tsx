@@ -31,6 +31,7 @@ import { Search, X, Plus, Loader2, Clock } from 'lucide-react';
 import {
     BillingStatus,
     BILLING_STATUS_LABELS,
+    BILL_KIND_LABELS,
     getBillingStatusColor,
     getBillingStatusLabel,
 } from '@/lib/billing-enums';
@@ -348,7 +349,7 @@ export default function BillsTable({
                                                         <CopyIdButton id={bill.id} label="de la facture" />
                                                         {bill.kind === 'PROFORMA' && (
                                                             <div className="text-xs font-normal text-amber-700 dark:text-amber-300">
-                                                                Revue
+                                                                {BILL_KIND_LABELS.PROFORMA}
                                                             </div>
                                                         )}
                                                     </TableCell>
