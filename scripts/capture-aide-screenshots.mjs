@@ -273,6 +273,33 @@ const SPECS = [
         why: 'le coût conseillé par CD',
     },
     {
+        name: 'demandes-14.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/orders',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter une demande' }, { waitFor: '[role="dialog"]' }, { sleep: 800 },
+            { clickExact: 'Enregistrement' }, { sleep: 500 },
+            // La case s'affiche sous les boutons Enregistrement / Duplication ; une fois
+            // cochee, les quatre champs et le total calcule apparaissent.
+            { clickText: 'Tarifer à la page' }, { sleep: 500 },
+            { typeIn: { selector: '[role="dialog"] input[placeholder="ex. 42"]', value: '42' } },
+            { typeIn: { selector: '[role="dialog"] input[placeholder="3.00"]', value: '3' } },
+            { sleep: 600 },
+        ],
+        clip: '[role="dialog"]',
+        // Les numeros reprennent ceux du paragraphe de 06-demandes.md.
+        annotations: [
+            { n: 1, selector: '[role="dialog"] button[role="checkbox"]' },
+            // Par leur placeholder : les libelles des champs ne sont pas dans un <label for>.
+            { n: 2, selector: '[role="dialog"] input[placeholder="ex. 42"]', coin: 'hd' },
+            { n: 3, selector: '[role="dialog"] input[placeholder="42"]', coin: 'hd' },
+            { n: 4, selector: '[role="dialog"] input[placeholder="3.00"]', coin: 'hd' },
+            { n: 5, selector: '[role="dialog"] input[placeholder="gratuit"]', coin: 'hd' },
+        ],
+        why: 'la case « Tarifer à la page (pour les revues) », ses quatre champs et le coût calculé',
+    },
+    {
         name: 'attributions-10.jpg',
         url: '/admin/assignments',
         waitFor: 'table tbody tr',

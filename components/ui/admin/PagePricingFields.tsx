@@ -67,7 +67,7 @@ export function PagePricingFields({
                 />
                 <div className="space-y-0.5">
                     <label htmlFor={toggleId} className="text-sm font-medium text-foreground cursor-pointer">
-                        Tarifer à la page (facture pro-forma)
+                        Tarifer à la page (pour les revues)
                     </label>
                     <p className="text-xs text-muted-foreground">
                         {toggleDisabledReason

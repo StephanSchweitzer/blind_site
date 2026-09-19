@@ -117,7 +117,9 @@ Seul un brouillon peut être supprimé. « Supprimer la facture » vous demande 
 
 ## Les factures pro-forma
 
-Une demande **tarifée à la page** (voir [Demandes](/admin/aide/demandes)) ne rejoint jamais le brouillon de l'auditeur et n'attend pas son seuil de facturation. Quand elle passe à « Terminé », elle reçoit **sa propre facture pro-forma**, créée et **émise d'office**. Son numéro est celui de la facture dans l'application : le « n° » imprimé sur le PDF est le même que dans le tableau, et c'est celui que le client reporte sur son chèque ou son virement. Une pro-forma porte une seule demande ; deux demandes donnent deux pro-formas.
+Une pro-forma est la facture des demandes **pour les revues** : celles que l'on coche « Tarifer à la page (pour les revues) » dans le formulaire de la [demande](/admin/aide/demandes#une-demande-tarifee-a-la-page-pour-les-revues), parce que la revue réclame une pro-forma pour régler.
+
+Une demande **tarifée à la page** ne rejoint jamais le brouillon de l'auditeur et n'attend pas son seuil de facturation. Quand elle passe à « Terminé », elle reçoit **sa propre facture pro-forma**, créée et **émise d'office**. Son numéro est celui de la facture dans l'application : le « n° » imprimé sur le PDF est le même que dans le tableau, et c'est celui que le client reporte sur son chèque ou son virement. Une pro-forma porte une seule demande ; deux demandes donnent deux pro-formas.
 
 Dans le tableau, une pro-forma se reconnaît à la mention « Pro-forma » sous son numéro. Elle suit ensuite le même chemin que les autres factures : paiement, « Payée », « Soldée », historique.
 
