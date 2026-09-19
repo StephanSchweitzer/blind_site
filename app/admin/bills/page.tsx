@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { BillingStatus, Prisma } from '@prisma/client';
+import { BillingStatus, BillKind, Prisma } from '@prisma/client';
 import BillsTable from './bills-table';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
@@ -21,6 +21,7 @@ async function getBills(
     searchTerm: string,
     status?: BillingStatus,
     showLate?: boolean,
+    kind?: BillKind,
 ) {
     const billsPerPage = 10;
 
@@ -46,6 +47,7 @@ async function getBills(
         } else if (status) {
             whereClause.state = status;
         }
+        if (kind) whereClause.kind = kind;
         return whereClause;
     };
     const whereClause = whereFor(searchTerm);
@@ -94,13 +96,18 @@ export default async function AdminBillsPage({ searchParams }: PageProps) {
         ? (rawStatus as BillingStatus)
         : undefined;
 
+    const rawKind = Array.isArray(params.kind) ? params.kind[0] : params.kind;
+    const kind = rawKind && Object.values(BillKind).includes(rawKind as BillKind)
+        ? (rawKind as BillKind)
+        : undefined;
+
     const showLate = (Array.isArray(params.late) ? params.late[0] : params.late) === 'true';
 
     // Only the data fetch is guarded; notFound() throws (returns `never`),
     // so `data` is definitely assigned past this point.
     let data: Awaited<ReturnType<typeof getBills>>;
     try {
-        data = await getBills(page, searchTerm, status, showLate);
+        data = await getBills(page, searchTerm, status, showLate, kind);
     } catch (error) {
         console.error('Error in Admin Bills page:', error);
         notFound();

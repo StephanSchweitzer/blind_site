@@ -96,6 +96,7 @@ export default function BillsTable({
     const currentPage = initialPage;
     const currentStatus = searchParams.get('status') as BillingStatus | null;
     const showLateOnly = searchParams.get('late') === 'true';
+    const currentKind = searchParams.get('kind');
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -144,6 +145,11 @@ export default function BillsTable({
             late: undefined,
             page: '1',
         });
+    };
+
+    // Le type se combine avec l'état et le retard : il ne les remet pas à zéro.
+    const handleKindFilter = (value: string) => {
+        updateUrl({ kind: value === 'all' ? undefined : value, page: '1' });
     };
 
     const handleLateFilter = (checked: boolean) => {
@@ -271,6 +277,17 @@ export default function BillsTable({
                                         {BILLING_STATUS_LABELS[status]}
                                     </SelectItem>
                                 ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={currentKind ?? 'all'} onValueChange={handleKindFilter}>
+                            <SelectTrigger className="w-full sm:w-[180px] bg-card border-border text-foreground">
+                                <SelectValue placeholder="Filtrer par type" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Tous les types</SelectItem>
+                                <SelectItem value="STANDARD" className="text-foreground">Factures standard</SelectItem>
+                                <SelectItem value="PROFORMA" className="text-foreground">{BILL_KIND_LABELS.PROFORMA}</SelectItem>
                             </SelectContent>
                         </Select>
 

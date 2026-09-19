@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
-import { Prisma, BillingStatus, OrderBillingStatus, PaymentType, PaymentMethod } from '@prisma/client';
+import { Prisma, BillingStatus, BillKind, OrderBillingStatus, PaymentType, PaymentMethod } from '@prisma/client';
 import {
     recomputeBillTotal,
     logBillEvent,
@@ -23,6 +23,7 @@ export const GET = withAdmin(async (request) => {
         const search = searchParams.get('search') || '';
         const rawStatus = searchParams.get('status');
         const late = searchParams.get('late') === 'true';
+        const rawKind = searchParams.get('kind');
         const rawClientId = searchParams.get('clientId');
         const billsPerPage = parseLimitParam(searchParams.get('limit'), 10);
 
@@ -52,6 +53,10 @@ export const GET = withAdmin(async (request) => {
             // Le sélecteur « Facture liée » d'un paiement : un brouillon n'y a pas
             // sa place, les routes de paiement refusent de s'y rattacher.
             whereClause.state = { not: BillingStatus.DRAFT };
+        }
+
+        if (rawKind && Object.values(BillKind).includes(rawKind as BillKind)) {
+            whereClause.kind = rawKind as BillKind;
         }
 
         const [bills, totalBills] = await Promise.all([
