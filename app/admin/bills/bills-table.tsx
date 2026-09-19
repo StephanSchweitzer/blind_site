@@ -348,7 +348,7 @@ export default function BillsTable({
                                                         <CopyIdButton id={bill.id} label="de la facture" />
                                                         {bill.kind === 'PROFORMA' && (
                                                             <div className="text-xs font-normal text-amber-700 dark:text-amber-300">
-                                                                Pro-forma
+                                                                Revue
                                                             </div>
                                                         )}
                                                     </TableCell>
