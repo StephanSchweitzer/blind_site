@@ -3,6 +3,7 @@ import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { listRawObjects, toOrderedTracks, getTrackUrl } from '@/lib/audio/bucket';
 import { refreshBookAudioState, resolvePrefix, resolveTrackDurations } from '@/lib/audio/state';
+import { readInProgressReading } from '@/lib/assignments/inProgressContact';
 
 /** Management links are short-lived; the dialogue refetches rather than caching. */
 const URL_TTL_SECONDS = 3600;
@@ -91,9 +92,12 @@ export const GET = withAdmin(async (_req, { params }) => {
     // the soft-delete extension (lib/prisma.ts) filters `count` but NOT a
     // nested `_count`, so this way a demande someone deleted doesn't come back
     // as evidence that the book was requested.
-    const [orderCount, assignmentCount] = await Promise.all([
+    const [orderCount, assignmentCount, inProgressReading] = await Promise.all([
         prisma.orders.count({ where: { catalogueId: bookId } }),
         prisma.assignment.count({ where: { catalogueId: bookId } }),
+        // Une lecture encore « En cours » : l'audio présent peut être incomplet.
+        // Voir lib/assignments/inProgressContact.ts et InProgressReadingNotice.
+        readInProgressReading(bookId),
     ]);
 
     return NextResponse.json({
@@ -110,6 +114,7 @@ export const GET = withAdmin(async (_req, { params }) => {
         trashCount,
         orderCount,
         assignmentCount,
+        inProgressReading,
         tracks: signed,
     });
 });

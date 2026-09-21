@@ -46,6 +46,7 @@ import { DeleteAudioTrackModal, type AudioTrackTarget } from '@/admin/DeleteAudi
 import { DeleteAllAudioTracksModal } from '@/admin/DeleteAllAudioTracksModal';
 import { RenameAudioTrackModal, type AudioTrackRenameTarget } from '@/admin/RenameAudioTrackModal';
 import { MissingDemandeNotice } from '@/admin/MissingDemandeNotice';
+import { InProgressReadingNotice } from '@/admin/InProgressReadingNotice';
 import { parisDate } from '@/lib/paris-day';
 import { ApiErrorMessage, apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse, type UserFacingError } from '@/lib/user-error';
@@ -73,6 +74,8 @@ interface ManageResponse {
     /** Demandes / attributions nommant ce livre — voir MissingDemandeNotice. */
     orderCount: number;
     assignmentCount: number;
+    /** Attribution « En cours » sur ce livre — voir InProgressReadingNotice. */
+    inProgressReading: { contactName: string | null } | null;
     tracks: Track[];
 }
 
@@ -653,6 +656,12 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             )}
                         </div>
                     )}
+
+                    {/* Même principe que MissingDemandeNotice ci-dessous : monté sans condition. */}
+                    <InProgressReadingNotice
+                        reading={data?.inProgressReading}
+                        trackCount={data?.trackCount}
+                    />
 
                     {/* Monté sans condition : c'est le composant qui décide de se
                         taire (compteurs non nuls, ou pas encore chargés). Voir

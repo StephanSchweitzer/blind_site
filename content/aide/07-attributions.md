@@ -97,7 +97,7 @@ Lorsque vous cliquez sur ce bouton, l'attribution est immédiatement mise à jou
 Il arrive qu'une attribution ait été passée « Terminé » à tort — par exemple, un lecteur a envoyé une partie de sa lecture seulement, et enverra la suite plus tard. Dans ce cas, cliquez sur le bouton « Rouvrir l'attribution », sous le statut. Une fenêtre de confirmation s'ouvre :
 
 - la date de retour aux ECA est effacée, et l'attribution repasse « En cours », tout comme sa demande ;
-- l'audio déjà déposé est conservé : inutile de le supprimer, le reste s'ajoutera à côté dans l'éditeur audio ;
+- l'audio déjà déposé est conservé : inutile de le supprimer, le reste s'ajoutera à côté dans l'éditeur audio. Tant que l'attribution est « En cours », l'[éditeur audio](/admin/aide/catalogue#editeur-audio) du livre avertit que l'audio peut être incomplet et nomme la personne qui l'a rouverte, pour que personne ne l'envoie à l'auditeur par erreur ;
 - vous pouvez indiquer la raison de la réouverture ; elle est ajoutée aux notes de l'attribution, avec la date du jour.
 
 Si la demande figure déjà sur une [facture](/admin/aide/factures) en brouillon, elle en est retirée automatiquement, et y reviendra lorsqu'elle sera de nouveau terminée. Si la facture a déjà été émise, la réouverture est refusée : rouvrez d'abord la facture et retirez-en la demande.

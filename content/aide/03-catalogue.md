@@ -129,6 +129,8 @@ Lorsque vous cliquez sur l'éditeur audio depuis la page d'accueil ou depuis le 
 
 Vous pouvez ici importer des fichiers ou des dossiers, ainsi que supprimer des fichiers ou des dossiers. Pour tout télécharger ou tout supprimer, utilisez les deux boutons correspondants situés en haut de la page.
 
+Si une [attribution](/admin/aide/attributions) de ce livre est encore « En cours », un cadre orange « Lecture en cours : l'audio peut être incomplet » s'affiche en haut de la fenêtre : le lecteur n'a pas fini, et les fichiers présents ne sont peut-être qu'une partie de la lecture — par exemple après la réouverture d'une attribution terminée à tort. Avant d'envoyer cet audio à l'auditeur, vérifiez auprès du permanent nommé dans le cadre : celui qui a rouvert l'attribution, sinon celui qui l'a créée, sinon celui qui traite la demande. Le cadre n'empêche rien : il disparaît dès que l'attribution passe « Terminé ».
+
 Si le dossier audio est partagé avec une autre fiche — cas des doublons issus de l'ancienne base —, toute suppression de piste est refusée, qu'elle porte sur un seul fichier ou sur l'ensemble : le message nomme l'autre livre et son identifiant. L'enregistrement étant le même pour les deux fiches, réglez d'abord le doublon : si les deux fiches décrivent le même livre, [supprimez celle qui est en trop](#supprimer-un-livre) en laissant le dossier dans le stockage. Sinon, écrivez à l'informaticien (adresse indiquée dans le message) pour faire séparer les dossiers.
 
 ![Catalogue - capture 20](/admin/aide/images/catalogue-20.jpg)
