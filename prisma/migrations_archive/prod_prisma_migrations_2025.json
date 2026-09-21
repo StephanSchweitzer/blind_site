@@ -1,0 +1,52 @@
+[
+ {
+  "id": "200ee21e-721f-4201-bcd4-bbf257cee485",
+  "checksum": "e0349f6dcbb383e349577f7c9fd3920977feda0e4d0f67349ef9a6ad8d06564b",
+  "finished_at": "2025-06-04T16:20:51.445Z",
+  "migration_name": "0_init",
+  "logs": "",
+  "rolled_back_at": null,
+  "started_at": "2025-06-04T16:20:51.445Z",
+  "applied_steps_count": 0
+ },
+ {
+  "id": "b1348d39-5cca-4d76-8a9a-93176603127e",
+  "checksum": "183085dd09827079124755bfe468db4b251e85d967e70a3ed92dc160bbb1d2ee",
+  "finished_at": "2025-11-02T23:35:31.733Z",
+  "migration_name": "20251102233531_add_orders_bills_assignments",
+  "logs": null,
+  "rolled_back_at": null,
+  "started_at": "2025-11-02T23:35:31.383Z",
+  "applied_steps_count": 1
+ },
+ {
+  "id": "15c5d9e0-a612-4f3a-9617-093033723f8f",
+  "checksum": "246e845af9c330760ea6a22a4745b6bb27cdb58d18d8df8f98da345d2a52c509",
+  "finished_at": "2025-11-02T23:44:20.242Z",
+  "migration_name": "20251102234419_rename_order_to_orders",
+  "logs": null,
+  "rolled_back_at": null,
+  "started_at": "2025-11-02T23:44:19.982Z",
+  "applied_steps_count": 1
+ },
+ {
+  "id": "9d1b2198-73cb-43fb-a896-dc094a4227ac",
+  "checksum": "4e321a6aa6618a15ce67a188ce08166f48b05affdd367f439442abc0a7106763",
+  "finished_at": "2025-11-03T01:17:31.840Z",
+  "migration_name": "20251103011731_added_updated_time_to_orders",
+  "logs": null,
+  "rolled_back_at": null,
+  "started_at": "2025-11-03T01:17:31.703Z",
+  "applied_steps_count": 1
+ },
+ {
+  "id": "45c49945-5c58-402b-af17-e1a9d7352040",
+  "checksum": "c65043525ec45c1b52d3c6524d32d98de08a665039d9dfbed8fa05b9841c71c8",
+  "finished_at": "2025-11-08T03:26:19.734Z",
+  "migration_name": "20241107000000_baseline_sync",
+  "logs": "",
+  "rolled_back_at": null,
+  "started_at": "2025-11-08T03:26:19.734Z",
+  "applied_steps_count": 0
+ }
+]

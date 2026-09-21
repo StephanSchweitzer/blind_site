@@ -53,7 +53,7 @@ model User {
   /// Lower-case, accent-folded « prénom nom name email », maintained by the
   /// `user_search_key` trigger — never written by the app (whatever it writes is
   /// overwritten). Searched through `searchKeyVariants` (lib/search-normalize.ts).
-  /// See prisma/migrations/manual/20260916150000_user_search_key.sql.
+  /// Created in prisma/migrations/0_baseline (Part 2).
   searchKey                 String              @default("")
   /// Soft-delete marker. When set, the user is treated as deleted everywhere:
   /// a global Prisma query extension (lib/prisma.ts) excludes rows with a
@@ -123,9 +123,9 @@ model Book {
   publishedDate          DateTime?
   /// Unique only among live books — enforced by a partial index
   /// ("Book_isbn_key" WHERE "deletedAt" IS NULL) that this schema cannot
-  /// express and that the migration creates by hand. A soft-deleted book must
+  /// express and that prisma/migrations/0_baseline creates by hand. A soft-deleted book must
   /// not hold its ISBN hostage from a future, unrelated book. Never re-add
-  /// `@unique` here: `db push` would replace the partial index with a
+  /// `@unique` here: the next migration would replace the partial index with a
   /// full-table one and silently regress this.
   isbn                   String?
   description            String?

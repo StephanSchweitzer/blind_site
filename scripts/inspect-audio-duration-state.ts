@@ -60,8 +60,8 @@ async function schemaState() {
     console.log(`  Table AudioTrackDuration         ${cacheTable ? 'présente' : 'ABSENTE'}`);
     if (!durationCol || !cacheTable) {
         console.log('\n  → migrations manuelles à appliquer avant toute mesure :');
-        if (!durationCol) console.log('    prisma/migrations/manual/20260809214500_add_audio_track_duration.sql');
-        if (!cacheTable) console.log('    prisma/migrations/manual/20260810120000_add_audio_track_duration_cache.sql');
+        if (!durationCol) console.log('    prisma/migrations_archive/manual/20260809214500_add_audio_track_duration.sql');
+        if (!cacheTable) console.log('    prisma/migrations_archive/manual/20260810120000_add_audio_track_duration_cache.sql');
     }
     return { durationCol, cacheTable };
 }

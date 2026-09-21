@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "dev:claude-user": "tsx prisma/dev-claude-user.ts",
+    "db:migrate": "tsx scripts/migrate.ts dev",
+    "db:deploy": "tsx scripts/migrate.ts deploy",
     "aide:check": "tsx scripts/check-aide-links.ts",
     "aide:shots": "node scripts/capture-aide-screenshots.mjs",
     "aide:optimize": "python scripts/optimize-aide-images.py",

@@ -413,7 +413,7 @@ Requires **Node.js**, **pnpm 10.9+**, and a **PostgreSQL** database.
 ```bash
 pnpm install
 cp .env.example .env        # fill in values (see below)
-pnpm prisma db push         # NOT `migrate dev` — see the warning below
+pnpm db:deploy              # builds the schema from prisma/migrations
 pnpm prisma db seed         # optional
 pnpm dev                    # http://localhost:3000
 ```
@@ -468,7 +468,7 @@ pnpm tsx scripts/set-audio-cors.ts
 | `pnpm start` | Serve the production build |
 | `pnpm lint` | ESLint |
 | `pnpm prisma db seed` | Seed the database |
-| `pnpm prisma db execute --file <sql>` | Apply a schema change — see the warning below |
+| `pnpm db:migrate` / `pnpm db:deploy` | Create / apply a migration — see « Schema changes » below |
 | `pnpm aide:check` | Fails if an `AideLink` points at a mode d'emploi section that doesn't exist |
 | `pnpm aide:shots` | Recaptures the mode d'emploi screenshots by driving the app |
 | `pnpm aide:optimize` | Compresses those screenshots (keeps the generated PDF under Vercel's response cap) |
@@ -501,30 +501,25 @@ Every script that opens its own database connection reads `DIRECT_URL` first, vi
 
 There is a permanent local dev account (`claude@eca.test`), a `super_admin`/`informaticien`, created by the seed and re-provisioned with `pnpm dev:claude-user`. That script upserts only that one user and refuses to run against anything but a local database.
 
-### Schema changes — do not use `prisma migrate`
+### Schema changes
 
-The migration history is out of sync with the databases: the migrations in `prisma/migrations/` are recorded as unapplied against databases that already contain those tables. `prisma migrate dev` would try to replay them and can prompt a destructive reset; `prisma migrate deploy` fails on the first one.
-
-Apply schema changes like this instead:
+Migrations are tracked by Prisma since the 2026-09-21 baseline: `prisma/migrations/0_baseline` is the whole schema as of that day, and everything before it is kept, frozen, in `prisma/migrations_archive/`. Go through the guarded scripts rather than `prisma migrate` directly:
 
 ```bash
-pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script -o prisma/migrations/<timestamp>_<name>/migration.sql
+pnpm db:migrate --name <name>   # write the migration SQL, apply nothing — read it
+pnpm db:migrate                 # apply it to the local database
 ```
 
-**Read the generated SQL before running it** — if the target has drifted it can contain `DROP` statements. Then apply it:
+In production, check with `pnpm prisma migrate status`, then apply with `MIGRATE_DEPLOY_HOST=<host> pnpm db:deploy`. Nothing applies migrations automatically. `scripts/migrate.ts` refuses to run `migrate dev` (which can offer to reset a database) against anything but a local host. Don't use `prisma db push`: it changes the schema without a migration, which is how the history drifted before.
 
-```bash
-pnpm prisma db execute --file prisma/migrations/<timestamp>_<name>/migration.sql
-```
-
-Keep the SQL file in the repo so the change is recorded even though the history itself is not trustworthy. `prisma.config.ts` points the datasource at `DIRECT_URL`, so override that variable to target a different database.
+Some objects can't be expressed in `schema.prisma` — a partial unique index, a CHECK constraint, the search functions, trigger and materialized view. They're listed in Part 2 of the baseline and are changed only in hand-edited migrations. `prisma.config.ts` points the CLI at `DIRECT_URL`.
 
 ## 18. Deployment
 
 Deployed on **Vercel**. `pnpm build` runs `prisma generate` first. Before a release:
 
 - set `DATABASE_URL`, `DIRECT_URL` and every integration credential in the Vercel project, `CRON_SECRET` included;
-- apply pending schema SQL by hand (see above);
+- apply pending migrations with `pnpm db:deploy` (see « Schema changes » above);
 - confirm the B2 CORS rule still lists the deployment origin — a new preview domain cannot upload without it.
 
 The production database is a **Supabase free tier**: 500 MB, and it flips to read-only past that. The audit-trail retention and the corbeille purge exist because of that ceiling; don't raise their windows without checking the headroom.

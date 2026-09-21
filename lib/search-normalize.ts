@@ -160,7 +160,7 @@ const TRANSLITERATION_CLASS = new RegExp(`[${Object.keys(TRANSLITERATIONS).join(
 
 /**
  * The fold a `searchKey` column is built with, in JavaScript — the twin of the
- * SQL function `search_fold` (prisma/migrations/manual/…_user_search_key.sql).
+ * SQL function `search_fold` (prisma/migrations/0_baseline, Part 2).
  *
  * The two MUST agree character for character. The column is folded by
  * Postgres; the query is folded here, because Prisma cannot wrap a query

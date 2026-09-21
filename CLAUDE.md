@@ -22,30 +22,40 @@ process and the code wins for facts.
 - `pnpm prisma generate` — regenerate client
 - `pnpm prisma studio` — inspect the DB
 - `pnpm dev:claude-user` — (re)create the local dev sign-in account, see below
+- `pnpm db:migrate` / `pnpm db:deploy` — create/apply migrations, see below
 
-## Schema changes — NEVER use `prisma migrate` (IMPORTANT)
+## Schema changes — through the guarded migration scripts (IMPORTANT)
 
-The migration history is out of sync with both databases: the files in `prisma/migrations/`
-are recorded as unapplied against databases that already contain those tables.
-**`prisma migrate dev` can prompt a destructive reset, and `prisma migrate deploy` fails on
-the first migration.** Neither is ever the right command here.
+Migrations are tracked by Prisma since the 2026-09-21 baseline. `prisma/migrations/0_baseline`
+holds the whole schema as of that day; everything earlier is frozen in
+`prisma/migrations_archive/` (read it for history, never replay or edit it). Existing
+databases were marked with `prisma migrate resolve --applied 0_baseline`, not rebuilt.
 
-For a local dev database, push the schema directly:
+1. Edit `prisma/schema.prisma`.
+2. `pnpm db:migrate --name <snake_case_name>` — writes `prisma/migrations/<ts>_<name>/migration.sql`
+   and applies nothing. **Read the SQL.** Add by hand anything Prisma can't express (below).
+3. `pnpm db:migrate` — applies it to the local DB. Commit the folder with the schema change.
+4. Production: `pnpm prisma migrate status` against it, then
+   `MIGRATE_DEPLOY_HOST=<host> pnpm db:deploy`. Nothing applies migrations automatically —
+   not the build, not Vercel.
 
-```bash
-pnpm prisma db push
-```
+Always go through `pnpm db:migrate` / `pnpm db:deploy` (`scripts/migrate.ts`), never bare
+`prisma migrate dev`: when `migrate dev` finds drift it **offers to reset the database**,
+and `.env` is sometimes pointed at production. The wrapper refuses any non-local host for
+`migrate dev`, and makes `deploy` name a remote host explicitly. **Never `prisma db push`
+or `prisma migrate reset`** either — a push changes the schema without a migration, which is
+exactly the drift that broke the history last time.
 
-To make a change you intend to ship, generate the SQL and apply it by hand:
-
-```bash
-pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script -o prisma/migrations/<timestamp>_<name>/migration.sql
-pnpm prisma db execute --file prisma/migrations/<timestamp>_<name>/migration.sql
-```
-
-**Read the generated SQL before running it** — if the target has drifted it can contain
-`DROP` statements. Keep the file in the repo so the change is recorded even though the
-history itself is not trustworthy.
+**Objects Prisma can't see** — listed in Part 2 of `0_baseline/migration.sql`: the partial
+unique index `Book_isbn_key`, the accent-insensitive `idx_book_*` / `idx_genre_name_unaccent`
+search indexes, the `orders_billed_requires_bill` CHECK, the functions
+`immutable_unaccent` / `search_fold` / `user_search_key_trigger` / `refresh_search_vocabulary`,
+the `user_search_key` trigger, the `search_vocabulary` materialized view, the role's
+`idle_in_transaction_session_timeout`, and the `unaccent` / `pg_trgm` extensions. Prisma
+never creates, changes or drops them, so change them in a hand-edited migration. The view
+and trigger read `User` and `Book` columns (names, title, author, `deletedAt`…): a migration
+that renames or retypes one of those must drop and recreate the view in the same file, or it
+fails on Postgres.
 
 ### Two connection strings, not interchangeable
 
