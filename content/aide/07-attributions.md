@@ -92,6 +92,18 @@ Suivez la même procédure que précédemment pour attribuer un nouveau lecteur 
 
 Lorsque vous cliquez sur ce bouton, l'attribution est immédiatement mise à jour ; il n'est donc pas nécessaire d'enregistrer l'ensemble du formulaire par la suite. Veillez donc à bien réfléchir avant de cliquer dessus.
 
+### Rouvrir une attribution terminée
+
+Il arrive qu'une attribution ait été passée « Terminé » à tort — par exemple, un lecteur a envoyé une partie de sa lecture seulement, et enverra la suite plus tard. Dans ce cas, cliquez sur le bouton « Rouvrir l'attribution », sous le statut. Une fenêtre de confirmation s'ouvre :
+
+- la date de retour aux ECA est effacée, et l'attribution repasse « En cours », tout comme sa demande ;
+- l'audio déjà déposé est conservé : inutile de le supprimer, le reste s'ajoutera à côté dans l'éditeur audio ;
+- vous pouvez indiquer la raison de la réouverture ; elle est ajoutée aux notes de l'attribution, avec la date du jour.
+
+Si la demande figure déjà sur une [facture](/admin/aide/factures) en brouillon, elle en est retirée automatiquement, et y reviendra lorsqu'elle sera de nouveau terminée. Si la facture a déjà été émise, la réouverture est refusée : rouvrez d'abord la facture et retirez-en la demande.
+
+Une attribution déjà terminée reste modifiable (notes, méthode de livraison…) même si son audio a été retiré depuis ; seul le passage à « Terminé » exige un enregistrement.
+
 Le reste de la fenêtre contextuelle fonctionne de la même manière que celle permettant d'ajouter une attribution. Pour corriger le livre, modifiez-le sur la [demande](/admin/aide/demandes) : l'attribution suit automatiquement.
 
 En bas de la fenêtre, vous trouverez (1) le bouton « Mettre à jour l'attribution », qui enregistrera vos modifications, et (2) le bouton « Supprimer l'attribution », qui supprimera l'attribution.

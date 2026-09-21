@@ -53,6 +53,8 @@ import { getUserDisplayName } from '@/lib/users/displayName';
 import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
 import type { LinkedAssignment } from '@/types/models/order.model';
 import { AudioConfirmationRequiredError } from '@/admin/AssignmentFormErrors';
+import { parisDateDisplay } from '@/lib/paris-day';
+import { type BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
 
 // N3 — required fields, visual top→bottom (book derives from the order picker).
 // `readerId` is required on creation only: an attribution always belongs to a
@@ -280,6 +282,15 @@ export function AssignmentFormBackendBase({
     // being surfaced as this book's answer.
     // Texte du dialogue « terminer sans audio ? » (revues seulement), null = fermé.
     const [audioConfirmMessage, setAudioConfirmMessage] = useState<string | null>(null);
+
+    // Dialogue « Rouvrir l'attribution ». La facture de la demande liée n'est pas
+    // dans OrderSummary : relue à l'ouverture, pour annoncer AVANT ce que la
+    // réouverture lui fera (retrait du brouillon, ou refus sur une facture émise).
+    // 'loading' pendant la lecture, null = pas de facture (ou lecture échouée —
+    // le serveur décide de toute façon, et le toast dit ce qui s'est passé).
+    const [reopenOpen, setReopenOpen] = useState(false);
+    const [reopenReason, setReopenReason] = useState('');
+    const [reopenBill, setReopenBill] = useState<{ id: number; state: BillingStatus } | null | 'loading'>(null);
 
     const [bookAudioState, setBookAudioState] = useState<{
         bookId: number;
@@ -648,21 +659,29 @@ export function AssignmentFormBackendBase({
         await submitForm();
     };
 
-    const submitForm = async (options?: AssignmentSubmitOptions) => {
+    // `overrides` : des champs posés par un geste plutôt que saisis — la
+    // réouverture (handleReopenConfirm) vide la date de retour dans le même envoi
+    // que le reste du formulaire, sans attendre un re-rendu.
+    const submitForm = async (options?: AssignmentSubmitOptions, overrides?: Partial<AssignmentFormData>) => {
         setIsLoading(true);
 
         try {
+            const data: AssignmentFormData = { ...formData, ...overrides };
             // Safety net: force every date field to "YYYY-MM-DD" before it leaves the
             // form, regardless of how it was hydrated. Keeps the wire format consistent
             // with the strict z.string().date() validators on the server. statusId is
             // never taken from user input — always the value deriveAssignmentStatus
             // computed from these same dates.
             const normalizedFormData: AssignmentFormData = {
-                ...formData,
-                receptionDate: formData.receptionDate ? formData.receptionDate.slice(0, 10) : null,
-                sentToReaderDate: formData.sentToReaderDate ? formData.sentToReaderDate.slice(0, 10) : null,
-                returnedToECADate: formData.returnedToECADate ? formData.returnedToECADate.slice(0, 10) : null,
-                statusId: derivedStatusId,
+                ...data,
+                receptionDate: data.receptionDate ? data.receptionDate.slice(0, 10) : null,
+                sentToReaderDate: data.sentToReaderDate ? data.sentToReaderDate.slice(0, 10) : null,
+                returnedToECADate: data.returnedToECADate ? data.returnedToECADate.slice(0, 10) : null,
+                statusId: deriveAssignmentStatus(
+                    !!data.receptionDate || receptionRequirementWaived,
+                    !!data.sentToReaderDate,
+                    !!data.returnedToECADate
+                ),
             };
 
             // Pass readerId separately for create, not in formData
@@ -690,6 +709,38 @@ export function AssignmentFormBackendBase({
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleReopenClick = async () => {
+        setReopenReason('');
+        setReopenOpen(true);
+        if (!formData.orderId) {
+            setReopenBill(null);
+            return;
+        }
+        setReopenBill('loading');
+        try {
+            const res = await fetch(`/api/orders/${formData.orderId}?mode=basic&include=bill`);
+            const order = res.ok ? await res.json() : null;
+            setReopenBill(order?.bill ? { id: order.bill.id, state: order.bill.state } : null);
+        } catch {
+            setReopenBill(null);
+        }
+    };
+
+    // Rouvrir = vider la date de retour aux ECA : le statut dérivé redevient
+    // « En cours », et le serveur fait le reste (demande rouverte, retrait d'un
+    // brouillon, refus sur une facture émise, AssignmentEvent REOPENED). La raison,
+    // facultative, rejoint les notes — AssignmentEvent n'a pas de champ texte, et
+    // c'est là que le prochain permanent la lira.
+    const handleReopenConfirm = () => {
+        setReopenOpen(false);
+        const reason = reopenReason.trim();
+        const reopenNote = `Rouverte le ${parisDateDisplay(new Date())}${reason ? ` : ${reason}` : ''}`;
+        void submitForm(undefined, {
+            returnedToECADate: null,
+            notes: formData.notes ? `${formData.notes}\n${reopenNote}` : reopenNote,
+        });
     };
 
     const handleDeleteClick = async () => {
@@ -784,17 +835,32 @@ export function AssignmentFormBackendBase({
         bookAudioState !== null &&
         bookAudioState.bookId === formData.catalogueId &&
         audioLinkStatusIsMissing(bookAudioState.status);
-    const audioBlocksTermine = derivedStatusId === STATUS.TERMINE && audioMissing;
-    // Demande tarifée à la page (Orders.pages non nul) : une revue, qui peut être
-    // terminée sans audio si le permanent le confirme (guardAssignmentHasAudio).
-    const isRevue = selectedOrder?.pages != null;
-
     // guardCanReassignReader: a « Terminé » attribution must be reopened before
     // its reader can change. Read from initialData (the persisted snapshot),
     // not the live statusId select — reassignment is its own immediate API
     // call, so what it will actually be checked against is whatever is saved,
     // not an unsaved edit sitting in the status dropdown.
     const isAssignmentTermine = initialData?.statusId === STATUS.TERMINE;
+
+    // Seulement à l'ENTRÉE dans « Terminé », comme le serveur (PUT
+    // /api/assignments/[id]). Une attribution déjà terminée dont l'audio a été
+    // retiré depuis — lecture en fait inachevée, pistes supprimées — ne doit pas
+    // être prise en otage : c'était le cas, et le message renvoyait vers l'éditeur
+    // audio alors que la seule sortie était de la rouvrir.
+    const audioBlocksTermine = derivedStatusId === STATUS.TERMINE && !isAssignmentTermine && audioMissing;
+    // Le même manque, sur une attribution déjà terminée : ne bloque rien, mais
+    // montre la sortie (rouvrir) plutôt que l'éditeur audio.
+    const termineWithoutAudio = derivedStatusId === STATUS.TERMINE && isAssignmentTermine && audioMissing;
+    // Demande tarifée à la page (Orders.pages non nul) : une revue, qui peut être
+    // terminée sans audio si le permanent le confirme (guardAssignmentHasAudio).
+    const isRevue = selectedOrder?.pages != null;
+
+    // « Rouvrir l'attribution » : le geste explicite pour revenir à « En cours ».
+    // Le statut se déduit des dates, donc rouvrir = vider la date de retour aux
+    // ECA — mais le sélecteur de date ne se vide qu'en recliquant le jour choisi,
+    // ce que personne ne devine. Offert tant que la date de retour est là sur une
+    // attribution enregistrée « Terminé ».
+    const canReopen = isEditMode && isAssignmentTermine && returnedDateSet && sentDateSet;
 
     return (
         <>
@@ -1204,6 +1270,27 @@ export function AssignmentFormBackendBase({
                                 ci-dessus pour le déposer avant de renseigner la date de retour aux ECA.
                             </p>
                         )}
+                        {termineWithoutAudio && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                Aucun enregistrement n&apos;est plus associé à ce livre. Si la lecture
+                                n&apos;est pas finie, rouvrez l&apos;attribution : elle repassera « En cours ».
+                            </p>
+                        )}
+                        {canReopen && (
+                            <div className="pt-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    // « En cours » exige un lecteur (guardAssignmentConsistency).
+                                    disabled={isLoading || !hasReader}
+                                    title={!hasReader ? 'Assignez un lecteur avant de rouvrir l’attribution : « En cours » en nécessite un.' : undefined}
+                                    onClick={() => void handleReopenClick()}
+                                    className="h-8 px-2.5 text-xs"
+                                >
+                                    Rouvrir l&apos;attribution
+                                </Button>
+                            </div>
+                        )}
                         {/* Same reasoning as the audio hint above — a reader isn't visible
                             from the dates, so this spells out why the computed status can't
                             be saved yet. Moot on creation (submit is already disabled without
@@ -1324,6 +1411,57 @@ export function AssignmentFormBackendBase({
                         }}
                     >
                         Oui, passer « Terminé »
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={reopenOpen} onOpenChange={setReopenOpen}>
+            <AlertDialogContent className="bg-card border-border">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-foreground">
+                        Rouvrir l&apos;attribution ?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription asChild>
+                        <div className="space-y-2 text-sm text-muted-foreground">
+                            <p>
+                                La date de retour aux ECA sera effacée et l&apos;attribution repassera
+                                « En cours », tout comme sa demande. L&apos;audio déjà déposé est conservé.
+                            </p>
+                            {reopenBill === 'loading' && <p>Vérification de la facture…</p>}
+                            {reopenBill && reopenBill !== 'loading' && reopenBill.state === 'DRAFT' && (
+                                <p className="text-amber-700 dark:text-amber-400">
+                                    La demande figure sur la facture #{reopenBill.id} (brouillon) : elle en
+                                    sera retirée, et y reviendra une fois terminée.
+                                </p>
+                            )}
+                            {reopenBill && reopenBill !== 'loading' && reopenBill.state !== 'DRAFT' && (
+                                <p className="text-red-700 dark:text-red-400">
+                                    La demande figure sur la facture #{reopenBill.id} («&nbsp;
+                                    {getBillingStatusLabel(reopenBill.state)}&nbsp;») : l&apos;attribution ne peut
+                                    pas être rouverte en l&apos;état. Rouvrez la facture #{reopenBill.id} et retirez-en la
+                                    demande, puis revenez ici.
+                                </p>
+                            )}
+                            <p>Les autres modifications du formulaire sont enregistrées en même temps.</p>
+                        </div>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <Input
+                    placeholder="Raison de la réouverture (optionnel, ajoutée aux notes)"
+                    value={reopenReason}
+                    onChange={(e) => setReopenReason(e.target.value)}
+                    className="bg-field border-border text-foreground"
+                />
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction
+                        disabled={
+                            reopenBill === 'loading' ||
+                            (reopenBill !== null && reopenBill.state !== 'DRAFT')
+                        }
+                        onClick={handleReopenConfirm}
+                    >
+                        Rouvrir
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
