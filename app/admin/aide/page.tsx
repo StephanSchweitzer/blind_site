@@ -2,8 +2,9 @@
 import Link from 'next/link';
 import { BookOpen, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { listAideSections } from '@/lib/aide';
+import { getAideSearchEntries, listAideSections } from '@/lib/aide';
 import { AidePdfButton } from '@/components/aide/AidePdfButton';
+import { AideSearch } from '@/components/aide/AideSearch';
 import { TECH_CONTACT_EMAIL } from '@/lib/user-error';
 
 export const metadata = {
@@ -18,6 +19,7 @@ export const metadata = {
  */
 export default function AidePage() {
     const sections = listAideSections();
+    const searchEntries = getAideSearchEntries();
 
     return (
         <div className="space-y-4">
@@ -41,6 +43,12 @@ export default function AidePage() {
                 </CardHeader>
 
                 <CardContent className="pt-6">
+                    {searchEntries.length > 0 && (
+                        <div className="mb-6">
+                            <AideSearch entries={searchEntries} />
+                        </div>
+                    )}
+
                     {sections.length === 0 ? (
                         <p className="text-muted-foreground">
                             Aucune section n&apos;est encore rédigée.

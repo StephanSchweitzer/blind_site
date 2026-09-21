@@ -11,7 +11,8 @@
 import fs from 'fs';
 import path from 'path';
 
-import { getAideSection, listAideSections } from '../lib/aide';
+import { getAideSearchEntries, getAideSection, listAideSections } from '../lib/aide';
+import { AIDE_SYNONYMS, foldedWords } from '../lib/aide-search';
 
 const ROOT = process.cwd();
 const SCAN_DIRS = ['app', 'components'];
@@ -89,6 +90,26 @@ function main(): void {
         }
     }
 
+    // Un synonyme de la recherche qui ne mène à aucun mot du guide ne trouve
+    // rien, et sans bruit : le texte a changé sous lui, ou il est mal écrit. La
+    // recherche prend les mots par leur début ; le contrôle fait de même.
+    const guideWords = [
+        ...new Set(
+            getAideSearchEntries().flatMap((e) =>
+                foldedWords(`${e.sectionTitle} ${e.heading ?? ''} ${e.text}`)
+            )
+        ),
+    ];
+    for (const [typed, targets] of Object.entries(AIDE_SYNONYMS)) {
+        for (const target of targets) {
+            if (!guideWords.some((w) => w.startsWith(target))) {
+                problems.push(
+                    `lib/aide-search.ts — synonyme « ${typed} » → « ${target} » : aucun mot du guide ne commence ainsi`
+                );
+            }
+        }
+    }
+
     // L'inverse vaut d'être signalé sans être une erreur : une section que
     // personne ne référence est une aide que personne ne trouvera depuis
     // l'application. Elle reste atteignable par le sommaire.
@@ -105,12 +126,12 @@ function main(): void {
     }
 
     if (problems.length) {
-        console.error(`\n${problems.length} lien(s) cassé(s) :`);
+        console.error(`\n${problems.length} problème(s) :`);
         for (const problem of problems) console.error(`  ${problem}`);
         process.exit(1);
     }
 
-    console.log('Tous les liens « Aide » résolvent.');
+    console.log('Tous les liens « Aide » et les synonymes de la recherche résolvent.');
 }
 
 main();

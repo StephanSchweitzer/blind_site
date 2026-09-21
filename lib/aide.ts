@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { slugifyHeading } from './aide-slug';
+import type { AideSearchEntry } from './aide-search';
 
 /**
  * Le mode d'emploi, lu depuis `content/aide/*.md`.
@@ -118,6 +119,53 @@ export function getAllAideSections(): AideSection[] {
         .map(readSectionFile)
         .filter((s): s is AideSection => s !== null)
         .sort((a, b) => a.order - b.order);
+}
+
+/**
+ * Le texte lisible d'un morceau de Markdown, pour la recherche : captures,
+ * adresses de liens, emphase et repères numérotés « (1) » retirés. Les repères
+ * renvoient aux pastilles des captures ; dans un extrait sans la capture, ils
+ * ne seraient que du bruit.
+ */
+function markdownToPlainText(markdown: string): string {
+    return markdown
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/^\s{0,3}(?:[-*+]|\d+\.)\s+/gm, '')
+        .replace(/^\s*\|?[\s:|-]+\|[\s:|-]*$/gm, ' ')
+        .replace(/[*_`>|]/g, ' ')
+        .replace(/\(\d+\)\s*/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/**
+ * Le guide découpé pour la recherche : l'introduction de chaque section, puis
+ * un morceau par titre `##` ou `###`, chacun avec l'ancre qui y mène.
+ *
+ * Découpé au titre, et pas à la section : un résultat doit amener le permanent
+ * au paragraphe qui répond, pas en haut d'une page de 9 000 pixels.
+ */
+export function getAideSearchEntries(): AideSearchEntry[] {
+    const entries: AideSearchEntry[] = [];
+    for (const section of getAllAideSections()) {
+        const parts = section.body.split(/^(?=#{2,3}\s)/m);
+        for (const part of parts) {
+            const m = /^(#{2,3})\s+(.+?)\s*$/m.exec(part);
+            const isHeading = m !== null && part.startsWith(m[1]);
+            const heading = isHeading ? m[2].replace(/\*\*/g, '').trim() : null;
+            const text = markdownToPlainText(isHeading ? part.slice(m[0].length) : part);
+            if (!heading && !text) continue;
+            entries.push({
+                slug: section.slug,
+                sectionTitle: section.title,
+                heading,
+                anchor: heading ? slugifyHeading(heading) : null,
+                text,
+            });
+        }
+    }
+    return entries;
 }
 
 /** Les voisines dans le guide, pour la navigation en bas de page. */

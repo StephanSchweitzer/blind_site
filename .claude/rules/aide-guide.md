@@ -44,6 +44,12 @@ Rules that keep it honest:
   a heading survives an edit, a page number does not.
 - `pnpm aide:check` verifies every `<AideLink section="…">` in the app resolves to a section
   that exists. Run it after adding or renaming one — a broken help link is a silent one.
+  It also checks that every search synonym in `lib/aide-search.ts` (`AIDE_SYNONYMS`) still
+  leads to a word of the guide — reword a section and a synonym can quietly stop finding it.
+- The search bar on `/admin/aide` is built from the same Markdown (`getAideSearchEntries`,
+  one entry per `##`/`###` heading), so it needs no upkeep of its own. Synonyms are one-way
+  (typed word → guide word), written accent-free and lowercase; add one when a term people
+  actually type isn't the interface's (legacy *commande*, *affectation*, everyday words).
 - The printable guide is **generated, never stored**: `/admin/aide/pdf` renders the same
   Markdown through `@react-pdf/renderer` (button on `/admin/aide`). Two traps live in
   `components/aide/AideGuidePDF.tsx`, both commented there — a `fixed` element carrying

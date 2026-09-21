@@ -28,4 +28,6 @@ Enfin, si vous cliquez sur le bouton « Mon Compte », vous serez redirigé vers
 
 La barre de navigation comporte aussi un lien « Aide », qui ouvre ce mode d'emploi dans un nouvel onglet, à la page qui correspond à celle où vous vous trouvez.
 
+En haut du sommaire du mode d'emploi, une barre de recherche retrouve le passage qui vous intéresse sans savoir dans quelle section il est rangé. Tapez un mot — « reçu », « brouillon », « mot de passe » — et chaque résultat vous amène directement au paragraphe concerné ; la touche Entrée ouvre le premier. Les accents ne comptent pas, et les mots courants sont compris même quand l'interface en emploie un autre : « commande » trouve les demandes, « bénévole » les lecteurs, « poubelle » la corbeille.
+
 ![Page principale - capture 5](/admin/aide/images/page-principale-05.jpg)
