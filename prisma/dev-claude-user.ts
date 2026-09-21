@@ -69,7 +69,7 @@ async function main() {
     const password = await hash(PASSWORD, 10);
     const account = {
         password,
-        passwordNeedsChange: false, // middleware.ts would otherwise trap every request
+        passwordNeedsChange: false, // proxy.ts would otherwise trap every request
         name: 'Claude Dev',
         firstName: 'Claude',
         lastName: 'Dev',

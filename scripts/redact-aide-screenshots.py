@@ -4,7 +4,7 @@ Masque les donnees personnelles dans les captures du mode d'emploi.
 
 Le guide a ete redige a partir du systeme reel : les captures montrent de vrais
 auditeurs, lecteurs et donateurs — noms, adresses electroniques, adresses
-postales. Elles vivaient dans `public/`, que le matcher de middleware.ts ne couvre pas
+postales. Elles vivaient dans `public/`, que le matcher de proxy.ts ne couvre pas
 (/admin, /auth/change-password, /profile) : une capture publiee la etait lisible
 sans compte. Elles sont depuis servies par app/admin/aide/images/[name] — mais
 l'expurgation reste necessaire, la confidentialite ne tenant pas a un seul

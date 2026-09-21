@@ -18,7 +18,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  *     while the trail reads a row's « avant » state (see isAuditRead).
  *
  * Node runtime only (node:async_hooks). Everything that reaches Prisma already
- * runs on Node — middleware.ts, which is on Edge, never touches this module.
+ * runs on Node — and proxy.ts never touches this module.
  */
 
 export interface AuditActor {

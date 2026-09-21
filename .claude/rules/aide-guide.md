@@ -52,7 +52,7 @@ Rules that keep it honest:
   page. `pnpm aide:shots` recaptures screenshots, `pnpm aide:annotate` draws the numbered
   markers.
 - Screenshots live in `content/aide/images/` and are served by the guarded route
-  `app/admin/aide/images/[name]` — deliberately **not** `public/`, which the middleware
+  `app/admin/aide/images/[name]` — deliberately **not** `public/`, which the proxy
   does not cover. If your change alters what a screenshot shows, either
   recapture it or say so in the section — a picture that contradicts the text is worse than
   no picture.

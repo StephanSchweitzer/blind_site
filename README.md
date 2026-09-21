@@ -39,12 +39,12 @@ The admin equivalent is `revalidateAdmin()` (`lib/revalidate-admin.ts`), which m
 | Route | Purpose |
 |---|---|
 | `/auth/signin` | Staff sign-in (NextAuth credentials). |
-| `/auth/change-password` | Forced password change. New accounts are created with `passwordNeedsChange: true`; `middleware.ts` redirects them here until they set a real password. |
+| `/auth/change-password` | Forced password change. New accounts are created with `passwordNeedsChange: true`; `proxy.ts` redirects them here until they set a real password. |
 | `/auth/password-changed-success` | Confirmation screen after a successful password change. |
 | `/auth/forgot-password` | Request a reset link. Reachable signed out, and answers identically whatever the address is, so it cannot be used to enumerate accounts. |
 | `/auth/reset-password` | Set a new password from a link's single-use token (30 min, SHA-256 at rest, re-checked against the account's *current* access level). |
 
-Access control lives in `middleware.ts` (protects `/admin/*`, `/profile`, `/auth/change-password`) and in `lib/auth/guards.ts`, which exports the `withAuth` / `withAdmin` / `withSuperAdmin` route wrappers plus `getCurrentUser` / `isAdmin` / `isSuperAdmin`.
+Access control lives in `proxy.ts` (protects `/admin/*`, `/profile`, `/auth/change-password`) and in `lib/auth/guards.ts`, which exports the `withAuth` / `withAdmin` / `withSuperAdmin` route wrappers plus `getCurrentUser` / `isAdmin` / `isSuperAdmin`.
 
 **Every API route is guarded, but not all of them by a wrapper.** The exceptions are deliberate and each says so in its own header comment — treat anything *not* on this list as a bug:
 
@@ -117,7 +117,7 @@ is nothing left to fall out of sync.
   `lib/aide.ts` is the only reader: `listAideSections()` for the summary at `/admin/aide`,
   `getAideSection(slug)` for one page, `getAllAideSections()` for the PDF. Screenshots live in
   `content/aide/images/`, served by the guarded route `app/admin/aide/images/[name]` —
-  deliberately **not** `public/`, which `middleware.ts` does not cover.
+  deliberately **not** `public/`, which `proxy.ts` does not cover.
 - **Anchors, never page numbers.** A link is `/admin/aide/<slug>#<heading-slug>`
   (`lib/aide-slug.ts` derives the anchor from the heading text) — a heading survives a rewrite,
   a page number does not. `pnpm aide:check` (`scripts/check-aide-links.ts`) fails if an
@@ -401,7 +401,7 @@ lib/
 prisma/                 schema.prisma, migrations, seed, dev-claude-user
 scripts/                Audio audits, backfills, probes, aide screenshots, one-off maintenance
 types/                  models / api / shared barrels
-middleware.ts           Auth gating + forced password change
+proxy.ts                Auth gating + forced password change
 prisma.config.ts        Prisma 7 config (adapter-pg, migrations path)
 vercel.json             Cron schedules
 ```

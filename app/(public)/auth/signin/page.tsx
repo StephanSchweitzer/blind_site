@@ -58,7 +58,7 @@ function SignInForm() {
                 return;
             }
 
-            // Success — let the middleware route password-change cases as needed.
+            // Success — let the proxy (proxy.ts) route password-change cases as needed.
             router.push(result?.url || callbackUrl);
             router.refresh();
         } catch {

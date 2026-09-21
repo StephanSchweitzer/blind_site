@@ -14,7 +14,7 @@ import {
  * invocation. It is guarded by CRON_SECRET instead — Vercel sends it as
  * `Authorization: Bearer <CRON_SECRET>`. With no secret configured the route
  * refuses to run rather than standing open. /api/cron is outside the
- * middleware matcher, so nothing else gates it.
+ * proxy matcher (proxy.ts), so nothing else gates it.
  */
 export const dynamic = 'force-dynamic';
 

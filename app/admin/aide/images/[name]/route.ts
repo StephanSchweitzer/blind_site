@@ -7,7 +7,7 @@ import { withAuth } from '@/lib/auth/guards';
  * Sert les captures du mode d'emploi, derriere l'authentification.
  *
  * Elles vivaient dans `public/aide/`. Or `public/` n'est PAS couvert par le
- * matcher de middleware.ts (`/admin/:path*`, `/auth/change-password`,
+ * matcher de proxy.ts (`/admin/:path*`, `/auth/change-password`,
  * `/profile`) : n'importe qui connaissant l'URL pouvait donc les telecharger,
  * sans compte. Les captures sont expurgees (scripts/redact-aide-screenshots.py),
  * mais l'expurgation depend d'un OCR qui ne lit pas tout — on ne fait donc pas
@@ -16,7 +16,7 @@ import { withAuth } from '@/lib/auth/guards';
  *
  * Volontairement `withAuth` et non `withAdmin` : le mode d'emploi s'adresse a
  * toute personne qui peut ouvrir /admin, et la page qui l'affiche a deja passe
- * le middleware.
+ * le proxy (proxy.ts).
  */
 const DOSSIER = path.join(process.cwd(), 'content', 'aide', 'images');
 
