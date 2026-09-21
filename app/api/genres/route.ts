@@ -148,7 +148,7 @@ export const POST = withAdmin(async (request: NextRequest) => {
 
 
 // Back-office only: the public catalogue gets its genre list server-side via
-// `app/catalogue/data.ts`, not through this route.
+// `app/(public)/catalogue/data.ts`, not through this route.
 export const GET = withAdmin(async () => {
     try {
         const genres = await prisma.genre.findMany({

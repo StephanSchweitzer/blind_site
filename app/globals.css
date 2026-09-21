@@ -281,17 +281,8 @@
         animation: pulse-subtle 2s ease-in-out infinite;
     }
 
-    /* Smooth scrolling */
-    html {
-        scroll-behavior: smooth;
-    }
-
     /* Respect reduced-motion: stop decorative animations, keep loading spinners */
     @media (prefers-reduced-motion: reduce) {
-        html {
-            scroll-behavior: auto;
-        }
-
         body:not(.dark),
         .dark body,
         .animate-blob,

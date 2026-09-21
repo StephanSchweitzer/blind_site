@@ -3,7 +3,7 @@ paths:
   - "lib/cache-tags.ts"
   - "lib/revalidate-*.ts"
   - "app/api/**"
-  - "app/{catalogue,listes-de-livres,dernieres-infos,nous-connaitre,nous-rejoindre,contact,formulaire-adhesion}/**"
+  - "app/(public)/**"
 ---
 
 ### Public pages and cache invalidation

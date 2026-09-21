@@ -379,10 +379,11 @@ Server state is fetched in the route handlers and in `hooks/` with plain `fetch`
 
 ```
 app/
-  (public pages)/       Home, catalogue, listes-de-livres, dernieres-infos, nous-connaitre…
+  (public)/             Route group, no URL segment: home, catalogue, listes-de-livres,
+                        dernieres-infos, nous-connaitre…, and auth/ (sign-in, password flows).
+                        Its layout owns the decorative background the admin never renders
   admin/                Authenticated back office
   api/                  Route handlers (REST + audio + stats + cron + Polly/Google Books)
-  auth/                 Sign-in and password flows
   generated/prisma/     Generated Prisma client
   sitemap.ts robots.ts  SEO surface
 components/             Shared components, UI kit, admin kit, email templates, aide/ (PDF + print button)

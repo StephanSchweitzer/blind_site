@@ -7,7 +7,7 @@ import { withAdmin } from '@/lib/auth/guards';
 
 // Pas de GET ici. Il y en avait un, ouvert sans session et sans plus aucun
 // appelant depuis que /listes-de-livres est un composant serveur
-// (app/listes-de-livres/data.ts) : la page publique lit par data.ts, sa
+// (app/(public)/listes-de-livres/data.ts) : la page publique lit par data.ts, sa
 // recherche par ./preview, son lien profond par ./position, et le back-office
 // par ./[id]. Une route publique que personne n'appelle n'est qu'une surface à
 // garder étanche pour rien — c'est elle qui a laissé passer livres masqués et

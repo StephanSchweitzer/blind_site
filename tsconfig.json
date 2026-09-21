@@ -27,13 +27,13 @@
         "./*"
       ],
       "@/catalogue/*": [
-        "./app/catalogue/_components/*"
+        "./app/(public)/catalogue/_components/*"
       ],
       "@/listes-de-livres/*": [
-        "./app/listes-de-livres/components/*"
+        "./app/(public)/listes-de-livres/components/*"
       ],
       "@/dernieres-infos/*": [
-        "./app/dernieres-infos/components/*"
+        "./app/(public)/dernieres-infos/components/*"
       ],
       "@/admin/*": [
         "./components/ui/admin/*"

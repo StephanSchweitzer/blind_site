@@ -1,4 +1,4 @@
-// app/auth/change-password/page.tsx
+// app/(public)/auth/change-password/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';

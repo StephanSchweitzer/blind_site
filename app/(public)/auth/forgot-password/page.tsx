@@ -1,4 +1,4 @@
-// app/auth/forgot-password/page.tsx
+// app/(public)/auth/forgot-password/page.tsx
 'use client';
 
 import { useState } from 'react';

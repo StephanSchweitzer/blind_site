@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     // hiddenFromCatalogue est respecté ici comme partout ailleurs côté public
-    // (app/catalogue/data.ts, app/listes-de-livres/data.ts). Cette route est
+    // (app/(public)/catalogue/data.ts, app/(public)/listes-de-livres/data.ts). Cette route est
     // ouverte sans session et accepte n'importe quel bookId : sans ce filtre,
     // n'importe qui pouvait faire lire à voix haute le titre, l'auteur et la
     // description d'un ouvrage délibérément masqué du site — et en faire

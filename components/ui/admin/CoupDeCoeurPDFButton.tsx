@@ -68,7 +68,7 @@ export const CoupDeCoeurPDFButton: React.FC<CoupDeCoeurPDFButtonProps> = ({
             // including soft-deleted ones (badged « Supprimé » there, so they come
             // back if the fiche is restored) and titles hidden from the public
             // catalogue. The printed list goes to auditeurs: it gets exactly what
-            // the public export prints (app/listes-de-livres/data.ts), no more.
+            // the public export prints (app/(public)/listes-de-livres/data.ts), no more.
             type AdminListBook = { book: CoupDeCoeur['books'][number]['book'] & { deletedAt?: string | null; hiddenFromCatalogue?: boolean } };
             const list = data as Omit<CoupDeCoeur, 'books'> & { books: AdminListBook[] };
             const content: CoupDeCoeur[] = [

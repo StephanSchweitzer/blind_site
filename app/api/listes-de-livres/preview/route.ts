@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
                 // lequel un permanent la dépublie. Sans ce filtre, la recherche
                 // publique continuait d'en proposer le titre et la description,
                 // et le clic menait vers une page qui ne la contient pas : le
-                // reste du site (app/listes-de-livres/data.ts, et jusqu'à la
+                // reste du site (app/(public)/listes-de-livres/data.ts, et jusqu'à la
                 // route d'administration) ne lit QUE les listes actives.
                 active: true,
                 AND: tokenClauses,

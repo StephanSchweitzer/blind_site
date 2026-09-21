@@ -86,7 +86,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                 setSuggestions(data.searchSuggestions ?? []);
                 setIsTransitioning(false);
                 if (currentPage !== 1) {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'instant' });
                 }
             }
         };

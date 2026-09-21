@@ -34,7 +34,7 @@ export default function CoupsDeCoeurClient({
             isFirstRender.current = false;
             return;
         }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'instant' });
     }, [currentPage]);
 
     const goToPage = (page: number) => {

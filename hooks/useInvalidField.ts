@@ -29,15 +29,14 @@ export function useInvalidField() {
 
     const focusField = (el: HTMLElement | null) => {
         if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        // focus after the smooth scroll settles
-        setTimeout(() => {
-            try {
-                el.focus({ preventScroll: true });
-            } catch {
-                /* element may not be natively focusable; ignore */
-            }
-        }, 300);
+        // Instant, not smooth: the site never animates scrolling — a long animated
+        // scroll disorients screen-magnifier users, a core audience here.
+        el.scrollIntoView({ block: "center" });
+        try {
+            el.focus({ preventScroll: true });
+        } catch {
+            /* element may not be natively focusable; ignore */
+        }
         // transient highlight ring
         const ring = ["ring-2", "ring-red-500", "ring-offset-2", "ring-offset-gray-900"];
         el.classList.add(...ring);
