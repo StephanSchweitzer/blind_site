@@ -1,8 +1,8 @@
 import React from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { ReaderSummary, BookSummary, OrderSummary, AssignmentFormData } from '@/types';
-import { AssignmentFormBackendBase } from '@/admin/AssignmentFormBackendBase';
-import { getFieldErrorLines, ErrorToastBody } from '@/admin/AssignmentFormErrors';
+import { AssignmentFormBackendBase, type AssignmentSubmitOptions } from '@/admin/AssignmentFormBackendBase';
+import { getFieldErrorLines, ErrorToastBody, AudioConfirmationRequiredError } from '@/admin/AssignmentFormErrors';
 
 /** What finishing this attribution did to its demande — see PUT /api/assignments/[id]. */
 type BillDetached = {
@@ -65,7 +65,11 @@ export function EditAssignmentFormBackend({
         }
     };
 
-    const handleSubmit = async (formData: AssignmentFormData): Promise<number> => {
+    const handleSubmit = async (
+        formData: AssignmentFormData,
+        _readerId?: number | null,
+        options?: AssignmentSubmitOptions
+    ): Promise<number> => {
         try {
             // For updates, we DON'T include readerId - it's handled via reassignment
             const response = await fetch(`/api/assignments/${assignmentId}`, {
@@ -73,12 +77,15 @@ export function EditAssignmentFormBackend({
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData), // No readerId in update
+                body: JSON.stringify({ ...formData, ...options }), // No readerId in update
             });
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
                 const errorMessage = errorData?.message || 'Échec de la mise à jour de l\'attribution';
+                if (errorData?.requiresAudioConfirmation) {
+                    return Promise.reject(new AudioConfirmationRequiredError(errorMessage));
+                }
                 const fieldLines = getFieldErrorLines(errorData);
 
                 toast({

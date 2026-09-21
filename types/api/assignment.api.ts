@@ -98,6 +98,8 @@ export const AssignmentUpdateInputSchema = z.object({
     notes: z.string().max(2000).nullable().optional(),
     processedByStaffId: z.number().int().positive().nullable().optional(),
     deliveryMethod: z.nativeEnum(DeliveryMethod).nullable().optional(),
+    /** Réponse « oui » au dialogue : terminer une revue sans audio (guardAssignmentHasAudio). */
+    confirmedWithoutAudio: z.boolean().optional(),
 });
 
 export type AssignmentUpdateInput = z.infer<typeof AssignmentUpdateInputSchema>;

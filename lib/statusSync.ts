@@ -723,20 +723,44 @@ export function guardOrderCompletion(args: {
  * upload may assert on their behalf — same reasoning that keeps the demande's
  * clôture a human act (see ATTENTE_AUDITEUR above).
  *
+ * UNE EXCEPTION : LES REVUES. Une demande tarifée à la page (Orders.pages non
+ * nul, voir lib/orders/pagePricing.ts) ne tire pas son prix du poids : son coût
+ * est dérivé du nombre de pages, et elle sort de la retarification au poids. La
+ * raison d'être de ce garde ne la concerne donc pas — et les permanents terminent
+ * parfois une revue sans déposer d'audio. Elle n'est pas pour autant exemptée en
+ * silence : le refus porte `requiresAudioConfirmation`, le formulaire le montre
+ * en dialogue (« êtes-vous sûr ? »), et le « oui » renvoie la requête avec
+ * `confirmedWithoutAudio`. Sans cette confirmation, une revue sans audio est
+ * refusée comme n'importe quelle demande.
+ *
  * Kept out of guardAssignmentConsistency on purpose: that one is pure and is also
  * reached through guardDemandeStatusSync, where an S3 round trip has no business.
  * Pass `hasAudio` from lib/audio/state.ts's bookHasWeighedAudio — which asks
  * whether the enregistrement has been WEIGHED, not merely whether files exist,
  * and re-reads the bucket rather than refusing on a stale cache. See its docstring
- * for why audioLinkStatus would be the wrong question.
+ * for why audioLinkStatus would be the wrong question. The routes reach it through
+ * checkAssignmentTermineAudio (lib/assignments/termineAudio.ts), which gathers
+ * both inputs.
  */
+export type AudioGuardResult =
+    | GuardResult
+    | { ok: false; httpStatus: 409; message: string; requiresAudioConfirmation: true };
+
 export function guardAssignmentHasAudio(args: {
     statusId: number;
     /** `null` = le stockage n'a pas pu être lu (bookHasWeighedAudio), pas « pas d'audio ». */
     hasAudio: boolean | null;
-}): GuardResult {
+    /** La demande liée est tarifée à la page (une revue) : l'audio peut être omis sur confirmation. */
+    isPageBased?: boolean;
+    /** Le permanent a répondu « oui » au dialogue de confirmation. */
+    confirmedWithoutAudio?: boolean;
+}): AudioGuardResult {
     if (args.statusId !== STATUS.TERMINE) return OK;
     if (args.hasAudio === true) return OK;
+
+    // Une revue confirmée passe même si le stockage est injoignable : la réponse
+    // du bucket ne changerait rien à ce que le permanent vient d'accepter.
+    if (args.isPageBased && args.confirmedWithoutAudio) return OK;
 
     // Fail closed either way, but never blame an empty folder for an outage: the
     // permanent would go looking for a file that is exactly where they left it.
@@ -746,6 +770,17 @@ export function guardAssignmentHasAudio(args: {
             "Impossible de vérifier l'enregistrement : le stockage audio est injoignable. " +
             "L'attribution n'a pas été modifiée — réessayez dans un instant."
         );
+    }
+
+    if (args.isPageBased) {
+        return {
+            ok: false,
+            httpStatus: 409,
+            message:
+                "Vous n'avez déposé aucun audio pour cette attribution. " +
+                "Êtes-vous sûr de vouloir la passer au statut « Terminé » ?",
+            requiresAudioConfirmation: true,
+        };
     }
 
     return fail(

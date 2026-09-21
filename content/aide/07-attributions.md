@@ -62,6 +62,8 @@ Ainsi, si seule la (1) « Date de réception » est renseignée, le statut est �
 
 Ces trois dates se remplissent dans cet ordre. Une attribution ne peut pas passer « Terminé » tant que l'enregistrement n'a pas été déposé dans l'éditeur audio du livre, depuis le [Catalogue](/admin/aide/catalogue).
 
+Une exception : les revues. Quand la demande liée est [tarifée à la page](/admin/aide/demandes#une-demande-tarifee-a-la-page-pour-les-revues), son prix ne dépend pas de l'enregistrement, et l'attribution peut passer « Terminé » sans audio. Au moment d'enregistrer, une fenêtre demande confirmation : « Vous n'avez déposé aucun audio pour cette attribution. Êtes-vous sûr de vouloir la passer au statut « Terminé » ? ». Répondez « Oui » pour terminer l'attribution sans audio, « Non » pour revenir au formulaire. Les duplications du même livre restent alors en attente : il n'y a toujours rien à dupliquer.
+
 Pour l'enregistrer, cliquez sur le bouton « Créer l'attribution » situé tout en bas du modal.
 
 ![Attributions - capture 11](/admin/aide/images/attributions-11.jpg)

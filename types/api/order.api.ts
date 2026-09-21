@@ -17,6 +17,8 @@ export type OrderSummary = Prisma.OrdersGetPayload<{
         id: true;
         requestReceivedDate: true;
         createdDate: true;
+        /** Non nul = demande à la page (une revue), voir Orders.pages. */
+        pages: true;
     };
     include: typeof orderSummaryInclude;
 }>;

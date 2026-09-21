@@ -96,6 +96,7 @@ export const assignmentIncludeConfigs = {
             id: true,
             requestReceivedDate: true,
             deliveryMethod: true,
+            pages: true,
             aveugle: {
                 select: {
                     id: true,

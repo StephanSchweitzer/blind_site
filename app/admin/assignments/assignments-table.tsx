@@ -216,6 +216,7 @@ export default function AssignmentsTable({
                 id: assignmentData.order.id,
                 requestReceivedDate: assignmentData.order.requestReceivedDate,
                 createdDate: assignmentData.order.createdDate,
+                pages: assignmentData.order.pages,
                 aveugle: assignmentData.order.aveugle,
                 catalogue: assignmentData.order.catalogue,
             } as OrderSummary : null;

@@ -71,3 +71,12 @@ export function ErrorToastBody({
         </div>
     );
 }
+
+/**
+ * Le serveur refuse de terminer une revue sans audio tant que ce n'est pas
+ * confirmé (`requiresAudioConfirmation`, guardAssignmentHasAudio). Les wrappers
+ * rejettent avec cette erreur au lieu d'afficher un toast : ce n'est pas une
+ * erreur pour le permanent, c'est une question, que AssignmentFormBackendBase
+ * pose dans un dialogue.
+ */
+export class AudioConfirmationRequiredError extends Error {}

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
-    STATUS,
     guardAssignmentStatus,
     guardAssignmentHasReader,
     guardAssignmentConsistency,
@@ -12,11 +11,10 @@ import {
     guardNotDuplication,
     guardOrderHasNoAssignment,
     guardReaderEligible,
-    guardAssignmentHasAudio,
     syncOrderToStatus,
     logAssignmentEvent,
 } from '@/lib/statusSync';
-import { bookHasWeighedAudio } from '@/lib/audio/state';
+import { checkAssignmentTermineAudio } from '@/lib/assignments/termineAudio';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
@@ -132,6 +130,7 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
             statusId,
             notes,
             deliveryMethod,
+            confirmedWithoutAudio,
         } = body;
 
         if (!catalogueId) {
@@ -263,18 +262,25 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
 
         // An attribution logged straight into « Terminé » still has to have brought
         // a weighed enregistrement back. Outside the transaction: this may re-read
-        // the bucket rather than trust a stale cache (bookHasWeighedAudio).
-        if (parsedStatusId === STATUS.TERMINE) {
-            const audioGuard = guardAssignmentHasAudio({
-                statusId: parsedStatusId,
-                hasAudio: await bookHasWeighedAudio(parsedCatalogueId, performedById),
-            });
-            if (!audioGuard.ok) {
-                return NextResponse.json(
-                    { error: audioGuard.message },
-                    { status: audioGuard.httpStatus }
-                );
-            }
+        // the bucket rather than trust a stale cache (bookHasWeighedAudio). Une
+        // revue peut s'en passer sur confirmation — voir guardAssignmentHasAudio.
+        const { guard: audioGuard } = await checkAssignmentTermineAudio({
+            statusId: parsedStatusId,
+            catalogueId: parsedCatalogueId,
+            orderId: parsedOrderId,
+            confirmedWithoutAudio: confirmedWithoutAudio === true,
+            performedById,
+        });
+        if (!audioGuard.ok) {
+            return NextResponse.json(
+                {
+                    error: audioGuard.message,
+                    ...('requiresAudioConfirmation' in audioGuard
+                        ? { requiresAudioConfirmation: true }
+                        : {}),
+                },
+                { status: audioGuard.httpStatus }
+            );
         }
 
         // An auditeur can't be the initial reader.

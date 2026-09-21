@@ -73,6 +73,7 @@ export const detailedOrderSelect = {
     createdDate: true,
     closureDate: true,
     cost: true,
+    pages: true,
     billingStatus: true,
     billId: true,
     lentPhysicalBook: true,

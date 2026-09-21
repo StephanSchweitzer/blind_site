@@ -13,7 +13,6 @@ import {
     guardAssignmentDateSequence,
     guardAssignmentMatchesOrder,
     guardOrderNotSettled,
-    guardAssignmentHasAudio,
     syncOrderToStatus,
     assignmentKeepsOrderStatus,
     orderStatusForAssignmentStatus,
@@ -21,7 +20,7 @@ import {
     logAssignmentEvent,
     logOrderEvent,
 } from '@/lib/statusSync';
-import { bookHasWeighedAudio } from '@/lib/audio/state';
+import { checkAssignmentTermineAudio } from '@/lib/assignments/termineAudio';
 import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
 import { withAdmin } from '@/lib/auth/guards';
 import { guardLiveBooks } from '@/lib/books/liveBookGuard';
@@ -273,20 +272,34 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         // rule as guardDuplicationStatus: a real change must land on a valid state,
         // a row must not be held hostage by its history. Outside the transaction:
         // bookHasWeighedAudio may reach the bucket.
+        //
+        // Une revue (demande à la page) peut s'en passer, sur confirmation — voir
+        // guardAssignmentHasAudio. Le refus non confirmé porte
+        // `requiresAudioConfirmation` pour que le formulaire pose la question.
+        let termineWithoutAudio = false;
         if (
             newStatusId === STATUS.TERMINE &&
             newStatusId !== existingAssignment.statusId
         ) {
-            const audioGuard = guardAssignmentHasAudio({
+            const { guard: audioGuard, withoutAudio } = await checkAssignmentTermineAudio({
                 statusId: newStatusId,
-                hasAudio: await bookHasWeighedAudio(resultingCatalogueId, performedById),
+                catalogueId: resultingCatalogueId,
+                orderId: resultingOrderId,
+                confirmedWithoutAudio: validation.data.confirmedWithoutAudio === true,
+                performedById,
             });
             if (!audioGuard.ok) {
                 return NextResponse.json(
-                    { message: audioGuard.message },
+                    {
+                        message: audioGuard.message,
+                        ...('requiresAudioConfirmation' in audioGuard
+                            ? { requiresAudioConfirmation: true }
+                            : {}),
+                    },
                     { status: audioGuard.httpStatus }
                 );
             }
+            termineWithoutAudio = withoutAudio;
         }
 
         const updateData: AssignmentUpdateData = {};
@@ -404,10 +417,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                         orderTransition = {
                             orderId: order.id,
                             awaitingShipment: order.statusId === STATUS.ATTENTE_AUDITEUR,
-                            freedDuplicationIds: await findDuplicationsFreedByRecording(
-                                tx,
-                                existingAssignment.catalogueId
-                            ),
+                            // Une revue terminée sans audio n'a rien rapporté à
+                            // dupliquer : ces duplications attendent toujours.
+                            freedDuplicationIds: termineWithoutAudio
+                                ? []
+                                : await findDuplicationsFreedByRecording(
+                                      tx,
+                                      existingAssignment.catalogueId
+                                  ),
                         };
                     }
                 }

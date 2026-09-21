@@ -31,6 +31,9 @@ const ORDER_LIST_SELECT = {
     closureDate: true,
     updatedAt: true,
     cost: true,
+    // Demande à la page (une revue) : le formulaire d'attribution permet alors de
+    // la terminer sans audio, sur confirmation (guardAssignmentHasAudio).
+    pages: true,
     billingStatus: true,
     lentPhysicalBook: true,
     notes: true,

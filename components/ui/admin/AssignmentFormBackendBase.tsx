@@ -11,6 +11,16 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { AlertCircle, Calendar, History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +52,7 @@ import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
 import type { LinkedAssignment } from '@/types/models/order.model';
+import { AudioConfirmationRequiredError } from '@/admin/AssignmentFormErrors';
 
 // N3 — required fields, visual top→bottom (book derives from the order picker).
 // `readerId` is required on creation only: an attribution always belongs to a
@@ -61,6 +72,12 @@ type OrderPickerRow = OrderSummary & {
     isDuplication?: boolean;
 };
 
+/** Ce que le formulaire ajoute à la requête en plus de ses champs. */
+export interface AssignmentSubmitOptions {
+    /** « Oui » au dialogue : terminer une revue sans audio (guardAssignmentHasAudio). */
+    confirmedWithoutAudio?: boolean;
+}
+
 type OrderBlockReason = 'duplication' | 'attributed' | null;
 
 /**
@@ -73,6 +90,11 @@ type OrderBlockReason = 'duplication' | 'attributed' | null;
  */
 const ORDER_RESULT_LIMIT = 50;
 
+/** Même texte que le refus du serveur (guardAssignmentHasAudio), qui le renvoie s'il voit le cas en premier. */
+const REVUE_NO_AUDIO_MESSAGE =
+    "Vous n'avez déposé aucun audio pour cette attribution. " +
+    'Êtes-vous sûr de vouloir la passer au statut « Terminé » ?';
+
 export interface AssignmentFormBackendBaseProps {
     presetClientId?: number | null;
     // The aveugle this dossier belongs to. presetClientId alone already scopes
@@ -81,7 +103,11 @@ export interface AssignmentFormBackendBaseProps {
     // filtered with no visible indication of to whom.
     presetClient?: UserSummary | null;
     initialData?: AssignmentFormData;
-    onSubmit: (formData: AssignmentFormData, readerId?: number | null) => Promise<number>;
+    onSubmit: (
+        formData: AssignmentFormData,
+        readerId?: number | null,
+        options?: AssignmentSubmitOptions
+    ) => Promise<number>;
     submitButtonText: string;
     loadingText: string;
     title: string;
@@ -252,6 +278,9 @@ export function AssignmentFormBackendBase({
     // result from the previous book is simply ignored by comparing bookId
     // against formData.catalogueId wherever this is read, instead of ever
     // being surfaced as this book's answer.
+    // Texte du dialogue « terminer sans audio ? » (revues seulement), null = fermé.
+    const [audioConfirmMessage, setAudioConfirmMessage] = useState<string | null>(null);
+
     const [bookAudioState, setBookAudioState] = useState<{
         bookId: number;
         status: AudioLinkStatus;
@@ -590,6 +619,12 @@ export function AssignmentFormBackendBase({
         // The computed status can read « Terminé » on dates alone — the audio
         // requirement (guardAssignmentHasAudio) isn't visible from a date, so it
         // gets its own explicit refusal here instead of a generic server error.
+        // Une revue fait exception : la même situation y devient une question,
+        // posée avant d'envoyer quoi que ce soit.
+        if (audioBlocksTermine && isRevue) {
+            setAudioConfirmMessage(REVUE_NO_AUDIO_MESSAGE);
+            return;
+        }
         if (audioBlocksTermine) {
             const msg =
                 "« Terminé » nécessite un enregistrement pour ce livre, et aucun n'est associé pour l'instant. " +
@@ -610,6 +645,10 @@ export function AssignmentFormBackendBase({
             return;
         }
 
+        await submitForm();
+    };
+
+    const submitForm = async (options?: AssignmentSubmitOptions) => {
         setIsLoading(true);
 
         try {
@@ -627,11 +666,18 @@ export function AssignmentFormBackendBase({
             };
 
             // Pass readerId separately for create, not in formData
-            const assignmentId = await onSubmit(normalizedFormData, selectedReaderId);
+            const assignmentId = await onSubmit(normalizedFormData, selectedReaderId, options);
             if (onSuccess) {
                 onSuccess(assignmentId);
             }
         } catch (err) {
+            // Le serveur a trouvé une revue sans audio que le formulaire n'avait pas
+            // vue (état audio pas encore chargé, ou pas encore pesé) : même question
+            // que ci-dessus, posée après coup.
+            if (err instanceof AudioConfirmationRequiredError) {
+                setAudioConfirmMessage(err.message);
+                return;
+            }
             console.error('Submit error:', err);
             // The onSubmit wrapper already shows a detailed error toast (server
             // message + per-field lines). Keep only a quiet inline fallback here so
@@ -739,6 +785,9 @@ export function AssignmentFormBackendBase({
         bookAudioState.bookId === formData.catalogueId &&
         audioLinkStatusIsMissing(bookAudioState.status);
     const audioBlocksTermine = derivedStatusId === STATUS.TERMINE && audioMissing;
+    // Demande tarifée à la page (Orders.pages non nul) : une revue, qui peut être
+    // terminée sans audio si le permanent le confirme (guardAssignmentHasAudio).
+    const isRevue = selectedOrder?.pages != null;
 
     // guardCanReassignReader: a « Terminé » attribution must be reopened before
     // its reader can change. Read from initialData (the persisted snapshot),
@@ -1141,7 +1190,14 @@ export function AssignmentFormBackendBase({
                             (those sit right here and explain themselves). The computed
                             status can read « Terminé » before this is satisfied — this warns
                             that the submit will still refuse it. */}
-                        {audioBlocksTermine && (
+                        {audioBlocksTermine && isRevue && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                Aucun enregistrement n&apos;est associé à ce livre. Cette demande
+                                étant tarifée à la page (revue), vous pourrez confirmer le passage
+                                à « Terminé » sans audio lors de l&apos;enregistrement.
+                            </p>
+                        )}
+                        {audioBlocksTermine && !isRevue && (
                             <p className="text-xs text-amber-700 dark:text-amber-400">
                                 « Terminé » nécessite un enregistrement pour ce livre, et aucun
                                 n&apos;est associé pour l&apos;instant. Ouvrez « l&apos;éditeur audio »
@@ -1246,6 +1302,32 @@ export function AssignmentFormBackendBase({
             </CardContent>
 
         </Card>
+        <AlertDialog
+            open={audioConfirmMessage !== null}
+            onOpenChange={(open) => !open && setAudioConfirmMessage(null)}
+        >
+            <AlertDialogContent className="bg-card border-border">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-foreground">
+                        Terminer sans audio ?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-muted-foreground">
+                        {audioConfirmMessage}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Non</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={() => {
+                            setAudioConfirmMessage(null);
+                            void submitForm({ confirmedWithoutAudio: true });
+                        }}
+                    >
+                        Oui, passer « Terminé »
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
         <UserActivityGuardDialog
             blocked={activityBlocked}
             role={activityRole}
