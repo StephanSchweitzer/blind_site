@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-    images: {
-        domains: ['api.dicebear.com'],
-    },
     /**
      * Le mode d'emploi (`content/aide/*.md`) est lu au disque par lib/aide.ts.
      * /admin/aide est prérendu, donc le contenu part déjà dans le HTML — mais
