@@ -37,7 +37,11 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="fr" suppressHydrationWarning>
+        // data-scroll-behavior: globals.css makes <html> scroll smoothly, and since
+        // Next 15.5 the router only suspends that during a page change when this
+        // attribute says so. Without it, the jump to the top of a new page is
+        // animated and interrupted, so the page opens scrolled down.
+        <html lang="fr" data-scroll-behavior="smooth" suppressHydrationWarning>
         <body className="bg-slate-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:bg-gradient-to-br text-gray-900 dark:text-gray-100 transition-colors duration-300">
         {/* Animated gradient background overlay - more visible in light mode */}
         <div className="fixed inset-0 overflow-hidden opacity-30 dark:opacity-30 pointer-events-none transition-opacity duration-300">
