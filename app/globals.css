@@ -265,15 +265,19 @@
         animation: scale-in 0.3s ease-out;
     }
 
-    /* Subtle pulse for "En attente" badges */
+    /* Subtle pulse for "En attente" badges.
+       Opacity only — no `transform: scale()`. That badge sits inside the
+       catalogue card's `backdrop-blur-xl`, and animating a transform on a
+       descendant of a backdrop-filter container makes the browser rasterize
+       it at a fractional scale every frame, blurring the badge text for the
+       whole pulse. Same complaint as the shadow-md fix above, different
+       mechanism. */
     @keyframes pulse-subtle {
         0%, 100% {
             opacity: 1;
-            transform: scale(1);
         }
         50% {
-            opacity: 0.9;
-            transform: scale(1.02);
+            opacity: 0.85;
         }
     }
 
