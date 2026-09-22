@@ -6,9 +6,12 @@ import { newsTypesMatchingLabel, searchTokens } from '@/lib/search';
 import { normalizeApostrophes, searchKeyVariants, searchVariants } from '@/lib/search-normalize';
 import { parseEntityId } from '@/lib/search-query';
 import { parseLimitParam, parsePageParam } from '@/lib/pagination';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
+import { parisDate } from '@/lib/paris-day';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import { newsTypeLabels, type NewsResponse, type NewsType } from '@/types/news';
 import {
+    NEWS_SEARCH_FIELD_LABELS,
     ADMIN_NEWS_PAGE_SIZE,
     NEWS_SEARCH_FIELDS,
     type AdminNewsQuery,
@@ -207,6 +210,64 @@ const titleHasEveryToken = (title: string, tokens: string[]) => {
 };
 
 // ---------------------------------------------------------------------------
+// « Essayez plutôt »
+// ---------------------------------------------------------------------------
+
+/**
+ * What to propose when a news search found nothing — lib/search-rescue.ts. The
+ * filters are « Rechercher dans » (`field`) and the type pill; each info found
+ * names its type and date, and the public side never searches or shows more
+ * than it already does (its own `audience`).
+ */
+async function rescueNews(
+    search: string,
+    field: NewsSearchField,
+    type: string | null,
+    audience: Audience,
+): Promise<RescueSuggestion[]> {
+    const filters: RescueFilter[] = [];
+    if (field !== 'all') filters.push({ key: 'field', label: `Rechercher dans : ${NEWS_SEARCH_FIELD_LABELS[field]}` });
+    if (type) filters.push({ key: 'type', label: newsTypeLabels[type as NewsType] ?? type });
+
+    const scoped = (q: { query: string; lifted: string[] }) => ({
+        field: q.lifted.includes('field') ? ('all' as const) : field,
+        type: q.lifted.includes('type') ? null : type,
+        search: q.query,
+    });
+    const typeLabel = (t: string) => newsTypeLabels[t as NewsType] ?? t;
+
+    return rescueEmptySearch({
+        search,
+        domains: audience === 'admin' ? ['news', 'people'] : ['news'],
+        filters,
+        count: (q) => {
+            const s = scoped(q);
+            return countFor(s.search, s.field, s.type, audience);
+        },
+        find: (q) => {
+            const s = scoped(q);
+            const typeWhere = s.type ? Prisma.sql`AND n.type = ${s.type}` : Prisma.empty;
+            return prisma.$queryRaw<{ id: number; title: string; type: string; publishedAt: Date }[]>`
+                SELECT n.id, n.title, n.type, n."publishedAt"
+                ${FROM}
+                WHERE ${searchWhere(s.search, s.field, audience)} ${typeWhere}
+                ORDER BY n."publishedAt" DESC, n.id DESC
+                LIMIT ${RESCUE_CANDIDATES}`;
+        },
+        rankText: (n) => n.title,
+        toRow: (n, q) => ({
+            id: n.id,
+            title: n.title,
+            // Under a lifted type filter the type is the note — not said twice.
+            detail: q.lifted.includes('type')
+                ? parisDate(n.publishedAt)
+                : `${typeLabel(n.type)} · ${parisDate(n.publishedAt)}`,
+            note: rescueNote(q.lifted, { type: () => typeLabel(n.type) }),
+        }),
+    });
+}
+
+// ---------------------------------------------------------------------------
 
 export async function listAdminNews(query: AdminNewsQuery): Promise<AdminNewsResult> {
     const { search, field, type, page, limit } = query;
@@ -255,7 +316,7 @@ export async function listAdminNews(query: AdminNewsQuery): Promise<AdminNewsRes
 
     const searchSuggestions =
         query.suggest && total === 0 && search.trim()
-            ? await suggestSearches(search, ['news', 'people'], (q) => countFor(q, field, type, 'admin'))
+            ? await rescueNews(search, field, type, 'admin')
             : undefined;
 
     return {
@@ -326,7 +387,7 @@ export async function listPublicNews(query: PublicNewsQuery): Promise<NewsRespon
     // Titres seulement : la route est publique.
     const searchSuggestions =
         query.suggest && total === 0 && search.trim()
-            ? await suggestSearches(search, ['news'], (q) => countFor(q, 'all', type, 'public'))
+            ? await rescueNews(search, 'all', type, 'public')
             : undefined;
 
     return {

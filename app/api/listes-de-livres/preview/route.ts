@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { buildPublicCoupsDeCoeurSearchWhere } from '@/lib/search';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
 export async function GET(request: NextRequest) {
     try {
@@ -55,8 +55,22 @@ export async function GET(request: NextRequest) {
         // un mot tiré d'une liste dépubliée ne peut pas ressortir par ici.
         const searchSuggestions =
             results.length === 0
-                ? await suggestSearches(search, ['listes', 'books'], (q) =>
-                    prisma.coupsDeCoeur.count({ where: whereFor(q) }))
+                ? await rescueEmptySearch({
+                    search,
+                    domains: ['listes', 'books'],
+                    count: (q) => prisma.coupsDeCoeur.count({ where: whereFor(q.query) }),
+                    // Only what `results` already shows a visitor: the title and
+                    // the description, of active lists.
+                    find: (q) =>
+                        prisma.coupsDeCoeur.findMany({
+                            where: whereFor(q.query),
+                            orderBy: { createdAt: 'desc' },
+                            take: RESCUE_CANDIDATES,
+                            select: { id: true, title: true, description: true },
+                        }),
+                    rankText: (l) => l.title,
+                    toRow: (l) => ({ id: l.id, title: l.title, description: l.description }),
+                })
                 : [];
         return NextResponse.json({ results, searchSuggestions });
     } catch (error) {

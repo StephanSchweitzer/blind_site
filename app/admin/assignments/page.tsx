@@ -5,7 +5,9 @@ import AssignmentsTable from './assignments-table';
 import { notFound } from 'next/navigation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
+import { getUserNameOnly } from '@/lib/users/displayName';
+import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface PageProps {
     searchParams: Promise<{
@@ -20,17 +22,19 @@ async function getAssignments(
     page: number,
     searchTerm: string,
     statusId?: number,
-    bookId?: number
+    filterBook?: { id: number; title: string }
 ) {
+    const bookId = filterBook?.id;
     const assignmentsPerPage = 10;
 
     // The whole where clause for a given search term — a function so the
-    // « Vouliez-vous dire » check counts another term under the same filters.
-    const whereFor = (searchTerm: string): Prisma.AssignmentWhereInput => {
+    // « Essayez plutôt » block can count another term, or the same one with
+    // some filters `lifted` (keyed by URL parameter) — see lib/search-rescue.ts.
+    const whereFor = (searchTerm: string, lifted: string[] = []): Prisma.AssignmentWhereInput => {
         const whereClause: Prisma.AssignmentWhereInput = {};
 
         // « Ce livre » — see lib/books/bookFilter.ts.
-        if (bookId) {
+        if (bookId && !lifted.includes('bookId')) {
             whereClause.catalogueId = bookId;
         }
 
@@ -42,7 +46,7 @@ async function getAssignments(
             if (tokenClauses) whereClause.AND = tokenClauses;
         }
 
-        if (statusId) {
+        if (statusId && !lifted.includes('statusId')) {
             whereClause.statusId = statusId;
         }
         return whereClause;
@@ -105,11 +109,13 @@ async function getAssignments(
             }),
         ]);
 
-        // Only when the search found nothing — see lib/search-suggest.ts.
+        // Only when the search found nothing — see lib/search-rescue.ts.
         const searchSuggestions =
             totalAssignments === 0 && searchTerm
-                ? await suggestSearches(searchTerm, ['people', 'books'], (q) =>
-                    prisma.assignment.count({ where: whereFor(q) }))
+                ? await rescueAssignments(searchTerm, whereFor, {
+                    filterBook,
+                    status: statusId ? statuses.find((st) => st.id === statusId)?.name ?? String(statusId) : null,
+                })
                 : [];
 
         return {
@@ -123,6 +129,67 @@ async function getAssignments(
         console.error('Error fetching assignments:', error);
         throw new Error('Failed to fetch assignments');
     }
+}
+
+/**
+ * « Essayez plutôt » for the attributions — lib/search-rescue.ts. Each
+ * attribution found names its book, its lecteur and its auditeur — the three
+ * things the search looks in — and, under a lifted status filter, its status.
+ */
+async function rescueAssignments(
+    search: string,
+    whereFor: (term: string, lifted?: string[]) => Prisma.AssignmentWhereInput,
+    active: { filterBook?: { id: number; title: string }; status: string | null },
+): Promise<RescueSuggestion[]> {
+    const filters: RescueFilter[] = [];
+    if (active.filterBook) filters.push({ key: 'bookId', label: `Livre : ${active.filterBook.title}` });
+    if (active.status) filters.push({ key: 'statusId', label: `Statut : ${active.status}` });
+
+    const nameSelect = { name: true, email: true, firstName: true, lastName: true } as const;
+
+    return rescueEmptySearch({
+        search,
+        domains: ['people', 'books'],
+        filters,
+        count: (q) => prisma.assignment.count({ where: whereFor(q.query, q.lifted) }),
+        find: (q) =>
+            prisma.assignment.findMany({
+                where: whereFor(q.query, q.lifted),
+                orderBy: { id: 'desc' },
+                take: RESCUE_CANDIDATES,
+                include: {
+                    catalogue: { select: { title: true, author: true } },
+                    status: { select: { name: true } },
+                    readerHistory: {
+                        orderBy: { assignedDate: 'desc' },
+                        take: 1,
+                        include: { reader: { select: nameSelect } },
+                    },
+                    order: { select: { aveugle: { select: nameSelect } } },
+                },
+            }),
+        rankText: (a) =>
+            [
+                a.catalogue?.title,
+                a.catalogue?.author,
+                getUserNameOnly(a.readerHistory[0]?.reader ?? null),
+                getUserNameOnly(a.order?.aveugle ?? null),
+                a.id,
+            ].filter(Boolean).join(' '),
+        toRow: (a, q): RescueRow => {
+            const reader = getUserNameOnly(a.readerHistory[0]?.reader ?? null);
+            const listener = getUserNameOnly(a.order?.aveugle ?? null);
+            return {
+                id: a.id,
+                title: `Attribution n°${a.id} — ${a.catalogue?.title ?? 'sans livre'}`,
+                detail: [reader && `lecteur ${reader}`, listener && `pour ${listener}`].filter(Boolean).join(' · '),
+                note: rescueNote(q.lifted, {
+                    bookId: () => a.catalogue?.title ?? null,
+                    statusId: () => a.status?.name ?? null,
+                }),
+            };
+        },
+    });
 }
 
 export default async function AdminAssignmentsPage({ searchParams }: PageProps) {
@@ -141,7 +208,7 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
             page,
             searchTerm,
             statusId,
-            filterBook?.id
+            filterBook ?? undefined
         ));
     } catch (error) {
         console.error('Error in Admin Assignments page:', error);

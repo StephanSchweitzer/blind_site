@@ -143,6 +143,12 @@ interface BooksTableProps {
     initialUnavailableCount: number;
 }
 
+/** Whether the book has something to listen to — the test its audio column shows. */
+function bookHasAudio(book: Book): boolean {
+    const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
+    return audioLinkStatusHasAudio(status) && (book.audioTrackCount ?? 0) > 0;
+}
+
 /**
  * The audio state of a row, in words.
  *
@@ -152,12 +158,6 @@ interface BooksTableProps {
  * outright, which is the whole point: "no recording" is a fact about the book,
  * as much as its author, not a detail of the audio tool.
  */
-/** Whether the book has something to listen to — the test its audio column shows. */
-function bookHasAudio(book: Book): boolean {
-    const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
-    return audioLinkStatusHasAudio(status) && (book.audioTrackCount ?? 0) > 0;
-}
-
 function AudioStatusCell({ book }: { book: Book }) {
     const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
     const count = book.audioTrackCount ?? 0;
@@ -802,7 +802,7 @@ export default function BooksTable({
     };
 
     const applySuggestion = (suggestion: BookSearchSuggestion<Book>) => {
-        const lifted = suggestion.withoutFilters;
+        const lifted = suggestion.lifted;
         if (lifted.includes('filter')) setSelectedFilter('all');
         if (lifted.includes('genres')) setSelectedGenres([]);
         if (lifted.includes('available')) setSelectedAvailable('all');

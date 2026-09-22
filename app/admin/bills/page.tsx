@@ -5,7 +5,11 @@ import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { notFound } from 'next/navigation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
+import { getUserNameOnly } from '@/lib/users/displayName';
+import { BILL_KIND_LABELS, BILLING_STATUS_LABELS } from '@/lib/billing-enums';
+import { parisDate } from '@/lib/paris-day';
+import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface PageProps {
     searchParams: Promise<{
@@ -26,8 +30,9 @@ async function getBills(
     const billsPerPage = 10;
 
     // The whole where clause for a given search term — a function so the
-    // « Vouliez-vous dire » check counts another term under the same filters.
-    const whereFor = (searchTerm: string): Prisma.BillWhereInput => {
+    // « Essayez plutôt » block can count another term, or the same one with
+    // some filters `lifted` (keyed by URL parameter) — see lib/search-rescue.ts.
+    const whereFor = (searchTerm: string, lifted: string[] = []): Prisma.BillWhereInput => {
         // Hide soft-deleted bills from the listing.
         const whereClause: Prisma.BillWhereInput = { isActive: true };
 
@@ -39,15 +44,15 @@ async function getBills(
             if (tokenClauses) whereClause.AND = tokenClauses;
         }
 
-        if (showLate) {
+        if (showLate && !lifted.includes('late')) {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             whereClause.state = BillingStatus.BILLED;
             whereClause.issueDate = { lt: thirtyDaysAgo };
-        } else if (status) {
+        } else if (status && !lifted.includes('status')) {
             whereClause.state = status;
         }
-        if (kind) whereClause.kind = kind;
+        if (kind && !lifted.includes('kind')) whereClause.kind = kind;
         return whereClause;
     };
     const whereClause = whereFor(searchTerm);
@@ -63,11 +68,10 @@ async function getBills(
             prisma.bill.count({ where: whereClause }),
         ]);
 
-        // Only when the search found nothing — see lib/search-suggest.ts.
+        // Only when the search found nothing — see lib/search-rescue.ts.
         const searchSuggestions =
             totalBills === 0 && searchTerm
-                ? await suggestSearches(searchTerm, ['people', 'books'], (q) =>
-                    prisma.bill.count({ where: whereFor(q) }))
+                ? await rescueBills(searchTerm, whereFor, { status, showLate, kind })
                 : [];
 
         return {
@@ -81,6 +85,64 @@ async function getBills(
         console.error('Error fetching bills:', error);
         throw new Error('Failed to fetch bills');
     }
+}
+
+/**
+ * « Essayez plutôt » for the factures — lib/search-rescue.ts. Each facture
+ * found names its client and a book it covers (the search looks in both),
+ * and, under a lifted filter, its state, type or issue date.
+ */
+async function rescueBills(
+    search: string,
+    whereFor: (term: string, lifted?: string[]) => Prisma.BillWhereInput,
+    active: { status?: BillingStatus; showLate?: boolean; kind?: BillKind },
+): Promise<RescueSuggestion[]> {
+    const filters: RescueFilter[] = [];
+    // « En retard » forces the state to « Émise » and greys the select out:
+    // one filter to lift, not two.
+    if (active.showLate) filters.push({ key: 'late', label: 'Factures en retard' });
+    else if (active.status) filters.push({ key: 'status', label: `État : ${BILLING_STATUS_LABELS[active.status]}` });
+    if (active.kind) {
+        filters.push({
+            key: 'kind',
+            label: active.kind === 'PROFORMA' ? BILL_KIND_LABELS.PROFORMA : 'Factures standard',
+        });
+    }
+
+    return rescueEmptySearch({
+        search,
+        domains: ['people', 'books'],
+        filters,
+        count: (q) => prisma.bill.count({ where: whereFor(q.query, q.lifted) }),
+        find: (q) =>
+            prisma.bill.findMany({
+                where: whereFor(q.query, q.lifted),
+                orderBy: { creationDate: 'desc' },
+                take: RESCUE_CANDIDATES,
+                include: {
+                    ...billsTableInclude,
+                    orders: { select: { catalogue: { select: { title: true } } }, take: 3 },
+                },
+            }),
+        rankText: (b) =>
+            [getUserNameOnly(b.client), ...b.orders.map((o) => o.catalogue?.title), b.paymentReference, b.id]
+                .filter(Boolean).join(' '),
+        toRow: (b, q): RescueRow => ({
+            id: b.id,
+            title: `${b.kind === 'PROFORMA' ? BILL_KIND_LABELS.PROFORMA : 'Facture'} n°${b.id} — ${getUserNameOnly(b.client) || 'sans client'}`,
+            detail: [
+                b.orders[0]?.catalogue?.title,
+                `${b.invoiceAmount.toFixed(2).replace('.', ',')} €`,
+            ].filter(Boolean).join(' · '),
+            note: rescueNote(q.lifted, {
+                status: () => BILLING_STATUS_LABELS[b.state],
+                late: () => b.state !== 'BILLED'
+                    ? BILLING_STATUS_LABELS[b.state]
+                    : b.issueDate ? `Émise le ${parisDate(b.issueDate)}` : null,
+                kind: () => (b.kind === 'PROFORMA' ? BILL_KIND_LABELS.PROFORMA : 'Facture standard'),
+            }),
+        }),
+    });
 }
 
 export default async function AdminBillsPage({ searchParams }: PageProps) {

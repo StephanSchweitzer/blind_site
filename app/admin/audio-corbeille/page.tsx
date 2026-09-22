@@ -6,7 +6,7 @@ import { AUDIO_TRASH_RETENTION_DAYS } from '@/lib/audio/purge';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildDeletedAudioSearchWhere } from '@/lib/search';
 import TrashClient, { type TrashGroup, type TrashRow, type TrashTab } from './trash-client';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -99,6 +99,10 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         ...(buildSearchWhere(term) ?? {}),
     });
     const where = whereFor(q);
+    const trashScopeWhere = (term: string, scope?: string): Prisma.DeletedAudioTrackWhereInput => ({
+        ...TAB_WHERE[(TABS as readonly string[]).includes(scope ?? '') ? (scope as TrashTab) : tab],
+        ...(buildSearchWhere(term) ?? {}),
+    });
 
     const active = tab === 'a-purger' || tab === 'sans-fiche';
     const now = new Date();
@@ -238,8 +242,23 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
     // Counted in files, not books: only « finds something or not » matters here.
     const searchSuggestions =
         allGroups.length === 0 && q
-            ? await suggestSearches(q, ['trash', 'books'], (term) =>
-                prisma.deletedAudioTrack.count({ where: whereFor(term) }))
+            ? await rescueEmptySearch({
+                search: q,
+                domains: ['trash', 'books'],
+                // The other tabs: a file restored or already purged is not lost,
+                // and « Trouvé dans « Restaurées » » says where it went.
+                scopes: TABS.filter((t) => t !== tab).map((t) => ({ key: t, label: t })),
+                count: (s) => prisma.deletedAudioTrack.count({ where: trashScopeWhere(s.query, s.scope) }),
+                find: (s) =>
+                    prisma.deletedAudioTrack.findMany({
+                        where: trashScopeWhere(s.query, s.scope),
+                        orderBy: { deletedAt: 'desc' },
+                        take: RESCUE_CANDIDATES,
+                        select: { id: true, filename: true, originBookTitle: true, book: { select: { title: true } } },
+                    }),
+                rankText: (t) => `${t.originBookTitle ?? t.book?.title ?? ''} ${t.filename}`,
+                toRow: (t) => ({ id: t.id, title: t.originBookTitle ?? t.book?.title ?? 'Livre inconnu', detail: t.filename }),
+            })
             : [];
 
     return (

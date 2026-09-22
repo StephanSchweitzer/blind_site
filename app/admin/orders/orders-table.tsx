@@ -50,8 +50,8 @@ import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import type { BookFilter } from '@/lib/books/bookFilter';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 type OrdersTableProps = {
     initialOrders: SerializedOrderTableRow[];
@@ -67,7 +67,7 @@ type OrdersTableProps = {
     /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
     filterBook?: BookFilter | null;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 };
 
 export default function OrdersTable({
@@ -566,14 +566,18 @@ export default function OrdersTable({
                     {initialOrders.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground text-lg">Aucune demande trouvée</p>
-                            <SearchSuggestions
+                            <SearchRescue
                                 suggestions={searchSuggestions}
-                                onPick={(q) => {
-                                    setSearchTerm(q);
+                                unit={{ one: 'demande', many: 'demandes', feminine: true }}
+                                onApply={(s) => {
+                                    setSearchTerm(s.query);
+                                    // A lifted filter is its URL parameter, cleared.
+                                    const lifted = Object.fromEntries(s.lifted.map((key) => [key, '']));
                                     startTransition(() => {
-                                        router.push(`?${createQueryString({ search: q })}`);
+                                        router.push(`?${createQueryString({ ...lifted, search: s.query })}`);
                                     });
                                 }}
+                                onOpenRow={(row) => openOrderById(row.id)}
                             />
                         </div>
                     ) : (

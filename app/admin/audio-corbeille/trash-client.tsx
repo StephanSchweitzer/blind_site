@@ -22,8 +22,8 @@ import { toast } from '@/hooks/use-toast';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { formatBytes, formatDate } from '../audio-orphelins/format';
 import { restoreTrashedGroup, restoreTrashedTrack, type ActionResult } from './actions';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 export type TrashTab = 'a-purger' | 'sans-fiche' | 'restaurees' | 'purgees';
 
@@ -77,7 +77,7 @@ interface Props {
     urgentDays: number;
     search: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }
 
 const TAB_LABELS: Record<TrashTab, string> = {
@@ -346,11 +346,17 @@ export default function TrashClient({
                         {search
                             ? `Aucun fichier ne correspond à « ${search} ».`
                             : 'Aucun fichier dans cet onglet.'}
-                        <SearchSuggestions
+                        <SearchRescue
                             suggestions={searchSuggestions}
-                            onPick={(term) => {
-                                setSearchTerm(term);
-                                runSearch(term);
+                            unit={{ one: 'fichier', many: 'fichiers' }}
+                            scopeLabel={(t) => TAB_LABELS[t as TrashTab] ?? t}
+                            onApply={(s) => {
+                                setSearchTerm(s.query);
+                                navigate((sp) => {
+                                    sp.set('q', s.query);
+                                    if (s.scope) sp.set('tab', s.scope);
+                                    sp.delete('page');
+                                });
                             }}
                         />
                     </CardContent>

@@ -14,6 +14,18 @@ Un modal est un formulaire contextuel que j'utilise pour faciliter l'ajout, la s
 
 Une tableau affiche les résultats de la recherche et présente des lignes cliquables qui vous permettent de modifier le contenu de votre recherche ou d'ajouter de nouvelles lignes à la base de données.
 
+## Quand une recherche ne trouve rien
+
+Dans toutes les listes (demandes, attributions, factures, paiements, membres, catalogue, genres, dernières infos, listes de livres, doublons, corbeille et audio orphelin), une recherche sans résultat affiche un encadré « Essayez plutôt ». Il montre directement ce que vous cherchiez probablement, pas seulement d'autres mots :
+
+- **Un filtre le cache.** « Le filtre « Statut : À faire » cache cette demande », avec la demande et ce qui l'écarte du filtre. Le bouton « Retirer ce filtre » relance la recherche sans lui. Rien n'est retiré sans votre clic.
+- **Il est dans un autre onglet.** Par exemple, une personne cherchée parmi les auditeurs alors qu'elle est lectrice : « Trouvé dans « Lecteurs » ».
+- **Un mot est mal orthographié ou en trop.** « Vouliez-vous dire … ? » ou « Chercher sans … », avec les résultats correspondants.
+
+Cliquez sur une ligne de l'encadré pour ouvrir directement sa fiche, ou sur le bouton du bas pour lancer la recherche proposée.
+
+Dans les champs de recherche des formulaires (choisir un auditeur, un livre, un lecteur…), la suggestion affiche aussi les personnes ou les livres trouvés. Un clic les sélectionne comme dans la liste habituelle.
+
 ## Un formulaire
 
 Un formulaire est l'élément de base de la plupart des interactions sur le Web. Il comporte des champs contenant des informations et, une fois validé, modifie, crée ou supprime les entrées correspondantes dans la base de données. La plupart de nos formulaires sont intégrés dans des fenêtres modales pour faciliter la tâche des permanents.

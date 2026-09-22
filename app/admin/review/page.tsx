@@ -6,7 +6,7 @@ import { titlePrefixMatch } from '@/lib/books/title-match';
 import ReviewClient, { type ReviewBook, type ReviewPair } from './review-client';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { bookReviewIdClauses, buildBookReviewSearchWhere } from '@/lib/search';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -58,6 +58,11 @@ function buildSearchWhere(q: string): Prisma.BookWhereInput | undefined {
     // doublon se cherche autant par « camus etranger » que par son numéro.
     const tokenClauses = buildBookReviewSearchWhere(raw);
     return tokenClauses ? { AND: tokenClauses } : undefined;
+}
+
+/** The queue, or — scope `catalogue` — every book, for the same search. */
+function reviewScopeWhere(q: string, scope?: string): Prisma.BookWhereInput {
+    return scope === 'catalogue' ? buildSearchWhere(q) ?? {} : { needsReview: true, ...(buildSearchWhere(q) ?? {}) };
 }
 
 interface PageProps {
@@ -162,8 +167,24 @@ export default async function AdminReviewPage({ searchParams }: PageProps) {
     // Only when the search found nothing in the queue — see lib/search-suggest.ts.
     const searchSuggestions =
         total === 0 && q
-            ? await suggestSearches(q, ['books'], (term) =>
-                prisma.book.count({ where: { needsReview: true, ...(buildSearchWhere(term) ?? {}) } }))
+            ? await rescueEmptySearch({
+                search: q,
+                domains: ['books'],
+                // A book missing from the queue is often in the catalogue — already
+                // reviewed, or never flagged. Saying so, and opening its fiche, is the
+                // answer the permanent needs; « Vouliez-vous dire » never was.
+                scopes: [{ key: 'catalogue', label: 'Catalogue' }],
+                count: (s) => prisma.book.count({ where: reviewScopeWhere(s.query, s.scope) }),
+                find: (s) =>
+                    prisma.book.findMany({
+                        where: reviewScopeWhere(s.query, s.scope),
+                        orderBy: { createdAt: 'desc' },
+                        take: RESCUE_CANDIDATES,
+                        select: { id: true, title: true, author: true },
+                    }),
+                rankText: (b) => `${b.title} ${b.author}`,
+                toRow: (b) => ({ id: b.id, title: b.title, detail: b.author }),
+            })
             : [];
 
     return (

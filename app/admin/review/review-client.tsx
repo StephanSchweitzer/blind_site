@@ -61,8 +61,8 @@ import { formatCalendarDate } from '@/lib/calendar-date';
 import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 export interface ReviewBook {
     id: number;
@@ -107,7 +107,7 @@ interface Props {
     queueTotal: number;
     search: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }
 
 /** For real instants (escalatedAt…), which belong in the reader's own timezone. */
@@ -325,12 +325,22 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
                 <Card>
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
                         Aucun livre de la file ne correspond à « {search} ».
-                        <SearchSuggestions
+                        <SearchRescue
                             suggestions={searchSuggestions}
-                            onPick={(term) => {
-                                setSearchTerm(term);
-                                runSearch(term);
+                            unit={{ one: 'livre', many: 'livres' }}
+                            onApply={(s) => {
+                                if (s.kind === 'scope') {
+                                    router.push(`/admin/books?search=${encodeURIComponent(s.query)}`);
+                                    return;
+                                }
+                                setSearchTerm(s.query);
+                                runSearch(s.query);
                             }}
+                            // Outside the queue there is no pair to show: the fiche is the answer.
+                            onOpenRow={(row, s) =>
+                                s.kind === 'scope'
+                                    ? router.push(`/admin/books?book=${row.id}`)
+                                    : runSearch(`#${row.id}`)}
                         />
                     </CardContent>
                 </Card>

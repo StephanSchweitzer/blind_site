@@ -42,7 +42,7 @@ Si aucun livre ne correspond, le catalogue affiche sous le message « Aucun rés
 - **Un mot est mal orthographié.** L'encadré propose la bonne orthographe, par exemple « Vouliez-vous dire « le front dans les nuages » ? », et montre directement les livres correspondants.
 - **Un mot est en trop.** L'encadré propose de chercher sans ce mot.
 
-Dans chaque cas, cliquez sur un livre de l'encadré pour ouvrir sa fiche, ou sur le bouton du bas pour lancer la recherche proposée. Le catalogue public propose les mêmes suggestions à ses visiteurs.
+Dans chaque cas, cliquez sur un livre de l'encadré pour ouvrir sa fiche, ou sur le bouton du bas pour lancer la recherche proposée. Le catalogue public propose les mêmes suggestions à ses visiteurs. Les autres listes du portail font de même : voir [Quand une recherche ne trouve rien](/admin/aide/composants-de-base#quand-une-recherche-ne-trouve-rien).
 
 ## Ajout de livres
 

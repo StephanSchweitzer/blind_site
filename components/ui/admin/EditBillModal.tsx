@@ -254,7 +254,7 @@ export function EditBillModal({
 
     // « Vouliez-vous dire … ? » when the demande search finds nothing — checked
     // through the same route and filters (this client, non facturées).
-    const orderSuggestions = useVerifiedSuggestions({
+    const orderSuggestions = useVerifiedSuggestions<UnbilledOrder>({
         query: orderSearch,
         active: showAddPanel && !!bill && !!orderSearch.trim() && !isLoadingOrders && unbilledOrders.length === 0,
         domains: BOOK_DOMAINS,
@@ -926,6 +926,11 @@ export function EditBillModal({
                                                         <SearchSuggestions
                                                             suggestions={orderSuggestions}
                                                             onPick={(q) => { setOrderSearch(q); setOrderPage(1); }}
+                                                            renderItem={(o) => `#${o.id} — ${o.catalogue.title}`}
+                                                            getItemKey={(o) => o.id}
+                                                            // Adding a demande changes the facture: a click here
+                                                            // only brings it into the list, where « Ajouter » does it.
+                                                            onPickItem={(o) => { setOrderSearch(String(o.id)); setOrderPage(1); }}
                                                             compact
                                                         />
                                                     )}

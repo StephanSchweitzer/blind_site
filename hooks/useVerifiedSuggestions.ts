@@ -11,6 +11,16 @@ import {
 /** Candidates a picker verifies, at most — one fetch each. */
 const MAX_VERIFIED = 6;
 
+/** Items shown under one proposal, at most — the picker's list is short. */
+const MAX_ITEMS = 3;
+
+/**
+ * A proposal with the items it finds. The picker already fetches them to
+ * verify the proposal, so showing them costs nothing — and picking « Bernard
+ * MORVAN » directly beats retyping « morvan » and picking him from the list.
+ */
+export type PickerSuggestion<T> = SearchSuggestion & { items: T[] };
+
 /**
  * Wait this long after the empty result settles before asking. Some pickers
  * only flag « searching » once their own debounce fires, so a query can look
@@ -48,10 +58,10 @@ export function useVerifiedSuggestions<T>({
     domains,
     fetcher,
     resultLimit,
-}: Options<T>): SearchSuggestion[] {
+}: Options<T>): PickerSuggestion<T>[] {
     const normalized = normalizeSearchQuery(query);
     const key = active && domains && domains.length > 0 && normalized ? `${domains.join(',')}|${normalized}` : '';
-    const [state, setState] = useState<{ key: string; suggestions: SearchSuggestion[] }>({
+    const [state, setState] = useState<{ key: string; suggestions: PickerSuggestion<T>[] }>({
         key: '',
         suggestions: [],
     });
@@ -71,14 +81,20 @@ export function useVerifiedSuggestions<T>({
             const res = await fetch(`/api/search/suggestions?${params.toString()}`, { signal });
             if (!res.ok) return;
             const candidates: SearchSuggestion[] = await res.json();
-            const suggestions = await verifyInStages(candidates.slice(0, MAX_VERIFIED), async (query) => {
+            const rowsByQuery = new Map<string, T[]>();
+            const verified = await verifyInStages(candidates.slice(0, MAX_VERIFIED), async (query) => {
                 try {
                     const rows = await fetcherRef.current(query, signal);
+                    rowsByQuery.set(query, rows);
                     return { count: rows.length, atLeast: resultLimit !== undefined && rows.length >= resultLimit };
                 } catch {
                     return { count: 0 };
                 }
             });
+            const suggestions = verified.map((s) => ({
+                ...s,
+                items: (rowsByQuery.get(s.query) ?? []).slice(0, MAX_ITEMS),
+            }));
             if (!signal.aborted) setState({ key, suggestions });
         })().catch(() => {
             // Aborted or offline: no suggestion is the right outcome.

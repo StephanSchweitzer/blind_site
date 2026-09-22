@@ -4,7 +4,8 @@ import { coupsDeCoeurIncludeConfigs } from '@/types/models/coups-de-coeur.model'
 import { CoupsTable } from './coups-table';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildCoupsDeCoeurSearchWhere } from '@/lib/search';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
+import { parisDate } from '@/lib/paris-day';
 
 interface PageProps {
     searchParams: Promise<{
@@ -58,8 +59,24 @@ async function getCoupsDeCoeur(page: number, searchTerm: string) {
     // Only when the search found nothing — see lib/search-suggest.ts.
     const searchSuggestions =
         totalItems === 0 && searchTerm
-            ? await suggestSearches(searchTerm, ['listes', 'books', 'people'], (q) =>
-                prisma.coupsDeCoeur.count({ where: whereFor(q) }))
+            ? await rescueEmptySearch({
+                search: searchTerm,
+                domains: ['listes', 'books', 'people'],
+                count: (q) => prisma.coupsDeCoeur.count({ where: whereFor(q.query) }),
+                find: (q) =>
+                    prisma.coupsDeCoeur.findMany({
+                        where: whereFor(q.query),
+                        orderBy: { createdAt: 'desc' },
+                        take: RESCUE_CANDIDATES,
+                        select: { id: true, title: true, createdAt: true, _count: { select: { books: true } } },
+                    }),
+                rankText: (l) => l.title,
+                toRow: (l) => ({
+                    id: l.id,
+                    title: l.title,
+                    detail: `${l._count.books} livre${l._count.books > 1 ? 's' : ''} · créée le ${parisDate(l.createdAt)}`,
+                }),
+            })
             : [];
 
     return {

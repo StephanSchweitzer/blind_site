@@ -44,8 +44,8 @@ import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface BillsTableProps {
     initialBills: Bill[];
@@ -57,7 +57,7 @@ interface BillsTableProps {
     hideSearch?: boolean;
     presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string } | null;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }
 
 const LATE_THRESHOLD_DAYS = 30;
@@ -319,12 +319,16 @@ export default function BillsTable({
                     {initialBills.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground text-lg">Aucune facture trouvée</p>
-                            <SearchSuggestions
+                            <SearchRescue
                                 suggestions={searchSuggestions}
-                                onPick={(q) => {
-                                    setSearchTerm(q);
-                                    updateUrl({ search: q, page: '1' });
+                                unit={{ one: 'facture', many: 'factures', feminine: true }}
+                                onApply={(s) => {
+                                    setSearchTerm(s.query);
+                                    // A lifted filter is its URL parameter, cleared.
+                                    const lifted = Object.fromEntries(s.lifted.map((key) => [key, undefined]));
+                                    updateUrl({ ...lifted, search: s.query, page: '1' });
                                 }}
+                                onOpenRow={(row) => setViewBillId(Number(row.id))}
                             />
                         </div>
                     ) : (

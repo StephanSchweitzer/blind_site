@@ -194,8 +194,8 @@ export function BooksClient({
         lifted.includes('genres') ? book.genres.map((g) => g.genre.name).join(', ') || 'Sans genre' : null;
 
     const applySuggestion = (suggestion: BookSearchSuggestion<PublicBook>) => {
-        if (suggestion.withoutFilters.includes('filter')) setSelectedFilter('all');
-        if (suggestion.withoutFilters.includes('genres')) setSelectedGenres([]);
+        if (suggestion.lifted.includes('filter')) setSelectedFilter('all');
+        if (suggestion.lifted.includes('genres')) setSelectedGenres([]);
         handleSearchChange(suggestion.query);
     };
 

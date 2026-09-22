@@ -181,7 +181,7 @@ export function BillFormBackendBase({
 
     // « Vouliez-vous dire … ? » once the person search has settled on nobody —
     // checked through the same route, see useVerifiedSuggestions.
-    const userSuggestions = useVerifiedSuggestions({
+    const userSuggestions = useVerifiedSuggestions<User>({
         query: userSearch,
         active: userSearch.length >= 2 && !isSearchingUsers && users.length === 0,
         domains: PEOPLE_DOMAIN,
@@ -357,7 +357,19 @@ export function BillFormBackendBase({
                                     {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
                                         <>
                                             <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
-                                            <SearchSuggestions suggestions={userSuggestions} onPick={setUserSearch} compact />
+                                            <SearchSuggestions
+                                                suggestions={userSuggestions}
+                                                onPick={setUserSearch}
+                                                renderItem={(user) => (
+                                                    <>
+                                                        <div className="font-medium">{getReaderDisplayName(user)}</div>
+                                                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                                                    </>
+                                                )}
+                                                getItemKey={(user) => user.id}
+                                                onPickItem={handleClientSelect}
+                                                compact
+                                            />
                                         </>
                                     )}
                                     {users.map((user) => (

@@ -51,8 +51,8 @@ import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/us
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface UsersTableProps {
     type: UserType;
@@ -81,7 +81,7 @@ interface UsersTableProps {
     inactiveCount: number;
     currentUserAccessLevel?: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nobody. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }
 
 /**
@@ -470,11 +470,31 @@ export default function UsersTable({
                     {initialUsers.length === 0 ? (
                         <div className="py-20 flex flex-col items-center justify-center border border-border rounded-lg bg-card/50">
                             <p className="text-muted-foreground text-lg">Aucun {singular} trouv&#233;</p>
-                            <SearchSuggestions
+                            <SearchRescue
                                 suggestions={searchSuggestions}
-                                onPick={(q) => {
-                                    setSearchTerm(q);
-                                    updateUrl({ search: q, page: '1' });
+                                unit={{ one: 'personne', many: 'personnes', feminine: true }}
+                                onApply={(s) => {
+                                    setSearchTerm(s.query);
+                                    // A lifted filter is its URL parameter, cleared.
+                                    const lifted = Object.fromEntries(s.lifted.map((key) => [key, undefined]));
+                                    if (s.kind === 'scope' && s.scope) {
+                                        // Another tab: its own page, the other filters carried over.
+                                        const params = new URLSearchParams(searchParams.toString());
+                                        params.set('search', s.query);
+                                        params.delete('page');
+                                        startTransition(() => router.push(`/admin/users/${s.scope}?${params.toString()}`));
+                                        return;
+                                    }
+                                    updateUrl({ ...lifted, search: s.query, page: '1' });
+                                }}
+                                onOpenRow={(row, s) => {
+                                    // The dialogue is shaped by its tab's member type: a person
+                                    // from another tab opens there, through its deep link.
+                                    if (s.kind === 'scope' && s.scope) {
+                                        router.push(`/admin/users/${s.scope}?user=${row.id}`);
+                                    } else {
+                                        openUserById(row.id);
+                                    }
                                 }}
                             />
                         </div>

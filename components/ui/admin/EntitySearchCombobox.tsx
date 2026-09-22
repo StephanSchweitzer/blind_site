@@ -363,7 +363,15 @@ export function EntitySearchCombobox<T>({
                             <div className="p-4 text-center text-muted-foreground">
                                 {isDefaultList ? (emptyDefaultMessage ?? emptyMessage) : emptyMessage}
                             </div>
-                            <SearchSuggestions suggestions={suggestions} onPick={handleQueryChange} compact />
+                            <SearchSuggestions
+                                suggestions={suggestions}
+                                onPick={handleQueryChange}
+                                renderItem={renderItem}
+                                getItemKey={getItemKey}
+                                onPickItem={(item) => void handleSelect(item)}
+                                isItemDisabled={isItemDisabled}
+                                compact
+                            />
                         </>
                     ) : (
                         results.map((item, index) => {

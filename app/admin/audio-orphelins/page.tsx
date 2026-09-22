@@ -10,7 +10,7 @@ import OrphansClient, {
 } from './orphans-client';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildOrphanFolderSearchWhere } from '@/lib/search';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -127,6 +127,10 @@ export default async function AudioOrphansPage({ searchParams }: PageProps) {
         ...(buildSearchWhere(term) ?? {}),
     });
     const where = whereFor(q);
+    const orphanScopeWhere = (term: string, scope?: string): Prisma.OrphanAudioFolderWhereInput => ({
+        ...TAB_WHERE[(TABS as readonly string[]).includes(scope ?? '') ? (scope as OrphanTab) : tab],
+        ...(buildSearchWhere(term) ?? {}),
+    });
 
     const [rows, total, counts] = await Promise.all([
         prisma.orphanAudioFolder.findMany({
@@ -218,7 +222,22 @@ export default async function AudioOrphansPage({ searchParams }: PageProps) {
     // Only when the search found nothing in this tab — see lib/search-suggest.ts.
     const searchSuggestions =
         total === 0 && q
-            ? await suggestSearches(q, ['orphans'], (term) => prisma.orphanAudioFolder.count({ where: whereFor(term) }))
+            ? await rescueEmptySearch({
+                search: q,
+                domains: ['orphans'],
+                // The other tabs: a folder already attached or set aside is found
+                // there, not lost.
+                scopes: TABS.filter((t) => t !== tab).map((t) => ({ key: t, label: t })),
+                count: (s) => prisma.orphanAudioFolder.count({ where: orphanScopeWhere(s.query, s.scope) }),
+                find: (s) =>
+                    prisma.orphanAudioFolder.findMany({
+                        where: orphanScopeWhere(s.query, s.scope),
+                        take: RESCUE_CANDIDATES,
+                        select: { id: true, title: true, prefix: true },
+                    }),
+                rankText: (o) => `${o.title ?? ''} ${o.prefix}`,
+                toRow: (o) => ({ id: o.id, title: o.title || o.prefix, detail: o.title ? o.prefix : null }),
+            })
             : [];
 
     return (

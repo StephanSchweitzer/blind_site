@@ -31,6 +31,59 @@ export interface SearchSuggestion {
 /** Suggestions offered for one empty result, at most. */
 export const MAX_SHOWN_SUGGESTIONS = 3;
 
+/** Rows shown under one proposal, at most. */
+export const MAX_PREVIEW_ROWS = 3;
+
+/**
+ * One object a proposal would bring back, as the « Essayez plutôt » card
+ * shows it — built by each list from its own row (lib/search-rescue.ts).
+ */
+export interface RescueRow {
+    id: number | string;
+    /** What the object is: a title, a name, « Demande n°42 — L'Étranger ». */
+    title: string;
+    /** Who / when, in muted text after the title. */
+    detail?: string | null;
+    /**
+     * Why a lifted filter excluded it — « En attente » under a lifted
+     * « Disponibles ». Only filled for proposals that lift a filter.
+     */
+    note?: string | null;
+}
+
+/**
+ * What a list proposes when its search found nothing — lib/search-rescue.ts
+ * builds it, components/ui/search-rescue.tsx shows it. Unlike a bare
+ * SearchSuggestion it carries the objects it finds: « L'Étranger — Albert
+ * Camus » is recognised at a glance, « Vouliez-vous dire « camus étranger » ? »
+ * asks to be trusted.
+ *
+ *   `filter`: the same words, with the filters in `lifted` removed — the
+ *             search was right, a filter hid the object.
+ *   `scope`:  the same words elsewhere on the page (another tab: the person is
+ *             an auditeur, not a lecteur).
+ *   `spelling` / `drop`: as SearchSuggestion — possibly ALSO with filters
+ *             lifted, when no correction finds anything inside them.
+ */
+export interface RescueSuggestion<R = RescueRow, K extends string = string> {
+    kind: 'filter' | 'scope' | SearchSuggestion['kind'];
+    /** The search to run — what the action puts in the box. */
+    query: string;
+    /** The word removed, as typed, for a drop. */
+    dropped?: string;
+    /** Filter keys the proposal lifts (URL parameter names for most lists); empty when it keeps them. */
+    lifted: K[];
+    /** The same filters, in the words the page shows them. */
+    liftedLabels: string[];
+    /** For `scope`: where to search instead, and how the page names it. */
+    scope?: string;
+    scopeLabel?: string;
+    /** Objects the proposal finds. */
+    total: number;
+    /** The closest of them to what was typed, best first. */
+    rows: R[];
+}
+
 /**
  * Keep the suggestions that find rows, in the order they are offered. Shared
  * by the server lists and the client pickers so both rank alike.

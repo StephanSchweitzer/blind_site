@@ -7,8 +7,8 @@ import { Tag, Filter, User, Calendar } from 'lucide-react';
 import type { NewsPost, NewsResponse, NewsType } from '@/types/news';
 import { newsTypeLabels, newsTypeColors, getNewsTypeColor, getNewsTypeTextColor } from '@/types/news';
 import { parisDate } from '@/lib/paris-day';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface DernieresInfosClientProps {
     initialData: NewsResponse;
@@ -24,7 +24,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
     const [showFilters, setShowFilters] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+    const [suggestions, setSuggestions] = useState<RescueSuggestion[]>([]);
     const isFirstRender = useRef(true);
     const filtersId = useId();
 
@@ -224,7 +224,16 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                             </svg>
                         </div>
                         <p className="text-gray-700 dark:text-gray-300 font-medium">Aucune actualité trouvée</p>
-                        {searchTerm && <SearchSuggestions suggestions={suggestions} onPick={handleSearchChange} />}
+                        {searchTerm && (
+                            <SearchRescue
+                                suggestions={suggestions}
+                                unit={{ one: 'info', many: 'infos', feminine: true }}
+                                onApply={(s) => {
+                                    if (s.lifted.includes('type')) setSelectedType('all');
+                                    handleSearchChange(s.query);
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
             ) : (

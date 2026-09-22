@@ -58,8 +58,8 @@ import {
     unlinkOrphan,
     type ActionResult,
 } from './actions';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 export type OrphanTab = 'a-traiter' | 'rattaches' | 'ecartes';
 
@@ -123,7 +123,7 @@ interface Props {
     tabCounts: Record<OrphanTab, number>;
     search: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }
 
 const TAB_LABELS: Record<OrphanTab, string> = {
@@ -606,11 +606,17 @@ export default function OrphansClient({
                         {search
                             ? `Aucun dossier ne correspond à « ${search} ».`
                             : 'Aucun dossier dans cet onglet.'}
-                        <SearchSuggestions
+                        <SearchRescue
                             suggestions={searchSuggestions}
-                            onPick={(term) => {
-                                setSearchTerm(term);
-                                runSearch(term);
+                            unit={{ one: 'dossier', many: 'dossiers' }}
+                            scopeLabel={(t) => TAB_LABELS[t as OrphanTab] ?? t}
+                            onApply={(s) => {
+                                setSearchTerm(s.query);
+                                navigate((sp) => {
+                                    sp.set('q', s.query);
+                                    if (s.scope) sp.set('tab', s.scope);
+                                    sp.delete('page');
+                                });
                             }}
                         />
                     </CardContent>

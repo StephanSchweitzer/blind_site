@@ -43,8 +43,8 @@ import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import type { BookFilter } from '@/lib/books/bookFilter';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -60,7 +60,7 @@ interface AssignmentsTableProps {
     /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
     filterBook?: BookFilter | null;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }
 
 export default function AssignmentsTable({
@@ -459,12 +459,16 @@ export default function AssignmentsTable({
                                     ? "Aucune attribution trouvée avec ces critères"
                                     : "Aucune attribution"}
                             </p>
-                            <SearchSuggestions
+                            <SearchRescue
                                 suggestions={searchSuggestions}
-                                onPick={(q) => {
-                                    setSearchTerm(q);
-                                    updateUrl({ search: q, page: '1' });
+                                unit={{ one: 'attribution', many: 'attributions', feminine: true }}
+                                onApply={(s) => {
+                                    setSearchTerm(s.query);
+                                    // A lifted filter is its URL parameter, cleared.
+                                    const lifted = Object.fromEntries(s.lifted.map((key) => [key, undefined]));
+                                    updateUrl({ ...lifted, search: s.query, page: '1' });
                                 }}
+                                onOpenRow={(row) => openAssignmentById(row.id)}
                             />
                         </div>
                     ) : (

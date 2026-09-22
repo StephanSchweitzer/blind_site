@@ -10,13 +10,9 @@ import { bookFieldsForToken, searchTokens } from '@/lib/search';
 import { searchVariants } from '@/lib/search-normalize';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 import { isParisDay, parisDayStartUtc } from '@/lib/paris-day';
-import { suggestionCandidates, verifySuggestions } from '@/lib/search-suggest';
-import { MAX_SHOWN_SUGGESTIONS } from '@/lib/search-suggestion-types';
-import {
-    MAX_PREVIEW_BOOKS,
-    type BookSearchSuggestion,
-    type CatalogueFilterKey,
-} from '@/lib/books/book-suggestion-types';
+import { rescueEmptySearch, type RescueQuery } from '@/lib/search-rescue';
+import { MAX_PREVIEW_ROWS } from '@/lib/search-suggestion-types';
+import type { BookSearchSuggestion, CatalogueFilterKey } from '@/lib/books/book-suggestion-types';
 
 /**
  * La liste de livres paginée, et les deux seules façons d'y accéder.
@@ -350,7 +346,9 @@ async function countBooksForSearch(
 /**
  * The few books a proposal shows, closest to the words typed first — not
  * newest first like the list: a preview of three has to show the book being
- * looked for, not whichever three were catalogued last. `total` counts them all.
+ * looked for, not whichever three were catalogued last. Ranked here in SQL
+ * with pg_trgm; the shared engine re-ranks them in memory with the same
+ * measure, which leaves this order alone.
  *
  * `rankBy` is what was TYPED, not the proposal's query: a word the proposal
  * dropped, or could not correct, still says which book was meant. « Carbets
@@ -359,14 +357,11 @@ async function countBooksForSearch(
  *
  * Returns nothing when the raw path is unavailable: a preview is a nicety.
  */
-async function previewBooksForSearch(
-    options: RawBookWhereOptions,
-    rankBy: string,
-): Promise<{ books: BookWithGenres[]; total: number }> {
+async function previewBooksForSearch(options: RawBookWhereOptions, rankBy: string): Promise<BookWithGenres[]> {
     const { whereClause, params } = buildRawBookWhere(options);
     try {
-        const rows = await prisma.$queryRawUnsafe<{ id: number; total: bigint }[]>(
-            `SELECT b.id, COUNT(*) OVER () AS total
+        const rows = await prisma.$queryRawUnsafe<{ id: number }[]>(
+            `SELECT b.id
              FROM "Book" b
              ${whereClause}
              ORDER BY similarity(
@@ -374,43 +369,39 @@ async function previewBooksForSearch(
                         LOWER(immutable_unaccent($${params.length + 1}))
                       ) DESC,
                       b."createdAt" DESC
-             LIMIT ${MAX_PREVIEW_BOOKS}`,
+             LIMIT ${MAX_PREVIEW_ROWS}`,
             ...params,
             rankBy,
         );
-        if (rows.length === 0) return { books: [], total: 0 };
+        if (rows.length === 0) return [];
         const found = await prisma.book.findMany({
             where: { id: { in: rows.map((r) => r.id) } },
             include: { genres: { include: { genre: true } } },
         });
-        const books = rows
+        return rows
             .map((r) => found.find((b) => b.id === r.id))
             .filter((b): b is BookWithGenres => b !== undefined);
-        return { books, total: Number(rows[0].total) };
     } catch (error) {
         console.error('Aperçu des livres suggérés impossible :', error);
-        return { books: [], total: 0 };
+        return [];
     }
 }
 
 /**
- * What to propose when a catalogue search found nothing — see
- * lib/books/book-suggestion-types.ts. In order, stopping at the first step
- * that finds anything:
- *
- *   1. the same words without each active filter, one at a time — then
- *      without all of them. The book is there, correctly spelt; a filter hides
- *      it. Counted with the list's own search, so « Retirer le filtre (2
- *      livres) » shows exactly those two.
- *   2. spelling corrections and drops, inside the filters;
- *   3. the same corrections without the filters.
+ * What to propose when a catalogue search found nothing — the shared engine
+ * (lib/search-rescue.ts) with the catalogue's own counts and previews.
  *
  * Corrections are counted with `strict` (word starts, no descriptions), so a
  * proposal only survives if a title, author, publisher or genre supports it.
+ * Filter lifts are counted with the list's own search, so « Retirer ce filtre
+ * (2 livres) » shows exactly those two.
  *
  * Every filter lifted here is one the caller was allowed to set: the public
  * catalogue passes includeHidden false and no back-office filter, so nothing it
  * could not already see can surface.
+ *
+ * The labels are the keys themselves: the catalogue names its filters on the
+ * client, which knows the genre names (components/ui/book-search-suggestions.tsx).
  */
 async function rescueEmptyBookSearch(
     options: Omit<RawBookWhereOptions, 'strict'>,
@@ -422,84 +413,27 @@ async function rescueEmptyBookSearch(
     if (options.hiddenFilter !== undefined) active.push('hidden');
     if (options.audio === 'missing' || options.audio === 'present') active.push('audio');
 
-    const without = (keys: CatalogueFilterKey[]): Omit<RawBookWhereOptions, 'strict'> => ({
+    const scoped = (q: RescueQuery): RawBookWhereOptions => ({
         ...options,
-        filter: keys.includes('filter') ? 'all' : options.filter,
-        genres: keys.includes('genres') ? [] : options.genres,
-        available: keys.includes('available') ? undefined : options.available,
-        hiddenFilter: keys.includes('hidden') ? undefined : options.hiddenFilter,
-        audio: keys.includes('audio') ? undefined : options.audio,
+        search: q.query,
+        filter: q.lifted.includes('filter') ? 'all' : options.filter,
+        genres: q.lifted.includes('genres') ? [] : options.genres,
+        available: q.lifted.includes('available') ? undefined : options.available,
+        hiddenFilter: q.lifted.includes('hidden') ? undefined : options.hiddenFilter,
+        audio: q.lifted.includes('audio') ? undefined : options.audio,
+        strict: q.purpose === 'correction',
     });
 
-    const withBooks = async (
-        list: Omit<BookSearchSuggestion<BookWithGenres>, 'books' | 'total'>[],
-        strict: boolean,
-    ) => {
-        const all = await Promise.all(
-            list.map(async (suggestion) => ({
-                ...suggestion,
-                ...(await previewBooksForSearch(
-                    { ...without(suggestion.withoutFilters), search: suggestion.query, strict },
-                    options.search,
-                )),
-            })),
-        );
-        // « compagnons bonzon » and « compagnon bonzon » find the same books:
-        // a second card showing them again is noise.
-        const seen = new Set<string>();
-        return all.filter((s) => {
-            const key = s.books.map((b) => b.id).join(',');
-            if (s.books.length === 0 || seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
-    };
-
-    // ------------------------------------------------------------- 1. filters
-    if (active.length > 0) {
-        const lifts: CatalogueFilterKey[][] = active.map((key) => [key]);
-        const counts = await Promise.all(lifts.map((keys) => countBooksForSearch(without(keys))));
-        let found = lifts
-            .map((keys, i) => ({ keys, count: counts[i] }))
-            .filter((l) => l.count > 0)
-            // The filter hiding the fewest books is the one that hid THIS one.
-            .sort((a, b) => a.count - b.count);
-        if (found.length === 0 && active.length > 1) {
-            const count = await countBooksForSearch(without(active));
-            if (count > 0) found = [{ keys: active, count }];
-        }
-        if (found.length > 0) {
-            const lifted = await withBooks(
-                found.slice(0, MAX_SHOWN_SUGGESTIONS).map((l) => ({
-                    kind: 'filter' as const,
-                    query: options.search,
-                    withoutFilters: l.keys,
-                })),
-                false,
-            );
-            // `total` from the list's own count, not the preview's — they
-            // agree, but this one is what the list will say once lifted.
-            if (lifted.length > 0) {
-                return lifted.map((s) => ({ ...s, total: found.find((l) => l.keys === s.withoutFilters)!.count }));
-            }
-        }
-    }
-
-    // --------------------------------------------------------- 2–3. spelling
-    const candidates = await suggestionCandidates(options.search, ['books', 'genres']);
-    if (candidates.length === 0) return [];
-    const scopes: CatalogueFilterKey[][] = active.length > 0 ? [[], active] : [[]];
-    for (const lifted of scopes) {
-        const scope = without(lifted);
-        const verified = await verifySuggestions(candidates, (q) =>
-            countBooksForSearch({ ...scope, search: q, strict: true }));
-        if (verified.length === 0) continue;
-        return withBooks(
-            verified.map((s) => ({ kind: s.kind, query: s.query, dropped: s.dropped, withoutFilters: lifted })),
-            true,
-        );
-    }
-    return [];
+    const suggestions = await rescueEmptySearch<BookWithGenres, BookWithGenres>({
+        search: options.search,
+        domains: ['books', 'genres'],
+        filters: active.map((key) => ({ key, label: key })),
+        count: (q) => countBooksForSearch(scoped(q)),
+        find: (q) => previewBooksForSearch(scoped(q), options.search),
+        rankText: (b) => [b.title, b.subtitle, b.author].filter(Boolean).join(' '),
+        toRow: (b) => b,
+    });
+    return suggestions as BookSearchSuggestion<BookWithGenres>[];
 }
 
 // Perform accent-insensitive search using raw SQL
@@ -910,15 +844,10 @@ async function listBooks(
         ]);
     }
 
-    // Only when the search found nothing — see rescueEmptyBookSearch. A
-    // proposal is a nicety: failing to build one must never fail the list.
+    // Only when the search found nothing — see rescueEmptyBookSearch.
     const searchSuggestions =
         suggest && search && total === 0
             ? await rescueEmptyBookSearch({ search, filter, genres, includeHidden, available, hiddenFilter, audio })
-                .catch((error) => {
-                    console.error('Suggestions du catalogue indisponibles :', error);
-                    return [];
-                })
             : undefined;
 
     return {
@@ -957,7 +886,7 @@ export async function listPublicBooks(query: BookListQuery): Promise<BookListPag
             ? {
                 searchSuggestions: result.searchSuggestions.map((s) => ({
                     ...s,
-                    books: s.books.map(toPublicBook),
+                    rows: s.rows.map(toPublicBook),
                 })),
             }
             : {}),

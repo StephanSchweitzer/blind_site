@@ -26,7 +26,7 @@ import { toast } from '@/hooks/use-toast';
 import { ChevronLeft, ChevronRight, CircleX, Loader2, Plus, Search } from 'lucide-react';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import { SearchRescue } from '@/components/ui/search-rescue';
 import {
     ADMIN_NEWS_PAGE_SIZE,
     NEWS_SEARCH_FIELDS,
@@ -460,7 +460,16 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                             {hasFilters ? 'Aucune info trouvée pour cette recherche' : 'Aucune info publiée'}
                         </p>
                         {searchTerm.trim() && (
-                            <SearchSuggestions suggestions={results.searchSuggestions} onPick={handleSearchChange} />
+                            <SearchRescue
+                                suggestions={results.searchSuggestions}
+                                unit={{ one: 'info', many: 'infos', feminine: true }}
+                                onApply={(s) => {
+                                    if (s.lifted.includes('field')) setField('all');
+                                    if (s.lifted.includes('type')) setType(null);
+                                    handleSearchChange(s.query);
+                                }}
+                                onOpenRow={(row) => void openArticle(Number(row.id))}
+                            />
                         )}
                     </div>
                 ) : (

@@ -11,7 +11,12 @@ import { LANGUAGE_VALUES } from '@/lib/user-enums';
 import { cotisationCoverageQuery } from '@/lib/cotisation';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildUserNameSearch } from '@/lib/search';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
+import { getUserDisplayName } from '@/lib/users/displayName';
+import { resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
+import { getUserActivityStatusLabel } from '@/lib/user-activity-enums';
+import { getAccessLevelLabel, getLanguageLabel, getMemberTypeLabel, USER_TYPE_META } from '@/lib/user-enums';
+import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface PageProps {
     params: Promise<{ type: string }>;
@@ -38,16 +43,13 @@ async function getUsers(
     const usersPerPage = 10;
 
     // Every where clause of the page, for a given search term — built as a
-    // function so the « Vouliez-vous dire » check can count another term under
-    // exactly the same filters.
-    const wheresFor = (term: string) => {
+    // function so the « Essayez plutôt » block can count another term, the same
+    // one with some filters `lifted` (keyed by URL parameter), or the same one
+    // in another tab (`tab`) — see lib/search-rescue.ts.
+    const wheresFor = (term: string, lifted: string[] = [], tab: UserType = userType) => {
         // Base filter: member type + free-text search. Status filter is applied
         // separately so the active/inactive counts always reflect the full set.
-        const baseWhere: Prisma.UserWhereInput =
-            userType === 'auditeurs'  ? { memberType: 'auditeur' } :
-                userType === 'lecteurs'   ? { memberType: 'lecteur' } :
-                    userType === 'bienfaiteurs' ? { memberType: 'bienfaiteur' } :
-                        { accessLevel: { in: ['admin', 'super_admin'] } };
+        const baseWhere: Prisma.UserWhereInput = tabWhere(tab);
 
         // Tokens AND-ed, each satisfiable by any name column, so "Leila Be" matches
         // firstName="Leila" + lastName="Bennour" and the order is irrelevant
@@ -66,7 +68,7 @@ async function getUsers(
         // the scoped total (active + inactive partitions it exactly).
         const scopedWhere: Prisma.UserWhereInput = { ...baseWhere };
 
-        if (languageFilter && (LANGUAGE_VALUES as readonly string[]).includes(languageFilter)) {
+        if (languageFilter && (LANGUAGE_VALUES as readonly string[]).includes(languageFilter) && !lifted.includes('language')) {
             scopedWhere.languages = { some: { language: languageFilter as Language } };
         }
 
@@ -74,7 +76,7 @@ async function getUsers(
         // "en retard" = none (covers both lapsed cotisations and no cotisation at all).
         // Mirrors lib/cotisation.ts computeCotisationStatus: calendar-year coverage via
         // cotisationYear, with the legacy rolling rule for rows that predate it.
-        if (cotisationFilter === 'a_jour' || cotisationFilter === 'en_retard') {
+        if ((cotisationFilter === 'a_jour' || cotisationFilter === 'en_retard') && !lifted.includes('cotisation')) {
             const { currentYear, legacyCutoff } = cotisationCoverageQuery();
             const cotisationMatch: Prisma.PaymentWhereInput = {
                 type: 'COTISATION',
@@ -105,7 +107,7 @@ async function getUsers(
         // is not in force reads as Actif), so it is a `where` fragment, not a plain
         // column comparison — wrapped in AND so it can't collide with the search's
         // own AND on scopedWhere.
-        const statusWhere = activityStatusFilterWhere(statusFilter);
+        const statusWhere = lifted.includes('status') ? null : activityStatusFilterWhere(statusFilter);
         const listWhere: Prisma.UserWhereInput = statusWhere
             ? { AND: [scopedWhere, statusWhere] }
             : scopedWhere;
@@ -144,11 +146,10 @@ async function getUsers(
             prisma.user.count({ where: inactiveWhere }),
         ]);
 
-        // Only when the search found nobody — see lib/search-suggest.ts.
+        // Only when the search found nobody — see lib/search-rescue.ts.
         const searchSuggestions =
             totalUsers === 0 && searchTerm
-                ? await suggestSearches(searchTerm, ['people'], (q) =>
-                    prisma.user.count({ where: wheresFor(q).listWhere }))
+                ? await rescueUsers(searchTerm, userType, wheresFor, { statusFilter, languageFilter, cotisationFilter })
                 : [];
 
         return {
@@ -166,6 +167,95 @@ async function getUsers(
         console.error('Error fetching users:', error);
         throw new Error('Failed to fetch users');
     }
+}
+
+/** Who each tab lists. */
+function tabWhere(tab: UserType): Prisma.UserWhereInput {
+    return tab === 'auditeurs' ? { memberType: 'auditeur' } :
+        tab === 'lecteurs' ? { memberType: 'lecteur' } :
+            tab === 'bienfaiteurs' ? { memberType: 'bienfaiteur' } :
+                { accessLevel: { in: ['admin', 'super_admin'] } };
+}
+
+/**
+ * « Essayez plutôt » for the membres — lib/search-rescue.ts. Besides the
+ * filters, the other TABS are scopes: the commonest empty search here is a
+ * lecteur looked for among the auditeurs, and « Trouvé dans « Lecteurs » »
+ * answers it where « Vouliez-vous dire » never could.
+ */
+async function rescueUsers(
+    search: string,
+    userType: UserType,
+    wheresFor: (term: string, lifted?: string[], tab?: UserType) => { listWhere: Prisma.UserWhereInput },
+    active: { statusFilter: string; languageFilter: string; cotisationFilter: string },
+): Promise<RescueSuggestion[]> {
+    const filters: RescueFilter[] = [];
+    const status = active.statusFilter;
+    if (activityStatusFilterWhere(status)) {
+        filters.push({
+            key: 'status',
+            label: status === 'ACTIVE' || status === 'active' ? 'Actifs'
+                : status === 'inactive' ? 'Inactifs'
+                    : `Statut : ${getUserActivityStatusLabel(status)}`,
+        });
+    }
+    if (active.cotisationFilter === 'a_jour' || active.cotisationFilter === 'en_retard') {
+        filters.push({
+            key: 'cotisation',
+            label: active.cotisationFilter === 'a_jour' ? 'Cotisation à jour' : 'Cotisation non à jour',
+        });
+    }
+    if (active.languageFilter && (LANGUAGE_VALUES as readonly string[]).includes(active.languageFilter)) {
+        filters.push({ key: 'language', label: `Langue : ${getLanguageLabel(active.languageFilter)}` });
+    }
+    const scopes: RescueFilter[] = USER_TYPE_VALUES
+        .filter((tab) => tab !== userType)
+        .map((tab) => ({ key: tab, label: USER_TYPE_META[tab].plural }));
+
+    const whereOf = (q: { query: string; lifted: string[]; scope?: string }) =>
+        wheresFor(q.query, q.lifted, isUserType(q.scope ?? '') ? (q.scope as UserType) : userType).listWhere;
+
+    return rescueEmptySearch({
+        search,
+        domains: ['people'],
+        filters,
+        scopes,
+        count: (q) => prisma.user.count({ where: whereOf(q) }),
+        find: (q) =>
+            prisma.user.findMany({
+                where: whereOf(q),
+                orderBy: { id: 'desc' },
+                take: RESCUE_CANDIDATES,
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    firstName: true,
+                    lastName: true,
+                    memberType: true,
+                    accessLevel: true,
+                    activityStatus: true,
+                    unavailableFrom: true,
+                    unavailableUntil: true,
+                    languages: { select: { language: true } },
+                },
+            }),
+        rankText: (u) => [u.firstName, u.lastName, u.name, u.email].filter(Boolean).join(' '),
+        toRow: (u, q): RescueRow => ({
+            id: u.id,
+            title: getUserDisplayName(u),
+            detail: [
+                u.accessLevel === 'admin' || u.accessLevel === 'super_admin'
+                    ? getAccessLevelLabel(u.accessLevel)
+                    : u.memberType ? getMemberTypeLabel(u.memberType) : null,
+                u.email,
+            ].filter(Boolean).join(' · '),
+            note: rescueNote(q.lifted, {
+                status: () => getUserActivityStatusLabel(resolveEffectiveActivityStatus(u)),
+                language: () => u.languages.map((l) => getLanguageLabel(l.language)).join(', ') || 'Aucune langue',
+            }),
+        }),
+    });
 }
 
 export default async function UsersPage({ params, searchParams }: PageProps) {

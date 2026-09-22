@@ -55,8 +55,8 @@ import {
     type PaymentSortField,
 } from '@/lib/payments/list-params';
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface PaymentsTableProps {
     initialPayments: Payment[];
@@ -71,7 +71,7 @@ interface PaymentsTableProps {
     hideSearch?: boolean;
     presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null } | null;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }
 
 /**
@@ -154,6 +154,12 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
 const frDay = (iso: string) => {
     const [y, m, d] = iso.split('-');
     return `${d}/${m}/${y}`;
+};
+
+/** The URL parameters behind each filter key of `activeFilters`, when they differ. */
+const LIFTED_PARAMS: Record<string, string[]> = {
+    method: ['paymentMethod'],
+    period: ['from', 'to'],
 };
 
 export default function PaymentsTable({
@@ -557,12 +563,20 @@ export default function PaymentsTable({
                     {initialPayments.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground text-lg">Aucun paiement trouvé</p>
-                            <SearchSuggestions
+                            <SearchRescue
                                 suggestions={searchSuggestions}
-                                onPick={(q) => {
-                                    setSearchTerm(q);
-                                    updateUrl({ search: q, page: '1' });
+                                unit={{ one: 'paiement', many: 'paiements' }}
+                                // Keyed like `activeFilters` above, which already names them.
+                                filterLabel={(key) => activeFilters.find((f) => f.key === key)?.label ?? key}
+                                onApply={(s) => {
+                                    setSearchTerm(s.query);
+                                    const lifted: Record<string, undefined> = {};
+                                    for (const key of s.lifted) {
+                                        for (const param of LIFTED_PARAMS[key] ?? [key]) lifted[param] = undefined;
+                                    }
+                                    updateUrl({ ...lifted, search: s.query, page: '1' });
                                 }}
+                                onOpenRow={(row) => setViewPaymentId(Number(row.id))}
                             />
                         </div>
                     ) : (

@@ -1,6 +1,6 @@
 // types/news.ts
 import { News } from '@prisma/client';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 export type NewsType = News['type'];
 
@@ -25,7 +25,7 @@ export interface NewsResponse {
     totalPages: number;
     currentPage: number;
     totalItems: number;
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }
 
 export const newsTypeLabels: Record<NewsType, string> = {

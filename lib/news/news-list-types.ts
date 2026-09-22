@@ -1,4 +1,4 @@
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { NewsType } from '@/types/news';
 
 /**
@@ -51,5 +51,5 @@ export interface AdminNewsResult {
     typeCounts: Record<NewsType, number>;
     /** Toutes les infos de la recherche courante, tous types confondus. */
     allCount: number;
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion[];
 }

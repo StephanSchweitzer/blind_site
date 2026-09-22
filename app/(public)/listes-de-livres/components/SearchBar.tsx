@@ -8,8 +8,8 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command";
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface SearchPreviewResult {
     id: number;
@@ -29,7 +29,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                                         onResultSelect,
                                                     }) => {
     const [results, setResults] = useState<SearchPreviewResult[]>([]);
-    const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+    const [suggestions, setSuggestions] = useState<RescueSuggestion<RescueRow & { description: string }>[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [debouncedValue] = useDebounce(searchTerm, 300);
@@ -47,7 +47,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 // `suggest=1` : « Vouliez-vous dire … ? » quand rien n'est trouvé.
                 const response = await fetch(`/api/listes-de-livres/preview?search=${encodeURIComponent(debouncedValue)}&suggest=1`);
                 if (response.ok) {
-                    const data: { results: SearchPreviewResult[]; searchSuggestions: SearchSuggestion[] } =
+                    const data: { results: SearchPreviewResult[]; searchSuggestions: RescueSuggestion<RescueRow & { description: string }>[] } =
                         await response.json();
                     setResults(data.results);
                     setSuggestions(data.searchSuggestions);
@@ -137,7 +137,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                     </svg>
                                 </div>
                                 <span className="text-gray-700 dark:text-gray-300 font-medium">Aucun résultat trouvé</span>
-                                <SearchSuggestions suggestions={suggestions} onPick={handleInputChange} className="px-4" />
+                                <SearchRescue
+                                    suggestions={suggestions}
+                                    unit={{ one: 'liste', many: 'listes', feminine: true }}
+                                    onApply={(s) => handleInputChange(s.query)}
+                                    onOpenRow={(row) =>
+                                        handleSelect({ id: Number(row.id), title: row.title, description: row.description })}
+                                    compact
+                                    className="px-4"
+                                />
                             </div>
                         </CommandEmpty>
                     ) : (

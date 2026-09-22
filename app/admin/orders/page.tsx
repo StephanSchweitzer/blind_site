@@ -11,7 +11,11 @@ import {
 } from '@/lib/orders/duplicationBlocked';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
+import { getOrderBillingStatusLabel, BILLING_STATUS_LABELS } from '@/lib/billing-enums';
+import { getUserNameOnly } from '@/lib/users/displayName';
+import { parisDate } from '@/lib/paris-day';
+import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface PageProps {
     searchParams: Promise<{
@@ -30,17 +34,20 @@ async function getOrders(
     billingStatus?: string,
     isDuplication?: string,
     retard?: string,
-    bookId?: number
+    filterBook?: { id: number; title: string }
 ) {
+    const bookId = filterBook?.id;
     const ordersPerPage = 10;
 
     // The whole where clause for a given search term — a function so the
-    // « Vouliez-vous dire » check counts another term under the same filters.
-    const whereFor = (searchTerm: string): Prisma.OrdersWhereInput => {
+    // « Essayez plutôt » block can count another term, or the same one with
+    // some filters `lifted` (keyed by URL parameter) — see lib/search-rescue.ts.
+    const whereFor = (searchTerm: string, lifted: string[] = []): Prisma.OrdersWhereInput => {
         const whereClause: Prisma.OrdersWhereInput = {};
+        const on = (key: string) => !lifted.includes(key);
 
         // « Ce livre » — see lib/books/bookFilter.ts.
-        if (bookId) {
+        if (bookId && on('bookId')) {
             whereClause.catalogueId = bookId;
         }
 
@@ -51,13 +58,13 @@ async function getOrders(
             if (tokenClauses) whereClause.AND = tokenClauses;
         }
 
-        if (filter === 'needsReturn') {
+        if (filter === 'needsReturn' && on('filter')) {
             whereClause.AND = [
                 ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
                 { lentPhysicalBook: true },
                 { closureDate: null },
             ];
-        } else if (filter === 'late') {
+        } else if (filter === 'late' && on('filter')) {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             whereClause.AND = [
@@ -67,17 +74,21 @@ async function getOrders(
             ];
         }
 
-        if (statusId) {
+        if (statusId && on('statusId')) {
             whereClause.statusId = statusId;
         }
 
-        if (billingStatus === 'PAID') {
+        if (!on('billingStatus')) {
+            // Lifted by a proposal.
+        } else if (billingStatus === 'PAID') {
             whereClause.bill = { is: { state: BillingStatus.PAID } };
         } else if (billingStatus && billingStatus !== 'all') {
             whereClause.billingStatus = billingStatus as OrderBillingStatus;
         }
 
-        if (isDuplication === 'true') {
+        if (!on('isDuplication')) {
+            // Lifted by a proposal.
+        } else if (isDuplication === 'true') {
             whereClause.isDuplication = true;
         } else if (isDuplication === 'false') {
             whereClause.isDuplication = false;
@@ -86,7 +97,9 @@ async function getOrders(
             Object.assign(whereClause, blockedDuplicationWhere);
         }
 
-        if (retard === 'true') {
+        if (!on('retard')) {
+            // Lifted by a proposal.
+        } else if (retard === 'true') {
             const existingConditions = Array.isArray(whereClause.AND)
                 ? whereClause.AND
                 : whereClause.AND
@@ -146,11 +159,13 @@ async function getOrders(
             }),
         ]);
 
-        // Only when the search found nothing — see lib/search-suggest.ts.
+        // Only when the search found nothing — see lib/search-rescue.ts.
         const searchSuggestions =
             totalOrders === 0 && searchTerm
-                ? await suggestSearches(searchTerm, ['people', 'books'], (q) =>
-                    prisma.orders.count({ where: whereFor(q) }))
+                ? await rescueOrders(searchTerm, whereFor, {
+                    filter, statusId, billingStatus, isDuplication, retard, filterBook,
+                    statusName: (id) => statuses.find((st) => st.id === id)?.name ?? String(id),
+                })
                 : [];
 
         // Derived on read, one query for the page — see lib/orders/duplicationBlocked.ts.
@@ -168,6 +183,82 @@ async function getOrders(
         console.error('Error fetching orders:', error);
         throw new Error('Failed to fetch orders');
     }
+}
+
+/** Past this, an open demande reads « En retard » (the Retard filter's own rule). */
+const LATE_AFTER_MONTHS = 3;
+
+/**
+ * « Essayez plutôt » for the demandes — lib/search-rescue.ts. The filters are
+ * named as their selects name them, and each demande found says what the
+ * lifted filter held against it (its status, its facturation…).
+ */
+async function rescueOrders(
+    search: string,
+    whereFor: (term: string, lifted?: string[]) => Prisma.OrdersWhereInput,
+    active: {
+        filter: string;
+        statusId?: number;
+        billingStatus?: string;
+        isDuplication?: string;
+        retard?: string;
+        filterBook?: { id: number; title: string };
+        statusName: (id: number) => string;
+    },
+): Promise<RescueSuggestion[]> {
+    const filters: RescueFilter[] = [];
+    if (active.filterBook) filters.push({ key: 'bookId', label: `Livre : ${active.filterBook.title}` });
+    if (active.statusId) filters.push({ key: 'statusId', label: `Statut : ${active.statusName(active.statusId)}` });
+    if (active.billingStatus && active.billingStatus !== 'all') {
+        filters.push({
+            key: 'billingStatus',
+            label: `Facturation : ${active.billingStatus === 'PAID'
+                ? BILLING_STATUS_LABELS.PAID
+                : getOrderBillingStatusLabel(active.billingStatus)}`,
+        });
+    }
+    const types: Record<string, string> = { true: 'Duplication', false: 'Enregistrement', blocked: 'Duplication en attente' };
+    if (active.isDuplication && types[active.isDuplication]) {
+        filters.push({ key: 'isDuplication', label: `Type : ${types[active.isDuplication]}` });
+    }
+    if (active.retard === 'true' || active.retard === 'false') {
+        filters.push({ key: 'retard', label: active.retard === 'true' ? 'En retard' : 'À jour' });
+    }
+    if (active.filter === 'needsReturn') filters.push({ key: 'filter', label: 'Livre prêté à rendre' });
+    if (active.filter === 'late') filters.push({ key: 'filter', label: 'Ouverte depuis plus de 30 jours' });
+
+    const lateBefore = new Date();
+    lateBefore.setMonth(lateBefore.getMonth() - LATE_AFTER_MONTHS);
+
+    return rescueEmptySearch({
+        search,
+        domains: ['people', 'books'],
+        filters,
+        count: (q) => prisma.orders.count({ where: whereFor(q.query, q.lifted) }),
+        find: (q) =>
+            prisma.orders.findMany({
+                where: whereFor(q.query, q.lifted),
+                orderBy: { requestReceivedDate: 'desc' },
+                take: RESCUE_CANDIDATES,
+                include: ordersTableInclude,
+            }),
+        rankText: (o) => `${o.catalogue?.title ?? ''} ${o.catalogue?.author ?? ''} ${getUserNameOnly(o.aveugle)} ${o.id}`,
+        toRow: (o, q): RescueRow => ({
+            id: o.id,
+            title: `Demande n°${o.id} — ${o.catalogue?.title ?? 'sans livre'}`,
+            detail: [getUserNameOnly(o.aveugle), parisDate(o.requestReceivedDate)].filter(Boolean).join(' · '),
+            note: rescueNote(q.lifted, {
+                bookId: () => o.catalogue?.title ?? null,
+                statusId: () => o.status?.name ?? null,
+                billingStatus: () => o.bill?.state === 'PAID'
+                    ? BILLING_STATUS_LABELS.PAID
+                    : getOrderBillingStatusLabel(o.billingStatus),
+                isDuplication: () => (o.isDuplication ? 'Duplication' : 'Enregistrement'),
+                retard: () => (o.requestReceivedDate < lateBefore && o.statusId !== 3 ? 'En retard' : 'À jour'),
+                filter: () => (o.closureDate ? 'Clôturée' : 'En cours'),
+            }),
+        }),
+    });
 }
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
@@ -198,7 +289,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
             billingStatus,
             isDuplication,
             retard,
-            filterBook?.id
+            filterBook ?? undefined
         ));
     } catch (error) {
         console.error('Error in Admin Orders page:', error);

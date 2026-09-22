@@ -4,7 +4,9 @@ import { Prisma } from '@prisma/client';
 import { GenresTable } from './genres-table';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildGenreSearchWhere } from '@/lib/search';
-import { suggestSearches } from '@/lib/search-suggest';
+import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
+import type { RescueRow } from '@/lib/search-suggestion-types';
+import type { GenreRow } from './genres-table';
 
 interface PageProps {
     searchParams: Promise<{
@@ -38,10 +40,29 @@ async function getGenres(page: number, searchTerm: string) {
         prisma.genre.count({ where: whereClause }),
     ]);
 
-    // Only when the search found nothing — see lib/search-suggest.ts.
+    // Only when the search found nothing — see lib/search-rescue.ts. Each row
+    // carries the genre itself, so a click opens its edit dialogue directly.
     const searchSuggestions =
         totalGenres === 0 && searchTerm
-            ? await suggestSearches(searchTerm, ['genres'], (q) => prisma.genre.count({ where: whereFor(q) }))
+            ? await rescueEmptySearch({
+                search: searchTerm,
+                domains: ['genres'],
+                count: (q) => prisma.genre.count({ where: whereFor(q.query) }),
+                find: (q) =>
+                    prisma.genre.findMany({
+                        where: whereFor(q.query),
+                        orderBy: { name: 'asc' },
+                        take: RESCUE_CANDIDATES,
+                        include: { _count: { select: { books: true } } },
+                    }),
+                rankText: (g) => g.name,
+                toRow: ({ _count, ...g }): RescueRow & { genre: GenreRow } => ({
+                    id: g.id,
+                    title: g.name,
+                    detail: `${_count.books} livre${_count.books > 1 ? 's' : ''}`,
+                    genre: { ...g, booksCount: _count.books },
+                }),
+            })
             : [];
 
     return {

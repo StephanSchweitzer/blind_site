@@ -19,8 +19,8 @@ import { AddGenreFormBackend, EditGenreFormBackend } from '@/admin/GenreFormBack
 import { CopyableId } from '@/admin/CopyableId';
 import type { Genre } from '@/types';
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { SearchRescue } from '@/components/ui/search-rescue';
+import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 export interface GenreRow extends Genre {
     /** Books already carrying this genre — surfaced in the edit dialogue. */
@@ -33,7 +33,7 @@ interface GenresTableProps {
     initialSearch: string;
     totalPages: number;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: RescueSuggestion<RescueRow & { genre: GenreRow }>[];
 }
 
 export function GenresTable({ initialGenres, initialSearch, totalPages, searchSuggestions }: GenresTableProps) {
@@ -158,7 +158,12 @@ export function GenresTable({ initialGenres, initialSearch, totalPages, searchSu
                     </Table>
                 </div>
                 {initialGenres.length === 0 && (
-                    <SearchSuggestions suggestions={searchSuggestions} onPick={handleSearch} />
+                    <SearchRescue
+                        suggestions={searchSuggestions}
+                        unit={{ one: 'genre', many: 'genres' }}
+                        onApply={(s) => handleSearch(s.query)}
+                        onOpenRow={(row) => setEditing(row.genre)}
+                    />
                 )}
 
                 <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
