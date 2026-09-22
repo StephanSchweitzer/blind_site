@@ -73,17 +73,20 @@ const DurationInputs: React.FC<DurationInputsProps> = ({ formData, bookId, onMea
             setProblems(data?.problems ?? []);
             onMeasured?.(data?.readingDurationMinutes ?? null);
 
-            if (data?.readingDurationMinutes != null) {
+            const measured = data?.measured ?? 0;
+            const failed = data?.failed ?? 0;
+            if (measured + failed === 0) {
+                setMessage('Ce livre n’a aucun fichier audio : la durée a été remise à zéro.');
+            } else if (data?.readingDurationMinutes != null) {
                 setMessage(
-                    `${data.measured} piste${data.measured > 1 ? 's' : ''} mesurée${
-                        data.measured > 1 ? 's' : ''
+                    `${measured} piste${measured > 1 ? 's' : ''} mesurée${
+                        measured > 1 ? 's' : ''
                     }.`,
                 );
             } else {
                 setMessage(
-                    `Durée non calculée : ${data?.failed ?? 0} piste(s) illisible(s) sur ` +
-                        `${(data?.measured ?? 0) + (data?.failed ?? 0)}. La durée n’est écrite ` +
-                        'que si toutes les pistes ont pu être mesurées.',
+                    `Durée non calculée : ${failed} piste(s) illisible(s) sur ${measured + failed}. ` +
+                        'La durée n’est écrite que si toutes les pistes ont pu être mesurées.',
                 );
             }
         } catch {

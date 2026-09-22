@@ -58,24 +58,29 @@ export const POST = withAdmin(async (_req, { params, me }) => {
         );
     }
 
-    if (!result.tracks.length) {
-        return NextResponse.json(
-            { message: 'Ce livre n’a aucun fichier audio à mesurer.' },
-            { status: 409 },
-        );
-    }
+    // Read what was stored before touching anything, so the revalidation below
+    // can tell a real move (including down to nothing) from a re-read that
+    // confirms the same figure.
+    const before = await prisma.book.findUnique({
+        where: { id: bookId },
+        select: { readingDurationMinutes: true },
+    });
 
     // Re-read the folder so the duration lands next to a track count and weight
     // taken at the same moment, and so the cached columns cannot disagree with
-    // the number just written.
+    // the number just written. Called even when measureBookDurations found no
+    // tracks at all: a book whose audio was removed still needs its stale
+    // readingDurationMinutes cleared, not left describing files that are gone.
     const state = await refreshBookAudioState(bookId, me.id);
     const book = await prisma.book.findUnique({
         where: { id: bookId },
         select: { readingDurationMinutes: true },
     });
 
-    // Only worth invalidating when a figure actually reached the public pages.
-    if (book?.readingDurationMinutes != null) {
+    // Worth invalidating whenever a figure reached the public pages, or just
+    // stopped doing so — a duration cleared to null is as much a change to the
+    // catalogue as one newly filled in.
+    if (book?.readingDurationMinutes != null || before?.readingDurationMinutes != null) {
         revalidateAdmin();
         revalidateCatalogue();
     }

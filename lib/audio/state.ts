@@ -179,11 +179,20 @@ export async function refreshBookAudioState(
     let status: AudioLinkStatusValue;
     let trackCount: number | null = null;
     let sizeKb: number | null = null;
-    /** Set only when every current track's duration is known — see below. */
-    let readingDurationMinutes: number | undefined;
+    /**
+     * undefined = leave whatever is stored (a partial measurement, or no
+     * recompute asked for); null = write "no duration", when recomputing found
+     * zero current tracks; a number = the freshly summed total.
+     */
+    let readingDurationMinutes: number | null | undefined;
 
     if (!prefix) {
         status = 'NO_PATH';
+        // No folder at all means, unambiguously, no audio to sum — unlike the
+        // partial-failure case below, there is no uncertainty to preserve the
+        // old figure against. Only on a real recompute: the read-only callers
+        // (dialogue open) must not blank a duration nothing asked to touch.
+        if (recomputeDuration) readingDurationMinutes = null;
     } else {
         const allObjects = objects ?? (await listRawObjects(prefix));
         // Nested objects are excluded here on purpose, matching
@@ -220,8 +229,12 @@ export async function refreshBookAudioState(
             // The folder exists — B2's .bzEmpty placeholder or some stray file —
             // but holds no audio.
             status = 'FOLDER_EMPTY';
+            // Zero tracks in the folder is, again, a certain answer rather than
+            // a partial one: nothing understates a recording that has none.
+            if (recomputeDuration) readingDurationMinutes = null;
         } else {
             status = 'FOLDER_MISSING';
+            if (recomputeDuration) readingDurationMinutes = null;
         }
     }
 
