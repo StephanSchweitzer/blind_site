@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import {
     AssignmentUpdateInputSchema,
@@ -139,6 +140,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         }
 
         const newStatusId = validation.data.statusId;
+
+        // L'attribution quitte « Terminé » : le lecteur reprend un enregistrement
+        // que le livre affichait comme « Disponible » sur la seule foi de son dépôt
+        // (voir /api/books/[id]/audio/commit, l'autre écrivain de ce champ). Tant
+        // que l'audio repassé n'est pas re-déposé et confirmé, le livre redevient
+        // « En attente ».
+        const assignmentLeavesTermine =
+            newStatusId !== undefined && leavesTermine(existingAssignment.statusId, newStatusId);
 
         // ── La demande rattachée à une facture, vue depuis l'attribution ─────────
         // Rouvrir une attribution rouvre sa demande (syncOrderToStatus). Si cette
@@ -359,6 +368,16 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 include: assignmentIncludeConfigs.all,
             });
 
+            // Voir le commentaire sur assignmentLeavesTermine plus haut : le champ
+            // n'est pas dérivé (lib/audit/config.ts), donc cette écriture reste
+            // tracée dans le journal comme n'importe quel autre changement du livre.
+            if (assignmentLeavesTermine) {
+                await tx.book.update({
+                    where: { id: existingAssignment.catalogueId },
+                    data: { available: false },
+                });
+            }
+
             // Track the attribution's own processing history — creation is logged
             // where the assignment is created; this is every status transition
             // after that, made directly here.
@@ -432,6 +451,10 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
             return { assignment, orderTransition, billDetached };
         });
+
+        if (assignmentLeavesTermine) {
+            revalidateCatalogue();
+        }
 
         return NextResponse.json({
             message: 'Attribution mise à jour avec succès',
