@@ -64,7 +64,7 @@ Vous pouvez saisir ici le nom de l'auditeur à l'origine de la demande, ainsi qu
 
 Vous devrez également ajouter un ouvrage. Vous pouvez soit (1) rechercher un ouvrage déjà présent dans la base de données, soit (2) en créer un nouveau, qui sera lui aussi ajouté à la base de données.
 
-Si vous souhaitez gagner du temps et envoyer plusieurs demandes pour le même auditeur en même temps, vous pouvez (3) cliquer sur le bouton « Ajouter un ouvrage » et saisir le titre d'un autre livre. Vous pouvez répéter cette opération autant de fois que vous le souhaitez ; une nouvelle demande sera créée pour chaque livre.
+Si vous souhaitez gagner du temps et envoyer plusieurs demandes pour le même auditeur en même temps, vous pouvez (3) cliquer sur le bouton « Ajouter un ouvrage » et saisir le titre d'un autre livre. Vous pouvez répéter cette opération autant de fois que vous le souhaitez ; une nouvelle demande sera créée pour chaque livre. Le bouton de validation n'annonce que les lignes où un livre a été choisi ; une ligne restée vide est signalée « sans livre » et doit être complétée ou retirée avant de valider.
 
 Vous pouvez également saisir un coût spécifique pour la demande. Par défaut, le coût est de **3 € par CD** d'enregistrement, et de 3 € tant que le livre n'est pas encore enregistré.
 

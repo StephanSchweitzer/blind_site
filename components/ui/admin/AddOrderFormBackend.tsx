@@ -261,8 +261,15 @@ export function AddOrderFormBackend({
         updateLine(key, { book, ...(suggested ? { cost: suggested.value } : {}) });
     };
 
-    const dupCount = lines.filter(l => l.type === 'DUPLICATION').length;
-    const recCount = lines.length - dupCount;
+    // Counted over the lines that carry a book only. A fresh line is born
+    // « Duplication » with no book, so counting every line announced « 14
+    // duplications » / « Créer 14 demandes » over 11 books chosen — three
+    // forgotten empty lines — and the submit then refused the lot.
+    const filledLines = lines.filter(l => l.book);
+    const filledCount = filledLines.length;
+    const emptyCount = lines.length - filledCount;
+    const dupCount = filledLines.filter(l => l.type === 'DUPLICATION').length;
+    const recCount = filledCount - dupCount;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -456,7 +463,12 @@ export function AddOrderFormBackend({
                     <div className="space-y-3 pt-4 border-t border-border">
                         <div className="flex items-center justify-between">
                             <h3 ref={registerField('lines')} tabIndex={-1} className="text-sm font-medium text-muted-foreground uppercase tracking-wide outline-none">Ouvrages ({lines.length})</h3>
-                            <span className="text-xs text-muted-foreground">{dupCount} duplication(s) · {recCount} enregistrement(s)</span>
+                            <span className="text-xs text-muted-foreground">
+                                {dupCount} duplication(s) · {recCount} enregistrement(s)
+                                {emptyCount > 0 && (
+                                    <span className="text-amber-600 dark:text-amber-400"> · {emptyCount} sans livre</span>
+                                )}
+                            </span>
                         </div>
 
                         {lines.map((line, idx) => (
@@ -572,14 +584,27 @@ export function AddOrderFormBackend({
                     </div>
 
                     <div className="rounded-md bg-card/50 border border-border p-3 text-sm text-foreground">
-                        {lines.length === 1
-                            ? '1 ouvrage → 1 demande sera créée. Le numéro sera attribué lors de la soumission.'
-                            : `${lines.length} ouvrages → ${lines.length} demandes seront créées. Les numéros seront attribués lors de la soumission.`}
+                        {filledCount === 0
+                            ? 'Aucun livre choisi pour le moment.'
+                            : filledCount === 1
+                                ? '1 ouvrage → 1 demande sera créée. Le numéro sera attribué lors de la soumission.'
+                                : `${filledCount} ouvrages → ${filledCount} demandes seront créées. Les numéros seront attribués lors de la soumission.`}
+                        {emptyCount > 0 && (
+                            <p className="mt-1 text-amber-700 dark:text-amber-300">
+                                {emptyCount === 1
+                                    ? '1 ligne sans livre : choisissez un livre ou retirez-la avant de valider.'
+                                    : `${emptyCount} lignes sans livre : choisissez un livre ou retirez-les avant de valider.`}
+                            </p>
+                        )}
                     </div>
 
                     <Button type="submit" disabled={isLoading}
                             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent">
-                        {isLoading ? 'Création en cours...' : `Créer ${lines.length} ${lines.length === 1 ? 'demande' : 'demandes'}`}
+                        {isLoading
+                            ? 'Création en cours...'
+                            : filledCount === 0
+                                ? 'Créer la demande'
+                                : `Créer ${filledCount} ${filledCount === 1 ? 'demande' : 'demandes'}`}
                     </Button>
                 </form>
             </CardContent>
