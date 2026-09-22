@@ -122,3 +122,5 @@ La case « Tarifer à la page (pour les revues) » se retrouve aussi dans ce mod
 Si vous corrigez le livre d'une demande, l'attribution liée prend automatiquement le même livre.
 
 Si la demande est associée à une attribution ou à une facture déjà émise, la suppression sera refusée. Vous devez d'abord supprimer l'attribution, ou retirer la demande de la facture.
+
+Une demande supprimée n'apparaît plus dans les listes ni les recherches, mais reste consultable en rouvrant un lien qui pointe vers elle (depuis le journal des modifications ou une facture, par exemple) : le modal s'ouvre avec un bandeau rouge « Demande supprimée le … » et tous les champs en lecture seule.

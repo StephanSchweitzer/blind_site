@@ -164,22 +164,19 @@ export const GET = withAdmin(async (request, { params }) => {
 
         const order = await prisma.orders.findUnique(relationArgs);
 
-        // findUnique n'est pas filtré par l'extension soft-delete (lib/prisma.ts) :
-        // Prisma y interdit un `where` non unique. Le contrôle se fait donc ici,
-        // comme sur GET /api/assignments/[id]. `select`/`include` étant variables
-        // selon le mode, on relit le drapeau plutôt que d'exiger qu'il soit demandé.
-        const deleted = await prisma.orders.findUnique({
-            where: { id: orderId },
-            select: { deletedAt: true },
-        });
-
-        if (!order || deleted?.deletedAt) {
+        if (!order) {
             return NextResponse.json(
                 { message: 'Demande non trouvée' },
                 { status: 404 }
             );
         }
 
+        // findUnique n'est pas filtré par l'extension soft-delete (lib/prisma.ts) :
+        // une demande supprimée reste donc joignable par id, volontairement — un
+        // lien du journal ou une URL ouverte à la main doit continuer à mener
+        // quelque part, comme GET /api/books/[id] et GET /api/user/[id]. C'est
+        // au front d'afficher le bandeau « supprimée » (voir OrderDeletedNotice) :
+        // deletedAt n'est retiré d'aucun select/include ci-dessus.
         return NextResponse.json(order);
     } catch (error) {
         console.error('Error fetching order:', error);

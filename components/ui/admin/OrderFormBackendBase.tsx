@@ -125,6 +125,8 @@ interface OrderFormBackendBaseProps {
     initialBill?: { id: number; state: string } | null;
     // Linked affectation (read-only context)
     initialAssignment?: OrderAssignment | null;
+    /** Greys out and disables every field/button — set when the demande is soft-deleted. */
+    readOnly?: boolean;
 }
 
 // Euro display helpers: keep only digits + one decimal separator while typing,
@@ -155,6 +157,7 @@ export function OrderFormBackendBase({
                                          initialSelectedStaff,
                                          initialBill,
                                          initialAssignment,
+                                         readOnly = false,
                                      }: OrderFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -655,7 +658,8 @@ export function OrderFormBackendBase({
                     </Alert>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit}>
+                    <fieldset disabled={readOnly} className="space-y-4 disabled:opacity-60">
                     {/* User Search (Aveugle) */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
@@ -1262,6 +1266,7 @@ export function OrderFormBackendBase({
                             </Button>
                         )}
                     </div>
+                    </fieldset>
                 </form>
             </CardContent>
         </Card>

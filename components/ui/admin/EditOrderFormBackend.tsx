@@ -20,6 +20,7 @@ import {
 import { BillPrintNoticeDialog, type BillPrintNotice } from '@/admin/BillPrintNoticeDialog';
 import { ErrorToastBody } from '@/admin/AssignmentFormErrors';
 import { pagePricingToPayload } from '@/lib/orders/pagePricingForm';
+import OrderDeletedNotice from '@/admin/OrderDeletedNotice';
 
 // Edit Order Form using the base
 export function EditOrderFormBackend({
@@ -30,6 +31,7 @@ export function EditOrderFormBackend({
                                          initialSelectedBook,
                                          initialSelectedStaff,
                                          initialBill,
+                                         deletedAt,
                                      }: {
     orderId: string;
     initialData: OrderFormData;
@@ -38,6 +40,8 @@ export function EditOrderFormBackend({
     initialSelectedBook?: Book | null;
     initialSelectedStaff?: User | null;
     initialBill?: { id: number; state: string } | null;
+    /** ISO string when this demande is soft-deleted; null/undefined otherwise. */
+    deletedAt?: string | null;
 }) {
     const { toast } = useToast();
 
@@ -245,6 +249,7 @@ export function EditOrderFormBackend({
 
     return (
         <>
+            {deletedAt && <OrderDeletedNotice deletedAt={deletedAt} />}
             <OrderFormBackendBase
                 initialData={initialData}
                 currentOrderId={parseInt(orderId)}
@@ -260,6 +265,7 @@ export function EditOrderFormBackend({
                 initialSelectedStaff={initialSelectedStaff}
                 initialBill={initialBill}
                 initialAssignment={assignment}
+                readOnly={!!deletedAt}
             />
 
             {/* Un avis qui se termine par « imprimez ce document » porte le bouton

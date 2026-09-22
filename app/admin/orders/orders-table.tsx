@@ -98,6 +98,8 @@ export default function OrdersTable({
         selectedBook: OrderBookOption;
         selectedStaff: OrderUserOption | null;
         bill: SerializedOrderTableRow['bill'];
+        /** ISO string when this demande is soft-deleted (open via ?order= deep-link only); null otherwise. */
+        deletedAt: string | null;
     } | null>(null);
 
     const currentPage = initialPage;
@@ -175,7 +177,7 @@ export default function OrdersTable({
         router.refresh();
     };
 
-    const handleRowClick = async (order: SerializedOrderTableRow) => {
+    const handleRowClick = async (order: SerializedOrderTableRow & { deletedAt?: string | null }) => {
         setIsLoadingOrder(true);
 
         try {
@@ -233,6 +235,7 @@ export default function OrdersTable({
                 selectedBook: bookData,
                 selectedStaff: staffData,
                 bill: order.bill,
+                deletedAt: order.deletedAt ?? null,
             });
 
             // Open modal only after all data is ready and validated
@@ -257,7 +260,10 @@ export default function OrdersTable({
         try {
             const response = await fetch(`/api/orders/${orderId}?mode=full&include=bill`);
             if (!response.ok) throw new Error('Failed to fetch order');
-            const order: SerializedOrderTableRow = await response.json();
+            // mode=full returns every scalar column, deletedAt included — a
+            // soft-deleted demande no longer 404s here (GET /api/orders/[id]),
+            // so a deep-link can open it with the banner instead of an error toast.
+            const order: SerializedOrderTableRow & { deletedAt: string | null } = await response.json();
             await handleRowClick(order);
         } catch (error) {
             console.error('Error loading order from deep-link:', error);
@@ -850,6 +856,7 @@ export default function OrdersTable({
                     initialSelectedBook={selectedOrder.selectedBook}
                     initialSelectedStaff={selectedOrder.selectedStaff}
                     initialBill={selectedOrder.bill}
+                    deletedAt={selectedOrder.deletedAt}
                 />
             )}
         </Card>

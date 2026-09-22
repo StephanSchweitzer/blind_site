@@ -34,6 +34,8 @@ interface EditOrderModalProps {
     initialSelectedStaff?: User | null;
     // Linked bill (read-only context)
     initialBill?: { id: number; state: string } | null;
+    /** ISO string when this demande is soft-deleted; null/undefined otherwise. */
+    deletedAt?: string | null;
 }
 
 export function EditOrderModal({
@@ -47,6 +49,7 @@ export function EditOrderModal({
                                    initialSelectedBook,
                                    initialSelectedStaff,
                                    initialBill,
+                                   deletedAt,
                                }: EditOrderModalProps) {
     const handleSuccess = (orderId: number, isDeleted?: boolean) => {
         if (isDeleted) {
@@ -66,7 +69,7 @@ export function EditOrderModal({
             <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
                     <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
-                        Modifier la demande
+                        {deletedAt ? 'Demande supprimée' : 'Modifier la demande'}
                         {orderId && <CopyableId id={orderId} label="de la demande" />}
                     </DialogTitle>
                 </DialogHeader>
@@ -79,6 +82,7 @@ export function EditOrderModal({
                         initialSelectedBook={initialSelectedBook}
                         initialSelectedStaff={initialSelectedStaff}
                         initialBill={initialBill}
+                        deletedAt={deletedAt}
                     />
                 </div>
             </DialogContent>
