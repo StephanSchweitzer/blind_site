@@ -84,10 +84,49 @@ const SUGGESTION_PIECE_SPLIT = /[\s!-/:-@[-`{-~‘’‛ʼ´«»“”„‐–�
 
 const isNumber = (token: string) => /^\d+$/.test(token);
 
+/**
+ * Words that find nothing on their own. A drop that leaves only these
+ * (« Chercher sans « procès » : « le » ») lists half the table and helps no one.
+ */
+const FILLER_WORDS = new Set([
+    'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'au', 'aux', 'et', 'ou', 'en', 'dans', 'sur',
+    'sous', 'par', 'pour', 'avec', 'sans', 'ce', 'ces', 'cet', 'cette', 'son', 'sa', 'ses', 'mon',
+    'ma', 'mes', 'qui', 'que', 'est', 'il', 'elle', 'je', 'tu', 'nous', 'vous', 'ils', 'elles',
+]);
+
+const isFiller = (token: string) => {
+    const folded = foldForSearchKey(token);
+    return folded.length < MIN_PIECE_LENGTH || FILLER_WORDS.has(folded);
+};
+
+/**
+ * Edit distance (optimal string alignment: insert, delete, substitute, swap two
+ * neighbours). Re-ranks the trigram matches, which alone prefer a short common
+ * word to the right longer one: « bonzn » scores 0.43 against « bon » and 0.44
+ * against « bonzon » — a tie, won by the commoner word — while one letter
+ * separates it from « bonzon » and two from « bon ».
+ */
+function editDistance(a: string, b: string): number {
+    const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
+        Array.from({ length: b.length + 1 }, (__, j) => (i === 0 ? j : j === 0 ? i : 0)));
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+                d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+            }
+        }
+    }
+    return d[a.length][b.length];
+}
+
 interface VocabularyMatch {
     piece: string;
     word: string;
     similarity: number;
+    /** editDistance from the piece typed. */
+    distance: number;
 }
 
 /**
@@ -106,9 +145,9 @@ async function lookUpPieces(
         // each piece is already a word, and — only for those that are not —
         // its closest words. From Vercel to Supabase every round trip counts.
         const rows = await prisma.$queryRawUnsafe<
-            { piece: string; known: boolean; word: string | null; similarity: number | null }[]
+            { piece: string; known: boolean; word: string | null; fold: string | null; similarity: number | null }[]
         >(
-            `SELECT p.piece, p.known, v.word, v.similarity
+            `SELECT p.piece, p.known, v.word, v.fold, v.similarity
              FROM (
                  SELECT piece, EXISTS (
                      SELECT 1 FROM search_vocabulary
@@ -117,7 +156,7 @@ async function lookUpPieces(
                  FROM unnest($2::text[]) AS piece
              ) p
              LEFT JOIN LATERAL (
-                 SELECT word, similarity(fold, p.piece) AS similarity
+                 SELECT word, fold, similarity(fold, p.piece) AS similarity
                  FROM search_vocabulary
                  -- « % » is the trigram index's own pre-filter (similarity ≥ 0.3).
                  WHERE NOT p.known
@@ -132,7 +171,8 @@ async function lookUpPieces(
                  ORDER BY round((similarity(fold, p.piece) * 20)::numeric) DESC,
                           freq DESC,
                           word_similarity(p.piece, fold) DESC
-                 LIMIT 6
+                 -- More than are ever offered: editDistance re-ranks them below.
+                 LIMIT 10
              ) v ON true`,
             domains,
             pieces,
@@ -141,15 +181,26 @@ async function lookUpPieces(
             MAX_EXTRA_LETTERS,
         );
         const known = new Set(rows.filter((row) => row.known).map((row) => row.piece));
-        const matches = new Map<string, VocabularyMatch[]>();
+        const ranked = new Map<string, VocabularyMatch[]>();
         for (const row of rows) {
             if (row.word === null) continue;
-            const list = matches.get(row.piece) ?? [];
+            const list = ranked.get(row.piece) ?? [];
             // The same word can come from two domains (a person and an author).
             if (!list.some((m) => foldForSearchKey(m.word) === foldForSearchKey(row.word!))) {
-                list.push({ piece: row.piece, word: row.word, similarity: Number(row.similarity) });
+                list.push({
+                    piece: row.piece,
+                    word: row.word,
+                    similarity: Number(row.similarity),
+                    distance: editDistance(row.piece, row.fold ?? foldForSearchKey(row.word)),
+                });
             }
-            matches.set(row.piece, list);
+            ranked.set(row.piece, list);
+        }
+        // Fewest edits first; the SQL order (similarity, then the commoner
+        // word) settles ties — Array.prototype.sort is stable.
+        const matches = new Map<string, VocabularyMatch[]>();
+        for (const [piece, list] of ranked) {
+            matches.set(piece, list.sort((a, b) => a.distance - b.distance).slice(0, 6));
         }
         return { known, matches };
     } catch (error) {
@@ -213,12 +264,12 @@ export async function suggestionCandidates(
         candidates.push(suggestion);
     };
 
-    // Every combination of each unknown piece's closest words, most similar
+    // Every combination of each unknown piece's closest words, fewest edits
     // first. Two misspelt words need it: « camu etrenger » must try « camus
     // étranger » even when « strenger » was the closer match for the second
     // word taken alone. A single word offers its 3 closest, two or three words
     // their 2 closest each, more than that only the best of each — and of all
-    // the combinations only the MAX_SPELLING_CANDIDATES most similar are counted.
+    // the combinations only the MAX_SPELLING_CANDIDATES closest are counted.
     const perPiece = unknownPieces.length === 1 ? 3 : unknownPieces.length <= MAX_COMBINED_PIECES ? 2 : 1;
     let combos: { ranks: Map<string, number>; score: number }[] = [{ ranks: new Map(), score: 0 }];
     for (const piece of unknownPieces) {
@@ -226,8 +277,9 @@ export async function suggestionCandidates(
         combos = combos.flatMap((combo) =>
             matches.map((match, rank) => ({
                 ranks: new Map(combo.ranks).set(piece, rank),
-                // The rank breaks ties, so the SQL's « commoner word » order holds.
-                score: combo.score + match.similarity - rank * 0.001,
+                // The rank breaks ties, so lookUpPieces' order holds within
+                // the same number of edits.
+                score: combo.score - match.distance - rank * 0.001,
             })),
         );
     }
@@ -249,6 +301,7 @@ export async function suggestionCandidates(
         for (const base of bases) {
             base.forEach((_, i) => {
                 const rest = base.filter((__, j) => j !== i);
+                if (rest.every(isFiller)) return;
                 // Dropping the only corrected word leaves the words as typed:
                 // that is a plain drop, whichever base produced it.
                 const asTyped = rest.every((word, j) => word === tokens[j < i ? j : j + 1]);

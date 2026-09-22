@@ -1,7 +1,7 @@
 // types/book.ts
 import { Book, Genre, BookGenre } from '@prisma/client';
 import type { PublicBook } from '@/lib/books/publicBook';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import type { BookSearchSuggestion } from '@/lib/books/book-suggestion-types';
 
 // Ensure this matches your Prisma schema exactly
 export interface BookWithGenres extends Book {
@@ -29,5 +29,5 @@ export interface SearchResult {
     page: number;
     totalPages: number;
     /** « Vouliez-vous dire … ? » — present only when a search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: BookSearchSuggestion<PublicBook>[];
 }

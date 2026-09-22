@@ -34,6 +34,16 @@ Vous pouvez également cliquer sur le bouton audio, situé dans la colonne « Au
 
 ![Catalogue - capture 6](/admin/aide/images/catalogue-06.jpg)
 
+### Quand la recherche ne trouve rien
+
+Si aucun livre ne correspond, le catalogue affiche sous le message « Aucun résultat » un encadré « Essayez plutôt » :
+
+- **Un filtre cache le livre.** Si le livre existe mais qu'un filtre l'exclut (par exemple « Disponibles » alors qu'il est en attente), l'encadré le dit : « Le filtre « Disponibles » cache ce livre », avec le livre et la raison (« En attente »). Le bouton « Retirer ce filtre » relance la recherche sans ce filtre. Rien n'est retiré sans votre clic.
+- **Un mot est mal orthographié.** L'encadré propose la bonne orthographe, par exemple « Vouliez-vous dire « le front dans les nuages » ? », et montre directement les livres correspondants.
+- **Un mot est en trop.** L'encadré propose de chercher sans ce mot.
+
+Dans chaque cas, cliquez sur un livre de l'encadré pour ouvrir sa fiche, ou sur le bouton du bas pour lancer la recherche proposée. Le catalogue public propose les mêmes suggestions à ses visiteurs.
+
 ## Ajout de livres
 
 Lorsque vous cliquez sur le bouton « Ajouter un livre », le modal permettant de créer un livre s'ouvre.

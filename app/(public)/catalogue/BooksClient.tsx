@@ -7,7 +7,16 @@ import { BookModal } from '@/components/BookModal';
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import { SearchResult } from '@/types/book';
 import type { PublicBook } from '@/lib/books/publicBook';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
+import { BookSearchSuggestions } from '@/components/ui/book-search-suggestions';
+import type { BookSearchSuggestion, CatalogueFilterKey } from '@/lib/books/book-suggestion-types';
+
+/** The « Rechercher dans » options, as the search bar words them. */
+const SEARCH_FIELD_LABELS: Record<string, string> = {
+    title: 'Titre',
+    author: 'Auteur',
+    description: 'Description',
+    genre: 'Genre',
+};
 
 const ITEMS_PER_PAGE = 9;
 const DEBOUNCE_DELAY = 300;
@@ -170,6 +179,26 @@ export function BooksClient({
         setIsModalOpen(true);
     }, []);
 
+    // The « Essayez plutôt » block — see components/ui/book-search-suggestions.tsx.
+    // A visitor can only have set « Rechercher dans » and genres; the hidden
+    // books stay out whatever is lifted (listPublicBooks).
+    const suggestionFilterLabel = (key: CatalogueFilterKey): string => {
+        if (key === 'filter') return `Rechercher dans : ${SEARCH_FIELD_LABELS[selectedFilter] ?? selectedFilter}`;
+        const names = selectedGenres
+            .map((id) => genres.find((g) => g.id === id)?.name)
+            .filter(Boolean);
+        return `${names.length > 1 ? 'Genres' : 'Genre'} : ${names.join(', ')}`;
+    };
+
+    const suggestionBookNote = (book: PublicBook, lifted: CatalogueFilterKey[]): string | null =>
+        lifted.includes('genres') ? book.genres.map((g) => g.genre.name).join(', ') || 'Sans genre' : null;
+
+    const applySuggestion = (suggestion: BookSearchSuggestion<PublicBook>) => {
+        if (suggestion.withoutFilters.includes('filter')) setSelectedFilter('all');
+        if (suggestion.withoutFilters.includes('genres')) setSelectedGenres([]);
+        handleSearchChange(suggestion.query);
+    };
+
     const handleGenreClickFromModal = useCallback((genreId: number) => {
         if (!selectedGenres.includes(genreId)) {
             setSelectedGenres(prev => [...prev, genreId]);
@@ -204,7 +233,9 @@ export function BooksClient({
                 {isSearching
                     ? 'Recherche en cours…'
                     : searchResults.total === 0
-                        ? 'Aucun livre ne correspond à votre recherche.'
+                        ? (searchResults.searchSuggestions?.length
+                            ? 'Aucun livre ne correspond à votre recherche. Des suggestions sont proposées ci-dessous.'
+                            : 'Aucun livre ne correspond à votre recherche.')
                         : `${searchResults.total} livre${searchResults.total > 1 ? 's' : ''} trouvé${searchResults.total > 1 ? 's' : ''}, page ${currentPage} sur ${searchResults.totalPages}.`}
             </p>
 
@@ -222,9 +253,12 @@ export function BooksClient({
                                 : 'Aucun livre disponible'}
                         </p>
                         {searchTerm && (
-                            <SearchSuggestions
+                            <BookSearchSuggestions
                                 suggestions={searchResults.searchSuggestions}
-                                onPick={handleSearchChange}
+                                filterLabel={suggestionFilterLabel}
+                                bookNote={suggestionBookNote}
+                                onApply={applySuggestion}
+                                onOpenBook={handleBookClick}
                                 className="px-4"
                             />
                         )}

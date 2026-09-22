@@ -42,11 +42,20 @@ import {
 import { calendarYear } from '@/lib/calendar-date';
 import { toast } from "@/hooks/use-toast";
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { SearchSuggestion } from '@/lib/search-suggestion-types';
+import { BookSearchSuggestions } from '@/components/ui/book-search-suggestions';
+import type { BookSearchSuggestion, CatalogueFilterKey } from '@/lib/books/book-suggestion-types';
 
 const ITEMS_PER_PAGE = 10;
 const DEBOUNCE_DELAY = 300;
+
+/** The « Rechercher dans » options, as the select below words them. */
+const SEARCH_FIELD_LABELS: Record<string, string> = {
+    title: 'Titre',
+    author: 'Auteur',
+    isbn: 'ISBN',
+    description: 'Description',
+    genre: 'Genre',
+};
 
 interface BookFormData {
     title: string;
@@ -120,7 +129,7 @@ interface SearchResult {
     availableCount: number;
     unavailableCount: number;
     /** « Vouliez-vous dire … ? » — present only when the search found nothing. */
-    searchSuggestions?: SearchSuggestion[];
+    searchSuggestions?: BookSearchSuggestion<Book>[];
 }
 
 interface BooksTableProps {
@@ -143,10 +152,16 @@ interface BooksTableProps {
  * outright, which is the whole point: "no recording" is a fact about the book,
  * as much as its author, not a detail of the audio tool.
  */
+/** Whether the book has something to listen to — the test its audio column shows. */
+function bookHasAudio(book: Book): boolean {
+    const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
+    return audioLinkStatusHasAudio(status) && (book.audioTrackCount ?? 0) > 0;
+}
+
 function AudioStatusCell({ book }: { book: Book }) {
     const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
     const count = book.audioTrackCount ?? 0;
-    const hasAudio = audioLinkStatusHasAudio(status) && count > 0;
+    const hasAudio = bookHasAudio(book);
 
     return (
         <span
@@ -757,6 +772,45 @@ export default function BooksTable({
     const unavailableSelected = selectedAvailable === 'false';
     const activeFilterCount = (selectedAudio !== 'all' ? 1 : 0) + (selectedHidden !== 'all' ? 1 : 0);
 
+    // The « Essayez plutôt » block names a filter it would lift in the words
+    // the filter itself shows, and says of each book what set it apart —
+    // see components/ui/book-search-suggestions.tsx.
+    const suggestionFilterLabel = (key: CatalogueFilterKey): string => {
+        switch (key) {
+            case 'filter':
+                return `Rechercher dans : ${SEARCH_FIELD_LABELS[selectedFilter] ?? selectedFilter}`;
+            case 'genres': {
+                const names = selectedGenres.map(getGenreName).filter(Boolean);
+                return `${names.length > 1 ? 'Genres' : 'Genre'} : ${names.join(', ')}`;
+            }
+            case 'available':
+                return selectedAvailable === 'true' ? 'Disponibles' : 'En attente';
+            case 'hidden':
+                return selectedHidden === 'true' ? 'Masqués' : 'Visibles';
+            case 'audio':
+                return selectedAudio === 'present' ? 'Avec audio' : 'Sans audio';
+        }
+    };
+
+    const suggestionBookNote = (book: Book, lifted: CatalogueFilterKey[]): string | null => {
+        const notes: string[] = [];
+        if (lifted.includes('available')) notes.push(book.available ? 'Disponible' : 'En attente');
+        if (lifted.includes('hidden')) notes.push(book.hiddenFromCatalogue ? 'Masqué du catalogue' : 'Visible au catalogue');
+        if (lifted.includes('audio')) notes.push(bookHasAudio(book) ? 'Avec audio' : 'Sans audio');
+        if (lifted.includes('genres')) notes.push(book.genres.map((g) => g.genre.name).join(', ') || 'Sans genre');
+        return notes.length > 0 ? notes.join(' · ') : null;
+    };
+
+    const applySuggestion = (suggestion: BookSearchSuggestion<Book>) => {
+        const lifted = suggestion.withoutFilters;
+        if (lifted.includes('filter')) setSelectedFilter('all');
+        if (lifted.includes('genres')) setSelectedGenres([]);
+        if (lifted.includes('available')) setSelectedAvailable('all');
+        if (lifted.includes('hidden')) setSelectedHidden('all');
+        if (lifted.includes('audio')) setSelectedAudio('all');
+        handleSearchChange(suggestion.query);
+    };
+
     return (
         <Card className="bg-card border-border">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
@@ -1026,9 +1080,12 @@ export default function BooksTable({
                                     : 'Aucun livre disponible'}
                             </p>
                             {searchTerm && (
-                                <SearchSuggestions
+                                <BookSearchSuggestions
                                     suggestions={searchResults.searchSuggestions}
-                                    onPick={handleSearchChange}
+                                    filterLabel={suggestionFilterLabel}
+                                    bookNote={suggestionBookNote}
+                                    onApply={applySuggestion}
+                                    onOpenBook={(book) => openBookById(book.id)}
                                 />
                             )}
                         </div>
