@@ -124,3 +124,5 @@ Si vous corrigez le livre d'une demande, l'attribution liée prend automatiqueme
 Si la demande est associée à une attribution ou à une facture déjà émise, la suppression sera refusée. Vous devez d'abord supprimer l'attribution, ou retirer la demande de la facture.
 
 Une demande supprimée n'apparaît plus dans les listes ni les recherches, mais reste consultable en rouvrant un lien qui pointe vers elle (depuis le journal des modifications ou une facture, par exemple) : le modal s'ouvre avec un bandeau rouge « Demande supprimée le … » et tous les champs en lecture seule.
+
+Le bouton « Restaurer » du bandeau annule la suppression. Si la demande était rattachée à une facture qui a depuis évolué (émise, payée ou soldée), la restauration la détache de cette facture plutôt que de rouvrir un document déjà verrouillé — un message le précise avant de confirmer, avec un lien vers la facture concernée. La demande peut alors être refacturée séparément si besoin.

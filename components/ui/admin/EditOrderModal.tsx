@@ -83,6 +83,7 @@ export function EditOrderModal({
                         initialSelectedStaff={initialSelectedStaff}
                         initialBill={initialBill}
                         deletedAt={deletedAt}
+                        onRestored={() => onOpenChange(false)}
                     />
                 </div>
             </DialogContent>

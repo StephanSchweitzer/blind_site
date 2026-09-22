@@ -32,6 +32,7 @@ export function EditOrderFormBackend({
                                          initialSelectedStaff,
                                          initialBill,
                                          deletedAt,
+                                         onRestored,
                                      }: {
     orderId: string;
     initialData: OrderFormData;
@@ -42,6 +43,8 @@ export function EditOrderFormBackend({
     initialBill?: { id: number; state: string } | null;
     /** ISO string when this demande is soft-deleted; null/undefined otherwise. */
     deletedAt?: string | null;
+    /** Fires once the demande is restored, so the caller can close/refresh. */
+    onRestored?: () => void;
 }) {
     const { toast } = useToast();
 
@@ -249,7 +252,13 @@ export function EditOrderFormBackend({
 
     return (
         <>
-            {deletedAt && <OrderDeletedNotice deletedAt={deletedAt} />}
+            {deletedAt && (
+                <OrderDeletedNotice
+                    orderId={parseInt(orderId)}
+                    deletedAt={deletedAt}
+                    onRestored={() => onRestored?.()}
+                />
+            )}
             <OrderFormBackendBase
                 initialData={initialData}
                 currentOrderId={parseInt(orderId)}
