@@ -109,7 +109,7 @@ export const POST = withAdmin(async (request, { me }) => {
                 email: normalizedEmail,
                 password: hashedPassword,
                 passwordNeedsChange: passwordNeedsChange,
-                name: body.name || '',
+                name: body.name || null,
                 role: derivedRole, // legacy – kept for backward compatibility
                 memberType: body.memberType ?? MemberType.auditeur,
                 accessLevel: body.accessLevel ?? AccessLevel.member,

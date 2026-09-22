@@ -66,8 +66,8 @@ export const PUT = withAdmin(async (req, { params }) => {
                 where: { id: coupId },
                 data: {
                     title,
-                    description,
-                    audioPath,
+                    description: description || null,
+                    audioPath: audioPath || null,
                     active: active ?? true,
                 }
             });

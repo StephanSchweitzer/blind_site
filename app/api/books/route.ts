@@ -5,6 +5,7 @@ import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { BookWithGenres } from '@/types/book';
 import { withAdmin } from '@/lib/auth/guards';
 import { unexpectedErrorResponse } from '@/lib/api-errors';
+import { blankToNull } from '@/lib/blank-to-null';
 import { findAdminBooksByIds, listAdminBooks, parseAdminBookListQuery } from '@/lib/books/bookList';
 
 /**
@@ -62,7 +63,7 @@ interface CreateBookRequest {
     subtitle?: string;
     author: string;
     publisher?: string;
-    publishedDate: string;
+    publishedDate: string | null;
     isbn?: string;
     description?: string;
     available: boolean;
@@ -112,12 +113,14 @@ export const POST = withAdmin(async (req, { me }): Promise<Response> => {
         const newBook = await prisma.book.create({
             data: {
                 title: formData.title,
-                subtitle: formData.subtitle,
+                subtitle: blankToNull(formData.subtitle),
                 author: formData.author,
-                publisher: formData.publisher,
-                publishedDate: new Date(formData.publishedDate),
+                publisher: blankToNull(formData.publisher),
+                // Sans année, le formulaire envoie null, et `new Date(null)` vaut le
+                // 1er janvier 1970 : le livre s'enregistrait « publié en 1970 ».
+                publishedDate: formData.publishedDate ? new Date(formData.publishedDate) : null,
                 isbn: formData.isbn?.trim() || null,
-                description: formData.description,
+                description: blankToNull(formData.description),
                 available: formData.available,
                 hiddenFromCatalogue: formData.hiddenFromCatalogue ?? false,
                 readingDurationMinutes: formData.readingDurationMinutes ? parseInt(formData.readingDurationMinutes) : null,

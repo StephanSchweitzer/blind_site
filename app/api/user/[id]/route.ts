@@ -429,7 +429,7 @@ export const PATCH = withAdmin(async (
         }
 
         // Profile fields
-        if (body.name !== undefined) updateData.name = body.name;
+        if (body.name !== undefined) updateData.name = body.name || null;
         if (body.firstName !== undefined) updateData.firstName = body.firstName || null;
         if (body.lastName !== undefined) updateData.lastName = body.lastName || null;
         if (body.role !== undefined) updateData.role = body.role; // legacy

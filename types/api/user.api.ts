@@ -148,7 +148,7 @@ export type UserUpdateInput = z.infer<typeof UserUpdateInputSchema>;
 
 // Prisma update data type (what actually goes to the database)
 export type UserUpdateData = {
-    name?: string;
+    name?: string | null;
     firstName?: string | null;
     lastName?: string | null;
     email?: string | null;

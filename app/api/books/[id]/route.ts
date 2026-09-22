@@ -12,6 +12,7 @@ import {
 } from '@/lib/books/deleteBookWithAudio';
 import { BookUpdateInputSchema } from '@/types/api/book.api';
 import { isRecordNotFound, unexpectedErrorResponse } from '@/lib/api-errors';
+import { blankToNull } from '@/lib/blank-to-null';
 
 /**
  * Applies to every handler in this file (GET/PUT are quick single-row
@@ -145,19 +146,16 @@ export const PUT = withAdmin(async (req, { params }) => {
         );
     }
 
-    const {
-        title,
-        subtitle,
-        author,
-        publisher,
-        publishedDate,
-        genres,
-        isbn,
-        description,
-        available,
-        hiddenFromCatalogue,
-        pageCount
-    } = validation.data;
+    const { title, author, publishedDate, genres, available, hiddenFromCatalogue, pageCount } =
+        validation.data;
+    // Vide = null, côté serveur : le formulaire de modification normalise déjà,
+    // mais la route ne doit pas dépendre de son appelant. Voir lib/blank-to-null.ts.
+    const subtitle = blankToNull(validation.data.subtitle);
+    const publisher = blankToNull(validation.data.publisher);
+    const description = blankToNull(validation.data.description);
+    // Un ISBN vide n'est pas un ISBN : '' tomberait sous l'index unique
+    // Book_isbn_key, et le deuxième livre sans ISBN serait refusé.
+    const isbn = blankToNull(validation.data.isbn);
 
     if (isbn?.trim()) {
         const existingBook = await prisma.book.findFirst({
