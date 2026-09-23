@@ -18,6 +18,11 @@ export const metadata: Metadata = {
  * public même que le site sert. La page dit donc ce qui est en place, comment
  * c'est vérifié, ce qui reste imparfait, et comment le signaler.
  *
+ * Pas de section « voies de recours » (Défenseur des droits) non plus : le
+ * modèle RGAA l'impose aux organismes soumis à la loi, pas à une petite
+ * association. Ici elle renvoyait un visiteur vers une plainte avant même
+ * qu'on ait pu l'aider — alors qu'un appel à la permanence règle l'affaire.
+ *
  * DERNIERE_VERIFICATION est la date du dernier passage complet de
  * `pnpm a11y:check` : à mettre à jour quand on le relance, sinon la page
  * vieillit en silence.
@@ -145,24 +150,6 @@ export default async function AccessibilitePage() {
                             Nos horaires de permanence et notre adresse sont sur la page{' '}
                             <Link href="/contact" className={lien}>Coordonnées</Link>.
                         </p>
-                    </section>
-
-                    <section className={section} aria-labelledby="recours">
-                        <h2 id="recours" className={h2}>Si vous n&apos;obtenez pas de réponse</h2>
-                        <p className={texte}>
-                            Si vous nous avez signalé un défaut d&apos;accessibilité sans obtenir de réponse
-                            satisfaisante, vous pouvez vous adresser au Défenseur des droits :
-                        </p>
-                        <ul className={liste}>
-                            <li>
-                                par le formulaire en ligne du site{' '}
-                                <a href="https://www.defenseurdesdroits.fr/" className={lien}>defenseurdesdroits.fr</a> ;
-                            </li>
-                            <li>
-                                par courrier, sans affranchissement : Défenseur des droits, Libre réponse 71120,
-                                75342 Paris CEDEX 07.
-                            </li>
-                        </ul>
                     </section>
                 </div>
             </main>
