@@ -624,7 +624,21 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // issueDraftIfOverThreshold can turn the brouillon into a facture émise
             // in this same transaction, past the point where the reprice may still
             // touch it.
-            const justCompletedAndUnbilled = existingOrder.billId == null && resultingStatusId === STATUS.TERMINE;
+            //
+            // On the TRANSITION into « Terminé » only, never on a demande already
+            // sitting there. The earlier test read only the resulting status, so any
+            // save of a « Terminé » demande with no facture — a note, a date — billed
+            // it. And such demandes are there on purpose: « Retirer de la facture »
+            // leaves one « Terminé » so it can go on another facture, and restoring a
+            // demande whose facture was already émise/payée detaches it (POST
+            // /api/orders/[id]/restore). The next harmless edit put the first back on
+            // the newest brouillon and billed the second a second time. Billing one
+            // of those is a permanent's decision: « Ajouter une demande » on a
+            // brouillon, or POST /api/bills.
+            const justCompletedAndUnbilled =
+                existingOrder.billId == null &&
+                existingOrder.statusId !== STATUS.TERMINE &&
+                resultingStatusId === STATUS.TERMINE;
             // Une demande tarifée à la page ne rejoint pas un brouillon : accrueOrderToOpenDraft
             // lui crée sa pro-forma, émise d'emblée, et le dit par `proforma`. Elle n'est
             // donc soumise ni au seuil (branche suivante) ni au brouillon de l'auditeur.

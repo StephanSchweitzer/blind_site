@@ -347,7 +347,8 @@ export async function getOrCreateOpenDraft(
  * the total off whatever cost is on the order right now. No-op if the order is already
  * on a bill, is UNBILLABLE, or is inactive.
  *
- * Callers gate this on the order reaching (or already sitting at) « Terminé » — a
+ * Callers gate this on the order REACHING « Terminé » (the transition, not the state
+ * — see the accrual point in PUT /api/orders/[id]) — a
  * demande is only billed once the service is rendered, so its price has had a chance
  * to be finalized first. Don't call this at order creation.
  */
