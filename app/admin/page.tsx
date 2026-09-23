@@ -4,6 +4,30 @@ import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { AdminCard } from '@/components/ui/admin';
 import { AdminDashboardCard } from '@/components/ui/admin/AdminDashboardCard';
 import { getFreeReaderCount } from '@/lib/users/availabilityData';
+import type { DashboardStatusRow } from '@/components/ui/admin/AdminDashboardCard';
+import {
+    getOpenAssignmentDelais,
+    getOpenOrderDelais,
+    tallyDelais,
+    type DelaiTally,
+} from '@/lib/orders/delais';
+import { lateBillsWhere } from '@/lib/billing';
+
+/**
+ * One line under a card for one stage of the délais (lib/orders/delais.ts):
+ * red when something is late, amber when something only needs watching, a
+ * green « À jour » otherwise. It opens the list on what it counts — the late
+ * ones, else the amber ones, else the whole stage.
+ */
+function delaiRow(label: string, baseHref: string, tally: DelaiTally, surveillerLabel: string): DashboardStatusRow {
+    if (tally.enRetard > 0) {
+        return { label, href: `${baseHref}&retard=true`, tone: 'danger', value: `${tally.enRetard} en retard` };
+    }
+    if (tally.aSurveiller > 0) {
+        return { label, href: `${baseHref}&retard=surveiller`, tone: 'warning', value: `${tally.aSurveiller} ${surveillerLabel}` };
+    }
+    return { label, href: baseHref, tone: 'ok', value: 'À jour' };
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +61,11 @@ export default async function Dashboard() {
         // Active lecteurs with no attribution in progress — the count the
         // Disponibilités card leads with.
         freeReaderCount,
+        // What is late, shown as lines under the Demandes, Attributions and
+        // Factures cards (lib/orders/delais.ts, lib/billing.ts).
+        orderDelais,
+        assignmentDelais,
+        lateBillCount,
     ] = await Promise.all([
         Promise.all([
             prisma.book.count(),
@@ -66,7 +95,15 @@ export default async function Dashboard() {
             prisma.auditEvent.count(),
         ]),
         getFreeReaderCount(),
+        getOpenOrderDelais(),
+        getOpenAssignmentDelais(),
+        prisma.bill.count({ where: { isActive: true, ...lateBillsWhere() } }),
     ]);
+    // Each card counts what its own list shows: the demandes stages from the
+    // demandes, the lecteurs from the attributions — so a line's number is the
+    // number of rows it opens.
+    const orderTally = tallyDelais(orderDelais);
+    const assignmentTally = tallyDelais(assignmentDelais);
 
     return (
         <AdminCard className="p-6 md:p-8">
@@ -120,8 +157,8 @@ export default async function Dashboard() {
             </div>
 
             {/* Operations Section */}
-            <div className="mb-10">
-                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Gestion</h2>
+            <section className="mb-10" aria-labelledby="dashboard-gestion">
+                <h2 id="dashboard-gestion" className="text-lg font-semibold text-foreground mb-4 px-1">Gestion</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     <AdminDashboardCard
                         title="Demandes"
@@ -129,6 +166,11 @@ export default async function Dashboard() {
                         href="/admin/orders"
                         buttonText="Gestion des demandes d'enregistrements audio"
                         accentColor="yellow"
+                        rows={[
+                            delaiRow("En attente d'un lecteur", '/admin/orders?isDuplication=false&statusId=1', orderTally.attente_lecteur, 'à surveiller'),
+                            delaiRow('À expédier aux auditeurs', '/admin/orders?isDuplication=false&statusId=6', orderTally.a_expedier, 'à surveiller'),
+                            delaiRow('Duplications à faire', '/admin/orders?isDuplication=true', orderTally.duplication, 'à surveiller'),
+                        ]}
                     />
                     <AdminDashboardCard
                         title="Attributions"
@@ -136,6 +178,9 @@ export default async function Dashboard() {
                         href="/admin/assignments"
                         buttonText="Gestion des attributions confiées aux lecteurs"
                         accentColor="cyan"
+                        rows={[
+                            delaiRow('Chez les lecteurs', '/admin/assignments?statusId=2', assignmentTally.chez_lecteur, 'à relancer'),
+                        ]}
                     />
                     <AdminDashboardCard
                         title="Factures"
@@ -143,6 +188,14 @@ export default async function Dashboard() {
                         href="/admin/bills"
                         buttonText="Gestion des factures"
                         accentColor="orange"
+                        rows={[
+                            {
+                                label: 'Impayées après 30 jours',
+                                href: '/admin/bills?late=true',
+                                tone: lateBillCount > 0 ? 'danger' : 'ok',
+                                value: lateBillCount > 0 ? `${lateBillCount} en retard` : 'À jour',
+                            },
+                        ]}
                     />
                     <AdminDashboardCard
                         title="Paiements"
@@ -161,7 +214,7 @@ export default async function Dashboard() {
                         />
                     )}
                 </div>
-            </div>
+            </section>
 
             {/* Members Section */}
             <div className="mb-10">

@@ -7,6 +7,7 @@ import {
     findBlockedDuplications,
     serializeBlockedDuplications,
 } from '@/lib/orders/duplicationBlocked';
+import { getOpenOrderDelais, retardWhere, serializeDelaisFor } from '@/lib/orders/delais';
 
 // ⚠️ ADJUST this import to wherever your orders-table.tsx actually lives.
 import OrdersTable from '@/app/admin/orders/orders-table';
@@ -42,6 +43,9 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
     // ici (c'est la meme OrdersTable) sans rien filtrer.
     const filterBook = await resolveBookFilter(sp.bookId);
 
+    // Délais par étape, for this auditeur's open demandes — lib/orders/delais.ts.
+    const delais = await getOpenOrderDelais({ aveugleId });
+
     // Same filtering as the global orders page, locked to this user (as aveugle).
     const whereClause: Prisma.OrdersWhereInput = { aveugleId };
     if (filterBook) whereClause.catalogueId = filterBook.id;
@@ -60,14 +64,6 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
     // de cette façon (app/admin/orders/page.tsx).
     if (filter === 'needsReturn') {
         whereClause.AND = [...andClauses(whereClause), { lentPhysicalBook: true }, { closureDate: null }];
-    } else if (filter === 'late') {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        whereClause.AND = [
-            ...andClauses(whereClause),
-            { requestReceivedDate: { lt: thirtyDaysAgo } },
-            { closureDate: null },
-        ];
     }
 
     if (statusId) whereClause.statusId = statusId;
@@ -83,24 +79,9 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
     // Duplications that can't start yet — the book is still being recorded.
     else if (isDuplication === 'blocked') Object.assign(whereClause, blockedDuplicationWhere);
 
-    if (retard === 'true') {
-        const existing = andClauses(whereClause);
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        whereClause.AND = [
-            ...existing,
-            { requestReceivedDate: { lt: threeMonthsAgo } },
-            { statusId: { not: 3 } },
-        ];
-    } else if (retard === 'false') {
-        const existing = andClauses(whereClause);
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        whereClause.AND = [
-            ...existing,
-            { OR: [{ requestReceivedDate: { gte: threeMonthsAgo } }, { statusId: 3 }] },
-        ];
-    }
+    // The same délais par étape as the global list (lib/orders/delais.ts).
+    const retardClause = retardWhere(retard, delais);
+    if (retardClause) whereClause.AND = [...andClauses(whereClause), retardClause];
 
     const [orders, totalOrders, statuses] = await Promise.all([
         prisma.orders.findMany({
@@ -146,6 +127,7 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
             availableStatuses={statuses}
             initialTotalOrders={totalOrders}
             blockedDuplications={serializeBlockedDuplications(blockedDuplications)}
+            delais={serializeDelaisFor(orders.map((o) => o.id), delais)}
             hideSearch
             presetClient={presetClient}
             filterBook={filterBook}

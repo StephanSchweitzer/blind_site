@@ -9,6 +9,7 @@ import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } f
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { BILL_KIND_LABELS, BILLING_STATUS_LABELS } from '@/lib/billing-enums';
 import { parisDate } from '@/lib/paris-day';
+import { lateBillsWhere } from '@/lib/billing';
 import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface PageProps {
@@ -45,10 +46,7 @@ async function getBills(
         }
 
         if (showLate && !lifted.includes('late')) {
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            whereClause.state = BillingStatus.BILLED;
-            whereClause.issueDate = { lt: thirtyDaysAgo };
+            Object.assign(whereClause, lateBillsWhere());
         } else if (status && !lifted.includes('status')) {
             whereClause.state = status;
         }

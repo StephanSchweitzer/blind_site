@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { buildAssignmentSearchWhere } from '@/lib/search';
+import { andClauses, buildAssignmentSearchWhere } from '@/lib/search';
+import { getOpenAssignmentDelais, retardWhere, serializeDelaisFor } from '@/lib/orders/delais';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 
 // ⚠️ ADJUST this import to wherever your assignments-table.tsx actually lives.
@@ -52,9 +53,10 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
         !isReader && user
             ? { id: userId, name: user.name, firstName: user.firstName, lastName: user.lastName, email: user.email ?? '' }
             : null;
-    const whereClause: Prisma.AssignmentWhereInput = isReader
+    const ownWhere: Prisma.AssignmentWhereInput = isReader
         ? { readerHistory: { some: { readerId: userId } } }
         : { order: { is: { aveugleId: userId } } };
+    const whereClause: Prisma.AssignmentWhereInput = { ...ownWhere };
 
     // Exactement le moteur de /admin/assignments, et non plus une copie réduite :
     // un mot pouvait y désigner le lecteur OU le livre, mais jamais l'un et
@@ -65,6 +67,12 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
 
     if (statusId) whereClause.statusId = statusId;
     if (filterBook) whereClause.catalogueId = filterBook.id;
+
+    // The same délais par étape as the global list (lib/orders/delais.ts).
+    const retard = Array.isArray(sp.retard) ? sp.retard[0] : sp.retard;
+    const delais = await getOpenAssignmentDelais(ownWhere);
+    const retardClause = retardWhere(retard, delais);
+    if (retardClause) whereClause.AND = [...andClauses(whereClause), retardClause];
 
     const [assignments, totalAssignments, statuses] = await Promise.all([
         prisma.assignment.findMany({
@@ -135,6 +143,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
             presetReader={presetReader}
             presetClient={presetClient}
             filterBook={filterBook}
+            delais={serializeDelaisFor(assignments.map((a) => a.id), delais)}
         />
     );
 }

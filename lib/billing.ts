@@ -8,6 +8,20 @@ import { parisDayKey } from '@/lib/paris-day';
 
 type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
+/**
+ * Une facture « en retard » : émise, et pas payée trente jours après son
+ * émission. La liste des factures (`?late=true`) et la carte du tableau de bord
+ * lisent cette même clause, pour que le nombre affiché soit celui de la liste
+ * qu'il ouvre.
+ */
+export const BILL_LATE_AFTER_DAYS = 30;
+
+export function lateBillsWhere(now: Date = new Date()): Prisma.BillWhereInput {
+    const threshold = new Date(now);
+    threshold.setDate(threshold.getDate() - BILL_LATE_AFTER_DAYS);
+    return { state: BillingStatus.BILLED, issueDate: { lt: threshold } };
+}
+
 /** true quand le paiement tombe, en jours français, avant l'émission. */
 export function paymentPrecedesIssue(paymentDate: Date, issueDate: Date | null): boolean {
     if (!issueDate) return false;

@@ -44,9 +44,36 @@ Vous pouvez filtrer votre recherche selon les critères suivants :
 
 4. Le type de la demande (enregistrement et duplication)
 
-5. Si la demande est en retard ou non (une demande est considérée comme en retard si elle a été déposée il y a plus de 3 mois)
+5. Si la demande est en retard, à surveiller ou à jour — voir [Délais et retards](/admin/aide/demandes#delais-et-retards) juste en dessous
 
 ![Demandes - capture 3](/admin/aide/images/demandes-03.jpg)
+
+## Délais et retards
+
+Une demande passe par plusieurs étapes, et **chaque étape a son propre délai**. Le compteur repart de zéro à chaque nouvelle étape : un livre qui vient de partir chez un lecteur n'est pas « en retard » simplement parce que la demande est ancienne.
+
+| Étape | Statut de la demande | Le délai compte à partir de | À surveiller après | En retard après |
+|---|---|---|---|---|
+| En attente d'un lecteur | Attente envoi vers lecteur | la date de la demande | 30 jours | 60 jours |
+| Chez le lecteur | En cours | la date d'envoi au lecteur (ou de la dernière réattribution) | 60 jours — « à relancer » | 90 jours |
+| À expédier à l'auditeur | Attente envoi vers auditeur | la date de retour aux ECA | 3 jours | 7 jours |
+| Duplication à faire | À faire | la date de la demande, ou le retour de l'enregistrement qu'elle attendait | 7 jours | 14 jours |
+
+Ces délais viennent de nos propres chiffres : un lecteur est trouvé en moins de trois semaines pour la moitié des demandes, la moitié des livres reviennent de chez le lecteur en moins d'un mois, et neuf sur dix en moins de trois mois. Un livre chez le lecteur depuis deux mois n'est donc pas encore en retard, mais c'est le bon moment pour prendre de ses nouvelles.
+
+Quelques précisions :
+
+- **Une réattribution fait repartir le délai** : le nouveau lecteur a lui aussi ses trois mois.
+- **Une duplication « en attente d'enregistrement » n'est jamais en retard** : elle attend un livre qu'un lecteur est encore en train d'enregistrer, et c'est cet enregistrement qui porte le délai. Le sien commence le jour où l'enregistrement revient.
+- **Une demande clôturée n'a plus de délai.**
+
+Dans la liste, une demande en retard apparaît sur fond rouge, avec la mention « En retard » et depuis combien de temps sous son statut ; une demande à surveiller porte la mention en orange (« À relancer » quand le livre est chez le lecteur). En passant la souris sur la mention, vous lisez l'étape et le délai qui s'applique.
+
+![Demandes - capture 15](/admin/aide/images/demandes-15.jpg)
+
+La liste des [attributions](/admin/aide/attributions) a le même filtre « Retard », avec les mêmes délais pour les deux premières étapes, et les lignes sous les cartes de la [page principale](/admin/aide/page-principale#ce-qui-est-en-retard) reprennent exactement ces règles.
+
+Les anciennes demandes restées ouvertes apparaissent elles aussi en retard, parfois depuis plusieurs années. Si une demande est en réalité terminée, clôturez-la : elle disparaît du décompte.
 
 ## Ajout des demandes
 

@@ -12,7 +12,11 @@ Elles possèdent également leur propre statut, qui va de « en cours » à « t
 
 L'URL de cette page est https://eca-aveugles.fr/admin/assignments.
 
-La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, et (4) un filtre par statut. La recherche porte sur le lecteur, l'auditeur, le livre et le numéro de l'attribution.
+La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, (4) un filtre par statut, et un filtre par retard (« En retard », « À surveiller », « À jour »). La recherche porte sur le lecteur, l'auditeur, le livre et le numéro de l'attribution.
+
+Une attribution en attente d'envoi est en retard après 60 jours sans lecteur ; un livre chez le lecteur est « à relancer » après 60 jours et en retard après 90 — les mêmes délais que pour les demandes, détaillés dans [Délais et retards](/admin/aide/demandes#delais-et-retards). Une attribution en retard apparaît sur fond rouge, avec sous son statut la mention « En retard » et depuis combien de temps.
+
+![Attributions - capture 17](/admin/aide/images/attributions-17.jpg)
 
 ![Attributions - capture 1](/admin/aide/images/attributions-01.jpg)
 
@@ -91,6 +95,8 @@ Suivez la même procédure que précédemment pour attribuer un nouveau lecteur 
 ![Attributions - capture 15](/admin/aide/images/attributions-15.jpg)
 
 Lorsque vous cliquez sur ce bouton, l'attribution est immédiatement mise à jour ; il n'est donc pas nécessaire d'enregistrer l'ensemble du formulaire par la suite. Veillez donc à bien réfléchir avant de cliquer dessus.
+
+La réattribution fait repartir le délai « chez le lecteur » de la demande : le nouveau lecteur n'hérite pas du retard du précédent (voir [Délais et retards](/admin/aide/demandes#delais-et-retards)).
 
 ### Changer la demande d'une attribution
 

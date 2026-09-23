@@ -241,6 +241,30 @@ const SPECS = [
         why: 'les cinq filtres, dans l\'ordre du texte — « Livre » compris',
     },
     {
+        // Des livres chez le lecteur depuis plus de 90 jours : la mention
+        // « En retard · … » sous le statut, que 06-demandes.md decrit.
+        name: 'demandes-15.jpg',
+        // Toute la carte, filtres compris : on y voit aussi « Retard : En
+        // retard » selectionne. Assez haut pour qu'elle tienne (voir demandes-01).
+        viewport: { width: 1440, height: 1500 },
+        url: '/admin/orders?isDuplication=false&statusId=2&retard=true',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.rounded-lg.border',
+        why: 'des demandes en retard : fond rouge, et la mention qui dit depuis quand',
+    },
+    {
+        // Des livres chez le lecteur depuis plus de 90 jours, depuis la ligne
+        // « Chez les lecteurs » du tableau de bord : que 07-attributions.md decrit.
+        name: 'attributions-17.jpg',
+        viewport: { width: 1440, height: 1500 },
+        url: '/admin/assignments?statusId=2&retard=true',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.rounded-lg.border',
+        why: 'des attributions en retard : fond rouge, et la mention qui dit depuis quand',
+    },
+    {
         name: 'attributions-01.jpg',
         viewport: { width: 1440, height: 1500 },
         url: '/admin/assignments',
@@ -718,6 +742,27 @@ const SPECS = [
             { n: 1, label: 'Aide', self: true, fleche: true },
         ],
         why: 'le lien « Aide », qui ouvre le mode d\'emploi de la page en cours dans un nouvel onglet',
+    },
+    {
+        // Etait prise a la main, et avait deja perdu le fil : ni la corbeille
+        // audio ni les disponibilites n'y figuraient. La fenetre entiere, comme
+        // l'originale — c'est la page d'arrivee qu'elle montre, pas une carte.
+        name: 'page-principale-01.jpg',
+        url: '/admin',
+        waitFor: 'section[aria-labelledby="dashboard-gestion"]',
+        sleep: 800,
+        why: 'le tableau de bord tel qu\'on y arrive, les cartes par theme',
+    },
+    {
+        name: 'page-principale-06.jpg',
+        // Assez haut pour que toute la rangee tienne sous la barre fixe : le
+        // cadrage est plafonne par la fenetre (voir clipFor).
+        viewport: { width: 1440, height: 1800 },
+        url: '/admin',
+        waitFor: 'section[aria-labelledby="dashboard-gestion"]',
+        sleep: 800,
+        clip: 'section[aria-labelledby="dashboard-gestion"]',
+        why: 'la rangee « Gestion » : sous chaque carte, ce qui y est en retard',
     },
     {
         name: 'doublons-01.jpg',
@@ -1538,6 +1583,9 @@ async function main() {
                     if (step.sleep) await sleep(step.sleep);
                 }
                 await forcerThemeClair();
+                // Le badge « N » de `next dev`, en bas a gauche : il n'existe pas
+                // en production, et une capture non cadree l'emporterait.
+                await evaluate(`document.querySelectorAll('nextjs-portal').forEach((e) => e.remove())`);
                 await sleep(300);
                 // Juste avant la photo : apres toute la navigation, donc plus
                 // rien ne peut recharger de vraies donnees par-dessus.

@@ -7,6 +7,7 @@ import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { getOpenAssignmentDelais, retardWhere, serializeDelaisFor, type Delai } from '@/lib/orders/delais';
 import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface PageProps {
@@ -22,10 +23,15 @@ async function getAssignments(
     page: number,
     searchTerm: string,
     statusId?: number,
-    filterBook?: { id: number; title: string }
+    filterBook?: { id: number; title: string },
+    retard?: string,
 ) {
     const bookId = filterBook?.id;
     const assignmentsPerPage = 10;
+
+    // Délais par étape — the same rule as the demandes list (lib/orders/delais.ts),
+    // read once for the « Retard » filter, the row badges and the rescue notes.
+    const delais = await getOpenAssignmentDelais();
 
     // The whole where clause for a given search term — a function so the
     // « Essayez plutôt » block can count another term, or the same one with
@@ -48,6 +54,14 @@ async function getAssignments(
 
         if (statusId && !lifted.includes('statusId')) {
             whereClause.statusId = statusId;
+        }
+
+        const retardClause = lifted.includes('retard') ? null : retardWhere(retard, delais);
+        if (retardClause) {
+            whereClause.AND = [
+                ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
+                retardClause,
+            ];
         }
         return whereClause;
     };
@@ -115,6 +129,8 @@ async function getAssignments(
                 ? await rescueAssignments(searchTerm, whereFor, {
                     filterBook,
                     status: statusId ? statuses.find((st) => st.id === statusId)?.name ?? String(statusId) : null,
+                    retard,
+                    delais,
                 })
                 : [];
 
@@ -124,6 +140,7 @@ async function getAssignments(
             totalAssignments,
             totalPages: Math.ceil(totalAssignments / assignmentsPerPage),
             availableStatuses: statuses,
+            delais: serializeDelaisFor(assignments.map((a) => a.id), delais),
         };
     } catch (error) {
         console.error('Error fetching assignments:', error);
@@ -139,11 +156,20 @@ async function getAssignments(
 async function rescueAssignments(
     search: string,
     whereFor: (term: string, lifted?: string[]) => Prisma.AssignmentWhereInput,
-    active: { filterBook?: { id: number; title: string }; status: string | null },
+    active: {
+        filterBook?: { id: number; title: string };
+        status: string | null;
+        retard?: string;
+        delais: Map<number, Delai>;
+    },
 ): Promise<RescueSuggestion[]> {
     const filters: RescueFilter[] = [];
     if (active.filterBook) filters.push({ key: 'bookId', label: `Livre : ${active.filterBook.title}` });
     if (active.status) filters.push({ key: 'statusId', label: `Statut : ${active.status}` });
+    const retardLabels: Record<string, string> = { true: 'En retard', surveiller: 'À surveiller', false: 'À jour' };
+    if (active.retard && retardLabels[active.retard]) {
+        filters.push({ key: 'retard', label: retardLabels[active.retard] });
+    }
 
     const nameSelect = { name: true, email: true, firstName: true, lastName: true } as const;
 
@@ -186,6 +212,10 @@ async function rescueAssignments(
                 note: rescueNote(q.lifted, {
                     bookId: () => a.catalogue?.title ?? null,
                     statusId: () => a.status?.name ?? null,
+                    retard: () => {
+                        const niveau = active.delais.get(a.id)?.niveau;
+                        return niveau === 'en_retard' ? 'En retard' : niveau === 'a_surveiller' ? 'À surveiller' : 'À jour';
+                    },
                 }),
             };
         },
@@ -201,14 +231,16 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
         ? parseInt(Array.isArray(params.statusId) ? params.statusId[0] : params.statusId)
         : undefined;
     const filterBook = await resolveBookFilter(params.bookId);
+    const retard = Array.isArray(params.retard) ? params.retard[0] : params.retard;
 
-    let assignments, totalAssignments, totalPages, availableStatuses, searchSuggestions;
+    let assignments, totalAssignments, totalPages, availableStatuses, delais, searchSuggestions;
     try {
-        ({ assignments, totalAssignments, totalPages, availableStatuses, searchSuggestions } = await getAssignments(
+        ({ assignments, totalAssignments, totalPages, availableStatuses, delais, searchSuggestions } = await getAssignments(
             page,
             searchTerm,
             statusId,
-            filterBook ?? undefined
+            filterBook ?? undefined,
+            retard,
         ));
     } catch (error) {
         console.error('Error in Admin Assignments page:', error);
@@ -252,6 +284,7 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
                 availableStatuses={availableStatuses!}
                 initialTotalAssignments={totalAssignments!}
                 filterBook={filterBook}
+                delais={delais!}
                 searchSuggestions={searchSuggestions}
             />
         </div>

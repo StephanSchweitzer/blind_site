@@ -12,6 +12,7 @@ import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 import { linkedAssignmentArgs } from '@/types/models/order.model';
 import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liveBookGuard';
 import { resolvePagePricing, type PagePricingState } from '@/lib/orders/pagePricing';
+import { getOpenOrderDelais, retardWhere } from '@/lib/orders/delais';
 
 /**
  * Shape of a demande in a list response. Hoisted out of the query so the
@@ -100,17 +101,6 @@ export const GET = withAdmin(async (request) => {
                 { lentPhysicalBook: true },
                 { closureDate: null },
             ];
-        } else if (filter === 'late') {
-            const existingConditions = whereClause.AND
-                ? (Array.isArray(whereClause.AND) ? whereClause.AND : [whereClause.AND])
-                : [];
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            whereClause.AND = [
-                ...existingConditions,
-                { requestReceivedDate: { lt: thirtyDaysAgo } },
-                { closureDate: null },
-            ];
         }
 
         // Status filter
@@ -165,33 +155,14 @@ export const GET = withAdmin(async (request) => {
             whereClause.assignments = { none: { deletedAt: null } };
         }
 
-        // Retard filter (orders >3 months old and not closed)
-        if (retard === 'true') {
+        // Retard filter — the délais par étape of /admin/orders (lib/orders/delais.ts),
+        // read only when asked for: no caller of this route sends it today.
+        const retardClause = retard ? retardWhere(retard, await getOpenOrderDelais()) : null;
+        if (retardClause) {
             const existingConditions = whereClause.AND
                 ? (Array.isArray(whereClause.AND) ? whereClause.AND : [whereClause.AND])
                 : [];
-            const threeMonthsAgo = new Date();
-            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-            whereClause.AND = [
-                ...existingConditions,
-                { requestReceivedDate: { lt: threeMonthsAgo } },
-                { statusId: { not: 3 } },
-            ];
-        } else if (retard === 'false') {
-            const existingConditions = whereClause.AND
-                ? (Array.isArray(whereClause.AND) ? whereClause.AND : [whereClause.AND])
-                : [];
-            const threeMonthsAgo = new Date();
-            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-            whereClause.AND = [
-                ...existingConditions,
-                {
-                    OR: [
-                        { requestReceivedDate: { gte: threeMonthsAgo } },
-                        { statusId: 3 },
-                    ]
-                }
-            ];
+            whereClause.AND = [...existingConditions, retardClause];
         }
 
         // Opt-in ordering for the attribution picker only — the /admin/orders

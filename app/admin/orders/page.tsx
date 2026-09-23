@@ -9,6 +9,7 @@ import {
     findBlockedDuplications,
     serializeBlockedDuplications,
 } from '@/lib/orders/duplicationBlocked';
+import { getOpenOrderDelais, retardWhere, serializeDelaisFor, type Delai } from '@/lib/orders/delais';
 import { parsePageParam, pageSkip } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
@@ -39,6 +40,10 @@ async function getOrders(
     const bookId = filterBook?.id;
     const ordersPerPage = 10;
 
+    // Délais par étape — read once, used by the « Retard » filter, by the row
+    // badges and by the rescue notes, so all three agree (lib/orders/delais.ts).
+    const delais = await getOpenOrderDelais();
+
     // The whole where clause for a given search term — a function so the
     // « Essayez plutôt » block can count another term, or the same one with
     // some filters `lifted` (keyed by URL parameter) — see lib/search-rescue.ts.
@@ -62,14 +67,6 @@ async function getOrders(
             whereClause.AND = [
                 ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
                 { lentPhysicalBook: true },
-                { closureDate: null },
-            ];
-        } else if (filter === 'late' && on('filter')) {
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            whereClause.AND = [
-                ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
-                { requestReceivedDate: { lt: thirtyDaysAgo } },
                 { closureDate: null },
             ];
         }
@@ -97,41 +94,13 @@ async function getOrders(
             Object.assign(whereClause, blockedDuplicationWhere);
         }
 
-        if (!on('retard')) {
-            // Lifted by a proposal.
-        } else if (retard === 'true') {
-            const existingConditions = Array.isArray(whereClause.AND)
-                ? whereClause.AND
-                : whereClause.AND
-                    ? [whereClause.AND]
-                    : [];
-
-            const threeMonthsAgo = new Date();
-            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
+        // Délais par étape (lib/orders/delais.ts) — no longer « déposée il y a
+        // plus de 3 mois », which flagged a book the day its lecteur started it.
+        const retardClause = on('retard') ? retardWhere(retard, delais) : null;
+        if (retardClause) {
             whereClause.AND = [
-                ...existingConditions,
-                { requestReceivedDate: { lt: threeMonthsAgo } },
-                { statusId: { not: 3 } },
-            ];
-        } else if (retard === 'false') {
-            const existingConditions = Array.isArray(whereClause.AND)
-                ? whereClause.AND
-                : whereClause.AND
-                    ? [whereClause.AND]
-                    : [];
-
-            const threeMonthsAgo = new Date();
-            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-            whereClause.AND = [
-                ...existingConditions,
-                {
-                    OR: [
-                        { requestReceivedDate: { gte: threeMonthsAgo } },
-                        { statusId: 3 },
-                    ]
-                }
+                ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
+                retardClause,
             ];
         }
         return whereClause;
@@ -163,7 +132,7 @@ async function getOrders(
         const searchSuggestions =
             totalOrders === 0 && searchTerm
                 ? await rescueOrders(searchTerm, whereFor, {
-                    filter, statusId, billingStatus, isDuplication, retard, filterBook,
+                    filter, statusId, billingStatus, isDuplication, retard, filterBook, delais,
                     statusName: (id) => statuses.find((st) => st.id === id)?.name ?? String(id),
                 })
                 : [];
@@ -177,6 +146,7 @@ async function getOrders(
             totalPages: Math.ceil(totalOrders / ordersPerPage),
             availableStatuses: statuses,
             blockedDuplications: serializeBlockedDuplications(blockedDuplications),
+            delais: serializeDelaisFor(orders.map((o) => o.id), delais),
             searchSuggestions,
         };
     } catch (error) {
@@ -184,9 +154,6 @@ async function getOrders(
         throw new Error('Failed to fetch orders');
     }
 }
-
-/** Past this, an open demande reads « En retard » (the Retard filter's own rule). */
-const LATE_AFTER_MONTHS = 3;
 
 /**
  * « Essayez plutôt » for the demandes — lib/search-rescue.ts. The filters are
@@ -203,6 +170,7 @@ async function rescueOrders(
         isDuplication?: string;
         retard?: string;
         filterBook?: { id: number; title: string };
+        delais: Map<number, Delai>;
         statusName: (id: number) => string;
     },
 ): Promise<RescueSuggestion[]> {
@@ -221,14 +189,11 @@ async function rescueOrders(
     if (active.isDuplication && types[active.isDuplication]) {
         filters.push({ key: 'isDuplication', label: `Type : ${types[active.isDuplication]}` });
     }
-    if (active.retard === 'true' || active.retard === 'false') {
-        filters.push({ key: 'retard', label: active.retard === 'true' ? 'En retard' : 'À jour' });
+    const retardLabels: Record<string, string> = { true: 'En retard', surveiller: 'À surveiller', false: 'À jour' };
+    if (active.retard && retardLabels[active.retard]) {
+        filters.push({ key: 'retard', label: retardLabels[active.retard] });
     }
     if (active.filter === 'needsReturn') filters.push({ key: 'filter', label: 'Livre prêté à rendre' });
-    if (active.filter === 'late') filters.push({ key: 'filter', label: 'Ouverte depuis plus de 30 jours' });
-
-    const lateBefore = new Date();
-    lateBefore.setMonth(lateBefore.getMonth() - LATE_AFTER_MONTHS);
 
     return rescueEmptySearch({
         search,
@@ -254,7 +219,10 @@ async function rescueOrders(
                     ? BILLING_STATUS_LABELS.PAID
                     : getOrderBillingStatusLabel(o.billingStatus),
                 isDuplication: () => (o.isDuplication ? 'Duplication' : 'Enregistrement'),
-                retard: () => (o.requestReceivedDate < lateBefore && o.statusId !== 3 ? 'En retard' : 'À jour'),
+                retard: () => {
+                    const niveau = active.delais.get(o.id)?.niveau;
+                    return niveau === 'en_retard' ? 'En retard' : niveau === 'a_surveiller' ? 'À surveiller' : 'À jour';
+                },
                 filter: () => (o.closureDate ? 'Clôturée' : 'En cours'),
             }),
         }),
@@ -279,9 +247,9 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     const retard = Array.isArray(params.retard) ? params.retard[0] : params.retard;
     const filterBook = await resolveBookFilter(params.bookId);
 
-    let orders, totalOrders, totalPages, availableStatuses, blockedDuplications, searchSuggestions;
+    let orders, totalOrders, totalPages, availableStatuses, blockedDuplications, delais, searchSuggestions;
     try {
-        ({ orders, totalOrders, totalPages, availableStatuses, blockedDuplications, searchSuggestions } = await getOrders(
+        ({ orders, totalOrders, totalPages, availableStatuses, blockedDuplications, delais, searchSuggestions } = await getOrders(
             page,
             searchTerm,
             filter,
@@ -317,6 +285,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                 availableStatuses={availableStatuses!}
                 initialTotalOrders={totalOrders!}
                 blockedDuplications={blockedDuplications!}
+                delais={delais!}
                 filterBook={filterBook}
                 searchSuggestions={searchSuggestions}
             />

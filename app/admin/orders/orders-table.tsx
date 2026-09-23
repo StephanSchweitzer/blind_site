@@ -45,6 +45,7 @@ import type {
     OrderBookOption,
 } from '@/types/models/order.model';
 import type { SerializedBlockingRecording } from '@/lib/orders/duplicationBlocked';
+import type { SerializedDelai } from '@/lib/orders/delais';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
@@ -62,6 +63,8 @@ type OrdersTableProps = {
     initialTotalOrders: number;
     /** Duplications that can't start yet, keyed by demande id. Derived server-side. */
     blockedDuplications?: Record<number, SerializedBlockingRecording>;
+    /** Demandes past their stage's amber or red line, keyed by id — lib/orders/delais.ts. */
+    delais?: Record<number, SerializedDelai>;
     hideSearch?: boolean;
     presetClient?: { id: number; name: string | null; email: string } | null;
     /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
@@ -77,6 +80,7 @@ export default function OrdersTable({
                                         totalPages,
                                         availableStatuses,
                                         blockedDuplications = {},
+                                        delais = {},
                                         hideSearch = false,
                                         searchSuggestions,
                                         presetClient = null,
@@ -339,20 +343,6 @@ export default function OrdersTable({
         return displayMap[statusName] || statusName;
     };
 
-    // Check if an order is overdue (>3 months old and statusId is not 3)
-    const isOrderOverdue = (order: SerializedOrderTableRow) => {
-        // statusId 3 means completed - never overdue
-        if (order.statusId === 3) {
-            return false;
-        }
-
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-        const orderDate = new Date(order.requestReceivedDate);
-        return orderDate < threeMonthsAgo;
-    };
-
     // Calculate visible pages (similar to books table)
     const getVisiblePages = () => {
         const pages: (number | string)[] = [];
@@ -540,6 +530,7 @@ export default function OrdersTable({
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="all" className="text-foreground">Tous</SelectItem>
                                     <SelectItem value="true" className="text-foreground">En retard</SelectItem>
+                                    <SelectItem value="surveiller" className="text-foreground">À surveiller</SelectItem>
                                     <SelectItem value="false" className="text-foreground">À jour</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -604,7 +595,9 @@ export default function OrdersTable({
                                     </TableHeader>
                                     <TableBody>
                                         {initialOrders.map((order) => {
-                                            const isOverdue = isOrderOverdue(order);
+                                            // Computed server-side, per stage — lib/orders/delais.ts.
+                                            const delai = delais[order.id];
+                                            const isOverdue = delai?.niveau === 'en_retard';
                                             const blockedBy = blockedDuplications[order.id];
                                             const aveugleName = getUserNameOnly(order.aveugle);
                                             return (
@@ -681,6 +674,22 @@ export default function OrdersTable({
                                                             }`}>
                                                                 {getStatusDisplayName(order.status.name)}
                                                             </span>
+                                                        )}
+                                                        {/* The reason, in words — the row colour alone says
+                                                            nothing to a screen reader, nor which clock ran out.
+                                                            Only past a line: an « à jour » row stays quiet. */}
+                                                        {delai && (
+                                                            <div
+                                                                title={delai.phrase}
+                                                                className={`mt-1 whitespace-nowrap text-xs font-medium ${
+                                                                    delai.niveau === 'en_retard'
+                                                                        ? 'text-red-700 dark:text-red-300'
+                                                                        : 'text-amber-700 dark:text-amber-300'
+                                                                }`}
+                                                            >
+                                                                <span aria-hidden="true">{delai.badge}</span>
+                                                                <span className="sr-only">{delai.phrase}</span>
+                                                            </div>
                                                         )}
                                                     </TableCell>
                                                     {/* Visible sans ouvrir la ligne : c'est en cherchant à qui

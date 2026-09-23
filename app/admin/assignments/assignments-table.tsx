@@ -45,6 +45,7 @@ import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import type { BookFilter } from '@/lib/books/bookFilter';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { SerializedDelai } from '@/lib/orders/delais';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
@@ -59,6 +60,8 @@ interface AssignmentsTableProps {
     presetClient?: UserSummary | null;
     /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
     filterBook?: BookFilter | null;
+    /** Attributions past their stage's amber or red line, keyed by id — lib/orders/delais.ts. */
+    delais?: Record<number, SerializedDelai>;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
     searchSuggestions?: RescueSuggestion[];
 }
@@ -75,6 +78,7 @@ export default function AssignmentsTable({
                                              presetReader = null,
                                              presetClient = null,
                                              filterBook = null,
+                                             delais = {},
                                              searchSuggestions,
                                          }: AssignmentsTableProps) {
     const router = useRouter();
@@ -96,6 +100,7 @@ export default function AssignmentsTable({
 
     const currentPage = initialPage;
     const currentStatusId = searchParams.get('statusId') || 'all';
+    const currentRetard = searchParams.get('retard') || 'all';
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -129,6 +134,14 @@ export default function AssignmentsTable({
     const handleStatusFilter = (statusId: string) => {
         updateUrl({
             statusId: statusId === 'all' ? undefined : statusId,
+            page: '1',
+        });
+    };
+
+    // Délais par étape — the demandes list's « Retard » filter, same rule.
+    const handleRetardFilter = (retard: string) => {
+        updateUrl({
+            retard: retard === 'all' ? undefined : retard,
             page: '1',
         });
     };
@@ -445,6 +458,26 @@ export default function AssignmentsTable({
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="w-full sm:w-48">
+                            <Select
+                                value={currentRetard}
+                                onValueChange={handleRetardFilter}
+                                disabled={isPending}
+                            >
+                                <SelectTrigger
+                                    aria-label="Filtrer par retard"
+                                    className="bg-field border-border text-foreground"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Tous les délais</SelectItem>
+                                    <SelectItem value="true" className="text-foreground">En retard</SelectItem>
+                                    <SelectItem value="surveiller" className="text-foreground">À surveiller</SelectItem>
+                                    <SelectItem value="false" className="text-foreground">À jour</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     {filterBook && <BookFilterBadge book={filterBook} noun="attributions" />}
@@ -455,7 +488,7 @@ export default function AssignmentsTable({
                     {initialAssignments.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground text-lg">
-                                {searchTerm || currentStatusId !== 'all' || filterBook
+                                {searchTerm || currentStatusId !== 'all' || currentRetard !== 'all' || filterBook
                                     ? "Aucune attribution trouvée avec ces critères"
                                     : "Aucune attribution"}
                             </p>
@@ -488,11 +521,18 @@ export default function AssignmentsTable({
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {initialAssignments.map((assignment) => (
+                                        {initialAssignments.map((assignment) => {
+                                            // Computed server-side, per stage — lib/orders/delais.ts.
+                                            const delai = delais[assignment.id];
+                                            return (
                                             <TableRow
                                                 key={assignment.id}
                                                 onClick={() => handleRowClick(assignment)}
-                                                className="group border-b border-border hover:bg-muted cursor-pointer transition-colors"
+                                                className={`group border-b border-border cursor-pointer transition-colors ${
+                                                    delai?.niveau === 'en_retard'
+                                                        ? 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40'
+                                                        : 'hover:bg-muted'
+                                                }`}
                                             >
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                     <CopyIdButton id={assignment.id} label="de l'attribution" />
@@ -592,9 +632,25 @@ export default function AssignmentsTable({
                                                     <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(assignment.status.name)}`}>
                                                         {getStatusDisplayName(assignment.status.name)}
                                                     </span>
+                                                    {/* Same wording as on the demandes list: the reason in
+                                                        words, only past a line. */}
+                                                    {delai && (
+                                                        <div
+                                                            title={delai.phrase}
+                                                            className={`mt-1 whitespace-nowrap text-xs font-medium ${
+                                                                delai.niveau === 'en_retard'
+                                                                    ? 'text-red-700 dark:text-red-300'
+                                                                    : 'text-amber-700 dark:text-amber-300'
+                                                            }`}
+                                                        >
+                                                            <span aria-hidden="true">{delai.badge}</span>
+                                                            <span className="sr-only">{delai.phrase}</span>
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>

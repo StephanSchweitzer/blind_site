@@ -1,7 +1,4 @@
-'use client';
-
-import { useRouter } from 'next/navigation';
-import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import {
     BookOpen,
     Theater,
@@ -25,8 +22,21 @@ import {
     Handshake,
     BarChart3,
     Trash2,
+    Check,
     LucideIcon,
 } from 'lucide-react';
+
+/**
+ * One line of « what is waiting » under a card — see `rows` below.
+ * `value` is the words of the pill (« 170 en retard », « À jour »): the colour
+ * only repeats what they say, it never says it alone.
+ */
+export type DashboardStatusRow = {
+    label: string;
+    href: string;
+    tone: 'danger' | 'warning' | 'ok';
+    value: string;
+};
 
 interface AdminDashboardCardProps {
     title: string;
@@ -34,7 +44,20 @@ interface AdminDashboardCardProps {
     href: string;
     buttonText: string;
     accentColor: 'blue' | 'purple' | 'green' | 'pink' | 'yellow' | 'cyan' | 'orange' | 'red' | 'indigo' | 'teal';
+    /**
+     * What is late on this page, each line opening the list already filtered.
+     * Only on the cards whose page holds work with a délai (demandes,
+     * attributions, factures) — a line that could never say anything would
+     * just be one more thing to read.
+     */
+    rows?: DashboardStatusRow[];
 }
+
+const toneClass: Record<DashboardStatusRow['tone'], string> = {
+    danger: 'rounded-full bg-red-100 px-2.5 py-0.5 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+    warning: 'rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200',
+    ok: 'text-emerald-700 dark:text-emerald-300',
+};
 
 const colorMap = {
     blue: {
@@ -129,23 +152,14 @@ export function AdminDashboardCard({
                                        count,
                                        href,
                                        buttonText,
-                                       accentColor
+                                       accentColor,
+                                       rows,
                                    }: AdminDashboardCardProps) {
-    const router = useRouter();
-    const pathname = usePathname();
     const colors = colorMap[accentColor];
     const Icon = iconMap[title];
 
-    const handleNavigation = () => {
-        window.history.pushState({ from: pathname }, '', href);
-        router.push(href);
-    };
-
-    return (
-        <div
-            onClick={handleNavigation}
-            className={`p-6 rounded-lg border cursor-pointer ${colors.border} ${colors.bg} ${colors.hoverBg} transition-all duration-200`}
-        >
+    const header = (
+        <>
             <div className="flex items-start justify-between mb-2">
                 <h2 className={`text-2xl font-bold ${colors.text}`}>{title}</h2>
                 {Icon && (
@@ -154,8 +168,56 @@ export function AdminDashboardCard({
             </div>
             <p className="text-4xl font-extrabold text-foreground">{count}</p>
             <div className={`mt-4 text-sm font-medium ${colors.text}`}>
-                {buttonText} →
+                {buttonText} <span aria-hidden="true">→</span>
             </div>
+        </>
+    );
+
+    // A real link, not a clickable <div>: a <div> can't be reached with Tab, is
+    // announced as plain text by a screen reader, and can't be opened in a new
+    // tab. It also used to pushState the URL before router.push added it again,
+    // so the first « Retour » landed back on the dashboard.
+    if (!rows?.length) {
+        return (
+            <Link
+                href={href}
+                className={`block p-6 rounded-lg border ${colors.border} ${colors.bg} ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+            >
+                {header}
+            </Link>
+        );
+    }
+
+    // With rows the card holds several links, so it can no longer BE one (a
+    // link inside a link is invalid, and a screen reader reads the lot as one
+    // run-on label): the coloured top stays the link to the page, and each
+    // line is its own link to the filtered list. The white panel takes the
+    // rest of the height, so the cards of a grid row — stretched to the
+    // tallest — still line up.
+    return (
+        <div className={`flex flex-col overflow-hidden rounded-lg border ${colors.border} ${colors.bg}`}>
+            <Link
+                href={href}
+                className={`block p-6 ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
+            >
+                {header}
+            </Link>
+            <ul className={`flex-1 divide-y divide-border border-t ${colors.border} bg-card`}>
+                {rows.map((row) => (
+                    <li key={row.label}>
+                        <Link
+                            href={row.href}
+                            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        >
+                            <span>{row.label}</span>
+                            <span className={`inline-flex items-center gap-1 whitespace-nowrap font-medium ${toneClass[row.tone]}`}>
+                                {row.tone === 'ok' && <Check className="h-4 w-4" aria-hidden="true" />}
+                                {row.value}
+                            </span>
+                        </Link>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 }

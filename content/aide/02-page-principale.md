@@ -31,3 +31,17 @@ La barre de navigation comporte aussi un lien « Aide », qui ouvre ce mode d'em
 En haut du sommaire du mode d'emploi, une barre de recherche retrouve le passage qui vous intéresse sans savoir dans quelle section il est rangé. Tapez un mot — « reçu », « brouillon », « mot de passe » — et chaque résultat vous amène directement au paragraphe concerné ; la touche Entrée ouvre le premier. Les accents ne comptent pas, et les mots courants sont compris même quand l'interface en emploie un autre : « commande » trouve les demandes, « bénévole » les lecteurs, « poubelle » la corbeille.
 
 ![Page principale - capture 5](/admin/aide/images/page-principale-05.jpg)
+
+## Ce qui est en retard
+
+Les cartes « Demandes », « Attributions » et « Factures » comportent, sous leur partie colorée, quelques lignes qui disent ce qui attend quelque chose de nous :
+
+- **Demandes** : les demandes en attente d'un lecteur, les enregistrements à expédier aux auditeurs, et les duplications à faire ;
+- **Attributions** : les livres chez les lecteurs ;
+- **Factures** : les factures émises depuis plus de 30 jours et pas encore payées.
+
+Chaque ligne indique combien d'éléments sont **en retard** (en rouge) ou **à surveiller** (en orange) — pour les livres chez les lecteurs, « à relancer ». Quand tout va bien, elle affiche « À jour » en vert.
+
+Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais qui décident de ce qui est « en retard » sont expliqués dans [Délais et retards](/admin/aide/demandes#delais-et-retards).
+
+![Page principale - capture 6](/admin/aide/images/page-principale-06.jpg)
