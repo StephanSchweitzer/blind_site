@@ -40,25 +40,31 @@ export interface BookUsage {
     deletedAssignmentIds: number[];
 }
 
-export async function readBookUsage(bookId: number): Promise<BookUsage> {
+type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/** `client` : la transaction de lockBookForDeletion, pour relire sous verrou. */
+export async function readBookUsage(
+    bookId: number,
+    client: TransactionClient | typeof prisma = prisma,
+): Promise<BookUsage> {
     const ids = (rows: { id: number }[]) => rows.map((r) => r.id);
     const [orders, assignments, deletedOrders, deletedAssignments] = await Promise.all([
-        prisma.orders.findMany({
+        client.orders.findMany({
             where: { catalogueId: bookId, deletedAt: null },
             select: { id: true },
             orderBy: { id: 'asc' },
         }),
-        prisma.assignment.findMany({
+        client.assignment.findMany({
             where: { catalogueId: bookId, deletedAt: null },
             select: { id: true },
             orderBy: { id: 'asc' },
         }),
-        prisma.orders.findMany({
+        client.orders.findMany({
             where: { catalogueId: bookId, deletedAt: { not: null } },
             select: { id: true },
             orderBy: { id: 'asc' },
         }),
-        prisma.assignment.findMany({
+        client.assignment.findMany({
             where: { catalogueId: bookId, deletedAt: { not: null } },
             select: { id: true },
             orderBy: { id: 'asc' },
@@ -74,6 +80,35 @@ export async function readBookUsage(bookId: number): Promise<BookUsage> {
 
 export const bookUsageBlocksDeletion = (u: BookUsage): boolean =>
     u.orderIds.length > 0 || u.assignmentIds.length > 0;
+
+/** Levée dans la transaction de suppression pour l'annuler ; porte l'usage relu. */
+export class BookInUseError extends Error {
+    constructor(readonly usage: BookUsage) {
+        super(bookUsageRefusal(usage));
+        this.name = 'BookInUseError';
+    }
+}
+
+/**
+ * Verrouille la fiche et recompte son usage vivant, juste avant de poser
+ * `deletedAt` — dans la même transaction.
+ *
+ * Le contrôle de readBookDeletionCheck est lu au début de deleteBookWithAudio,
+ * et `deletedAt` posé à la fin : entre les deux, le stockage (et en mode
+ * corbeille, jusqu'à 45 s de déplacement de pistes). Une demande créée dans
+ * cet intervalle passait guardLiveBooks — la fiche était encore vivante — puis
+ * se retrouvait sur un livre supprimé.
+ *
+ * `FOR UPDATE` s'exclut avec le `FOR SHARE` de lockLiveBooks
+ * (lib/books/liveBookGuard.ts), que prend toute écriture qui rattache une
+ * demande ou une attribution à un livre : l'une des deux transactions attend
+ * l'autre, et la seconde voit ce que la première a écrit.
+ */
+export async function lockBookForDeletion(tx: TransactionClient, bookId: number): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "Book" WHERE id = ${bookId} FOR UPDATE`;
+    const usage = await readBookUsage(bookId, tx);
+    if (bookUsageBlocksDeletion(usage)) throw new BookInUseError(usage);
+}
 
 /** « 3 demandes (#12, #13, #14) » — les identifiants, parce qu'ils se retrouvent. */
 function countWithIds(ids: number[], singular: string, plural: string): string {

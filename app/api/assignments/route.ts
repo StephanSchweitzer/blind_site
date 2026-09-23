@@ -18,7 +18,7 @@ import { checkAssignmentTermineAudio } from '@/lib/assignments/termineAudio';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { DeliveryMethod } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
-import { guardLiveBooks } from '@/lib/books/liveBookGuard';
+import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liveBookGuard';
 
 export const GET = withAdmin(async (request: NextRequest) => {
     try {
@@ -320,6 +320,8 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
             (deliveryMethod as DeliveryMethod | undefined) ?? readerPreferredDelivery ?? null;
 
         const result = await prisma.$transaction(async (tx) => {
+            // Le refus de guardLiveBooks plus haut, relu sous verrou : voir lockLiveBooks.
+            await lockLiveBooks(tx, [parsedCatalogueId]);
             const assignment = await tx.assignment.create({
                 data: {
                     catalogueId: parsedCatalogueId,
@@ -406,6 +408,9 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
 
         return NextResponse.json({ assignment: result }, { status: 201 });
     } catch (error) {
+        if (error instanceof DeletedBookError) {
+            return NextResponse.json({ message: error.message }, { status: error.httpStatus });
+        }
         console.error('Error creating assignment:', error);
         return NextResponse.json(
             {

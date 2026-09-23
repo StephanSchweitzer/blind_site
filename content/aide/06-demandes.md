@@ -126,3 +126,5 @@ Si la demande est associée à une attribution ou à une facture déjà émise, 
 Une demande supprimée n'apparaît plus dans les listes ni les recherches, mais reste consultable en rouvrant un lien qui pointe vers elle (depuis le journal des modifications ou une facture, par exemple) : le modal s'ouvre avec un bandeau rouge « Demande supprimée le … » et tous les champs en lecture seule.
 
 Le bouton « Restaurer » du bandeau annule la suppression. Si la demande était rattachée à une facture qui a depuis évolué (émise, payée ou soldée), la restauration la détache de cette facture plutôt que de rouvrir un document déjà verrouillé — un message le précise avant de confirmer, avec un lien vers la facture concernée. La demande peut alors être refacturée séparément si besoin.
+
+Si le livre de la demande a été supprimé du catalogue entre-temps, la restauration est refusée : une demande ne peut pas vivre sur un livre supprimé. La fenêtre donne un lien vers la fiche livre : [restaurez d'abord le livre](/admin/aide/catalogue#restaurer-un-livre-supprime), puis la demande.

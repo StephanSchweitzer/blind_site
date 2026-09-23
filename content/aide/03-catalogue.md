@@ -112,7 +112,7 @@ Pour enregistrer le livre, rendez-vous en bas de la page et cliquez sur « Mettr
 
 Lorsque vous cliquez sur « Supprimer le livre », une fenêtre de confirmation s'ouvre.
 
-Si le livre est encore lié à des demandes ou à des attributions, la suppression est refusée et la fenêtre vous indique lesquelles. Traitez-les d'abord, puis recommencez.
+Si le livre est encore lié à des demandes ou à des attributions, la suppression est refusée et la fenêtre vous indique lesquelles. Traitez-les d'abord, puis recommencez. Le contrôle est refait au dernier moment : si quelqu'un rattache une demande au livre pendant la suppression, elle est refusée de la même façon. Si vous aviez choisi d'envoyer l'audio à la corbeille, les pistes y sont déjà : [restaurez-les depuis la corbeille audio](/admin/aide/corbeille-audio) si le livre doit les garder.
 
 Si le livre possède un enregistrement audio, la fenêtre vous demande ce qu'il faut en faire. Dans le doute, choisissez « Laisser le dossier dans le stockage ».
 

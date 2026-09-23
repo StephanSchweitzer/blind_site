@@ -24,7 +24,7 @@ import {
 import { checkAssignmentTermineAudio } from '@/lib/assignments/termineAudio';
 import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
 import { withAdmin } from '@/lib/auth/guards';
-import { guardLiveBooks } from '@/lib/books/liveBookGuard';
+import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liveBookGuard';
 import {
     guardOrderLeavingTermineOnBill,
     leavesTermine,
@@ -349,6 +349,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         }
 
         const { assignment: updatedAssignment, orderTransition, billDetached } = await prisma.$transaction(async (tx) => {
+            // Le refus de guardLiveBooks plus haut, relu sous verrou : voir lockLiveBooks.
+            if (
+                validation.data.catalogueId !== undefined &&
+                validation.data.catalogueId !== existingAssignment.catalogueId
+            ) {
+                await lockLiveBooks(tx, [validation.data.catalogueId]);
+            }
+
             // What finishing this attribution did to the demande — reported back so
             // the toast can say it out loud instead of leaving it to be discovered.
             let orderTransition: {
@@ -463,6 +471,9 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             billDetached,
         });
     } catch (error) {
+        if (error instanceof DeletedBookError) {
+            return NextResponse.json({ message: error.message }, { status: error.httpStatus });
+        }
         console.error('Error updating assignment:', error);
         return NextResponse.json(
             { message: 'Erreur lors de la mise à jour de l\'attribution' },

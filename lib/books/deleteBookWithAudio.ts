@@ -6,6 +6,13 @@ import { refreshBookAudioState, resolvePrefix } from '@/lib/audio/state';
 import { softDeleteTracks, markTrashOrigin } from '@/lib/audio/trash';
 import { bookDeletionSharedRefusal } from '@/lib/audio/sharedFolder';
 import { readBookDeletionCheck } from './deletionPreflight';
+import {
+    BookInUseError,
+    bookUsageLinks,
+    bookUsageRefusal,
+    lockBookForDeletion,
+    type BookUsage,
+} from './deletionGuard';
 
 /**
  * Supprimer une fiche livre, et décider de son enregistrement.
@@ -88,6 +95,27 @@ export type DeleteBookResult =
 
 /** « 3 pistes » / « 1 piste ». */
 const tracksLabel = (n: number) => `${n} piste${n > 1 ? 's' : ''}`;
+
+/**
+ * Une demande ou une attribution est arrivée sur la fiche PENDANT la
+ * suppression (voir lockBookForDeletion) : même refus qu'au début, en disant
+ * ce qui a déjà bougé. En mode corbeille, les pistes y sont déjà — la fiche
+ * reste, mais son dossier est vide jusqu'à ce qu'on les restaure.
+ */
+function lateUsageRefusal(bookId: number, usage: BookUsage, trashedTrackCount = 0): DeleteBookResult {
+    const trashed = trashedTrackCount
+        ? ` Les ${tracksLabel(trashedTrackCount)} avaient déjà été déplacées dans la corbeille : ` +
+          `restaurez-les depuis la corbeille audio si le livre doit les garder.`
+        : '';
+    return {
+        ok: false,
+        status: 409,
+        error:
+            `Une demande ou une attribution a été rattachée à ce livre pendant la suppression. ` +
+            `${bookUsageRefusal(usage)} La fiche n’a pas été supprimée.${trashed}`,
+        extra: { usage, links: bookUsageLinks(bookId) },
+    };
+}
 
 export async function deleteBookWithAudio(opts: {
     bookId: number;
@@ -268,33 +296,42 @@ export async function deleteBookWithAudio(opts: {
     if (mode === 'transfer' && target) {
         const names = tracks.map((t) => t.name);
         const targetId = target.id;
-        await prisma.$transaction(async (tx) => {
-            // Le chemin est retiré de la source AVANT d'être donné à la
-            // destination : deux fiches ne revendiquent jamais le même dossier,
-            // même le temps d'une transaction.
-            await tx.book.update({ where: { id: bookId }, data: { audio_filepath: null } });
-            await tx.book.update({ where: { id: targetId }, data: { audio_filepath: prefix } });
+        try {
+            await prisma.$transaction(async (tx) => {
+                // En tête : un refus doit annuler la transaction avant que le
+                // dossier ait changé de fiche. Voir lockBookForDeletion.
+                await lockBookForDeletion(tx, bookId);
 
-            // Les durées mesurées décrivent les mêmes fichiers : elles suivent le
-            // dossier. C'est un CACHE (AudioTrackDuration se modifie en place,
-            // contrairement aux journaux append-only), de clé unique
-            // (bookId, filename) — d'où la suppression préalable des lignes
-            // homonymes de la destination. Sans ce transfert,
-            // refreshBookAudioState ne retrouve aucune mesure pour ces pistes et
-            // le livre de destination affiche « Non calculée » alors que tout est
-            // mesuré. AudioTrackEvent, lui, reste en place : append-only.
-            await tx.audioTrackDuration.deleteMany({
-                where: { bookId: targetId, filename: { in: names } },
-            });
-            await tx.audioTrackDuration.updateMany({
-                where: { bookId, filename: { in: names } },
-                data: { bookId: targetId },
-            });
+                // Le chemin est retiré de la source AVANT d'être donné à la
+                // destination : deux fiches ne revendiquent jamais le même dossier,
+                // même le temps d'une transaction.
+                await tx.book.update({ where: { id: bookId }, data: { audio_filepath: null } });
+                await tx.book.update({ where: { id: targetId }, data: { audio_filepath: prefix } });
 
-            // Soft delete : voir plus bas pour la raison, identique dans les deux
-            // branches de cette fonction.
-            await tx.book.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
-        });
+                // Les durées mesurées décrivent les mêmes fichiers : elles suivent le
+                // dossier. C'est un CACHE (AudioTrackDuration se modifie en place,
+                // contrairement aux journaux append-only), de clé unique
+                // (bookId, filename) — d'où la suppression préalable des lignes
+                // homonymes de la destination. Sans ce transfert,
+                // refreshBookAudioState ne retrouve aucune mesure pour ces pistes et
+                // le livre de destination affiche « Non calculée » alors que tout est
+                // mesuré. AudioTrackEvent, lui, reste en place : append-only.
+                await tx.audioTrackDuration.deleteMany({
+                    where: { bookId: targetId, filename: { in: names } },
+                });
+                await tx.audioTrackDuration.updateMany({
+                    where: { bookId, filename: { in: names } },
+                    data: { bookId: targetId },
+                });
+
+                // Soft delete : voir plus bas pour la raison, identique dans les deux
+                // branches de cette fonction.
+                await tx.book.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
+            });
+        } catch (error) {
+            if (error instanceof BookInUseError) return lateUsageRefusal(bookId, error.usage);
+            throw error;
+        }
 
         // HORS transaction, et volontairement : refreshBookAudioState atteint le
         // stockage et retarifie les demandes ouvertes (voir fuseBooks, même
@@ -327,7 +364,26 @@ export async function deleteBookWithAudio(opts: {
     // n'a jamais cessé d'exister pour le réclamer. Pas de file d'orphelins à
     // alimenter ici — POST /api/books/[id]/restore rend la fiche, et son
     // dossier avec, sans rien à rattacher.
-    await prisma.book.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
+    try {
+        await prisma.$transaction(async (tx) => {
+            await lockBookForDeletion(tx, bookId);
+            await tx.book.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
+        });
+    } catch (error) {
+        if (!(error instanceof BookInUseError)) throw error;
+        // Les pistes sont déjà dans la corbeille, et skipFinalisation a sauté la
+        // relecture du dossier : la fiche reste, donc son état audio doit dire
+        // qu'il est vide. Au mieux — le refus est vrai même si cette relecture
+        // échoue, et la synchronisation nocturne la refera.
+        if (mode === 'trash') {
+            try {
+                await refreshBookAudioState(bookId, performedById);
+            } catch (refreshError) {
+                console.error('deleteBookWithAudio: état audio non relu pour le livre', bookId, refreshError);
+            }
+        }
+        return lateUsageRefusal(bookId, error.usage, mode === 'trash' ? tracks.length : 0);
+    }
 
     return {
         ok: true,

@@ -42,7 +42,7 @@ import {
 import { resolvePagePricing } from '@/lib/orders/pagePricing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
-import { guardLiveBooks } from '@/lib/books/liveBookGuard';
+import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liveBookGuard';
 
 // Reprint notice returned to the client when an invoice-relevant field changes on a
 // non-DRAFT (issued) bill. COST = total recomputed; VISIBLE = printed field changed.
@@ -540,6 +540,9 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         };
 
         const { order, newTotal, issued, proforma } = await prisma.$transaction(async (tx) => {
+            // Le refus de guardLiveBooks plus haut, relu sous verrou : voir lockLiveBooks.
+            if (catalogueChanged) await lockLiveBooks(tx, [data.catalogueId!]);
+
             const order = await tx.orders.update({
                 where: { id: orderId },
                 data: updateData,
@@ -688,6 +691,9 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
         return NextResponse.json({ message: 'Demande mise à jour avec succès', order, billNotice });
     } catch (error) {
+        if (error instanceof DeletedBookError) {
+            return NextResponse.json({ message: error.message }, { status: error.httpStatus });
+        }
         console.error('Error updating order:', error);
         return NextResponse.json(
             { message: 'Erreur lors de la mise à jour de la demande' },

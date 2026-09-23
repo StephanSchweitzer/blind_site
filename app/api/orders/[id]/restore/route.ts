@@ -5,6 +5,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { BillingStatus } from '@prisma/client';
 import { recomputeBillTotal, detachOrderFromBill } from '@/lib/billing';
+import { DeletedBookError, lockLiveBooks } from '@/lib/books/liveBookGuard';
 
 async function orderIdFrom(params?: Promise<Record<string, string>>): Promise<number | null> {
     const { id } = (await params) ?? {};
@@ -33,9 +34,26 @@ async function orderIdFrom(params?: Promise<Record<string, string>>): Promise<nu
  * Facture partie plus loin → restauration quand même, mais détachée
  * (detachOrderFromBill), exactly comme une demande qui sort de « Terminé »
  * pendant que sa facture est déjà émise (guardOrderLeavingTermineOnBill).
- * Jamais de blocage : contrairement à l'ISBN d'un livre, rien ici n'est une
- * contrainte d'unicité — juste une facture qu'on ne rouvre pas pour si peu.
+ * Jamais de blocage pour la facture : contrairement à l'ISBN d'un livre, rien
+ * ici n'est une contrainte d'unicité — juste une facture qu'on ne rouvre pas
+ * pour si peu.
+ *
+ * LE SEUL BLOCAGE : LE LIVRE A ÉTÉ SUPPRIMÉ ENTRE-TEMPS
+ *
+ * Une demande supprimée ne retient plus son livre (lib/books/deletionGuard.ts :
+ * seul l'usage vivant bloque). Supprimer la demande, puis le livre, puis
+ * restaurer la demande redonnait donc une demande vivante sur une fiche cachée
+ * partout — exactement ce que deleteBookWithAudio refuse de laisser derrière
+ * lui. On refuse, et on indique l'ordre : la fiche livre d'abord. Sous le même
+ * verrou que toute écriture qui rattache une demande à un livre (lockLiveBooks).
  */
+
+function bookDeletedRefusal(book: { id: number; title: string }): string {
+    return (
+        `Le livre de cette demande, « ${book.title} » (n°${book.id}), a été supprimé du catalogue. ` +
+        `Restaurez d’abord la fiche livre, puis cette demande.`
+    );
+}
 
 function billDetachWarning(billId: number, billState: BillingStatus): string {
     return (
@@ -58,12 +76,16 @@ export const GET = withAdmin(async (_request, { params }) => {
             deletedAt: true,
             billId: true,
             bill: { select: { id: true, state: true } },
+            // Relation : non filtrée par lib/prisma.ts, donc la fiche supprimée
+            // est bien lue ici.
+            catalogue: { select: { id: true, title: true, deletedAt: true } },
         },
     });
     if (!order) {
         return NextResponse.json({ message: 'Demande non trouvée' }, { status: 404 });
     }
 
+    const bookDeleted = order.catalogue.deletedAt != null;
     const willDetach = !!order.billId && order.bill != null && order.bill.state !== BillingStatus.DRAFT;
     return NextResponse.json({
         deletedAt: order.deletedAt,
@@ -71,6 +93,8 @@ export const GET = withAdmin(async (_request, { params }) => {
         billState: order.bill?.state ?? null,
         willDetach,
         restoreWarning: willDetach ? billDetachWarning(order.bill!.id, order.bill!.state) : null,
+        book: { id: order.catalogue.id, title: order.catalogue.title, deleted: bookDeleted },
+        restoreBlocked: bookDeleted ? bookDeletedRefusal(order.catalogue) : null,
     });
 });
 
@@ -89,10 +113,21 @@ export const POST = withAdmin(async (_request, { params, me }) => {
                     deletedAt: true,
                     billId: true,
                     bill: { select: { id: true, state: true } },
+                    catalogue: { select: { id: true, title: true } },
                 },
             });
             if (!order) return { kind: 'not-found' as const };
             if (!order.deletedAt) return { kind: 'already-active' as const };
+
+            // Avant toute écriture : sortir ici ne laisse rien derrière.
+            try {
+                await lockLiveBooks(tx, [order.catalogue.id]);
+            } catch (error) {
+                if (error instanceof DeletedBookError) {
+                    return { kind: 'book-deleted' as const, book: order.catalogue };
+                }
+                throw error;
+            }
 
             await tx.orders.update({
                 where: { id: orderId },
@@ -118,6 +153,12 @@ export const POST = withAdmin(async (_request, { params, me }) => {
 
         if (result.kind === 'not-found') {
             return NextResponse.json({ message: 'Demande non trouvée' }, { status: 404 });
+        }
+        if (result.kind === 'book-deleted') {
+            return NextResponse.json(
+                { message: bookDeletedRefusal(result.book), bookId: result.book.id },
+                { status: 409 }
+            );
         }
         if (result.kind === 'already-active') {
             return NextResponse.json({

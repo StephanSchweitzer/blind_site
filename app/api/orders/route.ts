@@ -10,7 +10,7 @@ import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { buildOrderSearchWhere } from '@/lib/search';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
 import { linkedAssignmentArgs } from '@/types/models/order.model';
-import { guardLiveBooks } from '@/lib/books/liveBookGuard';
+import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liveBookGuard';
 import { resolvePagePricing, type PagePricingState } from '@/lib/orders/pagePricing';
 
 /**
@@ -465,6 +465,8 @@ export const POST = withAdmin(async (request, { me }) => {
             const batchAveugleId = parseInt(String(aveugleId));
 
             const { created, autoBill } = await prisma.$transaction(async (tx) => {
+                // Le refus ci-dessus, relu sous verrou : voir lockLiveBooks.
+                await lockLiveBooks(tx, preparedLines.map((l) => l.catalogueId));
                 const createdOrders: { id: number }[] = [];
                 let anyAccrued = false;
                 for (const l of preparedLines) {
@@ -753,6 +755,8 @@ export const POST = withAdmin(async (request, { me }) => {
         };
 
         const { order, autoBill } = await prisma.$transaction(async (tx) => {
+            // Le refus de guardLiveBooks, relu sous verrou : voir lockLiveBooks.
+            await lockLiveBooks(tx, [orderData.catalogueId]);
             const created = await tx.orders.create({
                 data: orderData,
                 select: {
@@ -811,6 +815,12 @@ export const POST = withAdmin(async (request, { me }) => {
             { status: 201 }
         );
     } catch (error) {
+        if (error instanceof DeletedBookError) {
+            return NextResponse.json(
+                { error: 'Book deleted', message: error.message, field: 'catalogueId' },
+                { status: error.httpStatus }
+            );
+        }
         console.error('Error creating order:', error);
 
         if (error instanceof Prisma.PrismaClientKnownRequestError) {

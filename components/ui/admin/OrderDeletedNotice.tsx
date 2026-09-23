@@ -30,7 +30,12 @@ import { useToast } from '@/hooks/use-toast';
  * (brouillon devenu émise/payée/soldée), la restauration détache la demande
  * plutôt que de rouvrir une facture verrouillée — voir
  * app/api/orders/[id]/restore/route.ts pour le détail. Le bouton reste actif
- * dans ce cas ; il ne se bloque que si la prévisualisation elle-même échoue.
+ * dans ce cas.
+ *
+ * Il se bloque dans deux cas : la prévisualisation elle-même échoue, ou le
+ * livre de la demande a été supprimé depuis — la restaurer la remettrait
+ * vivante sur une fiche cachée partout. La fenêtre donne alors le lien vers la
+ * fiche livre, qui a son propre bouton « Restaurer ».
  */
 
 interface OrderDeletedNoticeProps {
@@ -45,6 +50,8 @@ interface RestorePreview {
     billState: string | null;
     willDetach: boolean;
     restoreWarning: string | null;
+    book: { id: number; title: string; deleted: boolean };
+    restoreBlocked: string | null;
 }
 
 export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: OrderDeletedNoticeProps) {
@@ -148,7 +155,7 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                     {!preview && !previewError && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Loader2 size={14} className="animate-spin" />
-                            Vérification de la facture liée…
+                            Vérification du livre et de la facture liée…
                         </div>
                     )}
 
@@ -158,7 +165,27 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                         </p>
                     )}
 
-                    {preview?.willDetach && preview.restoreWarning && (
+                    {preview?.restoreBlocked && (
+                        <div
+                            role="alert"
+                            className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+                        >
+                            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                            <div className="space-y-1">
+                                <p>{preview.restoreBlocked}</p>
+                                <Link
+                                    href={`/admin/books?book=${preview.book.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-block font-medium underline underline-offset-2"
+                                >
+                                    Ouvrir la fiche livre
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+
+                    {!preview?.restoreBlocked && preview?.willDetach && preview.restoreWarning && (
                         <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                             <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                             <div className="space-y-1">
@@ -186,7 +213,7 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                                 e.preventDefault();
                                 void handleRestore();
                             }}
-                            disabled={isRestoring || !preview}
+                            disabled={isRestoring || !preview || !!preview.restoreBlocked}
                         >
                             {isRestoring && <Loader2 size={14} className="mr-1.5 animate-spin" />}
                             {preview?.willDetach ? 'Restaurer sans la facture' : 'Restaurer'}

@@ -10,6 +10,7 @@ import { isDoubleRecording } from '@/lib/audio-enums';
 import { sendReviewEscalation } from '@/lib/email/sendReviewEscalation';
 import { getUserDisplayName } from '@/lib/users/displayName';
 import { deleteBookWithAudio } from '@/lib/books/deleteBookWithAudio';
+import { DeletedBookError, lockLiveBooks } from '@/lib/books/liveBookGuard';
 import { unexpectedErrorResult } from '@/lib/api-errors';
 
 /**
@@ -164,6 +165,11 @@ export async function fuseBooks(
                 const removed = await tx.book.findUnique({ where: { id: removedId } });
                 if (!survivor) throw new Error('SURVIVOR_NOT_FOUND');
                 if (!removed) throw new Error('REMOVED_NOT_FOUND');
+                // findUnique voit les fiches supprimées : sans ce contrôle, les
+                // demandes et attributions du doublon passaient sur un survivant
+                // caché. Sous verrou, comme toute écriture qui rattache une
+                // demande à un livre — voir lockLiveBooks.
+                await lockLiveBooks(tx, [survivorId]);
 
                 // 1. Reassign relations off the removed book onto the survivor.
                 //    Assignment/Orders reference the book via `catalogueId` (no unique constraint).
@@ -271,6 +277,14 @@ export async function fuseBooks(
             if (map[msg]) {
                 console.error('fuseBooks error:', error);
                 return { ok: false, message: map[msg] };
+            }
+            if (error instanceof DeletedBookError) {
+                return {
+                    ok: false,
+                    message:
+                        'Le livre à conserver a été supprimé du catalogue : restaurez-le avant de fusionner. ' +
+                        'Aucune modification enregistrée.',
+                };
             }
             return {
                 ok: false,
