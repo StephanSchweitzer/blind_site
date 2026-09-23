@@ -92,9 +92,6 @@ export default async function NousRejoindre() {
                         <a href="/contact" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 font-medium py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
                             Nous contacter
                         </a>
-                        <a href="/formulaire-adhesion" className="bg-transparent border-2 border-blue-600 dark:border-white text-blue-600 dark:text-white hover:bg-blue-600 dark:hover:bg-white hover:text-white dark:hover:text-gray-900 font-medium py-3 px-8 rounded-lg transition-all duration-300">
-                            Formulaire d&apos;adhésion
-                        </a>
                     </div>
                 </section>
             </div>

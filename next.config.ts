@@ -60,6 +60,16 @@ const nextConfig: NextConfig = {
                 destination: '/api/listes-de-livres/:path+',
                 permanent: true,
             },
+            // The « Formulaire d'adhésion » placeholder was removed rather than
+            // left promising a form that did not exist. A bookmark, or a link
+            // typed into editable content, lands on the page it was reached
+            // from. Temporary (307), not permanent: a real form may take the
+            // address back one day, and browsers cache a 308 for good.
+            {
+                source: '/formulaire-adhesion',
+                destination: '/nous-rejoindre',
+                permanent: false,
+            },
         ];
     },
 };

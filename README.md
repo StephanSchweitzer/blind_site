@@ -26,7 +26,6 @@ Server-rendered French pages sharing a common `Frontend-Navbar`, glassmorphism s
 | `/nous-connaitre/informations-pratiques` | "Practical info" — **DB-backed** steps (`PracticalInfo`), edited at `/admin/informations-pratiques`. |
 | `/nous-rejoindre` | Membership page — **DB-backed** (`MembershipOption`), edited at `/admin/nous-rejoindre`. |
 | `/contact` | Address, phone, email and transit directions — **DB-backed** singleton (`SiteContact`), edited at `/admin/site-contact`. |
-| `/formulaire-adhesion` | Membership form — currently a placeholder "en développement" landing page. |
 
 ### Caching model
 
