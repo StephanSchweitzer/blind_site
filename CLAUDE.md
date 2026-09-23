@@ -23,6 +23,9 @@ process and the code wins for facts.
 - `pnpm prisma studio` — inspect the DB
 - `pnpm dev:claude-user` — (re)create the local dev sign-in account, see below
 - `pnpm db:migrate` / `pnpm db:deploy` — create/apply migrations, see below
+- `pnpm a11y:check` — axe-core over every public page in every display configuration (needs the
+  dev server). Run it after touching the public site's markup or `app/globals.css`; the site's
+  audience is blind and low-vision readers
 
 ## Schema changes — through the guarded migration scripts (IMPORTANT)
 

@@ -376,6 +376,16 @@
    est seul à porter : le back-office garde sa taille, ses tableaux n'étant pas
    faits pour du texte à 150 %. */
 
+/* La barre de navigation reste collée en haut : en remontant au clavier
+   (Maj+Tab), l'élément focalisé défilait jusqu'au bord de l'écran, donc
+   dessous — entièrement caché (WCAG 2.4.11). Même chose en bas, sous le
+   bouton flottant « Exporter en PDF » des listes de livres. En rem, pour que
+   la marge grandisse avec la barre quand le texte est agrandi. */
+:root:has(#navigation-principale) {
+    scroll-padding-top: 6rem;
+    scroll-padding-bottom: 5rem;
+}
+
 /* Taille du texte. Tout le site est en rem, donc tout suit. En pourcentage de
    la taille du navigateur, pour s'ajouter au réglage du visiteur plutôt que de
    l'écraser. */
@@ -386,24 +396,49 @@
     font-size: 150%;
 }
 
+/* Espacement du texte : les valeurs du critère WCAG 1.4.12 (interlignage 1,5,
+   lettres 0,12 em, mots 0,16 em), un peu plus d'interligne encore — il aide
+   les lecteurs malvoyants et dyslexiques à ne pas sauter de ligne. */
+:root[data-espacement='large']:has(#navigation-principale) body * {
+    line-height: 1.7 !important;
+    letter-spacing: 0.12em !important;
+    word-spacing: 0.16em !important;
+}
+:root[data-espacement='large']:has(#navigation-principale) main :is(p, li) + :is(p, li) {
+    margin-top: 1em !important;
+}
+/* Texte agrandi ou espacé sur téléphone : un titre comme « Accessibilité »
+   ne tient plus sur une ligne et se coupait sans tiret (« Access / ibilité »).
+   Césure française (la page est en lang="fr"). */
+:root:is([data-taille-texte], [data-espacement]):has(#navigation-principale) main :is(h1, h2, h3) {
+    hyphens: auto;
+    overflow-wrap: break-word;
+}
+
 /* La barre publique : le menu complet ne s'affiche que là où il tient. À
    1024 px il ne tenait pas — le logo y était écrasé en un trait de 15 px —, et
    un texte agrandi repousse encore ce seuil. Les points de rupture en px de
-   Tailwind ne suivent pas la taille du texte, d'où ces trois seuils. */
+   Tailwind ne suivent pas la taille du texte, d'où ces seuils. L'espacement
+   du texte élargit les libellés d'environ 15 % : il compte pour un cran de
+   taille (à 1280 px, texte normal mais espacé, le menu débordait de 30 px). */
 .nav-large {
     display: none;
 }
 @media (min-width: 1280px) {
-    :root:not([data-taille-texte]) .nav-large { display: flex; }
-    :root:not([data-taille-texte]) .nav-compacte { display: none; }
+    :root:not([data-taille-texte]):not([data-espacement]) .nav-large { display: flex; }
+    :root:not([data-taille-texte]):not([data-espacement]) .nav-compacte { display: none; }
 }
 @media (min-width: 1600px) {
-    :root[data-taille-texte='grande'] .nav-large { display: flex; }
-    :root[data-taille-texte='grande'] .nav-compacte { display: none; }
+    :root:is([data-taille-texte='grande']:not([data-espacement]), :not([data-taille-texte])[data-espacement]) .nav-large { display: flex; }
+    :root:is([data-taille-texte='grande']:not([data-espacement]), :not([data-taille-texte])[data-espacement]) .nav-compacte { display: none; }
 }
 @media (min-width: 1920px) {
-    :root[data-taille-texte='tres-grande'] .nav-large { display: flex; }
-    :root[data-taille-texte='tres-grande'] .nav-compacte { display: none; }
+    :root:is([data-taille-texte='tres-grande']:not([data-espacement]), [data-taille-texte='grande'][data-espacement]) .nav-large { display: flex; }
+    :root:is([data-taille-texte='tres-grande']:not([data-espacement]), [data-taille-texte='grande'][data-espacement]) .nav-compacte { display: none; }
+}
+@media (min-width: 2400px) {
+    :root[data-taille-texte='tres-grande'][data-espacement] .nav-large { display: flex; }
+    :root[data-taille-texte='tres-grande'][data-espacement] .nav-compacte { display: none; }
 }
 
 /* Animations réduites — demandées par l'appareil (prefers-reduced-motion) ou
@@ -445,6 +480,29 @@
 }
 :root[data-animations='reduites']:has(#navigation-principale) :is(.glass-card, [class*='hover:scale-'], [class*='hover:-translate-']):hover {
     transform: none !important;
+}
+
+/* Couleurs forcées (contraste élevé de Windows) : le système remplace toutes
+   les couleurs par sa propre palette et efface les fonds. Un bouton qui ne
+   se distinguait que par son fond (« Se connecter », les boutons pleins)
+   devient alors un simple mot au milieu du texte. Un contour, qui ne
+   déplace rien, lui rend sa forme ; ceux qui ont déjà une bordure la gardent.
+   Pas borné au site public : le back-office en profite tout autant. */
+@media (forced-colors: active) {
+    :is(button, [role='button'], a[class*='bg-']):not([class*='border']) {
+        outline: 1px solid ButtonText;
+        outline-offset: -1px;
+    }
+    :is(button, [role='button'], a[class*='bg-']):not([class*='border']):focus-visible {
+        outline: 3px solid Highlight;
+        outline-offset: 2px;
+    }
+    /* Titres en dégradé : le texte transparent laisse voir un fond que le
+       système a effacé. */
+    :is(.text-gradient, .bg-clip-text) {
+        background: none !important;
+        -webkit-text-fill-color: CanvasText;
+    }
 }
 
 /* Contraste renforcé. Le verre dépoli, les dégradés et les gris clairs font

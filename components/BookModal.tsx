@@ -122,11 +122,33 @@ export const BookModal: React.FC<BookModalProps> = ({
         }
     }, [onGenreClick]);
 
+    /**
+     * Rendre le focus à la carte qui a ouvert la fiche. La fiche s'ouvre par
+     * l'état, sans DialogTrigger : Radix rend alors le focus à un déclencheur
+     * qui n'existe pas, et il tombait en haut de la page — un visiteur au
+     * lecteur d'écran perdait sa place dans une liste de 15 000 livres.
+     * Capturé à l'ouverture, avant que le focus n'entre dans la fiche.
+     */
+    const openerRef = useRef<HTMLElement | null>(null);
+
     if (!book) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl w-[95vw] max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] overflow-hidden flex flex-col
+            <DialogContent
+                onOpenAutoFocus={() => {
+                    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                }}
+                onCloseAutoFocus={(event) => {
+                    // Un clic sur un genre filtre le catalogue : la carte a pu
+                    // disparaître, et Radix garde alors son comportement.
+                    const opener = openerRef.current;
+                    if (opener?.isConnected) {
+                        event.preventDefault();
+                        opener.focus();
+                    }
+                }}
+                className="max-w-2xl w-[95vw] max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] overflow-hidden flex flex-col
                 rounded-2xl
                 bg-white/95 dark:bg-gray-800/95
                 backdrop-blur-xl backdrop-saturate-150

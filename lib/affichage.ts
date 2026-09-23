@@ -1,6 +1,6 @@
 /**
- * Réglages d'affichage du site public — taille du texte, contraste renforcé,
- * animations réduites (bouton « Affichage » de la barre de navigation,
+ * Réglages d'affichage du site public — taille du texte, espacement du texte,
+ * contraste renforcé, animations réduites (bouton « Affichage » de la barre de navigation,
  * components/AffichageSettings.tsx).
  *
  * Ils vivent sur <html>, en attributs, et le CSS fait le reste
@@ -21,6 +21,8 @@ export type TailleTexte = 'normale' | 'grande' | 'tres-grande';
 
 export type Affichage = {
     taille: TailleTexte;
+    /** Lignes, lettres, mots et paragraphes plus espacés (WCAG 1.4.12). */
+    espacement: boolean;
     /** null : suivre l'appareil (`prefers-contrast: more`). */
     contraste: boolean | null;
     animationsReduites: boolean;
@@ -42,6 +44,7 @@ export const AFFICHAGE_INIT_SCRIPT = `(function(){try{
 var p=JSON.parse(localStorage.getItem('${AFFICHAGE_STORAGE_KEY}')||'{}'),d=document.documentElement;
 if(p.taille==='grande'||p.taille==='tres-grande')d.setAttribute('data-taille-texte',p.taille);
 var c=p.contraste;if(c!==true&&c!==false)c=!!(window.matchMedia&&window.matchMedia('(prefers-contrast: more)').matches);
+if(p.espacement)d.setAttribute('data-espacement','large');
 if(c)d.setAttribute('data-contraste','renforce');
 if(p.animationsReduites)d.setAttribute('data-animations','reduites');
 }catch(e){}})();`;
@@ -59,6 +62,7 @@ export function lireAffichage(): Affichage {
     }
     return {
         taille: taille === 'grande' || taille === 'tres-grande' ? taille : 'normale',
+        espacement: d.getAttribute('data-espacement') === 'large',
         contraste: contraste ?? d.getAttribute('data-contraste') === 'renforce',
         animationsReduites: d.getAttribute('data-animations') === 'reduites',
     };
@@ -69,6 +73,8 @@ export function appliquerAffichage(a: Affichage): void {
     const d = document.documentElement;
     if (a.taille === 'normale') d.removeAttribute('data-taille-texte');
     else d.setAttribute('data-taille-texte', a.taille);
+    if (a.espacement) d.setAttribute('data-espacement', 'large');
+    else d.removeAttribute('data-espacement');
     if (a.contraste) d.setAttribute('data-contraste', 'renforce');
     else d.removeAttribute('data-contraste');
     if (a.animationsReduites) d.setAttribute('data-animations', 'reduites');

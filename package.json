@@ -15,6 +15,7 @@
     "aide:shots": "node scripts/capture-aide-screenshots.mjs",
     "aide:optimize": "python scripts/optimize-aide-images.py",
     "aide:annotate": "python scripts/annotate-aide-screenshots.py",
+    "a11y:check": "node scripts/check-a11y.mjs",
     "prepare": "husky"
   },
   "prisma": {
@@ -96,6 +97,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.20",
+    "axe-core": "^4.13.0",
     "baseline-browser-mapping": "^2.10.36",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.2.9",

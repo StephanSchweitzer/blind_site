@@ -65,6 +65,9 @@ export default async function HistoriquePage() {
                                             <span className="inline-block bg-blue-800 text-white py-1 px-4 rounded-full mr-3 min-w-[90px] text-center whitespace-nowrap text-lg">
                                                 {event.year}
                                             </span>
+                                            {/* The pill's margin separates year and title on screen only:
+                                                a screen reader got « 1985Création d'ECA ». */}
+                                            <span className="sr-only"> : </span>
                                             <span>{event.title}</span>
                                         </h2>
                                     </div>

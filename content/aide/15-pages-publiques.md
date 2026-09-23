@@ -37,10 +37,19 @@ Toutes ces pages fonctionnent de la même manière :
 En haut de chaque page du site public, à côté du bouton du thème clair ou sombre, le bouton « Affichage » (un « T » sur téléphone) permet à chaque visiteur d'adapter la lecture :
 
 - **Taille du texte** : Normale, Grande ou Très grande. Tout le texte grandit, et la page se réorganise pour rester lisible ;
+- **Espacer le texte** : plus d'air entre les lignes, les mots et les lettres — une aide pour qui saute des lignes en lisant ;
 - **Contraste renforcé** : fonds unis, textes plus foncés et liens soulignés. Il s'active aussi tout seul si l'appareil du visiteur demande plus de contraste ;
 - **Réduire les animations** : arrête le fond animé et les effets de mouvement.
 
 Ces réglages sont gardés sur l'appareil du visiteur, d'une visite à l'autre. Ils ne concernent que le site public : Arbre Rose garde son affichage habituel. C'est utile à indiquer à un auditeur qui trouve le site difficile à lire.
+
+Sur la page des listes de livres, le lecteur de la présentation audio a ses propres boutons : « Écouter » / « Pause », reculer ou avancer de 15 secondes, et une **vitesse** d'écoute de 0,75 à 2 fois. Beaucoup d'auditeurs écoutent en accéléré : la vitesse choisie est gardée sur leur appareil.
+
+## Page « Accessibilité »
+
+Le lien « **Accessibilité** », en bas de chaque page du site public, mène à une page qui explique aux visiteurs ce que le site leur propose, comment il est vérifié, ce qui reste imparfait, et comment signaler un problème. Le courriel et les numéros de téléphone qu'elle donne sont ceux de la page **Contact** : les modifier dans Arbre Rose les modifie aussi là.
+
+Si un auditeur vous signale une difficulté avec le site, notez la page, ce qu'il cherchait à faire et l'outil qu'il utilise (lecteur d'écran, loupe, téléphone…), et transmettez-le à l'informaticien.
 
 ## Dernières infos
 

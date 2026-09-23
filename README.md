@@ -15,7 +15,7 @@ The repository is a single Next.js (App Router) codebase that contains **two dis
 
 Server-rendered French pages sharing a common `Frontend-Navbar`, glassmorphism styling, and light/dark theming. Every page declares its own metadata, and `app/sitemap.ts` / `app/robots.ts` publish the SEO surface.
 
-The navbar's « Affichage » button sets per-visitor display preferences — text size (125 % / 150 %), a high-contrast mode (also on by default under `prefers-contrast: more`) and reduced motion (also honoured from `prefers-reduced-motion`). They live as attributes on `<html>`, set before first paint by an inline script (`lib/affichage.ts`), remembered in `localStorage`, and scoped in `app/globals.css` to pages carrying the public navbar, so `/admin` is unaffected. The full desktop menu only shows where it fits (1280 px, pushed to 1600 / 1920 px at the larger text sizes).
+The navbar's « Affichage » button sets per-visitor display preferences — text size (125 % / 150 %), text spacing (WCAG 1.4.12 values), a high-contrast mode (also on by default under `prefers-contrast: more`) and reduced motion (also honoured from `prefers-reduced-motion`). They live as attributes on `<html>`, set before first paint by an inline script (`lib/affichage.ts`), remembered in `localStorage`, and scoped in `app/globals.css` to pages carrying the public navbar, so `/admin` is unaffected. The full desktop menu only shows where it fits (1280 px, pushed to 1600 / 1920 / 2400 px as text size and spacing add up). Under Windows' forced colours, buttons that only had a background get an outline back. `/accessibilite` is the public accessibility statement (linked from the footer); `pnpm a11y:check` runs axe-core over every public page in every display configuration.
 
 | Route | Purpose |
 |---|---|
@@ -28,6 +28,7 @@ The navbar's « Affichage » button sets per-visitor display preferences — tex
 | `/nous-connaitre/informations-pratiques` | "Practical info" — **DB-backed** steps (`PracticalInfo`), edited at `/admin/informations-pratiques`. |
 | `/nous-rejoindre` | Membership page — **DB-backed** (`MembershipOption`), edited at `/admin/nous-rejoindre`. |
 | `/contact` | Address, phone, email and transit directions — **DB-backed** singleton (`SiteContact`), edited at `/admin/site-contact`. |
+| `/accessibilite` | Accessibility statement: what the site offers, how it is checked, known limits, how to report a problem. Static text; the contact lines come from `SiteContact`. Update `DERNIERE_VERIFICATION` when `pnpm a11y:check` is re-run. |
 
 ### Caching model
 
@@ -474,6 +475,7 @@ pnpm tsx scripts/set-audio-cors.ts
 | `pnpm aide:shots` | Recaptures the mode d'emploi screenshots by driving the app |
 | `pnpm aide:optimize` | Compresses those screenshots (keeps the generated PDF under Vercel's response cap) |
 | `pnpm aide:annotate` | Draws the numbered markers some sections reference in prose |
+| `pnpm a11y:check` | axe-core (WCAG 2.2 AA) on every public page: light, dark, forced colours, phone with the largest text settings. Needs the dev server; `A11Y_SHOTS=<dir>` keeps a screenshot of each pass |
 
 ### Audio maintenance (`scripts/`)
 

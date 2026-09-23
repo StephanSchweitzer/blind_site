@@ -38,7 +38,9 @@ export const CoupDeCoeurList: React.FC<CoupDeCoeurListProps> = ({
             <div aria-hidden="true" className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 dark:bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
             <div aria-hidden="true" className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/10 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-            <div className="p-8 relative z-10">
+            {/* p-5 on a phone: at 375 px, p-8 left the audio player's three buttons
+                8 px short of one line. */}
+            <div className="p-5 sm:p-8 relative z-10">
                 <div className="mb-6">
                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
                         {content[0].title}

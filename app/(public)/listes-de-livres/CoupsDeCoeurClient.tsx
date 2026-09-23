@@ -78,7 +78,15 @@ export default function CoupsDeCoeurClient({
                         <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed max-w-2xl mx-auto">
                             <span className="text-base">
                                 À demander au{' '}
-                                <span className="font-semibold whitespace-nowrap">01 88 32 31 47</span> ou 48
+                                {/* Both numbers in full and as tel: links: « ou 48 », read aloud
+                                    or tapped, leads nowhere. */}
+                                <a href="tel:+33188323147" className="font-semibold whitespace-nowrap text-blue-700 dark:text-blue-300 underline underline-offset-2">
+                                    01 88 32 31 47
+                                </a>{' '}
+                                ou{' '}
+                                <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-blue-700 dark:text-blue-300 underline underline-offset-2">
+                                    01 88 32 31 48
+                                </a>
                             </span>
                             <br />
                             <span className="text-base">

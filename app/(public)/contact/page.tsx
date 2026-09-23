@@ -2,6 +2,7 @@ import FrontendNavbar from "@/components/Frontend-Navbar";
 import { MapPin, Phone, Mail, Clock, Train, Bus } from "lucide-react";
 import { getSiteContact } from "./data";
 import type { Metadata } from "next";
+import { PhoneLines } from "@/components/PhoneLines";
 
 export const metadata: Metadata = {
     title: 'Coordonnées',
@@ -112,7 +113,7 @@ export default async function Contact() {
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Téléphone</h3>
-                                    <p className="text-gray-700 dark:text-gray-100"><MultiLine text={contact.phones} /></p>
+                                    <p className="text-gray-700 dark:text-gray-100"><PhoneLines text={contact.phones} /></p>
                                 </div>
                             </div>
 

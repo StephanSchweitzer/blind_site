@@ -11,8 +11,8 @@ import {
 } from '@/lib/affichage';
 
 /**
- * Le bouton « Affichage » du site public : taille du texte, contraste
- * renforcé, animations réduites (lib/affichage.ts).
+ * Le bouton « Affichage » du site public : taille du texte, espacement du
+ * texte, contraste renforcé, animations réduites (lib/affichage.ts).
  *
  * Un site pour des personnes malvoyantes ne peut pas compter sur le seul
  * zoom du navigateur : beaucoup de visiteurs ne savent pas qu'il existe, et
@@ -84,6 +84,21 @@ export function AffichageSettings() {
                                 ))}
                             </div>
                         </fieldset>
+
+                        <label className="flex cursor-pointer items-start gap-3">
+                            <input
+                                type="checkbox"
+                                checked={etat.espacement}
+                                onChange={(e) => changer({ espacement: e.target.checked })}
+                                className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
+                            />
+                            <span>
+                                <span className="block font-semibold text-gray-900 dark:text-white">Espacer le texte</span>
+                                <span className="block text-sm text-gray-700 dark:text-gray-300">
+                                    Plus d&apos;air entre les lignes, les mots et les lettres.
+                                </span>
+                            </span>
+                        </label>
 
                         <label className="flex cursor-pointer items-start gap-3">
                             <input

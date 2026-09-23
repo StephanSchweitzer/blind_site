@@ -1,4 +1,5 @@
 import React from 'react';
+import { PublicFooter } from '@/components/PublicFooter';
 
 /**
  * Everything outside /admin: the public site and the sign-in screens.
@@ -30,6 +31,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </div>
 
             {children}
+
+            <PublicFooter />
         </>
     );
 }

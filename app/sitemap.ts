@@ -15,5 +15,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
         { url: `${siteUrl}/nous-connaitre/historique`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
         { url: `${siteUrl}/nous-connaitre/informations-pratiques`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
         { url: `${siteUrl}/nous-connaitre/equipe`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
+        { url: `${siteUrl}/accessibilite`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     ];
 }
