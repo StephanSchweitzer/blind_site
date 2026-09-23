@@ -5,7 +5,8 @@ import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
 import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
 import { renameTrack, AudioRenameError } from '@/lib/audio/rename';
-import { splitExtension } from '@/lib/audio/naming';
+import { splitExtension, isAppleDoubleName } from '@/lib/audio/naming';
+import { isAudioKey } from '@/lib/audio/bucket';
 import { unexpectedErrorResponse } from '@/lib/api-errors';
 
 /**
@@ -166,9 +167,51 @@ export const PATCH = withAdmin(async (req, { params, me }) => {
         );
     }
 
+    // Même refus que la suppression : renommer une piste d'un dossier partagé la
+    // renomme — et peut la déplacer dans l'ordre de lecture — pour l'autre fiche
+    // aussi, dont l'état audio ne serait pas relu.
+    const sharing = await booksSharingAudioFolder(bookId, book.audio_filepath);
+    if (sharing.length) {
+        return NextResponse.json(
+            {
+                message: sharedFolderRefusal(sharing, 'renommer cette piste'),
+                sharedWith: sharing,
+            },
+            { status: 409 },
+        );
+    }
+
+    // Une piste avant, une piste après — isAudioKey, la définition que tous les
+    // listings appliquent. Le renommage ne vérifiait que l'extension : un nom en
+    // « ._ » (le marqueur AppleDouble, cf. isAppleDoubleName) passait, et la piste
+    // disparaissait de tous les listings, de la durée et du poids de
+    // l'enregistrement, sans avoir quitté le dossier. Dans l'autre sens, renommer
+    // un fichier AppleDouble lui donnait un nom de piste : 300 octets de
+    // métadonnées Mac entraient dans l'ordre de lecture.
+    if (!isAudioKey(key)) {
+        return NextResponse.json(
+            { message: 'Ce fichier n’est pas une piste audio : il ne se renomme pas.' },
+            { status: 400 },
+        );
+    }
+
     if (extensionOf(newName) !== extensionOf(filename)) {
         return NextResponse.json(
             { message: `L’extension doit rester « .${extensionOf(filename)} ».` },
+            { status: 400 },
+        );
+    }
+
+    // Le nouveau nom, lui, sous la règle d'écriture : isAppleDoubleName, comme
+    // l'envoi (upload-url). L'extension vient d'être vérifiée, c'est tout ce qui
+    // restait pour que la piste renommée soit encore une piste.
+    if (isAppleDoubleName(newName)) {
+        return NextResponse.json(
+            {
+                message:
+                    'Ce nom ferait disparaître la piste des listings : un nom commençant par « ._ » ' +
+                    '(ou contenant « ._ » après un espace) est celui d’un fichier de métadonnées Mac.',
+            },
             { status: 400 },
         );
     }

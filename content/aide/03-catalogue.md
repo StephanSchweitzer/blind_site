@@ -154,3 +154,5 @@ Si vous souhaitez (1) télécharger, (2) modifier les noms de fichiers ou (3) su
 ![Catalogue - capture 22](/admin/aide/images/catalogue-22.jpg)
 
 Les fichiers sont classés par ordre alphabétique. Si vous souhaitez modifier l'ordre des fichiers, renommez-les en conséquence ; ils se réorganisent automatiquement après une actualisation ou lorsque vous fermez puis rouvrez le modal d'édition audio.
+
+Un nouveau nom ne peut pas commencer par « ._ » (ni contenir « ._ » après un espace) : c'est la marque des fichiers de métadonnées que crée un Mac, que l'application ignore, et la piste disparaîtrait de la liste. Le renommage est aussi refusé quand le dossier audio est partagé avec une autre fiche, comme la suppression.

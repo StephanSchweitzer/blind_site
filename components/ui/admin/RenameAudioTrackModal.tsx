@@ -14,6 +14,7 @@ import { Loader2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
+import { isAppleDoubleName } from '@/lib/audio/naming';
 
 export interface AudioTrackRenameTarget {
     order: number;
@@ -73,7 +74,10 @@ export function RenameAudioTrackModal({
     const ext = track ? splitName(track.name).ext : '';
     const trimmed = base.trim();
     const newName = ext ? `${trimmed}.${ext}` : trimmed;
-    const valid = trimmed.length > 0 && !trimmed.includes('/') && newName !== track?.name;
+    // Le refus de la route, dit avant l'envoi : un nom en « ._ » est celui d'un
+    // fichier de métadonnées Mac, que tous les listings ignorent (isAudioKey).
+    const appleDouble = isAppleDoubleName(newName);
+    const valid = trimmed.length > 0 && !trimmed.includes('/') && !appleDouble && newName !== track?.name;
 
     const handleRename = async () => {
         if (!track || !valid) return;
@@ -166,6 +170,12 @@ export function RenameAudioTrackModal({
                             <p className="mt-1 text-xs text-muted-foreground">
                                 L’extension est fixe et ne peut pas être modifiée ici.
                             </p>
+                            {appleDouble && (
+                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                    Un nom commençant par « ._ » (ou contenant « ._ » après un espace) est celui
+                                    d’un fichier de métadonnées Mac : la piste disparaîtrait des listings.
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
