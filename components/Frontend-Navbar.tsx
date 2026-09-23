@@ -8,7 +8,7 @@ import { Menu, X, ChevronDown } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SkipLinks } from '@/components/SkipLinks';
-import { AffichageSettings } from '@/components/AffichageSettings';
+import { AffichageBouton, AffichageSettings } from '@/components/AffichageSettings';
 
 type NavLink = {
     href: string;
@@ -113,7 +113,9 @@ const FrontendNavbar = () => {
     const linkClasses = 'hover:text-blue-600 dark:hover:text-purple-400 text-gray-700 dark:text-gray-200 transition-colors duration-200 py-2 border-b-2 border-transparent hover:border-blue-500 dark:hover:border-purple-400 inline-block font-medium aria-[current=page]:border-blue-600 dark:aria-[current=page]:border-purple-400 aria-[current=page]:text-blue-700 dark:aria-[current=page]:text-purple-300';
 
     return (
-        <>
+        // Une seule fenêtre « Affichage » pour les deux dispositions de la barre
+        // (components/AffichageSettings.tsx) ; elle ne rend rien d'autre.
+        <AffichageSettings>
             <SkipLinks />
 
             <nav
@@ -204,7 +206,7 @@ const FrontendNavbar = () => {
 
                         {/* Display settings + theme toggle - Desktop (right side) */}
                         <div className="nav-large justify-end items-center gap-3">
-                            <AffichageSettings />
+                            <AffichageBouton />
                             <ThemeToggle />
                         </div>
 
@@ -224,7 +226,7 @@ const FrontendNavbar = () => {
                             </Link>
 
                             <div className="flex items-center space-x-3">
-                                <AffichageSettings />
+                                <AffichageBouton />
                                 <ThemeToggle />
                                 <button
                                     ref={mobileButtonRef}
@@ -296,7 +298,7 @@ const FrontendNavbar = () => {
                     </div>
                 </div>
             </nav>
-        </>
+        </AffichageSettings>
     );
 };
 
