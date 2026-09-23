@@ -160,7 +160,7 @@ function MembershipForm({ draft, setDraft, busy, onSave, onCancel }: {
             <Textarea placeholder="Puces (une par ligne)" value={draft.bullets} onChange={set('bullets')} className={`${field} min-h-20`} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Input placeholder="Bouton — libellé (optionnel)" value={draft.ctaLabel} onChange={set('ctaLabel')} className={field} />
-                <Input placeholder="Bouton — lien (ex. /faire-un-don)" value={draft.ctaHref} onChange={set('ctaHref')} className={field} />
+                <Input placeholder="Bouton — lien (ex. /contact)" value={draft.ctaHref} onChange={set('ctaHref')} className={field} />
             </div>
             <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={onCancel}><X className="h-4 w-4 mr-1" /> Annuler</Button>
