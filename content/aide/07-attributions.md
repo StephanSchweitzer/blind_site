@@ -92,6 +92,12 @@ Suivez la même procédure que précédemment pour attribuer un nouveau lecteur 
 
 Lorsque vous cliquez sur ce bouton, l'attribution est immédiatement mise à jour ; il n'est donc pas nécessaire d'enregistrer l'ensemble du formulaire par la suite. Veillez donc à bien réfléchir avant de cliquer dessus.
 
+### Changer la demande d'une attribution
+
+Si une attribution a été rattachée à la mauvaise demande, choisissez la bonne dans le champ « Demande » puis enregistrez. La nouvelle demande doit porter sur le même livre, ne pas être une duplication et ne pas avoir déjà sa propre attribution.
+
+Les deux demandes suivent : la nouvelle prend le statut de l'attribution, et l'ancienne, qui n'a plus d'attribution, revient à « Attente envoi vers lecteur », comme si l'attribution avait été supprimée. Si l'une des deux figure sur une facture déjà émise et devait quitter « Terminé », le changement est refusé ; sur un brouillon, elle en est retirée.
+
 ### Rouvrir une attribution terminée
 
 Il arrive qu'une attribution ait été passée « Terminé » à tort — par exemple, un lecteur a envoyé une partie de sa lecture seulement, et enverra la suite plus tard. Dans ce cas, cliquez sur le bouton « Rouvrir l'attribution », sous le statut. Une fenêtre de confirmation s'ouvre :

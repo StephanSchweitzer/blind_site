@@ -14,6 +14,8 @@ import {
     guardAssignmentDateSequence,
     guardAssignmentMatchesOrder,
     guardOrderNotSettled,
+    guardNotDuplication,
+    guardOrderHasNoAssignment,
     syncOrderToStatus,
     assignmentKeepsOrderStatus,
     orderStatusForAssignmentStatus,
@@ -24,6 +26,7 @@ import {
 import { checkAssignmentTermineAudio } from '@/lib/assignments/termineAudio';
 import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
 import { withAdmin } from '@/lib/auth/guards';
+import type { BillingStatus } from '@prisma/client';
 import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liveBookGuard';
 import {
     guardOrderLeavingTermineOnBill,
@@ -114,7 +117,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 receptionDate: true,
                 sentToReaderDate: true,
                 returnedToECADate: true,
-                order: { select: { statusId: true, billId: true, bill: { select: { state: true } } } },
+                order: { select: { id: true, statusId: true, billId: true, bill: { select: { state: true } } } },
                 _count: { select: { readerHistory: true } },
                 deletedAt: true,
             },
@@ -141,6 +144,115 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
         const newStatusId = validation.data.statusId;
 
+        // ── Changer la demande liée ──────────────────────────────────────────────
+        // Le formulaire laisse choisir une autre demande en modification (corriger
+        // un mauvais rattachement). Ce PUT écrivait alors le nouvel orderId sans
+        // AUCUN des contrôles de POST /api/assignments — une attribution par
+        // demande, jamais sur une duplication, jamais sur une demande supprimée —
+        // que seul le sélecteur appliquait. Et aucune des deux demandes ne suivait :
+        // la nouvelle gardait son statut, tandis que l'ancienne restait « En cours »
+        // sans attribution, l'état que DELETE ci-dessous décrit comme invalide. Pire,
+        // un changement de statut dans la même requête partait vers l'ANCIENNE.
+        //
+        // Désormais : la nouvelle demande passe les contrôles de la création et
+        // prend le statut de l'attribution ; l'ancienne est libérée comme par DELETE
+        // (retour à « Attente envoi vers lecteur »). Les deux sous la règle de
+        // facture habituelle — refus sur une facture émise, détachement d'un
+        // brouillon.
+        const orderIsChanging =
+            validation.data.orderId !== undefined &&
+            validation.data.orderId !== existingAssignment.orderId;
+
+        let newOrder: {
+            id: number;
+            statusId: number;
+            billId: number | null;
+            bill: { state: BillingStatus } | null;
+        } | null = null;
+        if (orderIsChanging && validation.data.orderId != null) {
+            const found = await prisma.orders.findUnique({
+                where: { id: validation.data.orderId },
+                select: {
+                    id: true,
+                    statusId: true,
+                    isDuplication: true,
+                    deletedAt: true,
+                    billId: true,
+                    bill: { select: { state: true } },
+                    // Relation : non filtrée par lib/prisma.ts, d'où le where.
+                    assignments: {
+                        where: { deletedAt: null, id: { not: assignmentId } },
+                        select: { id: true },
+                        take: 1,
+                    },
+                },
+            });
+            // findUnique voit les demandes supprimées.
+            if (!found || found.deletedAt) {
+                return NextResponse.json(
+                    { message: 'La demande choisie est introuvable ou a été supprimée.' },
+                    { status: 404 }
+                );
+            }
+            for (const guard of [
+                guardNotDuplication(found.isDuplication),
+                guardOrderNotSettled(found.statusId),
+                guardOrderHasNoAssignment(found.assignments.length),
+            ]) {
+                if (!guard.ok) {
+                    return NextResponse.json(
+                        {
+                            message: guard.message,
+                            ...(found.assignments[0] ? { blockingAssignmentId: found.assignments[0].id } : {}),
+                        },
+                        { status: guard.httpStatus }
+                    );
+                }
+            }
+            newOrder = found;
+        }
+
+        // Ce que chaque demande concernée va devenir, décidé et contrôlé AVANT la
+        // transaction. `assignmentStatusId` est le statut que syncOrderToStatus
+        // reflète : « Attente envoi vers lecteur » pour l'ancienne (elle n'a plus
+        // d'attribution — resolveClosureDate efface alors sa date de clôture, comme
+        // DELETE), celui de l'attribution pour la nouvelle.
+        const orderMoves: { orderId: number; assignmentStatusId: number; detachBillId: number | null }[] = [];
+        if (orderIsChanging) {
+            const resultingAssignmentStatusId = newStatusId ?? existingAssignment.statusId;
+            const affected = [
+                ...(existingAssignment.order
+                    ? [{ order: existingAssignment.order, assignmentStatusId: STATUS.ATTENTE as number }]
+                    : []),
+                ...(newOrder ? [{ order: newOrder, assignmentStatusId: resultingAssignmentStatusId }] : []),
+            ];
+            for (const { order, assignmentStatusId } of affected) {
+                const nextStatusId = assignmentKeepsOrderStatus(order.statusId, assignmentStatusId)
+                    ? order.statusId
+                    : orderStatusForAssignmentStatus(assignmentStatusId);
+                const billState = order.bill?.state ?? null;
+                const moveGuard = guardOrderLeavingTermineOnBill({
+                    previousStatusId: order.statusId,
+                    nextStatusId,
+                    billId: order.billId,
+                    billState,
+                });
+                if (!moveGuard.ok) {
+                    return NextResponse.json({ message: moveGuard.message }, { status: moveGuard.httpStatus });
+                }
+                orderMoves.push({
+                    orderId: order.id,
+                    assignmentStatusId,
+                    detachBillId:
+                        order.billId != null &&
+                        billState === 'DRAFT' &&
+                        leavesTermine(order.statusId, nextStatusId)
+                            ? order.billId
+                            : null,
+                });
+            }
+        }
+
         // L'attribution quitte « Terminé » : le lecteur reprend un enregistrement
         // que le livre affichait comme « Disponible » sur la seule foi de son dépôt
         // (voir /api/books/[id]/audio/commit, l'autre écrivain de ce champ). Tant
@@ -154,7 +266,9 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         // demande est déjà partie sur une facture, c'est la même règle que sur son
         // propre formulaire — sinon la porte de derrière annule le verrou de devant :
         // refusé sur une facture émise, détachement automatique sur un brouillon.
-        const linkedOrderStatusId = existingAssignment.order?.statusId ?? null;
+        // Quand la demande change, c'est orderMoves ci-dessus qui décide pour
+        // l'ancienne comme pour la nouvelle : ce bloc ne regarde plus l'ancienne.
+        const linkedOrderStatusId = orderIsChanging ? null : (existingAssignment.order?.statusId ?? null);
         const linkedOrderBillId = existingAssignment.order?.billId ?? null;
         const linkedOrderBillState = existingAssignment.order?.bill?.state ?? null;
         const nextOrderStatusId =
@@ -399,11 +513,31 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 });
             }
 
+            // La demande liée a changé : l'ancienne est libérée, la nouvelle prend
+            // le statut de l'attribution — voir orderMoves plus haut.
+            for (const move of orderMoves) {
+                await syncOrderToStatus(tx, move.orderId, move.assignmentStatusId, performedById);
+                if (move.detachBillId != null) {
+                    const total = await detachOrderFromBill(tx, {
+                        orderId: move.orderId,
+                        billId: move.detachBillId,
+                        reason: 'assignment-order-changed',
+                        performedById,
+                    });
+                    billDetached = {
+                        orderId: move.orderId,
+                        billId: move.detachBillId,
+                        newTotal: total.toString(),
+                    };
+                }
+            }
+
             // Propagate the new status up to the linked order. « Terminé » tops the
             // demande out at « Attente envoi vers auditeur » — the enregistrement is
             // back at ECA, which is not the same thing as the auditeur having it.
             // See orderStatusForAssignmentStatus.
             if (
+                !orderIsChanging &&
                 newStatusId !== undefined &&
                 existingAssignment.orderId &&
                 newStatusId !== existingAssignment.statusId
@@ -426,34 +560,42 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                         newTotal: total.toString(),
                     };
                 }
+            }
 
-                // The recording just finished — but that does NOT bill anything. The
-                // demande is now « Attente envoi vers auditeur »; it accrues onto a
-                // brouillon when a permanent closes it, having actually sent the audio
-                // out. Deliberate: accruing here would attach a tarif computed before
-                // the enregistrement was weighed, and the seuil could turn it into a
-                // facture émise in this very transaction — past the point where
-                // repriceOpenOrdersForBook is still allowed to correct it.
-                if (newStatusId === STATUS.TERMINE) {
-                    const order = await tx.orders.findUnique({
-                        where: { id: existingAssignment.orderId },
-                        select: { id: true, statusId: true },
-                    });
+            // The recording just finished — but that does NOT bill anything. The
+            // demande is now « Attente envoi vers auditeur »; it accrues onto a
+            // brouillon when a permanent closes it, having actually sent the audio
+            // out. Deliberate: accruing here would attach a tarif computed before
+            // the enregistrement was weighed, and the seuil could turn it into a
+            // facture émise in this very transaction — past the point where
+            // repriceOpenOrdersForBook is still allowed to correct it.
+            //
+            // Reported on whichever demande now carries the attribution: the new one
+            // when this same request moved it (see orderMoves).
+            const syncedOrderId = orderIsChanging ? (newOrder?.id ?? null) : existingAssignment.orderId;
+            if (
+                newStatusId === STATUS.TERMINE &&
+                newStatusId !== existingAssignment.statusId &&
+                syncedOrderId
+            ) {
+                const order = await tx.orders.findUnique({
+                    where: { id: syncedOrderId },
+                    select: { id: true, statusId: true },
+                });
 
-                    if (order) {
-                        orderTransition = {
-                            orderId: order.id,
-                            awaitingShipment: order.statusId === STATUS.ATTENTE_AUDITEUR,
-                            // Une revue terminée sans audio n'a rien rapporté à
-                            // dupliquer : ces duplications attendent toujours.
-                            freedDuplicationIds: termineWithoutAudio
-                                ? []
-                                : await findDuplicationsFreedByRecording(
-                                      tx,
-                                      existingAssignment.catalogueId
-                                  ),
-                        };
-                    }
+                if (order) {
+                    orderTransition = {
+                        orderId: order.id,
+                        awaitingShipment: order.statusId === STATUS.ATTENTE_AUDITEUR,
+                        // Une revue terminée sans audio n'a rien rapporté à
+                        // dupliquer : ces duplications attendent toujours.
+                        freedDuplicationIds: termineWithoutAudio
+                            ? []
+                            : await findDuplicationsFreedByRecording(
+                                  tx,
+                                  existingAssignment.catalogueId
+                              ),
+                    };
                 }
             }
 
