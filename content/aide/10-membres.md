@@ -178,6 +178,8 @@ Le statut « indisponible » est un peu plus précis, car il nécessite une date
 
 Suivez la même procédure que précédemment et saisissez les dates aussi précisément que possible. Vous pourrez toujours revenir modifier ces dates ultérieurement si la situation venait à changer.
 
+Une personne qui n'est pas active ne peut pas être marquée « disponible » : réactivez-la d'abord, puis rechargez sa fiche. Et une fiche supprimée ne reçoit plus ni demande, ni attribution, ni facture tant qu'elle n'est pas restaurée ; une demande supprimée dont l'auditeur a été supprimé ne se restaure qu'après lui.
+
 ![Membres - capture 24](/admin/aide/images/membres-24.jpg)
 
 La modification du statut d'un utilisateur est un événement enregistré, et l'historique de cet utilisateur peut être consulté au bas de leur modal de modification.

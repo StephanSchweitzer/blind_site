@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import {
     closeElapsedUnavailabilities,
@@ -11,21 +12,25 @@ import {
  * vercel.json.
  *
  * NOT wrapped in withAuth/withAdmin: there is no session behind a cron
- * invocation. It is guarded by CRON_SECRET instead — Vercel sends it as
- * `Authorization: Bearer <CRON_SECRET>`. With no secret configured the route
- * refuses to run rather than standing open. /api/cron is outside the
- * proxy matcher (proxy.ts), so nothing else gates it.
+ * invocation. Same two ways in as the other cron routes (CLAUDE.md): Vercel's
+ * scheduler (`Authorization: Bearer <CRON_SECRET>`), or a signed-in super admin
+ * — this one used to accept only the first, so the sweep could not be run by
+ * hand. With no secret configured the secret path refuses rather than standing
+ * open. /api/cron is outside the proxy matcher (proxy.ts), so nothing else
+ * gates it.
  */
 export const dynamic = 'force-dynamic';
 
-function isAuthorizedCron(request: NextRequest): boolean {
+async function isAuthorizedCron(request: NextRequest): Promise<boolean> {
     const secret = process.env.CRON_SECRET;
-    if (!secret) return false;
-    return request.headers.get('authorization') === `Bearer ${secret}`;
+    if (secret && request.headers.get('authorization') === `Bearer ${secret}`) return true;
+
+    const me = await getCurrentUser();
+    return me !== null && isSuperAdmin(me.accessLevel) && !me.passwordNeedsChange;
 }
 
 export async function GET(request: NextRequest) {
-    if (!isAuthorizedCron(request)) {
+    if (!(await isAuthorizedCron(request))) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 

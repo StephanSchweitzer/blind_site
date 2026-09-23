@@ -23,7 +23,8 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
     if (secret && request.headers.get('authorization') === `Bearer ${secret}`) return true;
 
     const me = await getCurrentUser();
-    return me !== null && isSuperAdmin(me.accessLevel);
+    // Same forced-password-change rule as withSuperAdmin (lib/auth/guards.ts).
+    return me !== null && isSuperAdmin(me.accessLevel) && !me.passwordNeedsChange;
 }
 
 async function run(request: NextRequest) {

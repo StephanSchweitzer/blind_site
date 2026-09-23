@@ -14,6 +14,8 @@ export interface CurrentUser {
     id: number;
     email: string | null;
     accessLevel: string;
+    /** Read from the DB, not the token — see mayUseBackOffice. */
+    passwordNeedsChange: boolean;
 }
 
 /**
@@ -36,7 +38,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     if (!session?.user?.email) return null;
     const me = await prisma.user.findFirst({
         where: { email: session.user.email },
-        select: { id: true, email: true, accessLevel: true },
+        select: { id: true, email: true, accessLevel: true, passwordNeedsChange: true },
     });
     if (me) setAuditActor({ actorId: me.id, actorEmail: me.email });
     return me;
@@ -48,6 +50,28 @@ export function isAdmin(level: string | null | undefined): boolean {
 
 export function isSuperAdmin(level: string | null | undefined): boolean {
     return level === 'super_admin';
+}
+
+/**
+ * The forced password change (a temporary password, or a reset by a super
+ * admin) is enforced for the whole back office, not only its pages.
+ *
+ * It used to live in proxy.ts alone, whose matcher covers /admin and not /api —
+ * and it read the flag from the JWT, stamped at sign-in. Someone holding a
+ * temporary password could therefore skip the change by calling the API
+ * directly, and a reset made while they were signed in never reached them at
+ * all. The admin guards below now refuse with this until the flag is cleared;
+ * withAuth does not, because the change itself (/api/user/change-password,
+ * /api/user/password-status) goes through it.
+ */
+export const PASSWORD_CHANGE_REQUIRED_MESSAGE =
+    'Votre mot de passe doit être changé avant de continuer. Rechargez la page pour le faire.';
+
+function passwordChangeRequired(): Response {
+    return NextResponse.json(
+        { message: PASSWORD_CHANGE_REQUIRED_MESSAGE, passwordChangeRequired: true },
+        { status: 403 }
+    );
 }
 
 type RouteCtx = { params?: Promise<Record<string, string>> };
@@ -108,6 +132,7 @@ export function withAdmin(handler: GuardedHandler): RouteHandler {
         if (!isAdmin(me.accessLevel)) {
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
+        if (me.passwordNeedsChange) return passwordChangeRequired();
         return runAttributed(me, handler, req, ctx);
     };
 }
@@ -120,6 +145,7 @@ export function withSuperAdmin(handler: GuardedHandler): RouteHandler {
         if (!isSuperAdmin(me.accessLevel)) {
             return NextResponse.json({ message: 'Permissions insuffisantes' }, { status: 403 });
         }
+        if (me.passwordNeedsChange) return passwordChangeRequired();
         return runAttributed(me, handler, req, ctx);
     };
 }
@@ -149,7 +175,7 @@ export async function asAdmin<T>(
     body: (me: CurrentUser) => Promise<T>
 ): Promise<T> {
     const me = await getCurrentUser();
-    if (!me || !isAdmin(me.accessLevel)) return onDenied;
+    if (!me || !isAdmin(me.accessLevel) || me.passwordNeedsChange) return onDenied;
     // The await is load-bearing, as in withoutAudit: it keeps the scope open
     // until the body's lazy PrismaPromises have actually run.
     return runWithAuditActor({ actorId: me.id, actorEmail: me.email }, async () => await body(me));

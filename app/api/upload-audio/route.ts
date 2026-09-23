@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { put } from '@vercel/blob';
-import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
+import { getCurrentUser, isAdmin, PASSWORD_CHANGE_REQUIRED_MESSAGE } from '@/lib/auth/guards';
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 
@@ -15,6 +15,10 @@ export async function POST(request: Request) {
         }
         if (!isAdmin(me.accessLevel)) {
             return NextResponse.json({ error: 'Permissions insuffisantes' }, { status: 403 });
+        }
+        // Same rule as withAdmin: a temporary password is changed before anything else.
+        if (me.passwordNeedsChange) {
+            return NextResponse.json({ error: PASSWORD_CHANGE_REQUIRED_MESSAGE }, { status: 403 });
         }
 
         const formData = await request.formData();

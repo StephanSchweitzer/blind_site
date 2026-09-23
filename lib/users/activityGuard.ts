@@ -26,7 +26,8 @@ export interface BlockedActivityInfo {
 
 export type ActivityGuardResult =
     | { ok: true }
-    | { ok: false; httpStatus: number; message: string; blocked: BlockedActivityInfo };
+    // `blocked` is absent for a deleted fiche: there is nothing to reactivate.
+    | { ok: false; httpStatus: number; message: string; blocked?: BlockedActivityInfo };
 
 type NameParts = {
     name: string | null;
@@ -51,6 +52,7 @@ const userActivitySelect = {
     lastName: true,
     activityStatus: true,
     activityChangedAt: true,
+    deletedAt: true,
     unavailableFrom: true,
     unavailableUntil: true,
     civility: { select: { name: true } },
@@ -110,6 +112,21 @@ export async function guardUserIsActive(
     }
 
     const { user, latestEvent } = snapshot;
+
+    // findUnique (above) sees soft-deleted fiches — by design, see lib/prisma.ts —
+    // and activityStatus says nothing about deletion. A deleted auditeur or lecteur
+    // used to pass this guard: the pickers hide them, but a tab opened before the
+    // deletion, or any direct API call, gave them new work. Same rule as
+    // guardLiveBooks for a deleted book.
+    if (user.deletedAt) {
+        return {
+            ok: false,
+            httpStatus: 409,
+            message:
+                `La fiche de ${composeUserDisplayName(user)} a été supprimée : ` +
+                `restaurez-la avant de ${role === 'aveugle' ? 'lui attribuer une demande' : 'lui assigner une attribution'}.`,
+        };
+    }
 
     if (isEffectivelyActive(user)) {
         return { ok: true };

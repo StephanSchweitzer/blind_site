@@ -9,6 +9,7 @@ import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 // rule is mixed — admins see anyone, a member only their own record.
 import { getCurrentUser, isAdmin, isSuperAdmin, withAdmin } from '@/lib/auth/guards';
 import { getUserDeletionBlockers, describeBlockers } from '@/lib/users/deletionGuard';
+import { isEffectivelyActive } from '@/lib/users/activityStatus';
 import {
     UserQueryModeSchema,
     UserIncludeRelationSchema,
@@ -44,7 +45,9 @@ export async function GET(
         if (!me) {
             return NextResponse.json({ message: 'Non authentifié' }, { status: 401 });
         }
-        const admin = isAdmin(me.accessLevel);
+        // A permanent still on a temporary password reads like a member here — the
+        // same rule the admin guards apply (lib/auth/guards.ts).
+        const admin = isAdmin(me.accessLevel) && !me.passwordNeedsChange;
         if (!admin && me.id !== userId) {
             return NextResponse.json({ message: 'Accès refusé' }, { status: 403 });
         }
@@ -353,6 +356,10 @@ export const PATCH = withAdmin(async (
                 memberType: true,
                 accessLevel: true,
                 password: true,
+                isAvailable: true,
+                activityStatus: true,
+                unavailableFrom: true,
+                unavailableUntil: true,
             },
         });
 
@@ -533,6 +540,29 @@ export const PATCH = withAdmin(async (
         }
 
         // Reader/staff fields
+        // « Disponible » ne se rallume pas sur quelqu'un d'inactif.
+        //
+        // POST /api/user/[id]/activity éteint isAvailable quand la personne cesse
+        // d'être active (la règle « deactivating a user auto-sets isAvailable =
+        // false »). Cette route l'écrivait telle que reçue : une fiche ouverte
+        // avant la désactivation, dans un autre onglet, le remettait à true au
+        // premier enregistrement. Refusé seulement quand la valeur CHANGE vers
+        // true — la fiche renvoie le champ à chaque enregistrement — et jugé sur
+        // le statut EFFECTIF, comme la route d'activité.
+        if (
+            body.isAvailable === true &&
+            existingUser.isAvailable !== true &&
+            !isEffectivelyActive(existingUser)
+        ) {
+            return NextResponse.json(
+                {
+                    message:
+                        "Cette personne n'est pas active : elle ne peut pas être marquée disponible. " +
+                        "Réactivez-la d'abord (statut d'activité), puis rechargez la fiche.",
+                },
+                { status: 409 }
+            );
+        }
         if (body.isAvailable !== undefined) updateData.isAvailable = body.isAvailable;
         if (body.availabilityNotes !== undefined) updateData.availabilityNotes = body.availabilityNotes || null;
         // Free text ("romans policiers", "textes techniques"…) shown on
