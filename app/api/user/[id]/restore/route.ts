@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAdmin } from '@/lib/auth/guards';
+import { isAdmin, isSuperAdmin, withAdmin } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
@@ -20,7 +20,7 @@ import { getUserDisplayName } from '@/lib/users/displayName';
  * Undo belongs to the domain model. The journal only records that it happened,
  * which the audit extension does on its own for this update.
  */
-export const POST = withAdmin(async (_request, { params }) => {
+export const POST = withAdmin(async (_request, { me, params }) => {
     const { id } = await params!;
     const userId = parseInt(id, 10);
     if (Number.isNaN(userId)) {
@@ -40,6 +40,7 @@ export const POST = withAdmin(async (_request, { params }) => {
                 lastName: true,
                 email: true,
                 deletedAt: true,
+                accessLevel: true,
                 civility: { select: { name: true } },
             },
         });
@@ -55,6 +56,16 @@ export const POST = withAdmin(async (_request, { params }) => {
             email: user.email,
             civility: user.civility?.name ?? null,
         });
+
+        // Restaurer un compte permanent lui rend sa connexion, mot de passe
+        // compris : c'est redonner un accès, donc un geste de super
+        // administrateur — le pendant du garde de DELETE /api/user/[id].
+        if (isAdmin(user.accessLevel) && !isSuperAdmin(me.accessLevel)) {
+            return NextResponse.json(
+                { message: 'Seuls les super administrateurs peuvent restaurer un compte permanent.' },
+                { status: 403 }
+            );
+        }
 
         if (!user.deletedAt) {
             return NextResponse.json({

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth/guards';
+import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -11,10 +11,10 @@ import { prisma } from '@/lib/prisma';
  * whether a recording exists. So this route reads the columns the sync job and
  * every mutating route keep up to date, and touches nothing else.
  *
- * withAuth rather than withAdmin: knowing a book has audio is exactly what the
- * public catalogue already shows.
+ * withAdmin like its siblings: every caller is a back-office form, and the
+ * answer covers books hidden from the public catalogue too.
  */
-export const GET = withAuth(async (_req, { params }) => {
+export const GET = withAdmin(async (_req, { params }) => {
     const { id } = (await params) ?? {};
     const bookId = Number(id);
     if (!Number.isInteger(bookId)) {

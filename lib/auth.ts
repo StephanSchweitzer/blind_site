@@ -54,6 +54,17 @@ export const authOptions: NextAuthOptions = {
                     return null;
                 }
 
+                // Seul un permanent se connecte : un compte de connexion ne se crée
+                // qu'au niveau admin / super_admin (POST /api/user), et tout ce qu'il
+                // y a derrière la connexion — « Mon compte » compris — vit sous
+                // /admin. Une rétrogradation ne vide pourtant pas le mot de passe :
+                // sans ce refus, un ancien permanent ramené à « Membre » se
+                // reconnectait avec, et retrouvait les pages de /admin. Écrit en
+                // clair plutôt qu'avec isAdmin : lib/auth/guards importe ce fichier.
+                if (user.accessLevel !== 'admin' && user.accessLevel !== 'super_admin') {
+                    return null;
+                }
+
                 const isPasswordValid = await compare(
                     credentials.password,
                     user.password

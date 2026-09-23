@@ -365,6 +365,14 @@ export function UserFormBackendBase({
         (initialData?.accessLevel === 'super_admin' && currentUserAccessLevel !== 'super_admin') ||
         currentUserAccessLevel === 'admin';
 
+    // Sur la fiche d'un compte permanent, l'email est l'identifiant de connexion
+    // et l'adresse du lien « mot de passe oublié » : seul un super administrateur
+    // le change, et seul lui supprime la fiche (PATCH / DELETE /api/user/[id]).
+    // Un permanent change le sien depuis « Mon compte ».
+    const isPermanentAccount =
+        initialData?.accessLevel === 'admin' || initialData?.accessLevel === 'super_admin';
+    const isLoginAccountLocked = isPermanentAccount && currentUserAccessLevel !== 'super_admin';
+
     const getLockedReason = (): string =>
         currentUserAccessLevel === 'admin'
             ? 'Seuls les super administrateurs peuvent modifier les niveaux d\'accès'
@@ -422,7 +430,14 @@ export function UserFormBackendBase({
                                 required={formData.accessLevel === 'admin'}
                                 autoFocus={false}
                                 autoComplete="off"
+                                disabled={isLoginAccountLocked}
                             />
+                            {isLoginAccountLocked && (
+                                <p className="text-xs text-muted-foreground">
+                                    C’est l’identifiant de connexion d’un compte permanent : seul un super
+                                    administrateur peut le modifier. Chacun change le sien depuis « Mon compte ».
+                                </p>
+                            )}
                         </div>
 
                         {/* Prénom + Nom */}
@@ -956,7 +971,7 @@ export function UserFormBackendBase({
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
 
-                        {showDelete && onDelete && (
+                        {showDelete && onDelete && !isLoginAccountLocked && (
                             <Button
                                 type="button"
                                 variant="destructive"

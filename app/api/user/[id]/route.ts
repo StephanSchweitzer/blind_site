@@ -7,7 +7,7 @@ import { isSendableEmail } from '@/lib/email/sendEmail';
 import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 // GET keeps getCurrentUser: it is a read (no audit event to attribute) and its
 // rule is mixed — admins see anyone, a member only their own record.
-import { getCurrentUser, isAdmin, withAdmin } from '@/lib/auth/guards';
+import { getCurrentUser, isAdmin, isSuperAdmin, withAdmin } from '@/lib/auth/guards';
 import { getUserDeletionBlockers, describeBlockers } from '@/lib/users/deletionGuard';
 import {
     UserQueryModeSchema,
@@ -411,6 +411,39 @@ export const PATCH = withAdmin(async (
         let resultingEmail = existingUser.email;
         if (body.email !== undefined) {
             const normalized = body.email ? body.email.trim().toLowerCase() : null;
+
+            // L'email d'un compte de connexion est son identifiant — et l'adresse
+            // où part le lien « mot de passe oublié ». Le changer, c'est donc
+            // décider qui peut se connecter sous ce compte : un geste de super
+            // administrateur, comme le niveau d'accès juste au-dessus.
+            //
+            // Sans ce garde, un simple permanent remplaçait l'email du super
+            // administrateur par une adresse à lui, demandait un lien de
+            // réinitialisation (/api/password-reset ne regarde que le niveau du
+            // compte trouvé), et se connectait en super administrateur — une
+            // élévation de privilège qui ne touchait jamais à `accessLevel`.
+            //
+            // Borné à un CHANGEMENT réel (la fiche renvoie l'email à chaque
+            // enregistrement), et sa propre fiche reste modifiable : c'est le même
+            // geste que « Mon compte » (PUT /api/user/update).
+            const emailIsChanging =
+                (normalized ?? '') !== (existingUser.email?.trim().toLowerCase() ?? '');
+            if (
+                emailIsChanging &&
+                isAdmin(existingUser.accessLevel) &&
+                !isSuperAdmin(actorLevel) &&
+                me.id !== userId
+            ) {
+                return NextResponse.json(
+                    {
+                        message:
+                            "Seuls les super administrateurs peuvent modifier l'email d'un compte permanent : " +
+                            "c'est l'identifiant de connexion de cette personne.",
+                    },
+                    { status: 403 }
+                );
+            }
+
             updateData.email = normalized;
             resultingEmail = normalized;
 
@@ -636,13 +669,25 @@ export const DELETE = withAdmin(async (
         // that was already soft-deleted (lets us answer idempotently).
         const existingUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, name: true, email: true, deletedAt: true },
+            select: { id: true, name: true, email: true, deletedAt: true, accessLevel: true },
         });
 
         if (!existingUser) {
             return NextResponse.json(
                 { message: 'Personne introuvable' },
                 { status: 404 }
+            );
+        }
+
+        // Supprimer un compte permanent lui ferme la connexion (authorize ne
+        // trouve plus la fiche) : c'est retirer un accès, donc un geste de super
+        // administrateur — la même règle que le niveau d'accès, « dans les deux
+        // sens ». Sans ce garde, un simple permanent pouvait supprimer le super
+        // administrateur. Voir aussi POST /api/user/[id]/restore.
+        if (isAdmin(existingUser.accessLevel) && !isSuperAdmin(me.accessLevel)) {
+            return NextResponse.json(
+                { message: 'Seuls les super administrateurs peuvent supprimer un compte permanent.' },
+                { status: 403 }
             );
         }
 

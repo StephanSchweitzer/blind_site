@@ -40,12 +40,15 @@ interface DossierDeletedNoticeProps {
     fullName: string;
     /** ISO string — formatted here so the server and client agree on the zone. */
     deletedAt: string;
+    /** false pour un compte permanent vu par un simple permanent : la route le refuse. */
+    canRestore: boolean;
 }
 
 export default function DossierDeletedNotice({
     userId,
     fullName,
     deletedAt,
+    canRestore,
 }: DossierDeletedNoticeProps) {
     const router = useRouter();
     const { toast } = useToast();
@@ -104,21 +107,28 @@ export default function DossierDeletedNotice({
                                 leur référence. Le reste de la page est en lecture seule tant
                                 qu’elle n’est pas restaurée.
                             </p>
+                            {!canRestore && (
+                                <p className="mt-1 text-sm text-red-700/90 dark:text-red-300/90">
+                                    C’est un compte permanent : seul un super administrateur peut le restaurer.
+                                </p>
+                            )}
                         </div>
                     </div>
-                    <Button
-                        variant="outline"
-                        className="shrink-0 bg-background"
-                        onClick={() => setConfirmOpen(true)}
-                        disabled={isRestoring}
-                    >
-                        {isRestoring ? (
-                            <Loader2 size={14} className="mr-1.5 animate-spin" />
-                        ) : (
-                            <RotateCcw size={14} className="mr-1.5" />
-                        )}
-                        Restaurer
-                    </Button>
+                    {canRestore && (
+                        <Button
+                            variant="outline"
+                            className="shrink-0 bg-background"
+                            onClick={() => setConfirmOpen(true)}
+                            disabled={isRestoring}
+                        >
+                            {isRestoring ? (
+                                <Loader2 size={14} className="mr-1.5 animate-spin" />
+                            ) : (
+                                <RotateCcw size={14} className="mr-1.5" />
+                            )}
+                            Restaurer
+                        </Button>
+                    )}
                 </div>
             </div>
 

@@ -8,7 +8,7 @@ import DossierDeletedNotice from './dossier-deleted-notice';
 import { MEMBER_TYPE_LABELS, getMemberTypeColor } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
 import { computeCotisationStatus, formatCotisationDate, isCotisationExempt } from '@/lib/cotisation';
-import { getCurrentUser } from '@/lib/auth/guards';
+import { getCurrentUser, isAdmin, isSuperAdmin } from '@/lib/auth/guards';
 import { MailingLabelButton } from '@/admin/MailingLabelButton';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +42,9 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
             homePhone: true,
             cellPhone: true,
             memberType: true,
+            // Un compte permanent ne se restaure que par un super administrateur
+            // (POST /api/user/[id]/restore) : le bandeau n'offre le bouton qu'à lui.
+            accessLevel: true,
             isActive: true,
             // A soft-deleted person still resolves by id on purpose (findUnique
             // is not filtered — see lib/prisma.ts), so the dossier has to say so
@@ -76,6 +79,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                     userId={user.id}
                     fullName={fullName}
                     deletedAt={user.deletedAt!.toISOString()}
+                    canRestore={!isAdmin(user.accessLevel) || isSuperAdmin(me?.accessLevel)}
                 />
             )}
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth/guards';
+import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { listBookTracks, getTrackUrl } from '@/lib/audio/bucket';
 
@@ -9,10 +9,13 @@ const URL_TTL_SECONDS = 3600;
 /**
  * Ordered audio tracks for a book, each with a time-limited download URL.
  *
- * Authenticated users only — the bucket stays private and the B2 credentials
- * never leave the server; the browser only ever sees signed URLs that expire.
+ * Admins only — the bucket stays private and the B2 credentials never leave
+ * the server; the browser only ever sees signed URLs that expire. Every caller
+ * is a back-office screen, and a signed URL is the recording itself: it was
+ * withAuth, which let any session holding a cookie download any book,
+ * including those hidden from the catalogue.
  */
-export const GET = withAuth(async (_req, { params }) => {
+export const GET = withAdmin(async (_req, { params }) => {
     const { id } = (await params) ?? {};
     const bookId = Number(id);
     if (!Number.isInteger(bookId)) {

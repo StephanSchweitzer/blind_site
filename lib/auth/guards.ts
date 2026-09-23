@@ -24,11 +24,17 @@ export interface CurrentUser {
  * Also stamps the audit actor for the rest of the request, which is what lets
  * the routes that authenticate by hand (they don't use the guards below) still
  * attribute their writes — see lib/audit/context.ts.
+ *
+ * findFirst, not findUnique: only list reads carry the soft-delete filter
+ * (lib/prisma.ts), and a by-id read deliberately resolves deleted rows. Here
+ * that meant a permanent deleted while signed in kept passing withAdmin for
+ * the rest of their JWT's life (30 days) — sign-in refused them, the session
+ * they already held did not. `email` is unique, so nothing else changes.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return null;
-    const me = await prisma.user.findUnique({
+    const me = await prisma.user.findFirst({
         where: { email: session.user.email },
         select: { id: true, email: true, accessLevel: true },
     });

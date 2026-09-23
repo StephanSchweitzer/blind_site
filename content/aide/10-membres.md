@@ -20,6 +20,10 @@ Enfin, le niveau d'accès offrant le plus de privilèges est celui de « Super A
 
 Seul un Super Admin peut créer un nouveau permanent ou changer le niveau d'accès d'un membre. Sur les autres pages (auditeurs, lecteurs, donateurs), tout permanent peut ajouter un membre.
 
+Sur la fiche d'un permanent, trois gestes sont également réservés au Super Admin : modifier son **email** (c'est son identifiant de connexion, et l'adresse où part le lien « mot de passe oublié »), **supprimer** sa fiche et la **restaurer**. Pour un simple permanent, le champ email est grisé et le bouton « Supprimer la personne » n'apparaît pas. Chacun peut en revanche changer son propre email depuis [Mon compte](/admin/aide/mon-compte).
+
+Seuls les permanents et les Super Admins peuvent se connecter. Un permanent ramené au niveau « membre », ou dont la fiche est supprimée, perd l'accès à /admin immédiatement, même s'il était connecté.
+
 Assez parlé des rôles et des niveaux d'accès.
 
 Dans la fenêtre modale de modification de chaque utilisateur, un bouton « Dossier » permet d’accéder à son dossier, une page dédiée à la centralisation de toutes les activités qu’un utilisateur a effectuées tout au long de son parcours au sein de l’ECA.
