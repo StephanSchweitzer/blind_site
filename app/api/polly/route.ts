@@ -2,8 +2,9 @@ import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { put } from "@vercel/blob";
+import { put, list, del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
+import { withoutAudit } from "@/lib/audit/context";
 
 const pollyClient = new PollyClient({
     region: 'us-east-1',
@@ -23,6 +24,33 @@ function formatMinutes(min: number): string {
     const hours = Math.floor(min / 60);
     const rem = min % 60;
     return `${hours} heure${hours > 1 ? 's' : ''} et ${rem} minute${rem > 1 ? 's' : ''}`;
+}
+
+/**
+ * Les annonces d'avant pour ce livre — l'ancien nom fixe `book-<id>.mp3` comme
+ * les versions suffixées — n'ont plus de lecteur une fois la nouvelle en base :
+ * elles ne feraient qu'occuper le stockage Blob. Le motif exige « book-<id> »
+ * suivi de « . » ou « - » : `book-4` ne doit pas emporter `book-42`.
+ *
+ * Au mieux : l'annonce est déjà servie, un échec ici n'a pas à la faire échouer.
+ */
+async function pruneSupersededAnnouncements(bookId: number, keepUrl: string): Promise<void> {
+    try {
+        const own = new RegExp(`^book_descriptions/book-${bookId}(-[A-Za-z0-9]+)?\\.mp3$`);
+        const { blobs } = await list({ prefix: `book_descriptions/book-${bookId}` });
+        await discardBlobs(blobs.filter((b) => own.test(b.pathname) && b.url !== keepUrl).map((b) => b.url));
+    } catch (error) {
+        console.warn("Nettoyage des anciennes annonces impossible pour le livre", bookId, error);
+    }
+}
+
+async function discardBlobs(urls: string[]): Promise<void> {
+    if (!urls.length) return;
+    try {
+        await del(urls);
+    } catch (error) {
+        console.warn("Suppression d'annonces périmées impossible", urls, error);
+    }
 }
 
 /**
@@ -120,23 +148,58 @@ export async function POST(req: NextRequest) {
         const fileName = `book-${book.id}.mp3`;
         let audioUrl: string;
 
+        // UNE URL NEUVE PAR SYNTHÈSE.
+        //
+        // Le chemin était fixe (book_descriptions/book-<id>.mp3). Or @vercel/blob
+        // refuse d'écraser un blob existant sans `allowOverwrite` : une fois
+        // l'annonce invalidée (titre, auteur, description ou durée changés —
+        // polly_audio_url remis à null), chaque nouvel essai payait la synthèse
+        // Polly, puis échouait au dépôt, pour toujours. Et l'écrasement n'aurait
+        // pas suffi : l'URL publique est mise en cache par le CDN (un mois par
+        // défaut), qui aurait continué de servir l'ancien texte. Le suffixe
+        // aléatoire donne à chaque version sa propre URL, donc un cache juste.
         if (process.env.NODE_ENV === 'development') {
             const dir = path.join(process.cwd(), 'public', 'book_descriptions');
             await mkdir(dir, { recursive: true });
             await writeFile(path.join(dir, fileName), Buffer.from(audioData));
-            audioUrl = `/book_descriptions/${fileName}`;
+            // Même fichier en local, mais une URL neuve pour le cache du navigateur.
+            audioUrl = `/book_descriptions/${fileName}?v=${Date.now()}`;
         } else {
             const { url } = await put(`book_descriptions/${fileName}`, Buffer.from(audioData), {
                 access: 'public',
                 contentType: 'audio/mpeg',
+                addRandomSuffix: true,
             });
             audioUrl = url;
         }
 
-        await prisma.book.update({
-            where: { id: book.id },
-            data: { polly_audio_url: audioUrl },
-        });
+        // Enregistrée seulement si personne ne l'a fait entre-temps : deux
+        // auditeurs qui cliquent en même temps synthétisent chacun la leur, et
+        // le nettoyage ci-dessous supprime les versions qui ne sont pas en base.
+        // Sans cette condition, la seconde écriture pouvait désigner un blob que
+        // la première venait d'effacer. withoutAudit : polly_audio_url est un
+        // DERIVED_FIELD, le journal n'en garderait rien (comme dans
+        // refreshBookAudioState).
+        const { count } = await withoutAudit(() =>
+            prisma.book.updateMany({
+                where: { id: book.id, polly_audio_url: null },
+                data: { polly_audio_url: audioUrl },
+            })
+        );
+        if (count === 0) {
+            const winner = await prisma.book.findUnique({
+                where: { id: book.id },
+                select: { polly_audio_url: true },
+            });
+            if (winner?.polly_audio_url) {
+                if (process.env.NODE_ENV !== 'development') await discardBlobs([audioUrl]);
+                return NextResponse.json({ audioUrl: winner.polly_audio_url });
+            }
+        }
+
+        if (process.env.NODE_ENV !== 'development') {
+            await pruneSupersededAnnouncements(book.id, audioUrl);
+        }
 
         return NextResponse.json({ audioUrl });
     } catch (error) {
