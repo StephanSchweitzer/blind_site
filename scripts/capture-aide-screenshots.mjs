@@ -739,7 +739,9 @@ const SPECS = [
         waitFor: 'nav',
         clip: 'nav',
         annotations: [
-            { n: 1, label: 'Aide', self: true, fleche: true },
+            // Sans fleche depuis l'arrivee du bouton « Rechercher » : elle part
+            // toujours de la gauche, et le recouvrait.
+            { n: 1, label: 'Aide', self: true },
         ],
         why: 'le lien « Aide », qui ouvre le mode d\'emploi de la page en cours dans un nouvel onglet',
     },
@@ -763,6 +765,21 @@ const SPECS = [
         sleep: 800,
         clip: 'section[aria-labelledby="dashboard-gestion"]',
         why: 'la rangee « Gestion » : sous chaque carte, ce qui y est en retard',
+    },
+    {
+        // Un titre plutot qu'un nom : la capture n'a ainsi aucune personne a
+        // anonymiser, et montre qu'on trouve « L'Étranger » sans l'accent.
+        name: 'page-principale-07.jpg',
+        url: '/admin',
+        waitFor: 'nav',
+        steps: [
+            { clickText: 'Rechercher' },
+            { waitFor: '[cmdk-input]' },
+            { typeIn: { selector: '[cmdk-input]', value: 'etranger' } },
+            { sleep: 1800 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'la recherche rapide : un mot, et les pages, livres et fiches qui y repondent',
     },
     {
         name: 'doublons-01.jpg',

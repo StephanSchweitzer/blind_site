@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Menu, X, ChevronDown, HelpCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { QuickSearch, type QuickSearchPage } from '@/components/admin/QuickSearch';
 
 interface NavItem {
     href: string;
@@ -79,6 +80,15 @@ const BackendNavbar: React.FC = () => {
             : { ...g, items: g.items.filter((i) => i.href !== '/admin/stats') })
         .filter((g) => g.items.length > 0);
 
+    // What the quick search offers as pages: exactly what this person's
+    // navigation shows, plus the two links outside the menus.
+    const searchablePages: QuickSearchPage[] = [
+        { href: '/admin', label: 'Tableau de bord', group: 'Accueil' },
+        ...visibleGroups.flatMap((g) => g.items.map((i) => ({ href: i.href, label: i.label, group: g.label }))),
+        { href: '/admin/aide', label: "Aide (mode d'emploi)", group: 'Aide' },
+        { href: '/admin/profile', label: 'Mon compte', group: 'Compte' },
+    ];
+
     const toggleMobileGroup = (index: number) => {
         setMobileGroup((prev) => (prev === index ? null : index));
     };
@@ -135,6 +145,12 @@ const BackendNavbar: React.FC = () => {
                         ))}
                     </div>
 
+                    {/* Rendered ONCE, at every width: it owns the Ctrl+K listener,
+                        and two copies would each toggle the box — open, then shut. */}
+                    <div className="ml-auto lg:ml-0">
+                        <QuickSearch pages={searchablePages} />
+                    </div>
+
                     {/* Desktop right-aligned actions */}
                     <div className="hidden lg:flex items-center gap-3">
                         <Link
@@ -148,14 +164,14 @@ const BackendNavbar: React.FC = () => {
                         <Link
                             href="/admin/profile"
                             onClick={closeAll}
-                            className="px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
+                            className="whitespace-nowrap px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
                         >
                             Mon Compte
                         </Link>
                         <Link
                             href="/"
                             onClick={closeAll}
-                            className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 transition-opacity duration-100"
+                            className="whitespace-nowrap px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 transition-opacity duration-100"
                         >
                             Site principal
                         </Link>

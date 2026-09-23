@@ -32,6 +32,21 @@ En haut du sommaire du mode d'emploi, une barre de recherche retrouve le passage
 
 ![Page principale - capture 5](/admin/aide/images/page-principale-05.jpg)
 
+## Recherche rapide
+
+Le bouton « Rechercher », dans la barre de navigation, ouvre une recherche qui fonctionne depuis n'importe quelle page d'Arbre Rose. On peut aussi l'ouvrir au clavier avec **Ctrl + K** (**⌘ + K** sur un Mac).
+
+Tapez un mot, et elle propose aussitôt :
+
+- **les pages** dont le nom correspond — « factures », « disponibilités » ;
+- **les membres** : auditeurs, lecteurs, donateurs et permanents, par leur nom ou leur adresse e-mail ;
+- **les livres**, par leur titre, leur auteur ou leur ISBN ;
+- **les numéros** : tapez « 412 », et la demande, l'attribution, la facture, le livre ou le paiement portant ce numéro sont proposés.
+
+Les accents ne comptent pas : « etranger » trouve « L'Étranger ». Choisissez un résultat avec les flèches du clavier et la touche Entrée, ou d'un clic : un membre ouvre son [dossier](/admin/aide/membres#le-dossier), une demande ou une facture s'ouvre directement dans sa liste. La touche Échap ferme la recherche.
+
+![Page principale - capture 7](/admin/aide/images/page-principale-07.jpg)
+
 ## Ce qui est en retard
 
 Les cartes « Demandes », « Attributions » et « Factures » comportent, sous leur partie colorée, quelques lignes qui disent ce qui attend quelque chose de nous :
