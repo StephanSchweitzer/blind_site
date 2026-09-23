@@ -4,7 +4,7 @@ import { withAdmin } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { BillingStatus } from '@prisma/client';
-import { recomputeBillTotal, detachOrderFromBill } from '@/lib/billing';
+import { recomputeBillTotal, detachOrderFromBill, logBillEvent } from '@/lib/billing';
 import { DeletedBookError, lockLiveBooks } from '@/lib/books/liveBookGuard';
 
 async function orderIdFrom(params?: Promise<Record<string, string>>): Promise<number | null> {
@@ -55,6 +55,19 @@ function bookDeletedRefusal(book: { id: number; title: string }): string {
     );
 }
 
+/**
+ * Même raisonnement pour l'auditeur : une demande vivante au nom d'une fiche
+ * supprimée ressortirait dans les listes et la facturation d'une personne
+ * cachée partout ailleurs. Rien ne l'empêchait — guardUserIsActive, qui refuse
+ * désormais une fiche supprimée, ne passait pas par ici.
+ */
+function clientDeletedRefusal(client: { id: number; name: string | null }): string {
+    return (
+        `La fiche de l’auditeur de cette demande (${client.name ?? `n°${client.id}`}) a été supprimée. ` +
+        `Restaurez d’abord sa fiche, puis cette demande.`
+    );
+}
+
 function billDetachWarning(billId: number, billState: BillingStatus): string {
     return (
         `La facture #${billId} (${getBillingStatusLabel(billState).toLowerCase()}) a évolué depuis ` +
@@ -79,6 +92,7 @@ export const GET = withAdmin(async (_request, { params }) => {
             // Relation : non filtrée par lib/prisma.ts, donc la fiche supprimée
             // est bien lue ici.
             catalogue: { select: { id: true, title: true, deletedAt: true } },
+            aveugle: { select: { id: true, name: true, deletedAt: true } },
         },
     });
     if (!order) {
@@ -86,6 +100,7 @@ export const GET = withAdmin(async (_request, { params }) => {
     }
 
     const bookDeleted = order.catalogue.deletedAt != null;
+    const clientDeleted = order.aveugle.deletedAt != null;
     const willDetach = !!order.billId && order.bill != null && order.bill.state !== BillingStatus.DRAFT;
     return NextResponse.json({
         deletedAt: order.deletedAt,
@@ -94,7 +109,12 @@ export const GET = withAdmin(async (_request, { params }) => {
         willDetach,
         restoreWarning: willDetach ? billDetachWarning(order.bill!.id, order.bill!.state) : null,
         book: { id: order.catalogue.id, title: order.catalogue.title, deleted: bookDeleted },
-        restoreBlocked: bookDeleted ? bookDeletedRefusal(order.catalogue) : null,
+        client: { id: order.aveugle.id, deleted: clientDeleted },
+        restoreBlocked: bookDeleted
+            ? bookDeletedRefusal(order.catalogue)
+            : clientDeleted
+                ? clientDeletedRefusal(order.aveugle)
+                : null,
     });
 });
 
@@ -114,6 +134,7 @@ export const POST = withAdmin(async (_request, { params, me }) => {
                     billId: true,
                     bill: { select: { id: true, state: true } },
                     catalogue: { select: { id: true, title: true } },
+                    aveugle: { select: { id: true, name: true, deletedAt: true } },
                 },
             });
             if (!order) return { kind: 'not-found' as const };
@@ -128,6 +149,8 @@ export const POST = withAdmin(async (_request, { params, me }) => {
                 }
                 throw error;
             }
+            // Après le livre, comme l'aperçu (GET) : les deux disent le même refus.
+            if (order.aveugle.deletedAt) return { kind: 'client-deleted' as const, client: order.aveugle };
 
             await tx.orders.update({
                 where: { id: orderId },
@@ -146,13 +169,26 @@ export const POST = withAdmin(async (_request, { params, me }) => {
             }
 
             if (order.billId != null) {
-                await recomputeBillTotal(tx, order.billId);
+                const newTotal = await recomputeBillTotal(tx, order.billId);
+                // Le pendant de l'ORDER_DETACHED « order-deleted » de DELETE.
+                await logBillEvent(tx, {
+                    billId: order.billId,
+                    type: 'ORDER_ATTACHED',
+                    payload: { orderId, reason: 'order-restored', newTotal: newTotal.toString() },
+                    performedById: me.id,
+                });
             }
             return { kind: 'restored' as const };
         });
 
         if (result.kind === 'not-found') {
             return NextResponse.json({ message: 'Demande non trouvée' }, { status: 404 });
+        }
+        if (result.kind === 'client-deleted') {
+            return NextResponse.json(
+                { message: clientDeletedRefusal(result.client), clientId: result.client.id },
+                { status: 409 }
+            );
         }
         if (result.kind === 'book-deleted') {
             return NextResponse.json(

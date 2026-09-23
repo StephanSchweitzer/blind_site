@@ -119,8 +119,14 @@ function summarize(e: BillEventDTO): string | null {
                     ? `Facture supprimée — paiement${ids.length > 1 ? 's' : ''} n° ${ids.join(', ')} détaché${ids.length > 1 ? 's' : ''}, à retrouver dans « Paiements » (filtre « Sans facture liée »).`
                     : 'Facture supprimée — ses demandes en ont été détachées.';
             }
+            if (p.reason === 'order-deleted') {
+                return `Demande #${asString(p.orderId) ?? '?'} supprimée — sortie du total (nouveau total : ${asString(p.newTotal) ?? '—'} €). Elle y revient si elle est restaurée.`;
+            }
             return asString(p.orderId) ? `Demande #${asString(p.orderId)}` : null;
         case 'ORDER_ATTACHED':
+            if (p.reason === 'order-restored') {
+                return `Demande #${asString(p.orderId) ?? '?'} restaurée — de nouveau dans le total (nouveau total : ${asString(p.newTotal) ?? '—'} €).`;
+            }
             return asString(p.orderId) ? `Demande #${asString(p.orderId)}` : null;
         default:
             return null;

@@ -120,7 +120,10 @@ export const POST = withAdmin(async (request, { me }) => {
                 { status: 400 }
             );
         }
-        const parsedOrderIds = orderIds.map((id) => parseInt(String(id)));
+        // Dédoublonnés : la même demande envoyée deux fois passait chaque contrôle
+        // (billId encore null au moment de la relire), comptait deux fois dans le
+        // total initial et laissait deux ORDER_ATTACHED au journal de la facture.
+        const parsedOrderIds = [...new Set(orderIds.map((id) => parseInt(String(id))))];
         if (parsedOrderIds.some((id) => isNaN(id))) {
             return NextResponse.json(
                 { error: 'Invalid orderIds', message: 'Un ou plusieurs identifiants de demande sont invalides' },
@@ -269,9 +272,20 @@ export const POST = withAdmin(async (request, { me }) => {
             parsedPaymentMethod = paymentMethod as PaymentMethod;
         }
 
-        const client = await prisma.user.findUnique({ where: { id: parsedClientId }, select: { id: true } });
+        const client = await prisma.user.findUnique({ where: { id: parsedClientId }, select: { id: true, deletedAt: true } });
         if (!client) {
             return NextResponse.json({ error: 'Client not found', message: 'Auditeur introuvable' }, { status: 404 });
+        }
+        // findUnique voit les fiches supprimées (lib/prisma.ts) : sans ce refus, une
+        // facture neuve naissait au nom d'une personne cachée partout ailleurs.
+        if (client.deletedAt) {
+            return NextResponse.json(
+                {
+                    error: 'Client deleted',
+                    message: 'La fiche de cet auditeur a été supprimée : restaurez-la avant de lui créer une facture.',
+                },
+                { status: 409 }
+            );
         }
 
         const billId = await prisma.$transaction(async (tx) => {

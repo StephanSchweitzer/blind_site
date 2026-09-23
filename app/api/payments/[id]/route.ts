@@ -243,7 +243,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             CLIENT_REQUIRED: ['Ce type de paiement doit être rattaché à une personne', 400],
             PAYMENT_BEFORE_ISSUE: ['La date de paiement ne peut pas précéder la date d’émission de la facture', 400],
             BILL_SETTLED_NEEDS_PAYMENT: [
-                'La facture que ce paiement réglait est payée ou soldée : elle doit garder au moins un paiement. Rouvrez la facture avant de détacher son règlement.',
+                'La facture que ce paiement réglait est payée : elle doit garder au moins un paiement. Rouvrez la facture avant de détacher son règlement.',
                 409,
             ],
             BILL_NOT_FOUND: ['La facture liée est introuvable ou inactive', 409],
@@ -319,7 +319,7 @@ export const DELETE = withAdmin(async (request, context) => {
                 {
                     error: error.message,
                     message:
-                        'La facture que ce paiement réglait est payée ou soldée : elle doit garder au moins un paiement. Rouvrez la facture avant de supprimer son règlement.',
+                        'La facture que ce paiement réglait est payée : elle doit garder au moins un paiement. Rouvrez la facture avant de supprimer son règlement.',
                 },
                 { status: 409 }
             );

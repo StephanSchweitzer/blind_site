@@ -52,6 +52,8 @@ interface RestorePreview {
     restoreWarning: string | null;
     book: { id: number; title: string; deleted: boolean };
     restoreBlocked: string | null;
+    /** Absent from a response written before the auditeur check existed. */
+    client?: { id: number; deleted: boolean };
 }
 
 export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: OrderDeletedNoticeProps) {
@@ -173,14 +175,27 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                             <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                             <div className="space-y-1">
                                 <p>{preview.restoreBlocked}</p>
-                                <Link
-                                    href={`/admin/books?book=${preview.book.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-block font-medium underline underline-offset-2"
-                                >
-                                    Ouvrir la fiche livre
-                                </Link>
+                                {/* The book is checked first on the server, so a deleted
+                                    book is the refusal whenever both are gone. */}
+                                {preview.book.deleted || !preview.client?.deleted ? (
+                                    <Link
+                                        href={`/admin/books?book=${preview.book.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-block font-medium underline underline-offset-2"
+                                    >
+                                        Ouvrir la fiche livre
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href={`/admin/users/dossier/${preview.client.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-block font-medium underline underline-offset-2"
+                                    >
+                                        Ouvrir la fiche de l’auditeur
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     )}

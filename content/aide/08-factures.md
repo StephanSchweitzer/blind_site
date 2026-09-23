@@ -101,13 +101,13 @@ Pour corriger la référence, la méthode ou la date d'un règlement, ouvrez le 
 
 ### Une facture finalisée
 
-Une facture « Payée » ou « Soldée » ne peut plus être modifiée. Pour la corriger, cliquez sur (1) « **Rouvrir la facture** » : elle repasse à « émise ».
+Une facture « Payée » ou « Soldée » ne peut plus être modifiée. Ses demandes non plus, pour ce qui s'imprime sur la facture : leur livre, leur date de clôture, leur type (duplication ou enregistrement), leurs pages et leur coût sont refusés tant qu'elle n'est pas rouverte. Le reste d'une demande (notes, format…) se modifie normalement. Pour la corriger, cliquez sur (1) « **Rouvrir la facture** » : elle repasse à « émise ».
 
 ![Factures - capture 11](/admin/aide/images/factures-11.jpg)
 
 ### L'historique
 
-Vous pouvez consulter l'historique des modifications apportées à la facture en cliquant sur la section « **Historique de la facture** ».
+Vous pouvez consulter l'historique des modifications apportées à la facture en cliquant sur la section « **Historique de la facture** ». Une demande supprimée alors qu'elle figurait sur un brouillon y apparaît, avec le nouveau total, et de même si elle est restaurée.
 
 ![Factures - capture 12](/admin/aide/images/factures-12.jpg)
 

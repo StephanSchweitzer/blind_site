@@ -272,7 +272,21 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             if (state === 'DRAFT') updateData.issueDate = null;
 
             await prisma.$transaction(async (tx) => {
-                await tx.bill.update({ where: { id: billId }, data: updateData });
+                // Écrit seulement si la facture est TOUJOURS dans l'état contrôlé
+                // plus haut. Ces contrôles tournent hors transaction : deux onglets
+                // qui émettent le même brouillon passaient tous les deux, et la
+                // facture recevait deux ISSUED — deux dates d'émission, deux
+                // réécritures de ses demandes. Le second reçoit maintenant un 409.
+                const { count } = await tx.bill.updateMany({
+                    where: { id: billId, isActive: true, state: bill.state },
+                    data: updateData,
+                });
+                if (count === 0) throw new Error('BILL_STATE_CHANGED');
+                // Relu sous la même transaction : un paiement a pu être rattaché
+                // entre le contrôle de plus haut et ici.
+                if (state === 'DRAFT' && (await tx.payment.count({ where: { billId, isActive: true } })) > 0) {
+                    throw new Error('BILL_HAS_PAYMENTS');
+                }
                 // APRÈS le changement d'état, pour que le refus « une facture
                 // encaissée porte au moins un paiement » porte sur le NOUVEL état.
                 //
@@ -349,11 +363,14 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             });
 
             await prisma.$transaction(async (tx) => {
-                await tx.payment.updateMany({ where: { billId, isActive: true }, data: { billId: null } });
-                await tx.bill.update({
-                    where: { id: billId },
+                // Même garde que updateStatus : une seconde réouverture concurrente
+                // ne rejoue pas le détachement ni l'événement REOPENED.
+                const { count } = await tx.bill.updateMany({
+                    where: { id: billId, isActive: true, state: bill.state },
                     data: { state: BillingStatus.BILLED, paymentReference: null, paymentDate: null },
                 });
+                if (count === 0) throw new Error('BILL_STATE_CHANGED');
+                await tx.payment.updateMany({ where: { billId, isActive: true }, data: { billId: null } });
                 // The bill is still issued (émise), so its orders remain BILLED.
                 await tx.orders.updateMany({
                     where: ordersFollowingBillState(billId),
@@ -497,6 +514,14 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         const msg = error instanceof Error ? error.message : '';
         const errorMap: Record<string, [string, number]> = {
             BILL_NOT_FOUND: ['Facture introuvable', 404],
+            BILL_STATE_CHANGED: [
+                "La facture a changé d'état entre-temps (dans un autre onglet ?) : rien n'a été modifié. Rechargez-la.",
+                409,
+            ],
+            BILL_HAS_PAYMENTS: [
+                "Un paiement vient d'être rattaché à cette facture : un brouillon n'a rien encaissé. Rien n'a été modifié ; rechargez-la.",
+                409,
+            ],
             ORDER_NOT_FOUND: ['Demande introuvable', 404],
             BILL_NOT_DRAFT: ['La facture doit être en brouillon pour modifier ses demandes', 400],
             ORDER_ALREADY_BILLED: ['Cette demande est déjà rattachée à une facture', 400],

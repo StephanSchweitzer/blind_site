@@ -24,9 +24,13 @@ paths:
   côtés quand un paiement change de facture.
 - `Payment.billId` est un lien **multiple** : plusieurs paiements par facture (acomptes, deux
   chèques) sont le cas normal. Lis `summarizeBillPayments` plutôt qu'un paiement isolé.
-- Une facture `PAID`/`SOLDE` porte **au moins un paiement** — pas forcément une référence (les
+- Une facture `PAID` porte **au moins un paiement** — pas forcément une référence (les
   espèces n'en ont pas). `syncBillPaymentInfo` refuse (`BILL_SETTLED_NEEDS_PAYMENT`) de laisser
-  une facture réglée sans paiement ; le chemin de sortie est `reopenBill`, qui les détache.
+  une facture payée sans paiement ; le chemin de sortie est `reopenBill`, qui les détache.
+  `SOLDE` n'y est **pas** soumise : soldée veut dire « on ne réclame plus rien », une créance
+  abandonnée, qui n'a par définition pas de règlement à montrer (voir l'en-tête de
+  `syncBillPaymentInfo`). « Payée » n'exige pas non plus que les paiements couvrent le total :
+  « Marquer comme payée » est justement le geste pour un règlement partiel accepté.
 - Bills **lock** once status is `PAID` or `SOLDE`. Do not mutate a locked bill's line items
   or amounts.
 - Exporting a PDF from a `DRAFT` bill triggers a confirmation dialog before proceeding.

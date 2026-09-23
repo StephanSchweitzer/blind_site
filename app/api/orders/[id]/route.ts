@@ -352,9 +352,15 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
         // A non-duplication order can't reach Attente envoi vers auditeur/Terminé/Soldé
         // without a finished assignment.
-        if (data.statusId !== undefined) {
+        //
+        // Only when the statut or the duplication flag actually changes — the
+        // same rule as guardDuplicationStatus above. The form sends statusId on
+        // every save, so this used to run on a notes-only edit too, and a legacy
+        // « Terminé » demande whose attribution was never closed in Access could
+        // not be saved at all: held hostage by its history.
+        if (statusIsChanging || duplicationIsChanging) {
             const completionGuard = guardOrderCompletion({
-                statusId: data.statusId,
+                statusId: data.statusId ?? existingOrder.statusId,
                 isDuplication: data.isDuplication ?? existingOrder.isDuplication,
                 assignmentStatusId: assignment?.statusId ?? null,
             });
@@ -387,7 +393,13 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         // A demande status change may only reflect a status the attribution could legitimately
         // hold given its own owned fields (send/return dates). Block the side door that would
         // otherwise strand attribution-owned data (e.g. status→Attente while a date d'envoi is set).
+        //
+        // On a real change of the demande's statut only — like every guard above.
+        // The form resends statusId on each save, and a legacy pair imported from
+        // Access (demande « Terminé », attribution « En cours ») differs by
+        // construction: this refused a notes-only edit outright.
         if (
+            statusIsChanging &&
             assignment &&
             typeof data.statusId === 'number' &&
             !isOrderOnlyStatus(data.statusId) &&
@@ -510,6 +522,26 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             closureDate !== undefined &&
             (closureDate?.getTime() ?? null) !== (existingOrder.closureDate?.getTime() ?? null);
         const visibleChanged = catalogueChanged || dupChanged || closureChanged || pagePricing.visibleChanged;
+
+        // ── Printed-field lock: same boundary as the cost lock above ────────────
+        // A facture payée or soldée is closed (.claude/rules/billing-pricing.md:
+        // « do not mutate a locked bill's line items »), and 08-factures tells the
+        // permanent it « ne peut plus être modifiée ». Only the cost was locked, so
+        // the livre, the date de clôture (the « Livraison » column), the type
+        // (duplication) and the pages of a line could still change under it, with
+        // a mere reprint notice. On an ÉMISE facture that notice stays the
+        // answer; on a closed one the way out is to reopen it.
+        if (visibleChanged && hasBill && (billState === BillingStatus.PAID || billState === BillingStatus.SOLDE)) {
+            return NextResponse.json(
+                {
+                    message: `Cette demande figure sur la facture #${existingOrder.billId}, ${
+                        billState === BillingStatus.PAID ? 'payée' : 'soldée'
+                    } : son livre, sa date de clôture, son type et ses pages ne se modifient plus. ` +
+                        'Rouvrez la facture pour la rendre modifiable.',
+                },
+                { status: 409 }
+            );
+        }
 
         const updateData: Prisma.OrdersUncheckedUpdateInput = {
             aveugleId: data.aveugleId,
@@ -663,7 +695,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // Propagate 1–3 down to the assignment; « Soldé » and « Attente envoi
             // vers auditeur » stay order-only (isOrderOnlyStatus) — they describe
             // what happens to the demande after the lecteur is out of the picture.
+            //
+            // Only when the demande's statut actually changed. Keyed on the two
+            // statuses differing, this rewrote the ATTRIBUTION on any save of a
+            // legacy pair — a notes edit could set it « Terminé » behind the
+            // weighed-audio guard (guardAssignmentHasAudio), which only the
+            // attribution's own route applies.
             if (
+                statusIsChanging &&
                 assignment &&
                 typeof data.statusId === 'number' &&
                 !isOrderOnlyStatus(data.statusId) &&
@@ -716,7 +755,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
     }
 });
 
-export const DELETE = withAdmin(async (_request, { params }) => {
+export const DELETE = withAdmin(async (_request, { me, params }) => {
     revalidateAdmin();
     try {
         const { id } = await params!;
@@ -783,8 +822,20 @@ export const DELETE = withAdmin(async (_request, { params }) => {
             // Deleting a billed order changes its bill's total — keep it in sync.
             // recomputeBillTotal ne somme que les demandes isActive, donc la ligne
             // sort du total du seul fait d'être désactivée.
+            //
+            // …et l'historique de la facture le dit. Le total baissait sans aucun
+            // événement en face : le journal d'un brouillon ne pouvait pas
+            // expliquer son propre montant. billId, lui, reste posé — c'est ce qui
+            // permet à la restauration de remettre la demande à sa place (POST
+            // /api/orders/[id]/restore, qui écrit l'événement inverse).
             if (existingOrder.billId != null) {
-                await recomputeBillTotal(tx, existingOrder.billId);
+                const newTotal = await recomputeBillTotal(tx, existingOrder.billId);
+                await logBillEvent(tx, {
+                    billId: existingOrder.billId,
+                    type: 'ORDER_DETACHED',
+                    payload: { orderId, reason: 'order-deleted', newTotal: newTotal.toString() },
+                    performedById: me.id,
+                });
             }
         });
 
