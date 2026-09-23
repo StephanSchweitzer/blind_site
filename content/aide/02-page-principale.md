@@ -43,7 +43,7 @@ Tapez un mot, et elle propose aussitôt :
 - **les livres**, par leur titre, leur auteur ou leur ISBN ;
 - **les numéros** : tapez « 412 », et la demande, l'attribution, la facture, le livre ou le paiement portant ce numéro sont proposés.
 
-Les accents ne comptent pas : « etranger » trouve « L'Étranger ». Choisissez un résultat avec les flèches du clavier et la touche Entrée, ou d'un clic : un membre ouvre son [dossier](/admin/aide/membres#le-dossier), une demande ou une facture s'ouvre directement dans sa liste. La touche Échap ferme la recherche.
+Les accents ne comptent pas : « etranger » trouve « L'Étranger ». Choisissez un résultat avec les flèches du clavier et la touche Entrée, ou d'un clic : un membre ouvre son [dossier](/admin/aide/membres#le-dossier), une demande ou une facture s'ouvre directement dans sa liste. La croix, à droite du champ, efface ce que vous avez tapé ; la touche Échap ferme la recherche.
 
 ![Page principale - capture 7](/admin/aide/images/page-principale-07.jpg)
 
