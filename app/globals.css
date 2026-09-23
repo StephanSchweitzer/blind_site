@@ -285,27 +285,7 @@
         animation: pulse-subtle 2s ease-in-out infinite;
     }
 
-    /* Respect reduced-motion: stop decorative animations, keep loading spinners */
-    @media (prefers-reduced-motion: reduce) {
-        body:not(.dark),
-        .dark body,
-        .animate-blob,
-        .animate-fade-in,
-        .animate-fade-in-up,
-        .animate-scale-in,
-        .animate-pulse-subtle {
-            animation: none;
-        }
-
-        .glass-card,
-        .glass-card-lg {
-            transition: none;
-        }
-
-        .glass-card:hover {
-            transform: none;
-        }
-    }
+    /* Reduced motion: see « Réglages d'affichage » at the end of this file. */
 
     /* Custom scrollbar */
     .custom-scrollbar::-webkit-scrollbar {
@@ -385,4 +365,153 @@
         @apply transition-colors duration-200;
         background-color: rgb(255 255 255 / 0.1);
     }
+}
+
+/* ─── Réglages d'affichage du site public ────────────────────────────────────
+   Taille du texte, contraste renforcé, animations réduites : posés sur <html>
+   par le bouton « Affichage » (components/AffichageSettings.tsx, lib/affichage.ts).
+   Hors de tout @layer et en fin de fichier, pour passer après les utilitaires.
+
+   Bornés au site public par `:has(#navigation-principale)` — la barre qu'il
+   est seul à porter : le back-office garde sa taille, ses tableaux n'étant pas
+   faits pour du texte à 150 %. */
+
+/* Taille du texte. Tout le site est en rem, donc tout suit. En pourcentage de
+   la taille du navigateur, pour s'ajouter au réglage du visiteur plutôt que de
+   l'écraser. */
+:root[data-taille-texte='grande']:has(#navigation-principale) {
+    font-size: 125%;
+}
+:root[data-taille-texte='tres-grande']:has(#navigation-principale) {
+    font-size: 150%;
+}
+
+/* La barre publique : le menu complet ne s'affiche que là où il tient. À
+   1024 px il ne tenait pas — le logo y était écrasé en un trait de 15 px —, et
+   un texte agrandi repousse encore ce seuil. Les points de rupture en px de
+   Tailwind ne suivent pas la taille du texte, d'où ces trois seuils. */
+.nav-large {
+    display: none;
+}
+@media (min-width: 1280px) {
+    :root:not([data-taille-texte]) .nav-large { display: flex; }
+    :root:not([data-taille-texte]) .nav-compacte { display: none; }
+}
+@media (min-width: 1600px) {
+    :root[data-taille-texte='grande'] .nav-large { display: flex; }
+    :root[data-taille-texte='grande'] .nav-compacte { display: none; }
+}
+@media (min-width: 1920px) {
+    :root[data-taille-texte='tres-grande'] .nav-large { display: flex; }
+    :root[data-taille-texte='tres-grande'] .nav-compacte { display: none; }
+}
+
+/* Animations réduites — demandées par l'appareil (prefers-reduced-motion) ou
+   choisies dans « Affichage ». Tout s'arrête sur son état final, y compris ce
+   qu'une liste de classes aurait oublié ; seuls les indicateurs de chargement
+   continuent de tourner, faute de quoi une attente ressemble à une panne. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    body { animation: none !important; }
+    .animate-spin {
+        animation-duration: 1s !important;
+        animation-iteration-count: infinite !important;
+    }
+    .glass-card:hover,
+    [class*='hover:scale-']:hover,
+    [class*='hover:-translate-']:hover {
+        transform: none !important;
+    }
+}
+:root[data-animations='reduites']:has(#navigation-principale) *,
+:root[data-animations='reduites']:has(#navigation-principale) *::before,
+:root[data-animations='reduites']:has(#navigation-principale) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+:root[data-animations='reduites']:has(#navigation-principale) body {
+    animation: none !important;
+}
+:root[data-animations='reduites']:has(#navigation-principale) .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+}
+:root[data-animations='reduites']:has(#navigation-principale) :is(.glass-card, [class*='hover:scale-'], [class*='hover:-translate-']):hover {
+    transform: none !important;
+}
+
+/* Contraste renforcé. Le verre dépoli, les dégradés et les gris clairs font
+   l'identité du site, mais pas sa lisibilité : ici tout devient uni — fond
+   blanc et texte noir, ou l'inverse en thème sombre —, les textes secondaires
+   prennent la couleur du texte, et les liens se soulignent pour ne plus
+   dépendre de la seule couleur. */
+:root[data-contraste='renforce']:not(.dark):has(#navigation-principale) {
+    --muted-foreground: 222 47% 11%;
+    --border: 222 47% 20%;
+    --ring: 221 83% 40%;
+}
+:root.dark[data-contraste='renforce']:has(#navigation-principale) {
+    --muted-foreground: 210 40% 96%;
+    --border: 210 40% 85%;
+    --ring: 213 94% 78%;
+}
+:root[data-contraste='renforce']:has(#navigation-principale) body {
+    background: #ffffff !important;
+    animation: none !important;
+}
+:root.dark[data-contraste='renforce']:has(#navigation-principale) body {
+    background: #000000 !important;
+}
+:root[data-contraste='renforce']:has(#navigation-principale) :is(.glass-card, .glass-card-lg, #navigation-principale) {
+    background-color: #ffffff !important;
+    backdrop-filter: none !important;
+    border-color: #111827 !important;
+    box-shadow: none !important;
+}
+:root.dark[data-contraste='renforce']:has(#navigation-principale) :is(.glass-card, .glass-card-lg, #navigation-principale) {
+    background-color: #000000 !important;
+    border-color: #f3f4f6 !important;
+}
+/* Les taches floues colorées du décor (layout public, catalogue, infos) : un
+   fond uni, c'est aussi sans elles. */
+:root[data-contraste='renforce']:has(#navigation-principale) .animate-blob {
+    display: none !important;
+}
+/* Titres en dégradé : texte plein. */
+:root[data-contraste='renforce']:has(#navigation-principale) :is(.text-gradient, .bg-clip-text) {
+    background: none !important;
+    color: #1e3a8a !important;
+    -webkit-text-fill-color: currentColor;
+}
+:root.dark[data-contraste='renforce']:has(#navigation-principale) :is(.text-gradient, .bg-clip-text) {
+    color: #bfdbfe !important;
+}
+/* Textes secondaires gris : à la couleur du texte. */
+:root[data-contraste='renforce']:not(.dark):has(#navigation-principale) :is(.text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700, .text-gray-800, .text-muted-foreground) {
+    color: #111827 !important;
+}
+:root.dark[data-contraste='renforce']:has(#navigation-principale) :is(.dark\:text-gray-100, .dark\:text-gray-200, .dark\:text-gray-300, .dark\:text-gray-400, .dark\:text-gray-500, .text-gray-400, .text-gray-500, .text-muted-foreground) {
+    color: #f9fafb !important;
+}
+:root[data-contraste='renforce']:not(.dark):has(#navigation-principale) ::placeholder {
+    color: #374151;
+}
+:root.dark[data-contraste='renforce']:has(#navigation-principale) ::placeholder {
+    color: #d1d5db;
+}
+/* Liens du contenu soulignés — pas les boutons (qui ont un fond), ni les
+   cartes cliquables (qui contiennent une image). */
+:root[data-contraste='renforce']:has(#navigation-principale) main a:not([class*='bg-']):not(:has(img)) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+:root[data-contraste='renforce']:has(#navigation-principale) :focus-visible {
+    outline-width: 4px;
 }

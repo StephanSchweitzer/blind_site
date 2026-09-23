@@ -15,6 +15,8 @@ The repository is a single Next.js (App Router) codebase that contains **two dis
 
 Server-rendered French pages sharing a common `Frontend-Navbar`, glassmorphism styling, and light/dark theming. Every page declares its own metadata, and `app/sitemap.ts` / `app/robots.ts` publish the SEO surface.
 
+The navbar's « Affichage » button sets per-visitor display preferences — text size (125 % / 150 %), a high-contrast mode (also on by default under `prefers-contrast: more`) and reduced motion (also honoured from `prefers-reduced-motion`). They live as attributes on `<html>`, set before first paint by an inline script (`lib/affichage.ts`), remembered in `localStorage`, and scoped in `app/globals.css` to pages carrying the public navbar, so `/admin` is unaffected. The full desktop menu only shows where it fits (1280 px, pushed to 1600 / 1920 px at the larger text sizes).
+
 | Route | Purpose |
 |---|---|
 | `/` | Home. Presents ECA and its à-la-carte recording service — the human bridge between sighted volunteer readers and visually impaired listeners. |

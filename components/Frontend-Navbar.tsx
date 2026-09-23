@@ -8,6 +8,7 @@ import { Menu, X, ChevronDown } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SkipLinks } from '@/components/SkipLinks';
+import { AffichageSettings } from '@/components/AffichageSettings';
 
 type NavLink = {
     href: string;
@@ -123,8 +124,11 @@ const FrontendNavbar = () => {
             >
                 <div className="w-full px-4 sm:px-6">
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center py-3 w-full">
-                        {/* Small logo on left - visible on desktop */}
-                        <div className="hidden lg:flex justify-start">
+                        {/* Small logo on left - visible on desktop.
+                            `nav-large` / `nav-compacte` (app/globals.css) rather than
+                            lg: — the full menu does not fit at 1024 px, and an
+                            enlarged text pushes that width further still. */}
+                        <div className="nav-large justify-start">
                             <Link href="/" className="block rounded-lg" aria-label="ECA — retour à l'accueil">
                                 <Image
                                     src="/eca_logo.png"
@@ -139,7 +143,7 @@ const FrontendNavbar = () => {
                         </div>
 
                         {/* Desktop menu - truly centered on page */}
-                        <ul ref={desktopNavRef} className="hidden lg:flex lg:flex-nowrap space-x-6 text-base justify-center list-none m-0 p-0">
+                        <ul ref={desktopNavRef} className="nav-large flex-nowrap space-x-6 text-base justify-center list-none m-0 p-0">
                             {navLinks.map((link, index) => (
                                 <li key={`${link.href}-${index}`} className="relative whitespace-nowrap">
                                     {link.dropdown ? (
@@ -198,13 +202,14 @@ const FrontendNavbar = () => {
                             ))}
                         </ul>
 
-                        {/* Theme toggle - Desktop (right side) */}
-                        <div className="hidden lg:flex justify-end">
+                        {/* Display settings + theme toggle - Desktop (right side) */}
+                        <div className="nav-large justify-end items-center gap-3">
+                            <AffichageSettings />
                             <ThemeToggle />
                         </div>
 
                         {/* Mobile: Logo + Theme toggle + Menu button */}
-                        <div className="lg:hidden flex items-center justify-between w-full col-span-3">
+                        <div className="nav-compacte flex items-center justify-between w-full col-span-3">
                             {/* Small logo on mobile */}
                             <Link href="/" className="block rounded-lg" aria-label="ECA — retour à l'accueil">
                                 <Image
@@ -219,6 +224,7 @@ const FrontendNavbar = () => {
                             </Link>
 
                             <div className="flex items-center space-x-3">
+                                <AffichageSettings />
                                 <ThemeToggle />
                                 <button
                                     ref={mobileButtonRef}
@@ -237,7 +243,7 @@ const FrontendNavbar = () => {
 
                     {/* Mobile menu */}
                     <div id={menuId} hidden={!isMenuOpen}>
-                        <ul className="lg:hidden mt-4 mb-4 space-y-2 backdrop-blur-lg bg-white/95 dark:bg-gray-800/90 rounded-xl p-4 border-2 border-blue-200 dark:border-purple-500/30 shadow-xl list-none">
+                        <ul className="nav-compacte mt-4 mb-4 space-y-2 backdrop-blur-lg bg-white/95 dark:bg-gray-800/90 rounded-xl p-4 border-2 border-blue-200 dark:border-purple-500/30 shadow-xl list-none">
                             {navLinks.map((link, index) => (
                                 <li key={`mobile-${link.href}-${index}`}>
                                     {link.dropdown ? (
