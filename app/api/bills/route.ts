@@ -238,6 +238,26 @@ export const POST = withAdmin(async (request, { me }) => {
             }
         }
 
+        // La date d'émission suit l'état, comme dans updateStatus (PATCH
+        // /api/bills/[id]) : un brouillon n'en porte pas, une facture émise en
+        // porte toujours une.
+        //
+        // Le formulaire démarre sur « Émise » avec ce champ vide, et la route le
+        // stockait tel quel : une facture émise sans date d'émission. Elle ne
+        // tombait alors jamais sous « En retard » (qui compte depuis issueDate),
+        // échappait au contrôle « payée avant d'être émise », et s'imprimait sans
+        // date. Sans date saisie, c'est la date de création qui vaut émission :
+        // la facture naît émise, et une saisie après coup antidate sa création,
+        // pas « aujourd'hui ».
+        if (finalState === BillingStatus.DRAFT) {
+            parsedIssueDate = null;
+        } else if (!parsedIssueDate) {
+            // Après le bloc « déjà réglée » ci-dessus, qui EXIGE une date saisie :
+            // pour une facture qu'on rattrape payée, la date d'émission est un fait
+            // à reporter, pas une valeur à supposer.
+            parsedIssueDate = parsedCreationDate;
+        }
+
         let parsedPaymentMethod: PaymentMethod | null = null;
         if (wantsSettled && paymentMethod) {
             if (!Object.values(PaymentMethod).includes(paymentMethod as PaymentMethod)) {

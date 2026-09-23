@@ -291,7 +291,9 @@ export function BillFormBackendBase({
                 // émise, en enregistre le paiement, puis l'encaisse.
                 state: markAsPaid ? BillingStatus.BILLED : state,
                 creationDate,
-                issueDate,
+                // Un brouillon n'est pas émis : une date choisie avant de passer le
+                // menu sur « Brouillon » ne part pas.
+                issueDate: state === BillingStatus.DRAFT ? null : issueDate,
                 paymentReference: markAsPaid ? paymentReference.trim() || null : null,
                 paymentDate: markAsPaid ? paymentDate : null,
                 paymentMethod: markAsPaid ? paymentMethod || null : null,
@@ -518,34 +520,46 @@ export function BillFormBackendBase({
                         </Popover>
                     </div>
 
-                    {/* Issue date */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Date d&apos;émission {markAsPaid && <span className="text-red-500">*</span>}
-                        </label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    ref={registerField('issueDate')}
-                                    variant="outline"
-                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                                >
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    {issueDate ? format(issueDate, 'PPP', { locale: fr }) : <span>Sélectionner une date</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-card border-border">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={issueDate || undefined}
-                                    defaultMonth={issueDate || undefined}
-                                    onSelect={(d) => setIssueDate(d || null)}
-                                    initialFocus
-                                    className="bg-card text-foreground"
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
+                    {/* Issue date — absente d'un brouillon, qui n'a pas été émis (la route
+                        l'ignorerait). Vide sur une facture émise, c'est la date de création
+                        qui vaut émission : POST /api/bills la reporte, et le bouton le dit. */}
+                    {state !== BillingStatus.DRAFT && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">
+                                Date d&apos;émission {markAsPaid && <span className="text-red-500">*</span>}
+                            </label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        ref={registerField('issueDate')}
+                                        variant="outline"
+                                        className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
+                                    >
+                                        <Calendar className="mr-2 h-4 w-4" />
+                                        {issueDate ? (
+                                            format(issueDate, 'PPP', { locale: fr })
+                                        ) : markAsPaid ? (
+                                            <span>Sélectionner une date</span>
+                                        ) : (
+                                            <span className="text-muted-foreground">
+                                                {format(creationDate, 'PPP', { locale: fr })} (date de création)
+                                            </span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 bg-card border-border">
+                                    <CalendarComponent
+                                        mode="single"
+                                        selected={issueDate || undefined}
+                                        defaultMonth={issueDate || undefined}
+                                        onSelect={(d) => setIssueDate(d || null)}
+                                        initialFocus
+                                        className="bg-card text-foreground"
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    )}
 
                     {/* Facture déjà réglée — évite la création puis l'encaissement en deux temps.
                         La case et le menu ci-dessus sont le MÊME état (voir SELECTABLE_STATES) :

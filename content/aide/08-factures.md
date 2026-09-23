@@ -49,7 +49,7 @@ Enfin, pour la nouvelle facture, vous pouvez :
 
 (3) Indiquer une date de création
 
-(4) Indiquer la date d'émission
+(4) Indiquer la date d'émission. Laissée vide, c'est la date de création qui compte comme date d'émission : c'est d'elle que partent les trente jours de « En retard », et c'est elle qui s'imprime. Un brouillon n'a pas de date d'émission ; le champ disparaît quand vous choisissez « Brouillon ». Pour une facture « déjà réglée », la date d'émission reste obligatoire.
 
 (5) Enregistrer la facture et la verser dans la base de données.
 
