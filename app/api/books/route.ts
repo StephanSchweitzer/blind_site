@@ -123,7 +123,13 @@ export const POST = withAdmin(async (req, { me }): Promise<Response> => {
                 description: blankToNull(formData.description),
                 available: formData.available,
                 hiddenFromCatalogue: formData.hiddenFromCatalogue ?? false,
-                readingDurationMinutes: formData.readingDurationMinutes ? parseInt(formData.readingDurationMinutes) : null,
+                // readingDurationMinutes n'est PAS lu du corps, comme dans PUT
+                // /api/books/[id] : c'est une mesure de l'audio, dont
+                // refreshBookAudioState est l'unique écrivain. Une fiche neuve n'a
+                // pas d'enregistrement — la valeur reçue (celle du formulaire, ou
+                // une estimation de lecture tirée de Google Books) aurait été
+                // annoncée au catalogue public et par la synthèse vocale comme la
+                // durée d'un enregistrement qui n'existe pas.
                 pageCount: formData.pageCount ? parseInt(formData.pageCount) : null,
                 addedById: userId,
                 genres: {

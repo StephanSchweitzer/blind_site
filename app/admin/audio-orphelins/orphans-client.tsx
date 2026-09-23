@@ -444,7 +444,7 @@ export default function OrphansClient({
     const [searchTerm, setSearchTerm] = useState(search);
     const [listenId, setListenId] = useState<number | null>(null);
     const [pending, setPending] = useState<Pending>(null);
-    const [newBook, setNewBook] = useState({ title: '', author: '', publishedDate: '', duration: '' });
+    const [newBook, setNewBook] = useState({ title: '', author: '', publishedDate: '' });
     const [reason, setReason] = useState('');
     const [isPending, startTransition] = useTransition();
     const [isNavPending, startNav] = useTransition();
@@ -522,7 +522,6 @@ export default function OrphansClient({
             title: orphan.title,
             author: '',
             publishedDate: '',
-            duration: '',
         });
         setPending({ kind: 'create', orphan });
     };
@@ -692,6 +691,8 @@ export default function OrphansClient({
                                 placeholder="Auteur"
                             />
                         </div>
+                        {/* Pas de champ « Durée » : elle se mesure sur les pistes du dossier
+                            (refreshBookAudioState), elle ne se saisit pas. */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                                 <Label htmlFor="orphan-date">Date de publication</Label>
@@ -702,16 +703,6 @@ export default function OrphansClient({
                                     onChange={(e) =>
                                         setNewBook({ ...newBook, publishedDate: e.target.value })
                                     }
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="orphan-duration">Durée (min)</Label>
-                                <Input
-                                    id="orphan-duration"
-                                    type="number"
-                                    min={0}
-                                    value={newBook.duration}
-                                    onChange={(e) => setNewBook({ ...newBook, duration: e.target.value })}
                                 />
                             </div>
                         </div>
@@ -739,7 +730,6 @@ export default function OrphansClient({
                                             title: newBook.title,
                                             author: newBook.author,
                                             publishedDate: newBook.publishedDate || undefined,
-                                            readingDurationMinutes: newBook.duration || undefined,
                                         }),
                                     () => setPending(null),
                                 );

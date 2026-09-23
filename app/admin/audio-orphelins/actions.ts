@@ -7,6 +7,7 @@ import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { listRawObjects } from '@/lib/audio/bucket';
 import { refreshBookAudioState } from '@/lib/audio/state';
+import { findFolderClaimant, describeClaimant } from '@/lib/audio/sharedFolder';
 import { appendOrphanNote } from '@/lib/audio/orphanFolders';
 
 /**
@@ -95,15 +96,13 @@ export async function linkOrphanToBook(
             if (!book) return { ok: false, message: 'Livre introuvable' };
 
             // Two books sharing one folder means deleting a track from one silently
-            // empties the other. Catch it here rather than discovering it later.
-            const holder = await prisma.book.findFirst({
-                where: { id: { not: bookId }, audio_filepath: orphan.prefix },
-                select: { id: true, title: true },
-            });
+            // empties the other. Catch it here rather than discovering it later —
+            // both spellings of the path, and deleted fiches too (findFolderClaimant).
+            const holder = await findFolderClaimant(orphan.prefix, bookId);
             if (holder) {
                 return {
                     ok: false,
-                    message: `Ce dossier est déjà utilisé par « ${holder.title} » (#${holder.id}). Un dossier ne peut appartenir qu'à un seul livre.`,
+                    message: `Ce dossier est déjà utilisé par ${describeClaimant(holder)}. Un dossier ne peut appartenir qu'à un seul livre.`,
                 };
             }
 
@@ -164,7 +163,6 @@ export interface NewBookInput {
     title: string;
     author: string;
     publishedDate?: string;
-    readingDurationMinutes?: string;
 }
 
 /**
@@ -194,14 +192,11 @@ export async function createBookForOrphan(
                 return { ok: false, message: 'Ce dossier est déjà rattaché à un livre' };
             }
 
-            const holder = await prisma.book.findFirst({
-                where: { audio_filepath: orphan.prefix },
-                select: { id: true, title: true },
-            });
+            const holder = await findFolderClaimant(orphan.prefix);
             if (holder) {
                 return {
                     ok: false,
-                    message: `Ce dossier est déjà utilisé par « ${holder.title} » (#${holder.id}).`,
+                    message: `Ce dossier est déjà utilisé par ${describeClaimant(holder)}.`,
                 };
             }
 
@@ -212,7 +207,6 @@ export async function createBookForOrphan(
                 orphan.folderNum != null &&
                 (await prisma.book.count({ where: { source_access_id: orphan.folderNum } })) > 0;
 
-            const duration = Number(input.readingDurationMinutes);
             const published = input.publishedDate ? new Date(input.publishedDate) : null;
 
             const book = await prisma.book.create({
@@ -220,7 +214,6 @@ export async function createBookForOrphan(
                     title,
                     author,
                     publishedDate: published && !isNaN(published.getTime()) ? published : null,
-                    readingDurationMinutes: Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null,
                     available: true,
                     addedById: me.id,
                     audio_filepath: orphan.prefix,
@@ -229,6 +222,11 @@ export async function createBookForOrphan(
                 select: { id: true, title: true },
             });
 
+            // La durée n'est plus saisie : refreshBookAudioState, son unique écrivain,
+            // la mesure sur les pistes du dossier. Une durée tapée survivait quand
+            // une seule piste ne se mesurait pas (la règle « jamais de somme
+            // partielle » garde alors l'ancienne valeur), et partait au catalogue
+            // public et dans l'annonce vocale.
             const state = await refreshBookAudioState(book.id);
 
             await prisma.orphanAudioFolder.update({

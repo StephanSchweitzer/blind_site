@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import { resolvePrefix } from '@/lib/audio/state';
 import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
@@ -124,6 +125,12 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     // `parked`: what actually left the folder — fresh moves and an earlier
     // attempt's leftovers alike, never a track whose removal failed.
     const deleted = { length: result.parked.length };
+    if (deleted.length > 0) {
+        // Le catalogue public affiche la durée et la disponibilité, que
+        // refreshBookAudioState vient de relire : sans cette invalidation, il gardait
+        // l'ancienne jusqu'à une heure (le repli de unstable_cache).
+        revalidateCatalogue();
+    }
     const failed = result.failed.map((f) => ({ name: f.filename, message: f.reason }));
 
     return NextResponse.json({

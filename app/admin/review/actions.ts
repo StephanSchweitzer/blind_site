@@ -42,7 +42,8 @@ const OVERRIDABLE_FIELDS = [
     'isbn',
     'publisher',
     'pageCount',
-    'readingDurationMinutes',
+    // Pas readingDurationMinutes : c'est une mesure de l'audio, dont
+    // refreshBookAudioState est l'unique écrivain (voir plus bas, étape 3).
     'description',
 ] as const;
 
@@ -204,6 +205,26 @@ export async function fuseBooks(
                     data: { bookId: survivorId },
                 });
 
+                // Les durées mesurées suivent le dossier qu'elles décrivent — le même
+                // geste que le transfert de deleteBookWithAudio. AudioTrackDuration
+                // est un cache de clé (bookId, filename), `SetNull` sur le livre :
+                // le DELETE ci-dessous les rendait anonymes, et refreshBookAudioState
+                // ne retrouvait plus aucune mesure pour le dossier conservé —
+                // « Non calculée » jusqu'à ce que quelqu'un relance la mesure.
+                if (keepAudioFrom === 'removed') {
+                    const measured = await tx.audioTrackDuration.findMany({
+                        where: { bookId: removedId },
+                        select: { filename: true },
+                    });
+                    await tx.audioTrackDuration.deleteMany({
+                        where: { bookId: survivorId, filename: { in: measured.map((m) => m.filename) } },
+                    });
+                    await tx.audioTrackDuration.updateMany({
+                        where: { bookId: removedId },
+                        data: { bookId: survivorId },
+                    });
+                }
+
                 // 2. Snapshot + delete the removed book BEFORE writing scalars onto the survivor,
                 //    so pulling the removed book's @unique isbn can't collide with the still-live row.
                 // `pairing` dit qui a décidé que ces deux fiches allaient ensemble.
@@ -229,16 +250,29 @@ export async function fuseBooks(
                 }
                 if (keepAudioFrom === 'removed') {
                     data.audio_filepath = removed.audio_filepath;
-                    // audioLinkStatus/audioTrackCount/audioSizeKb describe the *folder*, so the reading
-                    // taken on the removed record is already the right one for the survivor.
-                    // Copying it means the fused fiche shows its audio badge as soon as the
-                    // page refreshes, instead of keeping the survivor's stale « pas d'audio »
-                    // until the bucket re-read below (or the next nightly sync) lands.
-                    data.audioLinkStatus = removed.audioLinkStatus;
-                    data.audioTrackCount = removed.audioTrackCount;
-                    data.audioSizeKb = removed.audioSizeKb;
-                    data.audioCheckedAt = removed.audioCheckedAt;
+                    // Les colonnes d'état audio (statut, pistes, poids, durée) ne sont
+                    // PAS recopiées depuis la fiche absorbée : refreshBookAudioState,
+                    // juste après la transaction, en est l'unique écrivain.
+                    //
+                    // Les recopier n'était pas qu'un écart à la règle. La
+                    // retarification (repriceOpenOrdersForBook) ne part que si le poids
+                    // relu DIFFÈRE du poids stocké : pré-rempli ici, il était déjà
+                    // « à jour », et les demandes ouvertes du survivant — tarifées sur
+                    // son ancien dossier, souvent au plancher d'un CD — ne se
+                    // réalignaient jamais sur l'enregistrement qu'elles désignent
+                    // désormais. deleteBookWithAudio évite le même piège pour la même
+                    // raison (voir son commentaire après le transfert).
                 }
+
+                // L'annonce vocale lit le titre, l'auteur et la description : les
+                // reprendre du doublon la périme, comme PUT /api/books/[id] (la durée,
+                // elle, est invalidée par refreshBookAudioState sur un vrai
+                // changement). Seulement sur une vraie différence, pour ne pas
+                // repayer une synthèse identique.
+                const spokenFieldChanged = (['title', 'author', 'description'] as const).some(
+                    (f) => fields.includes(f) && (removed[f] ?? null) !== (survivor[f] ?? null)
+                );
+                if (spokenFieldChanged) data.polly_audio_url = null;
 
                 await tx.book.update({ where: { id: survivorId }, data });
 

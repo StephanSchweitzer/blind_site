@@ -32,6 +32,46 @@ export interface FolderSharingBook {
     title: string;
 }
 
+/**
+ * La fiche qui revendique déjà ce dossier, s'il y en a une — SUPPRIMÉES
+ * COMPRISES — hors `excludeBookId`.
+ *
+ * Le contrôle « un dossier ne peut appartenir qu'à un seul livre » des
+ * rattachements d'orphelins comparait la chaîne exacte, par `findFirst` — donc
+ * sans les fiches supprimées (lib/prisma.ts). Deux trous : `dossier/` et
+ * `dossier` sont les deux écritures du corpus (voir plus haut), et une fiche
+ * supprimée avec « laisser le dossier » revendique toujours le sien
+ * (deleteBookWithAudio) — la restaurer rendait alors un dossier partagé avec la
+ * fiche qui l'avait reçu entre-temps.
+ */
+export async function findFolderClaimant(
+    audioFilepath: string | null | undefined,
+    excludeBookId?: number,
+): Promise<(FolderSharingBook & { deleted: boolean }) | null> {
+    const prefix = resolvePrefix(audioFilepath);
+    if (!prefix) return null;
+    const where = {
+        audio_filepath: { in: [prefix, prefix.slice(0, -1)] },
+        ...(excludeBookId != null ? { id: { not: excludeBookId } } : {}),
+    };
+    const select = { id: true, title: true } as const;
+    // Deux lectures : le filtre soft-delete s'injecte dès que `deletedAt` n'est
+    // pas nommé, et un OR imbriqué ne le désactive pas.
+    const live = await prisma.book.findFirst({ where, select, orderBy: { id: 'asc' } });
+    if (live) return { ...live, deleted: false };
+    const deleted = await prisma.book.findFirst({
+        where: { ...where, deletedAt: { not: null } },
+        select,
+        orderBy: { id: 'asc' },
+    });
+    return deleted ? { ...deleted, deleted: true } : null;
+}
+
+/** « « Titre » (#12) », suivi de « (fiche supprimée) » le cas échéant. */
+export function describeClaimant(book: FolderSharingBook & { deleted: boolean }): string {
+    return `« ${book.title} » (#${book.id})${book.deleted ? ' — une fiche supprimée, qui le revendique toujours' : ''}`;
+}
+
 export async function booksSharingAudioFolder(
     bookId: number,
     audioFilepath: string | null | undefined,

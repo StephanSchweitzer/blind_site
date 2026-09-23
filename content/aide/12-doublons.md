@@ -24,6 +24,8 @@ Si aucun des livres proposés ne convient, cherchez-en un autre dans le champ «
 
 Si les deux fiches désignent bien le même livre, fusionnez-les. Choisissez, champ par champ, les informations à garder. Les demandes et l'enregistrement passent automatiquement sur la fiche conservée.
 
+La durée ne se choisit pas : elle suit l'enregistrement gardé, et elle est remesurée après la fusion. Les demandes pas encore facturées sont retarifiées sur le poids de cet enregistrement, et l'annonce vocale est refaite si le titre, l'auteur ou la description changent.
+
 **La fusion est irréversible.**
 
 Si les deux fiches ont chacune un enregistrement différent, la fusion est impossible. Choisissez alors « Pas un doublon », ou « **Signaler le doublon** » en expliquant le problème.

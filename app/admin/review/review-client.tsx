@@ -139,7 +139,9 @@ const FIELDS: FieldDef[] = [
     { label: 'ISBN', key: 'isbn', render: (b) => fmtText(b.isbn), overridable: true },
     { label: 'Éditeur', key: 'publisher', render: (b) => fmtText(b.publisher), overridable: true },
     { label: 'Pages', key: 'pageCount', render: (b) => fmtText(b.pageCount), overridable: true },
-    { label: 'Durée', key: 'readingDurationMinutes', render: (b) => fmtDuration(b.readingDurationMinutes), overridable: true },
+    // Mesurée sur l'audio : elle suit le dossier conservé (refreshBookAudioState
+    // après la fusion), elle ne se choisit pas.
+    { label: 'Durée', key: 'readingDurationMinutes', render: (b) => fmtDuration(b.readingDurationMinutes), overridable: false },
     { label: 'Description', key: 'description', render: (b) => fmtText(b.description), overridable: true },
     { label: 'Fichier audio', key: 'audio_filepath', render: (b) => fmtText(b.audio_filepath), overridable: false },
     { label: 'ID source (Access)', key: 'source_access_id', render: (b) => fmtText(b.source_access_id), overridable: false },

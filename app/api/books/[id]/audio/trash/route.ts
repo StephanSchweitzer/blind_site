@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import { restoreTrack, AudioTrashError } from '@/lib/audio/trash';
 import { unexpectedErrorResponse } from '@/lib/api-errors';
@@ -79,6 +80,10 @@ export const POST = withAdmin(async (req, { params, me }) => {
 
     try {
         const result = await restoreTrack({ trashId, userId: me.id });
+        // Le catalogue public affiche la durée et la disponibilité, que
+        // refreshBookAudioState vient de relire : sans cette invalidation, il gardait
+        // l'ancienne jusqu'à une heure (le repli de unstable_cache).
+        revalidateCatalogue();
         return NextResponse.json({
             message: 'Le fichier a été restauré dans le dossier du livre.',
             ...result,

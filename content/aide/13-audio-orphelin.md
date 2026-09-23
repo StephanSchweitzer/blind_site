@@ -24,7 +24,9 @@ Recherchez le livre, puis sélectionnez-le : le dossier lui est rattaché. La pa
 
 ## Créer un livre pour ce dossier
 
-Si le livre n'existe pas encore dans le catalogue, cliquez sur « **Créer un livre pour ce dossier** ». Le formulaire est prérempli à partir du nom du dossier : vérifiez le titre avant de valider.
+Si le livre n'existe pas encore dans le catalogue, cliquez sur « **Créer un livre pour ce dossier** ». Le formulaire est prérempli à partir du nom du dossier : vérifiez le titre avant de valider. La durée ne se saisit pas : elle est mesurée sur les fichiers du dossier.
+
+Le rattachement comme la création sont refusés si une autre fiche utilise déjà ce dossier — y compris une fiche supprimée avec l'option « laisser le dossier » : elle le revendique toujours, et la restaurer ferait deux fiches sur un même enregistrement. Le message nomme la fiche en cause.
 
 ## Écarter un dossier
 

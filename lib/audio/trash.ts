@@ -2,7 +2,7 @@ import 'server-only';
 
 import { prisma } from '@/lib/prisma';
 import { copyTrack, deleteTrack, deleteTracks, headTrack, ensureFolderPlaceholder, MAX_COPY_BYTES } from './bucket';
-import { refreshBookAudioState } from './state';
+import { refreshBookAudioState, resolvePrefix, isKeyInsidePrefix } from './state';
 import { pool } from '@/lib/concurrency';
 
 /**
@@ -427,7 +427,14 @@ export async function restoreTracksByIds(opts: {
     // wins; the older one stays in the corbeille, restorable by hand.
     const rows: typeof found = [];
     const claimedKeys = new Set<string>();
+    const prefixByBook = new Map<number, string>();
     for (const row of found) {
+        // Avant toute copie — voir restoreDestinationRefusal.
+        const wrongFolder = await restoreDestinationRefusal(row.bookId, row.originalKey, prefixByBook);
+        if (wrongFolder) {
+            failed.push({ filename: row.filename, reason: wrongFolder });
+            continue;
+        }
         if (claimedKeys.has(row.originalKey)) {
             failed.push({
                 filename: row.filename,
@@ -546,6 +553,41 @@ export async function markTrashOrigin(bookId: number, title: string): Promise<nu
     return count;
 }
 
+/**
+ * Une piste ne revient que dans le dossier que sa fiche revendique AUJOURD'HUI.
+ *
+ * La restauration recopie vers `originalKey`, la clé d'où la piste est partie.
+ * Mais le dossier a pu changer de fiche entre-temps : après une suppression
+ * « transférer » (deleteBookWithAudio), le dossier de A appartient à B et A n'en
+ * a plus aucun ; après une fusion, les lignes réattribuées au survivant peuvent
+ * nommer le dossier du doublon absorbé. Restaurer y déposait la piste quand
+ * même — dans l'enregistrement d'un AUTRE livre (son poids, sa durée, son ordre
+ * de lecture, son tarif), ou dans un dossier que plus aucune fiche ne lit, alors
+ * que l'écran annonçait une restauration réussie.
+ *
+ * Une ligne sans livre (`bookId` null, cas « sans-fiche » de
+ * /admin/audio-corbeille) n'a pas de dossier auquel se comparer : elle revient à
+ * sa clé, comme avant. `findUnique`, pour voir aussi une fiche supprimée — la
+ * restauration de la fiche relance justement ses pistes.
+ */
+async function restoreDestinationRefusal(
+    bookId: number | null,
+    originalKey: string,
+    cache?: Map<number, string>,
+): Promise<string | null> {
+    if (bookId == null) return null;
+    let prefix = cache?.get(bookId);
+    if (prefix === undefined) {
+        const book = await prisma.book.findUnique({ where: { id: bookId }, select: { audio_filepath: true } });
+        prefix = resolvePrefix(book?.audio_filepath);
+        cache?.set(bookId, prefix);
+    }
+    if (prefix && isKeyInsidePrefix(originalKey, prefix)) return null;
+    return prefix
+        ? 'la fiche a changé de dossier audio depuis la suppression : la piste reviendrait dans un dossier qui n’est plus le sien'
+        : 'la fiche n’a plus de dossier audio (transféré à un autre livre ?) : la piste reviendrait dans l’enregistrement d’un autre';
+}
+
 /** Put a track back where it came from. */
 export async function restoreTrack(opts: {
     trashId: number;
@@ -556,6 +598,11 @@ export async function restoreTrack(opts: {
     const row = await prisma.deletedAudioTrack.findUnique({ where: { id: trashId } });
     if (!row) throw new AudioTrashError('Entrée de corbeille introuvable.');
     if (row.restoredAt) throw new AudioTrashError('Ce fichier a déjà été restauré.');
+
+    const wrongFolder = await restoreDestinationRefusal(row.bookId, row.originalKey);
+    if (wrongFolder) {
+        throw new AudioTrashError(`Restauration refusée : ${wrongFolder}.`);
+    }
 
     const inTrash = await headTrack(row.trashKey);
     if (!inTrash) {

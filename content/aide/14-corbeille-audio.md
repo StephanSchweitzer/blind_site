@@ -36,3 +36,5 @@ Chaque fichier indique qui l'a supprimé, quand, et dans combien de jours il ser
 ![Corbeille audio - un groupe déplié, fichier par fichier](/admin/aide/images/corbeille-audio-02.jpg)
 
 Si le livre n'existe plus, la carte le signale avant le clic : le fichier restauré apparaît dans la page [Audio orphelin](/admin/aide/audio-orphelin), où vous pourrez le rattacher à un livre.
+
+Un fichier ne revient que dans le dossier audio que sa fiche utilise aujourd'hui. Si la fiche a changé de dossier depuis la suppression — son enregistrement a été transféré à un autre livre, ou la fiche a absorbé un doublon dont elle n'a pas gardé le dossier —, la restauration est refusée et le motif s'affiche : le fichier irait sinon grossir l'enregistrement d'un autre livre.
