@@ -21,8 +21,8 @@ export default async function InformationsPratique() {
         <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
-                <PageHeader title="Informations pratiques">
-                    <p>Tout ce que vous devez savoir sur nos services.</p>
+                <PageHeader title="Informations Pratiques">
+                    <p>Tout ce que vous devez savoir sur nos services</p>
                 </PageHeader>
 
                 {/* Information Cards */}

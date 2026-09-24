@@ -24,10 +24,10 @@ export default async function EquipePage() {
         <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
-                <PageHeader title="Notre équipe">
+                <PageHeader title="Notre Équipe">
                     <p>
-                        Les membres de l&apos;équipe qui animent les Enregistrements à la Carte pour les Aveugles
-                        et contribuent à rendre la lecture accessible à tous.
+                        Découvrez les membres de l&apos;équipe qui animent les Enregistrements à la Carte pour les Aveugles
+                        et contribuent à la mission de rendre la lecture accessible à tous.
                     </p>
                 </PageHeader>
 

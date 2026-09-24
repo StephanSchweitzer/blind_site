@@ -48,15 +48,19 @@ export default async function BooksPage() {
                 {/* L'en-tête tient en trois lignes : la recherche doit être visible
                     sans défiler, téléphone compris. */}
                 <PageHeader title="Catalogue des livres">
+                    <p className="text-xl font-semibold text-foreground">
+                        {new Intl.NumberFormat('fr-FR').format(totalBooks)} titres au catalogue !
+                    </p>
                     <p>
-                        <span className="font-semibold text-foreground">{new Intl.NumberFormat('fr-FR').format(totalBooks)} titres</span>{' '}
-                        au catalogue. Vous cherchez un titre qui n&apos;y est pas ? Faites votre demande au{' '}
+                        Consultez-nous si vous avez une recherche particulière,
+                        et faites votre demande au{' '}
                         {/* Both numbers in full and as tel: links: « ou 48 », read aloud
                             or tapped, leads nowhere. */}
                         <a href="tel:+33188323147" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 47</a>{' '}
-                        ou au{' '}
-                        <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 48</a>, ou par courriel à{' '}
-                        <a href="mailto:ecapermanence@gmail.com" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">ecapermanence@gmail.com</a>.
+                        ou{' '}
+                        <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 48</a>{' '}
+                        ou par courriel à{' '}
+                        <a href="mailto:ecapermanence@gmail.com" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">ecapermanence@gmail.com</a>
                     </p>
                 </PageHeader>
 

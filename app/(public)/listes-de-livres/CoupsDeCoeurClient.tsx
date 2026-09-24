@@ -69,13 +69,14 @@ export default function CoupsDeCoeurClient({
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8">
                 <PageHeader title="Listes de livres">
                     <p>
-                        Des sélections de titres, à demander au{' '}
+                        À demander au{' '}
                         {/* Both numbers in full and as tel: links: « ou 48 », read aloud
                             or tapped, leads nowhere. */}
                         <a href="tel:+33188323147" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 47</a>{' '}
-                        ou au{' '}
-                        <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 48</a>, ou par courriel à{' '}
-                        <a href="mailto:ecapermanence@gmail.com" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">ecapermanence@gmail.com</a>.
+                        ou{' '}
+                        <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 48</a>{' '}
+                        ou par courriel à{' '}
+                        <a href="mailto:ecapermanence@gmail.com" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">ecapermanence@gmail.com</a>
                     </p>
                 </PageHeader>
 

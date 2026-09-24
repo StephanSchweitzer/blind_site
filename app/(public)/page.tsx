@@ -116,6 +116,10 @@ export default async function Home() {
         }),
     ]);
 
+    // Le texte est celui de l'association, mot pour mot : ses phrases ont
+    // seulement été redistribuées entre l'en-tête, les deux blocs « Auditeurs »
+    // et « Lecteurs bénévoles », et la conclusion. Les libellés des boutons
+    // reprennent ceux du menu.
     return (
         <div className="flex min-h-screen flex-col">
             <script
@@ -126,18 +130,22 @@ export default async function Home() {
         <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-14">
-                {/* Un seul titre, qui dit ce que sont les ECA. Il y en avait deux
-                    (« Bienvenue sur le site ECA ! », puis le nom), suivis du logo
-                    en grande image : trois fois la même chose avant la première
-                    information. */}
+                {/* Un seul titre de niveau 1 : le nom, qui était un second titre,
+                    est désormais sa ligne d'accompagnement. Le logo en grande
+                    image, qui le répétait une troisième fois, est retiré. */}
                 <header className="space-y-6">
                     <Dos />
-                    <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
-                        Enregistrements à la Carte pour les Aveugles
-                    </h1>
+                    <div className="space-y-2">
+                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
+                            Bienvenue sur le site ECA !
+                        </h1>
+                        <p className="text-2xl font-semibold text-foreground">
+                            ECA : Enregistrements à la Carte pour les Aveugles
+                        </p>
+                    </div>
                     <p className="max-w-prose text-xl text-muted-foreground">
-                        Les ECA proposent à leurs auditeurs un service personnalisé d&apos;enregistrement
-                        des livres et documents de leurs choix, lus par des bénévoles.
+                        Les ECA (Enregistrements à la Carte pour les Aveugles) proposent à leurs auditeurs un service
+                        personnalisé d&apos;enregistrement des livres et documents de leurs choix.
                     </p>
 
                     {/* Le téléphone d'abord : beaucoup de nos auditeurs appellent
@@ -157,65 +165,51 @@ export default async function Home() {
                                 <a href={`mailto:${contact.email}`} className={`${lien} [overflow-wrap:anywhere]`}>{contact.email}</a>
                             </p>
                             <p>
-                                <Link href="/contact" className={lien}>Adresse et permanences</Link>
+                                <Link href="/contact" className={lien}>Coordonnées</Link>
                             </p>
                         </div>
                     )}
                 </header>
 
-                {/* Les deux raisons de venir ici, chacune avec sa suite. */}
-                <section aria-labelledby="commencer" className="space-y-5">
-                    <h2 id="commencer" className="text-2xl font-bold text-foreground">Par où commencer ?</h2>
-                    <div className="grid gap-5 md:grid-cols-2">
-                        <article aria-labelledby="ecouter" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
-                            <Headphones aria-hidden="true" className="h-8 w-8 text-primary dark:text-blue-300" />
-                            <h3 id="ecouter" className="text-xl font-bold text-foreground">Vous souhaitez écouter des livres</h3>
-                            <p className="flex-1 text-muted-foreground">
-                                Faites-nous parvenir le livre ou le document de votre choix : un lecteur bénévole
-                                l&apos;enregistre pour vous. Vous pouvez aussi choisir parmi les titres du catalogue.
-                            </p>
-                            <div className="flex flex-wrap gap-3">
-                                <Link href="/catalogue" className={bouton}>
-                                    Parcourir le catalogue <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                                </Link>
-                                <Link href="/contact" className={boutonSecondaire}>Nous contacter</Link>
-                            </div>
-                        </article>
-                        <article aria-labelledby="lire" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
-                            <Mic aria-hidden="true" className="h-8 w-8 text-primary dark:text-blue-300" />
-                            <h3 id="lire" className="text-xl font-bold text-foreground">Vous souhaitez lire pour les autres</h3>
-                            <p className="flex-1 text-muted-foreground">
-                                Les ECA forment des lecteurs bénévoles, qui prêtent leur voix aux livres et documents
-                                demandés par les auditeurs.
-                            </p>
-                            <div className="flex flex-wrap gap-3">
-                                <Link href="/nous-rejoindre" className={bouton}>
-                                    Devenir lecteur bénévole <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                                </Link>
-                            </div>
-                        </article>
-                    </div>
-                </section>
-
-                {chiffres && <AujourdhuiAuxEca chiffres={chiffres} />}
-
-                {/* Du texte, pas des cartes : rien ici ne se clique. */}
-                <section aria-labelledby="service" className="space-y-4">
-                    <h2 id="service" className="text-2xl font-bold text-foreground">Un service à la carte</h2>
-                    <div className="max-w-prose space-y-4 text-muted-foreground">
-                        <p>
+                {/* Les deux publics du site, chacun avec sa suite. */}
+                <div className="grid gap-5 md:grid-cols-2">
+                    <section aria-labelledby="auditeurs" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
+                        <Headphones aria-hidden="true" className="h-8 w-8 text-primary dark:text-blue-300" />
+                        <h2 id="auditeurs" className="text-xl font-bold text-foreground">Auditeurs</h2>
+                        <p className="flex-1 text-muted-foreground">
+                            Les auditeurs peuvent faire parvenir aux ECA tous livres ou documents dont ils souhaitent
+                            l&apos;enregistrement vocal que ce soit pour leur divertissement, leurs besoins professionnels
+                            ou de formation. Les ECA mettent aussi à leur disposition les titres du catalogue.
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                            <Link href="/catalogue" className={bouton}>
+                                Catalogue <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                            </Link>
+                            <Link href="/contact" className={boutonSecondaire}>Contact</Link>
+                        </div>
+                    </section>
+                    <section aria-labelledby="lecteurs" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
+                        <Mic aria-hidden="true" className="h-8 w-8 text-primary dark:text-blue-300" />
+                        <h2 id="lecteurs" className="text-xl font-bold text-foreground">Lecteurs bénévoles</h2>
+                        <p className="flex-1 text-muted-foreground">
                             Les ECA mettent en contact des lecteurs bénévoles formés par l&apos;association et des auditeurs
                             déficients visuels qui accèdent ainsi au plaisir de l&apos;écoute des textes qu&apos;ils ont choisis.
-                            Les ECA mettent aussi à leur disposition les titres du catalogue. Ainsi se met en place une
-                            passerelle humaine et chaleureuse entre voyants et malvoyants.
                         </p>
-                        <p>
-                            C&apos;est donc un service à la carte qui est proposé. Les auditeurs peuvent faire parvenir aux ECA
-                            tous livres ou documents dont ils souhaitent l&apos;enregistrement vocal, que ce soit pour leur
-                            divertissement, leurs besoins professionnels ou de formation.
-                        </p>
-                    </div>
-                </section>
+                        <div className="flex flex-wrap gap-3">
+                            <Link href="/nous-rejoindre" className={bouton}>
+                                Nous rejoindre <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                            </Link>
+                        </div>
+                    </section>
+                </div>
+
+                {/* Du texte, pas une carte : rien ici ne se clique. */}
+                <p className="max-w-prose text-lg text-muted-foreground">
+                    Ainsi se met en place une passerelle humaine et chaleureuse entre voyants et malvoyants.
+                    C&apos;est donc un service à la carte qui est proposé.
+                </p>
+
+                {chiffres && <AujourdhuiAuxEca chiffres={chiffres} />}
             </div>
         </main>
         </div>

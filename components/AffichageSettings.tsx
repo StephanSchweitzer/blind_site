@@ -178,7 +178,7 @@ export function AffichageSettings({ children }: { children: ReactNode }) {
                             <span>
                                 <span className="block font-semibold text-gray-900 dark:text-white">Réduire les animations</span>
                                 <span className="block text-sm text-gray-700 dark:text-gray-300">
-                                    Coupe les transitions et les fondus, même discrets.
+                                    Arrête les effets de mouvement.
                                 </span>
                             </span>
                         </label>

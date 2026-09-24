@@ -19,10 +19,10 @@ export default async function HistoriquePage() {
         <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
-                <PageHeader title="Notre histoire">
+                <PageHeader title="Notre Histoire">
                     <p>
                         Depuis 40 ans, les ECA s&apos;engagent pour rendre la lecture accessible
-                        aux personnes déficientes visuelles. Voici les moments clés de leur parcours.
+                        aux personnes déficientes visuelles. Découvrez les moments clés de leur parcours.
                     </p>
                 </PageHeader>
 

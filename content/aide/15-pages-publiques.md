@@ -38,7 +38,7 @@ La page d'accueil du site public dit en quelques phrases où en est le service :
 
 Ces chiffres ne se saisissent nulle part : ils se calculent seuls, à partir des fiches des membres (leur statut), des attributions (leur date de retour aux ECA) et du catalogue. Ils se mettent à jour au plus tard une heure après un changement. Si un chiffre vous paraît faux, c'est donc la donnée d'origine qu'il faut vérifier — un lecteur resté « Actif » qui ne lit plus, une attribution rendue sans date de retour. Aucun nom ni aucun titre n'y apparaît.
 
-Au-dessus, la page d'accueil donne le téléphone et le courriel de la page **Contact**, puis deux chemins : « Vous souhaitez écouter des livres » (vers le catalogue et le contact) et « Vous souhaitez lire pour les autres » (vers Nous rejoindre).
+Au-dessus, la page d'accueil donne le téléphone et le courriel de la page **Contact**, puis deux blocs : « Auditeurs » (vers le catalogue et le contact) et « Lecteurs bénévoles » (vers Nous rejoindre).
 
 ## La couleur des livres
 
@@ -64,7 +64,7 @@ En haut de chaque page du site public, à côté du bouton du thème clair ou so
 - **Taille du texte** : Normale, Grande ou Très grande. Tout le texte grandit, et la page se réorganise pour rester lisible ;
 - **Espacer le texte** : plus d'air entre les lignes, les mots et les lettres — une aide pour qui saute des lignes en lisant ;
 - **Contraste renforcé** : fonds unis, textes plus foncés et liens soulignés. Il s'active aussi tout seul si l'appareil du visiteur demande plus de contraste ;
-- **Réduire les animations** : coupe les transitions et les fondus, même discrets. Le site n'a plus de fond animé ni d'effet de mouvement décoratif ; ce réglage retire le peu qui reste.
+- **Réduire les animations** : arrête les effets de mouvement.
 
 Ces réglages sont gardés sur l'appareil du visiteur, d'une visite à l'autre. Ils ne concernent que le site public : Arbre Rose garde son affichage habituel. C'est utile à indiquer à un auditeur qui trouve le site difficile à lire.
 

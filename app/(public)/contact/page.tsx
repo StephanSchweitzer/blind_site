@@ -57,7 +57,7 @@ export default async function Contact() {
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
                 <PageHeader title="Coordonnées">
-                    <p>Contactez-nous ou venez nous rendre visite.</p>
+                    <p>Contactez-nous ou venez nous rendre visite</p>
                 </PageHeader>
 
                 {!contact ? (

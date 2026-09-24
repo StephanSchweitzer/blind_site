@@ -18,8 +18,8 @@ export default async function DernieresInfoPage() {
         <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8">
-                <PageHeader title="Dernières informations">
-                    <p>Les actualités et les événements des ECA.</p>
+                <PageHeader title="Dernières Informations">
+                    <p>Restez informé des actualités et des événements</p>
                 </PageHeader>
 
                 <DernieresInfosClient initialData={initialData} />
