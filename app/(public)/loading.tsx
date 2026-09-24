@@ -1,5 +1,5 @@
-import { LoadingSkeleton } from '@/components/loading-skeleton'
+import { PublicLoading } from '@/components/PublicLoading';
 
 export default function Loading() {
-    return <LoadingSkeleton />
+    return <PublicLoading />;
 }

@@ -9,6 +9,13 @@ export const metadata = {
     alternates: { canonical: '/dernieres-infos' },
 };
 
+// Statique, comme le catalogue : la page part du cache et les liens du menu la
+// préchargent en entier, sans écran « Chargement… ». Recherche, filtre et page
+// sont lus dans le navigateur (hooks/useListUrl.ts) — un `searchParams` lu ici
+// la ferait rendre à chaque visite. Le tag `news` la régénère après chaque
+// modification ; ce délai n'est qu'un filet.
+export const revalidate = 3600;
+
 export default async function DernieresInfoPage() {
     const initialData = await getInitialNews();
 

@@ -20,7 +20,8 @@ export const CoupDeCoeurList: React.FC<CoupDeCoeurListProps> = ({
 
     return (
         <div
-            className={`relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
+            className={`relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-opacity duration-300 ${isTransitioning ? 'opacity-60' : 'opacity-100'}`}
+            aria-busy={isTransitioning || undefined}
         >
 
             {/* p-5 on a phone: at 375 px, p-8 left the audio player's three buttons

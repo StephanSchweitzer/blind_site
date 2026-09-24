@@ -1,7 +1,5 @@
 import CoupsDeCoeurClient from './CoupsDeCoeurClient';
-import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import { getCoupsDeCoeurPage, COUPS_DE_COEUR_PAGE_SIZE } from './data';
-import { parsePageParam } from '@/lib/pagination';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -10,23 +8,15 @@ export const metadata: Metadata = {
     alternates: { canonical: '/listes-de-livres' },
 };
 
-export default async function CoupsDeCoeurPage({
-                                                   searchParams,
-                                               }: {
-    searchParams: Promise<{ page?: string }>;
-}) {
-    const { page: pageParam } = await searchParams;
-    const page = parsePageParam(pageParam);
+// Statique, comme le catalogue et les dernières infos : sans `searchParams`,
+// la page part du cache et les liens du menu la préchargent en entier — plus
+// d'écran « Chargement… » en y arrivant. `?page=N` est lu dans le navigateur
+// (CoupsDeCoeurClient). L'invalidation par le tag `coups-de-coeur` la
+// régénère après chaque modification ; ce délai n'est qu'un filet.
+export const revalidate = 3600;
 
-    const { items, total } = await getCoupsDeCoeurPage(page, COUPS_DE_COEUR_PAGE_SIZE);
+export default async function CoupsDeCoeurPage() {
+    const { items, total } = await getCoupsDeCoeurPage(1, COUPS_DE_COEUR_PAGE_SIZE);
 
-    const content: CoupDeCoeur[] = items;
-
-    return (
-        <CoupsDeCoeurClient
-            content={content}
-            currentPage={page}
-            total={total}
-        />
-    );
+    return <CoupsDeCoeurClient initialContent={items} initialTotal={total} />;
 }

@@ -253,6 +253,18 @@
        loupe. Restent les indicateurs de chargement, qui disent qu'on attend.
        Voir aussi « Réglages d'affichage » en fin de fichier. */
 
+    /* Un indicateur de chargement qui attend son tour (components/PublicLoading.tsx) :
+       invisible une demi-seconde, puis un fondu. Une page qui arrive avant ne
+       montre rien du tout. Avec les animations réduites, le fondu tombe à
+       zéro mais le délai reste : l'indicateur paraît d'un coup, toujours tard. */
+    .chargement-differe {
+        animation: chargement-apparition 0.4s ease-out 0.5s both;
+    }
+    @keyframes chargement-apparition {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
     /* Custom scrollbar */
     .custom-scrollbar::-webkit-scrollbar {
         width: 8px;
