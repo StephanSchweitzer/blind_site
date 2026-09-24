@@ -107,6 +107,9 @@ export default async function Dashboard() {
 
     return (
         <AdminCard className="p-6 md:p-8">
+            {/* The section titles are h2 and the cards h3; without an h1 a screen
+                reader's heading list started mid-outline. */}
+            <h1 className="sr-only">Tableau de bord</h1>
             {/* Content Management Section */}
             <div className="mb-10">
                 <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Livres</h2>
@@ -116,42 +119,36 @@ export default async function Dashboard() {
                         count={bookCount}
                         href="/admin/books"
                         buttonText="Gestion du catalogue"
-                        accentColor="blue"
                     />
                     <AdminDashboardCard
                         title="Genres"
                         count={genreCount}
                         href="/admin/genres"
                         buttonText="Gestion des genres possibles associés aux livres"
-                        accentColor="purple"
                     />
                     <AdminDashboardCard
                         title="Listes de livres"
                         count={coupsDeCoeurCount}
                         href="/admin/listes-de-livres"
                         buttonText="Gestion des listes de livres (anciennement appelés « coups de cœur »)"
-                        accentColor="pink"
                     />
                     <AdminDashboardCard
                         title="Doublons"
                         count={reviewCount}
                         href="/admin/review"
                         buttonText="Révision et fusion des doublons potentiels du catalogue"
-                        accentColor="orange"
                     />
                     <AdminDashboardCard
                         title="Audio orphelin"
                         count={orphanAudioCount}
                         href="/admin/audio-orphelins"
                         buttonText="Dossiers audio du stockage qu’aucun livre ne revendique"
-                        accentColor="teal"
                     />
                     <AdminDashboardCard
                         title="Corbeille audio"
                         count={audioTrashCount}
                         href="/admin/audio-corbeille"
                         buttonText="Fichiers audio supprimés, restaurables 14 jours"
-                        accentColor="red"
                     />
                 </div>
             </div>
@@ -165,7 +162,6 @@ export default async function Dashboard() {
                         count={orderCount}
                         href="/admin/orders"
                         buttonText="Gestion des demandes d'enregistrements audio"
-                        accentColor="yellow"
                         rows={[
                             delaiRow("En attente d'un lecteur", '/admin/orders?isDuplication=false&statusId=1', orderTally.attente_lecteur, 'à surveiller'),
                             delaiRow('À expédier aux auditeurs', '/admin/orders?isDuplication=false&statusId=6', orderTally.a_expedier, 'à surveiller'),
@@ -177,7 +173,6 @@ export default async function Dashboard() {
                         count={assignmentCount}
                         href="/admin/assignments"
                         buttonText="Gestion des attributions confiées aux lecteurs"
-                        accentColor="cyan"
                         rows={[
                             delaiRow('Chez les lecteurs', '/admin/assignments?statusId=2', assignmentTally.chez_lecteur, 'à relancer'),
                         ]}
@@ -187,7 +182,6 @@ export default async function Dashboard() {
                         count={billCount}
                         href="/admin/bills"
                         buttonText="Gestion des factures"
-                        accentColor="orange"
                         rows={[
                             {
                                 label: 'Impayées après 30 jours',
@@ -202,15 +196,14 @@ export default async function Dashboard() {
                         count={paymentCount}
                         href="/admin/payments"
                         buttonText="Gestion des paiements (cotisations, dons, enregistrements)"
-                        accentColor="green"
                     />
                     {isSuper && (
                         <AdminDashboardCard
                             title="Statistiques"
                             count={auditEventCount}
+                            countLabel="modifications au journal"
                             href="/admin/stats"
                             buttonText="Tableau de bord et journal des modifications"
-                            accentColor="purple"
                         />
                     )}
                 </div>
@@ -225,35 +218,31 @@ export default async function Dashboard() {
                         count={auditeursCount}
                         href="/admin/users/auditeurs"
                         buttonText="Gestion des auditeurs"
-                        accentColor="teal"
                     />
                     <AdminDashboardCard
                         title="Lecteurs"
                         count={lecteursCount}
                         href="/admin/users/lecteurs"
                         buttonText="Gestion des lecteurs"
-                        accentColor="indigo"
                     />
                     <AdminDashboardCard
                         title="Donateurs"
                         count={bienfaiteursCount}
                         href="/admin/users/bienfaiteurs"
                         buttonText="Gestion des donateurs"
-                        accentColor="pink"
                     />
                     <AdminDashboardCard
                         title="Permanents"
                         count={permanentsCount}
                         href="/admin/users/permanents"
                         buttonText="Gestion des membres permanents"
-                        accentColor="red"
                     />
                     <AdminDashboardCard
                         title="Disponibilités"
                         count={freeReaderCount}
+                        countLabel={freeReaderCount > 1 ? 'lecteurs libres' : 'lecteur libre'}
                         href="/admin/disponibilites"
                         buttonText="Calendrier des indisponibilités et lecteurs libres"
-                        accentColor="blue"
                     />
                 </div>
             </div>
@@ -267,7 +256,6 @@ export default async function Dashboard() {
                         count={newsCount}
                         href="/admin/news"
                         buttonText="Gestion des informations importantes et actuelles"
-                        accentColor="green"
                     />
                     {isSuper && (
                         <>
@@ -276,35 +264,30 @@ export default async function Dashboard() {
                                 count={siteContactCount}
                                 href="/admin/site-contact"
                                 buttonText="Coordonnées affichées sur la page Contact"
-                                accentColor="teal"
                             />
                             <AdminDashboardCard
                                 title="Équipe"
                                 count={teamMemberCount}
                                 href="/admin/team"
                                 buttonText="Membres affichés sur la page Équipe (glisser-déposer pour réordonner)"
-                                accentColor="indigo"
                             />
                             <AdminDashboardCard
                                 title="Historique"
                                 count={historyEventCount}
                                 href="/admin/historique"
                                 buttonText="Frise chronologique de la page Historique"
-                                accentColor="orange"
                             />
                             <AdminDashboardCard
                                 title="Infos pratiques"
                                 count={practicalInfoCount}
                                 href="/admin/informations-pratiques"
                                 buttonText="Cartes de la page Informations pratiques (glisser-déposer)"
-                                accentColor="cyan"
                             />
                             <AdminDashboardCard
                                 title="Nous rejoindre"
                                 count={membershipCount}
                                 href="/admin/nous-rejoindre"
                                 buttonText="Cartes d’adhésion de la page Nous rejoindre (glisser-déposer)"
-                                accentColor="red"
                             />
                         </>
                     )}

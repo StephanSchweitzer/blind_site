@@ -42,6 +42,7 @@ import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
+import { MobileFilters } from '@/admin/MobileFilters';
 import type { BookFilter } from '@/lib/books/bookFilter';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
@@ -416,6 +417,10 @@ export default function AssignmentsTable({
                                 </Button>
                             </div>
                         )}
+                        <MobileFilters
+                            activeCount={[filterBook, currentStatusId !== 'all', currentRetard !== 'all'].filter(Boolean).length}
+                            className="flex flex-col md:flex-row gap-4"
+                        >
                         {/* Sans étiquette, comme le statut à côté : ici les filtres
                             s'annoncent par leur placeholder, pas par un label. */}
                         <BookFilterPicker
@@ -478,6 +483,7 @@ export default function AssignmentsTable({
                                 </SelectContent>
                             </Select>
                         </div>
+                        </MobileFilters>
                     </div>
 
                     {filterBook && <BookFilterBadge book={filterBook} noun="attributions" />}
@@ -506,8 +512,8 @@ export default function AssignmentsTable({
                         </div>
                     ) : (
                         <div>
-                            <div className="rounded-lg border border-border overflow-hidden bg-card">
-                                <Table>
+                            <div className="rounded-lg border border-border overflow-clip bg-card">
+                                <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card border-b border-border">
                                         <TableRow className="hover:bg-muted border-b border-border">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
@@ -600,11 +606,11 @@ export default function AssignmentsTable({
                                                 </TableCell>
                                                 <TableCell className="whitespace-nowrap">
                                                     {assignment.deliveryMethod === 'RETRAIT' ? (
-                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                                        <span className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                                                             Retrait
                                                         </span>
                                                     ) : assignment.deliveryMethod === 'ENVOI' ? (
-                                                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300">
+                                                        <span className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300">
                                                             Envoi
                                                         </span>
                                                     ) : (

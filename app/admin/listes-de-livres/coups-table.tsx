@@ -111,7 +111,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages, searchSugg
                 </div>
 
                 <div className="rounded-md border border-border bg-card">
-                    <Table>
+                    <Table stickyHeader mobileCards>
                         <TableHeader className="bg-card">
                             <TableRow className="border-b border-border">
                                 <TableHead className="text-foreground font-medium">Titre</TableHead>

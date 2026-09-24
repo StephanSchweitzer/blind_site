@@ -541,7 +541,7 @@ export default function PersonAvailabilityPanel({
                             <>
                                 <CopyableId id={person.id} label="de la personne" />
                                 <span
-                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getMemberTypeColor(person.memberType)}`}
+                                    className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${getMemberTypeColor(person.memberType)}`}
                                 >
                                     {getMemberTypeLabel(person.memberType)}
                                 </span>

@@ -362,7 +362,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                             aria-pressed={type === null}
                             onClick={() => handleTypeClick(null)}
                             title="Tous les types"
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium transition-colors ${
+                            className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 font-medium transition-colors ${
                                 type === null
                                     ? 'bg-muted text-foreground ring-1 ring-inset ring-border'
                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -474,7 +474,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                     </div>
                 ) : (
                     <div className={`rounded-md border border-border bg-card transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
-                        <Table>
+                        <Table stickyHeader mobileCards>
                             <TableHeader className="bg-card">
                                 <TableRow className="border-b border-border">
                                     <TableHead className="text-foreground font-medium">ID</TableHead>

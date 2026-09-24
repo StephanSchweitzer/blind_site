@@ -120,20 +120,20 @@ export default function ChangePasswordPage() {
     };
 
     return (
-        <main className="flex justify-center items-center min-h-screen bg-gray-950 p-4">
-            <Card className="w-full max-w-md bg-gray-900 border-gray-800 shadow-xl">
+        <main className="flex justify-center items-center min-h-screen p-4">
+            <Card className="w-full max-w-md bg-card border-border shadow-xl">
                 <CardHeader className="space-y-1">
-                    <CardTitle asChild className="text-2xl text-gray-100 font-bold text-center">
+                    <CardTitle asChild className="text-2xl text-foreground font-bold text-center">
                         <h1>Changement de mot de passe requis</h1>
                     </CardTitle>
-                    <CardDescription className="text-gray-400 text-center">
+                    <CardDescription className="text-muted-foreground text-center">
                         Pour des raisons de sécurité, vous devez changer votre mot de passe temporaire
                     </CardDescription>
                 </CardHeader>
 
                 <CardContent>
                     {error && (
-                        <div className="mb-6 p-4 bg-red-900/40 text-red-200 rounded-md border border-red-700 flex items-start">
+                        <div className="mb-6 p-4 bg-red-50 text-red-800 rounded-md border border-red-300 dark:bg-red-900/40 dark:text-red-200 dark:border-red-700 flex items-start">
                             <AlertTriangle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
                             <p>{error}</p>
                         </div>
@@ -141,7 +141,7 @@ export default function ChangePasswordPage() {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <label htmlFor="currentPassword" className="text-sm font-medium text-gray-300">
+                            <label htmlFor="currentPassword" className="text-sm font-medium text-foreground">
                                 Mot de passe temporaire actuel
                             </label>
                             <div className="relative">
@@ -150,14 +150,14 @@ export default function ChangePasswordPage() {
                                     name="currentPassword"
                                     type={showCurrentPassword ? "text" : "password"}
                                     required
-                                    className="pr-10 bg-gray-800 border-gray-700 text-gray-100"
+                                    className="pr-10 bg-field border-input text-foreground"
                                     placeholder="Entrez votre mot de passe temporaire"
                                     value={passwordData.currentPassword}
                                     onChange={handleChange}
                                 />
                                 <button
                                     type="button"
-                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-200"
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                                 >
                                     {showCurrentPassword ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
@@ -166,7 +166,7 @@ export default function ChangePasswordPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label htmlFor="newPassword" className="text-sm font-medium text-gray-300">
+                            <label htmlFor="newPassword" className="text-sm font-medium text-foreground">
                                 Nouveau mot de passe
                             </label>
                             <div className="relative">
@@ -175,14 +175,14 @@ export default function ChangePasswordPage() {
                                     name="newPassword"
                                     type={showNewPassword ? "text" : "password"}
                                     required
-                                    className="pr-10 bg-gray-800 border-gray-700 text-gray-100"
+                                    className="pr-10 bg-field border-input text-foreground"
                                     placeholder="Choisissez un mot de passe fort"
                                     value={passwordData.newPassword}
                                     onChange={handleChange}
                                 />
                                 <button
                                     type="button"
-                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-200"
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                                     onClick={() => setShowNewPassword(!showNewPassword)}
                                 >
                                     {showNewPassword ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
@@ -192,13 +192,13 @@ export default function ChangePasswordPage() {
                             {/* Password strength indicator */}
                             {passwordData.newPassword && (
                                 <div className="mt-2 space-y-2">
-                                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                                         <div
                                             className={`h-full ${passwordStrength.color}`}
                                             style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
                                         ></div>
                                     </div>
-                                    <p className={`text-sm ${passwordStrength.score >= MIN_PASSWORD_SCORE ? 'text-green-400' : 'text-amber-400'}`}>
+                                    <p className={`text-sm ${passwordStrength.score >= MIN_PASSWORD_SCORE ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
                                         Force: {passwordStrength.message}
                                     </p>
 
@@ -230,7 +230,7 @@ export default function ChangePasswordPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-300">
+                            <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
                                 Confirmer le nouveau mot de passe
                             </label>
                             <Input
@@ -238,18 +238,18 @@ export default function ChangePasswordPage() {
                                 name="confirmPassword"
                                 type="password"
                                 required
-                                className="bg-gray-800 border-gray-700 text-gray-100"
+                                className="bg-field border-input text-foreground"
                                 placeholder="Confirmez votre nouveau mot de passe"
                                 value={passwordData.confirmPassword}
                                 onChange={handleChange}
                             />
                             {passwordData.newPassword && passwordData.confirmPassword && (
                                 passwordData.newPassword === passwordData.confirmPassword ? (
-                                    <p className="text-sm text-green-500 flex items-center mt-1">
+                                    <p className="text-sm text-green-700 dark:text-green-500 flex items-center mt-1">
                                         <CheckCircle2 aria-hidden="true" size={16} className="mr-1" /> Les mots de passe correspondent
                                     </p>
                                 ) : (
-                                    <p className="text-sm text-red-500 flex items-center mt-1">
+                                    <p className="text-sm text-red-700 dark:text-red-400 flex items-center mt-1">
                                         <AlertTriangle size={16} className="mr-1" /> Les mots de passe ne correspondent pas
                                     </p>
                                 )
@@ -285,11 +285,11 @@ function RequirementRow({ text, met }: { text: string; met: boolean }) {
     return (
         <div className="flex items-center text-sm">
             {met ? (
-                <CheckCircle2 aria-hidden="true" size={16} className="text-green-500 mr-2 flex-shrink-0" />
+                <CheckCircle2 aria-hidden="true" size={16} className="text-green-600 dark:text-green-500 mr-2 flex-shrink-0" />
             ) : (
-                <AlertTriangle size={16} className="text-gray-500 mr-2 flex-shrink-0" />
+                <AlertTriangle size={16} className="text-muted-foreground mr-2 flex-shrink-0" />
             )}
-            <span className={met ? 'text-green-400' : 'text-gray-400'}>
+            <span className={met ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}>
         {text}
       </span>
         </div>

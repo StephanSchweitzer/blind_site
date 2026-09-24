@@ -10,7 +10,7 @@ import {
     serializeBlockedDuplications,
 } from '@/lib/orders/duplicationBlocked';
 import { getOpenOrderDelais, retardWhere, serializeDelaisFor, type Delai } from '@/lib/orders/delais';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getOrderBillingStatusLabel, BILLING_STATUS_LABELS } from '@/lib/billing-enums';
@@ -38,7 +38,7 @@ async function getOrders(
     filterBook?: { id: number; title: string }
 ) {
     const bookId = filterBook?.id;
-    const ordersPerPage = 10;
+    const ordersPerPage = ADMIN_PAGE_SIZE;
 
     // Délais par étape — read once, used by the « Retard » filter, by the row
     // badges and by the rescue notes, so all three agree (lib/orders/delais.ts).

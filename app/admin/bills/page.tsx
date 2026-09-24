@@ -4,7 +4,7 @@ import BillsTable from './bills-table';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { notFound } from 'next/navigation';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { BILL_KIND_LABELS, BILLING_STATUS_LABELS } from '@/lib/billing-enums';
@@ -28,7 +28,7 @@ async function getBills(
     showLate?: boolean,
     kind?: BillKind,
 ) {
-    const billsPerPage = 10;
+    const billsPerPage = ADMIN_PAGE_SIZE;
 
     // The whole where clause for a given search term — a function so the
     // « Essayez plutôt » block can count another term, or the same one with

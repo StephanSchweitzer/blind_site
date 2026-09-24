@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import BooksTable from './books-table';
 import { notFound } from 'next/navigation';
 import { buildBookScopeWhere, AudioFilter } from '@/lib/books/searchWhere';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -23,7 +23,7 @@ async function getBooks(
     hidden?: boolean,
     audio?: AudioFilter
 ) {
-    const booksPerPage = 10;
+    const booksPerPage = ADMIN_PAGE_SIZE;
 
     // Every filter except availability, so the disponible/en attente counts
     // reflect the rest of the current filter set without being gated by the

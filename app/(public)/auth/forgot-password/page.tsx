@@ -51,13 +51,13 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-950 px-4">
-            <Card className="w-full max-w-md border-gray-700 bg-gray-900 shadow-xl">
+        <main className="min-h-screen flex items-center justify-center px-4">
+            <Card className="w-full max-w-md border-border bg-card shadow-xl">
                 <CardHeader className="space-y-1 text-center">
-                    <CardTitle asChild className="text-2xl font-semibold text-gray-100">
+                    <CardTitle asChild className="text-2xl font-semibold text-foreground">
                         <h1>Mot de passe oublié</h1>
                     </CardTitle>
-                    <CardDescription className="text-gray-400">
+                    <CardDescription className="text-muted-foreground">
                         Réservé aux permanents. Entrez l&apos;adresse email de votre compte : vous
                         recevrez un lien pour choisir un nouveau mot de passe.
                     </CardDescription>
@@ -68,19 +68,19 @@ export default function ForgotPasswordPage() {
                         <div className="space-y-6">
                             <div
                                 role="status"
-                                className="flex items-start gap-2 rounded-md border border-green-900/60 bg-green-950/40 px-3 py-3 text-sm text-green-300"
+                                className="flex items-start gap-2 rounded-md border border-green-300 bg-green-50 px-3 py-3 text-sm text-green-800 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-300"
                             >
                                 <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                                 <span>{confirmation}</span>
                             </div>
-                            <p className="text-sm text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                                 Le lien expire au bout de 30 minutes et ne fonctionne qu&apos;une
                                 seule fois. Si vous ne recevez rien, contactez l&apos;équipe ECA :
                                 votre compte n&apos;a peut-être pas les droits nécessaires.
                             </p>
                             <Link
                                 href="/auth/signin"
-                                className="flex items-center justify-center gap-2 text-sm text-blue-400 transition-colors hover:text-blue-300"
+                                className="flex items-center justify-center gap-2 text-sm text-blue-700 underline-offset-2 transition-colors hover:underline dark:text-blue-300"
                             >
                                 <ArrowLeft aria-hidden="true" className="h-4 w-4" />
                                 Retour à la connexion
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
                             {error && (
                                 <div
                                     role="alert"
-                                    className="mb-4 flex items-center gap-2 rounded-md border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300"
+                                    className="mb-4 flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
                                 >
                                     <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" />
                                     <span>{error}</span>
@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
 
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="email" className="text-gray-200">
+                                    <Label htmlFor="email" className="text-foreground">
                                         Email
                                     </Label>
                                     <Input
@@ -112,7 +112,7 @@ export default function ForgotPasswordPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
                                         disabled={isLoading}
-                                        className="bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
+                                        className="bg-field border-input text-foreground placeholder:text-muted-foreground"
                                     />
                                 </div>
 
@@ -136,7 +136,7 @@ export default function ForgotPasswordPage() {
 
                                 <Link
                                     href="/auth/signin"
-                                    className="flex items-center justify-center gap-2 text-sm text-gray-400 transition-colors hover:text-gray-200"
+                                    className="flex items-center justify-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                                 >
                                     <ArrowLeft aria-hidden="true" className="h-4 w-4" />
                                     Retour à la connexion

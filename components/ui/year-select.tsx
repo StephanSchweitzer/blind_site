@@ -39,18 +39,18 @@ const YearCommandSelect: React.FC<YearCommandSelectProps> = ({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between bg-gray-800 border-gray-700 text-gray-100 hover:bg-gray-700"
+                    className="w-full justify-between bg-field border-input text-foreground hover:bg-accent"
                 >
                     {value || "Sélectionner l'année..."}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
-                <Command className="bg-gray-800">
+            <PopoverContent className="w-full p-0 bg-popover border-border">
+                <Command className="bg-popover">
                     <CommandInput
                         placeholder="Rechercher une année..."
-                        className="border-none focus:ring-0 text-gray-100"
+                        className="border-none focus:ring-0 text-foreground"
                     />
-                    <CommandEmpty className="py-2 text-gray-400 text-center">
+                    <CommandEmpty className="py-2 text-muted-foreground text-center">
                         Aucune année trouvée.
                     </CommandEmpty>
                     <CommandGroup className="max-h-60 overflow-y-auto">
@@ -62,7 +62,7 @@ const YearCommandSelect: React.FC<YearCommandSelectProps> = ({
                                     onChange(year);
                                     setOpen(false);
                                 }}
-                                className="text-gray-100 hover:bg-gray-700 cursor-pointer"
+                                className="text-foreground hover:bg-accent cursor-pointer"
                             >
                                 {year}
                             </CommandItem>

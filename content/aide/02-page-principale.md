@@ -10,7 +10,9 @@ Le tableau de bord d'administration est le point d'entrée vers « Arbre Rose »
 
 Cette page répertorie les liens et descriptions de toutes les sections disponibles. À noter que les Super Admins ont accès à davantage de pages que les Admins/Permanents, votre tableau de bord peut donc différer de celui d'un collègue.
 
-La barre de navigation en haut de la page reprend les mêmes liens que les cartes affichées en dessous — les deux mènent aux mêmes pages au sein d'Arbre Rose.
+La barre de navigation en haut de la page reprend les mêmes liens que les cartes affichées en dessous — les deux mènent aux mêmes pages au sein d'Arbre Rose, et chaque page y porte la même icône que sa carte.
+
+Chaque carte donne le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours ; sur « Statistiques », le nombre de modifications gardées au journal. Les cartes sont toutes de la même couleur : sur le tableau de bord, seule la couleur des retards (rouge, orange, vert) a un sens.
 
 ![Page principale - capture 1](/admin/aide/images/page-principale-01.jpg)
 
@@ -49,7 +51,7 @@ Les accents ne comptent pas : « etranger » trouve « L'Étranger ». Choisisse
 
 ## Ce qui est en retard
 
-Les cartes « Demandes », « Attributions » et « Factures » comportent, sous leur partie colorée, quelques lignes qui disent ce qui attend quelque chose de nous :
+Les cartes « Demandes », « Attributions » et « Factures » comportent, sous leur titre et leur nombre, quelques lignes qui disent ce qui attend quelque chose de nous :
 
 - **Demandes** : les demandes en attente d'un lecteur, les enregistrements à expédier aux auditeurs, et les duplications à faire ;
 - **Attributions** : les livres chez les lecteurs ;
@@ -57,6 +59,12 @@ Les cartes « Demandes », « Attributions » et « Factures » comportent, sous
 
 Chaque ligne indique combien d'éléments sont **en retard** (en rouge) ou **à surveiller** (en orange) — pour les livres chez les lecteurs, « à relancer ». Quand tout va bien, elle affiche « À jour » en vert.
 
-Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais qui décident de ce qui est « en retard » sont expliqués dans [Délais et retards](/admin/aide/demandes#delais-et-retards).
+Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur le haut de la carte (son titre et son nombre) pour ouvrir la page entière, comme avant. Les délais qui décident de ce qui est « en retard » sont expliqués dans [Délais et retards](/admin/aide/demandes#delais-et-retards).
 
 ![Page principale - capture 6](/admin/aide/images/page-principale-06.jpg)
+
+## Les listes
+
+Les listes d'Arbre Rose (demandes, attributions, factures, paiements, catalogue, membres…) affichent **25 lignes par page**. Quand la liste tient dans la largeur de l'écran, la ligne des titres de colonnes reste en haut pendant que vous faites défiler la page, pour savoir toujours quelle colonne vous lisez.
+
+Sur un téléphone, les filtres sont rangés derrière un bouton « **Filtres** » : touchez-le pour les ouvrir. Le petit nombre à côté du mot dit combien de filtres sont posés — une liste filtrée ne passe ainsi jamais pour la liste entière. Les lignes des tableaux s'y affichent en blocs, chaque valeur sous le nom de sa colonne, plutôt qu'en un tableau à faire défiler de côté.

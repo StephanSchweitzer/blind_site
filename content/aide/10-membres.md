@@ -40,7 +40,7 @@ Donateurs : https://eca-aveugles.fr/admin/users/bienfaiteurs
 
 Permanents : https://eca-aveugles.fr/admin/users/permanents
 
-Toutes les pages dédiées aux membres comporteront (1) un bouton « Ajouter un membre » permettant d'ajouter un membre, (2) un tableau répertoriant tous les membres existants du type actuellement sélectionné, (3) une barre de recherche permettant de rechercher des membres du type actuellement sélectionné, et (4) des filtres permettant de limiter le tableau et les résultats de recherche aux membres dont le statut est à jour et dont la cotisation est à jour.
+Toutes les pages dédiées aux membres comporteront (1) un bouton « Ajouter un membre » permettant d'ajouter un membre, (2) un tableau répertoriant tous les membres existants du type actuellement sélectionné — le nom en premier, puis l'adresse e-mail ; sur la page des permanents, une colonne donne aussi leur niveau d'accès —, (3) une barre de recherche permettant de rechercher des membres du type actuellement sélectionné, et (4) des filtres permettant de limiter le tableau et les résultats de recherche aux membres dont le statut est à jour et dont la cotisation est à jour.
 
 ![Membres - capture 1](/admin/aide/images/membres-01.jpg)
 

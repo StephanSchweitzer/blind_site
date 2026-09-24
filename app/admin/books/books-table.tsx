@@ -44,8 +44,9 @@ import { toast } from "@/hooks/use-toast";
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookSearchSuggestions } from '@/components/ui/book-search-suggestions';
 import type { BookSearchSuggestion, CatalogueFilterKey } from '@/lib/books/book-suggestion-types';
+import { ADMIN_PAGE_SIZE } from '@/lib/pagination';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = ADMIN_PAGE_SIZE;
 const DEBOUNCE_DELAY = 300;
 
 /** The « Rechercher dans » options, as the select below words them. */
@@ -831,7 +832,7 @@ export default function BooksTable({
                             title={availableSelected ? 'Retirer le filtre' : 'Afficher uniquement les disponibles'}
                             className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
                                 availableSelected
-                                    ? 'bg-emerald-950 text-emerald-300 ring-1 ring-inset ring-emerald-800'
+                                    ? 'bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800'
                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                             }`}
                         >
@@ -845,7 +846,7 @@ export default function BooksTable({
                             title={unavailableSelected ? 'Retirer le filtre' : 'Afficher uniquement les livres en attente'}
                             className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
                                 unavailableSelected
-                                    ? 'bg-amber-950 text-amber-300 ring-1 ring-inset ring-amber-800'
+                                    ? 'bg-amber-100 text-amber-900 ring-1 ring-inset ring-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:ring-amber-800'
                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                             }`}
                         >
@@ -1092,7 +1093,7 @@ export default function BooksTable({
                     ) : (
                         <div className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
                             <div className="rounded-md border border-border bg-card">
-                                <Table>
+                                <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>

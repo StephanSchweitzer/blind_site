@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { coupsDeCoeurIncludeConfigs } from '@/types/models/coups-de-coeur.model';
 import { CoupsTable } from './coups-table';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildCoupsDeCoeurSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 import { parisDate } from '@/lib/paris-day';
@@ -33,7 +33,7 @@ function serializeDecimals<T>(value: T): T {
 }
 
 async function getCoupsDeCoeur(page: number, searchTerm: string) {
-    const itemsPerPage = 10;
+    const itemsPerPage = ADMIN_PAGE_SIZE;
 
     // Tokenisé : « camus liste » peut se satisfaire d'un auteur dans la liste
     // et d'un mot du titre de la liste — voir buildCoupsDeCoeurSearchWhere.

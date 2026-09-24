@@ -40,6 +40,7 @@ import { EditBillModal } from '@/admin/EditBillModal';
 import { BillPDFButton } from '@/admin/BillPDFButton';
 import { DeleteBillModal } from '@/admin/DeleteBillModal';
 import { CopyIdButton } from '@/admin/CopyableId';
+import { MobileFilters } from '@/admin/MobileFilters';
 import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { parisDate } from '@/lib/paris-day';
@@ -261,7 +262,10 @@ export default function BillsTable({
                         </div>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <MobileFilters
+                        activeCount={[currentStatus, currentKind, showLateOnly].filter(Boolean).length}
+                        className="flex flex-wrap items-center gap-3"
+                    >
                         <Select
                             value={showLateOnly ? BillingStatus.BILLED : (currentStatus ?? 'all')}
                             onValueChange={handleStatusFilter}
@@ -299,7 +303,7 @@ export default function BillsTable({
                             />
                             Factures en retard
                         </label>
-                    </div>
+                    </MobileFilters>
                 </div>
 
                 {/* Loading Overlay */}
@@ -332,9 +336,9 @@ export default function BillsTable({
                             />
                         </div>
                     ) : (
-                        <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
-                            <div className="overflow-x-auto">
-                                <Table>
+                        <div className={`border border-border rounded-lg overflow-clip ${isPending ? 'opacity-50' : ''}`}>
+                            <div>
+                                <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border hover:bg-muted">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
@@ -362,7 +366,7 @@ export default function BillsTable({
                                                     onClick={() => setViewBillId(bill.id)}
                                                     className={`group border-b border-border cursor-pointer ${
                                                         late
-                                                            ? 'bg-red-950/40 hover:bg-red-950/60'
+                                                            ? 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40'
                                                             : 'hover:bg-muted'
                                                     }`}
                                                 >
@@ -395,7 +399,7 @@ export default function BillsTable({
                                                     <TableCell>
                                                         <div className="flex items-center gap-1.5">
                                                             {late && <Clock className="h-3.5 w-3.5 text-red-400 shrink-0" />}
-                                                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
+                                                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
                                                                 {getBillingStatusLabel(bill.state)}
                                                             </span>
                                                         </div>

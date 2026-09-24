@@ -132,7 +132,7 @@ export function EditPaymentModal({
                         Paiement
                         {paymentId && <CopyableId id={paymentId} label="du paiement" />}
                         {payment && (
-                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
+                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
                                 {getPaymentTypeLabel(payment.type)}
                             </span>
                         )}

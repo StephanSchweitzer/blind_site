@@ -83,7 +83,7 @@ function ActivityRow({ event }: { event: MyActivityItem }) {
 
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badge.tint}`}>
+                        <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${badge.tint}`}>
                             {badge.label}
                         </span>
                         <span className="text-sm text-muted-foreground">

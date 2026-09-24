@@ -50,6 +50,7 @@ import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
+import { MobileFilters } from '@/admin/MobileFilters';
 import type { BookFilter } from '@/lib/books/bookFilter';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
@@ -446,7 +447,16 @@ export default function OrdersTable({
 
                     {/* Filters — 6 colonnes pour que « Livre » en occupe deux :
                         un titre tient mal dans la largeur d'un select de statut. */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                    <MobileFilters
+                        activeCount={[
+                            filterBook,
+                            currentStatusId !== 'all',
+                            currentBillingStatus !== 'all',
+                            currentIsDuplication !== 'all',
+                            currentRetard !== 'all',
+                        ].filter(Boolean).length}
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4"
+                    >
                         <BookFilterPicker
                             book={filterBook}
                             label="Livre"
@@ -535,7 +545,7 @@ export default function OrdersTable({
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
+                    </MobileFilters>
 
                     {filterBook && <BookFilterBadge book={filterBook} noun="demandes" />}
                 </div>
@@ -572,9 +582,9 @@ export default function OrdersTable({
                             />
                         </div>
                     ) : (
-                        <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
-                            <div className="overflow-x-auto">
-                                <Table>
+                        <div className={`border border-border rounded-lg overflow-clip ${isPending ? 'opacity-50' : ''}`}>
+                            <div>
+                                <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border hover:bg-muted">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
@@ -667,7 +677,7 @@ export default function OrdersTable({
                                                                 En attente d&apos;enregistrement
                                                             </span>
                                                         ) : (
-                                                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${
                                                                 isOverdue
                                                                     ? 'bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300'
                                                                     : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
@@ -721,7 +731,7 @@ export default function OrdersTable({
                                                     </TableCell>
                                                     <TableCell>
                                                         <span
-                                                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                                            className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${
                                                                 order.billingStatus === 'BILLED'
                                                                     ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
                                                                     : 'bg-muted text-muted-foreground'

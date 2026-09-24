@@ -2,7 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { GenresTable } from './genres-table';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
 import { buildGenreSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 import type { RescueRow } from '@/lib/search-suggestion-types';
@@ -17,7 +17,7 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 
 async function getGenres(page: number, searchTerm: string) {
-    const genresPerPage = 10;
+    const genresPerPage = ADMIN_PAGE_SIZE;
 
     // Tokenisé et insensible aux apostrophes comme partout ailleurs —
     // voir buildGenreSearchWhere.

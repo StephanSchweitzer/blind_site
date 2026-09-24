@@ -98,7 +98,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                         <div>
                             <div className="flex items-center gap-3">
                                 <DossierHeaderName userId={user.id} fullName={fullName} currentUserAccessLevel={me?.accessLevel} />
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
+                                <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
                                     {MEMBER_TYPE_LABELS[user.memberType]}
                                 </span>
                                 {isDeleted && (

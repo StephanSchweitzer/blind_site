@@ -479,7 +479,7 @@ export function EditBillModal({
                                 </div>
                                 <div className="min-w-0 text-right">
                                     <div className="text-xs text-muted-foreground uppercase tracking-wide">État actuel</div>
-                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
+                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
                                         {getBillingStatusLabel(bill.state)}
                                     </span>
                                 </div>

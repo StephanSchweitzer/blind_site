@@ -23,17 +23,17 @@ function PasswordChangedContent() {
     }, [status, router]);
 
     return (
-        <Card className="w-full max-w-md bg-gray-900 border-gray-800 shadow-xl">
+        <Card className="w-full max-w-md bg-card border-border shadow-xl">
             <CardHeader className="space-y-1">
                 <div className="flex justify-center mb-4">
-                    <div className="w-16 h-16 bg-green-900/30 rounded-full flex items-center justify-center">
+                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
                         <CheckCircle2 aria-hidden="true" className="h-10 w-10 text-green-500" />
                     </div>
                 </div>
-                <CardTitle asChild className="text-2xl text-gray-100 font-bold text-center">
+                <CardTitle asChild className="text-2xl text-foreground font-bold text-center">
                     <h1>Mot de passe modifié avec succès</h1>
                 </CardTitle>
-                <CardDescription className="text-gray-400 text-center">
+                <CardDescription className="text-muted-foreground text-center">
                     {fromReset
                         ? 'Vous pouvez maintenant vous connecter'
                         : 'Pour des raisons de sécurité, vous avez été déconnecté'}
@@ -44,22 +44,22 @@ function PasswordChangedContent() {
                 <div className="space-y-4">
                     {fromReset ? (
                         <>
-                            <p className="text-gray-300">
+                            <p className="text-foreground">
                                 Votre nouveau mot de passe est enregistré. Le lien de
                                 réinitialisation que vous avez utilisé n&apos;est plus valable.
                             </p>
-                            <p className="text-gray-300">
+                            <p className="text-foreground">
                                 Connectez-vous avec ce nouveau mot de passe pour accéder à votre
                                 compte.
                             </p>
                         </>
                     ) : (
                         <>
-                            <p className="text-gray-300">
+                            <p className="text-foreground">
                                 Votre mot de passe a été modifié avec succès. Pour protéger votre compte,
                                 nous vous avons déconnecté automatiquement.
                             </p>
-                            <p className="text-gray-300">
+                            <p className="text-foreground">
                                 Vous pouvez maintenant vous reconnecter avec votre nouveau mot de passe
                                 pour accéder à votre compte.
                             </p>
@@ -83,7 +83,7 @@ function PasswordChangedContent() {
 
 export default function PasswordChangedSuccess() {
     return (
-        <main className="flex justify-center items-center min-h-screen bg-gray-950 p-4">
+        <main className="flex justify-center items-center min-h-screen p-4">
             <Suspense fallback={null}>
                 <PasswordChangedContent />
             </Suspense>

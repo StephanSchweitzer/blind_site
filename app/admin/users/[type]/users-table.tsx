@@ -33,8 +33,6 @@ import { EditUserModal } from '@/admin/EditUserModal';
 import { UserFormData, UserType } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
-    getMemberTypeLabel,
-    getMemberTypeColor,
     getAccessLevelLabel,
     getAccessLevelColor,
     USER_TYPE_META,
@@ -49,6 +47,7 @@ import {
 } from '@/lib/user-activity-enums';
 import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
 import { CopyIdButton } from '@/admin/CopyableId';
+import { MobileFilters } from '@/admin/MobileFilters';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchRescue } from '@/components/ui/search-rescue';
@@ -355,7 +354,7 @@ export default function UsersTable({
                                 title={activeSelected ? 'Retirer le filtre' : 'Afficher uniquement les actifs'}
                                 className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
                                     activeSelected
-                                        ? 'bg-emerald-950 text-emerald-300 ring-1 ring-inset ring-emerald-800'
+                                        ? 'bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800'
                                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                 }`}
                             >
@@ -369,7 +368,7 @@ export default function UsersTable({
                                 title={inactiveSelected ? 'Retirer le filtre' : 'Afficher uniquement les inactifs'}
                                 className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
                                     inactiveSelected
-                                        ? 'bg-red-950 text-red-300 ring-1 ring-inset ring-red-800'
+                                        ? 'bg-red-100 text-red-900 ring-1 ring-inset ring-red-300 dark:bg-red-950 dark:text-red-300 dark:ring-red-800'
                                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                 }`}
                             >
@@ -387,7 +386,7 @@ export default function UsersTable({
                     {canCreateUsers && (
                         <Button
                             onClick={() => setIsAddModalOpen(true)}
-                            className="bg-green-600 hover:bg-green-700 text-white"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             <Plus className="h-4 w-4 mr-2" />
                             Ajouter un membre
@@ -418,6 +417,14 @@ export default function UsersTable({
                             </Button>
                         )}
                     </div>
+                    <MobileFilters
+                        activeCount={[
+                            statusFilter !== 'all' && statusFilter !== '',
+                            cotisationFilter !== 'all',
+                            type === 'lecteurs' && languageFilter !== 'all',
+                        ].filter(Boolean).length}
+                        className="flex flex-col md:flex-row md:flex-wrap gap-2"
+                    >
                     <Select value={statusFilter} onValueChange={handleStatusFilter}>
                         <SelectTrigger className="bg-card border-border text-foreground sm:w-56">
                             <SelectValue placeholder="Statut" />
@@ -464,6 +471,7 @@ export default function UsersTable({
                             </SelectContent>
                         </Select>
                     )}
+                    </MobileFilters>
                 </div>
 
                 <div className="space-y-6">
@@ -499,17 +507,22 @@ export default function UsersTable({
                             />
                         </div>
                     ) : (
-                        <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
-                            <div className="overflow-x-auto">
-                                <Table>
+                        <div className={`border border-border rounded-lg overflow-clip ${isPending ? 'opacity-50' : ''}`}>
+                            <div>
+                                <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border hover:bg-muted">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
-                                            <TableHead className="text-foreground font-medium">Email</TableHead>
+                                            {/* Le nom d'abord : c'est par lui qu'on cherche quelqu'un, et
+                                                beaucoup d'auditeurs n'ont pas d'email. */}
                                             <TableHead className="text-foreground font-medium">Nom complet</TableHead>
-                                            <TableHead className="text-foreground font-medium">
-                                                {type === 'permanents' ? "Niveau d'acc\u00e8s" : 'Type de membre'}
-                                            </TableHead>
+                                            <TableHead className="text-foreground font-medium">Email</TableHead>
+                                            {/* Sur un onglet d'un seul type de membre, une colonne \u00ab Type \u00bb
+                                                r\u00e9p\u00e9terait l'onglet sur chaque ligne ; seuls les permanents
+                                                ont une valeur qui varie : leur niveau d'acc\u00e8s. */}
+                                            {type === 'permanents' && (
+                                                <TableHead className="text-foreground font-medium">Niveau d&apos;acc&#232;s</TableHead>
+                                            )}
                                             <TableHead className="text-foreground font-medium">Statut</TableHead>
                                             <TableHead className="text-foreground font-medium">Derni&#232;re mise &#224; jour</TableHead>
                                         </TableRow>
@@ -524,25 +537,21 @@ export default function UsersTable({
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                     <CopyIdButton id={user.id} label="de la personne" />
                                                 </TableCell>
+                                                <TableCell className="font-medium text-foreground">
+                                                    {(user.firstName || user.lastName || user.civility)
+                                                        ? `${user.civility?.name ? user.civility.name + ' ' : ''}${user.firstName || ''} ${user.lastName || ''}`.trim()
+                                                        : <span className="font-normal text-muted-foreground italic">Non d&#233;fini</span>}
+                                                </TableCell>
                                                 <TableCell className="text-foreground">
                                                     {user.email || <span className="text-muted-foreground italic">Non d&#233;fini</span>}
                                                 </TableCell>
-                                                <TableCell className="text-foreground">
-                                                    {(user.firstName || user.lastName || user.civility)
-                                                        ? `${user.civility?.name ? user.civility.name + ' ' : ''}${user.firstName || ''} ${user.lastName || ''}`.trim()
-                                                        : <span className="text-muted-foreground italic">Non d&#233;fini</span>}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {type === 'permanents' ? (
-                                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getAccessLevelColor(user.accessLevel)}`}>
+                                                {type === 'permanents' && (
+                                                    <TableCell>
+                                                        <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getAccessLevelColor(user.accessLevel)}`}>
                                                             {getAccessLevelLabel(user.accessLevel)}
                                                         </span>
-                                                    ) : (
-                                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
-                                                            {getMemberTypeLabel(user.memberType)}
-                                                        </span>
-                                                    )}
-                                                </TableCell>
+                                                    </TableCell>
+                                                )}
                                                 <TableCell>
                                                     <StatusCell user={user} />
                                                 </TableCell>

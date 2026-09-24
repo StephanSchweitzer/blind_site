@@ -6,11 +6,12 @@ import { Menu, X, ChevronDown, HelpCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { QuickSearch, type QuickSearchPage } from '@/components/admin/QuickSearch';
+import { SECTION_ICONS } from '@/components/admin/section-icons';
 
 interface NavItem {
     href: string;
+    // Also the key of its icon in SECTION_ICONS.
     label: string;
-    icon: string;
 }
 
 interface NavGroup {
@@ -22,46 +23,52 @@ const navGroups: NavGroup[] = [
     {
         label: 'Livres',
         items: [
-            { href: '/admin/books', label: 'Catalogue', icon: '📚' },
-            { href: '/admin/genres', label: 'Genres', icon: '🏷️' },
-            { href: '/admin/listes-de-livres', label: 'Listes de livres', icon: '⭐' },
-            { href: '/admin/review', label: 'Doublons', icon: '🔀' },
-            { href: '/admin/audio-orphelins', label: 'Audio orphelin', icon: '🎧' },
-            { href: '/admin/audio-corbeille', label: 'Corbeille audio', icon: '🗑️' },
+            { href: '/admin/books', label: 'Catalogue' },
+            { href: '/admin/genres', label: 'Genres' },
+            { href: '/admin/listes-de-livres', label: 'Listes de livres' },
+            { href: '/admin/review', label: 'Doublons' },
+            { href: '/admin/audio-orphelins', label: 'Audio orphelin' },
+            { href: '/admin/audio-corbeille', label: 'Corbeille audio' },
         ],
     },
     {
         label: 'Gestion',
         items: [
-            { href: '/admin/orders', label: 'Demandes', icon: '📋' },
-            { href: '/admin/assignments', label: 'Attributions', icon: '🔗' },
-            { href: '/admin/bills', label: 'Factures', icon: '💰' },
-            { href: '/admin/payments', label: 'Paiements', icon: '💳' },
-            { href: '/admin/stats', label: 'Statistiques', icon: '📊' },
+            { href: '/admin/orders', label: 'Demandes' },
+            { href: '/admin/assignments', label: 'Attributions' },
+            { href: '/admin/bills', label: 'Factures' },
+            { href: '/admin/payments', label: 'Paiements' },
+            { href: '/admin/stats', label: 'Statistiques' },
         ],
     },
     {
         label: 'Membres',
         items: [
-            { href: '/admin/users/auditeurs', label: 'Auditeurs', icon: '👤' },
-            { href: '/admin/users/lecteurs', label: 'Lecteurs', icon: '👥' },
-            { href: '/admin/users/bienfaiteurs', label: 'Donateurs', icon: '💝' },
-            { href: '/admin/users/permanents', label: 'Permanents', icon: '🔑' },
-            { href: '/admin/disponibilites', label: 'Disponibilités', icon: '📅' },
+            { href: '/admin/users/auditeurs', label: 'Auditeurs' },
+            { href: '/admin/users/lecteurs', label: 'Lecteurs' },
+            { href: '/admin/users/bienfaiteurs', label: 'Donateurs' },
+            { href: '/admin/users/permanents', label: 'Permanents' },
+            { href: '/admin/disponibilites', label: 'Disponibilités' },
         ],
     },
     {
         label: 'Pages',
         items: [
-            { href: '/admin/news', label: 'Dernières infos', icon: '📰' },
-            { href: '/admin/site-contact', label: 'Contact', icon: '📍' },
-            { href: '/admin/team', label: 'Équipe', icon: '🧑‍🤝‍🧑' },
-            { href: '/admin/historique', label: 'Historique', icon: '📜' },
-            { href: '/admin/informations-pratiques', label: 'Infos pratiques', icon: 'ℹ️' },
-            { href: '/admin/nous-rejoindre', label: 'Nous rejoindre', icon: '🤝' },
+            { href: '/admin/news', label: 'Dernières infos' },
+            { href: '/admin/site-contact', label: 'Contact' },
+            { href: '/admin/team', label: 'Équipe' },
+            { href: '/admin/historique', label: 'Historique' },
+            { href: '/admin/informations-pratiques', label: 'Infos pratiques' },
+            { href: '/admin/nous-rejoindre', label: 'Nous rejoindre' },
         ],
     },
 ];
+
+/** The section's icon, the same as on its dashboard card. */
+function NavIcon({ label }: { label: string }) {
+    const Icon = SECTION_ICONS[label];
+    return Icon ? <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : null;
+}
 
 const BackendNavbar: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -135,7 +142,7 @@ const BackendNavbar: React.FC = () => {
                                                 onClick={closeAll}
                                                 className="flex items-center gap-3 px-4 py-3 text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
                                             >
-                                                <span className="text-lg" aria-hidden="true">{item.icon}</span>
+                                                <NavIcon label={item.label} />
                                                 {item.label}
                                             </Link>
                                         ))}
@@ -219,7 +226,7 @@ const BackendNavbar: React.FC = () => {
                                                 onClick={closeAll}
                                                 className="flex items-center gap-3 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
                                             >
-                                                <span className="text-lg" aria-hidden="true">{item.icon}</span>
+                                                <NavIcon label={item.label} />
                                                 {item.label}
                                             </Link>
                                         ))}

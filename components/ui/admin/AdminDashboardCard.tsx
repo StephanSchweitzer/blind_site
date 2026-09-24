@@ -1,30 +1,6 @@
 import Link from 'next/link';
-import {
-    BookOpen,
-    Theater,
-    Newspaper,
-    List,
-    ShoppingCart,
-    UserCheck,
-    Headphones,
-    FileText,
-    Mic,
-    Copy,
-    HeartHandshake,
-    FolderX,
-    CreditCard,
-    KeyRound,
-    CalendarClock,
-    MapPin,
-    Users,
-    History,
-    Info,
-    Handshake,
-    BarChart3,
-    Trash2,
-    Check,
-    LucideIcon,
-} from 'lucide-react';
+import { Check } from 'lucide-react';
+import { SECTION_ICONS } from '@/components/admin/section-icons';
 
 /**
  * One line of « what is waiting » under a card — see `rows` below.
@@ -41,9 +17,13 @@ export type DashboardStatusRow = {
 interface AdminDashboardCardProps {
     title: string;
     count: number;
+    /**
+     * What the number counts, when the title alone doesn't say it —
+     * « Disponibilités 85 » read as 85 disponibilités, not 85 lecteurs libres.
+     */
+    countLabel?: string;
     href: string;
     buttonText: string;
-    accentColor: 'blue' | 'purple' | 'green' | 'pink' | 'yellow' | 'cyan' | 'orange' | 'red' | 'indigo' | 'teal';
     /**
      * What is late on this page, each line opening the list already filtered.
      * Only on the cards whose page holds work with a délai (demandes,
@@ -53,121 +33,44 @@ interface AdminDashboardCardProps {
     rows?: DashboardStatusRow[];
 }
 
+// Colour on the dashboard means one thing: the state of the work (red late,
+// amber to watch, green up to date). The cards used to carry ten accent colours
+// that meant nothing — Factures and Doublons shared an orange, Permanents the
+// red of the Corbeille — so a « danger » pill had to shout over a red card.
+// The cards are neutral now, and only these pills are coloured.
 const toneClass: Record<DashboardStatusRow['tone'], string> = {
     danger: 'rounded-full bg-red-100 px-2.5 py-0.5 text-red-800 dark:bg-red-900/40 dark:text-red-200',
     warning: 'rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200',
     ok: 'text-emerald-700 dark:text-emerald-300',
 };
 
-const colorMap = {
-    blue: {
-        bg: 'bg-blue-100 dark:bg-blue-950/50',
-        hoverBg: 'hover:bg-blue-200 dark:hover:bg-blue-900/50',
-        text: 'text-blue-700 dark:text-blue-400',
-        border: 'border-blue-300 dark:border-blue-900',
-    },
-    yellow: {
-        bg: 'bg-yellow-100 dark:bg-yellow-950/50',
-        hoverBg: 'hover:bg-yellow-200 dark:hover:bg-yellow-900/50',
-        text: 'text-yellow-700 dark:text-yellow-400',
-        border: 'border-yellow-300 dark:border-yellow-900',
-    },
-    purple: {
-        bg: 'bg-purple-100 dark:bg-purple-950/50',
-        hoverBg: 'hover:bg-purple-200 dark:hover:bg-purple-900/50',
-        text: 'text-purple-700 dark:text-purple-400',
-        border: 'border-purple-300 dark:border-purple-900',
-    },
-    green: {
-        bg: 'bg-green-100 dark:bg-green-950/50',
-        hoverBg: 'hover:bg-green-200 dark:hover:bg-green-900/50',
-        text: 'text-green-700 dark:text-green-400',
-        border: 'border-green-300 dark:border-green-900',
-    },
-    pink: {
-        bg: 'bg-pink-100 dark:bg-pink-950/50',
-        hoverBg: 'hover:bg-pink-200 dark:hover:bg-pink-900/50',
-        text: 'text-pink-700 dark:text-pink-400',
-        border: 'border-pink-300 dark:border-pink-900',
-    },
-    cyan: {
-        bg: 'bg-cyan-100 dark:bg-cyan-950/50',
-        hoverBg: 'hover:bg-cyan-200 dark:hover:bg-cyan-900/50',
-        text: 'text-cyan-700 dark:text-cyan-400',
-        border: 'border-cyan-300 dark:border-cyan-900',
-    },
-    orange: {
-        bg: 'bg-orange-100 dark:bg-orange-950/50',
-        hoverBg: 'hover:bg-orange-200 dark:hover:bg-orange-900/50',
-        text: 'text-orange-700 dark:text-orange-400',
-        border: 'border-orange-300 dark:border-orange-900',
-    },
-    red: {
-        bg: 'bg-red-100 dark:bg-red-950/50',
-        hoverBg: 'hover:bg-red-200 dark:hover:bg-red-900/50',
-        text: 'text-red-700 dark:text-red-400',
-        border: 'border-red-300 dark:border-red-900',
-    },
-    indigo: {
-        bg: 'bg-indigo-100 dark:bg-indigo-950/50',
-        hoverBg: 'hover:bg-indigo-200 dark:hover:bg-indigo-900/50',
-        text: 'text-indigo-700 dark:text-indigo-400',
-        border: 'border-indigo-300 dark:border-indigo-900',
-    },
-    teal: {
-        bg: 'bg-teal-100 dark:bg-teal-950/50',
-        hoverBg: 'hover:bg-teal-200 dark:hover:bg-teal-900/50',
-        text: 'text-teal-700 dark:text-teal-400',
-        border: 'border-teal-300 dark:border-teal-900',
-    }
-};
-
-const iconMap: Record<string, LucideIcon> = {
-    'Catalogue': BookOpen,
-    'Genres': Theater,
-    'Dernières infos': Newspaper,
-    'Listes de livres': List,
-    'Doublons': Copy,
-    'Demandes': ShoppingCart,
-    'Attributions': UserCheck,
-    'Factures': FileText,
-    'Lecteurs': Mic,
-    'Auditeurs': Headphones,
-    'Donateurs': HeartHandshake,
-    'Audio orphelin': FolderX,
-    'Corbeille audio': Trash2,
-    'Paiements': CreditCard,
-    'Permanents': KeyRound,
-    'Disponibilités': CalendarClock,
-    'Contact': MapPin,
-    'Équipe': Users,
-    'Historique': History,
-    'Infos pratiques': Info,
-    'Nous rejoindre': Handshake,
-    'Statistiques': BarChart3,
-};
+const countFormat = new Intl.NumberFormat('fr-FR');
 
 export function AdminDashboardCard({
                                        title,
                                        count,
+                                       countLabel,
                                        href,
                                        buttonText,
-                                       accentColor,
                                        rows,
                                    }: AdminDashboardCardProps) {
-    const colors = colorMap[accentColor];
-    const Icon = iconMap[title];
+    const Icon = SECTION_ICONS[title];
 
     const header = (
         <>
-            <div className="flex items-start justify-between mb-2">
-                <h2 className={`text-2xl font-bold ${colors.text}`}>{title}</h2>
+            <div className="flex items-start justify-between gap-3 mb-3">
+                <h3 className="text-lg font-semibold text-foreground">{title}</h3>
                 {Icon && (
-                    <Icon className={`w-7 h-7 ${colors.text} opacity-70`} />
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                        <Icon className="h-5 w-5" aria-hidden="true" />
+                    </span>
                 )}
             </div>
-            <p className="text-4xl font-extrabold text-foreground">{count}</p>
-            <div className={`mt-4 text-sm font-medium ${colors.text}`}>
+            <p className="flex flex-wrap items-baseline gap-x-2 text-foreground">
+                <span className="text-3xl font-bold tabular-nums">{countFormat.format(count)}</span>
+                {countLabel && <span className="text-sm text-muted-foreground">{countLabel}</span>}
+            </p>
+            <div className="mt-3 text-sm text-muted-foreground group-hover:text-foreground">
                 {buttonText} <span aria-hidden="true">→</span>
             </div>
         </>
@@ -181,7 +84,7 @@ export function AdminDashboardCard({
         return (
             <Link
                 href={href}
-                className={`block p-6 rounded-lg border ${colors.border} ${colors.bg} ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+                className="group block p-5 rounded-lg border border-border bg-card transition-colors duration-200 hover:border-primary/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
                 {header}
             </Link>
@@ -190,19 +93,18 @@ export function AdminDashboardCard({
 
     // With rows the card holds several links, so it can no longer BE one (a
     // link inside a link is invalid, and a screen reader reads the lot as one
-    // run-on label): the coloured top stays the link to the page, and each
-    // line is its own link to the filtered list. The white panel takes the
-    // rest of the height, so the cards of a grid row — stretched to the
-    // tallest — still line up.
+    // run-on label): the top stays the link to the page, and each line is its
+    // own link to the filtered list. The list takes the rest of the height, so
+    // the cards of a grid row — stretched to the tallest — still line up.
     return (
-        <div className={`flex flex-col overflow-hidden rounded-lg border ${colors.border} ${colors.bg}`}>
+        <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors duration-200 hover:border-primary/40">
             <Link
                 href={href}
-                className={`block p-6 ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
+                className="group block p-5 transition-colors duration-200 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
                 {header}
             </Link>
-            <ul className={`flex-1 divide-y divide-border border-t ${colors.border} bg-card`}>
+            <ul className="flex-1 divide-y divide-border border-t border-border">
                 {rows.map((row) => (
                     <li key={row.label}>
                         <Link

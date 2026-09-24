@@ -216,7 +216,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                     </DialogHeader>
 
                     {error && (
-                        <div className="px-3 py-2 bg-red-900/20 border border-red-800 rounded-md text-red-200 text-sm">
+                        <div className="px-3 py-2 bg-red-50 border border-red-300 rounded-md text-red-800 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
                             {error}
                         </div>
                     )}

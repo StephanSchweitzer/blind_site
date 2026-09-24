@@ -101,8 +101,8 @@ function ResetPasswordForm() {
 
     if (linkState === 'checking') {
         return (
-            <Card className="w-full max-w-md border-gray-700 bg-gray-900 shadow-xl">
-                <CardContent className="flex items-center justify-center gap-3 py-12 text-gray-400">
+            <Card className="w-full max-w-md border-border bg-card shadow-xl">
+                <CardContent className="flex items-center justify-center gap-3 py-12 text-muted-foreground">
                     <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" />
                     Vérification du lien…
                 </CardContent>
@@ -112,12 +112,12 @@ function ResetPasswordForm() {
 
     if (linkState === 'invalid') {
         return (
-            <Card className="w-full max-w-md border-gray-700 bg-gray-900 shadow-xl">
+            <Card className="w-full max-w-md border-border bg-card shadow-xl">
                 <CardHeader className="space-y-1 text-center">
-                    <CardTitle asChild className="text-2xl font-semibold text-gray-100">
+                    <CardTitle asChild className="text-2xl font-semibold text-foreground">
                         <h1>Lien invalide ou expiré</h1>
                     </CardTitle>
-                    <CardDescription className="text-gray-400">
+                    <CardDescription className="text-muted-foreground">
                         Ce lien de réinitialisation n&apos;est plus valable — il expire au bout de
                         30 minutes et ne fonctionne qu&apos;une seule fois.
                     </CardDescription>
@@ -131,7 +131,7 @@ function ResetPasswordForm() {
                     </Button>
                     <Link
                         href="/auth/signin"
-                        className="flex items-center justify-center gap-2 text-sm text-gray-400 transition-colors hover:text-gray-200"
+                        className="flex items-center justify-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                         <ArrowLeft aria-hidden="true" className="h-4 w-4" />
                         Retour à la connexion
@@ -142,12 +142,12 @@ function ResetPasswordForm() {
     }
 
     return (
-        <Card className="w-full max-w-md border-gray-700 bg-gray-900 shadow-xl">
+        <Card className="w-full max-w-md border-border bg-card shadow-xl">
             <CardHeader className="space-y-1 text-center">
-                <CardTitle asChild className="text-2xl font-semibold text-gray-100">
+                <CardTitle asChild className="text-2xl font-semibold text-foreground">
                     <h1>Nouveau mot de passe</h1>
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription className="text-muted-foreground">
                     Choisissez un mot de passe d&apos;au moins 8 caractères, avec majuscules,
                     minuscules et chiffres
                 </CardDescription>
@@ -157,7 +157,7 @@ function ResetPasswordForm() {
                 {error && (
                     <div
                         role="alert"
-                        className="mb-4 flex items-center gap-2 rounded-md border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300"
+                        className="mb-4 flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
                     >
                         <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" />
                         <span>{error}</span>
@@ -166,7 +166,7 @@ function ResetPasswordForm() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="password" className="text-gray-200">
+                        <Label htmlFor="password" className="text-foreground">
                             Nouveau mot de passe
                         </Label>
                         <div className="relative">
@@ -179,14 +179,14 @@ function ResetPasswordForm() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 disabled={isLoading}
-                                className="bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400 pr-10"
+                                className="bg-field border-input text-foreground placeholder:text-muted-foreground pr-10"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword((v) => !v)}
                                 disabled={isLoading}
                                 aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 {showPassword ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
                             </button>
@@ -194,13 +194,13 @@ function ResetPasswordForm() {
 
                         {password && (
                             <div className="space-y-1">
-                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-800">
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                                     <div
                                         className={`h-full transition-all ${strength.color}`}
                                         style={{ width: `${(strength.score / 5) * 100}%` }}
                                     />
                                 </div>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-muted-foreground">
                                     Force : {strength.message}
                                     {strength.score < MIN_PASSWORD_SCORE && ' — insuffisante'}
                                 </p>
@@ -209,7 +209,7 @@ function ResetPasswordForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="text-gray-200">
+                        <Label htmlFor="confirmPassword" className="text-foreground">
                             Confirmer le mot de passe
                         </Label>
                         <Input
@@ -221,7 +221,7 @@ function ResetPasswordForm() {
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
                             disabled={isLoading}
-                            className="bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
+                            className="bg-field border-input text-foreground placeholder:text-muted-foreground"
                         />
                     </div>
 
@@ -250,7 +250,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
     return (
-        <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-950 px-4">
+        <main className="min-h-screen flex items-center justify-center px-4">
             <Suspense
                 fallback={
                     <div className="flex items-center justify-center">

@@ -19,6 +19,14 @@
  * sur la première page.
  */
 
+/**
+ * Lignes par page des listes du back-office — une seule valeur pour toutes.
+ * À 10, les demandes tenaient sur plus de 2 000 pages et une journée de travail
+ * se passait à cliquer « suivant » ; 25 tient encore dans un écran ou deux, avec
+ * l'en-tête du tableau qui reste collé en haut.
+ */
+export const ADMIN_PAGE_SIZE = 25;
+
 /** Numéro de page ≥ 1. Toute saisie non entière retombe sur 1. */
 export function parsePageParam(raw: string | string[] | null | undefined): number {
     const value = Array.isArray(raw) ? raw[0] : raw;

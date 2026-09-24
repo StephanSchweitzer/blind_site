@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { buildAssignmentSearchWhere } from '@/lib/search';
 import AssignmentsTable from './assignments-table';
 import { notFound } from 'next/navigation';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserNameOnly } from '@/lib/users/displayName';
@@ -27,7 +27,7 @@ async function getAssignments(
     retard?: string,
 ) {
     const bookId = filterBook?.id;
-    const assignmentsPerPage = 10;
+    const assignmentsPerPage = ADMIN_PAGE_SIZE;
 
     // Délais par étape — the same rule as the demandes list (lib/orders/delais.ts),
     // read once for the « Retard » filter, the row badges and the rescue notes.

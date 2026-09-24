@@ -64,6 +64,7 @@ import AvailabilityTimeline, {
 } from './availability-timeline';
 import PersonAvailabilityPanel from './person-availability-panel';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { ADMIN_PAGE_SIZE } from '@/lib/pagination';
 
 /**
  * /admin/disponibilites — one screen answering "qui est là, qui ne l'est pas,
@@ -130,7 +131,7 @@ function compareIdle(a: ReaderRow, b: ReaderRow): number {
     return b.idleDays - a.idleDays;
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 /** Numéros de page à afficher, resserrés autour de la page courante. */
 function pageItems(page: number, totalPages: number): Array<number | 'gap'> {
@@ -294,7 +295,7 @@ function PersonButton({
 function TypeBadge({ person }: { person: AvailabilityPerson }) {
     return (
         <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getMemberTypeColor(person.memberType)}`}
+            className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${getMemberTypeColor(person.memberType)}`}
         >
             {getMemberTypeLabel(person.memberType)}
         </span>
@@ -1012,8 +1013,8 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             Aucun lecteur ne correspond à ces critères.
                         </p>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
+                        <div>
+                            <Table stickyHeader mobileCards>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Lecteur</TableHead>
@@ -1065,7 +1066,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                             </TableCell>
                                             <TableCell>
                                                 <span
-                                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getUserActivityStatusColor(row.person.effectiveStatus)}`}
+                                                    className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${getUserActivityStatusColor(row.person.effectiveStatus)}`}
                                                 >
                                                     {getUserActivityStatusLabel(row.person.effectiveStatus)}
                                                 </span>

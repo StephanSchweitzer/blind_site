@@ -3,7 +3,7 @@ import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import PaymentsTable from './payments-table';
 import { paymentsTableInclude } from '@/types/models/payment.model';
 import { notFound } from 'next/navigation';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
 import {
     parsePaymentListParams,
     buildPaymentListWhere,
@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function getPayments(page: number, params: PaymentListParams) {
-    const paymentsPerPage = 10;
+    const paymentsPerPage = ADMIN_PAGE_SIZE;
 
     // Recherche, filtres et tri viennent tous de lib/payments/list-query.ts, que
     // /api/payments lit aussi : la page et la route doivent rendre la même liste.

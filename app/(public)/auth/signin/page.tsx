@@ -68,12 +68,12 @@ function SignInForm() {
     };
 
     return (
-        <Card className="w-full max-w-md border-gray-700 bg-gray-900 shadow-xl">
+        <Card className="w-full max-w-md border-border bg-card shadow-xl">
             <CardHeader className="space-y-1 text-center">
-                <CardTitle asChild className="text-2xl font-semibold text-gray-100">
+                <CardTitle asChild className="text-2xl font-semibold text-foreground">
                     <h1>Connexion</h1>
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription className="text-muted-foreground">
                     Entrez vos identifiants pour accéder à votre espace
                 </CardDescription>
             </CardHeader>
@@ -82,7 +82,7 @@ function SignInForm() {
                 {error && (
                     <div
                         role="alert"
-                        className="mb-4 flex items-center gap-2 rounded-md border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300"
+                        className="mb-4 flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
                     >
                         <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" />
                         <span>{error}</span>
@@ -91,7 +91,7 @@ function SignInForm() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="email" className="text-gray-200">
+                        <Label htmlFor="email" className="text-foreground">
                             Email
                         </Label>
                         <Input
@@ -103,18 +103,18 @@ function SignInForm() {
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             disabled={isLoading}
-                            className="bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400"
+                            className="bg-field border-input text-foreground placeholder:text-muted-foreground"
                         />
                     </div>
 
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label htmlFor="password" className="text-gray-200">
+                            <Label htmlFor="password" className="text-foreground">
                                 Mot de passe
                             </Label>
                             <Link
                                 href="/auth/forgot-password"
-                                className="text-sm text-blue-400 transition-colors hover:text-blue-300"
+                                className="text-sm text-blue-700 underline-offset-2 transition-colors hover:underline dark:text-blue-300"
                             >
                                 Mot de passe oublié ?
                             </Link>
@@ -129,7 +129,7 @@ function SignInForm() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 disabled={isLoading}
-                                className="bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400 pr-10"
+                                className="bg-field border-input text-foreground placeholder:text-muted-foreground pr-10"
                             />
                             <button
                                 type="button"
@@ -138,7 +138,7 @@ function SignInForm() {
                                 aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                                 // p-2 around the 16 px icon: a 32 px target (WCAG 2.5.8
                                 // asks 24) that still fits the input's pr-10.
-                                className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-2 text-gray-400 hover:text-gray-200 transition-colors"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-2 text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 {showPassword ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
                             </button>
@@ -170,7 +170,7 @@ function SignInForm() {
 
 export default function SignInPage() {
     return (
-        <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-950 px-4">
+        <main className="min-h-screen flex items-center justify-center px-4">
             <Suspense
                 fallback={
                     <div className="flex items-center justify-center">

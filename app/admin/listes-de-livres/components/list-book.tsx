@@ -15,7 +15,7 @@ export interface ListBook {
     deletedAt?: Date | string | null;
 }
 
-const BADGE = 'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-4';
+const BADGE = 'inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium leading-4';
 
 /**
  * Les signaux d'une ligne, en pastilles sous le titre plutôt qu'en colonnes :

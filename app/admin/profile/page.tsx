@@ -83,13 +83,13 @@ export default async function ProfilePage() {
                                 <AideLink section="mon-compte" />
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
+                                <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
                                     {MEMBER_TYPE_LABELS[user.memberType]}
                                 </span>
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getAccessLevelColor(user.accessLevel)}`}>
+                                <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getAccessLevelColor(user.accessLevel)}`}>
                                     {ACCESS_LEVEL_LABELS[user.accessLevel]}
                                 </span>
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getUserActivityStatusColor(effectiveStatus)}`}>
+                                <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getUserActivityStatusColor(effectiveStatus)}`}>
                                     {getUserActivityStatusLabel(effectiveStatus)}
                                     {unavailabilityNote ? ` · ${unavailabilityNote}` : ''}
                                 </span>

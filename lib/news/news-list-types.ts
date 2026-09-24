@@ -1,5 +1,6 @@
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { NewsType } from '@/types/news';
+import { ADMIN_PAGE_SIZE } from '@/lib/pagination';
 
 /**
  * Les formes échangées entre lib/news/newsList.ts (serveur) et la table de
@@ -16,7 +17,7 @@ export const NEWS_SEARCH_FIELD_LABELS: Record<NewsSearchField, string> = {
     author: 'Auteur',
 };
 
-export const ADMIN_NEWS_PAGE_SIZE = 10;
+export const ADMIN_NEWS_PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 export interface AdminNewsQuery {
     search: string;

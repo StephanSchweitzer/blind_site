@@ -580,9 +580,9 @@ export default function PaymentsTable({
                             />
                         </div>
                     ) : (
-                        <div className={`border border-border rounded-lg overflow-hidden ${isPending ? 'opacity-50' : ''}`}>
-                            <div className="overflow-x-auto">
-                                <Table>
+                        <div className={`border border-border rounded-lg overflow-clip ${isPending ? 'opacity-50' : ''}`}>
+                            <div>
+                                <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border hover:bg-muted">
                                             {/* Seules les colonnes que la base sait trier sont
@@ -627,7 +627,7 @@ export default function PaymentsTable({
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
+                                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
                                                         {getPaymentTypeLabel(payment.type)}
                                                     </span>
                                                 </TableCell>
@@ -645,7 +645,7 @@ export default function PaymentsTable({
                                                             className="inline-flex items-center gap-1.5 whitespace-nowrap hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                                         >
                                                             #{payment.bill.id}
-                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getBillingStatusColor(payment.bill.state as BillingStatus)}`}>
+                                                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${getBillingStatusColor(payment.bill.state as BillingStatus)}`}>
                                                                 {getBillingStatusLabel(payment.bill.state as BillingStatus)}
                                                             </span>
                                                             <ExternalLink className="h-3.5 w-3.5 shrink-0" />

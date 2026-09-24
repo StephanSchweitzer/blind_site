@@ -573,3 +573,73 @@
 :root[data-contraste='renforce']:has(#navigation-principale) :focus-visible {
     outline-width: 4px;
 }
+
+/* ─── Tableaux du back-office (components/ui/table.tsx) ──────────────────────
+   Hors de tout @layer, comme les réglages ci-dessus, pour passer devant les
+   utilitaires posés sur les cellules (p-4, whitespace-nowrap, text-right…). */
+
+/* En-tête collé sous la barre de navigation (h-16, collée elle aussi) tant que
+   la page défile. Posé seulement quand le tableau tient en largeur : voir
+   `stickyHeader`. */
+.table-sticky-head > thead {
+    position: sticky;
+    top: 4rem;
+    z-index: 10;
+    background-color: hsl(var(--card));
+    box-shadow: 0 1px 0 hsl(var(--border));
+}
+
+/* Sur téléphone, une ligne devient un bloc : chaque valeur sous le nom de sa
+   colonne (data-label, recopié de l'en-tête), plutôt qu'un tableau à faire
+   défiler de côté. L'en-tête reste lisible par les lecteurs d'écran. */
+@media (max-width: 767.98px) {
+    .table-cards,
+    .table-cards > tbody,
+    .table-cards > tbody > tr {
+        display: block;
+    }
+    .table-cards > thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+    .table-cards > tbody > tr {
+        padding: 0.75rem 1rem;
+    }
+    .table-cards > tbody > tr > td {
+        display: grid;
+        grid-template-columns: minmax(6.5rem, 36%) minmax(0, 1fr);
+        column-gap: 0.75rem;
+        align-items: baseline;
+        /* Sans quoi une pastille de statut s'étire sur toute la largeur. */
+        justify-items: start;
+        width: auto;
+        padding: 0.3rem 0;
+        text-align: left;
+        white-space: normal;
+        /* Une adresse e-mail n'a pas d'espace où passer à la ligne. */
+        overflow-wrap: anywhere;
+    }
+    .table-cards > tbody > tr > td::before {
+        content: attr(data-label);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: hsl(var(--muted-foreground));
+    }
+    /* Colonne sans nom (boutons d'action) : la valeur seule, sur toute la
+       largeur. */
+    .table-cards > tbody > tr > td:not([data-label]) {
+        display: block;
+    }
+    .table-cards > tbody > tr > td:not([data-label])::before {
+        content: none;
+    }
+    /* Une cellule vide (colspan d'état vide, « aucun résultat ») garde sa
+       largeur. */
+    .table-cards > tbody > tr > td[colspan] {
+        display: block;
+    }
+}
