@@ -155,8 +155,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                 <ChevronsUpDown aria-hidden="true" className="ml-2 h-4 w-4 shrink-0 opacity-70"/>
                             </Button>
                         </PopoverTrigger>
+                        {/* Opaque on purpose. It was `bg-white/98`, a step Tailwind 3 never
+                            generates: `cn` still dropped the popover's own `bg-popover` for
+                            it, so the panel had no background at all once the frosted blur
+                            behind it was removed, and the list read over the book cards. */}
                         <PopoverContent className="w-[280px] p-0
- bg-white/98 dark:bg-gray-800/98
+ bg-white dark:bg-gray-800
  
  border-2 border-gray-200/50 dark:border-gray-700/50
  
