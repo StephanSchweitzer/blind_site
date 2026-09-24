@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, X, Plus, ChevronLeft, ChevronRight, RotateCcw, History, ExternalLink } from 'lucide-react';
+import { Loader2, Trash2, X, Plus, RotateCcw, History, ExternalLink } from 'lucide-react';
 import {
     BillingStatus,
     BILL_KIND_LABELS,
@@ -26,6 +26,11 @@ import { parisDate } from '@/lib/paris-day';
 import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
 import { SearchSuggestions } from '@/components/ui/search-suggestions';
 import type { VocabularyDomain } from '@/lib/search-suggestion-types';
+import { pageInfo } from '@/lib/pagination';
+import { AdminPagerButtons } from './AdminPagination';
+
+/** Demandes non facturées par page, dans le panneau « Ajouter » d'un brouillon. */
+const UNBILLED_PAGE_SIZE = 10;
 
 const BOOK_DOMAINS: readonly VocabularyDomain[] = ['books'];
 
@@ -172,7 +177,8 @@ export function EditBillModal({
     const [orderSearch, setOrderSearch] = useState('');
     const [unbilledOrders, setUnbilledOrders] = useState<UnbilledOrder[]>([]);
     const [orderPage, setOrderPage] = useState(1);
-    const [orderTotalPages, setOrderTotalPages] = useState(1);
+    // Le total, pas seulement le nombre de pages : la barre dit « 11–20 sur 57 ».
+    const [orderTotal, setOrderTotal] = useState(0);
     const [isLoadingOrders, setIsLoadingOrders] = useState(false);
     const [addingOrderId, setAddingOrderId] = useState<number | null>(null);
     const [removingOrderId, setRemovingOrderId] = useState<number | null>(null);
@@ -229,13 +235,14 @@ export function EditBillModal({
                 unbilled: 'true',
                 aveugleId: String(clientId),
                 page: String(page),
+                limit: String(UNBILLED_PAGE_SIZE),
                 ...(search ? { search } : {}),
             });
             const res = await fetch(`/api/orders?${params}`);
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.message || 'Erreur');
             setUnbilledOrders(data.orders ?? []);
-            setOrderTotalPages(data.totalPages ?? 1);
+            setOrderTotal(data.totalOrders ?? 0);
         } catch {
             setUnbilledOrders([]);
         } finally {
@@ -973,25 +980,17 @@ export function EditBillModal({
                                                 </div>
                                             )}
 
-                                            {orderTotalPages > 1 && (
-                                                <div className="flex items-center justify-between pt-1">
-                                                    <button
-                                                        onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
-                                                        disabled={orderPage === 1}
-                                                        className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
-                                                    >
-                                                        <ChevronLeft className="h-4 w-4" />
-                                                    </button>
-                                                    <span className="text-xs text-muted-foreground">{orderPage} / {orderTotalPages}</span>
-                                                    <button
-                                                        onClick={() => setOrderPage((p) => Math.min(orderTotalPages, p + 1))}
-                                                        disabled={orderPage === orderTotalPages}
-                                                        className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
-                                                    >
-                                                        <ChevronRight className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            )}
+                                            {/* Des boutons, pas des liens : une page de cette liste n'a pas
+                                                d'adresse, elle vit dans le modal (voir AdminPagerButtons). */}
+                                            <div className="pt-1">
+                                                <AdminPagerButtons
+                                                    info={pageInfo(orderPage, UNBILLED_PAGE_SIZE, orderTotal)}
+                                                    noun={{ one: 'demande', many: 'demandes', feminine: true }}
+                                                    label="Pages des demandes à ajouter"
+                                                    onPage={setOrderPage}
+                                                    pending={isLoadingOrders}
+                                                />
+                                            </div>
                                         </div>
                                     )}
                                 </div>

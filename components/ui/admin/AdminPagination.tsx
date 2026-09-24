@@ -362,3 +362,57 @@ export function AdminPaginatedList({
         </div>
     );
 }
+
+/**
+ * La même barre, en boutons, pour une liste dans un modal ou un formulaire :
+ * là, une page n'a pas d'adresse — changer l'URL déplacerait la page derrière
+ * le modal. Même compte, mêmes libellés ; `onPage` reçoit le numéro voulu.
+ */
+export function AdminPagerButtons({
+    info,
+    noun,
+    label,
+    onPage,
+    pending = false,
+}: {
+    info: PageInfo;
+    noun: Noun;
+    label: string;
+    onPage: (page: number) => void;
+    pending?: boolean;
+}) {
+    const { page, totalPages, from, to, total } = info;
+    if (total === 0) return null;
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+            <p role="status" className="text-xs text-muted-foreground tabular-nums">
+                {nf.format(from)}–{nf.format(to)} sur {nf.format(total)} {total > 1 ? noun.many : noun.one}
+            </p>
+            {totalPages > 1 && (
+                <nav aria-label={label} className="flex items-center gap-1.5">
+                    <button
+                        type="button"
+                        className={control}
+                        onClick={() => onPage(page - 1)}
+                        disabled={page <= 1 || pending}
+                        aria-label="Page précédente"
+                    >
+                        <ChevronLeft aria-hidden="true" />
+                    </button>
+                    <span className="px-1 text-xs text-muted-foreground tabular-nums">
+                        Page <span className="font-medium text-foreground">{nf.format(page)}</span> sur {nf.format(totalPages)}
+                    </span>
+                    <button
+                        type="button"
+                        className={control}
+                        onClick={() => onPage(page + 1)}
+                        disabled={page >= totalPages || pending}
+                        aria-label="Page suivante"
+                    >
+                        <ChevronRight aria-hidden="true" />
+                    </button>
+                </nav>
+            )}
+        </div>
+    );
+}

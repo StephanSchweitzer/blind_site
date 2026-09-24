@@ -48,6 +48,8 @@ Enfin, tout en bas de la page, on trouve le tableau des lecteurs. Ce tableau nou
 
 Les filtres appliqués en haut de la page s'affichent également ici.
 
+Le tableau se parcourt comme les autres listes d'Arbre Rose — voir [Les listes](/admin/aide/page-principale#les-listes). Seule différence : les filtres de cette page ne sont pas gardés dans l'adresse, si bien qu'un lien vers une page du tableau l'ouvre sans eux.
+
 ![Disponibilités - capture 10](/admin/aide/images/disponibilites-10.jpg)
 
 De même, si l'on clique sur le nom d'une personne ou sur le bouton « Gerer » de sa ligne, le modal de disponibilité s'ouvrira.

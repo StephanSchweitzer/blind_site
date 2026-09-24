@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     AlertTriangle,
     ArrowDownNarrowWide,
@@ -10,8 +10,6 @@ import {
     CalendarClock,
     CalendarOff,
     CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
     Languages,
     Loader2,
     Moon,
@@ -64,7 +62,8 @@ import AvailabilityTimeline, {
 } from './availability-timeline';
 import PersonAvailabilityPanel from './person-availability-panel';
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { ADMIN_PAGE_SIZE } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 /**
  * /admin/disponibilites — one screen answering "qui est là, qui ne l'est pas,
@@ -131,34 +130,20 @@ function compareIdle(a: ReaderRow, b: ReaderRow): number {
     return b.idleDays - a.idleDays;
 }
 
-const PAGE_SIZE = ADMIN_PAGE_SIZE;
-
-/** Numéros de page à afficher, resserrés autour de la page courante. */
-function pageItems(page: number, totalPages: number): Array<number | 'gap'> {
-    if (totalPages <= 7) {
-        return Array.from({ length: totalPages }, (_, index) => index + 1);
-    }
-    const items: Array<number | 'gap'> = [1];
-    // Fenêtre de 5 pages autour de la page courante, recalée près des bords
-    // pour que la largeur du pied de tableau ne bouge pas d'une page à l'autre.
-    let first = Math.max(2, page - 2);
-    let last = Math.min(totalPages - 1, page + 2);
-    if (page <= 3) last = Math.min(totalPages - 1, 5);
-    if (page >= totalPages - 2) first = Math.max(2, totalPages - 4);
-    if (first > 2) items.push('gap');
-    for (let p = first; p <= last; p += 1) items.push(p);
-    if (last < totalPages - 1) items.push('gap');
-    items.push(totalPages);
-    return items;
-}
-
 /**
- * Découpe une liste en pages de 10. `resetKey` rassemble les filtres qui
- * changent le contenu de la liste : quand il bouge, on revient page 1 —
- * ajusté pendant le rendu, sans effet (cf. react-hooks/set-state-in-effect).
+ * Découpe une liste en pages, en mémoire : la liste des lecteurs arrive entière
+ * du serveur, et ses filtres vivent dans l'état de la page, pas dans l'URL.
+ *
+ * `resetKey` rassemble les filtres qui changent le contenu de la liste : quand
+ * il bouge, on revient page 1 — ajusté pendant le rendu, sans effet (cf.
+ * react-hooks/set-state-in-effect). La page et la taille se lisent dans l'URL
+ * au chargement, pour qu'un lien de la barre de pages ouvert dans un autre
+ * onglet tombe au même endroit ; un clic simple, lui, ne fait que changer l'état.
  */
 function usePagedRows<T>(rows: T[], resetKey: string) {
-    const [page, setPage] = useState(1);
+    const searchParams = useSearchParams();
+    const [page, setPage] = useState(() => parsePageParam(searchParams.get('page')));
+    const [pageSize, setPageSize] = useState(() => parsePageSizeParam(searchParams.get('perPage')));
     const [syncedKey, setSyncedKey] = useState(resetKey);
 
     if (resetKey !== syncedKey) {
@@ -166,93 +151,17 @@ function usePagedRows<T>(rows: T[], resetKey: string) {
         setPage(1);
     }
 
-    const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-    const current = Math.min(page, totalPages);
-    const offset = (current - 1) * PAGE_SIZE;
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    const info = pageInfo(Math.min(page, totalPages), pageSize, rows.length);
+    const offset = pageSkip(info.page, pageSize);
 
-    return {
-        visible: rows.slice(offset, offset + PAGE_SIZE),
-        page: current,
-        totalPages,
-        total: rows.length,
-        from: rows.length === 0 ? 0 : offset + 1,
-        to: Math.min(offset + PAGE_SIZE, rows.length),
-        setPage,
+    const navigate = (href: string) => {
+        const params = new URL(href, window.location.origin).searchParams;
+        setPageSize(parsePageSizeParam(params.get('perPage')));
+        setPage(parsePageParam(params.get('page')));
     };
-}
 
-/** Pied de tableau : « 1–10 sur 34 » + navigation. Masqué s'il n'y a qu'une page. */
-function PaginationFooter({
-    page,
-    totalPages,
-    from,
-    to,
-    total,
-    unit,
-    onPageChange,
-}: {
-    page: number;
-    totalPages: number;
-    from: number;
-    to: number;
-    total: number;
-    unit: string;
-    onPageChange: (page: number) => void;
-}) {
-    if (totalPages <= 1) return null;
-
-    return (
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
-            <p className="text-xs text-muted-foreground">
-                {from}–{to} sur {total} {unit}
-            </p>
-            <div className="flex items-center gap-1">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="px-2"
-                    onClick={() => onPageChange(page - 1)}
-                    disabled={page === 1}
-                    aria-label="Page précédente"
-                >
-                    <ChevronLeft size={15} />
-                </Button>
-                {pageItems(page, totalPages).map((item, index) =>
-                    item === 'gap' ? (
-                        <span
-                            key={`gap-${index}`}
-                            aria-hidden
-                            className="px-1 text-xs text-muted-foreground"
-                        >
-                            …
-                        </span>
-                    ) : (
-                        <Button
-                            key={item}
-                            variant={item === page ? 'default' : 'outline'}
-                            size="sm"
-                            className="w-9 px-0"
-                            onClick={() => onPageChange(item)}
-                            aria-label={`Page ${item}`}
-                            aria-current={item === page ? 'page' : undefined}
-                        >
-                            {item}
-                        </Button>
-                    )
-                )}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="px-2"
-                    onClick={() => onPageChange(page + 1)}
-                    disabled={page === totalPages}
-                    aria-label="Page suivante"
-                >
-                    <ChevronRight size={15} />
-                </Button>
-            </div>
-        </div>
-    );
+    return { visible: rows.slice(offset, offset + pageSize), info, navigate };
 }
 
 function matchesType(person: AvailabilityPerson, filter: TypeFilter): boolean {
@@ -1008,6 +917,15 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                 </CardHeader>
 
                 <CardContent>
+                    <AdminPaginatedList
+                        info={readerPage.info}
+                        noun={{ one: 'lecteur', many: 'lecteurs' }}
+                        label="Pages des lecteurs"
+                        onNavigate={readerPage.navigate}
+                        // Les filtres de cette page ne sont pas dans l'URL : les liens
+                        // ne portent que la page et la taille.
+                        query=""
+                    >
                     {displayedReaders.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-6 text-center">
                             Aucun lecteur ne correspond à ces critères.
@@ -1127,15 +1045,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             </Table>
                         </div>
                     )}
-                    <PaginationFooter
-                        page={readerPage.page}
-                        totalPages={readerPage.totalPages}
-                        from={readerPage.from}
-                        to={readerPage.to}
-                        total={readerPage.total}
-                        unit="lecteurs"
-                        onPageChange={readerPage.setPage}
-                    />
+                    </AdminPaginatedList>
                 </CardContent>
             </Card>
 
