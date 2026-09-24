@@ -20,7 +20,7 @@ export default async function NousRejoindre() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-12">
                 <PageHeader title="Nous rejoindre">
                     <p>
                         Adhérer aux ECA, c&apos;est s&apos;engager dans une association qui croit au partage

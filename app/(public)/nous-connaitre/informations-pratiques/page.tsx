@@ -20,13 +20,15 @@ export default async function InformationsPratique() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-12">
                 <PageHeader title="Informations Pratiques">
                     <p>Tout ce que vous devez savoir sur nos services</p>
                 </PageHeader>
 
-                {/* Information Cards */}
-                <section className="space-y-8">
+                {/* Deux questions par rangée sur grand écran : une seule, sur 1152 px,
+                    laissait un tiers de chaque carte vide (le texte y est limité à
+                    75 caractères par ligne, app/globals.css). */}
+                <section className="grid items-start gap-8 lg:grid-cols-2">
                     {items.map((item) => {
                         const Icon = resolveIcon(item.iconKey);
                         const theme = INFO_THEME[asTheme(item.colorTheme)];

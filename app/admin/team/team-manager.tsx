@@ -132,7 +132,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="container mx-auto py-8 space-y-6">
+            <div className="py-8 space-y-6">
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border flex flex-row items-center justify-between">
                         <div className="flex flex-wrap items-center gap-2">

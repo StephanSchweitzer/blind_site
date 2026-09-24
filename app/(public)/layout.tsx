@@ -19,7 +19,7 @@ import { PublicFooter } from '@/components/PublicFooter';
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
     return (
         <>
-            <div aria-hidden="true" className="decor-fond hidden md:block fixed inset-0 -z-10 overflow-hidden pointer-events-none opacity-40 dark:opacity-25">
+            <div aria-hidden="true" className="decor-fond hidden md:block fixed inset-0 -z-10 overflow-hidden pointer-events-none opacity-40 dark:opacity-45">
                 <div className="absolute -top-16 -left-16 w-80 h-80 bg-sky-300 dark:bg-blue-600 rounded-full blur-3xl" />
                 <div className="absolute top-1/3 -right-20 w-96 h-96 bg-blue-300 dark:bg-indigo-600 rounded-full blur-3xl" />
                 <div className="absolute -bottom-24 left-1/4 w-80 h-80 bg-violet-300 dark:bg-violet-700 rounded-full blur-3xl" />

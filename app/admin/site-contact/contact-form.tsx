@@ -65,7 +65,7 @@ export function ContactForm({ initial }: ContactFormProps) {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="container mx-auto py-8">
+            <div className="py-8">
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border">
                         <div className="flex flex-wrap items-center gap-2">

@@ -129,7 +129,7 @@ export default async function Home() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-14">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-14">
                 {/* Un seul titre de niveau 1 : le nom, qui était un second titre,
                     est désormais sa ligne d'accompagnement. Le logo en grande
                     image, qui le répétait une troisième fois, est retiré. */}

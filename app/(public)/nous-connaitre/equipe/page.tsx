@@ -23,7 +23,7 @@ export default async function EquipePage() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-12">
                 <PageHeader title="Notre Équipe">
                     <p>
                         Découvrez les membres de l&apos;équipe qui animent les Enregistrements à la Carte pour les Aveugles
@@ -36,7 +36,7 @@ export default async function EquipePage() {
                         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
                             Direction
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {leadership.map((member: TeamMember) => (
                                 <div key={member.id} className="glass-card p-6 flex items-center space-x-4">
                                     <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
@@ -57,7 +57,7 @@ export default async function EquipePage() {
                         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white border-l-4 border-blue-500 pl-3">
                             Conseil d&apos;Administration
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {boardMembers.map((member: TeamMember) => (
                                 <div key={member.id} className="glass-card p-6 flex items-center space-x-4">
                                     <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">

@@ -63,7 +63,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="container mx-auto py-8 space-y-6">
+            <div className="py-8 space-y-6">
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex flex-wrap items-center gap-2">

@@ -17,7 +17,11 @@ export default function AdminLayout({
         <div className="min-h-dvh bg-background overflow-x-clip">
             <ScrollToTopOnPageChange />
             <BackendNavbar />
-            <div className="container mx-auto px-4 py-4 md:py-8">
+            {/* Même cadre que la barre (components/Backend-Navbar.tsx), pour que
+                le contenu tombe sous le menu. Le back-office est fait de
+                tableaux larges : il prend l'écran jusqu'à 1920 px, au lieu du
+                `container` plafonné à 1400 px (et 1280 pour la barre) d'avant. */}
+            <div className="mx-auto w-full max-w-[1920px] px-4 sm:px-6 lg:px-8 py-4 md:py-8">
                 <div className="relative">
                     {children}
                 </div>

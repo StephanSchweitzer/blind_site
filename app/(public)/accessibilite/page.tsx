@@ -46,7 +46,7 @@ export default async function AccessibilitePage() {
         <div className="flex min-h-screen flex-col">
             <FrontendNavbar />
             <main id="contenu-principal" className="relative flex-1">
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 space-y-8">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-8">
                     <PageHeader title="Accessibilité">
                         <p>
                             Les ECA enregistrent des livres pour les personnes aveugles et malvoyantes :

@@ -44,7 +44,7 @@ export default async function BooksPage() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-8">
                 {/* L'en-tête tient en trois lignes : la recherche doit être visible
                     sans défiler, téléphone compris. */}
                 <PageHeader title="Catalogue des livres">
