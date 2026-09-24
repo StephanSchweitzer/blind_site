@@ -32,6 +32,12 @@ Toutes ces pages fonctionnent de la même manière :
 - un clic sur une ligne pour la **modifier** ;
 - un **glisser-déposer** pour changer l'ordre d'affichage sur le site public.
 
+## « Aujourd'hui aux ECA », sur la page d'accueil
+
+La page d'accueil du site public dit en quelques phrases où en est le service : combien de lecteurs bénévoles et d'auditeurs sont actifs, combien d'enregistrements les lecteurs ont rendus aux ECA sur les douze derniers mois, et combien de titres réunit le catalogue.
+
+Ces chiffres ne se saisissent nulle part : ils se calculent seuls, à partir des fiches des membres (leur statut), des attributions (leur date de retour aux ECA) et du catalogue. Ils se mettent à jour au plus tard une heure après un changement. Si un chiffre vous paraît faux, c'est donc la donnée d'origine qu'il faut vérifier — un lecteur resté « Actif » qui ne lit plus, une attribution rendue sans date de retour. Aucun nom ni aucun titre n'y apparaît.
+
 ## Réglages d'affichage du site
 
 En haut de chaque page du site public, à côté du bouton du thème clair ou sombre, le bouton « Affichage » (un « T » sur téléphone) permet à chaque visiteur d'adapter la lecture :

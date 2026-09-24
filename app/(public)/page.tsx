@@ -1,6 +1,9 @@
+import React from "react";
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import Image from "next/image";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { getHomeFigures, type HomeFigures } from "./chiffres";
 
 export const metadata: Metadata = {
     title: 'ECA - Enregistrements à la Carte pour les Aveugles',
@@ -20,7 +23,83 @@ const organizationJsonLd = {
     availableLanguage: 'fr',
 };
 
+// Les chiffres d'« Aujourd'hui aux ECA » (./chiffres.ts) : la page est servie
+// depuis le cache et regénérée au plus toutes les heures, comme le catalogue.
+export const revalidate = 3600;
+
+const nombre = new Intl.NumberFormat('fr-FR');
+
+/** Un nombre dans une phrase : mis en valeur à l'œil, lu normalement. */
+function N({ n }: { n: number }) {
+    return <span className="font-semibold tabular-nums text-gray-900 dark:text-white">{nombre.format(n)}</span>;
+}
+
+/**
+ * « Aujourd'hui aux ECA » — les chiffres du service, dits en phrases plutôt
+ * qu'alignés en gros chiffres : c'est une association qui parle, pas un
+ * tableau de bord. Chaque phrase ne paraît que si son chiffre n'est pas nul,
+ * et la section entière disparaît si la base ne répond pas.
+ */
+function AujourdhuiAuxEca({ chiffres }: { chiffres: HomeFigures }) {
+    const { lecteurs, auditeurs, enregistrements, titres } = chiffres;
+    const phrases: React.ReactNode[] = [];
+
+    if (lecteurs > 0 && auditeurs > 0) {
+        phrases.push(
+            <>
+                Les ECA comptent <N n={lecteurs} /> {lecteurs > 1 ? 'lecteurs bénévoles, qui prêtent leur' : 'lecteur bénévole, qui prête sa'}{' '}
+                voix à <N n={auditeurs} /> {auditeurs > 1 ? 'auditeurs' : 'auditeur'}.
+            </>,
+        );
+    }
+    if (enregistrements > 0) {
+        phrases.push(
+            <>
+                En douze mois, {phrases.length > 0 ? 'ils ont' : 'nos lecteurs ont'} enregistré <N n={enregistrements} />{' '}
+                {enregistrements > 1 ? 'livres et documents' : 'livre ou document'}.
+            </>,
+        );
+    }
+    if (titres > 0) {
+        phrases.push(
+            <>
+                Le{' '}
+                <Link
+                    href="/catalogue"
+                    className="rounded text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200"
+                >
+                    catalogue
+                </Link>{' '}
+                réunit <N n={titres} /> {titres > 1 ? 'titres' : 'titre'}.
+            </>,
+        );
+    }
+    if (phrases.length === 0) return null;
+
+    return (
+        <section aria-labelledby="aujourdhui" className="glass-card p-8">
+            <h2 id="aujourdhui" className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Aujourd&apos;hui aux ECA
+            </h2>
+            <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed">
+                {phrases.map((phrase, i) => (
+                    <React.Fragment key={i}>
+                        {i > 0 && ' '}
+                        {phrase}
+                    </React.Fragment>
+                ))}
+            </p>
+        </section>
+    );
+}
+
 export default async function Home() {
+    // Une base injoignable ne doit pas faire tomber l'accueil : la section se tait.
+    const chiffres = await getHomeFigures().catch((error) => {
+        console.error("Chiffres de l'accueil indisponibles :", error);
+        return null;
+    });
+
     return (
         <div className="flex min-h-screen flex-col">
             <script
@@ -61,6 +140,8 @@ export default async function Home() {
                         Les ECA (Enregistrements à la Carte pour les Aveugles) proposent à leurs auditeurs un service personnalisé d&apos;enregistrement des livres et documents de leurs choix.
                     </p>
                 </section>
+
+                {chiffres && <AujourdhuiAuxEca chiffres={chiffres} />}
 
                 <section className="glass-card p-8 group hover:scale-[1.02] transition-transform duration-300">
                     <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed">
