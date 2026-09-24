@@ -32,7 +32,7 @@ Vous pouvez rechercher des demandes existantes à l'aide de la barre de recherch
 
 ![Demandes - capture 2](/admin/aide/images/demandes-02.jpg)
 
-Dans le tableau, cliquez sur le nom de l'auditeur pour ouvrir son [dossier](/admin/aide/membres#le-dossier), ou sur le numéro de la colonne « Attribution » pour ouvrir l'attribution liée.
+Dans le tableau, cliquez sur le titre du livre (ou n'importe où sur la ligne) pour ouvrir la demande, sur le nom de l'auditeur pour ouvrir son [dossier](/admin/aide/membres#le-dossier), ou sur le numéro de la colonne « Attribution » pour ouvrir l'attribution liée.
 
 Vous pouvez filtrer votre recherche selon les critères suivants :
 
@@ -46,7 +46,17 @@ Vous pouvez filtrer votre recherche selon les critères suivants :
 
 5. Si la demande est en retard, à surveiller ou à jour — voir [Délais et retards](/admin/aide/demandes#delais-et-retards) juste en dessous
 
+Le bouton « Effacer les filtres » les retire tous d'un coup.
+
 ![Demandes - capture 3](/admin/aide/images/demandes-03.jpg)
+
+### Trier et parcourir la liste
+
+La liste s'ouvre sur les demandes les plus récentes. Cliquez sur le titre d'une colonne — N°, Auditeur, Livre, Date demande, Statut — pour trier selon cette colonne ; un second clic inverse l'ordre. Le tri par statut suit le circuit d'une demande, de « À faire » à « Terminée ».
+
+Au-dessus du tableau, la ligne « 26–50 sur 20 184 demandes » dit quelles demandes sont affichées et combien il y en a en tout. Les flèches à côté passent d'une page à l'autre, et « Lignes par page » affiche 25, 50 ou 100 demandes à la fois. Sous le tableau, les numéros de page mènent directement à une page, et le champ « Aller à la page » à n'importe laquelle — la page 400, par exemple, sans cliquer 399 fois.
+
+Chaque page a sa propre adresse : vous pouvez l'ouvrir dans un nouvel onglet (clic du milieu) ou copier le lien pour l'envoyer à un collègue, avec la recherche, les filtres et le tri qui l'accompagnent. Si le lien mène au-delà de la dernière page — parce que des demandes ont été supprimées depuis, ou que le lien portait une autre recherche — vous arrivez sur la dernière.
 
 ## Délais et retards
 

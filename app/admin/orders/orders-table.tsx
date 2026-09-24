@@ -27,7 +27,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, Loader2 } from 'lucide-react';
+import { Search, X, Plus, Loader2, ArrowDown, ArrowUp, ArrowUpDown, FilterX } from 'lucide-react';
 import { getOrderBillingStatusLabel } from '@/lib/billing-enums';
 import { AddOrderFormBackend } from '@/admin/AddOrderFormBackend';
 import { EditOrderModal } from '@/admin/EditOrderModal';
@@ -51,17 +51,28 @@ import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import { MobileFilters } from '@/admin/MobileFilters';
+import { AdminPaginationBottom, AdminPaginationTop } from '@/admin/AdminPagination';
 import type { BookFilter } from '@/lib/books/bookFilter';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { PageInfo } from '@/lib/pagination';
+import {
+    DEFAULT_ORDER_SORT,
+    ORDER_SORT_DEFAULT_DIR,
+    type OrderSort,
+    type OrderSortKey,
+} from '@/lib/orders/orderSort';
+import { orderStatusStyle } from '@/lib/orders/statusDisplay';
+import { SECTION_ICONS, sectionAccent } from '@/components/admin/section-icons';
+import { cn } from '@/lib/utils';
 
 type OrdersTableProps = {
     initialOrders: SerializedOrderTableRow[];
-    initialPage: number;
+    /** Page courante, taille, total — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
+    sort: OrderSort;
     initialSearch: string;
-    totalPages: number;
     availableStatuses: { id: number; name: string }[];
-    initialTotalOrders: number;
     /** Duplications that can't start yet, keyed by demande id. Derived server-side. */
     blockedDuplications?: Record<number, SerializedBlockingRecording>;
     /** Demandes past their stage's amber or red line, keyed by id — lib/orders/delais.ts. */
@@ -74,11 +85,57 @@ type OrdersTableProps = {
     searchSuggestions?: RescueSuggestion[];
 };
 
+const NOUN = { one: 'demande', many: 'demandes', feminine: true };
+const LIST_TOP = 'demandes-haut';
+const SectionIcon = SECTION_ICONS['Demandes'];
+const accent = sectionAccent('Demandes');
+
+/**
+ * En-tête de colonne triable. Le tri est une action sur la liste, pas un
+ * lien : un bouton, et `aria-sort` sur la cellule pour le lecteur d'écran. Le
+ * texte du bouton reste le seul nom de la colonne — la mise en page téléphone
+ * le recopie devant chaque valeur (`data-label`, components/ui/table.tsx).
+ */
+function SortableHead({
+    label,
+    sortKey,
+    sort,
+    onSort,
+    className,
+}: {
+    label: string;
+    sortKey: OrderSortKey;
+    sort: OrderSort;
+    onSort: (key: OrderSortKey) => void;
+    className?: string;
+}) {
+    const active = sort.key === sortKey;
+    const Icon = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown;
+    return (
+        <TableHead
+            aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+            className={cn('text-foreground font-medium', className)}
+        >
+            <button
+                type="button"
+                onClick={() => onSort(sortKey)}
+                className={cn(
+                    '-mx-2 inline-flex items-center gap-1.5 whitespace-nowrap rounded px-2 py-1 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    active && 'text-foreground font-semibold',
+                )}
+            >
+                {label}
+                <Icon className={cn('h-3.5 w-3.5', !active && 'text-muted-foreground/70')} aria-hidden="true" />
+            </button>
+        </TableHead>
+    );
+}
+
 export default function OrdersTable({
                                         initialOrders,
-                                        initialPage,
+                                        pagination,
+                                        sort,
                                         initialSearch,
-                                        totalPages,
                                         availableStatuses,
                                         blockedDuplications = {},
                                         delais = {},
@@ -107,12 +164,29 @@ export default function OrdersTable({
         deletedAt: string | null;
     } | null>(null);
 
-    const currentPage = initialPage;
     const currentBillingStatus = searchParams.get('billingStatus') || 'all';
     const currentStatusId = searchParams.get('statusId') || 'all';
     const currentIsDuplication = searchParams.get('isDuplication') || 'all';
     const currentRetard = searchParams.get('retard') || 'all';
 
+    // Every filter the URL carries except the free-text search — the « Filtres »
+    // button's badge on a phone, and whether « Effacer les filtres » shows.
+    const activeFilterCount = [
+        filterBook,
+        currentStatusId !== 'all',
+        currentBillingStatus !== 'all',
+        currentIsDuplication !== 'all',
+        currentRetard !== 'all',
+        searchParams.get('filter') === 'needsReturn',
+    ].filter(Boolean).length;
+
+    const navigate = useCallback(
+        (href: string) => startTransition(() => router.push(href, { scroll: false })),
+        [router],
+    );
+
+    // A filter, the search or the sort changes which rows exist, so the page
+    // goes back to the first one (dropped from the URL rather than set to 1).
     const createQueryString = useCallback(
         (updates: Record<string, string>) => {
             const params = new URLSearchParams(searchParams);
@@ -123,42 +197,37 @@ export default function OrdersTable({
                     params.set(key, value);
                 }
             });
-            // Reset to page 1 when filters change
-            if (!updates.page) {
-                params.set('page', '1');
-            }
+            if (!updates.page) params.delete('page');
             return params.toString();
         },
         [searchParams]
     );
 
-    const handleSearch = () => {
-        const queryString = createQueryString({ search: searchTerm });
-        startTransition(() => {
-            router.push(`?${queryString}`);
-        });
+    const push = (updates: Record<string, string>) => navigate(`?${createQueryString(updates)}`);
+
+    const handleSearch = (e?: React.FormEvent) => {
+        e?.preventDefault();
+        push({ search: searchTerm.trim() });
     };
 
     const handleClearSearch = () => {
         setSearchTerm('');
-        const queryString = createQueryString({ search: '' });
-        startTransition(() => {
-            router.push(`?${queryString}`);
-        });
+        push({ search: '' });
     };
 
-    const handleFilterChange = (filterType: string, value: string) => {
-        const queryString = createQueryString({ [filterType]: value });
-        startTransition(() => {
-            router.push(`?${queryString}`);
-        });
-    };
+    const handleFilterChange = (filterType: string, value: string) => push({ [filterType]: value });
 
-    const handlePageChange = (page: number) => {
-        const queryString = createQueryString({ page: page.toString() });
-        startTransition(() => {
-            router.push(`?${queryString}`);
-        });
+    const handleClearFilters = () =>
+        push({ bookId: '', statusId: '', billingStatus: '', isDuplication: '', retard: '', filter: '' });
+
+    // Same column: flip it. Another column: its natural direction. The default
+    // order (date, newest first) leaves the URL bare.
+    const handleSort = (key: OrderSortKey) => {
+        const dir = sort.key === key
+            ? (sort.dir === 'asc' ? 'desc' : 'asc')
+            : ORDER_SORT_DEFAULT_DIR[key];
+        const isDefault = key === DEFAULT_ORDER_SORT.key && dir === DEFAULT_ORDER_SORT.dir;
+        push({ sort: isDefault ? '' : key, dir: isDefault || dir === ORDER_SORT_DEFAULT_DIR[key] ? '' : dir });
     };
 
     const handleOrderAdded = () => {
@@ -328,76 +397,27 @@ export default function OrdersTable({
             : "Duplication en attente : un enregistrement de cet ouvrage est en cours.";
     };
 
-    // Wording lives in lib/billing-enums.ts — the journal des modifications
-    // renders the same column and must not word it differently.
-
-    // Keys are the real Status.name values (see prisma/seed.ts STATUSES) — the map
-    // shortens them for the table and puts « Terminé »/« Soldé » in the feminine,
-    // since a *demande* is what's being described.
-    const getStatusDisplayName = (statusName: string) => {
-        const displayMap: Record<string, string> = {
-            'Attente envoi vers lecteur': 'À envoyer',
-            'Attente envoi vers auditeur': 'À expédier',
-            'Terminé': 'Terminée',
-            'Soldé': 'Soldée',
-        };
-        return displayMap[statusName] || statusName;
-    };
-
-    // Calculate visible pages (similar to books table)
-    const getVisiblePages = () => {
-        const pages: (number | string)[] = [];
-        const maxVisible = 5;
-
-        if (totalPages <= maxVisible + 2) {
-            return Array.from({ length: totalPages }, (_, i) => i + 1);
-        }
-
-        pages.push(1);
-
-        let start = Math.max(2, currentPage - 1);
-        let end = Math.min(totalPages - 1, currentPage + 1);
-
-        if (currentPage <= 3) {
-            end = Math.min(maxVisible, totalPages - 1);
-        }
-        if (currentPage >= totalPages - 2) {
-            start = Math.max(2, totalPages - maxVisible + 1);
-        }
-
-        if (start > 2) {
-            pages.push('...');
-        }
-
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
-
-        if (end < totalPages - 1) {
-            pages.push('...');
-        }
-
-        if (totalPages > 1) {
-            pages.push(totalPages);
-        }
-
-        return pages;
-    };
-
-    const visiblePages = getVisiblePages();
-
     return (
         <Card className="bg-card border-border">
             <CardHeader>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-2xl text-foreground">Demandes</CardTitle>
-                            <AideLink section="demandes" />
+                    <div className="flex items-center gap-3">
+                        {/* La couleur de la section, celle de sa carte sur le tableau de bord. */}
+                        <span
+                            aria-hidden="true"
+                            className={cn('hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg border sm:flex', accent.bg, accent.border, accent.text)}
+                        >
+                            <SectionIcon className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <CardTitle className="text-2xl text-foreground">Demandes</CardTitle>
+                                <AideLink section="demandes" />
+                            </div>
+                            <CardDescription className="text-muted-foreground">
+                                Gérer et suivre toutes les demandes
+                            </CardDescription>
                         </div>
-                        <CardDescription className="text-muted-foreground">
-                            Gérer et suivre toutes les demandes
-                        </CardDescription>
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
@@ -409,189 +429,220 @@ export default function OrdersTable({
                 </div>
             </CardHeader>
 
-            <CardContent className="space-y-6">
-                {/* Search and Filters */}
+            <CardContent className="space-y-5">
+                {/* Recherche et filtres — un bloc, que le mode d'emploi
+                    photographie seul (scripts/capture-aide-screenshots.mjs). */}
                 <div className="space-y-4">
-                    {/* Search Bar */}
-                    {!hideSearch && (
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                                <Input
-                                    placeholder="Rechercher par auditeur, livre, ou email..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
-                                />
-                            </div>
+                {!hideSearch && (
+                    <form role="search" onSubmit={handleSearch} className="flex gap-2">
+                        <div className="relative flex-1">
+                            <label htmlFor="orders-search" className="sr-only">Rechercher une demande</label>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" aria-hidden="true" />
+                            <Input
+                                id="orders-search"
+                                type="search"
+                                placeholder="Auditeur, livre ou n° de demande…"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 pr-10 bg-card border-border text-foreground placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+                            />
                             {searchTerm && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
+                                <button
+                                    type="button"
                                     onClick={handleClearSearch}
-                                    className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    aria-label="Effacer la recherche"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                                 >
-                                    <X className="h-4 w-4" />
-                                </Button>
+                                    <X className="h-4 w-4" aria-hidden="true" />
+                                </button>
                             )}
-                            <Button
-                                onClick={handleSearch}
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                                disabled={isPending}
-                            >
-                                Rechercher
-                            </Button>
                         </div>
-                    )}
-
-                    {/* Filters — 6 colonnes pour que « Livre » en occupe deux :
-                        un titre tient mal dans la largeur d'un select de statut. */}
-                    <MobileFilters
-                        activeCount={[
-                            filterBook,
-                            currentStatusId !== 'all',
-                            currentBillingStatus !== 'all',
-                            currentIsDuplication !== 'all',
-                            currentRetard !== 'all',
-                        ].filter(Boolean).length}
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4"
-                    >
-                        <BookFilterPicker
-                            book={filterBook}
-                            label="Livre"
-                            className="md:col-span-2"
-                        />
-
-                        <div>
-                            <label className="text-sm text-muted-foreground mb-1.5 block">Statut de la demande</label>
-                            <Select
-                                value={currentStatusId}
-                                onValueChange={(value) => handleFilterChange('statusId', value)}
-                            >
-                                <SelectTrigger className="bg-field border-border text-foreground">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border">
-                                    <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
-                                    {/* « Soldé » is a facture status — no demande can hold it, so it
-                                        isn't offered as a filter (kept only if already in the URL). */}
-                                    {availableStatuses
-                                        .filter((status) => status.id !== STATUS.SOLDE || currentStatusId === String(STATUS.SOLDE))
-                                        .map((status) => (
-                                            <SelectItem
-                                                key={status.id}
-                                                value={status.id.toString()}
-                                                className="text-foreground"
-                                            >
-                                                {status.name}
-                                            </SelectItem>
-                                        ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div>
-                            <label className="text-sm text-muted-foreground mb-1.5 block">Facturation</label>
-                            <Select
-                                value={currentBillingStatus}
-                                onValueChange={(value) => handleFilterChange('billingStatus', value)}
-                            >
-                                <SelectTrigger className="bg-field border-border text-foreground">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border">
-                                    <SelectItem value="all" className="text-foreground">Tous</SelectItem>
-                                    <SelectItem value="UNBILLED" className="text-foreground">Non facturé</SelectItem>
-                                    <SelectItem value="BILLED" className="text-foreground">Facturé</SelectItem>
-                                    <SelectItem value="UNBILLABLE" className="text-foreground">Non facturable</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div>
-                            <label className="text-sm text-muted-foreground mb-1.5 block">Type</label>
-                            <Select
-                                value={currentIsDuplication}
-                                onValueChange={(value) => handleFilterChange('isDuplication', value)}
-                            >
-                                <SelectTrigger className="bg-field border-border text-foreground">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border">
-                                    <SelectItem value="all" className="text-foreground">Tous</SelectItem>
-                                    <SelectItem value="true" className="text-foreground">Duplication</SelectItem>
-                                    {/* Duplications held up by an enregistrement still in flight. */}
-                                    <SelectItem value="blocked" className="text-foreground">Duplication en attente</SelectItem>
-                                    <SelectItem value="false" className="text-foreground">Enregistrement</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div>
-                            <label className="text-sm text-muted-foreground mb-1.5 block">Retard</label>
-                            <Select
-                                value={currentRetard}
-                                onValueChange={(value) => handleFilterChange('retard', value)}
-                            >
-                                <SelectTrigger className="bg-field border-border text-foreground">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border">
-                                    <SelectItem value="all" className="text-foreground">Tous</SelectItem>
-                                    <SelectItem value="true" className="text-foreground">En retard</SelectItem>
-                                    <SelectItem value="surveiller" className="text-foreground">À surveiller</SelectItem>
-                                    <SelectItem value="false" className="text-foreground">À jour</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </MobileFilters>
-
-                    {filterBook && <BookFilterBadge book={filterBook} noun="demandes" />}
-                </div>
-
-                {/* Loading Overlay */}
-                {isPending && (
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-card/50 flex items-center justify-center z-10 rounded-lg">
-                            <div className="flex flex-col items-center gap-3">
-                                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                <p className="text-sm text-foreground">Chargement...</p>
-                            </div>
-                        </div>
-                    </div>
+                        <Button
+                            type="submit"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                            disabled={isPending}
+                        >
+                            Rechercher
+                        </Button>
+                    </form>
                 )}
 
-                {/* Orders Table */}
-                <div className="relative">
-                    {initialOrders.length === 0 ? (
-                        <div className="text-center py-12">
-                            <p className="text-muted-foreground text-lg">Aucune demande trouvée</p>
-                            <SearchRescue
-                                suggestions={searchSuggestions}
-                                unit={{ one: 'demande', many: 'demandes', feminine: true }}
-                                onApply={(s) => {
-                                    setSearchTerm(s.query);
-                                    // A lifted filter is its URL parameter, cleared.
-                                    const lifted = Object.fromEntries(s.lifted.map((key) => [key, '']));
-                                    startTransition(() => {
-                                        router.push(`?${createQueryString({ ...lifted, search: s.query })}`);
-                                    });
-                                }}
-                                onOpenRow={(row) => openOrderById(row.id)}
+                {/* Filters — 6 colonnes pour que « Livre » en occupe deux :
+                    un titre tient mal dans la largeur d'un select de statut. */}
+                <MobileFilters
+                    activeCount={activeFilterCount}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4"
+                >
+                    <BookFilterPicker
+                        book={filterBook}
+                        label="Livre"
+                        className="md:col-span-2"
+                    />
+
+                    <div>
+                        <label htmlFor="orders-status" className="text-sm text-muted-foreground mb-1.5 block">Statut de la demande</label>
+                        <Select
+                            value={currentStatusId}
+                            onValueChange={(value) => handleFilterChange('statusId', value)}
+                        >
+                            <SelectTrigger id="orders-status" className="bg-field border-border text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
+                                {/* « Soldé » is a facture status — no demande can hold it, so it
+                                    isn't offered as a filter (kept only if already in the URL). */}
+                                {availableStatuses
+                                    .filter((status) => status.id !== STATUS.SOLDE || currentStatusId === String(STATUS.SOLDE))
+                                    .map((status) => (
+                                        <SelectItem
+                                            key={status.id}
+                                            value={status.id.toString()}
+                                            className="text-foreground"
+                                        >
+                                            {status.name}
+                                        </SelectItem>
+                                    ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div>
+                        <label htmlFor="orders-billing" className="text-sm text-muted-foreground mb-1.5 block">Facturation</label>
+                        <Select
+                            value={currentBillingStatus}
+                            onValueChange={(value) => handleFilterChange('billingStatus', value)}
+                        >
+                            <SelectTrigger id="orders-billing" className="bg-field border-border text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Tous</SelectItem>
+                                <SelectItem value="UNBILLED" className="text-foreground">Non facturé</SelectItem>
+                                <SelectItem value="BILLED" className="text-foreground">Facturé</SelectItem>
+                                <SelectItem value="UNBILLABLE" className="text-foreground">Non facturable</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div>
+                        <label htmlFor="orders-type" className="text-sm text-muted-foreground mb-1.5 block">Type</label>
+                        <Select
+                            value={currentIsDuplication}
+                            onValueChange={(value) => handleFilterChange('isDuplication', value)}
+                        >
+                            <SelectTrigger id="orders-type" className="bg-field border-border text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Tous</SelectItem>
+                                <SelectItem value="true" className="text-foreground">Duplication</SelectItem>
+                                {/* Duplications held up by an enregistrement still in flight. */}
+                                <SelectItem value="blocked" className="text-foreground">Duplication en attente</SelectItem>
+                                <SelectItem value="false" className="text-foreground">Enregistrement</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div>
+                        <label htmlFor="orders-retard" className="text-sm text-muted-foreground mb-1.5 block">Retard</label>
+                        <Select
+                            value={currentRetard}
+                            onValueChange={(value) => handleFilterChange('retard', value)}
+                        >
+                            <SelectTrigger id="orders-retard" className="bg-field border-border text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Tous</SelectItem>
+                                <SelectItem value="true" className="text-foreground">En retard</SelectItem>
+                                <SelectItem value="surveiller" className="text-foreground">À surveiller</SelectItem>
+                                <SelectItem value="false" className="text-foreground">À jour</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </MobileFilters>
+
+                {filterBook && <BookFilterBadge book={filterBook} noun="demandes" />}
+                </div>
+
+                {/* The list — aria-busy while a filter, sort or page change loads. */}
+                <div aria-busy={isPending} className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                            <AdminPaginationTop
+                                info={pagination}
+                                noun={NOUN}
+                                label="Pages des demandes"
+                                onNavigate={navigate}
+                                pending={isPending}
+                                anchorId={LIST_TOP}
                             />
                         </div>
-                    ) : (
-                        <div className={`border border-border rounded-lg overflow-clip ${isPending ? 'opacity-50' : ''}`}>
-                            <div>
+                        {activeFilterCount > 0 && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleClearFilters}
+                                className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                            >
+                                <FilterX className="h-4 w-4" aria-hidden="true" />
+                                Effacer les filtres
+                            </Button>
+                        )}
+                    </div>
+
+                    <div className="relative">
+                        {/* Fine barre de chargement : la liste reste lisible, grisée,
+                            plutôt que masquée par un voile. */}
+                        {isPending && (
+                            <div aria-hidden="true" className="absolute inset-x-0 top-0 z-20 h-0.5 overflow-hidden rounded-full bg-primary/20">
+                                <div className="h-full w-1/3 animate-pulse bg-primary" />
+                            </div>
+                        )}
+
+                        {initialOrders.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-border py-12 text-center">
+                                <p className="text-muted-foreground text-lg">Aucune demande trouvée</p>
+                                {activeFilterCount > 0 && !searchSuggestions?.length && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleClearFilters}
+                                        className="mt-4 border-border bg-card text-foreground hover:bg-muted"
+                                    >
+                                        <FilterX className="h-4 w-4" aria-hidden="true" />
+                                        Effacer les filtres
+                                    </Button>
+                                )}
+                                <SearchRescue
+                                    suggestions={searchSuggestions}
+                                    unit={{ one: 'demande', many: 'demandes', feminine: true }}
+                                    onApply={(s) => {
+                                        setSearchTerm(s.query);
+                                        // A lifted filter is its URL parameter, cleared.
+                                        const lifted = Object.fromEntries(s.lifted.map((key) => [key, '']));
+                                        push({ ...lifted, search: s.query });
+                                    }}
+                                    onOpenRow={(row) => openOrderById(row.id)}
+                                />
+                            </div>
+                        ) : (
+                            <div className={cn('border border-border rounded-lg overflow-clip transition-opacity', isPending && 'opacity-60')}>
                                 <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
-                                        <TableRow className="border-b border-border hover:bg-muted">
-                                            <TableHead className="text-foreground font-medium">ID</TableHead>
-                                            <TableHead className="text-foreground font-medium">Auditeur</TableHead>
-                                            <TableHead className="text-foreground font-medium">Livre</TableHead>
-                                            <TableHead className="text-foreground font-medium">Date demande</TableHead>
-                                            <TableHead className="text-foreground font-medium">Statut</TableHead>
+                                        <TableRow className="border-b border-border hover:bg-transparent">
+                                            <SortableHead label="N°" sortKey="id" sort={sort} onSort={handleSort} />
+                                            {/* Dans un dossier, toutes les lignes ont le même auditeur. */}
+                                            {presetClient ? (
+                                                <TableHead className="text-foreground font-medium">Auditeur</TableHead>
+                                            ) : (
+                                                <SortableHead label="Auditeur" sortKey="auditeur" sort={sort} onSort={handleSort} />
+                                            )}
+                                            <SortableHead label="Livre" sortKey="livre" sort={sort} onSort={handleSort} />
+                                            <SortableHead label="Date demande" sortKey="date" sort={sort} onSort={handleSort} />
+                                            <SortableHead label="Statut" sortKey="statut" sort={sort} onSort={handleSort} />
                                             <TableHead className="text-foreground font-medium">Attribution</TableHead>
                                             <TableHead className="text-foreground font-medium">Facturation</TableHead>
                                             {/* Header text is for screen readers only, but the cell
@@ -610,13 +661,15 @@ export default function OrdersTable({
                                             const isOverdue = delai?.niveau === 'en_retard';
                                             const blockedBy = blockedDuplications[order.id];
                                             const aveugleName = getUserNameOnly(order.aveugle);
+                                            const statusStyle = orderStatusStyle({ id: order.statusId, name: order.status.name });
                                             return (
                                                 <TableRow
                                                     key={order.id}
                                                     onClick={() => handleRowClick(order)}
-                                                    className={`group border-b border-border hover:bg-muted cursor-pointer transition-colors ${
-                                                        isOverdue ? 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40' : ''
-                                                    }`}
+                                                    className={cn(
+                                                        'group border-b border-border hover:bg-muted cursor-pointer transition-colors',
+                                                        isOverdue && 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40',
+                                                    )}
                                                 >
                                                     <TableCell className={`font-medium whitespace-nowrap ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-foreground'}`}>
                                                         <CopyIdButton id={order.id} label="de la demande" />
@@ -655,14 +708,30 @@ export default function OrdersTable({
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
+                                                        {/* Le titre ouvre la demande. La ligne entière reste
+                                                            cliquable à la souris, mais une ligne n'est pas
+                                                            atteignable au clavier : sans ce bouton, une demande
+                                                            ne s'ouvrait qu'à la souris ou par un lien ?order=.
+                                                            Un seul enfant dans la cellule : la carte téléphone
+                                                            met le nom de colonne et la valeur sur deux colonnes. */}
                                                         <div>
-                                                            <div className="font-medium">{order.catalogue.title}</div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleRowClick(order);
+                                                                }}
+                                                                className="text-left font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                                                            >
+                                                                <span className="sr-only">Ouvrir la demande n°{order.id} : </span>
+                                                                {order.catalogue.title}
+                                                            </button>
                                                             <div className={`text-sm ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
                                                                 {order.catalogue.author}
                                                             </div>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
+                                                    <TableCell className={cn('whitespace-nowrap tabular-nums', isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground')}>
                                                         {formatDate(order.requestReceivedDate)}
                                                     </TableCell>
                                                     <TableCell>
@@ -677,12 +746,11 @@ export default function OrdersTable({
                                                                 En attente d&apos;enregistrement
                                                             </span>
                                                         ) : (
-                                                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${
-                                                                isOverdue
-                                                                    ? 'bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300'
-                                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                                                            }`}>
-                                                                {getStatusDisplayName(order.status.name)}
+                                                            <span
+                                                                title={order.status.name}
+                                                                className={cn('inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium', statusStyle.badge)}
+                                                            >
+                                                                {statusStyle.short}
                                                             </span>
                                                         )}
                                                         {/* The reason, in words — the row colour alone says
@@ -764,82 +832,29 @@ export default function OrdersTable({
                                     </TableBody>
                                 </Table>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
-                    {/* Loading Overlay for Order Data */}
-                    {isLoadingOrder && (
-                        <div className="fixed inset-0 bg-card/80 backdrop-blur-sm flex items-center justify-center z-50">
-                            <div className="bg-card rounded-lg p-8 shadow-2xl border border-border">
-                                <div className="flex flex-col items-center gap-4">
-                                    <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                    <p className="text-lg font-medium text-foreground">Chargement de la demande...</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    <AdminPaginationBottom
+                        info={pagination}
+                        noun={NOUN}
+                        label="Pages des demandes"
+                        onNavigate={navigate}
+                        pending={isPending}
+                        anchorId={LIST_TOP}
+                    />
                 </div>
 
-                {/* Enhanced Pagination */}
-                {totalPages > 1 && (
-                    <div className={`flex flex-wrap justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1 || isPending}
-                        >
-                            {'<<'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1 || isPending}
-                        >
-                            {'<'}
-                        </Button>
-                        {visiblePages.map((page, index) => (
-                            typeof page === 'number' ? (
-                                <Button
-                                    key={index}
-                                    variant={currentPage === page ? "default" : "outline"}
-                                    size="sm"
-                                    className={currentPage === page
-                                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                                        : "bg-card text-foreground border-border hover:bg-muted"}
-                                    onClick={() => handlePageChange(page)}
-                                    disabled={isPending}
-                                >
-                                    {page}
-                                </Button>
-                            ) : (
-                                <span key={index} className="text-muted-foreground px-2">{page}</span>
-                            )
-                        ))}
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages || isPending}
-                        >
-                            {'>'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(totalPages)}
-                            disabled={currentPage === totalPages || isPending}
-                        >
-                            {'>>'}
-                        </Button>
+                {/* Loading Overlay for Order Data */}
+                {isLoadingOrder && (
+                    <div className="fixed inset-0 bg-card/80 backdrop-blur-sm flex items-center justify-center z-50">
+                        <div className="bg-card rounded-lg p-8 shadow-2xl border border-border">
+                            <div className="flex flex-col items-center gap-4">
+                                <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+                                <p className="text-lg font-medium text-foreground">Chargement de la demande...</p>
+                            </div>
+                        </div>
                     </div>
-                )}
-
-                {totalPages > 1 && (
-                    <p className="text-center text-sm text-muted-foreground mt-2">
-                        Page {currentPage} sur {totalPages}
-                    </p>
                 )}
             </CardContent>
 

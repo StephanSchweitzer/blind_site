@@ -1,23 +1,11 @@
 import { prisma } from '@/lib/prisma';
-import { andClauses, buildOrderSearchWhere } from '@/lib/search';
-import { Prisma, OrderBillingStatus, BillingStatus } from '@prisma/client';
-import { ordersTableInclude } from '@/types/models/order.model';
-import {
-    blockedDuplicationWhere,
-    findBlockedDuplications,
-    serializeBlockedDuplications,
-} from '@/lib/orders/duplicationBlocked';
-import { getOpenOrderDelais, retardWhere, serializeDelaisFor } from '@/lib/orders/delais';
-
-// ⚠️ ADJUST this import to wherever your orders-table.tsx actually lives.
+import { redirect } from 'next/navigation';
 import OrdersTable from '@/app/admin/orders/orders-table';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
-import { resolveBookFilter } from '@/lib/books/bookFilter';
+import { loadOrderList } from '@/lib/orders/orderList';
+import { hrefForPage } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-const ORDERS_PER_PAGE = 10;
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -29,108 +17,35 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
     const sp = await searchParams;
     const aveugleId = parseInt(id);
 
-    const page = parsePageParam(sp.page);
-    const searchTerm = Array.isArray(sp.search) ? sp.search[0] : sp.search || '';
-    const filter = Array.isArray(sp.filter) ? sp.filter[0] : sp.filter || 'all';
-    const statusId = sp.statusId
-        ? parseInt(Array.isArray(sp.statusId) ? sp.statusId[0] : sp.statusId)
-        : undefined;
-    const billingStatus = Array.isArray(sp.billingStatus) ? sp.billingStatus[0] : sp.billingStatus;
-    const isDuplication = Array.isArray(sp.isDuplication) ? sp.isDuplication[0] : sp.isDuplication;
-    const retard = Array.isArray(sp.retard) ? sp.retard[0] : sp.retard;
-    // Cet onglet honore TOUS les filtres de la liste — seule la recherche libre
-    // y est masquee. Le champ « Livre » en fait partie : sans cela il s'affiche
-    // ici (c'est la meme OrdersTable) sans rien filtrer.
-    const filterBook = await resolveBookFilter(sp.bookId);
-
-    // Délais par étape, for this auditeur's open demandes — lib/orders/delais.ts.
-    const delais = await getOpenOrderDelais({ aveugleId });
-
-    // Same filtering as the global orders page, locked to this user (as aveugle).
-    const whereClause: Prisma.OrdersWhereInput = { aveugleId };
-    if (filterBook) whereClause.catalogueId = filterBook.id;
-
-    // Le même moteur que la liste des demandes : tokens, apostrophes, sous-titre
-    // et numéro de demande compris. Cette page en portait une copie réduite à
-    // quatre colonnes, si bien qu'une recherche trouvait une demande dans la
-    // liste générale mais pas dans le dossier de la personne qui l'a passée.
-    // Voir buildOrderSearchWhere.
-    const tokenClauses = buildOrderSearchWhere(searchTerm);
-    if (tokenClauses) whereClause.AND = tokenClauses;
-
-    // Ces deux filtres ÉCRASAIENT `AND` au lieu de s'y ajouter. C'était sans
-    // conséquence tant que la recherche vivait dans `OR` ; elle vit maintenant
-    // dans `AND`, comme sur la liste générale des demandes, qui fusionne déjà
-    // de cette façon (app/admin/orders/page.tsx).
-    if (filter === 'needsReturn') {
-        whereClause.AND = [...andClauses(whereClause), { lentPhysicalBook: true }, { closureDate: null }];
-    }
-
-    if (statusId) whereClause.statusId = statusId;
-
-    if (billingStatus === 'PAID') {
-        whereClause.bill = { is: { state: BillingStatus.PAID } };
-    } else if (billingStatus && billingStatus !== 'all') {
-        whereClause.billingStatus = billingStatus as OrderBillingStatus;
-    }
-
-    if (isDuplication === 'true') whereClause.isDuplication = true;
-    else if (isDuplication === 'false') whereClause.isDuplication = false;
-    // Duplications that can't start yet — the book is still being recorded.
-    else if (isDuplication === 'blocked') Object.assign(whereClause, blockedDuplicationWhere);
-
-    // The same délais par étape as the global list (lib/orders/delais.ts).
-    const retardClause = retardWhere(retard, delais);
-    if (retardClause) whereClause.AND = [...andClauses(whereClause), retardClause];
-
-    const [orders, totalOrders, statuses] = await Promise.all([
-        prisma.orders.findMany({
-            where: whereClause,
-            orderBy: { requestReceivedDate: 'desc' },
-            skip: pageSkip(page, ORDERS_PER_PAGE),
-            take: ORDERS_PER_PAGE,
-            include: ordersTableInclude,
-        }),
-        prisma.orders.count({ where: whereClause }),
-        prisma.status.findMany({
-            select: { id: true, name: true },
-            orderBy: { sortOrder: 'asc' },
+    // La même liste que /admin/orders, fixée sur cet auditeur (lib/orders/orderList.ts) :
+    // mêmes filtres, même recherche, même tri, même pagination. Seule la barre
+    // de recherche libre est masquée ici.
+    const [list, client] = await Promise.all([
+        loadOrderList(sp, { aveugleId }),
+        prisma.user.findUnique({
+            where: { id: aveugleId },
+            select: { id: true, name: true, email: true },
         }),
     ]);
 
-    const client = await prisma.user.findUnique({
-        where: { id: aveugleId },
-        select: { id: true, name: true, email: true },
-    });
+    if (list.redirectToPage) {
+        redirect(hrefForPage(`/admin/users/dossier/${aveugleId}/demandes`, sp, list.redirectToPage));
+    }
+
     const presetClient = client ? { ...client, email: client.email ?? '' } : null;
-
-    // Derived on read, one query for the page — see lib/orders/duplicationBlocked.ts.
-    const blockedDuplications = await findBlockedDuplications(orders);
-
-    const serializedOrders = orders.map((order) => ({
-        ...order,
-        cost: order.cost ? Number(order.cost) : null,
-        pricePerPage: order.pricePerPage != null ? Number(order.pricePerPage) : null,
-        transferFee: order.transferFee != null ? Number(order.transferFee) : null,
-        requestReceivedDate: order.requestReceivedDate.toISOString(),
-        closureDate: order.closureDate ? order.closureDate.toISOString() : null,
-        createdAt: order.createdDate ? order.createdDate.toISOString() : null,
-        updatedAt: order.updatedAt ? order.updatedAt.toISOString() : null,
-    }));
 
     return (
         <OrdersTable
-            initialOrders={serializedOrders}
-            initialPage={page}
-            initialSearch={searchTerm}
-            totalPages={Math.ceil(totalOrders / ORDERS_PER_PAGE)}
-            availableStatuses={statuses}
-            initialTotalOrders={totalOrders}
-            blockedDuplications={serializeBlockedDuplications(blockedDuplications)}
-            delais={serializeDelaisFor(orders.map((o) => o.id), delais)}
+            initialOrders={list.rows}
+            pagination={list.pagination}
+            sort={list.sort}
+            initialSearch={list.filters.search}
+            availableStatuses={list.statuses}
+            blockedDuplications={list.blockedDuplications}
+            delais={list.serializedDelais}
             hideSearch
             presetClient={presetClient}
-            filterBook={filterBook}
+            filterBook={list.filterBook}
         />
     );
 }

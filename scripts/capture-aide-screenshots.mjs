@@ -210,7 +210,7 @@ const SPECS = [
         waitFor: 'table tbody tr',
         sleep: 1200,
         clip: '.rounded-lg.border',
-        why: 'la liste entiere : les cinq filtres, la colonne Attribution, la pagination',
+        why: 'la liste entiere : les cinq filtres, le tri, la colonne Attribution, la pagination',
     },
     {
         name: 'demandes-02.jpg',
@@ -218,8 +218,8 @@ const SPECS = [
         waitFor: 'table tbody tr',
         sleep: 1000,
         // Le bloc recherche + filtres de CardContent, sans le tableau.
-        clip: '.space-y-6 > .space-y-4',
-        annotations: [{ n: 1, selector: 'input[placeholder^="Rechercher par auditeur"]' }],
+        clip: '.space-y-5 > .space-y-4',
+        annotations: [{ n: 1, selector: 'input#orders-search' }],
         why: 'la barre de recherche, et les filtres qui la completent',
     },
     {
@@ -227,7 +227,7 @@ const SPECS = [
         url: '/admin/orders',
         waitFor: 'table tbody tr',
         sleep: 1000,
-        clip: '.space-y-6 > .space-y-4',
+        clip: '.space-y-5 > .space-y-4',
         // Les numeros reprennent ceux de la liste de 06-demandes.md.
         annotations: [
             // Pastilles a droite : a gauche elles couvriraient les etiquettes,
