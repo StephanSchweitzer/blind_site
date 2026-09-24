@@ -85,12 +85,21 @@ function AujourdhuiAuxEca({ chiffres }: { chiffres: HomeFigures }) {
     }
     if (phrases.length === 0) return null;
 
+    // Une bande qui ferme la page, titre à gauche et phrases à droite sur grand
+    // écran : posée seule sous le reste, la section avait l'air d'un
+    // paragraphe oublié.
     return (
-        <section aria-labelledby="aujourdhui" className="space-y-3">
-            <h2 id="aujourdhui" className="text-2xl font-bold text-foreground">
-                Aujourd&apos;hui aux ECA
-            </h2>
-            <p className="max-w-prose text-muted-foreground">
+        <section
+            aria-labelledby="aujourdhui"
+            className="glass-card grid gap-4 p-6 sm:p-8 lg:grid-cols-12 lg:gap-8"
+        >
+            <div className="space-y-3 lg:col-span-4">
+                <Dos />
+                <h2 id="aujourdhui" className="text-2xl font-bold text-foreground">
+                    Aujourd&apos;hui aux ECA
+                </h2>
+            </div>
+            <p className="text-lg leading-relaxed text-muted-foreground lg:col-span-8 lg:self-end">
                 {phrases.map((phrase, i) => (
                     <React.Fragment key={i}>
                         {i > 0 && ' '}
@@ -129,85 +138,115 @@ export default async function Home() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-14">
+            {/* Trois temps, sur une même grille de douze colonnes : qui nous
+                sommes (et comment nous joindre), les deux publics reliés par la
+                « passerelle », puis où en est le service. */}
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-16">
                 {/* Un seul titre de niveau 1 : le nom, qui était un second titre,
                     est désormais sa ligne d'accompagnement. Le logo en grande
                     image, qui le répétait une troisième fois, est retiré. */}
-                <header className="space-y-6">
-                    <Dos />
-                    <div className="space-y-2">
-                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
-                            Bienvenue sur le site ECA !
-                        </h1>
-                        <p className="text-2xl font-semibold text-foreground">
-                            ECA : Enregistrements à la Carte pour les Aveugles
+                <header className="grid gap-8 lg:grid-cols-12 lg:items-end">
+                    <div className="space-y-6 lg:col-span-7">
+                        <Dos />
+                        <div className="space-y-2">
+                            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
+                                Bienvenue sur le site ECA !
+                            </h1>
+                            <p className="text-2xl font-semibold text-foreground">
+                                ECA : Enregistrements à la Carte pour les Aveugles
+                            </p>
+                        </div>
+                        <p className="max-w-prose text-xl text-muted-foreground">
+                            Les ECA (Enregistrements à la Carte pour les Aveugles) proposent à leurs auditeurs un service
+                            personnalisé d&apos;enregistrement des livres et documents de leurs choix.
                         </p>
                     </div>
-                    <p className="max-w-prose text-xl text-muted-foreground">
-                        Les ECA (Enregistrements à la Carte pour les Aveugles) proposent à leurs auditeurs un service
-                        personnalisé d&apos;enregistrement des livres et documents de leurs choix.
-                    </p>
 
                     {/* Le téléphone d'abord : beaucoup de nos auditeurs appellent
                         plutôt que d'écrire. Il n'apparaissait que sur la page du
-                        catalogue. */}
+                        catalogue. Sa propre carte, à côté du titre sur grand écran :
+                        en ligne sous l'introduction, les deux numéros se
+                        repliaient à côté du courriel et la moitié droite de
+                        l'écran restait vide. */}
                     {contact && (
-                        <div className="flex flex-col gap-3 border-l-4 border-orange-eca pl-5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-8">
-                            <p className="flex items-baseline gap-3 text-xl font-semibold text-foreground">
-                                <Phone aria-hidden="true" className="h-5 w-5 shrink-0 self-center text-orange-eca" />
+                        <div className="glass-card relative space-y-4 overflow-hidden p-6 pl-8 lg:col-span-5">
+                            {/* Le filet orange du logo, dessiné à part : la bordure
+                                de .glass-card l'emporte sur un border-l-4. */}
+                            <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5 bg-orange-eca" />
+                            <p className="flex gap-3 text-xl font-semibold text-foreground">
+                                <Phone aria-hidden="true" className="mt-1 h-5 w-5 shrink-0 text-orange-eca" />
                                 <span>
                                     <span className="sr-only">Téléphone : </span>
                                     <PhoneLines text={contact.phones} />
                                 </span>
                             </p>
-                            <p className="flex items-baseline gap-3">
-                                <Mail aria-hidden="true" className="h-5 w-5 shrink-0 self-center text-orange-eca" />
+                            <p className="flex gap-3">
+                                <Mail aria-hidden="true" className="mt-1 h-5 w-5 shrink-0 text-orange-eca" />
                                 <a href={`mailto:${contact.email}`} className={`${lien} [overflow-wrap:anywhere]`}>{contact.email}</a>
                             </p>
-                            <p>
+                            <p className="pl-8">
                                 <Link href="/contact" className={lien}>Coordonnées</Link>
                             </p>
                         </div>
                     )}
                 </header>
 
-                {/* Les deux publics du site, chacun avec sa suite. */}
-                <div className="grid gap-5 md:grid-cols-2">
-                    <section aria-labelledby="auditeurs" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
-                        <Headphones aria-hidden="true" className="h-8 w-8 text-primary dark:text-blue-300" />
-                        <h2 id="auditeurs" className="text-xl font-bold text-foreground">Auditeurs</h2>
-                        <p className="flex-1 text-muted-foreground">
-                            Les auditeurs peuvent faire parvenir aux ECA tous livres ou documents dont ils souhaitent
-                            l&apos;enregistrement vocal que ce soit pour leur divertissement, leurs besoins professionnels
-                            ou de formation. Les ECA mettent aussi à leur disposition les titres du catalogue.
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                            <Link href="/catalogue" className={bouton}>
-                                Catalogue <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                            </Link>
-                            <Link href="/contact" className={boutonSecondaire}>Contact</Link>
-                        </div>
-                    </section>
-                    <section aria-labelledby="lecteurs" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
-                        <Mic aria-hidden="true" className="h-8 w-8 text-primary dark:text-blue-300" />
-                        <h2 id="lecteurs" className="text-xl font-bold text-foreground">Lecteurs bénévoles</h2>
-                        <p className="flex-1 text-muted-foreground">
-                            Les ECA mettent en contact des lecteurs bénévoles formés par l&apos;association et des auditeurs
-                            déficients visuels qui accèdent ainsi au plaisir de l&apos;écoute des textes qu&apos;ils ont choisis.
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                            <Link href="/nous-rejoindre" className={bouton}>
-                                Nous rejoindre <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                            </Link>
-                        </div>
-                    </section>
-                </div>
+                {/* Les deux publics du site, chacun avec sa suite — et, entre
+                    eux, la phrase qui dit ce qui les relie : placée sous les deux
+                    cartes, à égale distance de l'une et de l'autre, plutôt que
+                    seule entre les cartes et les chiffres. */}
+                <div className="space-y-10">
+                    <div className="grid gap-5 md:grid-cols-2">
+                        <section aria-labelledby="auditeurs" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
+                            <div className="flex items-center gap-4">
+                                <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 dark:bg-blue-300/15">
+                                    <Headphones className="h-6 w-6 text-primary dark:text-blue-300" />
+                                </span>
+                                <h2 id="auditeurs" className="text-2xl font-bold text-foreground">Auditeurs</h2>
+                            </div>
+                            <p className="flex-1 text-muted-foreground">
+                                Les auditeurs peuvent faire parvenir aux ECA tous livres ou documents dont ils souhaitent
+                                l&apos;enregistrement vocal que ce soit pour leur divertissement, leurs besoins professionnels
+                                ou de formation. Les ECA mettent aussi à leur disposition les titres du catalogue.
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                                <Link href="/catalogue" className={bouton}>
+                                    Catalogue <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                                </Link>
+                                <Link href="/contact" className={boutonSecondaire}>Contact</Link>
+                            </div>
+                        </section>
+                        <section aria-labelledby="lecteurs" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
+                            <div className="flex items-center gap-4">
+                                <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 dark:bg-blue-300/15">
+                                    <Mic className="h-6 w-6 text-primary dark:text-blue-300" />
+                                </span>
+                                <h2 id="lecteurs" className="text-2xl font-bold text-foreground">Lecteurs bénévoles</h2>
+                            </div>
+                            <p className="flex-1 text-muted-foreground">
+                                Les ECA mettent en contact des lecteurs bénévoles formés par l&apos;association et des auditeurs
+                                déficients visuels qui accèdent ainsi au plaisir de l&apos;écoute des textes qu&apos;ils ont choisis.
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                                <Link href="/nous-rejoindre" className={bouton}>
+                                    Nous rejoindre <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                                </Link>
+                            </div>
+                        </section>
+                    </div>
 
-                {/* Du texte, pas une carte : rien ici ne se clique. */}
-                <p className="max-w-prose text-lg text-muted-foreground">
-                    Ainsi se met en place une passerelle humaine et chaleureuse entre voyants et malvoyants.
-                    C&apos;est donc un service à la carte qui est proposé.
-                </p>
+                    {/* Du texte, pas une carte : rien ici ne se clique. Les deux
+                        filets, purement décoratifs, le posent en travers des deux
+                        colonnes comme un pont. */}
+                    <div className="flex items-center gap-6">
+                        <span aria-hidden="true" className="hidden h-px flex-1 bg-foreground/20 md:block" />
+                        <p className="max-w-2xl text-xl font-medium md:text-center text-foreground">
+                            Ainsi se met en place une passerelle humaine et chaleureuse entre voyants et malvoyants.
+                            C&apos;est donc un service à la carte qui est proposé.
+                        </p>
+                        <span aria-hidden="true" className="hidden h-px flex-1 bg-foreground/20 md:block" />
+                    </div>
+                </div>
 
                 {chiffres && <AujourdhuiAuxEca chiffres={chiffres} />}
             </div>
