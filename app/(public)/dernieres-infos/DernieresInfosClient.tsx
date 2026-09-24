@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { SearchBar } from '@/dernieres-infos/SearchBar';
 import { PublicPaginatedList } from '@/components/ui/public-pagination';
-import { pageInfo } from '@/lib/pagination';
+import { outOfRangePage, pageInfo, parsePageParam } from '@/lib/pagination';
+import { useListUrl } from '@/hooks/useListUrl';
 import { Tag, Filter, User, Calendar } from 'lucide-react';
 import type { NewsPost, NewsResponse, NewsType } from '@/types/news';
 import { newsTypeLabels, newsTypeColors, getNewsTypeColor, getNewsTypeTextColor } from '@/types/news';
@@ -13,6 +14,27 @@ import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 // PUBLIC_NEWS_PAGE_SIZE (lib/news/newsList.ts), which is server-only.
 const NEWS_PAGE_SIZE = 5;
+
+type NewsQuery = { search: string; type: string; page: number };
+
+/** The feed's state as a query string, the parameters /api/news reads. Defaults left out. */
+function newsParams(q: NewsQuery): URLSearchParams {
+    const params = new URLSearchParams();
+    if (q.search) params.set('search', q.search);
+    if (q.type !== 'all') params.set('type', q.type);
+    if (q.page > 1) params.set('page', String(q.page));
+    return params;
+}
+
+/** A shared link is outside input: an unknown type falls back to « Tous ». */
+function parseNewsParams(params: URLSearchParams): NewsQuery {
+    const type = params.get('type') ?? 'all';
+    return {
+        search: params.get('search') ?? '',
+        type: Object.prototype.hasOwnProperty.call(newsTypeLabels, type) ? type : 'all',
+        page: parsePageParam(params.get('page')),
+    };
+}
 
 interface DernieresInfosClientProps {
     initialData: NewsResponse;
@@ -30,7 +52,21 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
     const [error, setError] = useState<string | null>(null);
     const [suggestions, setSuggestions] = useState<RescueSuggestion[]>([]);
     const isFirstRender = useRef(true);
+    const latestLoad = useRef(0);
     const filtersId = useId();
+
+    // Search, type and page live in the URL (hooks/useListUrl.ts). A link with
+    // a type filter opens the filters, so the active chip is there to see.
+    const writeUrl = useListUrl((params) => {
+        const next = parseNewsParams(params);
+        const current = { search: searchTerm, type: selectedType, page: currentPage };
+        if (newsParams(next).toString() === newsParams(current).toString()) return;
+        setSearchTerm(next.search);
+        setSelectedType(next.type);
+        setCurrentPage(next.page);
+        setIsLoading(true);
+        if (next.type !== 'all') setShowFilters(true);
+    });
 
     const fetchNewsPosts = useCallback(async (page: number) => {
         setIsLoading(true);
@@ -75,15 +111,32 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
         // The server already provided the default first page (page 1, all
         // types, no search) via the cached read, so skip the fetch on initial
         // mount — that's what removes the loading spinner on first paint. Only
-        // hit /api/news once the user actually searches, filters, or paginates.
+        // hit /api/news once the user actually searches, filters, or paginates
+        // — or arrives by a link that carries a search (client navigation
+        // mounts with the URL's state already applied).
+        const query = { search: searchTerm, type: selectedType, page: currentPage };
         if (isFirstRender.current) {
             isFirstRender.current = false;
-            return;
+            if (newsParams(query).toString() === '') return;
         }
 
         const loadPage = async () => {
+            // Keystrokes each start a load: only the latest may land, or an
+            // older answer arriving last would show — and write to the URL —
+            // a search the visitor has already typed past.
+            const load = ++latestLoad.current;
             setIsTransitioning(true);
             const data = await fetchNewsPosts(currentPage);
+            if (load !== latestLoad.current) return;
+            // A link to a page that no longer exists: go to the last one,
+            // replacing the entry — kept, it would lead back here.
+            const lastPage = outOfRangePage(pageInfo(currentPage, NEWS_PAGE_SIZE, data.totalItems), data.items.length);
+            if (lastPage) {
+                writeUrl(newsParams({ ...query, page: lastPage }), { replace: true });
+                setCurrentPage(lastPage);
+                return;
+            }
+            writeUrl(newsParams(query));
             if (data) {
                 setNewsPosts(data.items);
                 setTotalItems(data.totalItems);
@@ -93,7 +146,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
         };
 
         loadPage();
-    }, [currentPage, fetchNewsPosts]);
+    }, [currentPage, searchTerm, selectedType, fetchNewsPosts, writeUrl]);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);

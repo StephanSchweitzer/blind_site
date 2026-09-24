@@ -22,8 +22,9 @@ import { pageSlots, type PageInfo } from '@/lib/pagination';
  *   et y pose le focus : sinon on arrivait sur la page suivante… par sa fin.
  * - **Sur téléphone**, la barre du bas tient en une ligne : « ‹ Page [3] sur
  *   1 715 › ». Le numéro est un champ : on y tape une page, « OK » du clavier.
- * - **Des boutons, pas des liens** : ces pages gardent leur état hors de l'URL
- *   (le catalogue est servi en statique). Une flèche en bout de liste reste
+ * - **Des boutons, pas des liens** : la page elle-même tient son état dans
+ *   l'URL (hooks/useListUrl.ts, par l'API History — le catalogue est servi en
+ *   statique, un lien de routeur le ferait recalculer). Une flèche en bout de liste reste
  *   focalisable (`aria-disabled`, pas `disabled`) : un `disabled` ferait
  *   tomber le focus sur <body> au clic qui mène à la dernière page.
  */
@@ -153,7 +154,7 @@ export function PublicPaginationSummary({
                 ) : (
                     <>
                         <span className="font-semibold text-foreground tabular-nums">
-                            {nf.format(from)}–{nf.format(to)}
+                            {from === to ? nf.format(from) : `${nf.format(from)}–${nf.format(to)}`}
                         </span>{' '}
                         sur <span className="font-semibold text-foreground tabular-nums">{nf.format(total)}</span>{' '}
                         {total > 1 ? noun.many : noun.one}

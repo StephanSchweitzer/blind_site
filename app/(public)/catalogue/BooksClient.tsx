@@ -9,7 +9,8 @@ import { SearchResult } from '@/types/book';
 import type { PublicBook } from '@/lib/books/publicBook';
 import { BookSearchSuggestions } from '@/components/ui/book-search-suggestions';
 import type { BookSearchSuggestion, CatalogueFilterKey } from '@/lib/books/book-suggestion-types';
-import { pageInfo } from '@/lib/pagination';
+import { outOfRangePage, pageInfo, parsePageParam } from '@/lib/pagination';
+import { useListUrl } from '@/hooks/useListUrl';
 
 /** The « Rechercher dans » options, as the search bar words them. */
 const SEARCH_FIELD_LABELS: Record<string, string> = {
@@ -21,6 +22,36 @@ const SEARCH_FIELD_LABELS: Record<string, string> = {
 
 const ITEMS_PER_PAGE = 9;
 const DEBOUNCE_DELAY = 300;
+
+type CatalogueQuery = { search: string; filter: string; genres: number[]; page: number };
+
+/**
+ * The catalogue's state as a query string — the same parameters as the admin
+ * catalogue (search, filter, genres=1,2, page), so a link reads the same on
+ * both sides. Defaults are left out: the bare /catalogue is page 1 of everything.
+ */
+function catalogueParams(q: CatalogueQuery): URLSearchParams {
+    const params = new URLSearchParams();
+    if (q.search) params.set('search', q.search);
+    if (q.filter !== 'all') params.set('filter', q.filter);
+    if (q.genres.length > 0) params.set('genres', q.genres.join(','));
+    if (q.page > 1) params.set('page', String(q.page));
+    return params;
+}
+
+/** A shared link is outside input: an unknown field or genre falls back to « all ». */
+function parseCatalogueParams(params: URLSearchParams, genreIds: Set<number>): CatalogueQuery {
+    const filter = params.get('filter') ?? 'all';
+    return {
+        search: params.get('search') ?? '',
+        filter: Object.prototype.hasOwnProperty.call(SEARCH_FIELD_LABELS, filter) ? filter : 'all',
+        genres: (params.get('genres') ?? '')
+            .split(',')
+            .map(Number)
+            .filter((id) => genreIds.has(id)),
+        page: parsePageParam(params.get('page')),
+    };
+}
 
 interface BooksClientProps {
     initialBooks: PublicBook[];
@@ -54,6 +85,21 @@ export function BooksClient({
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
+    // Search, field, genres and page live in the URL (hooks/useListUrl.ts).
+    // A link that carries a search opens on the cached first page, so mark the
+    // list as loading straight away rather than showing « 1–9 sur 15 428 » and
+    // then swapping.
+    const writeUrl = useListUrl((params) => {
+        const next = parseCatalogueParams(params, new Set(genres.map((g) => g.id)));
+        const current = { search: searchTerm, filter: selectedFilter, genres: selectedGenres, page: currentPage };
+        if (catalogueParams(next).toString() === catalogueParams(current).toString()) return;
+        setSearchTerm(next.search);
+        setSelectedFilter(next.filter);
+        setSelectedGenres(next.genres);
+        setCurrentPage(next.page);
+        setIsSearching(true);
+    });
+
     const performSearch = useCallback(async (
         term: string,
         filter: string,
@@ -66,6 +112,8 @@ export function BooksClient({
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
+
+        writeUrl(catalogueParams({ search: term, filter, genres: genreIds, page }));
 
         if (!term && genreIds.length === 0 && page === 1) {
             setSearchResults({
@@ -106,8 +154,16 @@ export function BooksClient({
                 throw new Error('Search failed');
             }
 
-            const data = await response.json();
+            const data: SearchResult = await response.json();
             if (abortControllerRef.current !== abortController) return;
+            // A link to page 40 that outlived the books behind it: go to the
+            // last page, replacing the entry — kept, it would lead back here.
+            const lastPage = outOfRangePage(pageInfo(page, ITEMS_PER_PAGE, data.total), data.books.length);
+            if (lastPage) {
+                writeUrl(catalogueParams({ search: term, filter, genres: genreIds, page: lastPage }), { replace: true });
+                setCurrentPage(lastPage);
+                return;
+            }
             setSearchResults(data);
         } catch (err) {
             if (err instanceof Error && err.name !== 'AbortError') {
@@ -123,7 +179,7 @@ export function BooksClient({
                 setIsSearching(false);
             }
         }
-    }, [initialBooks, initialTotalBooks, initialTotalPages]);
+    }, [initialBooks, initialTotalBooks, initialTotalPages, writeUrl]);
 
     useEffect(() => {
         if (searchTimeoutRef.current) {
