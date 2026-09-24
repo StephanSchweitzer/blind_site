@@ -395,6 +395,17 @@
     :root[data-taille-texte='tres-grande'][data-espacement] .nav-large { display: flex; }
     :root[data-taille-texte='tres-grande'][data-espacement] .nav-compacte { display: none; }
 }
+/* Les pages font 1152 px : sur grand écran, le menu s'écarte pour s'en
+   approcher au lieu de rester serré au milieu (880 px). Texte normal
+   seulement — agrandi ou espacé, les seuils ci-dessus sont calculés avec
+   l'écart de base, et un écart plus large les ferait déborder. Le nom à côté
+   du logo apparaît à 1536 px : il reste la place pour lui. */
+@media (min-width: 1536px) {
+    :root:not([data-taille-texte]):not([data-espacement]) .nav-liens { column-gap: 2rem; }
+}
+@media (min-width: 1800px) {
+    :root:not([data-taille-texte]):not([data-espacement]) .nav-liens { column-gap: 2.75rem; }
+}
 
 /* Animations réduites — demandées par l'appareil (prefers-reduced-motion) ou
    choisies dans « Affichage ». Tout s'arrête sur son état final, y compris ce

@@ -47,9 +47,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         // role="search" gives the whole block a landmark, so a screen-reader user
         // can jump straight to it instead of tabbing through the header first.
         <search role="search" className="">
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:items-center">
-                {/* Search input - 45% */}
-                <div className="relative w-full sm:w-[45%] group">
+            {/* Widths come from the content, not percentages: at 20 % the select
+                cut « Tous les champs » below ~1100 px, and more so with enlarged
+                text. The select takes what its longest option needs, the other two
+                share the rest, and the row wraps before anything gets squeezed. */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 w-full sm:items-center">
+                {/* Search input */}
+                <div className="relative w-full sm:w-auto sm:flex-[1_1_20rem] min-w-0 group">
                     {/* A placeholder is not a label: it disappears as soon as the field
                         has content, and several screen readers never announce it
                         (RGAA 11.1). The visible text is kept off-screen so the layout
@@ -92,8 +96,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     )}
                 </div>
 
-                {/* Filter select - 20% */}
-                <div className="w-full sm:w-[20%]">
+                {/* Filter select */}
+                <div className="w-full sm:w-auto sm:flex-none">
                     <label htmlFor={filterId} className="sr-only">
                         Champ de recherche
                     </label>
@@ -122,8 +126,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     </select>
                 </div>
 
-                {/* Genre selector - 30% */}
-                <div className="w-full sm:w-[30%]">
+                {/* Genre selector */}
+                <div className="w-full sm:w-auto sm:flex-[1_1_14rem] min-w-0">
                     <Popover open={open} onOpenChange={setOpen}>
                         <PopoverTrigger asChild>
                             {/* No explicit role/aria-expanded here: the trigger opens a panel,

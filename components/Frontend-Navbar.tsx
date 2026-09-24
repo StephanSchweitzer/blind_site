@@ -166,8 +166,10 @@ const FrontendNavbar = () => {
                             </Link>
                         </div>
 
-                        {/* Desktop menu - truly centered on page */}
-                        <ul ref={desktopNavRef} className="nav-large flex-nowrap space-x-5 text-base justify-center list-none m-0 p-0">
+                        {/* Desktop menu - truly centered on page. The gap widens on
+                            large screens (`.nav-liens`, app/globals.css), so the
+                            menu spans roughly the width of the page content. */}
+                        <ul ref={desktopNavRef} className="nav-large nav-liens flex-nowrap gap-x-5 text-base justify-center list-none m-0 p-0">
                             {navLinks.map((link, index) => (
                                 <li key={`${link.href}-${index}`} className="relative whitespace-nowrap">
                                     {link.dropdown ? (
