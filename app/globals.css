@@ -187,12 +187,20 @@
     * {
         @apply border-border;
     }
-    /* Un fond uni. Il y avait ici un dégradé animé en continu, avec des taches
-       floues qui dérivaient derrière le texte : du mouvement permanent pour un
-       public qui lit souvent à la loupe, et une carte graphique occupée sans
-       répit sur des ordinateurs qui ne sont pas toujours récents. */
     body {
         @apply bg-background text-foreground;
+    }
+
+    /* Le fond du site public : un dégradé doux, dans les bleus du logo, derrière
+       le verre dépoli des cartes. Il glissait en continu (15 s en boucle) avec
+       des taches qui dérivaient : désormais il est immobile — le décor reste,
+       le mouvement permanent s'en va, pour qui lit à la loupe comme pour les
+       ordinateurs anciens. Le back-office pose son propre fond uni par-dessus. */
+    :root:has(#navigation-principale) body {
+        background: linear-gradient(135deg, #F5F7FA 0%, #E4ECF8 35%, #DCE7F7 65%, #F1F5FB 100%) fixed;
+    }
+    :root.dark:has(#navigation-principale) body {
+        background: linear-gradient(135deg, #0B1422 0%, #131D3A 35%, #142238 65%, #0D1628 100%) fixed;
     }
 
     /* Site public : un corps de texte à 18 px. Les tailles posées explicitement
@@ -228,17 +236,23 @@
         @apply bg-gray-400 dark:bg-gray-500;
     }
 
-    /* Les cartes du site public. Le nom est resté, le verre dépoli est parti :
-       un fond uni, un filet, une ombre légère. Plus de flou d'arrière-plan
-       (coûteux, et il brouillait le contraste du texte selon ce qui passait
-       derrière) ni de carte qui se soulève au survol — un paragraphe qui bouge
-       sous la souris a l'air cliquable et ne l'est pas. */
+    /* Les cartes en verre dépoli du site public : un blanc translucide, flouté,
+       posé sur le fond coloré. C'est l'identité du site, gardée — mais immobile :
+       une carte ne se soulève plus au survol, car un paragraphe qui bouge sous
+       la souris a l'air cliquable et ne l'est pas. Seuls les éléments qui
+       s'ouvrent vraiment (les livres du catalogue) se soulèvent, et « Contraste
+       renforcé » rend tout uni (fin de fichier). Le blanc reste à 85 % : le
+       texte garde son contraste quoi qu'il passe derrière. */
     .glass-card {
-        @apply bg-card text-card-foreground border border-border rounded-xl shadow-sm;
+        @apply bg-white/85 dark:bg-card/80 backdrop-blur-xl backdrop-saturate-150
+        text-card-foreground border border-white/70 dark:border-white/10
+        rounded-2xl shadow-[0_8px_30px_rgb(15,27,45,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)];
     }
 
     .glass-card-lg {
-        @apply bg-card text-card-foreground border border-border rounded-2xl shadow-sm;
+        @apply bg-white/85 dark:bg-card/80 backdrop-blur-xl backdrop-saturate-150
+        text-card-foreground border border-white/70 dark:border-white/10
+        rounded-3xl shadow-[0_20px_60px_rgb(15,27,45,0.10)] dark:shadow-[0_20px_60px_rgb(0,0,0,0.4)];
     }
 
     /* Anciens titres en dégradé : un aplat, à la couleur du bleu ECA. */
@@ -443,6 +457,11 @@
 :root.dark[data-contraste='renforce']:has(#navigation-principale) :is(.glass-card, .glass-card-lg, #navigation-principale) {
     background-color: #000000 !important;
     border-color: #f3f4f6 !important;
+}
+/* Les halos de couleur du décor (layout public) : un fond uni, c'est aussi
+   sans eux. */
+:root[data-contraste='renforce']:has(#navigation-principale) .decor-fond {
+    display: none !important;
 }
 /* Titres en dégradé : texte plein. */
 :root[data-contraste='renforce']:has(#navigation-principale) :is(.text-gradient, .bg-clip-text) {

@@ -77,9 +77,9 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                             <li key={book.id}>
                             <article
                                 style={{ animationDelay: `${(genreIndex * 100) + (index * 50)}ms` }}
-                                // No lift on hover (it moved under the pointer); the border
-                                // says « this opens ». The spine repeats the section's.
-                                className="group relative cursor-pointer overflow-hidden rounded-xl border border-border bg-card py-4 pl-6 pr-4 shadow-sm transition-colors hover:border-primary hover:shadow-md focus-within:border-primary"
+                                // A 2 px lift on hover, as in the catalogue: this opens.
+                                // The spine repeats the section's.
+                                className="group relative cursor-pointer overflow-hidden rounded-xl border border-border bg-card py-4 pl-6 pr-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-md focus-within:border-primary"
                                 onClick={() => onBookClick(book)}
                             >
                                 <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${GENRE_FAMILY_SPINE[genreFamily(genre)]}`} />

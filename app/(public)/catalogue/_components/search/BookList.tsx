@@ -47,10 +47,11 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                 <li key={book.id}>
                 <article
                     onClick={() => onBookClick(book)}
-                    // No lift, no zoom, no sweeping shine on hover: a card that
-                    // moves under the pointer is hard to follow at high zoom. The
-                    // border and a shadow say « this opens » instead.
-                    className="group relative h-full cursor-pointer overflow-hidden rounded-xl border border-border bg-card py-5 pl-7 pr-5 shadow-sm transition-colors hover:border-primary hover:shadow-md focus-within:border-primary"
+                    // A slight lift on hover — only on what really opens, and 2 px,
+                    // not the old 8 px jump with a zoom and a sweeping shine,
+                    // which was hard to follow at high zoom. Reduced motion
+                    // (app/globals.css) cancels it.
+                    className="group relative h-full cursor-pointer overflow-hidden rounded-xl border border-white/70 dark:border-white/10 bg-white/85 dark:bg-card/80 backdrop-blur-xl py-5 pl-7 pr-5 shadow-[0_8px_30px_rgb(15,27,45,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-lg focus-within:border-primary"
                 >
                     <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-2 ${spine}`} />
 

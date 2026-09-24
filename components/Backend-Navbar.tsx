@@ -6,7 +6,7 @@ import { Menu, X, ChevronDown, HelpCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { QuickSearch, type QuickSearchPage } from '@/components/admin/QuickSearch';
-import { SECTION_ICONS } from '@/components/admin/section-icons';
+import { SECTION_ICONS, sectionAccent } from '@/components/admin/section-icons';
 
 interface NavItem {
     href: string;
@@ -64,10 +64,16 @@ const navGroups: NavGroup[] = [
     },
 ];
 
-/** The section's icon, the same as on its dashboard card. */
+/** The section's icon in its colour, as on its dashboard card. */
 function NavIcon({ label }: { label: string }) {
     const Icon = SECTION_ICONS[label];
-    return Icon ? <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : null;
+    if (!Icon) return null;
+    const colors = sectionAccent(label);
+    return (
+        <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${colors.bg}`}>
+            <Icon className={`h-4 w-4 ${colors.text}`} />
+        </span>
+    );
 }
 
 const BackendNavbar: React.FC = () => {
