@@ -26,7 +26,7 @@ export default async function CoupsDeCoeurPage({
         <CoupsDeCoeurClient
             content={content}
             currentPage={page}
-            totalPages={Math.max(1, Math.ceil(total / COUPS_DE_COEUR_PAGE_SIZE))}
+            total={total}
         />
     );
 }

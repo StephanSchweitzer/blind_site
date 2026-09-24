@@ -4,11 +4,12 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { SearchBar } from '@/catalogue/search/SearchBar';
 import { BookList } from '@/catalogue/search/BookList';
 import { BookModal } from '@/components/BookModal';
-import { CustomPagination } from "@/components/ui/custom-pagination";
+import { PublicPaginatedList } from '@/components/ui/public-pagination';
 import { SearchResult } from '@/types/book';
 import type { PublicBook } from '@/lib/books/publicBook';
 import { BookSearchSuggestions } from '@/components/ui/book-search-suggestions';
 import type { BookSearchSuggestion, CatalogueFilterKey } from '@/lib/books/book-suggestion-types';
+import { pageInfo } from '@/lib/pagination';
 
 /** The « Rechercher dans » options, as the search bar words them. */
 const SEARCH_FIELD_LABELS: Record<string, string> = {
@@ -228,62 +229,62 @@ export function BooksClient({
 
             {/* The result list is replaced without a page load. Without a live
                 region a screen-reader user types into the search field and gets
-                no feedback at all that anything happened (RGAA 7.4). */}
-            <p role="status" aria-live="polite" className="sr-only">
-                {isSearching
-                    ? 'Recherche en cours…'
-                    : searchResults.total === 0
-                        ? (searchResults.searchSuggestions?.length
-                            ? 'Aucun livre ne correspond à votre recherche. Des suggestions sont proposées ci-dessous.'
-                            : 'Aucun livre ne correspond à votre recherche.')
-                        : `${searchResults.total} livre${searchResults.total > 1 ? 's' : ''} trouvé${searchResults.total > 1 ? 's' : ''}, page ${currentPage} sur ${searchResults.totalPages}.`}
-            </p>
-
-            <div className="relative min-h-[200px]">
-                {isSearching && searchResults.books.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                        <div aria-hidden="true" className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
-                        <p className="mt-4 text-gray-700 dark:text-gray-300">Recherche en cours...</p>
-                    </div>
-                ) : searchResults.books.length === 0 ? (
-                    <div className="text-center py-8 glass-card">
-                        <p className="text-gray-700 dark:text-gray-300">
-                            {searchTerm || selectedGenres.length > 0
-                                ? 'Aucun résultat trouvé pour votre recherche'
-                                : 'Aucun livre disponible'}
-                        </p>
-                        {searchTerm && (
-                            <BookSearchSuggestions
-                                suggestions={searchResults.searchSuggestions}
-                                filterLabel={suggestionFilterLabel}
-                                bookNote={suggestionBookNote}
-                                onApply={applySuggestion}
-                                onOpenBook={handleBookClick}
-                                className="px-4"
-                            />
-                        )}
-                    </div>
-                ) : (
-                    <section
-                        aria-labelledby="resultats-catalogue"
-                        className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}
-                    >
-                        {/* The card titles are h3. Without this the page jumped
-                            straight from h1 to h3, and heading-by-heading
-                            navigation lost a level (RGAA 9.1). */}
-                        <h2 id="resultats-catalogue" className="sr-only">Résultats du catalogue</h2>
-                        <BookList books={searchResults.books} onBookClick={handleBookClick} />
-                    </section>
-                )}
-            </div>
-
-            {searchResults.totalPages > 1 && (
-                <CustomPagination
-                    currentPage={currentPage}
-                    totalPages={searchResults.totalPages}
-                    onPageChange={setCurrentPage}
-                />
-            )}
+                no feedback at all that anything happened (RGAA 7.4) — the count
+                above the list is that region (components/ui/public-pagination.tsx). */}
+            <PublicPaginatedList
+                info={pageInfo(currentPage, ITEMS_PER_PAGE, searchResults.total)}
+                noun={{ one: 'livre', many: 'livres' }}
+                label="Pages du catalogue"
+                onPageChange={setCurrentPage}
+                pending={isSearching}
+                announce={
+                    isSearching
+                        ? 'Recherche en cours…'
+                        : searchResults.total === 0
+                            ? (searchResults.searchSuggestions?.length
+                                ? 'Aucun livre ne correspond à votre recherche. Des suggestions sont proposées ci-dessous.'
+                                : 'Aucun livre ne correspond à votre recherche.')
+                            : undefined
+                }
+            >
+                <div className="relative min-h-[200px]">
+                    {isSearching && searchResults.books.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <div aria-hidden="true" className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                            <p className="mt-4 text-gray-700 dark:text-gray-300">Recherche en cours...</p>
+                        </div>
+                    ) : searchResults.books.length === 0 ? (
+                        <div className="text-center py-8 glass-card">
+                            <p className="text-gray-700 dark:text-gray-300">
+                                {searchTerm || selectedGenres.length > 0
+                                    ? 'Aucun résultat trouvé pour votre recherche'
+                                    : 'Aucun livre disponible'}
+                            </p>
+                            {searchTerm && (
+                                <BookSearchSuggestions
+                                    suggestions={searchResults.searchSuggestions}
+                                    filterLabel={suggestionFilterLabel}
+                                    bookNote={suggestionBookNote}
+                                    onApply={applySuggestion}
+                                    onOpenBook={handleBookClick}
+                                    className="px-4"
+                                />
+                            )}
+                        </div>
+                    ) : (
+                        <section
+                            aria-labelledby="resultats-catalogue"
+                            className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}
+                        >
+                            {/* The card titles are h3. Without this the page jumped
+                                straight from h1 to h3, and heading-by-heading
+                                navigation lost a level (RGAA 9.1). */}
+                            <h2 id="resultats-catalogue" className="sr-only">Résultats du catalogue</h2>
+                            <BookList books={searchResults.books} onBookClick={handleBookClick} />
+                        </section>
+                    )}
+                </div>
+            </PublicPaginatedList>
 
             <BookModal
                 book={selectedBook}

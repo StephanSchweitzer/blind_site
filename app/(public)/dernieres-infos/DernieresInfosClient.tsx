@@ -2,13 +2,17 @@
 
 import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { SearchBar } from '@/dernieres-infos/SearchBar';
-import { CustomPagination } from "@/components/ui/custom-pagination";
+import { PublicPaginatedList } from '@/components/ui/public-pagination';
+import { pageInfo } from '@/lib/pagination';
 import { Tag, Filter, User, Calendar } from 'lucide-react';
 import type { NewsPost, NewsResponse, NewsType } from '@/types/news';
 import { newsTypeLabels, newsTypeColors, getNewsTypeColor, getNewsTypeTextColor } from '@/types/news';
 import { parisDate } from '@/lib/paris-day';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+
+// PUBLIC_NEWS_PAGE_SIZE (lib/news/newsList.ts), which is server-only.
+const NEWS_PAGE_SIZE = 5;
 
 interface DernieresInfosClientProps {
     initialData: NewsResponse;
@@ -18,7 +22,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [newsPosts, setNewsPosts] = useState<NewsPost[]>(initialData.items);
-    const [totalPages, setTotalPages] = useState(initialData.totalPages);
+    const [totalItems, setTotalItems] = useState(initialData.totalItems);
     const [, setIsTransitioning] = useState(false);
     const [selectedType, setSelectedType] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
@@ -35,7 +39,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
         try {
             const queryParams = new URLSearchParams({
                 page: page.toString(),
-                limit: '5',
+                limit: String(NEWS_PAGE_SIZE),
                 ...(selectedType !== 'all' && { type: selectedType }),
                 ...(searchTerm && { search: searchTerm, suggest: '1' })
             });
@@ -82,12 +86,9 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
             const data = await fetchNewsPosts(currentPage);
             if (data) {
                 setNewsPosts(data.items);
-                setTotalPages(data.totalPages);
+                setTotalItems(data.totalItems);
                 setSuggestions(data.searchSuggestions ?? []);
                 setIsTransitioning(false);
-                if (currentPage !== 1) {
-                    window.scrollTo({ top: 0, behavior: 'instant' });
-                }
             }
         };
 
@@ -185,116 +186,114 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
             </div>
 
             {/* Results are swapped in without a page load, so their arrival has to
-                be announced explicitly (RGAA 7.4). */}
-            <p role="status" aria-live="polite" className="sr-only">
-                {isLoading
-                    ? 'Chargement des actualités…'
-                    : error
-                        ? ''
-                        : newsPosts.length === 0
-                            ? 'Aucune actualité ne correspond à votre recherche.'
-                            : `${newsPosts.length} actualité${newsPosts.length > 1 ? 's' : ''} affichée${newsPosts.length > 1 ? 's' : ''}, page ${currentPage} sur ${totalPages}.`}
-            </p>
-
-            {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                    <div aria-hidden="true" className="relative">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 dark:border-blue-900"></div>
-                        <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-4 border-transparent border-t-blue-600 dark:border-t-blue-400"></div>
+                be announced explicitly (RGAA 7.4) — the count above the list is
+                that live region (components/ui/public-pagination.tsx). */}
+            <PublicPaginatedList
+                info={pageInfo(currentPage, NEWS_PAGE_SIZE, totalItems)}
+                noun={{ one: 'actualité', many: 'actualités', feminine: true }}
+                label="Pages des actualités"
+                onPageChange={setCurrentPage}
+                pending={isLoading}
+                announce={
+                    isLoading
+                        ? 'Chargement des actualités…'
+                        : error
+                            ? ''
+                            : newsPosts.length === 0
+                                ? 'Aucune actualité ne correspond à votre recherche.'
+                                : undefined
+                }
+            >
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <div aria-hidden="true" className="relative">
+                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 dark:border-blue-900"></div>
+                            <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-4 border-transparent border-t-blue-600 dark:border-t-blue-400"></div>
+                        </div>
+                        <p className="mt-6 text-gray-700 dark:text-gray-300 font-medium animate-pulse">
+                            Chargement des actualités...
+                        </p>
                     </div>
-                    <p className="mt-6 text-gray-700 dark:text-gray-300 font-medium animate-pulse">
-                        Chargement des actualités...
-                    </p>
-                </div>
-            ) : error ? (
-                <div role="alert" className="text-center py-12 rounded-2xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50">
-                    <div aria-hidden="true" className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg focusable="false" className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <p className="text-red-800 dark:text-red-300 font-medium">{error}</p>
-                </div>
-            ) : newsPosts.length === 0 ? (
-                <div className="text-center py-12 glass-card">
-                    <div className="max-w-md mx-auto">
-                        <div aria-hidden="true" className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg focusable="false" className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                ) : error ? (
+                    <div role="alert" className="text-center py-12 rounded-2xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50">
+                        <div aria-hidden="true" className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg focusable="false" className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300 font-medium">Aucune actualité trouvée</p>
-                        {searchTerm && (
-                            <SearchRescue
-                                suggestions={suggestions}
-                                unit={{ one: 'info', many: 'infos', feminine: true }}
-                                onApply={(s) => {
-                                    if (s.lifted.includes('type')) setSelectedType('all');
-                                    handleSearchChange(s.query);
-                                }}
-                            />
-                        )}
+                        <p className="text-red-800 dark:text-red-300 font-medium">{error}</p>
                     </div>
-                </div>
-            ) : (
-                <div className="space-y-5">
-                    {newsPosts.map((post, index) => (
-                        <article
-                            key={post.id}
-                            className="glass-card p-6 transition-all duration-300 group"
-                            style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                            <div className="flex items-start gap-4 mb-4 flex-wrap">
-                                <div className="flex-1">
-                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
-                                        {post.title}
-                                    </h2>
-                                </div>
-                                <span className={`
-                                    px-4 py-1.5 rounded-full text-sm font-semibold shadow-md
-                                    ${getNewsTypeColor(post.type)}
-                                    ${getNewsTypeTextColor(post.type)}
+                ) : newsPosts.length === 0 ? (
+                    <div className="text-center py-12 glass-card">
+                        <div className="max-w-md mx-auto">
+                            <div aria-hidden="true" className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg focusable="false" className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                                </svg>
+                            </div>
+                            <p className="text-gray-700 dark:text-gray-300 font-medium">Aucune actualité trouvée</p>
+                            {searchTerm && (
+                                <SearchRescue
+                                    suggestions={suggestions}
+                                    unit={{ one: 'info', many: 'infos', feminine: true }}
+                                    onApply={(s) => {
+                                        if (s.lifted.includes('type')) setSelectedType('all');
+                                        handleSearchChange(s.query);
+                                    }}
+                                />
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-5">
+                        {newsPosts.map((post, index) => (
+                            <article
+                                key={post.id}
+                                className="glass-card p-6 transition-all duration-300 group"
+                                style={{ animationDelay: `${index * 50}ms` }}
+                            >
+                                <div className="flex items-start gap-4 mb-4 flex-wrap">
+                                    <div className="flex-1">
+                                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+                                            {post.title}
+                                        </h2>
+                                    </div>
+                                    <span className={`
+                                        px-4 py-1.5 rounded-full text-sm font-semibold shadow-md
+                                        ${getNewsTypeColor(post.type)}
+                                        ${getNewsTypeTextColor(post.type)}
                                     
-                                `}>
-                                    {newsTypeLabels[post.type]}
-                                </span>
-                            </div>
-
-                            <div className="mb-4 p-4 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30">
-                                <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                    {post.content}
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
-                                <div className="flex items-center gap-2">
-                                    <User aria-hidden="true" className="w-4 h-4" />
-                                    <span className="sr-only">Publié par </span>
-                                    <span className="font-medium">{post.author.name}</span>
+                                    `}>
+                                        {newsTypeLabels[post.type]}
+                                    </span>
                                 </div>
-                                <div aria-hidden="true" className="w-1 h-1 rounded-full bg-gray-400"></div>
-                                <div className="flex items-center gap-2">
-                                    <Calendar aria-hidden="true" className="w-4 h-4" />
-                                    <span className="sr-only">le </span>
-                                    <time dateTime={new Date(post.publishedAt).toISOString()}>
-                                        {parisDate(post.publishedAt)}
-                                    </time>
-                                </div>
-                            </div>
-                        </article>
-                    ))}
-                </div>
-            )}
 
-            {totalPages > 1 && (
-                <div className="">
-                    <CustomPagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={setCurrentPage}
-                    />
-                </div>
-            )}
+                                <div className="mb-4 p-4 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30">
+                                    <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                        {post.content}
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
+                                    <div className="flex items-center gap-2">
+                                        <User aria-hidden="true" className="w-4 h-4" />
+                                        <span className="sr-only">Publié par </span>
+                                        <span className="font-medium">{post.author.name}</span>
+                                    </div>
+                                    <div aria-hidden="true" className="w-1 h-1 rounded-full bg-gray-400"></div>
+                                    <div className="flex items-center gap-2">
+                                        <Calendar aria-hidden="true" className="w-4 h-4" />
+                                        <span className="sr-only">le </span>
+                                        <time dateTime={new Date(post.publishedAt).toISOString()}>
+                                            {parisDate(post.publishedAt)}
+                                        </time>
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </PublicPaginatedList>
         </div>
     );
 }
