@@ -2,8 +2,10 @@
 import { prisma } from '@/lib/prisma';
 import BooksTable from './books-table';
 import { notFound } from 'next/navigation';
-import { buildBookScopeWhere, AudioFilter } from '@/lib/books/searchWhere';
-import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
+import { AudioFilter } from '@/lib/books/searchWhere';
+import { listAdminBooks } from '@/lib/books/bookList';
+import { normalizeSearchQuery } from '@/lib/search-query';
+import { pageInfo, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -14,6 +16,18 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+/**
+ * The first page of the table, read by the same engine /api/books serves the
+ * table's own searches from (lib/books/bookList.ts) — never a second one.
+ *
+ * This page used to build its own Prisma `contains` search. Prisma renders the
+ * genre arm of that OR as `"Book"."id" IN (SELECT … JOIN "Genre" …)`, a hashed
+ * subplan no index can serve, so each of its four queries read every book —
+ * and it re-ran on every reload and every router.refresh() of a searched URL.
+ * On Supabase's free tier that was the load that took the database down on
+ * 2026-09-24. It was also accent-sensitive, so the rows painted from the
+ * server could differ from the ones the table fetched a moment later.
+ */
 async function getBooks(
     page: number,
     pageSize: number,
@@ -24,52 +38,22 @@ async function getBooks(
     hidden?: boolean,
     audio?: AudioFilter
 ) {
-    const booksPerPage = pageSize;
-
-    // Every filter except availability, so the disponible/en attente counts
-    // reflect the rest of the current filter set without being gated by the
-    // availability filter itself.
-    const scopedWhere = buildBookScopeWhere({
-        searchTerm,
-        filter,
-        genreIds,
-        includeHidden: true,
-        hidden,
-        audio,
-    });
-    const listWhere = available !== undefined
-        ? { AND: [scopedWhere, { available }] }
-        : scopedWhere;
-
     try {
-        const [books, totalBooks, availableCount, unavailableCount, genres] = await Promise.all([
-            prisma.book.findMany({
-                where: listWhere,
-                orderBy: { createdAt: 'desc' },
-                skip: pageSkip(page, booksPerPage),
-                take: booksPerPage,
-                include: {
-                    addedBy: {
-                        select: {
-                            name: true,
-                            email: true,
-                        },
-                    },
-                    genres: {
-                        select: {
-                            genre: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                },
-                            },
-                        },
-                    },
-                },
+        const [result, genres] = await Promise.all([
+            listAdminBooks({
+                // Normalized exactly as /api/books normalizes it, so « #42 »
+                // finds book 42 here too.
+                search: normalizeSearchQuery(searchTerm),
+                filter,
+                genres: genreIds,
+                page,
+                limit: pageSize,
+                available,
+                hidden,
+                audio,
+                recent: false,
+                since: null,
             }),
-            prisma.book.count({ where: listWhere }),
-            prisma.book.count({ where: { AND: [scopedWhere, { available: true }] } }),
-            prisma.book.count({ where: { AND: [scopedWhere, { available: false }] } }),
             prisma.genre.findMany({
                 select: {
                     id: true,
@@ -82,18 +66,17 @@ async function getBooks(
         ]);
 
         return {
-            books,
-            pagination: pageInfo(page, pageSize, totalBooks),
+            books: result.books,
+            pagination: pageInfo(page, pageSize, result.total),
             availableGenres: genres,
-            availableCount,
-            unavailableCount,
+            availableCount: result.availableCount,
+            unavailableCount: result.unavailableCount,
         };
     } catch (error) {
         console.error('Error fetching books:', error);
         throw new Error('Failed to fetch books');
     }
 }
-
 export default async function AdminBooksPage({ searchParams }: PageProps) {
     const params = await searchParams;
 

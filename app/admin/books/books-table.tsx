@@ -90,10 +90,6 @@ interface Book {
             name: string;
         };
     }[];
-    addedBy: {
-        name: string | null;
-        email: string | null;
-    };
     publishedDate: Date | null;
     description: string | null;
     addedById: number;

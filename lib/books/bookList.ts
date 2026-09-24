@@ -496,8 +496,13 @@ async function performAccentInsensitiveSearch(
 
         const total = Number(countResult[0]?.count || 0);
 
+        // The real total even when this page is empty: past the last page the
+        // search did find books, just not this far, and both the admin page's
+        // redirectPastLastPage and the table's own fallback to the last page
+        // only fire on « no rows, total > 0 ». Returning 0 here made them read
+        // it as a search that found nothing.
         if (books.length === 0) {
-            return { books: [], total: 0 };
+            return { books: [], total };
         }
 
         // Get genres for the books
