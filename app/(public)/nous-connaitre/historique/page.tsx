@@ -2,6 +2,7 @@ import FrontendNavbar from "@/components/Frontend-Navbar";
 import { resolveIcon } from "@/lib/icons";
 import { getHistory } from "./data";
 import type { Metadata } from "next";
+import { PageHeader } from "@/components/PageHeader";
 
 export const metadata: Metadata = {
     title: 'Notre Histoire',
@@ -17,15 +18,13 @@ export default async function HistoriquePage() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
-                <section className="text-center glass-card-lg p-8 sm:p-12">
-                    <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Notre Histoire</h1>
-                    <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-6"></div>
-                    <p className="text-lg text-gray-700 dark:text-gray-100 max-w-2xl mx-auto">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
+                <PageHeader title="Notre histoire">
+                    <p>
                         Depuis 40 ans, les ECA s&apos;engagent pour rendre la lecture accessible
-                        aux personnes déficientes visuelles. Découvrez les moments clés de leur parcours.
+                        aux personnes déficientes visuelles. Voici les moments clés de leur parcours.
                     </p>
-                </section>
+                </PageHeader>
 
                 <div className="relative">
                     {/* Timeline center line */}
@@ -56,8 +55,8 @@ export default async function HistoriquePage() {
                                     <Icon className="h-6 w-6" />
                                 </div>
 
-                                <div className="glass-card overflow-hidden hover:scale-[1.02] transition-transform duration-300">
-                                    <div className="bg-gradient-to-r from-blue-700 to-blue-600 p-3">
+                                <div className="glass-card overflow-hidden">
+                                    <div className="bg-primary p-3">
                                         <div className="flex md:hidden items-center justify-center w-8 h-8 rounded-full bg-white mr-3 text-blue-700 float-left">
                                             <Icon className="h-6 w-6" />
                                         </div>
@@ -80,7 +79,7 @@ export default async function HistoriquePage() {
                     })}
                 </div>
 
-                <section className="glass-card-lg p-8 text-center bg-gradient-to-r from-blue-500/10 to-indigo-500/10">
+                <section className="glass-card-lg p-8 text-center">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">L&apos;histoire continue...</h2>
                     <p className="text-gray-700 dark:text-gray-100 mb-6 max-w-lg mx-auto">
                         Aujourd&apos;hui, les ECA poursuivent leur mission avec le même engagement et enthousiasme qu&apos;à leurs débuts.
@@ -88,7 +87,7 @@ export default async function HistoriquePage() {
                         toujours plus accessibles.
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
-                        <a href="/nous-rejoindre" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                        <a href="/nous-rejoindre" className="bg-primary hover:bg-primary/90 text-white font-medium py-3 px-8 rounded-lg">
                             Rejoignez notre histoire
                         </a>
                         <a href="/contact" className="bg-transparent border-2 border-blue-600 dark:border-white text-blue-600 dark:text-white hover:bg-blue-600 dark:hover:bg-white hover:text-white dark:hover:text-gray-900 font-medium py-3 px-8 rounded-lg transition-all duration-300">

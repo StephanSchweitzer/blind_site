@@ -178,7 +178,7 @@ export function AffichageSettings({ children }: { children: ReactNode }) {
                             <span>
                                 <span className="block font-semibold text-gray-900 dark:text-white">Réduire les animations</span>
                                 <span className="block text-sm text-gray-700 dark:text-gray-300">
-                                    Arrête le fond animé et les effets de mouvement.
+                                    Coupe les transitions et les fondus, même discrets.
                                 </span>
                             </span>
                         </label>
@@ -204,7 +204,7 @@ export function AffichageBouton() {
                 // Contains the visible word, so voice control (« cliquer
                 // Affichage ») still finds it — WCAG 2.5.3.
                 aria-label="Réglages d'affichage"
-                className="flex items-center gap-2 p-2 rounded-lg bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 transition-colors duration-200 text-gray-800 dark:text-gray-100 font-medium"
+                className="flex items-center gap-2 p-2 rounded-lg bg-muted hover:bg-accent transition-colors duration-200 text-foreground font-medium"
             >
                 <Type aria-hidden="true" className="h-5 w-5" />
                 {/* The word hides on a phone, where the bar also holds the

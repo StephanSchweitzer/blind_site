@@ -1,4 +1,5 @@
 // tailwind.config.js
+const defaultTheme = require("tailwindcss/defaultTheme");
 /** @type {import('tailwindcss').Config} */
 module.exports = {
 	darkMode: ["class"],
@@ -25,7 +26,30 @@ module.exports = {
 			}
 		},
 		extend: {
+			// Atkinson Hyperlegible Next / Mono, chargées dans app/layout.tsx.
+			fontFamily: {
+				sans: ['var(--font-sans)', ...defaultTheme.fontFamily.sans],
+				mono: ['var(--font-mono)', ...defaultTheme.fontFamily.mono],
+			},
 			colors: {
+				// Tirées du logo : l'encre, le bleu des lettres « eca », le point
+				// orange, et les sept dos de livres (voir « Palette » dans
+				// app/globals.css). Les dos ne servent qu'à marquer une famille de
+				// genres, toujours écrite à côté.
+				encre: 'hsl(var(--encre))',
+				papier: 'hsl(var(--papier))',
+				'bleu-eca': 'hsl(var(--bleu-eca))',
+				'orange-eca': 'hsl(var(--orange-eca))',
+				dos: {
+					bleu: 'hsl(var(--dos-bleu))',
+					violet: 'hsl(var(--dos-violet))',
+					rose: 'hsl(var(--dos-rose))',
+					rouge: 'hsl(var(--dos-rouge))',
+					orange: 'hsl(var(--dos-orange))',
+					jaune: 'hsl(var(--dos-jaune))',
+					turquoise: 'hsl(var(--dos-turquoise))',
+					neutre: 'hsl(var(--dos-neutre))',
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				field: 'hsl(var(--field))',

@@ -72,42 +72,63 @@
 }
 
 @layer base {
+    /* ─── Palette ─────────────────────────────────────────────────────────
+       Tirée du logo plutôt que des bleus et violets de Tailwind : l'encre du
+       texte, le bleu des lettres « eca » (assombri pour tenir le contraste AA
+       sur fond clair : 6,6:1 sur blanc), le point orange, un papier blanc cassé
+       qui éblouit moins qu'un blanc pur, et les sept dos de livres du logo. */
     :root {
-        --background: 214 32% 95%;
-        --foreground: 222.2 84% 4.9%;
+        --encre: 215 50% 12%;          /* #0F1B2D */
+        --papier: 216 33% 97%;         /* #F5F7FA */
+        --bleu-eca: 212 69% 39%;       /* #1F5FA8 */
+        --orange-eca: 23 79% 49%;      /* #E0661B */
+
+        /* Les dos de livres. Décor et repère de famille de genres, jamais
+           seuls porteurs d'une information : le genre est toujours écrit. */
+        --dos-bleu: 203 99% 50%;       /* #029EFD */
+        --dos-violet: 299 37% 60%;     /* #BE74BF */
+        --dos-rose: 334 86% 55%;       /* #EF2C82 */
+        --dos-rouge: 9 95% 59%;        /* #FA5134 */
+        --dos-orange: 26 99% 55%;      /* #FE7E1C */
+        --dos-jaune: 54 93% 60%;       /* #F8E339 */
+        --dos-turquoise: 175 99% 41%;  /* #01CEBF */
+        --dos-neutre: 215 16% 72%;
+
+        --background: var(--papier);
+        --foreground: var(--encre);
 
         --card: 0 0% 100%;
-        --card-foreground: 222.2 84% 4.9%;
+        --card-foreground: var(--encre);
 
         --popover: 0 0% 100%;
-        --popover-foreground: 222.2 84% 4.9%;
+        --popover-foreground: var(--encre);
 
-        /* Brand blue (tailwind blue-600) — the app's primary action color */
-        --primary: 221 83% 53%;
-        --primary-foreground: 210 40% 98%;
+        /* Le bleu ECA — la couleur d'action du site et du back-office. */
+        --primary: var(--bleu-eca);
+        --primary-foreground: 0 0% 100%;
 
         --secondary: 214 32% 94%;
-        --secondary-foreground: 222.2 47.4% 11.2%;
+        --secondary-foreground: var(--encre);
 
         --muted: 214 32% 94%;
-        --muted-foreground: 215.4 16.3% 46.9%;
+        --muted-foreground: 215 20% 38%;
 
         --accent: 214 30% 89%;
-        --accent-foreground: 222.2 47.4% 11.2%;
+        --accent-foreground: var(--encre);
 
         --destructive: 0 84.2% 60.2%;
         --destructive-foreground: 210 40% 98%;
 
         --border: 214 25% 84%;
         --input: 214 22% 78%;
-        --field: 214 30% 92%;
-        --ring: 215 90% 56%;
+        --field: 214 30% 94%;
+        --ring: var(--bleu-eca);
 
         --radius: 0.5rem;
 
         /* Brand tokens (ported from legacy root globals.css; available via bg-brand-* / text-brand-*) */
-        --brand-primary: 215 100% 50%;
-        --brand-secondary: 260 100% 60%;
+        --brand-primary: var(--bleu-eca);
+        --brand-secondary: var(--orange-eca);
         --brand-accent: 150 100% 45%;
 
         /* Chart tokens (bg-chart-1..5 etc.) */
@@ -118,36 +139,41 @@
         --chart-5: 27 87% 67%;
     }
 
+    /* Thème sombre : un bleu nuit tiré de l'encre, pas un noir pur — le blanc
+       sur noir bave pour beaucoup de malvoyants. */
     .dark {
-        --background: 222 47% 6%;
-        --foreground: 210 40% 98%;
+        --background: 217 51% 8%;
+        --foreground: 214 36% 95%;
 
-        --card: 222 40% 11%;
-        --card-foreground: 210 40% 98%;
+        --card: 218 45% 13%;
+        --card-foreground: 214 36% 95%;
 
-        --popover: 222 40% 11%;
-        --popover-foreground: 210 40% 98%;
+        --popover: 218 45% 13%;
+        --popover-foreground: 214 36% 95%;
 
-        /* Brand blue (tailwind blue-600) — same hue in dark for action consistency */
-        --primary: 221 83% 53%;
-        --primary-foreground: 210 40% 98%;
+        /* Un cran plus clair que le bleu ECA, pour rester visible sur le fond
+           nuit ; le texte blanc d'un bouton y garde 5:1. */
+        --primary: 212 64% 45%;
+        --primary-foreground: 0 0% 100%;
 
         --secondary: 217 32% 18%;
-        --secondary-foreground: 210 40% 98%;
+        --secondary-foreground: 214 36% 95%;
 
         --muted: 217 32% 18%;
-        --muted-foreground: 215 20.2% 65.1%;
+        --muted-foreground: 215 22% 72%;
 
         --accent: 217 32% 23%;
-        --accent-foreground: 210 40% 98%;
+        --accent-foreground: 214 36% 95%;
 
         --destructive: 0 62.8% 30.6%;
         --destructive-foreground: 210 40% 98%;
 
-        --border: 217 25% 28%;
-        --input: 217 22% 30%;
+        --border: 217 25% 26%;
+        --input: 217 22% 32%;
         --field: 217 30% 16%;
-        --ring: 215 85% 60%;
+        --ring: 212 80% 68%;
+
+        --dos-neutre: 215 16% 42%;
 
         --chart-1: 220 70% 50%;
         --chart-2: 160 60% 45%;
@@ -161,131 +187,29 @@
     * {
         @apply border-border;
     }
+    /* Un fond uni. Il y avait ici un dégradé animé en continu, avec des taches
+       floues qui dérivaient derrière le texte : du mouvement permanent pour un
+       public qui lit souvent à la loupe, et une carte graphique occupée sans
+       répit sur des ordinateurs qui ne sont pas toujours récents. */
     body {
-        @apply text-foreground transition-colors duration-300;
+        @apply bg-background text-foreground;
     }
 
-    /* Premium animated gradient backgrounds */
-    body:not(.dark) {
-        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 30%, #dbeafe 60%, #f0f9ff 100%);
-        background-size: 400% 400%;
-        animation: gradient-shift 15s ease infinite;
-        background-attachment: fixed;
-    }
-
-    .dark body {
-        background: linear-gradient(135deg, #0a0e1a 0%, #1a1640 30%, #152238 60%, #0f1325 100%);
-        background-size: 400% 400%;
-        animation: gradient-shift 15s ease infinite;
-        background-attachment: fixed;
+    /* Site public : un corps de texte à 18 px. Les tailles posées explicitement
+       (text-sm…) restent ce qu'elles sont ; le back-office garde 16 px. */
+    :root:has(#navigation-principale) body {
+        font-size: 1.125rem;
+        line-height: 1.6;
     }
 }
 
-/* Premium animations and effects */
 @layer utilities {
-    /* Animated gradient background */
-    @keyframes gradient-shift {
-        0%, 100% {
-            background-position: 0% 50%;
-        }
-        50% {
-            background-position: 100% 50%;
-        }
-    }
-
-    /* Animated blob effect for decorative elements */
-    @keyframes blob {
-        0%, 100% {
-            transform: translate(0px, 0px) scale(1);
-        }
-        33% {
-            transform: translate(30px, -50px) scale(1.1);
-        }
-        66% {
-            transform: translate(-20px, 20px) scale(0.9);
-        }
-    }
-
-    .animate-blob {
-        animation: blob 7s infinite;
-    }
-
-    .animation-delay-2000 {
-        animation-delay: 2s;
-    }
-
-    .animation-delay-4000 {
-        animation-delay: 4s;
-    }
-
-    /* Fade in up animation for cards */
-    @keyframes fade-in-up {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .animate-fade-in-up {
-        animation: fade-in-up 0.6s ease-out forwards;
-        animation-fill-mode: both;
-    }
-
-    /* Fade in animation */
-    @keyframes fade-in {
-        from {
-            opacity: 0;
-        }
-        to {
-            opacity: 1;
-        }
-    }
-
-    .animate-fade-in {
-        animation: fade-in 0.5s ease-out;
-    }
-
-    /* Scale in animation for tags */
-    @keyframes scale-in {
-        from {
-            opacity: 0;
-            transform: scale(0.8);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
-
-    .animate-scale-in {
-        animation: scale-in 0.3s ease-out;
-    }
-
-    /* Subtle pulse for "En attente" badges.
-       Opacity only — no `transform: scale()`. That badge sits inside the
-       catalogue card's `backdrop-blur-xl`, and animating a transform on a
-       descendant of a backdrop-filter container makes the browser rasterize
-       it at a fractional scale every frame, blurring the badge text for the
-       whole pulse. Same complaint as the shadow-md fix above, different
-       mechanism. */
-    @keyframes pulse-subtle {
-        0%, 100% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.85;
-        }
-    }
-
-    .animate-pulse-subtle {
-        animation: pulse-subtle 2s ease-in-out infinite;
-    }
-
-    /* Reduced motion: see « Réglages d'affichage » at the end of this file. */
+    /* Rien ici ne bouge tout seul. Les animations décoratives d'avant —
+       dégradé qui glisse, taches qui dérivent, cartes qui glissent en place à
+       l'arrivée, pastille « En attente » qui pulse — sont retirées : un
+       mouvement que personne n'a demandé distrait, et désoriente qui lit à la
+       loupe. Restent les indicateurs de chargement, qui disent qu'on attend.
+       Voir aussi « Réglages d'affichage » en fin de fichier. */
 
     /* Custom scrollbar */
     .custom-scrollbar::-webkit-scrollbar {
@@ -304,30 +228,22 @@
         @apply bg-gray-400 dark:bg-gray-500;
     }
 
-    /* Enhanced glass card styles with premium effects */
+    /* Les cartes du site public. Le nom est resté, le verre dépoli est parti :
+       un fond uni, un filet, une ombre légère. Plus de flou d'arrière-plan
+       (coûteux, et il brouillait le contraste du texte selon ce qui passait
+       derrière) ni de carte qui se soulève au survol — un paragraphe qui bouge
+       sous la souris a l'air cliquable et ne l'est pas. */
     .glass-card {
-        @apply backdrop-blur-xl backdrop-saturate-150
-        bg-white/90 dark:bg-gray-800/80
-        border-2 border-gray-200/50 dark:border-gray-700/50
-        rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
-        hover:shadow-[0_20px_60px_rgb(59,130,246,0.15)] dark:hover:shadow-[0_20px_60px_rgb(147,51,234,0.25)]
-        hover:border-blue-200/50 dark:hover:border-purple-500/30
-        hover:-translate-y-1
-        transition-all duration-500;
+        @apply bg-card text-card-foreground border border-border rounded-xl shadow-sm;
     }
 
     .glass-card-lg {
-        @apply backdrop-blur-xl backdrop-saturate-150
-        bg-white/90 dark:bg-gray-800/80
-        border-2 border-gray-200/50 dark:border-gray-700/50
-        rounded-3xl shadow-[0_20px_60px_rgb(0,0,0,0.12)] dark:shadow-[0_20px_60px_rgb(0,0,0,0.4)]
-        hover:shadow-[0_30px_80px_rgb(59,130,246,0.2)] dark:hover:shadow-[0_30px_80px_rgb(147,51,234,0.3)]
-        transition-all duration-500;
+        @apply bg-card text-card-foreground border border-border rounded-2xl shadow-sm;
     }
 
-    /* Text gradient effects */
+    /* Anciens titres en dégradé : un aplat, à la couleur du bleu ECA. */
     .text-gradient {
-        @apply bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent;
+        color: hsl(var(--primary));
     }
 
     /* Line clamp utilities */
@@ -351,15 +267,6 @@
         -webkit-box-orient: vertical;
         overflow: hidden;
         }
-
-    /* Ported from legacy root globals.css; unused today but kept for future use. */
-    .bg-primary-gradient {
-        background: linear-gradient(
-                135deg,
-                hsl(var(--brand-primary)) 0%,
-                hsl(var(--brand-secondary)) 100%
-        );
-    }
 
     .bg-hover-overlay {
         @apply transition-colors duration-200;
@@ -536,11 +443,6 @@
 :root.dark[data-contraste='renforce']:has(#navigation-principale) :is(.glass-card, .glass-card-lg, #navigation-principale) {
     background-color: #000000 !important;
     border-color: #f3f4f6 !important;
-}
-/* Les taches floues colorées du décor (layout public, catalogue, infos) : un
-   fond uni, c'est aussi sans elles. */
-:root[data-contraste='renforce']:has(#navigation-principale) .animate-blob {
-    display: none !important;
 }
 /* Titres en dégradé : texte plein. */
 :root[data-contraste='renforce']:has(#navigation-principale) :is(.text-gradient, .bg-clip-text) {

@@ -93,13 +93,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             label="Rechercher dans les listes de livres"
             shouldFilter={false}
             className="rounded-2xl
-                bg-white/95 dark:bg-gray-700/95
-                backdrop-blur-xl backdrop-saturate-150
-                border-2 border-gray-300/50 dark:border-gray-600/50
-                shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
-                hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_12px_40px_rgb(0,0,0,0.4)]
-                transition-all duration-300
-                overflow-hidden"
+ bg-white/95 dark:bg-gray-700/95
+ 
+ border-2 border-gray-300/50 dark:border-gray-600/50
+ 
+ 
+ transition-all duration-300
+ overflow-hidden"
         >
             <CommandInput
                 value={searchTerm}
@@ -111,10 +111,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 }}
                 placeholder="Rechercher les listes de livres..."
                 className="border-none
-                    focus:ring-4 focus:ring-blue-500/20 dark:focus:ring-purple-500/20
-                    text-gray-900 dark:text-gray-100
-                    placeholder-gray-600 dark:placeholder-gray-300
-                    py-3"
+ focus:ring-4 focus:ring-blue-500/20 dark:focus:ring-blue-500/20
+ text-gray-900 dark:text-gray-100
+ placeholder-gray-600 dark:placeholder-gray-300
+ py-3"
             />
             <div className={`transition-all duration-300 ${showResults && searchTerm.trim() ? "block" : "hidden"}`}>
                 <CommandList className="max-h-80 custom-scrollbar">
@@ -122,8 +122,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         <CommandEmpty className="py-8 text-center">
                             <div className="flex flex-col items-center gap-3">
                                 <div aria-hidden="true" className="relative">
-                                    <div className="animate-spin rounded-full h-10 w-10 border-3 border-blue-200 dark:border-purple-900"></div>
-                                    <div className="absolute inset-0 animate-spin rounded-full h-10 w-10 border-3 border-transparent border-t-blue-600 dark:border-t-purple-400"></div>
+                                    <div className="animate-spin rounded-full h-10 w-10 border-3 border-blue-200 dark:border-blue-900"></div>
+                                    <div className="absolute inset-0 animate-spin rounded-full h-10 w-10 border-3 border-transparent border-t-blue-600 dark:border-t-blue-400"></div>
                                 </div>
                                 <span className="text-gray-700 dark:text-gray-300 font-medium">Recherche en cours...</span>
                             </div>
@@ -157,19 +157,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                     onSelect={() => handleSelect(result)}
                                     style={{ animationDelay: `${index * 50}ms` }}
                                     className="cursor-pointer
-                                        p-4 m-2 rounded-xl
-                                        bg-gray-50/50 dark:bg-gray-700/30
-                                        hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/30 dark:hover:to-purple-900/30
-                                        border border-gray-200/50 dark:border-gray-600/30
-                                        hover:border-blue-300/50 dark:hover:border-purple-500/50
-                                        hover:shadow-md
-                                        transition-all duration-300
-                                        hover:scale-[1.02]
-                                        animate-fade-in-up
-                                        group"
+ p-4 m-2 rounded-xl
+ bg-gray-50/50 dark:bg-gray-700/30
+ hover:bg-muted
+ border border-gray-200/50 dark:border-gray-600/30
+ hover:border-blue-300/50 dark:hover:border-blue-500/50
+ hover:shadow-md
+ transition-all duration-300
+ 
+ 
+ group"
                                 >
                                     <div className="flex flex-col gap-2">
-                                        <div className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-purple-400 transition-colors duration-300">
+                                        <div className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
                                             {result.title}
                                         </div>
                                         <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 leading-relaxed">

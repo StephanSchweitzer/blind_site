@@ -1,6 +1,7 @@
 import React from 'react';
 import { groupBy } from 'lodash';
 import type { PublicBook } from '@/lib/books/publicBook';
+import { genreFamily, GENRE_FAMILY_SPINE } from '@/lib/books/genreFamily';
 
 interface BookListProps {
     books: { book: PublicBook }[];
@@ -20,7 +21,7 @@ const TruncatedDescription: React.FC<{ description: string, characterLimit?: num
         // aria-hidden: the affordance is already carried by the title button's
         // own name, and "Cliquer pour…" reads as an instruction to click, which
         // is meaningless for a keyboard or screen-reader user (RGAA 13.10).
-        <>{description.substring(0, characterLimit)}… <span aria-hidden="true" className="text-blue-700 dark:text-purple-300 font-medium hover:underline">Cliquer pour tout afficher</span></>
+        <>{description.substring(0, characterLimit)}… <span aria-hidden="true" className="text-blue-700 dark:text-blue-300 font-medium hover:underline">Cliquer pour tout afficher</span></>
     );
 };
 
@@ -55,12 +56,15 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                 <section
                     key={genre}
                     aria-labelledby={`genre-${genreIndex}`}
-                    className="border-t-2 border-gray-300/50 dark:border-gray-600/50 pt-6 animate-fade-in"
+                    className="border-t-2 border-gray-300/50 dark:border-gray-600/50 pt-6"
                     style={{ animationDelay: `${genreIndex * 100}ms` }}
                 >
                     <div className="flex items-center gap-3 mb-5">
-                        <h3 id={`genre-${genreIndex}`} className="text-xl font-bold text-gray-900 dark:text-white">{genre}</h3>
-                        <div aria-hidden="true" className="h-0.5 flex-1 bg-gradient-to-r from-blue-500/30 to-transparent dark:from-purple-500/30"></div>
+                        {/* The genre family's spine (lib/books/genreFamily.ts), next to
+                            the genre's written name. */}
+                        <span aria-hidden="true" className={`block h-7 w-2 shrink-0 rounded-[2px] ${GENRE_FAMILY_SPINE[genreFamily(genre)]}`} />
+                        <h3 id={`genre-${genreIndex}`} className="text-xl font-bold text-foreground">{genre}</h3>
+                        <div aria-hidden="true" className="h-0.5 flex-1 bg-border"></div>
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-3 py-1 rounded-full">
                             {books.length} {books.length === 1 ? 'livre' : 'livres'}
                         </span>
@@ -73,29 +77,16 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                             <li key={book.id}>
                             <article
                                 style={{ animationDelay: `${(genreIndex * 100) + (index * 50)}ms` }}
-                                className="group pl-4 cursor-pointer
-                                    p-4 rounded-xl
-                                    bg-white/90 dark:bg-gray-800/90
-                                    backdrop-blur-xl backdrop-saturate-150
-                                    border border-gray-200/50 dark:border-gray-600/60
-                                    shadow-md dark:shadow-[0_4px_20px_rgb(0,0,0,0.4)]
-                                    hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-purple-500/20
-                                    hover:-translate-y-1 hover:scale-[1.01]
-                                    hover:border-blue-300/50 dark:hover:border-purple-400/70
-                                    focus-within:border-blue-400 dark:focus-within:border-purple-400
-                                    transition-all duration-300 ease-out
-                                    relative overflow-hidden
-                                    animate-fade-in-up"
+                                // No lift on hover (it moved under the pointer); the border
+                                // says « this opens ». The spine repeats the section's.
+                                className="group relative cursor-pointer overflow-hidden rounded-xl border border-border bg-card py-4 pl-6 pr-4 shadow-sm transition-colors hover:border-primary hover:shadow-md focus-within:border-primary"
                                 onClick={() => onBookClick(book)}
                             >
-                                {/* Subtle shine effect */}
-                                <div aria-hidden="true" className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-                                </div>
+                                <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${GENRE_FAMILY_SPINE[genreFamily(genre)]}`} />
 
                                 <div className="relative z-10">
                                     <div className="mb-3">
-                                        <h4 className="font-bold text-lg text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-purple-400 transition-colors duration-300">
+                                        <h4 className="font-bold text-lg text-foreground mb-1 group-hover:text-primary dark:group-hover:text-blue-300">
                                             <button
                                                 type="button"
                                                 onClick={(event) => {

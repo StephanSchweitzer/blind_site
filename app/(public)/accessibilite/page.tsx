@@ -3,6 +3,7 @@ import FrontendNavbar from "@/components/Frontend-Navbar";
 import { PhoneLines } from "@/components/PhoneLines";
 import { getSiteContact } from "../contact/data";
 import type { Metadata } from "next";
+import { PageHeader } from "@/components/PageHeader";
 
 export const metadata: Metadata = {
     title: 'Accessibilité',
@@ -45,14 +46,13 @@ export default async function AccessibilitePage() {
         <div className="flex min-h-screen flex-col">
             <FrontendNavbar />
             <main id="contenu-principal" className="relative flex-1">
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 space-y-8">
-                    <section className="text-center glass-card-lg p-8 sm:p-12">
-                        <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Accessibilité</h1>
-                        <p className="text-lg text-gray-700 dark:text-gray-100">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 space-y-8">
+                    <PageHeader title="Accessibilité">
+                        <p>
                             Les ECA enregistrent des livres pour les personnes aveugles et malvoyantes :
                             ce site doit d&apos;abord leur être utilisable.
                         </p>
-                    </section>
+                    </PageHeader>
 
                     <section className={section} aria-labelledby="etat">
                         <h2 id="etat" className={h2}>Où en est le site</h2>

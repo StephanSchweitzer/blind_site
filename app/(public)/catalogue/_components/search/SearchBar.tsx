@@ -46,7 +46,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     return (
         // role="search" gives the whole block a landmark, so a screen-reader user
         // can jump straight to it instead of tabbing through the header first.
-        <search role="search" className="animate-fade-in">
+        <search role="search" className="">
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:items-center">
                 {/* Search input - 45% */}
                 <div className="relative w-full sm:w-[45%] group">
@@ -64,21 +64,21 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         onChange={(e) => onSearchChange(e.target.value)}
                         placeholder="Recherche de livres..."
                         className="w-full px-4 py-3 pl-11 pr-11
-                            bg-white/95 dark:bg-gray-700/95
-                            backdrop-blur-xl
-                            border-2 border-gray-300/50 dark:border-gray-600/50
-                            rounded-xl
-                            text-gray-900 dark:text-gray-100
-                            placeholder-gray-600 dark:placeholder-gray-300
-                            focus:border-blue-500/80 dark:focus:border-purple-500/80
-                            focus:ring-4 focus:ring-blue-500/20 dark:focus:ring-purple-500/20
-                            shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
-                            hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_12px_40px_rgb(0,0,0,0.4)]
-                            transition-all duration-300"
+ bg-white/95 dark:bg-gray-700/95
+ 
+ border-2 border-gray-300/50 dark:border-gray-600/50
+ rounded-xl
+ text-gray-900 dark:text-gray-100
+ placeholder-gray-600 dark:placeholder-gray-300
+ focus:border-blue-500/80 dark:focus:border-blue-500/80
+ focus:ring-4 focus:ring-blue-500/20 dark:focus:ring-blue-500/20
+ 
+ 
+ transition-all duration-300"
                     />
-                    <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-3.5 text-gray-500 dark:text-gray-400 group-focus-within:text-blue-600 dark:group-focus-within:text-purple-400 transition-colors duration-300" size={20} />
+                    <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-3.5 text-gray-500 dark:text-gray-400 group-focus-within:text-blue-600 dark:group-focus-within:text-blue-400 transition-colors duration-300" size={20} />
                     {isSearching && (
-                        <Loader2 aria-hidden="true" className="pointer-events-none absolute right-3.5 top-3.5 text-blue-600 dark:text-purple-400 animate-spin" size={20} />
+                        <Loader2 aria-hidden="true" className="pointer-events-none absolute right-3.5 top-3.5 text-blue-600 dark:text-blue-400 animate-spin" size={20} />
                     )}
                     {!isSearching && searchTerm && (
                         <button
@@ -102,17 +102,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         value={selectedFilter}
                         onChange={(e) => onFilterChange(e.target.value)}
                         className="w-full px-4 py-3
-                            bg-white/95 dark:bg-gray-700/95
-                            backdrop-blur-xl
-                            border-2 border-gray-300/50 dark:border-gray-600/50
-                            rounded-xl
-                            text-gray-900 dark:text-gray-100
-                            focus:border-blue-500/80 dark:focus:border-purple-500/80
-                            focus:ring-4 focus:ring-blue-500/20 dark:focus:ring-purple-500/20
-                            shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
-                            hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_12px_40px_rgb(0,0,0,0.4)]
-                            transition-all duration-300
-                            cursor-pointer"
+ bg-white/95 dark:bg-gray-700/95
+ 
+ border-2 border-gray-300/50 dark:border-gray-600/50
+ rounded-xl
+ text-gray-900 dark:text-gray-100
+ focus:border-blue-500/80 dark:focus:border-blue-500/80
+ focus:ring-4 focus:ring-blue-500/20 dark:focus:ring-blue-500/20
+ 
+ 
+ transition-all duration-300
+ cursor-pointer"
                     >
                         <option value="all">Tous les champs</option>
                         <option value="title">Titre</option>
@@ -133,15 +133,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                             <Button
                                 variant="outline"
                                 className="w-full justify-between h-[50px]
-                                    bg-white/95 dark:bg-gray-700/95
-                                    backdrop-blur-xl
-                                    border-2 border-gray-300/50 dark:border-gray-600/50
-                                    text-gray-900 dark:text-gray-100
-                                    hover:bg-white dark:hover:bg-gray-700
-                                    hover:border-blue-500/50 dark:hover:border-purple-500/50
-                                    shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
-                                    hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_12px_40px_rgb(0,0,0,0.4)]
-                                    transition-all duration-300 rounded-xl"
+ bg-white/95 dark:bg-gray-700/95
+ 
+ border-2 border-gray-300/50 dark:border-gray-600/50
+ text-gray-900 dark:text-gray-100
+ hover:bg-white dark:hover:bg-gray-700
+ hover:border-blue-500/50 dark:hover:border-blue-500/50
+ 
+ 
+ transition-all duration-300 rounded-xl"
                             >
                                 <span className="truncate">
                                     {selectedGenres.length > 0
@@ -152,11 +152,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[280px] p-0
-                            bg-white/98 dark:bg-gray-800/98
-                            backdrop-blur-xl
-                            border-2 border-gray-200/50 dark:border-gray-700/50
-                            shadow-[0_20px_60px_rgb(0,0,0,0.15)] dark:shadow-[0_20px_60px_rgb(0,0,0,0.4)]
-                            rounded-xl">
+ bg-white/98 dark:bg-gray-800/98
+ 
+ border-2 border-gray-200/50 dark:border-gray-700/50
+ 
+ rounded-xl">
                             <div className="p-3">
                                 <label htmlFor={genreSearchId} className="sr-only">
                                     Rechercher un genre
@@ -168,11 +168,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                     value={genreSearchQuery}
                                     onChange={(e) => setGenreSearchQuery(e.target.value)}
                                     className="mb-2
-                                        bg-gray-50 dark:bg-gray-700/50
-                                        border-gray-200 dark:border-gray-600
-                                        text-gray-900 dark:text-gray-100
-                                        focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-purple-500/20
-                                        rounded-lg"
+ bg-gray-50 dark:bg-gray-700/50
+ border-gray-200 dark:border-gray-600
+ text-gray-900 dark:text-gray-100
+ focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/20
+ rounded-lg"
                                 />
                                 {/* Each option used to be a `div` with an onClick — no keyboard
                                     access, and nothing announced whether a genre was already
@@ -190,11 +190,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                                         type="button"
                                                         aria-pressed={isSelected}
                                                         className="flex items-center w-full px-3 py-2 text-sm text-left
-                                                            text-gray-900 dark:text-gray-100
-                                                            hover:bg-blue-50 dark:hover:bg-blue-900/30
-                                                            rounded-lg cursor-pointer
-                                                            transition-all duration-200
-                                                            group"
+ text-gray-900 dark:text-gray-100
+ hover:bg-blue-50 dark:hover:bg-blue-900/30
+ rounded-lg cursor-pointer
+ transition-all duration-200
+ group"
                                                         onClick={() => {
                                                             handleGenreSelect(genre.id);
                                                             setGenreSearchQuery('');
@@ -204,11 +204,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                                             aria-hidden="true"
                                                             className={`mr-2 h-4 w-4 transition-all duration-200 ${
                                                                 isSelected
-                                                                    ? "opacity-100 text-blue-600 dark:text-purple-400 scale-100"
+                                                                    ? "opacity-100 text-blue-600 dark:text-blue-400 scale-100"
                                                                     : "opacity-0 scale-50"
                                                             }`}
                                                         />
-                                                        <span className="group-hover:translate-x-0.5 transition-transform duration-200">
+                                                        <span className="transition-transform duration-200">
                                                             {genre.name}
                                                         </span>
                                                     </button>
@@ -226,21 +226,21 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             {selectedGenres.length > 0 && (
                 <>
                     <h2 id="filtres-actifs" className="sr-only">Filtres de genre actifs</h2>
-                    <ul aria-labelledby="filtres-actifs" className="flex flex-wrap gap-2 mt-3 animate-fade-in list-none p-0">
+                    <ul aria-labelledby="filtres-actifs" className="flex flex-wrap gap-2 mt-3 list-none p-0">
                         {selectedGenres.map(genreId => {
                             const genre = availableGenres.find(g => g.id === genreId);
                             return genre ? (
                                 <li
                                     key={genre.id}
-                                    className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-purple-900/30
-                                        text-blue-800 dark:text-blue-200
-                                        rounded-full px-3 py-1.5 text-sm font-medium
-                                        flex items-center gap-1.5
-                                        border border-blue-200/50 dark:border-blue-700/50
-                                        shadow-sm
-                                        hover:shadow-md hover:scale-105
-                                        transition-all duration-300
-                                        animate-scale-in"
+                                    className="bg-muted
+ text-blue-800 dark:text-blue-200
+ rounded-full px-3 py-1.5 text-sm font-medium
+ flex items-center gap-1.5
+ border border-blue-200/50 dark:border-blue-700/50
+ shadow-sm
+ hover:shadow-md 
+ transition-all duration-300
+"
                                 >
                                     <span>{genre.name}</span>
                                     <button
@@ -248,9 +248,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                         onClick={() => removeGenre(genre.id)}
                                         aria-label={`Retirer le filtre ${genre.name}`}
                                         className="hover:text-blue-900 dark:hover:text-blue-400
-                                            hover:scale-110
-                                            transition-all duration-200
-                                            rounded-full hover:bg-blue-200/50 dark:hover:bg-blue-800/50 p-0.5"
+ 
+ transition-all duration-200
+ rounded-full hover:bg-blue-200/50 dark:hover:bg-blue-800/50 p-0.5"
                                     >
                                         <X aria-hidden="true" className="h-3.5 w-3.5"/>
                                     </button>

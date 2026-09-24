@@ -27,9 +27,9 @@ export function ThemeToggle() {
         return (
             <div
                 aria-hidden="true"
-                className="p-2 rounded-lg bg-gray-200 w-10 h-10 flex items-center justify-center"
+                className="p-2 rounded-lg bg-muted w-10 h-10 flex items-center justify-center"
             >
-                <div className="w-5 h-5 rounded-full bg-gray-300 animate-pulse" />
+                <div className="w-5 h-5 rounded-full bg-accent" />
             </div>
         );
     }
@@ -40,7 +40,7 @@ export function ThemeToggle() {
         <button
             type="button"
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className="p-2 rounded-lg bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 transition-colors duration-200"
+            className="p-2 rounded-lg bg-muted hover:bg-accent transition-colors duration-200"
             // The name states the action, not just the icon, so it is usable
             // without seeing which glyph is displayed (RGAA 11.9 / WCAG 4.1.2).
             aria-label={isDark ? 'Activer le thème clair' : 'Activer le thème sombre'}
@@ -50,7 +50,7 @@ export function ThemeToggle() {
             {isDark ? (
                 <Sun aria-hidden="true" className="h-5 w-5 text-yellow-500" />
             ) : (
-                <Moon aria-hidden="true" className="h-5 w-5 text-gray-700" />
+                <Moon aria-hidden="true" className="h-5 w-5 text-foreground" />
             )}
         </button>
     );

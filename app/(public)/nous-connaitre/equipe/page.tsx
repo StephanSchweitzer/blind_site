@@ -3,6 +3,7 @@ import { UserIcon } from "lucide-react";
 import type { TeamMember } from "@prisma/client";
 import { getTeam } from "./data";
 import type { Metadata } from "next";
+import { PageHeader } from "@/components/PageHeader";
 
 export const metadata: Metadata = {
     title: 'Notre Équipe',
@@ -22,16 +23,13 @@ export default async function EquipePage() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
-                <section className="text-center glass-card-lg p-8 sm:p-12">
-                    <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Notre Équipe</h1>
-                    <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-6"></div>
-                    <p className="text-lg text-gray-700 dark:text-gray-100 max-w-2xl mx-auto">
-                        Découvrez les membres de l&apos;équipe qui animent <br className="hidden sm:block" />
-                        <span className="sm:whitespace-nowrap">les Enregistrements à la Carte pour les Aveugles</span> <br className="hidden sm:block" />
-                        et contribuent à la mission de rendre la lecture accessible à tous.
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
+                <PageHeader title="Notre équipe">
+                    <p>
+                        Les membres de l&apos;équipe qui animent les Enregistrements à la Carte pour les Aveugles
+                        et contribuent à rendre la lecture accessible à tous.
                     </p>
-                </section>
+                </PageHeader>
 
                 {leadership.length > 0 && (
                     <section className="space-y-8">
@@ -40,7 +38,7 @@ export default async function EquipePage() {
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {leadership.map((member: TeamMember) => (
-                                <div key={member.id} className="glass-card p-6 hover:scale-[1.02] transition-transform duration-300 flex items-center space-x-4">
+                                <div key={member.id} className="glass-card p-6 flex items-center space-x-4">
                                     <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
                                         <UserIcon className="h-6 w-6 text-white" />
                                     </div>
@@ -61,13 +59,13 @@ export default async function EquipePage() {
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {boardMembers.map((member: TeamMember) => (
-                                <div key={member.id} className="glass-card p-6 hover:scale-[1.02] transition-transform duration-300 flex items-center space-x-4">
+                                <div key={member.id} className="glass-card p-6 flex items-center space-x-4">
                                     <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
                                         <UserIcon className="h-6 w-6 text-white" />
                                     </div>
                                     <div>
                                         <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
-                                        {member.role && <p className="text-green-600 dark:text-green-300">{member.role}</p>}
+                                        {member.role && <p className="text-green-800 dark:text-green-300">{member.role}</p>}
                                     </div>
                                 </div>
                             ))}
@@ -82,7 +80,7 @@ export default async function EquipePage() {
                         </h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {permanenceTeam.map((member: TeamMember) => (
-                                <div key={member.id} className="glass-card p-4 hover:scale-[1.02] transition-transform duration-300">
+                                <div key={member.id} className="glass-card p-4">
                                     <h3 className="text-lg font-medium text-gray-900 dark:text-white">{member.name}</h3>
                                     {member.role && <p className="text-gray-700 dark:text-gray-300">{member.role}</p>}
                                 </div>
@@ -98,12 +96,12 @@ export default async function EquipePage() {
                     </p>
                 </section>
 
-                <section className="text-center glass-card-lg p-8 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
+                <section className="text-center glass-card-lg p-8">
                     <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Rejoignez-nous</h2>
                     <p className="text-gray-700 dark:text-gray-100 mb-6">
                         Vous souhaitez contribuer à notre mission et devenir animateur de permanences ? Nous sommes toujours à la recherche de nouvelles voix !
                     </p>
-                    <a href="/nous-rejoindre" className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                    <a href="/nous-rejoindre" className="inline-block bg-primary hover:bg-primary/90 text-white font-medium py-3 px-8 rounded-lg">
                         Nous rejoindre
                     </a>
                 </section>

@@ -120,17 +120,17 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                     aria-expanded={showFilters}
                     aria-controls={filtersId}
                     className="flex items-center gap-2 px-5 py-3
-                        bg-white/95 dark:bg-gray-700/95
-                        backdrop-blur-xl
-                        border-2 border-gray-300/50 dark:border-gray-600/50
-                        rounded-xl
-                        text-gray-900 dark:text-gray-100
-                        font-medium
-                        hover:bg-white dark:hover:bg-gray-700
-                        hover:border-blue-500/50 dark:hover:border-purple-500/50
-                        shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]
-                        hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_12px_40px_rgb(0,0,0,0.4)]
-                        transition-all duration-300"
+ bg-white/95 dark:bg-gray-700/95
+ 
+ border-2 border-gray-300/50 dark:border-gray-600/50
+ rounded-xl
+ text-gray-900 dark:text-gray-100
+ font-medium
+ hover:bg-white dark:hover:bg-gray-700
+ hover:border-blue-500/50 dark:hover:border-blue-500/50
+ 
+ 
+ transition-all duration-300"
                 >
                     <Filter aria-hidden="true" className="w-4 h-4" />
                     Filtres
@@ -147,7 +147,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                 nothing to a user who cannot distinguish the colours
                 (RGAA 3.1 / WCAG 1.4.1). */}
             <div id={filtersId} hidden={!showFilters}>
-                <fieldset className="glass-card p-5 flex flex-wrap gap-3 animate-fade-in border-0">
+                <fieldset className="glass-card p-5 flex flex-wrap gap-3 border-0">
                     <legend className="sr-only">Filtrer les actualités par type</legend>
                     <button
                         type="button"
@@ -155,8 +155,8 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                         aria-pressed={selectedType === 'all'}
                         className={`px-4 py-2.5 rounded-full font-medium transition-all duration-300 shadow-md
                             ${selectedType === 'all'
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-purple-600 text-white shadow-blue-500/30 scale-105'
-                            : 'bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600/50 hover:scale-105'
+                            ? 'bg-primary text-white'
+                            : 'bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600/50 '
                         }`}
                     >
                         Tous
@@ -173,8 +173,8 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                                 // ANNONCE chip is yellow-500, on which white text is
                                 // 1.9:1. The map pairs each background with ink that
                                 // clears 4.5:1.
-                                ? `${newsTypeColors[type as NewsType]} ${getNewsTypeTextColor(type as NewsType)} scale-105`
-                                : 'bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600/50 hover:scale-105'
+                                ? `${newsTypeColors[type as NewsType]} ${getNewsTypeTextColor(type as NewsType)}`
+                                : 'bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600/50 '
                             }`}
                         >
                             <Tag aria-hidden="true" className="w-4 h-4" />
@@ -199,15 +199,15 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-16">
                     <div aria-hidden="true" className="relative">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 dark:border-purple-900"></div>
-                        <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-4 border-transparent border-t-blue-600 dark:border-t-purple-400"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 dark:border-blue-900"></div>
+                        <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-4 border-transparent border-t-blue-600 dark:border-t-blue-400"></div>
                     </div>
                     <p className="mt-6 text-gray-700 dark:text-gray-300 font-medium animate-pulse">
                         Chargement des actualités...
                     </p>
                 </div>
             ) : error ? (
-                <div role="alert" className="text-center py-12 rounded-2xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 animate-fade-in">
+                <div role="alert" className="text-center py-12 rounded-2xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50">
                     <div aria-hidden="true" className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg focusable="false" className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -216,7 +216,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                     <p className="text-red-800 dark:text-red-300 font-medium">{error}</p>
                 </div>
             ) : newsPosts.length === 0 ? (
-                <div className="text-center py-12 glass-card animate-fade-in">
+                <div className="text-center py-12 glass-card">
                     <div className="max-w-md mx-auto">
                         <div aria-hidden="true" className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                             <svg focusable="false" className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,12 +241,12 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                     {newsPosts.map((post, index) => (
                         <article
                             key={post.id}
-                            className="glass-card p-6 hover:scale-[1.01] transition-all duration-300 animate-fade-in-up group"
+                            className="glass-card p-6 transition-all duration-300 group"
                             style={{ animationDelay: `${index * 50}ms` }}
                         >
                             <div className="flex items-start gap-4 mb-4 flex-wrap">
                                 <div className="flex-1">
-                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-purple-400 transition-colors duration-300">
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
                                         {post.title}
                                     </h2>
                                 </div>
@@ -254,7 +254,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                                     px-4 py-1.5 rounded-full text-sm font-semibold shadow-md
                                     ${getNewsTypeColor(post.type)}
                                     ${getNewsTypeTextColor(post.type)}
-                                    transition-transform duration-300 group-hover:scale-105
+                                    
                                 `}>
                                     {newsTypeLabels[post.type]}
                                 </span>
@@ -287,7 +287,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
             )}
 
             {totalPages > 1 && (
-                <div className="animate-fade-in">
+                <div className="">
                     <CustomPagination
                         currentPage={currentPage}
                         totalPages={totalPages}

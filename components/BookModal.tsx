@@ -149,39 +149,36 @@ export const BookModal: React.FC<BookModalProps> = ({
                     }
                 }}
                 className="max-w-2xl w-[95vw] max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] overflow-hidden flex flex-col
-                rounded-2xl
-                bg-white/95 dark:bg-gray-800/95
-                backdrop-blur-xl backdrop-saturate-150
-                border-2 border-gray-200/50 dark:border-gray-600/60
-                shadow-[0_20px_70px_rgb(0,0,0,0.15)] dark:shadow-[0_25px_80px_rgb(0,0,0,0.6)]
-                animate-fade-in
-                [&>[data-dialog-close]]:hidden">
+ rounded-2xl
+ bg-white/95 dark:bg-gray-800/95
+ 
+ border-2 border-gray-200/50 dark:border-gray-600/60
+ 
+ 
+ [&>[data-dialog-close]]:hidden">
 
                 {/* Custom mobile-friendly close button */}
                 <button
                     onClick={onClose}
                     type="button"
                     className="absolute top-2 right-2 z-50
-                        w-12 h-12 sm:w-10 sm:h-10
-                        flex items-center justify-center
-                        rounded-full
-                        bg-white dark:bg-gray-700
-                        hover:bg-gray-100 dark:hover:bg-gray-600
-                        text-gray-700 dark:text-gray-300
-                        hover:text-gray-900 dark:hover:text-white
-                        border-2 border-gray-300 dark:border-gray-600
-                        shadow-lg hover:shadow-xl
-                        transition-all duration-200
-                        hover:scale-110
-                        active:scale-95"
+ w-12 h-12 sm:w-10 sm:h-10
+ flex items-center justify-center
+ rounded-full
+ bg-white dark:bg-gray-700
+ hover:bg-gray-100 dark:hover:bg-gray-600
+ text-gray-700 dark:text-gray-300
+ hover:text-gray-900 dark:hover:text-white
+ border-2 border-gray-300 dark:border-gray-600
+ shadow-lg hover:shadow-xl
+ transition-all duration-200
+ 
+ active:scale-95"
                     aria-label="Fermer la fiche du livre"
                 >
                     <X aria-hidden="true" className="w-6 h-6 sm:w-5 sm:h-5 stroke-[2.5]" />
                 </button>
 
-                {/* Decorative gradient orbs */}
-                <div aria-hidden="true" className="absolute top-0 right-0 w-48 h-48 bg-blue-400/10 dark:bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div aria-hidden="true" className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/10 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
                 <DialogHeader className="text-center flex-shrink-0 pb-4 pt-2 pr-14 sm:pr-12 border-b border-gray-200/50 dark:border-gray-700/50 relative z-10">
                     {/* Radix renders this as the dialog's accessible name. It used to
@@ -207,7 +204,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                         <div className="space-y-4">
                             {/* Author */}
                             <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30 transition-all duration-300 hover:shadow-md shadow-sm">
-                                <User aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                                <User aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                                 <div>
                                     <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-0.5">Auteur</p>
                                     <p className="text-gray-900 dark:text-gray-100 font-medium">{book.author}</p>
@@ -237,8 +234,8 @@ export const BookModal: React.FC<BookModalProps> = ({
                                                     font-medium
                                                     shadow-sm
                                                     ${isSelected
-                                                    ? 'bg-gradient-to-r from-emerald-400 to-green-500 dark:from-emerald-600 dark:to-green-700 text-white cursor-not-allowed shadow-emerald-500/30'
-                                                    : 'bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-600 dark:to-indigo-600 text-blue-900 dark:text-white hover:shadow-md hover:scale-105 cursor-pointer border border-blue-300 dark:border-blue-400/50 dark:shadow-blue-900/40'
+                                                    ? 'bg-emerald-700 text-white cursor-not-allowed '
+                                                    : 'bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-white hover:shadow-md  cursor-pointer border border-blue-300 dark:border-blue-400/50 '
                                                 }
                                                     focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1
                                                 `}
@@ -257,7 +254,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                             {/* Published Date */}
                             {book.publishedDate && (
                                 <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30 transition-all duration-300 hover:shadow-md shadow-sm">
-                                    <Calendar aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                                    <Calendar aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-0.5">Date de publication</p>
                                         <p className="text-gray-900 dark:text-gray-100 font-medium">
@@ -270,7 +267,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                             {/* Duration */}
                             {book.readingDurationMinutes && (
                                 <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30 transition-all duration-300 hover:shadow-md shadow-sm">
-                                    <Clock aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                                    <Clock aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mb-0.5">Durée de l&apos;enregistrement</p>
                                         <p className="text-gray-900 dark:text-gray-100 font-medium">
@@ -285,7 +282,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                         <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-3">
                                 <h3 id="titre-description-livre" className="font-bold text-lg text-gray-900 dark:text-white">Description</h3>
-                                <div aria-hidden="true" className="h-0.5 flex-1 bg-gradient-to-r from-blue-500/30 to-transparent dark:from-purple-500/30"></div>
+                                <div aria-hidden="true" className="h-0.5 flex-1 bg-border"></div>
                             </div>
 
                             {/* tabIndex={0}: the panel scrolls, and a scrollable region has to
@@ -310,16 +307,16 @@ export const BookModal: React.FC<BookModalProps> = ({
                                     <button
                                         onClick={() => setIsExpanded(!isExpanded)}
                                         className="flex items-center justify-center gap-2
-                                            text-blue-600 dark:text-purple-400
-                                            hover:text-blue-700 dark:hover:text-purple-300
-                                            font-medium text-sm
-                                            px-4 py-2 rounded-lg
-                                            bg-blue-50/50 dark:bg-purple-900/20
-                                            hover:bg-blue-100/50 dark:hover:bg-purple-900/30
-                                            border border-blue-200/50 dark:border-purple-700/50
-                                            transition-all duration-300
-                                            hover:shadow-md
-                                            focus-visible:ring-2 focus-visible:ring-blue-500"
+ text-blue-600 dark:text-blue-400
+ hover:text-blue-700 dark:hover:text-blue-300
+ font-medium text-sm
+ px-4 py-2 rounded-lg
+ bg-blue-50/50 dark:bg-blue-900/20
+ hover:bg-blue-100/50 dark:hover:bg-blue-900/30
+ border border-blue-200/50 dark:border-blue-700/50
+ transition-all duration-300
+ hover:shadow-md
+ focus-visible:ring-2 focus-visible:ring-blue-500"
                                         type="button"
                                         aria-expanded={isExpanded}
                                         aria-label={isExpanded ? 'Réduire la description' : 'Afficher la description complète'}
@@ -349,10 +346,10 @@ export const BookModal: React.FC<BookModalProps> = ({
                                         shadow-lg
                                         focus-visible:ring-2 focus-visible:ring-offset-2
                                         ${isSpeaking && !isLoading
-                                        ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-red-500/30 focus-visible:ring-red-500'
-                                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-purple-600 hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-purple-700 text-white shadow-blue-500/30 dark:shadow-purple-500/30 focus-visible:ring-blue-500'
+                                        ? 'bg-red-700 hover:bg-red-800 text-white  focus-visible:ring-red-500'
+                                        : 'bg-primary hover:bg-primary/90 text-white   focus-visible:ring-blue-500'
                                     }
-                                        ${isLoading ? 'cursor-not-allowed opacity-80' : 'hover:shadow-xl hover:scale-[1.02]'}
+                                        ${isLoading ? 'cursor-not-allowed opacity-80' : 'hover:shadow-xl '}
                                     `}
                                     disabled={isLoading}
                                     aria-label={isSpeaking

@@ -4,6 +4,7 @@ import { MEMBERSHIP_THEME, asTheme } from "@/lib/color-themes";
 import { Markdown } from "@/components/Markdown";
 import { getMembershipOptions } from "./data";
 import type { Metadata } from "next";
+import { PageHeader } from "@/components/PageHeader";
 
 export const metadata: Metadata = {
     title: 'Nous rejoindre',
@@ -19,16 +20,13 @@ export default async function NousRejoindre() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-12">
-                {/* Hero Section */}
-                <section className="text-center glass-card-lg p-8 sm:p-12">
-                    <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Nous rejoindre</h1>
-                    <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-6"></div>
-                    <p className="text-lg text-gray-700 dark:text-gray-100 max-w-2xl mx-auto">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-12">
+                <PageHeader title="Nous rejoindre">
+                    <p>
                         Adhérer aux ECA, c&apos;est s&apos;engager dans une association qui croit au partage
                         de la culture et à l&apos;échange entre voyants et malvoyants.
                     </p>
-                </section>
+                </PageHeader>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {options.map((opt) => {
@@ -37,8 +35,8 @@ export default async function NousRejoindre() {
                         const bullets = (opt.bullets ?? '').split('\n').map((b) => b.trim()).filter(Boolean);
                         const emphasizeValue = !!opt.highlightValue && opt.highlightValue.length <= 12;
                         return (
-                            <section key={opt.id} className="glass-card overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
-                                <div className={`bg-gradient-to-r ${theme.header} p-4 flex items-center`}>
+                            <section key={opt.id} className="glass-card overflow-hidden group">
+                                <div className={`${theme.header} p-4 flex items-center`}>
                                     <Icon className="h-8 w-8 text-white mr-3" />
                                     <h2 className="text-2xl font-semibold text-white">{opt.title}</h2>
                                 </div>
@@ -46,7 +44,7 @@ export default async function NousRejoindre() {
                                     <Markdown>{opt.body}</Markdown>
 
                                     {(opt.highlightLabel || bullets.length > 0) && (
-                                        <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 p-4 rounded-lg">
+                                        <div className="bg-muted p-4 rounded-lg">
                                             {opt.highlightLabel && (
                                                 <p className="text-gray-900 dark:text-gray-100">
                                                     <span className="font-semibold">{opt.highlightLabel}</span>
@@ -70,7 +68,7 @@ export default async function NousRejoindre() {
 
                                     {opt.ctaLabel && opt.ctaHref && (
                                         <div className="text-center pt-4">
-                                            <a href={opt.ctaHref} className={`inline-block bg-gradient-to-r ${theme.cta} text-white font-medium py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105`}>
+                                            <a href={opt.ctaHref} className={`inline-block ${theme.cta} text-white font-medium py-3 px-8 rounded-lg`}>
                                                 {opt.ctaLabel}
                                             </a>
                                         </div>
@@ -82,14 +80,14 @@ export default async function NousRejoindre() {
                 </div>
 
                 {/* CTA Section */}
-                <section className="glass-card-lg p-8 text-center bg-gradient-to-r from-blue-500/10 to-purple-500/10">
+                <section className="glass-card-lg p-8 text-center">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Prêt à nous rejoindre ?</h2>
                     <p className="text-gray-700 dark:text-gray-100 mb-6 max-w-lg mx-auto">
                         Quelle que soit la forme de votre engagement, votre participation est précieuse pour faire vivre notre mission
                         d&apos;accessibilité à la lecture.
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
-                        <a href="/contact" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 font-medium py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                        <a href="/contact" className="bg-primary text-white hover:bg-primary/90 font-medium py-3 px-8 rounded-lg">
                             Nous contacter
                         </a>
                     </div>

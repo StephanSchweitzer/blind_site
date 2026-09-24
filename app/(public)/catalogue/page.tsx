@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { BooksClient } from './BooksClient';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { getCatalogueData } from './data';
+import { PageHeader } from '@/components/PageHeader';
 
 async function getInitialData() {
     try {
@@ -21,10 +22,10 @@ function BooksLoading() {
     return (
         <div className="flex flex-col items-center justify-center py-12">
             <div className="relative">
-                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 dark:border-purple-900"></div>
-                <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-4 border-transparent border-t-blue-600 dark:border-t-purple-400"></div>
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-muted"></div>
+                <div className="absolute inset-0 animate-spin rounded-full h-16 w-16 border-4 border-transparent border-t-primary"></div>
             </div>
-            <p className="mt-6 text-gray-700 dark:text-gray-300 font-medium animate-pulse">Chargement des livres...</p>
+            <p className="mt-6 text-muted-foreground font-medium">Chargement des livres...</p>
         </div>
     );
 }
@@ -43,49 +44,21 @@ export default async function BooksPage() {
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 space-y-8">
-                <section className="text-center glass-card-lg p-8 sm:p-12 animate-fade-in relative overflow-hidden group">
-                    {/* Decorative gradient orbs */}
-                    <div aria-hidden="true" className="absolute top-0 right-0 w-64 h-64 bg-blue-400/20 dark:bg-purple-500/20 rounded-full blur-3xl animate-blob"></div>
-                    <div aria-hidden="true" className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 dark:bg-blue-500/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
-
-                    <div className="relative z-10">
-                        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
-                            Catalogue des livres
-                        </h1>
-                        <div aria-hidden="true" className="w-24 h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mx-auto mb-6"></div>
-                        <p className="text-lg text-gray-700 dark:text-gray-100 leading-relaxed max-w-2xl mx-auto">
-                            <span className="font-semibold text-xl text-blue-600 dark:text-purple-400">
-                                {totalBooks} titres au catalogue !
-                            </span>
-                            <br />
-                            <span className="text-base mt-2 block">
-                                Consultez-nous si vous avez une recherche particulière,
-                                et faites votre demande au{' '}
-                                {/* Both numbers in full and as tel: links: « ou 48 », read aloud
-                                    or tapped, leads nowhere. */}
-                                <a href="tel:+33188323147" className="font-semibold whitespace-nowrap text-blue-700 dark:text-blue-300 underline underline-offset-2">
-                                    01 88 32 31 47
-                                </a>{' '}
-                                ou{' '}
-                                <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-blue-700 dark:text-blue-300 underline underline-offset-2">
-                                    01 88 32 31 48
-                                </a>
-                            </span>
-                            <br />
-                            <span className="text-base">
-                                ou par courriel à {' '}
-                                <a
-                                    href="mailto:ecapermanence@gmail.com"
-                                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline font-medium
-                                        hover:scale-105 inline-block transition-all duration-300"
-                                >
-                                    ecapermanence@gmail.com
-                                </a>
-                            </span>
-                        </p>
-                    </div>
-                </section>
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8">
+                {/* L'en-tête tient en trois lignes : la recherche doit être visible
+                    sans défiler, téléphone compris. */}
+                <PageHeader title="Catalogue des livres">
+                    <p>
+                        <span className="font-semibold text-foreground">{new Intl.NumberFormat('fr-FR').format(totalBooks)} titres</span>{' '}
+                        au catalogue. Vous cherchez un titre qui n&apos;y est pas ? Faites votre demande au{' '}
+                        {/* Both numbers in full and as tel: links: « ou 48 », read aloud
+                            or tapped, leads nowhere. */}
+                        <a href="tel:+33188323147" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 47</a>{' '}
+                        ou au{' '}
+                        <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 48</a>, ou par courriel à{' '}
+                        <a href="mailto:ecapermanence@gmail.com" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">ecapermanence@gmail.com</a>.
+                    </p>
+                </PageHeader>
 
                 <Suspense fallback={<BooksLoading />}>
                     <BooksClient

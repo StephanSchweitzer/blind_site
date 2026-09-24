@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PublicBook } from '@/lib/books/publicBook';
+import { genreFamily, GENRE_FAMILY_SPINE } from '@/lib/books/genreFamily';
 
 interface BookListProps {
     books: PublicBook[];
@@ -36,33 +37,25 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
         // title is a real button — that is the keyboard and screen-reader entry
         // point — while the card itself keeps its click target for mouse users.
         <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 list-none p-0">
-            {books.map((book, index) => (
+            {books.map((book) => {
+                // The spine: the colour of the first genre's family
+                // (lib/books/genreFamily.ts). The genre itself is written on
+                // the card just below — the colour only helps the eye group
+                // neighbours, it never says anything alone.
+                const spine = GENRE_FAMILY_SPINE[genreFamily(book.genres[0]?.genre.name)];
+                return (
                 <li key={book.id}>
                 <article
                     onClick={() => onBookClick(book)}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                    className="group h-full p-5 rounded-2xl cursor-pointer transition-all duration-500 ease-out
-                        bg-white/90 dark:bg-gray-800/95
-                        backdrop-blur-xl backdrop-saturate-150
-                        border border-gray-200/50 dark:border-gray-600/60
-                        shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgb(0,0,0,0.5)]
-                        hover:shadow-[0_20px_60px_rgb(59,130,246,0.15)] dark:hover:shadow-[0_25px_70px_rgb(147,51,234,0.4)]
-                        hover:-translate-y-2 hover:scale-[1.02]
-                        hover:border-blue-300/50 dark:hover:border-purple-400/70
-                        focus-within:border-blue-400 dark:focus-within:border-purple-400
-                        animate-fade-in-up
-                        relative overflow-hidden
-                        before:absolute before:inset-0 before:rounded-2xl before:opacity-0 before:transition-opacity before:duration-500
-                        before:bg-gradient-to-br before:from-blue-500/5 before:to-purple-500/5
-                        hover:before:opacity-100"
+                    // No lift, no zoom, no sweeping shine on hover: a card that
+                    // moves under the pointer is hard to follow at high zoom. The
+                    // border and a shadow say « this opens » instead.
+                    className="group relative h-full cursor-pointer overflow-hidden rounded-xl border border-border bg-card py-5 pl-7 pr-5 shadow-sm transition-colors hover:border-primary hover:shadow-md focus-within:border-primary"
                 >
-                    {/* Shine effect on hover */}
-                    <div aria-hidden="true" className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-                    </div>
+                    <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-2 ${spine}`} />
 
-                    <div className="relative z-10">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-purple-400 transition-colors duration-300">
+                    <div className="relative">
+                        <h3 className="text-lg font-bold text-foreground mb-1 line-clamp-2 group-hover:text-primary dark:group-hover:text-blue-300">
                             <button
                                 type="button"
                                 onClick={(event) => {
@@ -80,7 +73,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 <span className="sr-only">, de {book.author} — voir la fiche détaillée</span>
                             </button>
                         </h3>
-                        <p className="text-gray-700 dark:text-gray-200 mb-3 line-clamp-1 text-sm">
+                        <p className="text-muted-foreground mb-3 line-clamp-1 text-sm">
                             {book.author}
                         </p>
 
@@ -89,19 +82,13 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 {book.genres.slice(0, 3).map(({ genre }) => (
                                     <span
                                         key={genre.id}
-                                        className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-600 dark:to-indigo-600
-                                            text-blue-800 dark:text-white
-                                            text-xs font-medium px-2.5 py-1 rounded-full
-                                            border border-blue-200/50 dark:border-blue-400/50
-                                            shadow-sm dark:shadow-blue-900/40
-                                            transition-all duration-300
-                                            group-hover:shadow-md group-hover:scale-105"
+                                        className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
                                     >
                                         {genre.name}
                                     </span>
                                 ))}
                                 {book.genres.length > 3 && (
-                                    <span className="text-xs text-gray-600 dark:text-gray-300 px-2 py-1">
+                                    <span className="text-xs text-muted-foreground px-2 py-1">
                                         <span aria-hidden="true">+{book.genres.length - 3}</span>
                                         <span className="sr-only">et {book.genres.length - 3} autres genres</span>
                                     </span>
@@ -109,7 +96,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                             </div>
                         )}
 
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 flex items-center gap-1.5">
+                        <p className="text-sm text-muted-foreground mb-3 flex items-center gap-1.5">
                             <svg aria-hidden="true" focusable="false" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -117,27 +104,17 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                         </p>
 
                         <div className="flex items-center justify-between">
-                            {/* Three fixes here.
-                                Contrast: white on the old emerald-400→green-500 and
+                            {/* Contrast: white on the old emerald-400→green-500 and
                                 amber-400→orange-500 gradients measured 1.7–2.8:1 against
                                 a 4.5:1 requirement for 12px text — the status was
                                 effectively unreadable for a low-vision user. The 700
                                 shades keep the same colour language at 5:1+ in both
-                                themes.
+                                themes, now as flat fills. « En attente » no longer
+                                pulses: a badge that breathes is motion for its own sake.
                                 The ✓ / ⏳ glyphs are decoration: read aloud they become
-                                "coche" / "sablier" and clutter the status.
-                                Sharpness: `shadow-md` at this pill's size put a 6px,
-                                same-hue coloured blur (`shadow-emerald/amber-700/30`)
-                                right against the card's own `backdrop-blur-xl`, which
-                                read as the badge text itself being blurry. `shadow-sm`
-                                is the same tight, low-blur treatment the genre pills
-                                just above already use. */}
-                            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold
-                                shadow-sm
-                                transition-all duration-300
-                                ${book.available
-                                ? 'bg-gradient-to-r from-emerald-700 to-green-700 text-white border border-emerald-800/50 shadow-emerald-900/40'
-                                : 'bg-gradient-to-r from-amber-700 to-orange-700 text-white border border-amber-800/50 shadow-amber-900/40 animate-pulse-subtle'
+                                "coche" / "sablier" and clutter the status. */}
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold text-white ${
+                                book.available ? 'bg-emerald-700' : 'bg-amber-700'
                             }`}>
                                 <span aria-hidden="true">{book.available ? '✓' : '⏳'}</span>{' '}
                                 {book.available ? 'Disponible' : 'En attente'}
@@ -146,7 +123,8 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                     </div>
                 </article>
                 </li>
-            ))}
+                );
+            })}
         </ul>
     );
 };

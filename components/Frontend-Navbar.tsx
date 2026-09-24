@@ -10,6 +10,36 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { SkipLinks } from '@/components/SkipLinks';
 import { AffichageBouton, AffichageSettings } from '@/components/AffichageSettings';
 
+/**
+ * Le logo de la barre : le monogramme « eca » en image, et le nom en texte.
+ *
+ * L'ancien logo était une seule image, mots compris : sur un téléphone,
+ * « Délégation des Auxiliaires des Aveugles » y tombait à 6 px, illisible, et
+ * ne grandissait pas avec le réglage « Taille du texte ». Ici le nom est du
+ * vrai texte, qui suit la taille choisie. Le monogramme a un fond blanc : il
+ * est posé sur une pastille blanche, voulue, qui tient aussi en thème sombre.
+ *
+ * Dans la barre complète, le nom n'apparaît qu'à partir de 1536 px : en
+ * dessous, il serrait le menu (surtout avec le lien « Administration »), et le
+ * monogramme seul y reste lisible. Sur téléphone, il est toujours là.
+ */
+function EcaLogo({ nameFrom2xl = false }: { nameFrom2xl?: boolean }) {
+    return (
+        <span className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white p-1 ring-1 ring-border">
+                <Image src="/eca_mark.png" alt="" aria-hidden="true" width={40} height={36} className="h-auto w-full" priority />
+            </span>
+            <span className={`${nameFrom2xl ? 'hidden 2xl:block' : 'block'} text-[0.8125rem] font-semibold leading-[1.15] text-foreground`}>
+                {/* Trois lignes voulues, coupées au sens : le nom tient ainsi à côté du
+                    menu complet, sans se casser au hasard. */}
+                <span className="block whitespace-nowrap">Enregistrements</span>
+                <span className="block whitespace-nowrap">à la Carte</span>
+                <span className="block whitespace-nowrap">pour les Aveugles</span>
+            </span>
+        </span>
+    );
+}
+
 type NavLink = {
     href: string;
     label: string;
@@ -110,7 +140,7 @@ const FrontendNavbar = () => {
         };
     }, [activeDropdown]);
 
-    const linkClasses = 'hover:text-blue-600 dark:hover:text-purple-400 text-gray-700 dark:text-gray-200 transition-colors duration-200 py-2 border-b-2 border-transparent hover:border-blue-500 dark:hover:border-purple-400 inline-block font-medium aria-[current=page]:border-blue-600 dark:aria-[current=page]:border-purple-400 aria-[current=page]:text-blue-700 dark:aria-[current=page]:text-purple-300';
+    const linkClasses = 'hover:text-primary dark:hover:text-blue-300 text-foreground transition-colors duration-200 py-2 border-b-2 border-transparent hover:border-primary dark:hover:border-blue-300 inline-block font-medium aria-[current=page]:border-primary dark:aria-[current=page]:border-blue-300 aria-[current=page]:text-primary dark:aria-[current=page]:text-blue-200';
 
     return (
         // Une seule fenêtre « Affichage » pour les deux dispositions de la barre
@@ -122,7 +152,7 @@ const FrontendNavbar = () => {
                 id="navigation-principale"
                 tabIndex={-1}
                 aria-label="Navigation principale"
-                className="sticky top-0 z-50 backdrop-blur-lg bg-white/95 dark:bg-gray-900/90 border-b-2 border-blue-200 dark:border-purple-500/30 text-gray-900 dark:text-white shadow-lg transition-all duration-300"
+                className="sticky top-0 z-50 bg-card border-b border-border text-foreground shadow-sm"
             >
                 <div className="w-full px-4 sm:px-6">
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center py-3 w-full">
@@ -132,20 +162,12 @@ const FrontendNavbar = () => {
                             enlarged text pushes that width further still. */}
                         <div className="nav-large justify-start">
                             <Link href="/" className="block rounded-lg" aria-label="ECA — retour à l'accueil">
-                                <Image
-                                    src="/eca_logo.png"
-                                    alt=""
-                                    aria-hidden="true"
-                                    className="h-12 w-auto hover:opacity-90 transition-opacity duration-300"
-                                    width={150}
-                                    height={48}
-                                    priority
-                                />
+                                <EcaLogo nameFrom2xl />
                             </Link>
                         </div>
 
                         {/* Desktop menu - truly centered on page */}
-                        <ul ref={desktopNavRef} className="nav-large flex-nowrap space-x-6 text-base justify-center list-none m-0 p-0">
+                        <ul ref={desktopNavRef} className="nav-large flex-nowrap space-x-5 text-base justify-center list-none m-0 p-0">
                             {navLinks.map((link, index) => (
                                 <li key={`${link.href}-${index}`} className="relative whitespace-nowrap">
                                     {link.dropdown ? (
@@ -176,13 +198,13 @@ const FrontendNavbar = () => {
                                                 hidden={activeDropdown !== index}
                                                 className="absolute top-full left-0 z-50 pt-2"
                                             >
-                                                <ul className="bg-white dark:bg-gray-900 border-2 border-blue-200 dark:border-purple-500/30 rounded-xl min-w-[240px] py-2 shadow-2xl list-none m-0">
+                                                <ul className="bg-popover border border-border rounded-xl min-w-[240px] py-2 shadow-lg list-none m-0">
                                                     {link.dropdown.map((dropdownItem) => (
                                                         <li key={dropdownItem.href}>
                                                             <Link
                                                                 href={dropdownItem.href}
                                                                 aria-current={pathname === dropdownItem.href ? 'page' : undefined}
-                                                                className="block px-5 py-3 hover:bg-blue-50 dark:hover:bg-white/10 whitespace-nowrap transition-colors duration-200 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-purple-400 font-medium aria-[current=page]:text-blue-700 dark:aria-[current=page]:text-purple-300 aria-[current=page]:bg-blue-50 dark:aria-[current=page]:bg-white/10"
+                                                                className="block px-5 py-3 hover:bg-blue-50 dark:hover:bg-white/10 whitespace-nowrap transition-colors duration-200 text-foreground hover:text-primary dark:hover:text-blue-300 font-medium aria-[current=page]:text-primary dark:aria-[current=page]:text-blue-200 aria-[current=page]:bg-blue-50 dark:aria-[current=page]:bg-white/10"
                                                             >
                                                                 {dropdownItem.label}
                                                             </Link>
@@ -214,15 +236,7 @@ const FrontendNavbar = () => {
                         <div className="nav-compacte flex items-center justify-between w-full col-span-3">
                             {/* Small logo on mobile */}
                             <Link href="/" className="block rounded-lg" aria-label="ECA — retour à l'accueil">
-                                <Image
-                                    src="/eca_logo.png"
-                                    alt=""
-                                    aria-hidden="true"
-                                    className="h-10 w-auto"
-                                    width={120}
-                                    height={40}
-                                    priority
-                                />
+                                <EcaLogo />
                             </Link>
 
                             <div className="flex items-center space-x-3">
@@ -245,7 +259,7 @@ const FrontendNavbar = () => {
 
                     {/* Mobile menu */}
                     <div id={menuId} hidden={!isMenuOpen}>
-                        <ul className="nav-compacte mt-4 mb-4 space-y-2 backdrop-blur-lg bg-white/95 dark:bg-gray-800/90 rounded-xl p-4 border-2 border-blue-200 dark:border-purple-500/30 shadow-xl list-none">
+                        <ul className="nav-compacte mt-4 mb-4 space-y-2 bg-card rounded-xl p-4 border border-border shadow-md list-none">
                             {navLinks.map((link, index) => (
                                 <li key={`mobile-${link.href}-${index}`}>
                                     {link.dropdown ? (
@@ -268,14 +282,14 @@ const FrontendNavbar = () => {
                                             <ul
                                                 id={`${menuId}-sub-${index}`}
                                                 hidden={mobileDropdown !== index}
-                                                className="pl-4 mt-2 space-y-2 border-l-2 border-blue-400 dark:border-purple-400 ml-3 list-none"
+                                                className="pl-4 mt-2 space-y-2 border-l-2 border-primary/40 ml-3 list-none"
                                             >
                                                 {link.dropdown.map((dropdownItem) => (
                                                     <li key={dropdownItem.href}>
                                                         <Link
                                                             href={dropdownItem.href}
                                                             aria-current={pathname === dropdownItem.href ? 'page' : undefined}
-                                                            className="block py-2.5 px-4 hover:bg-blue-50 dark:hover:bg-white/10 rounded-lg hover:text-blue-600 dark:hover:text-purple-400 text-gray-700 dark:text-gray-200 transition-colors duration-200 text-base font-medium aria-[current=page]:text-blue-700 dark:aria-[current=page]:text-purple-300"
+                                                            className="block py-2.5 px-4 hover:bg-blue-50 dark:hover:bg-white/10 rounded-lg hover:text-primary dark:hover:text-blue-300 text-foreground transition-colors duration-200 text-base font-medium aria-[current=page]:text-primary dark:aria-[current=page]:text-blue-200"
                                                         >
                                                             {dropdownItem.label}
                                                         </Link>
@@ -287,7 +301,7 @@ const FrontendNavbar = () => {
                                         <Link
                                             href={link.href}
                                             aria-current={isCurrent(link) ? 'page' : undefined}
-                                            className="block py-2.5 px-4 hover:bg-blue-50 dark:hover:bg-white/10 rounded-lg hover:text-blue-600 dark:hover:text-purple-400 text-gray-700 dark:text-gray-200 transition-colors duration-200 text-base font-medium aria-[current=page]:text-blue-700 dark:aria-[current=page]:text-purple-300"
+                                            className="block py-2.5 px-4 hover:bg-blue-50 dark:hover:bg-white/10 rounded-lg hover:text-primary dark:hover:text-blue-300 text-foreground transition-colors duration-200 text-base font-medium aria-[current=page]:text-primary dark:aria-[current=page]:text-blue-200"
                                         >
                                             {link.label}
                                         </Link>
