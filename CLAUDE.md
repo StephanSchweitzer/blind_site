@@ -60,7 +60,9 @@ since `20260924175521_book_search_trgm_indexes`, the trigram indexes `idx_book_*
 never creates, changes or drops them, so change them in a hand-edited migration. Keep such an
 index an *expression*: one on a bare column is visible to Prisma, and `migrate dev` then
 treats it as drift and wants to drop it. The catalogue search SQL (`lib/books/bookList.ts`)
-must use the indexed expressions verbatim, or every search reads the whole `Book` table. The view
+must use the indexed expressions verbatim, or every search reads the whole `Book` table —
+except its short-token branch (words under three letters/digits, which no trigram can serve),
+which folds the columns once on purpose; don't "realign" it. The view
 and trigger read `User` and `Book` columns (names, title, author, `deletedAt`…): a migration
 that renames or retypes one of those must drop and recreate the view in the same file, or it
 fails on Postgres.

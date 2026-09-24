@@ -103,6 +103,30 @@ interface RawBookWhereOptions {
 const escapeRegex = (text: string) => text.replace(/[\\^$.|?*+()[\]{}]/g, '\\$&');
 
 /**
+ * True when no trigram index can serve this spelling: its longest run of
+ * letters or digits is under three characters (« 42 », « jo », « l' »).
+ * pg_trgm then has nothing to look up, and Postgres reads every book — see the
+ * short-token branch of buildRawBookWhere for what that costs and how it is
+ * kept cheap.
+ */
+const tooShortForTrigrams = (variant: string) =>
+    Math.max(0, ...(variant.match(/[\p{L}\p{N}]+/gu) ?? []).map((run) => run.length)) < 3;
+
+/**
+ * True when `description LIKE` finds exactly what `description ILIKE` finds
+ * for this spelling: ASCII digits and punctuation only, none of them a LIKE
+ * wildcard or the escape character.
+ *
+ * In UTF-8, ILIKE lowercases the whole description before matching — most of
+ * its cost on the long ones. Case folding turns letters into letters (and the
+ * odd combining mark), never into a digit or punctuation, so a pattern holding
+ * neither letter nor wildcard matches the same rows either way. Not \p{N} or
+ * \p{S}: « Ⅻ » and « Ⓐ » have lowercase forms. Not `_`: « İ » lowercases to
+ * two characters, and `_` would span one of them but not the other.
+ */
+const caselessPattern = (variant: string) => /^[0-9\p{P}]+$/u.test(variant) && !/[_%\\]/.test(variant);
+
+/**
  * The accent-insensitive WHERE clause, shared by the book list and by the
  * availability counts printed beside it.
  *
@@ -146,12 +170,27 @@ function buildRawBookWhere({
         // set `fieldVariants` looks for on the Prisma side: when the two
         // disagree the list and the count printed beside it disagree with it,
         // which is how « etranger » once listed 684 books above a count of 5.
-        const placeholders = searchVariants(token).map((variant) => {
+        const variants = searchVariants(token);
+        const placeholders = variants.map((variant) => {
             paramCount++;
             params.push(strict ? escapeRegex(variant.toLowerCase()) : `%${variant.toLowerCase()}%`);
             return `$${paramCount}`;
         });
         if (placeholders.length === 0) continue;
+
+        // No trigram index can answer « 42 » or « jo », so for such a token
+        // every book is read whatever the SQL says — and the cost is whatever
+        // that SQL makes each row do. Five `immutable_unaccent` calls and an
+        // ILIKE over the description came to ~125 ms a query locally, several
+        // hundred on Supabase; staff type ids like « 42 » all day. The branch
+        // below reaches the same rows for less. Never with a \x01 in the
+        // token — that is the separator it relies on — nor a LIKE wildcard
+        // or escape: « e_ » would match a title ending in « e » followed by
+        // the separator, a book the per-column form rightly leaves out.
+        const short = !strict
+            && variants.every(tooShortForTrigrams)
+            && !variants.some((v) => /[\x01_%\\]/.test(v));
+        const caseless = short && variants.every(caselessPattern);
 
         /**
          * `expr` matches ANY spelling of this token. Parenthesised by every
@@ -184,6 +223,34 @@ function buildRawBookWhere({
                 )
                 .join(' OR ');
 
+        /**
+         * The short-token stand-ins for the five folded columns and the
+         * description. Neither matches an index, and neither needs to: no
+         * index could serve this token anyway. What they save is work per row.
+         *
+         * The columns: ONE fold of them joined by \x01, where there were five.
+         * The same rows, because `immutable_unaccent` and LOWER work character
+         * by character and the pattern holds neither \x01 nor a wildcard that
+         * could stand for one — a match can neither start in one column and
+         * end in the next nor come out any different.
+         *
+         * Both: every spelling against ONE fold, with LIKE ANY, where the OR
+         * folded the row again for each — « l' » has four spellings.
+         * `LOWER(description) LIKE LOWER(pattern)` is how Postgres runs ILIKE
+         * in UTF-8, so spelling it out changes nothing but the number of times
+         * a long description is lowercased. A caseless pattern needs no
+         * lowercasing at all (see caselessPattern).
+         *
+         * Checked against the per-column form on every 1–2 character token of
+         * letters, digits, accents, apostrophes and punctuation, under every
+         * filter: no difference.
+         */
+        const foldedFields = `LOWER(immutable_unaccent(concat_ws(E'\\x01', b.title, b.subtitle, b.author, b.publisher, b.isbn)))
+                LIKE ANY (ARRAY[${placeholders.map((ph) => `LOWER(immutable_unaccent(${ph}))`).join(', ')}])`;
+        const shortDescription = caseless
+            ? `b.description LIKE ANY (ARRAY[${placeholders.join(', ')}])`
+            : `LOWER(b.description) LIKE ANY (ARRAY[${placeholders.map((ph) => `LOWER(${ph})`).join(', ')}])`;
+
         // Staff look books up by the id shown in « Modifier le livre #42 ».
         // Inlined rather than parameterised for the same reason the booleans
         // below are: parseEntityId returns a validated positive int4 or null,
@@ -212,6 +279,13 @@ function buildRawBookWhere({
                 ${anyVariant('b.publisher')} OR
                 ${genreExists}
             )`);
+        } else if (filter === 'all' && short) {
+            whereConditions.push(`(
+                ${idClause}
+                ${foldedFields} OR
+                ${shortDescription} OR
+                ${genreExists}
+            )`);
         } else if (filter === 'all') {
             whereConditions.push(`(
                 ${idClause}
@@ -238,7 +312,7 @@ function buildRawBookWhere({
 
             // Special handling for description due to size
             if (filter === 'description') {
-                whereConditions.push(`(${anyVariant('b.description', false)})`);
+                whereConditions.push(`(${short ? shortDescription : anyVariant('b.description', false)})`);
             } else if (filter === 'isbn') {
                 whereConditions.push(`(${anyVariant('b.isbn')})`);
             } else {
@@ -299,12 +373,12 @@ function buildRawBookWhere({
  * clause the list uses — one query, split with FILTER, scoped by every filter
  * except availability itself.
  *
- * Returns null when the raw path is unavailable (no `immutable_unaccent`), so
- * the caller can fall back to the Prisma count the way the search does.
+ * It also IS the search's total: `available` is a non-null boolean, so the
+ * books found are the available ones plus the others, or just one side when
+ * the list is filtered on it. A separate COUNT read every matching book a
+ * third time — for a token no index can serve (« 42 »), the whole table.
  */
-async function countAvailabilityRaw(
-    options: Omit<RawBookWhereOptions, 'available'>
-): Promise<{ availableCount: number; unavailableCount: number } | null> {
+function availabilityCountSql(options: Omit<RawBookWhereOptions, 'available'>): { query: string; params: QueryParam[] } {
     const { whereClause, params } = buildRawBookWhere({ ...options, available: undefined });
     const query = `
         SELECT
@@ -313,18 +387,7 @@ async function countAvailabilityRaw(
         FROM "Book" b
             ${whereClause}
     `;
-    try {
-        const rows = await prisma.$queryRawUnsafe<
-            { available: bigint; unavailable: bigint }[]
-        >(query, ...params);
-        return {
-            availableCount: Number(rows[0]?.available ?? 0),
-            unavailableCount: Number(rows[0]?.unavailable ?? 0),
-        };
-    } catch (error) {
-        console.error('Accent-insensitive availability count failed, falling back:', error);
-        return null;
-    }
+    return { query, params };
 }
 
 /**
@@ -450,6 +513,11 @@ async function rescueEmptyBookSearch(
     return suggestions as BookSearchSuggestion<BookWithGenres>[];
 }
 
+interface AvailabilityCounts {
+    availableCount: number;
+    unavailableCount: number;
+}
+
 // Perform accent-insensitive search using raw SQL
 async function performAccentInsensitiveSearch(
     search: string,
@@ -461,18 +529,12 @@ async function performAccentInsensitiveSearch(
     available?: boolean,
     hiddenFilter?: boolean,
     audio?: AudioFilter
-): Promise<{ books: BookWithGenres[]; total: number }> {
+): Promise<{ books: BookWithGenres[]; total: number; counts?: AvailabilityCounts }> {
     const { whereClause, params } = buildRawBookWhere({
         search, filter, genres, includeHidden, available, hiddenFilter, audio,
     });
     let paramCount = params.length;
-
-    // Get count
-    const countQuery = `
-        SELECT COUNT(DISTINCT b.id) as count
-        FROM "Book" b
-            ${whereClause}
-    `;
+    const countSql = availabilityCountSql({ search, filter, genres, includeHidden, hiddenFilter, audio });
 
     // Get data with pagination
     paramCount++;
@@ -489,12 +551,19 @@ async function performAccentInsensitiveSearch(
     `;
 
     try {
-        const [countResult, books] = await Promise.all([
-            prisma.$queryRawUnsafe<CountResult[]>(countQuery, ...params.slice(0, -2)),
+        const [countRows, books] = await Promise.all([
+            prisma.$queryRawUnsafe<{ available: bigint; unavailable: bigint }[]>(countSql.query, ...countSql.params),
             prisma.$queryRawUnsafe<RawBookResult[]>(dataQuery, ...params)
         ]);
 
-        const total = Number(countResult[0]?.count || 0);
+        const counts: AvailabilityCounts = {
+            availableCount: Number(countRows[0]?.available ?? 0),
+            unavailableCount: Number(countRows[0]?.unavailable ?? 0),
+        };
+        // See availabilityCountSql: the split is the total.
+        const total = available === undefined
+            ? counts.availableCount + counts.unavailableCount
+            : available ? counts.availableCount : counts.unavailableCount;
 
         // The real total even when this page is empty: past the last page the
         // search did find books, just not this far, and both the admin page's
@@ -502,7 +571,7 @@ async function performAccentInsensitiveSearch(
         // only fire on « no rows, total > 0 ». Returning 0 here made them read
         // it as a search that found nothing.
         if (books.length === 0) {
-            return { books: [], total };
+            return { books: [], total, counts };
         }
 
         // Get genres for the books
@@ -520,11 +589,12 @@ async function performAccentInsensitiveSearch(
         // La promotion d'un identifiant exact ne se fait PAS ici — elle vit
         // dans listBooks, après le choix de la branche, parce qu'elle doit
         // valoir aussi pour la recherche Prisma et pour le filtre par genre.
-        return { books: booksWithGenres, total };
+        return { books: booksWithGenres, total, counts };
     } catch (error) {
         // The accent-insensitive path relies on the immutable_unaccent SQL function.
         // If it isn't present in this database it throws here — fall back to a
         // standard Prisma contains search instead of silently returning nothing.
+        // No counts: listBooks then takes them from Prisma, like the list.
         console.error('Accent-insensitive search failed, falling back to standard search:', error);
         return fallbackSearch(search, filter, genres, skip, limit, includeHidden, available, hiddenFilter, audio);
     }
@@ -772,12 +842,14 @@ async function listBooks(
     // Perform search or regular query
     let books: BookWithGenres[];
     let total: number;
+    let rawCounts: AvailabilityCounts | undefined;
 
     if (search) {
         // Always use accent-insensitive search when there's a search term
         const result = await performAccentInsensitiveSearch(search, filter, genres, skip, limit, includeHidden, available, hiddenFilter, audio);
         books = result.books;
         total = result.total;
+        rawCounts = result.counts;
     } else {
         // No search: genre filter (if any) plus pagination
         if (genres.length > 0) {
@@ -834,17 +906,14 @@ async function listBooks(
     // reflect the current search/genre/hidden/audio filters without being
     // gated by the availability filter they're meant to summarize.
     //
-    // With a search term these go through the same accent-insensitive SQL
-    // the list does — counting it any other way is how « etranger » came to
-    // list 684 books above a count of 5. The Prisma path stays as the
-    // fallback (and as the no-search path, where no unaccenting is
-    // involved and one query beats two).
+    // With a search term these went through the same accent-insensitive SQL
+    // the list did, alongside it (performAccentInsensitiveSearch) — counting
+    // it any other way is how « etranger » came to list 684 books above a
+    // count of 5. The Prisma path stays as the fallback (and as the
+    // no-search path, where no unaccenting is involved and one query beats
+    // two).
     let availableCount: number;
     let unavailableCount: number;
-
-    const rawCounts = search
-        ? await countAvailabilityRaw({ search, filter, genres, includeHidden, hiddenFilter, audio })
-        : null;
 
     if (rawCounts) {
         ({ availableCount, unavailableCount } = rawCounts);
