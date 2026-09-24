@@ -871,7 +871,7 @@ export default function BooksTable({
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
-                <div className="space-y-4">
+                <div className="mb-6 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:items-end">
                         <div className="relative w-full sm:flex-1 sm:min-w-[220px]">
                             <Input
@@ -1069,7 +1069,7 @@ export default function BooksTable({
                 </div>
 
                 {error && (
-                    <div className="text-center py-4 bg-red-50 text-red-700 rounded-lg border border-red-200 mt-4 dark:bg-red-900/50 dark:text-red-200 dark:border-red-800">
+                    <div className="text-center py-4 bg-red-50 text-red-700 rounded-lg border border-red-200 mb-4 dark:bg-red-900/50 dark:text-red-200 dark:border-red-800">
                         {error}
                     </div>
                 )}
@@ -1091,7 +1091,7 @@ export default function BooksTable({
                     onNavigate={navigate}
                     pending={isSearching}
                 >
-                <div className="relative mt-4">
+                <div className="relative">
                     {isSearching && searchResults.books.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 bg-card rounded-lg">
                             <Loader2 className="animate-spin h-12 w-12 text-blue-400" />
