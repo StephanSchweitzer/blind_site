@@ -44,9 +44,9 @@ import { toast } from "@/hooks/use-toast";
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookSearchSuggestions } from '@/components/ui/book-search-suggestions';
 import type { BookSearchSuggestion, CatalogueFilterKey } from '@/lib/books/book-suggestion-types';
-import { ADMIN_PAGE_SIZE } from '@/lib/pagination';
+import { ADMIN_PAGE_SIZE, pageInfo, parsePageParam, parsePageSizeParam, type PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
-const ITEMS_PER_PAGE = ADMIN_PAGE_SIZE;
 const DEBOUNCE_DELAY = 300;
 
 /** The « Rechercher dans » options, as the select below words them. */
@@ -135,13 +135,40 @@ interface SearchResult {
 
 interface BooksTableProps {
     initialBooks: Book[];
-    initialPage: number;
+    /** Première page, rendue par le serveur — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
     initialSearch: string;
-    totalPages: number;
     availableGenres?: { id: number; name: string; }[];
-    initialTotalBooks: number;
     initialAvailableCount: number;
     initialUnavailableCount: number;
+}
+
+/**
+ * La requête de la liste, telle qu'elle s'écrit dans l'URL. Une seule
+ * fonction pour `updateURL` et pour les liens de la barre de pages : celle-ci
+ * ne voit pas les écritures de `history.replaceState` (voir `query`,
+ * components/ui/admin/AdminPagination.tsx).
+ */
+function bookListQuery(q: {
+    search: string;
+    filter: string;
+    genres: number[];
+    page: number;
+    available: string;
+    hidden: string;
+    audio: string;
+    pageSize: number;
+}): string {
+    const params = new URLSearchParams();
+    if (q.search) params.set('search', q.search);
+    if (q.filter !== 'all') params.set('filter', q.filter);
+    if (q.genres.length > 0) params.set('genres', q.genres.join(','));
+    if (q.available !== 'all') params.set('available', q.available);
+    if (q.hidden !== 'all') params.set('hidden', q.hidden);
+    if (q.audio !== 'all') params.set('audio', q.audio);
+    if (q.page > 1) params.set('page', q.page.toString());
+    if (q.pageSize !== ADMIN_PAGE_SIZE) params.set('perPage', q.pageSize.toString());
+    return params.toString();
 }
 
 /** Whether the book has something to listen to — the test its audio column shows. */
@@ -216,10 +243,9 @@ function AudioEditorButton({ book, onOpen }: { book: Book; onOpen: () => void })
 
 export default function BooksTable({
                                        initialBooks = [],
+                                       pagination,
                                        initialSearch = '',
-                                       totalPages: initialTotalPages = 1,
                                        availableGenres = [],
-                                       initialTotalBooks = 0,
                                        initialAvailableCount = 0,
                                        initialUnavailableCount = 0
                                    }: BooksTableProps) {
@@ -231,7 +257,8 @@ export default function BooksTable({
     const [selectedAvailable, setSelectedAvailable] = useState(searchParams?.get('available') || 'all');
     const [selectedHidden, setSelectedHidden] = useState(searchParams?.get('hidden') || 'all');
     const [selectedAudio, setSelectedAudio] = useState(searchParams?.get('audio') || 'all');
-    const [currentPage, setCurrentPage] = useState(parseInt(searchParams?.get('page') || '1'));
+    const [currentPage, setCurrentPage] = useState(pagination.page);
+    const [pageSize, setPageSize] = useState(pagination.pageSize);
     const [selectedGenres, setSelectedGenres] = useState<number[]>(() => {
         const genresParam = searchParams?.get('genres');
         return genresParam ? genresParam.split(',').map(Number).filter(id => !isNaN(id)) : [];
@@ -263,9 +290,9 @@ export default function BooksTable({
     // Results state - initialize with server data
     const [searchResults, setSearchResults] = useState<SearchResult>(() => ({
         books: initialBooks,
-        total: initialTotalBooks,
-        page: parseInt(searchParams?.get('page') || '1'),
-        totalPages: initialTotalPages,
+        total: pagination.total,
+        page: pagination.page,
+        totalPages: pagination.totalPages,
         availableCount: initialAvailableCount,
         unavailableCount: initialUnavailableCount
     }));
@@ -274,9 +301,10 @@ export default function BooksTable({
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const initialDataRef = useRef({
+        pageSize: pagination.pageSize,
         books: initialBooks,
-        total: initialTotalBooks,
-        totalPages: initialTotalPages,
+        total: pagination.total,
+        totalPages: pagination.totalPages,
         availableCount: initialAvailableCount,
         unavailableCount: initialUnavailableCount
     });
@@ -315,22 +343,12 @@ export default function BooksTable({
         hidden: string,
         audio: string
     ) => {
-        const params = new URLSearchParams();
-
-        if (search) params.set('search', search);
-        if (filter !== 'all') params.set('filter', filter);
-        if (genres.length > 0) params.set('genres', genres.join(','));
-        if (available !== 'all') params.set('available', available);
-        if (hidden !== 'all') params.set('hidden', hidden);
-        if (audio !== 'all') params.set('audio', audio);
-        if (page > 1) params.set('page', page.toString());
-
         // History API, not router.replace: the table fetches its own results
         // from /api/books, and a router navigation would re-render page.tsx on
         // the server — five more queries per keystroke, racing the fetch.
-        const qs = params.toString();
+        const qs = bookListQuery({ search, filter, genres, page, available, hidden, audio, pageSize });
         window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
-    }, []);
+    }, [pageSize]);
 
     // Perform search with debouncing and caching
     const performSearch = useCallback(async (
@@ -359,6 +377,7 @@ export default function BooksTable({
             !term &&
             genreIds.length === 0 &&
             page === 1 &&
+            pageSize === initialDataRef.current.pageSize &&
             filter === 'all' &&
             available === 'all' &&
             hidden === 'all' &&
@@ -389,7 +408,7 @@ export default function BooksTable({
                 search: term,
                 filter,
                 page: page.toString(),
-                limit: ITEMS_PER_PAGE.toString(),
+                limit: pageSize.toString(),
                 // « Vouliez-vous dire … ? » when nothing is found — see lib/search-suggest.ts.
                 suggest: '1',
             });
@@ -420,9 +439,15 @@ export default function BooksTable({
             const data = await response.json();
             if (abortControllerRef.current !== abortController) return;
             setSearchResults(data);
+            // Au-delà de la dernière page (des livres supprimés depuis, un lien
+            // périmé) : on retombe sur la dernière — voir lib/pagination.ts.
+            if (data.books.length === 0 && data.total > 0 && page > data.totalPages) {
+                setCurrentPage(data.totalPages);
+            }
 
             if (forceRefresh && !term && genreIds.length === 0 && page === 1 && filter === 'all' && available === 'all' && hidden === 'all' && audio === 'all') {
                 initialDataRef.current = {
+                    pageSize,
                     books: data.books,
                     total: data.total,
                     totalPages: data.totalPages,
@@ -445,7 +470,7 @@ export default function BooksTable({
                 setIsSearching(false);
             }
         }
-    }, [updateURL]);
+    }, [updateURL, pageSize]);
 
     // Debounced search effect
     useEffect(() => {
@@ -520,9 +545,14 @@ export default function BooksTable({
         setCurrentPage(1);
     }, []);
 
-    const handlePageChange = useCallback((page: number) => {
-        setCurrentPage(page);
+    // La barre de pages donne une adresse (lien réel, pour l'ouvrir ailleurs) ;
+    // ici on n'en lit que la page et la taille, la liste se recharge seule.
+    const navigate = useCallback((href: string) => {
+        const params = new URL(href, window.location.origin).searchParams;
+        setPageSize(parsePageSizeParam(params.get('perPage')));
+        setCurrentPage(parsePageParam(params.get('page')));
     }, []);
+    const listInfo = pageInfo(currentPage, pageSize, searchResults.total);
 
     const removeGenre = (genreId: number) => {
         const newGenres = selectedGenres.filter(id => id !== genreId);
@@ -747,21 +777,6 @@ export default function BooksTable({
         performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
     };
 
-    const getVisiblePages = (current: number, total: number) => {
-        const delta = 2;
-        const range = [];
-        for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i++) {
-            range.push(i);
-        }
-        if (current - delta > 2) range.unshift('...');
-        if (current + delta < total - 1) range.push('...');
-        range.unshift(1);
-        if (total > 1) range.push(total);
-        return range;
-    };
-
-    const visiblePages = getVisiblePages(currentPage, searchResults.totalPages);
-
     const getGenreName = (genreId: number) => {
         return availableGenres?.find(g => g.id === genreId)?.name || '';
     };
@@ -821,10 +836,6 @@ export default function BooksTable({
                         <AideLink section="catalogue" />
                     </div>
                     <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
-                        <span>
-                            {searchResults.total} livre{searchResults.total !== 1 ? 's' : ''} au total
-                        </span>
-                        <span aria-hidden className="text-muted-foreground/50">&#8226;</span>
                         <button
                             type="button"
                             aria-pressed={availableSelected}
@@ -1067,6 +1078,23 @@ export default function BooksTable({
                     </div>
                 )}
 
+                <AdminPaginatedList
+                    info={listInfo}
+                    query={bookListQuery({
+                        search: searchTerm,
+                        filter: selectedFilter,
+                        genres: selectedGenres,
+                        page: currentPage,
+                        available: selectedAvailable,
+                        hidden: selectedHidden,
+                        audio: selectedAudio,
+                        pageSize,
+                    })}
+                    noun={{ one: 'livre', many: 'livres' }}
+                    label="Pages du catalogue"
+                    onNavigate={navigate}
+                    pending={isSearching}
+                >
                 <div className="relative mt-4">
                     {isSearching && searchResults.books.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 bg-card rounded-lg">
@@ -1091,7 +1119,7 @@ export default function BooksTable({
                             )}
                         </div>
                     ) : (
-                        <div className={`transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
+                        <div>
                             <div className="rounded-md border border-border bg-card">
                                 <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
@@ -1174,65 +1202,7 @@ export default function BooksTable({
                     )}
                 </div>
 
-                {searchResults.totalPages > 1 && (
-                    <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1}
-                        >
-                            {'<<'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                        >
-                            {'<'}
-                        </Button>
-                        {visiblePages.map((page, index) => (
-                            typeof page === 'number' ? (
-                                <Button
-                                    key={index}
-                                    variant={currentPage === page ? "default" : "outline"}
-                                    size="sm"
-                                    className={currentPage === page
-                                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                                        : "bg-card text-foreground border-border hover:bg-muted"}
-                                    onClick={() => handlePageChange(page)}
-                                >
-                                    {page}
-                                </Button>
-                            ) : (
-                                <span key={index} className="text-muted-foreground px-2">{page}</span>
-                            )
-                        ))}
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === searchResults.totalPages}
-                        >
-                            {'>'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(searchResults.totalPages)}
-                            disabled={currentPage === searchResults.totalPages}
-                        >
-                            {'>>'}
-                        </Button>
-                    </div>
-                )}
-
-                {searchResults.totalPages > 1 && (
-                    <p className="text-center text-sm text-muted-foreground mt-2">
-                        Page {currentPage} sur {searchResults.totalPages}
-                    </p>
-                )}
+                </AdminPaginatedList>
             </CardContent>
 
             {/* Book loading overlay */}

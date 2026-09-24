@@ -5,12 +5,11 @@ import { BillingStatus, Prisma } from '@prisma/client';
 // Your bills page imports it as `./bills-table`; from here it needs a path/alias.
 import BillsTable from '@/app/admin/bills/bills-table';
 import { billsTableInclude } from '@/types/models/bill.model';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const BILLS_PER_PAGE = 10;
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -23,6 +22,8 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
     const clientId = parseInt(id);
 
     const page = parsePageParam(sp.page);
+    // Même taille que les listes générales (lib/pagination.ts) — 10 ici avant.
+    const pageSize = parsePageSizeParam(sp.perPage);
 
     const rawStatus = Array.isArray(sp.status) ? sp.status[0] : sp.status;
     const status =
@@ -48,8 +49,8 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
         prisma.bill.findMany({
             where: whereClause,
             orderBy: { creationDate: 'desc' },
-            skip: pageSkip(page, BILLS_PER_PAGE),
-            take: BILLS_PER_PAGE,
+            skip: pageSkip(page, pageSize),
+            take: pageSize,
             include: billsTableInclude,
         }),
         prisma.bill.count({ where: whereClause }),
@@ -69,14 +70,15 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
         invoiceAmount: bill.invoiceAmount.toString(),
     }));
 
+    const pagination = pageInfo(page, pageSize, totalBills);
+    redirectPastLastPage(`/admin/users/dossier/${clientId}/factures`, sp, pagination, bills.length);
+
     return (
         <BillsTable
             initialBills={serializedBills}
-            initialPage={page}
+            pagination={pagination}
             initialSearch=""
-            totalPages={Math.ceil(totalBills / BILLS_PER_PAGE)}
             availableStatuses={Object.values(BillingStatus)}
-            initialTotalBills={totalBills}
             hideSearch
             presetClient={presetClient}
         />

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { coupsDeCoeurIncludeConfigs } from '@/types/models/coups-de-coeur.model';
 import { CoupsTable } from './coups-table';
-import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import { buildCoupsDeCoeurSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 import { parisDate } from '@/lib/paris-day';
@@ -32,8 +32,8 @@ function serializeDecimals<T>(value: T): T {
     return value;
 }
 
-async function getCoupsDeCoeur(page: number, searchTerm: string) {
-    const itemsPerPage = ADMIN_PAGE_SIZE;
+async function getCoupsDeCoeur(page: number, pageSize: number, searchTerm: string) {
+    const itemsPerPage = pageSize;
 
     // Tokenisé : « camus liste » peut se satisfaire d'un auteur dans la liste
     // et d'un mot du titre de la liste — voir buildCoupsDeCoeurSearchWhere.
@@ -82,8 +82,7 @@ async function getCoupsDeCoeur(page: number, searchTerm: string) {
     return {
         searchSuggestions,
         items,
-        totalItems,
-        totalPages: Math.ceil(totalItems / itemsPerPage)
+        pagination: pageInfo(page, pageSize, totalItems),
     };
 }
 
@@ -97,17 +96,18 @@ export default async function CoupsDeCoeur({ searchParams }: PageProps) {
         Array.isArray(params.search) ? params.search[0] : '';
 
     const page = parsePageParam(pageParam);
+    const pageSize = parsePageSizeParam(params.perPage);
     const searchTerm = searchParam;
 
-    const { items, totalPages, searchSuggestions } = await getCoupsDeCoeur(page, searchTerm);
+    const { items, pagination, searchSuggestions } = await getCoupsDeCoeur(page, pageSize, searchTerm);
+    redirectPastLastPage('/admin/listes-de-livres', params, pagination, items.length);
 
     return (
         <div className="space-y-4">
             <CoupsTable
                 initialItems={serializeDecimals(items)}
-                initialPage={page}
+                pagination={pagination}
                 initialSearch={searchTerm}
-                totalPages={totalPages}
                 searchSuggestions={searchSuggestions}
             />
         </div>

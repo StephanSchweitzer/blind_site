@@ -42,16 +42,32 @@ export type AdminPaginationProps = {
     /** Navigation client (router.push dans une transition) pour un clic simple. */
     onNavigate: (href: string) => void;
     pending?: boolean;
+    /**
+     * « Lignes par page » (25 / 50 / 100). À `false` sur les files de travail
+     * dont chaque carte coûte des requêtes (doublons, audio orphelin) : leur
+     * taille est fixée côté serveur.
+     */
+    resizable?: boolean;
+    /**
+     * La requête courante, pour les listes qui écrivent leur URL par
+     * `history.replaceState` (catalogue, dernières infos) : `useSearchParams`
+     * ne voit pas ces écritures, et les liens perdraient la recherche, les
+     * filtres et la taille. Absente, on lit `useSearchParams`.
+     */
+    query?: string;
 };
 
+const DEEP_LINK_PARAMS = ['order', 'assignment', 'bill', 'payment', 'user', 'news'];
+
 /** Construit l'URL d'une page, les autres paramètres gardés tels quels. */
-function useHrefFor() {
+function useHrefFor(query?: string) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     return (updates: { page?: number; perPage?: number }) => {
-        const params = new URLSearchParams(searchParams.toString());
-        // Un lien de pagination ne doit pas rouvrir la demande d'un lien profond.
-        params.delete('order');
+        const params = new URLSearchParams(query ?? searchParams.toString());
+        // Un lien de pagination ne doit pas rouvrir la fiche d'un lien profond
+        // (?order=, ?assignment=… ouvrent le modal de la ligne visée).
+        for (const key of DEEP_LINK_PARAMS) params.delete(key);
         if (updates.page !== undefined) {
             if (updates.page > 1) params.set('page', String(updates.page));
             else params.delete('page');
@@ -149,9 +165,11 @@ export function AdminPaginationTop({
     label,
     onNavigate,
     pending = false,
+    resizable = true,
+    query,
     anchorId,
 }: AdminPaginationProps & { anchorId: string }) {
-    const hrefFor = useHrefFor();
+    const hrefFor = useHrefFor(query);
     const sizeId = useId();
     const { prev, next } = prevNextLinks({ info, hrefFor, go: onNavigate });
     const { from, to, total, page, totalPages, pageSize } = info;
@@ -190,7 +208,7 @@ export function AdminPaginationTop({
                     </nav>
                 )}
                 {/* Pas sur téléphone : 100 lignes en cartes, c'est un long défilement. */}
-                {total > ADMIN_PAGE_SIZES[0] && (
+                {resizable && total > ADMIN_PAGE_SIZES[0] && (
                     <div className="hidden items-center gap-2 sm:flex">
                         <label htmlFor={sizeId} className="text-sm text-muted-foreground whitespace-nowrap">
                             Lignes par page
@@ -232,9 +250,10 @@ export function AdminPaginationBottom({
     label,
     onNavigate,
     pending = false,
+    query,
     anchorId,
 }: AdminPaginationProps & { anchorId: string }) {
-    const hrefFor = useHrefFor();
+    const hrefFor = useHrefFor(query);
     const jumpId = useId();
     const [jump, setJump] = useState('');
     const { page, totalPages, from, to, total } = info;
@@ -315,6 +334,31 @@ export function AdminPaginationBottom({
                 // Garde la barre centrée quand il n'y a pas de champ à droite.
                 <span className="hidden lg:block lg:w-40" aria-hidden="true" />
             )}
+        </div>
+    );
+}
+
+/**
+ * Une liste paginée complète : la barre du haut, la liste (`children`), la
+ * barre du bas. `aside` se place au bout de la barre du haut — un bouton
+ * « Effacer les filtres », par exemple.
+ */
+export function AdminPaginatedList({
+    children,
+    aside,
+    ...props
+}: AdminPaginationProps & { children: React.ReactNode; aside?: React.ReactNode }) {
+    const anchorId = useId();
+    return (
+        <div aria-busy={props.pending} className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                    <AdminPaginationTop {...props} anchorId={anchorId} />
+                </div>
+                {aside}
+            </div>
+            <div className={cn('transition-opacity', props.pending && 'opacity-60')}>{children}</div>
+            <AdminPaginationBottom {...props} anchorId={anchorId} />
         </div>
     );
 }

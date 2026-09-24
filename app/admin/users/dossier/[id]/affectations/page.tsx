@@ -6,12 +6,11 @@ import { resolveBookFilter } from '@/lib/books/bookFilter';
 
 // ⚠️ ADJUST this import to wherever your assignments-table.tsx actually lives.
 import AssignmentsTable from '@/app/admin/assignments/assignments-table';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const ASSIGNMENTS_PER_PAGE = 10;
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -24,6 +23,8 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
     const userId = parseInt(id);
 
     const page = parsePageParam(sp.page);
+    // Même taille que les listes générales (lib/pagination.ts) — 10 ici avant.
+    const pageSize = parsePageSizeParam(sp.perPage);
     const searchTerm = Array.isArray(sp.search) ? sp.search[0] : sp.search || '';
     const statusId = sp.statusId
         ? parseInt(Array.isArray(sp.statusId) ? sp.statusId[0] : sp.statusId)
@@ -78,8 +79,8 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
         prisma.assignment.findMany({
             where: whereClause,
             orderBy: { id: 'desc' },
-            skip: pageSkip(page, ASSIGNMENTS_PER_PAGE),
-            take: ASSIGNMENTS_PER_PAGE,
+            skip: pageSkip(page, pageSize),
+            take: pageSize,
             include: {
                 readerHistory: {
                     orderBy: { assignedDate: 'desc' },
@@ -130,14 +131,15 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
         };
     });
 
+    const pagination = pageInfo(page, pageSize, totalAssignments);
+    redirectPastLastPage(`/admin/users/dossier/${userId}/affectations`, sp, pagination, assignments.length);
+
     return (
         <AssignmentsTable
             initialAssignments={serializedAssignments}
-            initialPage={page}
+            pagination={pagination}
             initialSearch={searchTerm}
-            totalPages={Math.ceil(totalAssignments / ASSIGNMENTS_PER_PAGE)}
             availableStatuses={statuses}
-            initialTotalAssignments={totalAssignments}
             hideSearch
             presetClientId={isReader ? null : userId}
             presetReader={presetReader}

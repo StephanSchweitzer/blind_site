@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import BooksTable from './books-table';
 import { notFound } from 'next/navigation';
 import { buildBookScopeWhere, AudioFilter } from '@/lib/books/searchWhere';
-import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{
@@ -16,6 +16,7 @@ export const revalidate = 0;
 
 async function getBooks(
     page: number,
+    pageSize: number,
     searchTerm: string,
     filter: string = 'all',
     genreIds: number[] = [],
@@ -23,7 +24,7 @@ async function getBooks(
     hidden?: boolean,
     audio?: AudioFilter
 ) {
-    const booksPerPage = ADMIN_PAGE_SIZE;
+    const booksPerPage = pageSize;
 
     // Every filter except availability, so the disponible/en attente counts
     // reflect the rest of the current filter set without being gated by the
@@ -82,8 +83,7 @@ async function getBooks(
 
         return {
             books,
-            totalBooks,
-            totalPages: Math.ceil(totalBooks / booksPerPage),
+            pagination: pageInfo(page, pageSize, totalBooks),
             availableGenres: genres,
             availableCount,
             unavailableCount,
@@ -98,6 +98,7 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
     const params = await searchParams;
 
     const page = parsePageParam(params.page);
+    const pageSize = parsePageSizeParam(params.perPage);
     const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
     const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
     const genreIds = (Array.isArray(params.genres) ? params.genres[0] : params.genres || '')
@@ -116,23 +117,22 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
     // so `data` is definitely assigned past this point.
     let data: Awaited<ReturnType<typeof getBooks>>;
     try {
-        data = await getBooks(page, searchTerm, filter, genreIds, available, hidden, audio);
+        data = await getBooks(page, pageSize, searchTerm, filter, genreIds, available, hidden, audio);
     } catch (error) {
         console.error('Error in Admin Books page:', error);
         notFound();
     }
 
-    const { books, totalBooks, totalPages, availableGenres, availableCount, unavailableCount } = data;
+    const { books, pagination, availableGenres, availableCount, unavailableCount } = data;
+    redirectPastLastPage('/admin/books', params, pagination, books.length);
 
     return (
         <div className="space-y-4">
             <BooksTable
                 initialBooks={books}
-                initialPage={page}
+                pagination={pagination}
                 initialSearch={searchTerm}
-                totalPages={totalPages}
                 availableGenres={availableGenres}
-                initialTotalBooks={totalBooks}
                 initialAvailableCount={availableCount}
                 initialUnavailableCount={unavailableCount}
             />

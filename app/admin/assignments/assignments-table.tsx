@@ -47,14 +47,15 @@ import type { BookFilter } from '@/lib/books/bookFilter';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { SerializedDelai } from '@/lib/orders/delais';
+import type { PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 interface AssignmentsTableProps {
     initialAssignments: AssignmentWithCurrentReader[];
-    initialPage: number;
+    /** Page courante, taille, total — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
     initialSearch: string;
-    totalPages: number;
     availableStatuses: StatusSummary[];
-    initialTotalAssignments: number;
     hideSearch?: boolean;
     presetClientId?: number | null;
     presetReader?: ReaderSummary | null;
@@ -69,11 +70,9 @@ interface AssignmentsTableProps {
 
 export default function AssignmentsTable({
                                              initialAssignments,
-                                             initialPage,
+                                             pagination,
                                              initialSearch,
-                                             totalPages,
                                              availableStatuses,
-                                             initialTotalAssignments,
                                              hideSearch = false,
                                              presetClientId = null,
                                              presetReader = null,
@@ -85,6 +84,8 @@ export default function AssignmentsTable({
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
+    // Pagination : un clic simple navigue dans une transition, pour griser la liste.
+    const navigate = (href: string) => startTransition(() => router.push(href, { scroll: false }));
     const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
@@ -99,7 +100,6 @@ export default function AssignmentsTable({
         selectedOrder: OrderSummary | null;
     } | null>(null);
 
-    const currentPage = initialPage;
     const currentStatusId = searchParams.get('statusId') || 'all';
     const currentRetard = searchParams.get('retard') || 'all';
 
@@ -126,10 +126,6 @@ export default function AssignmentsTable({
     const handleClearSearch = () => {
         setSearchTerm('');
         updateUrl({ search: undefined, page: '1' });
-    };
-
-    const handlePageChange = (newPage: number) => {
-        updateUrl({ page: newPage.toString() });
     };
 
     const handleStatusFilter = (statusId: string) => {
@@ -326,39 +322,6 @@ export default function AssignmentsTable({
         return colorMap[statusName] || 'bg-muted text-muted-foreground border border-border';
     };
 
-    const calculatePageNumbers = () => {
-        const pages: (number | string)[] = [];
-        const delta = 2;
-
-        if (totalPages <= 7) {
-            for (let i = 1; i <= totalPages; i++) {
-                pages.push(i);
-            }
-        } else {
-            if (currentPage <= 4) {
-                for (let i = 1; i <= 5; i++) pages.push(i);
-                pages.push('...');
-                pages.push(totalPages);
-            } else if (currentPage >= totalPages - 3) {
-                pages.push(1);
-                pages.push('...');
-                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
-            } else {
-                pages.push(1);
-                pages.push('...');
-                for (let i = currentPage - delta; i <= currentPage + delta; i++) {
-                    pages.push(i);
-                }
-                pages.push('...');
-                pages.push(totalPages);
-            }
-        }
-
-        return pages;
-    };
-
-    const visiblePages = calculatePageNumbers();
-
     return (
         <Card className="w-full bg-card border-border">
             <CardHeader className="border-b border-border">
@@ -371,7 +334,7 @@ export default function AssignmentsTable({
                             <AideLink section="attributions" />
                         </div>
                         <CardDescription className="text-muted-foreground mt-2">
-                            {initialTotalAssignments} attribution{initialTotalAssignments !== 1 ? 's' : ''} au total
+                            Gérer et suivre toutes les attributions
                         </CardDescription>
                     </div>
                     <Button
@@ -489,8 +452,15 @@ export default function AssignmentsTable({
                     {filterBook && <BookFilterBadge book={filterBook} noun="attributions" />}
                 </div>
 
-                {/* Table */}
-                <div className={isPending ? 'opacity-50 pointer-events-none' : ''}>
+                <AdminPaginatedList
+                    info={pagination}
+                    noun={{ one: 'attribution', many: 'attributions', feminine: true }}
+                    label="Pages des attributions"
+                    onNavigate={navigate}
+                    pending={isPending}
+                >
+                {/* Table — grisée par AdminPaginatedList pendant un chargement. */}
+                <div className={isPending ? 'pointer-events-none' : ''}>
                     {initialAssignments.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground text-lg">
@@ -676,67 +646,7 @@ export default function AssignmentsTable({
                     )}
                 </div>
 
-                {/* Enhanced Pagination */}
-                {totalPages > 1 && (
-                    <div className={`flex flex-wrap justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1 || isPending}
-                        >
-                            {'<<'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1 || isPending}
-                        >
-                            {'<'}
-                        </Button>
-                        {visiblePages.map((page, index) => (
-                            typeof page === 'number' ? (
-                                <Button
-                                    key={index}
-                                    variant={currentPage === page ? "default" : "outline"}
-                                    size="sm"
-                                    className={currentPage === page
-                                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                                        : "bg-card text-foreground border-border hover:bg-muted"}
-                                    onClick={() => handlePageChange(page)}
-                                    disabled={isPending}
-                                >
-                                    {page}
-                                </Button>
-                            ) : (
-                                <span key={index} className="text-muted-foreground px-2">{page}</span>
-                            )
-                        ))}
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages || isPending}
-                        >
-                            {'>'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(totalPages)}
-                            disabled={currentPage === totalPages || isPending}
-                        >
-                            {'>>'}
-                        </Button>
-                    </div>
-                )}
-
-                {totalPages > 1 && (
-                    <p className="text-center text-sm text-muted-foreground mt-2">
-                        Page {currentPage} sur {totalPages}
-                    </p>
-                )}
+                </AdminPaginatedList>
             </CardContent>
 
             {/* Add Assignment Modal - Using the new modal wrapper */}

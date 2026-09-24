@@ -8,13 +8,15 @@ import OrphansClient, {
     type SuggestedBook,
     type OrphanTab,
 } from './orphans-client';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, redirectPastLastPage } from '@/lib/pagination';
 import { buildOrphanFolderSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+// Fixé, sans « Lignes par page » : chaque carte de cette file coûte ses
+// propres requêtes (voir resizable, components/ui/admin/AdminPagination.tsx).
 const PER_PAGE = 10;
 
 const TABS = ['a-traiter', 'rattaches', 'ecartes'] as const;
@@ -240,14 +242,15 @@ export default async function AudioOrphansPage({ searchParams }: PageProps) {
             })
             : [];
 
+    const pagination = pageInfo(page, PER_PAGE, total);
+    redirectPastLastPage('/admin/audio-orphelins', params, pagination, rows.length);
+
     return (
         <OrphansClient
             searchSuggestions={searchSuggestions}
             orphans={orphans}
             tab={tab}
-            page={page}
-            totalPages={Math.max(1, Math.ceil(total / PER_PAGE))}
-            total={total}
+            pagination={pagination}
             tabCounts={{ 'a-traiter': counts[0], rattaches: counts[1], ecartes: counts[2] }}
             search={q}
         />

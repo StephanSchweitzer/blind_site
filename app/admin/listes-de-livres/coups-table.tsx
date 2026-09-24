@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDebounce } from 'use-debounce';
 import Link from 'next/link';
@@ -23,18 +23,23 @@ import { Plus, Search } from 'lucide-react';
 import { ListStatusBadge } from './components/list-book';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 interface CoupsTableProps {
     initialItems: CoupDeCoeurWithBooks[];
-    initialPage: number;
+    /** Page courante, taille, total — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
     initialSearch: string;
-    totalPages: number;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
     searchSuggestions?: RescueSuggestion[];
 }
 
-export function CoupsTable({ initialItems, initialSearch, totalPages, searchSuggestions }: CoupsTableProps) {
+export function CoupsTable({ initialItems, pagination, initialSearch, searchSuggestions }: CoupsTableProps) {
     const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+    // Pagination : un clic simple navigue dans une transition, pour griser la liste.
+    const navigate = (href: string) => startTransition(() => router.push(href, { scroll: false }));
     const searchParams = useSearchParams();
     // initialItems is the source of truth (re-passed by the server on navigation),
     // so render it directly instead of mirroring it into state via an effect.
@@ -51,9 +56,6 @@ export function CoupsTable({ initialItems, initialSearch, totalPages, searchSugg
         setSearch(urlSearch);
     }
 
-    // Get current page from URL
-    const currentPage = parseInt(searchParams.get('page') || '1');
-
     // Navigating on every keystroke raced concurrent requests against each
     // other — an older, slower response could land after a newer one and
     // snap the input back to a stale value. Debouncing collapses that to one
@@ -67,19 +69,10 @@ export function CoupsTable({ initialItems, initialSearch, totalPages, searchSugg
             } else {
                 params.delete('search');
             }
-            params.set('page', '1'); // Reset to first page on search
+            params.delete('page'); // Reset to first page on search
             router.push(`?${params.toString()}`, { scroll: false });
         }
     }, [debouncedSearch, router, searchParams]);
-
-    const handlePageChange = (newPage: number) => {
-        const params = new URLSearchParams(searchParams);
-        params.set('page', newPage.toString());
-        if (search) {
-            params.set('search', search);
-        }
-        router.push(`?${params.toString()}`, { scroll: false });
-    };
 
     return (
         <Card className="bg-card border-border">
@@ -110,6 +103,13 @@ export function CoupsTable({ initialItems, initialSearch, totalPages, searchSugg
                     />
                 </div>
 
+                <AdminPaginatedList
+                    info={pagination}
+                    noun={{ one: 'liste', many: 'listes', feminine: true }}
+                    label="Pages des listes de livres"
+                    onNavigate={navigate}
+                    pending={isPending}
+                >
                 <div className="rounded-md border border-border bg-card">
                     <Table stickyHeader mobileCards>
                         <TableHeader className="bg-card">
@@ -188,26 +188,7 @@ export function CoupsTable({ initialItems, initialSearch, totalPages, searchSugg
                     </Table>
                 </div>
 
-                {totalPages > 1 && (<>
-                <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
-                    {Array.from({ length: totalPages }, (_, index) => (
-                        <Button
-                            key={index + 1}
-                            variant={currentPage === index + 1 ? "default" : "outline"}
-                            size="sm"
-                            className={currentPage === index + 1
-                                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                                : "bg-card text-foreground border-border hover:bg-muted"}
-                            onClick={() => handlePageChange(index + 1)}
-                        >
-                            {index + 1}
-                        </Button>
-                    ))}
-                </div>
-                <p className="text-center text-sm text-muted-foreground mt-2">
-                    Page {currentPage} sur {totalPages}
-                </p>
-                </>)}
+                </AdminPaginatedList>
             </CardContent>
         </Card>
     );

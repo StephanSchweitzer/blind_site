@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+
 /**
  * Lecture des paramètres `page` / `limit`, en un seul endroit.
  *
@@ -149,4 +151,19 @@ export function hrefForPage(
     if (page > 1) params.set('page', String(page));
     const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;
+}
+
+/**
+ * Renvoie vers la dernière page quand `?page=` dépasse la fin — voir
+ * `outOfRangePage`. À appeler hors de tout try/catch : `redirect()` lève une
+ * exception que Next doit voir passer.
+ */
+export function redirectPastLastPage(
+    pathname: string,
+    sp: Record<string, string | string[] | undefined>,
+    info: PageInfo,
+    rowCount: number,
+): void {
+    const target = outOfRangePage(info, rowCount);
+    if (target) redirect(hrefForPage(pathname, sp, target));
 }

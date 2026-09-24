@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { AUDIO_TRASH_RETENTION_DAYS } from '@/lib/audio/purge';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import { buildDeletedAudioSearchWhere } from '@/lib/search';
 import TrashClient, { type TrashGroup, type TrashRow, type TrashTab } from './trash-client';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
@@ -11,8 +11,6 @@ import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Livres (groupes) par page, pas fichiers — voir le commentaire sur GROUP_BY.
-const PER_PAGE = 25;
 
 /** Un fichier à ce nombre de jours ou moins de sa purge est signalé en ambre. */
 const URGENT_DAYS = 3;
@@ -92,6 +90,8 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         ? (rawTab as TrashTab)
         : 'a-purger';
     const page = parsePageParam(one('page'));
+    // Livres (groupes) par page, pas fichiers — voir le commentaire sur GROUP_BY.
+    const pageSize = parsePageSizeParam(one('perPage'));
     const q = one('q');
 
     const whereFor = (term: string): Prisma.DeletedAudioTrackWhereInput => ({
@@ -129,8 +129,8 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
             by: GROUP_BY,
             where,
             orderBy: { _max: { deletedAt: 'desc' } },
-            skip: pageSkip(page, PER_PAGE),
-            take: PER_PAGE,
+            skip: pageSkip(page, pageSize),
+            take: pageSize,
         }),
         // Compte des groupes distincts pour la pagination — une seule ligne
         // d'agrégats par livre, donc un résultat de la taille du nombre de
@@ -261,14 +261,15 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
             })
             : [];
 
+    const pagination = pageInfo(page, pageSize, allGroups.length);
+    redirectPastLastPage('/admin/audio-corbeille', params, pagination, pageGroups.length);
+
     return (
         <TrashClient
             searchSuggestions={searchSuggestions}
             groups={groups}
             tab={tab}
-            page={page}
-            totalPages={Math.max(1, Math.ceil(allGroups.length / PER_PAGE))}
-            totalGroups={allGroups.length}
+            pagination={pagination}
             totalFiles={totalFiles}
             tabCounts={{
                 'a-purger': counts[0],

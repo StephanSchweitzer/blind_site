@@ -2,7 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { GenresTable } from './genres-table';
-import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import { buildGenreSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 import type { RescueRow } from '@/lib/search-suggestion-types';
@@ -16,8 +16,8 @@ interface PageProps {
 
 export const dynamic = 'force-dynamic';
 
-async function getGenres(page: number, searchTerm: string) {
-    const genresPerPage = ADMIN_PAGE_SIZE;
+async function getGenres(page: number, pageSize: number, searchTerm: string) {
+    const genresPerPage = pageSize;
 
     // Tokenisé et insensible aux apostrophes comme partout ailleurs —
     // voir buildGenreSearchWhere.
@@ -68,8 +68,7 @@ async function getGenres(page: number, searchTerm: string) {
     return {
         searchSuggestions,
         genres,
-        totalGenres,
-        totalPages: Math.ceil(totalGenres / genresPerPage)
+        pagination: pageInfo(page, pageSize, totalGenres),
     };
 }
 
@@ -82,9 +81,11 @@ export default async function Genres({ searchParams }: PageProps) {
         Array.isArray(params.search) ? params.search[0] : '';
 
     const page = parsePageParam(pageParam);
+    const pageSize = parsePageSizeParam(params.perPage);
     const searchTerm = searchParam;
 
-    const { genres, totalPages, searchSuggestions } = await getGenres(page, searchTerm);
+    const { genres, pagination, searchSuggestions } = await getGenres(page, pageSize, searchTerm);
+    redirectPastLastPage('/admin/genres', params, pagination, genres.length);
 
     return (
         <div className="space-y-4">
@@ -93,9 +94,8 @@ export default async function Genres({ searchParams }: PageProps) {
                     ...genre,
                     booksCount: _count.books,
                 }))}
-                initialPage={page}
+                pagination={pagination}
                 initialSearch={searchTerm}
-                totalPages={totalPages}
                 searchSuggestions={searchSuggestions}
             />
         </div>

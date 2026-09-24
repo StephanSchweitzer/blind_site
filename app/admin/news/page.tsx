@@ -1,6 +1,7 @@
 // app/admin/news/page.tsx
 import { ArticlesTable } from './articles-table';
 import { listAdminNews, parseAdminNewsQuery, type AdminNewsResult } from '@/lib/news/newsList';
+import { pageInfo, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 
 interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -15,7 +16,9 @@ export const dynamic = 'force-dynamic';
  */
 export default async function Articles({ searchParams }: PageProps) {
     const params = await searchParams;
-    const query = parseAdminNewsQuery((key) => params[key]);
+    // La taille de page vient de `?perPage=`, comme sur les autres listes ;
+    // `limit` reste le nom du paramètre de /api/news/search.
+    const query = { ...parseAdminNewsQuery((key) => params[key]), limit: parsePageSizeParam(params.perPage) };
 
     let initial: AdminNewsResult;
     try {
@@ -31,6 +34,8 @@ export default async function Articles({ searchParams }: PageProps) {
             allCount: 0,
         };
     }
+
+    redirectPastLastPage('/admin/news', params, pageInfo(query.page, query.limit, initial.total), initial.items.length);
 
     return (
         <div className="space-y-4">

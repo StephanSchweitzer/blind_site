@@ -23,12 +23,13 @@ import {
     type NewsFormData,
 } from '@/admin/NewsFormBackendBase';
 import { toast } from '@/hooks/use-toast';
-import { ChevronLeft, ChevronRight, CircleX, Loader2, Plus, Search } from 'lucide-react';
+import { CircleX, Loader2, Plus, Search } from 'lucide-react';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchRescue } from '@/components/ui/search-rescue';
+import { ADMIN_PAGE_SIZE, pageInfo, parsePageParam, parsePageSizeParam } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 import {
-    ADMIN_NEWS_PAGE_SIZE,
     NEWS_SEARCH_FIELDS,
     NEWS_SEARCH_FIELD_LABELS,
     type AdminNewsQuery,
@@ -46,8 +47,23 @@ interface ArticlesTableProps {
 }
 
 /** The part of a query that decides the results — what the fetch is keyed on. */
-type ListQuery = Pick<AdminNewsQuery, 'search' | 'field' | 'type' | 'page'>;
-const queryKey = (q: ListQuery) => JSON.stringify([q.search.trim(), q.field, q.type, q.page]);
+type ListQuery = Pick<AdminNewsQuery, 'search' | 'field' | 'type' | 'page' | 'limit'>;
+const queryKey = (q: ListQuery) => JSON.stringify([q.search.trim(), q.field, q.type, q.page, q.limit]);
+
+/**
+ * La requête de la liste, telle qu'elle s'écrit dans l'URL — pour `updateURL`
+ * et pour les liens de la barre de pages, qui ne voit pas les écritures de
+ * `history.replaceState` (voir `query`, components/ui/admin/AdminPagination.tsx).
+ */
+function newsListQuery(q: ListQuery): URLSearchParams {
+    const params = new URLSearchParams();
+    if (q.search.trim()) params.set('search', q.search);
+    if (q.field !== 'all') params.set('field', q.field);
+    if (q.type) params.set('type', q.type);
+    if (q.page > 1) params.set('page', q.page.toString());
+    if (q.limit !== ADMIN_PAGE_SIZE) params.set('perPage', q.limit.toString());
+    return params;
+}
 
 /**
  * Les dernières infos du back-office.
@@ -67,6 +83,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
     const [field, setField] = useState<NewsSearchField>(initialQuery.field);
     const [type, setType] = useState<NewsType | null>(initialQuery.type);
     const [currentPage, setCurrentPage] = useState(initialQuery.page);
+    const [pageSize, setPageSize] = useState(initialQuery.limit);
     const [results, setResults] = useState<AdminNewsResult>(initial);
     const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -85,11 +102,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
     // page.tsx on the server — the very flicker this table exists to avoid.
     // The `news` deep-link survives, so a dialogue opened by it isn't orphaned.
     const updateURL = useCallback((q: ListQuery) => {
-        const params = new URLSearchParams();
-        if (q.search.trim()) params.set('search', q.search);
-        if (q.field !== 'all') params.set('field', q.field);
-        if (q.type) params.set('type', q.type);
-        if (q.page > 1) params.set('page', q.page.toString());
+        const params = newsListQuery(q);
         const deepLink = new URLSearchParams(window.location.search).get('news');
         if (deepLink) params.set('news', deepLink);
         const qs = params.toString();
@@ -117,7 +130,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                 search: q.search,
                 field: q.field,
                 page: q.page.toString(),
-                limit: ADMIN_NEWS_PAGE_SIZE.toString(),
+                limit: q.limit.toString(),
                 // « Vouliez-vous dire … ? » when nothing is found — see lib/search-suggest.ts.
                 suggest: '1',
             });
@@ -132,6 +145,11 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
             if (abortControllerRef.current !== controller) return;
             setResults(data);
             shownKeyRef.current = key;
+            // Au-delà de la dernière page (infos supprimées depuis, lien périmé) :
+            // on retombe sur la dernière — voir lib/pagination.ts.
+            if (data.items.length === 0 && data.total > 0 && q.page > data.totalPages) {
+                setCurrentPage(data.totalPages);
+            }
         } catch (err) {
             if (err instanceof Error && err.name !== 'AbortError') {
                 setError('Une erreur s’est produite lors de la recherche.');
@@ -151,12 +169,12 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
     useEffect(() => {
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         searchTimeoutRef.current = setTimeout(() => {
-            void performSearch({ search: searchTerm, field, type, page: currentPage });
+            void performSearch({ search: searchTerm, field, type, page: currentPage, limit: pageSize });
         }, searchTerm ? DEBOUNCE_DELAY : 0);
         return () => {
             if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         };
-    }, [searchTerm, field, type, currentPage, performSearch]);
+    }, [searchTerm, field, type, currentPage, pageSize, performSearch]);
 
     useEffect(() => () => {
         abortControllerRef.current?.abort();
@@ -184,15 +202,19 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
         setCurrentPage(1);
     }, []);
 
-    const handlePageChange = useCallback((newPage: number) => {
-        if (newPage < 1 || newPage > results.totalPages || newPage === currentPage) return;
-        setCurrentPage(newPage);
-    }, [currentPage, results.totalPages]);
+    // La barre de pages donne une adresse (lien réel, pour l'ouvrir ailleurs) ;
+    // ici on n'en lit que la page et la taille, la liste se recharge seule.
+    const navigate = useCallback((href: string) => {
+        const params = new URL(href, window.location.origin).searchParams;
+        setPageSize(parsePageSizeParam(params.get('perPage')));
+        setCurrentPage(parsePageParam(params.get('page')));
+    }, []);
+    const listInfo = pageInfo(currentPage, pageSize, results.total);
 
     /** After a save or a deletion: same view, fresh rows and counts. */
     const refresh = useCallback(() => {
-        void performSearch({ search: searchTerm, field, type, page: currentPage }, true);
-    }, [performSearch, searchTerm, field, type, currentPage]);
+        void performSearch({ search: searchTerm, field, type, page: currentPage, limit: pageSize }, true);
+    }, [performSearch, searchTerm, field, type, currentPage, pageSize]);
 
     // The list only carries title/type/date — the content comes from the API
     // when the dialogue opens, the same way the catalogue loads a book.
@@ -260,84 +282,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
         clearNewsParam();
         refresh();
     }, [refresh, clearNewsParam]);
-
-    const totalPages = results.totalPages;
-
-    const generatePaginationButtons = () => {
-        const buttons = [];
-        const maxVisiblePages = 5;
-
-        buttons.push(
-            <Button
-                key="prev"
-                variant="outline"
-                size="sm"
-                disabled={currentPage === 1}
-                aria-label="Page précédente"
-                className="bg-card text-foreground border-border hover:bg-muted disabled:opacity-50"
-                onClick={() => handlePageChange(currentPage - 1)}
-            >
-                <ChevronLeft className="h-4 w-4" />
-            </Button>
-        );
-
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            buttons.push(
-                <Button key={1} variant="outline" size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(1)}>
-                    1
-                </Button>
-            );
-            if (startPage > 2) buttons.push(<span key="ellipsis1" className="text-muted-foreground px-2">...</span>);
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            buttons.push(
-                <Button
-                    key={i}
-                    variant={currentPage === i ? "default" : "outline"}
-                    size="sm"
-                    aria-current={currentPage === i ? 'page' : undefined}
-                    className={currentPage === i
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "bg-card text-foreground border-border hover:bg-muted"}
-                    onClick={() => handlePageChange(i)}
-                >
-                    {i}
-                </Button>
-            );
-        }
-
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) buttons.push(<span key="ellipsis2" className="text-muted-foreground px-2">...</span>);
-            buttons.push(
-                <Button key={totalPages} variant="outline" size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(totalPages)}>
-                    {totalPages}
-                </Button>
-            );
-        }
-
-        buttons.push(
-            <Button
-                key="next"
-                variant="outline"
-                size="sm"
-                disabled={currentPage >= totalPages}
-                aria-label="Page suivante"
-                className="bg-card text-foreground border-border hover:bg-muted disabled:opacity-50"
-                onClick={() => handlePageChange(currentPage + 1)}
-            >
-                <ChevronRight className="h-4 w-4" />
-            </Button>
-        );
-
-        return buttons;
-    };
 
     const items = results.items;
     const hasFilters = !!searchTerm.trim() || type !== null;
@@ -449,6 +393,14 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                     </div>
                 )}
 
+                <AdminPaginatedList
+                    info={listInfo}
+                    query={newsListQuery({ search: searchTerm, field, type, page: currentPage, limit: pageSize }).toString()}
+                    noun={{ one: 'info', many: 'infos', feminine: true }}
+                    label="Pages des dernières infos"
+                    onNavigate={navigate}
+                    pending={isSearching}
+                >
                 {isSearching && items.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 bg-card rounded-lg">
                         <Loader2 className="animate-spin h-10 w-10 text-muted-foreground" />
@@ -473,7 +425,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                         )}
                     </div>
                 ) : (
-                    <div className={`rounded-md border border-border bg-card transition-opacity duration-200 ${isSearching ? 'opacity-50' : 'opacity-100'}`}>
+                    <div className="rounded-md border border-border bg-card">
                         <Table stickyHeader mobileCards>
                             <TableHeader className="bg-card">
                                 <TableRow className="border-b border-border">
@@ -533,16 +485,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                     </div>
                 )}
 
-                {totalPages > 1 && (
-                    <div className="mt-6">
-                        <div className="flex flex-wrap justify-center items-center gap-1">
-                            {generatePaginationButtons()}
-                        </div>
-                        <p className="text-center text-sm text-muted-foreground mt-2">
-                            Page {currentPage} sur {totalPages} ({results.total} info{results.total !== 1 ? 's' : ''})
-                        </p>
-                    </div>
-                )}
+                </AdminPaginatedList>
             </CardContent>
 
             {isLoadingArticle && (

@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
     AlertTriangle,
     BookPlus,
-    ChevronLeft,
-    ChevronRight,
     EyeOff,
     Headphones,
     Link2,
@@ -60,6 +58,8 @@ import {
 } from './actions';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 export type OrphanTab = 'a-traiter' | 'rattaches' | 'ecartes';
 
@@ -117,9 +117,8 @@ export interface OrphanRow {
 interface Props {
     orphans: OrphanRow[];
     tab: OrphanTab;
-    page: number;
-    totalPages: number;
-    total: number;
+    /** Page courante, taille, total — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
     tabCounts: Record<OrphanTab, number>;
     search: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
@@ -433,9 +432,7 @@ type Pending =
 export default function OrphansClient({
     orphans,
     tab,
-    page,
-    totalPages,
-    total,
+    pagination,
     tabCounts,
     search,
     searchSuggestions,
@@ -498,7 +495,8 @@ export default function OrphansClient({
         startNav(() => router.push(`/admin/audio-orphelins?${sp.toString()}`));
     };
 
-    const goto = (p: number) => navigate((sp) => sp.set('page', String(p)));
+    // Barre de pages : un clic simple navigue dans la transition de navigation.
+    const goHref = (href: string) => startNav(() => router.push(href, { scroll: false }));
 
     const selectTab = (t: OrphanTab) =>
         navigate((sp) => {
@@ -599,6 +597,15 @@ export default function OrphansClient({
                 </CardHeader>
             </Card>
 
+            <AdminPaginatedList
+                info={pagination}
+                noun={{ one: 'dossier', many: 'dossiers' }}
+                label="Pages des dossiers orphelins"
+                onNavigate={goHref}
+                pending={isNavPending}
+                resizable={false}
+            >
+            <div className="space-y-4">
             {orphans.length === 0 && (
                 <Card>
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -637,25 +644,8 @@ export default function OrphansClient({
                 />
             ))}
 
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-3 pt-2">
-                    <Button variant="outline" size="sm" disabled={page <= 1 || busy} onClick={() => goto(page - 1)}>
-                        <ChevronLeft className="h-4 w-4" /> Précédent
-                    </Button>
-                    <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                        {isNavPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                        Page {page} / {totalPages} — {total} dossier{total > 1 ? 's' : ''}
-                    </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page >= totalPages || busy}
-                        onClick={() => goto(page + 1)}
-                    >
-                        Suivant <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
+            </div>
+            </AdminPaginatedList>
 
             <OrphanAudioModal orphanId={listenId} onOpenChange={(open) => !open && setListenId(null)} />
 

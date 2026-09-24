@@ -52,6 +52,8 @@ import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 interface UsersTableProps {
     type: UserType;
@@ -68,13 +70,12 @@ interface UsersTableProps {
         lastUpdated: string | null;
         civility?: { name: string } | null;
     }>;
-    initialPage: number;
+    /** Page courante, taille, total — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
     initialSearch: string;
     initialStatus: string;
     initialLanguage: string;
     initialCotisation: string;
-    totalPages: number;
-    initialTotalUsers: number;
     scopedTotal: number;
     activeCount: number;
     inactiveCount: number;
@@ -109,13 +110,11 @@ function StatusCell({
 export default function UsersTable({
                                        type,
                                        initialUsers,
-                                       initialPage,
+                                       pagination,
                                        initialSearch,
                                        initialStatus,
                                        initialLanguage,
                                        initialCotisation,
-                                       totalPages,
-                                       initialTotalUsers,
                                        scopedTotal,
                                        activeCount,
                                        inactiveCount,
@@ -125,6 +124,8 @@ export default function UsersTable({
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
+    // Pagination : un clic simple navigue dans une transition, pour griser la liste.
+    const navigate = (href: string) => startTransition(() => router.push(href, { scroll: false }));
     const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
@@ -146,16 +147,12 @@ export default function UsersTable({
         data: UserFormData;
     } | null>(null);
 
-    const currentPage = initialPage;
     const { plural, singular } = USER_TYPE_META[type];
 
     // Which activity segment (if any) the current status filter is showing. The
     // actif/inactif figures double as toggle chips that drive this filter.
     const activeSelected = statusFilter === 'ACTIVE' || statusFilter === 'active';
     const inactiveSelected = statusFilter === 'inactive';
-    // A granular status (e.g. "En congé") is selected via the dropdown, not the chips.
-    const statusIsGranular =
-        statusFilter !== 'all' && statusFilter !== '' && !activeSelected && !inactiveSelected;
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -193,10 +190,6 @@ export default function UsersTable({
     const handleCotisationFilter = (value: string) => {
         setCotisationFilter(value);
         updateUrl({ cotisation: value === 'all' ? undefined : value, page: '1' });
-    };
-
-    const handlePageChange = (newPage: number) => {
-        updateUrl({ page: newPage.toString() });
     };
 
     const handleUserAdded = () => {
@@ -309,30 +302,6 @@ export default function UsersTable({
         });
     };
 
-    const visiblePages = (() => {
-        const pages: (number | string)[] = [];
-        if (totalPages <= 7) {
-            for (let i = 1; i <= totalPages; i++) pages.push(i);
-        } else {
-            if (currentPage <= 4) {
-                for (let i = 1; i <= 5; i++) pages.push(i);
-                pages.push('...');
-                pages.push(totalPages);
-            } else if (currentPage >= totalPages - 3) {
-                pages.push(1);
-                pages.push('...');
-                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
-            } else {
-                pages.push(1);
-                pages.push('...');
-                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-                pages.push('...');
-                pages.push(totalPages);
-            }
-        }
-        return pages;
-    })();
-
     return (
         <Card className="border-border bg-card shadow-xl">
             <CardHeader className="border-b border-border">
@@ -375,12 +344,6 @@ export default function UsersTable({
                                 <span className={`h-1.5 w-1.5 rounded-full ${inactiveSelected ? 'bg-red-400' : 'bg-red-500/50'}`} />
                                 {inactiveCount} inactif{inactiveCount > 1 ? 's' : ''}
                             </button>
-                            {statusIsGranular && (
-                                <>
-                                    <span aria-hidden className="text-muted-foreground/50">&#8226;</span>
-                                    <span className="italic">{initialTotalUsers} affich&#233;{initialTotalUsers > 1 ? 's' : ''}</span>
-                                </>
-                            )}
                         </div>
                     </div>
                     {canCreateUsers && (
@@ -474,6 +437,13 @@ export default function UsersTable({
                     </MobileFilters>
                 </div>
 
+                <AdminPaginatedList
+                    info={pagination}
+                    noun={{ one: singular, many: `${singular}s`, feminine: false }}
+                    label="Pages de la liste"
+                    onNavigate={navigate}
+                    pending={isPending}
+                >
                 <div className="space-y-6">
                     {initialUsers.length === 0 ? (
                         <div className="py-20 flex flex-col items-center justify-center border border-border rounded-lg bg-card/50">
@@ -507,7 +477,7 @@ export default function UsersTable({
                             />
                         </div>
                     ) : (
-                        <div className={`border border-border rounded-lg overflow-clip ${isPending ? 'opacity-50' : ''}`}>
+                        <div className="border border-border rounded-lg overflow-clip">
                             <div>
                                 <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
@@ -576,34 +546,7 @@ export default function UsersTable({
                     )}
                 </div>
 
-                {totalPages > 1 && (
-                    <div className={`flex flex-wrap justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <Button size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(1)} disabled={currentPage === 1 || isPending}>{'<<'}</Button>
-                        <Button size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1 || isPending}>{'<'}</Button>
-                        {visiblePages.map((page, index) => (
-                            typeof page === 'number' ? (
-                                <Button
-                                    key={index}
-                                    variant={currentPage === page ? "default" : "outline"}
-                                    size="sm"
-                                    className={currentPage === page ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-card text-foreground border-border hover:bg-muted"}
-                                    onClick={() => handlePageChange(page)}
-                                    disabled={isPending}
-                                >
-                                    {page}
-                                </Button>
-                            ) : (
-                                <span key={index} className="text-muted-foreground px-2">{page}</span>
-                            )
-                        ))}
-                        <Button size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || isPending}>{'>'}</Button>
-                        <Button size="sm" className="bg-card text-foreground border-border hover:bg-muted" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages || isPending}>{'>>'}</Button>
-                    </div>
-                )}
-
-                {totalPages > 1 && (
-                    <p className="text-center text-sm text-muted-foreground mt-2">Page {currentPage} sur {totalPages}</p>
-                )}
+                </AdminPaginatedList>
             </CardContent>
 
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>

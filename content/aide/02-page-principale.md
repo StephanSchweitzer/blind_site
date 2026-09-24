@@ -67,4 +67,12 @@ Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur c
 
 Les listes d'Arbre Rose (demandes, attributions, factures, paiements, catalogue, membres…) affichent **25 lignes par page**. Quand la liste tient dans la largeur de l'écran, la ligne des titres de colonnes reste en haut pendant que vous faites défiler la page, pour savoir toujours quelle colonne vous lisez.
 
+Toutes se parcourent de la même façon :
+
+- **Au-dessus de la liste**, une ligne comme « 26–50 sur 1 234 factures » dit ce qui est affiché et combien il y en a en tout. Les flèches à côté passent à la page précédente ou suivante, et « Lignes par page » affiche 25, 50 ou 100 lignes à la fois.
+- **Sous la liste**, les numéros mènent directement à une page, et le champ « Aller à la page » à n'importe laquelle. Après un changement de page en bas, vous revenez en haut de la liste.
+- **Chaque page a sa propre adresse** : vous pouvez l'ouvrir dans un nouvel onglet (clic du milieu) ou copier le lien, avec la recherche et les filtres qui l'accompagnent. Un lien qui mène au-delà de la dernière page vous amène sur la dernière.
+
+Les files de travail des doublons et de l'audio orphelin restent à 10 cartes par page, sans « Lignes par page » : chacune demande plus de travail à afficher qu'une ligne de tableau.
+
 Sur un téléphone, les filtres sont rangés derrière un bouton « **Filtres** » : touchez-le pour les ouvrir. Le petit nombre à côté du mot dit combien de filtres sont posés — une liste filtrée ne passe ainsi jamais pour la liste entière. Les lignes des tableaux s'y affichent en blocs, chaque valeur sous le nom de sa colonne, plutôt qu'en un tableau à faire défiler de côté.

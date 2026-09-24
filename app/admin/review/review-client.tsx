@@ -6,8 +6,6 @@ import {
     ArrowLeftRight,
     Trash2,
     Check,
-    ChevronLeft,
-    ChevronRight,
     FileAudio,
     FileX2,
     AlertTriangle,
@@ -63,6 +61,8 @@ import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 export interface ReviewBook {
     id: number;
@@ -99,10 +99,8 @@ export interface ReviewPair {
 
 interface Props {
     pairs: ReviewPair[];
-    page: number;
-    totalPages: number;
-    /** Matches for the current search, or the whole queue when not searching. */
-    total: number;
+    /** Page courante, taille, et le total : les résultats de la recherche, ou toute la file. */
+    pagination: PageInfo;
     /** Size of the whole queue, regardless of the search. */
     queueTotal: number;
     search: string;
@@ -172,7 +170,8 @@ interface EscalationTarget {
     audioConflict: boolean;
 }
 
-export default function ReviewClient({ pairs, page, totalPages, total, queueTotal, search, searchSuggestions }: Props) {
+export default function ReviewClient({ pairs, pagination, queueTotal, search, searchSuggestions }: Props) {
+    const total = pagination.total;
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(search);
     const [pending, setPending] = useState<Pending>(null);
@@ -251,11 +250,8 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
         else run(() => deleteBook(pending.bookId), undefined, `Doublons : supprimer #${pending.bookId}`);
     };
 
-    const goto = (p: number) => {
-        const sp = new URLSearchParams(window.location.search);
-        sp.set('page', String(p));
-        startNav(() => router.push(`/admin/review?${sp.toString()}`));
-    };
+    // Barre de pages : un clic simple navigue dans la transition de navigation.
+    const goHref = (href: string) => startNav(() => router.push(href, { scroll: false }));
 
     const runSearch = (term: string) => {
         const sp = new URLSearchParams(window.location.search);
@@ -323,6 +319,15 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
                 </CardHeader>
             </Card>
 
+            <AdminPaginatedList
+                info={pagination}
+                noun={{ one: 'livre', many: 'livres' }}
+                label="Pages des doublons"
+                onNavigate={goHref}
+                pending={isNavPending}
+                resizable={false}
+            >
+            <div className="space-y-4">
             {search && pairs.length === 0 && (
                 <Card>
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -363,20 +368,8 @@ export default function ReviewClient({ pairs, page, totalPages, total, queueTota
                 />
             ))}
 
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-3 pt-2">
-                    <Button variant="outline" size="sm" disabled={page <= 1 || busy} onClick={() => goto(page - 1)}>
-                        <ChevronLeft className="h-4 w-4" /> Précédent
-                    </Button>
-                    <span className="text-sm text-muted-foreground inline-flex items-center gap-2">
-                        {isNavPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                        Page {page} / {totalPages}
-                    </span>
-                    <Button variant="outline" size="sm" disabled={page >= totalPages || busy} onClick={() => goto(page + 1)}>
-                        Suivant <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
+            </div>
+            </AdminPaginatedList>
 
             <AlertDialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
                 <AlertDialogContent>

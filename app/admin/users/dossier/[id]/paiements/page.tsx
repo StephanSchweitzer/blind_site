@@ -3,7 +3,7 @@ import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 
 import PaymentsTable from '@/app/admin/payments/payments-table';
 import { paymentsTableInclude } from '@/types/models/payment.model';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import {
     parsePaymentListParams,
     buildPaymentListWhere,
@@ -13,7 +13,6 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const PAYMENTS_PER_PAGE = 10;
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -26,6 +25,8 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
     const clientId = parseInt(id);
 
     const page = parsePageParam(sp.page);
+    // Même taille que les listes générales (lib/pagination.ts) — 10 ici avant.
+    const pageSize = parsePageSizeParam(sp.perPage);
 
     // Mêmes filtres et même tri que la liste globale, verrouillés sur ce client :
     // l'onglet portait sa propre copie du `where` et ne suivait donc aucun des
@@ -37,8 +38,8 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
         prisma.payment.findMany({
             where: whereClause,
             orderBy: buildPaymentListOrderBy(listParams),
-            skip: pageSkip(page, PAYMENTS_PER_PAGE),
-            take: PAYMENTS_PER_PAGE,
+            skip: pageSkip(page, pageSize),
+            take: pageSize,
             include: paymentsTableInclude,
         }),
         prisma.payment.count({ where: whereClause }),
@@ -61,15 +62,16 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
             : null,
     }));
 
+    const pagination = pageInfo(page, pageSize, totalPayments);
+    redirectPastLastPage(`/admin/users/dossier/${clientId}/paiements`, sp, pagination, payments.length);
+
     return (
         <PaymentsTable
             initialPayments={serializedPayments}
-            initialPage={page}
+            pagination={pagination}
             initialParams={listParams}
-            totalPages={Math.ceil(totalPayments / PAYMENTS_PER_PAGE)}
             availableTypes={Object.values(PaymentType)}
             availableMethods={Object.values(PaymentMethod)}
-            initialTotalPayments={totalPayments}
             initialTotalAmount={(totals._sum.amount ?? new Prisma.Decimal(0)).toString()}
             hideSearch
             presetClient={client}

@@ -4,7 +4,7 @@ import BillsTable from './bills-table';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { notFound } from 'next/navigation';
-import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { BILL_KIND_LABELS, BILLING_STATUS_LABELS } from '@/lib/billing-enums';
@@ -23,12 +23,13 @@ export const revalidate = 0;
 
 async function getBills(
     page: number,
+    pageSize: number,
     searchTerm: string,
     status?: BillingStatus,
     showLate?: boolean,
     kind?: BillKind,
 ) {
-    const billsPerPage = ADMIN_PAGE_SIZE;
+    const billsPerPage = pageSize;
 
     // The whole where clause for a given search term — a function so the
     // « Essayez plutôt » block can count another term, or the same one with
@@ -75,8 +76,7 @@ async function getBills(
         return {
             searchSuggestions,
             bills,
-            totalBills,
-            totalPages: Math.ceil(totalBills / billsPerPage),
+            pagination: pageInfo(page, pageSize, totalBills),
             availableStatuses: Object.values(BillingStatus),
         };
     } catch (error) {
@@ -147,6 +147,7 @@ export default async function AdminBillsPage({ searchParams }: PageProps) {
     const params = await searchParams;
 
     const page = parsePageParam(params.page);
+    const pageSize = parsePageSizeParam(params.perPage);
     const searchTerm = Array.isArray(params.search)
         ? params.search[0]
         : params.search || '';
@@ -167,13 +168,14 @@ export default async function AdminBillsPage({ searchParams }: PageProps) {
     // so `data` is definitely assigned past this point.
     let data: Awaited<ReturnType<typeof getBills>>;
     try {
-        data = await getBills(page, searchTerm, status, showLate, kind);
+        data = await getBills(page, pageSize, searchTerm, status, showLate, kind);
     } catch (error) {
         console.error('Error in Admin Bills page:', error);
         notFound();
     }
 
-    const { bills, totalBills, totalPages, availableStatuses, searchSuggestions } = data;
+    const { bills, pagination, availableStatuses, searchSuggestions } = data;
+    redirectPastLastPage('/admin/bills', params, pagination, bills.length);
 
     const serializedBills = bills.map(bill => ({
         ...bill,
@@ -187,11 +189,9 @@ export default async function AdminBillsPage({ searchParams }: PageProps) {
         <div className="space-y-4">
             <BillsTable
                 initialBills={serializedBills}
-                initialPage={page}
+                pagination={pagination}
                 initialSearch={searchTerm}
-                totalPages={totalPages}
                 availableStatuses={availableStatuses}
-                initialTotalBills={totalBills}
                 searchSuggestions={searchSuggestions}
             />
         </div>

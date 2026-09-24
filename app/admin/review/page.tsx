@@ -4,13 +4,15 @@ import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 import { titlePrefixMatch } from '@/lib/books/title-match';
 import ReviewClient, { type ReviewBook, type ReviewPair } from './review-client';
-import { parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, redirectPastLastPage } from '@/lib/pagination';
 import { bookReviewIdClauses, buildBookReviewSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+// Fixé, sans « Lignes par page » : chaque carte de cette file coûte ses
+// propres requêtes (voir resizable, components/ui/admin/AdminPagination.tsx).
 const PER_PAGE = 10;
 
 /** Past a handful the list stops being a shortlist; the search box takes over. */
@@ -187,13 +189,14 @@ export default async function AdminReviewPage({ searchParams }: PageProps) {
             })
             : [];
 
+    const pagination = pageInfo(page, PER_PAGE, total);
+    redirectPastLastPage('/admin/review', params, pagination, flagged.length);
+
     return (
         <ReviewClient
             searchSuggestions={searchSuggestions}
             pairs={pairs}
-            page={page}
-            totalPages={Math.max(1, Math.ceil(total / PER_PAGE))}
-            total={total}
+            pagination={pagination}
             queueTotal={searchWhere ? queueTotal : total}
             search={q}
         />

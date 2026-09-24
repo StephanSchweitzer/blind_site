@@ -26,7 +26,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, Loader2, ExternalLink, ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw, Download, SlidersHorizontal } from 'lucide-react';
+import { Search, X, Plus, ExternalLink, ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw, Download, SlidersHorizontal } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     PaymentType,
@@ -57,16 +57,17 @@ import {
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 interface PaymentsTableProps {
     initialPayments: Payment[];
-    initialPage: number;
+    /** Page courante, taille, total — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
     /** Recherche, filtres et tri déjà analysés par lib/payments/list-query.ts. */
     initialParams: PaymentListParams;
-    totalPages: number;
     availableTypes: PaymentType[];
     availableMethods: PaymentMethod[];
-    initialTotalPayments: number;
     initialTotalAmount: string;
     hideSearch?: boolean;
     presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null } | null;
@@ -164,12 +165,10 @@ const LIFTED_PARAMS: Record<string, string[]> = {
 
 export default function PaymentsTable({
                                           initialPayments,
-                                          initialPage,
+                                          pagination,
                                           initialParams,
-                                          totalPages,
                                           availableTypes,
                                           availableMethods,
-                                          initialTotalPayments,
                                           initialTotalAmount,
                                           hideSearch = false,
                                           presetClient = null,
@@ -178,6 +177,8 @@ export default function PaymentsTable({
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
+    // Pagination : un clic simple navigue dans une transition, pour griser la liste.
+    const navigate = (href: string) => startTransition(() => router.push(href, { scroll: false }));
 
     const [searchTerm, setSearchTerm] = useState(initialParams.search);
     // Le panneau de filtres s'ouvre à la demande et part replié, même quand des
@@ -194,7 +195,6 @@ export default function PaymentsTable({
     });
     const [paymentToDelete, setPaymentToDelete] = useState<number | null>(null);
 
-    const currentPage = initialPage;
     // Le serveur a déjà validé chaque paramètre ; relire l'URL ici ferait afficher
     // comme actif un filtre que le serveur a écarté (« ?type=nimportequoi »).
     const { type: currentType, paymentMethod: currentMethod, sort, dir } = initialParams;
@@ -236,7 +236,6 @@ export default function PaymentsTable({
 
     const handleSearch = () => updateUrl({ search: searchTerm || undefined, page: '1' });
     const handleClearSearch = () => { setSearchTerm(''); updateUrl({ search: undefined, page: '1' }); };
-    const handlePageChange = (newPage: number) => updateUrl({ page: newPage.toString() });
     const handleTypeFilter = (value: string) => updateUrl({ type: value === 'all' ? undefined : value, page: '1' });
     const handleMethodFilter = (value: string) => updateUrl({ paymentMethod: value === 'all' ? undefined : value, page: '1' });
     const handleDateFieldChange = (value: string) => updateUrl({ dateField: value === 'creationDate' ? undefined : value, page: '1' });
@@ -314,27 +313,6 @@ export default function PaymentsTable({
     const formatCurrency = (amount: string) =>
         new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(parseFloat(amount));
 
-    const getVisiblePages = () => {
-        const pages: (number | string)[] = [];
-        const maxVisible = 5;
-
-        if (totalPages <= maxVisible + 2) {
-            return Array.from({ length: totalPages }, (_, i) => i + 1);
-        }
-
-        pages.push(1);
-        const start = Math.max(2, currentPage - 1);
-        const end = Math.min(totalPages - 1, currentPage + 1);
-        if (start > 2) pages.push('...');
-        for (let i = start; i <= end; i++) pages.push(i);
-        if (end < totalPages - 1) pages.push('...');
-        pages.push(totalPages);
-
-        return pages;
-    };
-
-    const visiblePages = getVisiblePages();
-
     return (
         <Card className="bg-card border-border">
             <CardHeader className="border-b border-border pb-4">
@@ -345,15 +323,14 @@ export default function PaymentsTable({
                             <AideLink section="paiements" />
                         </div>
                         <CardDescription className="text-muted-foreground mt-1">
-                            {initialTotalPayments} paiement{initialTotalPayments > 1 ? 's' : ''}
-                            {' · '}
+                            Montant total :{' '}
                             <span className="font-semibold text-foreground">{formatCurrency(initialTotalAmount)}</span>
                         </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <a
                             href={exportHref}
-                            title={`Exporter ${initialTotalPayments} paiement${initialTotalPayments > 1 ? 's' : ''} au format CSV`}
+                            title={`Exporter ${pagination.total} paiement${pagination.total > 1 ? 's' : ''} au format CSV`}
                             className="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium bg-card text-foreground border border-border hover:bg-muted transition-colors"
                         >
                             <Download className="h-4 w-4" />
@@ -546,18 +523,13 @@ export default function PaymentsTable({
                     </div>
                 )}
 
-                {/* Loading Overlay */}
-                {isPending && (
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-card/50 flex items-center justify-center z-10 rounded-lg">
-                            <div className="flex flex-col items-center gap-3">
-                                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                <p className="text-sm text-foreground">Chargement...</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
+                <AdminPaginatedList
+                    info={pagination}
+                    noun={{ one: 'paiement', many: 'paiements' }}
+                    label="Pages des paiements"
+                    onNavigate={navigate}
+                    pending={isPending}
+                >
                 {/* Payments Table */}
                 <div className="relative">
                     {initialPayments.length === 0 ? (
@@ -580,7 +552,7 @@ export default function PaymentsTable({
                             />
                         </div>
                     ) : (
-                        <div className={`border border-border rounded-lg overflow-clip ${isPending ? 'opacity-50' : ''}`}>
+                        <div className="border border-border rounded-lg overflow-clip">
                             <div>
                                 <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
@@ -666,67 +638,7 @@ export default function PaymentsTable({
                     )}
                 </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className={`flex flex-wrap justify-center items-center gap-2 mt-6 ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1 || isPending}
-                        >
-                            {'<<'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1 || isPending}
-                        >
-                            {'<'}
-                        </Button>
-                        {visiblePages.map((page, index) =>
-                            typeof page === 'number' ? (
-                                <Button
-                                    key={index}
-                                    variant={currentPage === page ? 'default' : 'outline'}
-                                    size="sm"
-                                    className={currentPage === page
-                                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                        : 'bg-card text-foreground border-border hover:bg-muted'}
-                                    onClick={() => handlePageChange(page)}
-                                    disabled={isPending}
-                                >
-                                    {page}
-                                </Button>
-                            ) : (
-                                <span key={index} className="text-muted-foreground px-2">{page}</span>
-                            )
-                        )}
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages || isPending}
-                        >
-                            {'>'}
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="bg-card text-foreground border-border hover:bg-muted"
-                            onClick={() => handlePageChange(totalPages)}
-                            disabled={currentPage === totalPages || isPending}
-                        >
-                            {'>>'}
-                        </Button>
-                    </div>
-                )}
-
-                {totalPages > 1 && (
-                    <p className="text-center text-sm text-muted-foreground mt-2">
-                        Page {currentPage} sur {totalPages}
-                    </p>
-                )}
+                </AdminPaginatedList>
             </CardContent>
 
             {/* Add Payment Dialog */}

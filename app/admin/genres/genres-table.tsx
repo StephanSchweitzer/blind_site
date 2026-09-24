@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import type { Genre } from '@/types';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 export interface GenreRow extends Genre {
     /** Books already carrying this genre — surfaced in the edit dialogue. */
@@ -29,15 +31,18 @@ export interface GenreRow extends Genre {
 
 interface GenresTableProps {
     initialGenres: GenreRow[];
-    initialPage: number;
+    /** Page courante, taille, total — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
     initialSearch: string;
-    totalPages: number;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
     searchSuggestions?: RescueSuggestion<RescueRow & { genre: GenreRow }>[];
 }
 
-export function GenresTable({ initialGenres, initialSearch, totalPages, searchSuggestions }: GenresTableProps) {
+export function GenresTable({ initialGenres, pagination, initialSearch, searchSuggestions }: GenresTableProps) {
     const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+    // Pagination : un clic simple navigue dans une transition, pour griser la liste.
+    const navigate = (href: string) => startTransition(() => router.push(href, { scroll: false }));
     const searchParams = useSearchParams();
     const [search, setSearch] = useState(initialSearch);
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -48,9 +53,6 @@ export function GenresTable({ initialGenres, initialSearch, totalPages, searchSu
         setIsAddOpen(false);
         router.refresh();
     };
-
-    // Get current page from URL
-    const currentPage = parseInt(searchParams.get('page') || '1');
 
     // Keep the search box in sync with the URL (back/forward, deep links)
     // without an effect: adjust state during render when the URL value changes.
@@ -69,16 +71,7 @@ export function GenresTable({ initialGenres, initialSearch, totalPages, searchSu
         } else {
             params.delete('search');
         }
-        params.set('page', '1'); // Reset to first page on search
-        router.push(`?${params.toString()}`);
-    };
-
-    const handlePageChange = (newPage: number) => {
-        const params = new URLSearchParams(searchParams);
-        params.set('page', newPage.toString());
-        if (search) {
-            params.set('search', search);
-        }
+        params.delete('page'); // Reset to first page on search
         router.push(`?${params.toString()}`);
     };
 
@@ -112,6 +105,13 @@ export function GenresTable({ initialGenres, initialSearch, totalPages, searchSu
                     />
                 </div>
 
+                <AdminPaginatedList
+                    info={pagination}
+                    noun={{ one: 'genre', many: 'genres' }}
+                    label="Pages des genres"
+                    onNavigate={navigate}
+                    pending={isPending}
+                >
                 <div className="rounded-md border border-border bg-card">
                     <Table stickyHeader mobileCards>
                         <TableHeader className="bg-card">
@@ -166,24 +166,7 @@ export function GenresTable({ initialGenres, initialSearch, totalPages, searchSu
                     />
                 )}
 
-                <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
-                    {Array.from({ length: totalPages }, (_, index) => (
-                        <Button
-                            key={index + 1}
-                            variant={currentPage === index + 1 ? "default" : "outline"}
-                            size="sm"
-                            className={currentPage === index + 1
-                                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                                : "bg-card text-foreground border-border hover:bg-muted"}
-                            onClick={() => handlePageChange(index + 1)}
-                        >
-                            {index + 1}
-                        </Button>
-                    ))}
-                </div>
-                <p className="text-center text-sm text-muted-foreground mt-2">
-                    Page {currentPage} sur {totalPages}
-                </p>
+                </AdminPaginatedList>
             </CardContent>
 
             {/* Add */}

@@ -3,7 +3,7 @@ import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
 import PaymentsTable from './payments-table';
 import { paymentsTableInclude } from '@/types/models/payment.model';
 import { notFound } from 'next/navigation';
-import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import {
     parsePaymentListParams,
     buildPaymentListWhere,
@@ -25,8 +25,8 @@ interface PageProps {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function getPayments(page: number, params: PaymentListParams) {
-    const paymentsPerPage = ADMIN_PAGE_SIZE;
+async function getPayments(page: number, pageSize: number, params: PaymentListParams) {
+    const paymentsPerPage = pageSize;
 
     // Recherche, filtres et tri viennent tous de lib/payments/list-query.ts, que
     // /api/payments lit aussi : la page et la route doivent rendre la même liste.
@@ -58,9 +58,8 @@ async function getPayments(page: number, params: PaymentListParams) {
         return {
             searchSuggestions,
             payments,
-            totalPayments,
             totalAmount: (totals._sum.amount ?? new Prisma.Decimal(0)).toString(),
-            totalPages: Math.ceil(totalPayments / paymentsPerPage),
+            pagination: pageInfo(page, pageSize, totalPayments),
             availableTypes: Object.values(PaymentType),
             availableMethods: Object.values(PaymentMethod),
         };
@@ -137,19 +136,21 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
     const rawParams = await searchParams;
 
     const page = parsePageParam(rawParams.page);
+    const pageSize = parsePageSizeParam(rawParams.perPage);
     const params = parsePaymentListParams(rawParams);
 
     // Only the data fetch is guarded; notFound() throws (returns `never`),
     // so `data` is definitely assigned past this point.
     let data: Awaited<ReturnType<typeof getPayments>>;
     try {
-        data = await getPayments(page, params);
+        data = await getPayments(page, pageSize, params);
     } catch (error) {
         console.error('Error in Admin Payments page:', error);
         notFound();
     }
 
-    const { payments, totalPayments, totalAmount, totalPages, availableTypes, availableMethods, searchSuggestions } = data;
+    const { payments, pagination, totalAmount, availableTypes, availableMethods, searchSuggestions } = data;
+    redirectPastLastPage('/admin/payments', rawParams, pagination, payments.length);
 
     const serializedPayments = payments.map(payment => ({
         ...payment,
@@ -166,12 +167,10 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         <div className="space-y-4">
             <PaymentsTable
                 initialPayments={serializedPayments}
-                initialPage={page}
+                pagination={pagination}
                 initialParams={params}
-                totalPages={totalPages}
                 availableTypes={availableTypes}
                 availableMethods={availableMethods}
-                initialTotalPayments={totalPayments}
                 initialTotalAmount={totalAmount}
                 searchSuggestions={searchSuggestions}
             />

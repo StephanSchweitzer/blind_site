@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { buildAssignmentSearchWhere } from '@/lib/search';
 import AssignmentsTable from './assignments-table';
 import { notFound } from 'next/navigation';
-import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserNameOnly } from '@/lib/users/displayName';
@@ -21,13 +21,14 @@ export const revalidate = 0;
 
 async function getAssignments(
     page: number,
+    pageSize: number,
     searchTerm: string,
     statusId?: number,
     filterBook?: { id: number; title: string },
     retard?: string,
 ) {
     const bookId = filterBook?.id;
-    const assignmentsPerPage = ADMIN_PAGE_SIZE;
+    const assignmentsPerPage = pageSize;
 
     // Délais par étape — the same rule as the demandes list (lib/orders/delais.ts),
     // read once for the « Retard » filter, the row badges and the rescue notes.
@@ -137,8 +138,7 @@ async function getAssignments(
         return {
             searchSuggestions,
             assignments,
-            totalAssignments,
-            totalPages: Math.ceil(totalAssignments / assignmentsPerPage),
+            pagination: pageInfo(page, pageSize, totalAssignments),
             availableStatuses: statuses,
             delais: serializeDelaisFor(assignments.map((a) => a.id), delais),
         };
@@ -226,6 +226,7 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
     const params = await searchParams;
 
     const page = parsePageParam(params.page);
+    const pageSize = parsePageSizeParam(params.perPage);
     const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
     const statusId = params.statusId
         ? parseInt(Array.isArray(params.statusId) ? params.statusId[0] : params.statusId)
@@ -233,10 +234,11 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
     const filterBook = await resolveBookFilter(params.bookId);
     const retard = Array.isArray(params.retard) ? params.retard[0] : params.retard;
 
-    let assignments, totalAssignments, totalPages, availableStatuses, delais, searchSuggestions;
+    let assignments, pagination, availableStatuses, delais, searchSuggestions;
     try {
-        ({ assignments, totalAssignments, totalPages, availableStatuses, delais, searchSuggestions } = await getAssignments(
+        ({ assignments, pagination, availableStatuses, delais, searchSuggestions } = await getAssignments(
             page,
+            pageSize,
             searchTerm,
             statusId,
             filterBook ?? undefined,
@@ -246,6 +248,8 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
         console.error('Error in Admin Assignments page:', error);
         notFound();
     }
+
+    redirectPastLastPage('/admin/assignments', params, pagination!, assignments!.length);
 
     const serializedAssignments = assignments!.map(assignment => {
         const currentReader = assignment.readerHistory[0]?.reader || null;
@@ -278,11 +282,9 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
         <div className="space-y-4">
             <AssignmentsTable
                 initialAssignments={serializedAssignments}
-                initialPage={page}
+                pagination={pagination!}
                 initialSearch={searchTerm}
-                totalPages={totalPages!}
                 availableStatuses={availableStatuses!}
-                initialTotalAssignments={totalAssignments!}
                 filterBook={filterBook}
                 delais={delais!}
                 searchSuggestions={searchSuggestions}

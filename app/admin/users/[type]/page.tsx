@@ -9,7 +9,7 @@ import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
 import { activityStatusFilterWhere, effectivelyActiveWhere } from '@/lib/users/activityStatus';
 import { LANGUAGE_VALUES } from '@/lib/user-enums';
 import { cotisationCoverageQuery } from '@/lib/cotisation';
-import { ADMIN_PAGE_SIZE, parsePageParam, pageSkip } from '@/lib/pagination';
+import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import { buildUserNameSearch } from '@/lib/search';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserDisplayName } from '@/lib/users/displayName';
@@ -34,13 +34,14 @@ export function generateStaticParams() {
 
 async function getUsers(
     page: number,
+    pageSize: number,
     searchTerm: string,
     userType: UserType,
     statusFilter: string,
     languageFilter: string,
     cotisationFilter: string
 ) {
-    const usersPerPage = ADMIN_PAGE_SIZE;
+    const usersPerPage = pageSize;
 
     // Every where clause of the page, for a given search term — built as a
     // function so the « Essayez plutôt » block can count another term, the same
@@ -154,13 +155,12 @@ async function getUsers(
 
         return {
             users,
-            totalUsers,
             // Scoped total = actifs + inactifs (they partition the scoped set), so
             // the summary line is always internally consistent.
             scopedTotal: activeCount + inactiveCount,
             activeCount,
             inactiveCount,
-            totalPages: Math.ceil(totalUsers / usersPerPage),
+            pagination: pageInfo(page, pageSize, totalUsers),
             searchSuggestions,
         };
     } catch (error) {
@@ -279,6 +279,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
     const searchParamsResolved = await searchParams;
 
     const page = parsePageParam(searchParamsResolved.page);
+    const pageSize = parsePageSizeParam(searchParamsResolved.perPage);
     const searchTerm = Array.isArray(searchParamsResolved.search)
         ? searchParamsResolved.search[0]
         : searchParamsResolved.search || '';
@@ -296,13 +297,14 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
     // errors propagate to an error boundary instead of being silently swallowed.
     let data: Awaited<ReturnType<typeof getUsers>>;
     try {
-        data = await getUsers(page, searchTerm, userType, statusFilter, languageFilter, cotisationFilter);
+        data = await getUsers(page, pageSize, searchTerm, userType, statusFilter, languageFilter, cotisationFilter);
     } catch (error) {
         console.error('Error in Users page:', error);
         notFound();
     }
 
-    const { users, totalUsers, scopedTotal, totalPages, activeCount, inactiveCount, searchSuggestions } = data;
+    const { users, pagination, scopedTotal, activeCount, inactiveCount, searchSuggestions } = data;
+    redirectPastLastPage(`/admin/users/${userType}`, searchParamsResolved, pagination, users.length);
 
     const serializedUsers = users.map(user => ({
         ...user,
@@ -316,13 +318,11 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
             <UsersTable
                 type={userType}
                 initialUsers={serializedUsers}
-                initialPage={page}
+                pagination={pagination}
                 initialSearch={searchTerm}
                 initialStatus={statusFilter}
                 initialLanguage={languageFilter}
                 initialCotisation={cotisationFilter}
-                totalPages={totalPages}
-                initialTotalUsers={totalUsers}
                 scopedTotal={scopedTotal}
                 activeCount={activeCount}
                 inactiveCount={inactiveCount}

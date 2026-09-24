@@ -6,8 +6,6 @@ import { useRouter } from 'next/navigation';
 import {
     AlertTriangle,
     ChevronDown,
-    ChevronLeft,
-    ChevronRight,
     ChevronUp,
     Loader2,
     RotateCcw,
@@ -24,6 +22,8 @@ import { formatBytes, formatDate } from '../audio-orphelins/format';
 import { restoreTrashedGroup, restoreTrashedTrack, type ActionResult } from './actions';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
+import type { PageInfo } from '@/lib/pagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 export type TrashTab = 'a-purger' | 'sans-fiche' | 'restaurees' | 'purgees';
 
@@ -66,9 +66,8 @@ export interface TrashGroup {
 interface Props {
     groups: TrashGroup[];
     tab: TrashTab;
-    page: number;
-    totalPages: number;
-    totalGroups: number;
+    /** Page courante, taille, total de livres — lib/pagination.ts `pageInfo`. */
+    pagination: PageInfo;
     totalFiles: number;
     tabCounts: Record<TrashTab, number>;
     retentionDays: number;
@@ -175,9 +174,7 @@ function BookIdentity({ group }: { group: TrashGroup }) {
 export default function TrashClient({
     groups,
     tab,
-    page,
-    totalPages,
-    totalGroups,
+    pagination,
     totalFiles,
     tabCounts,
     retentionDays,
@@ -230,7 +227,8 @@ export default function TrashClient({
         startNav(() => router.push(`/admin/audio-corbeille?${sp.toString()}`));
     };
 
-    const goto = (p: number) => navigate((sp) => sp.set('page', String(p)));
+    // Barre de pages : un clic simple navigue dans la transition de navigation.
+    const goHref = (href: string) => startNav(() => router.push(href, { scroll: false }));
 
     const selectTab = (t: TrashTab) =>
         navigate((sp) => {
@@ -340,6 +338,19 @@ export default function TrashClient({
                 </div>
             )}
 
+            <AdminPaginatedList
+                info={pagination}
+                noun={{ one: 'livre', many: 'livres' }}
+                label="Pages de la corbeille"
+                onNavigate={goHref}
+                pending={isNavPending}
+                aside={
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                        {totalFiles} fichier{totalFiles > 1 ? 's' : ''}
+                    </span>
+                }
+            >
+            <div className="space-y-4">
             {groups.length === 0 && (
                 <Card>
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -387,31 +398,8 @@ export default function TrashClient({
                 ),
             )}
 
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-3 pt-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page <= 1 || busy}
-                        onClick={() => goto(page - 1)}
-                    >
-                        <ChevronLeft className="h-4 w-4" /> Précédent
-                    </Button>
-                    <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                        {isNavPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                        Page {page} / {totalPages} — {totalGroups} livre{totalGroups > 1 ? 's' : ''},{' '}
-                        {totalFiles} fichier{totalFiles > 1 ? 's' : ''}
-                    </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page >= totalPages || busy}
-                        onClick={() => goto(page + 1)}
-                    >
-                        Suivant <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
+            </div>
+            </AdminPaginatedList>
         </div>
     );
 }
