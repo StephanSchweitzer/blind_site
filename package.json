@@ -49,6 +49,7 @@
     "@smithy/node-http-handler": "4.0.2",
     "@swc/helpers": "^0.5.15",
     "@vercel/blob": "^2.3.2",
+    "@vercel/functions": "^3.9.9",
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "client-zip": "^2.5.0",

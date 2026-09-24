@@ -1,5 +1,7 @@
 import { PrismaClient, Prisma } from '@/generated/prisma/client';
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from 'pg';
+import { attachDatabasePool } from '@vercel/functions';
 import { auditExtension } from '@/lib/audit/extension';
 import { isAuditRead, runInAuditTransaction } from '@/lib/audit/context';
 
@@ -27,11 +29,53 @@ const getLogConfig = () => {
 // Prisma-native-engine convention that `@prisma/adapter-pg` + plain `pg`
 // never reads (confirmed: `pg.Pool` silently drops unrecognized connection
 // string params), so `max` here is the only real cap.
-const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL!,
-    max: 3,
-    connectionTimeoutMillis: 5_000,
-});
+//
+// attachDatabasePool: on Vercel's Fluid compute an instance is suspended
+// between requests, and a suspended instance never runs pg's idle timer — its
+// connections stay open, counted by Supabase, until the instance is reclaimed.
+// Enough of those and Postgres answers « too many clients already »; the proxy
+// then waits on its access check until Vercel kills it with a 504
+// MIDDLEWARE_INVOCATION_TIMEOUT (2026-09-24). Attaching the pool keeps the
+// instance alive just long enough to close idle clients. No-op off Vercel.
+//
+// Built inside makePrisma, not at module scope: in dev every hot reload
+// re-evaluates this file, and the global-cached client below would leave each
+// new pool unused.
+function makePool(): Pool {
+    const connectionString = process.env.DATABASE_URL!;
+    warnIfNotTransactionPooler(connectionString);
+    const pool = new Pool({
+        connectionString,
+        max: 3,
+        connectionTimeoutMillis: 5_000,
+        idleTimeoutMillis: 10_000,
+    });
+    attachDatabasePool(pool);
+    return pool;
+}
+
+// The deployed app must reach Supabase through the transaction pooler (6543),
+// which multiplexes every serverless client over a few backend connections.
+// Port 5432 — direct, or the session pooler — gives each client a backend of
+// its own, and the free tier's ~60 run out under ordinary traffic. Nothing
+// fails at deploy time when Vercel's DATABASE_URL carries the wrong one, so
+// say it in the function logs instead.
+function warnIfNotTransactionPooler(connectionString: string) {
+    if (process.env.NODE_ENV !== 'production') return;
+    try {
+        const { hostname, port } = new URL(connectionString);
+        if (hostname.endsWith('.supabase.com') || hostname.endsWith('.supabase.co')) {
+            if (port !== '6543') {
+                console.error(
+                    `[prisma] DATABASE_URL points at ${hostname}:${port || '5432'} — ` +
+                    'the deployed app should use the transaction pooler on port 6543.'
+                );
+            }
+        }
+    } catch {
+        // An unparsable URL fails loudly on the first query anyway.
+    }
+}
 
 /**
  * Soft-delete extension.
@@ -108,7 +152,7 @@ function makePrisma() {
     // reads "before" rows and writes AuditEvent rows through it, so those reads
     // see soft-deleted users (a deletion must still be traceable) and those
     // writes cannot re-enter the extension that produced them.
-    const base = new PrismaClient({ adapter, log: getLogConfig() });
+    const base = new PrismaClient({ adapter: new PrismaPg(makePool()), log: getLogConfig() });
 
     // One handler, applied per model: the rule is identical for each, so writing
     // it three times would be three places for it to drift.
