@@ -14,6 +14,63 @@ type CustomUser = {
     passwordNeedsChange?: boolean;
 };
 
+type AuthorizedUser = {
+    id: number;
+    email: string | null;
+    name: string | null;
+    role: string;
+    memberType: string;
+    accessLevel: string;
+    passwordNeedsChange: boolean;
+};
+
+// One shape for every provider, so the jwt/session callbacks below cannot tell
+// how the person signed in.
+function toSessionUser(user: AuthorizedUser): CustomUser {
+    return {
+        id: user.id + '',
+        email: user.email,
+        name: user.name,
+        randomKey: 'Hey cool',
+        role: user.role,
+        memberType: user.memberType,
+        accessLevel: user.accessLevel,
+        passwordNeedsChange: user.passwordNeedsChange,
+    };
+}
+
+const DEV_CLAUDE_EMAIL = 'claude@eca.test';
+
+function databaseIsLocal(): boolean {
+    try {
+        const host = new URL(process.env.DATABASE_URL ?? '').hostname;
+        return host === 'localhost' || host === '127.0.0.1';
+    } catch {
+        return false;
+    }
+}
+
+// Passwordless sign-in as the local dev account (prisma/dev-claude-user.ts), so
+// Claude can reach /admin by opening /auth/dev-signin. All three conditions or
+// the provider does not exist at all: .env is sometimes pointed at production,
+// hence the database check on top of NODE_ENV and the explicit opt-in flag.
+const devClaudeProviderEnabled =
+    process.env.NODE_ENV === 'development' &&
+    process.env.DEV_AUTH_BYPASS === 'true' &&
+    databaseIsLocal();
+
+const devClaudeProvider = CredentialsProvider({
+    id: 'dev-claude',
+    name: 'Dev Claude',
+    credentials: {},
+    async authorize() {
+        const user = await prisma.user.findFirst({
+            where: { email: { mode: 'insensitive', equals: DEV_CLAUDE_EMAIL } },
+        });
+        return user ? toSessionUser(user) : null;
+    },
+});
+
 export const authOptions: NextAuthOptions = {
     session: {
         strategy: 'jwt',
@@ -74,18 +131,10 @@ export const authOptions: NextAuthOptions = {
                     return null;
                 }
 
-                return {
-                    id: user.id + '',
-                    email: user.email,
-                    name: user.name,
-                    randomKey: 'Hey cool',
-                    role: user.role,
-                    memberType: user.memberType,
-                    accessLevel: user.accessLevel,
-                    passwordNeedsChange: user.passwordNeedsChange,
-                };
+                return toSessionUser(user);
             },
         }),
+        ...(devClaudeProviderEnabled ? [devClaudeProvider] : []),
     ],
     callbacks: {
         async session({ session, token }) {

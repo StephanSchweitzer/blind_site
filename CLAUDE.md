@@ -79,34 +79,21 @@ window, add a high-volume log table, or store blobs in Postgres without checking
 
 ## Signing in to the back office (for Claude)
 
-**You are expected to sign in and use `/admin` yourself** rather than reporting the admin
-section as unreachable. There is a permanent local dev account for exactly this:
+Stephan (repo owner) authorizes Claude to use `/admin` on the local dev server. Don't report
+the admin section as unreachable.
 
-```
-claude@eca.test / ClaudeDev2026!
-```
+1. `preview_start` the `dev` config (see the dev-server rules below).
+2. Navigate to http://localhost:3000/auth/dev-signin. It signs you in automatically as the local
+   dev account `claude@eca.test` (`super_admin` / `informaticien`) and redirects to `/admin`.
+   No password is needed.
+3. The session is a NextAuth JWT cookie and persists across navigations in that tab.
 
-It is a `super_admin` / `informaticien`, so every page is reachable, including the
-super-admin-only `/admin/stats`.
+If it lands on the sign-in page or an error instead of `/admin`, the account is missing: re-run
+`pnpm dev:claude-user` (upserts only that user, wipes nothing), then retry. If it still fails,
+tell me. `DEV_AUTH_BYPASS` may be unset, and you must not work around it.
 
-How to use it:
-
-1. `preview_start` the `dev` config (`.claude/launch.json`), which serves http://localhost:3000.
-   Reuse a server that is already running, and stop it when you are done — see
-   [Always stop the dev server when you are done](#always-stop-the-dev-server-when-you-are-done-important).
-2. Go to `/auth/signin`, fill the email + password fields, submit. The session is a NextAuth
-   JWT cookie and persists across navigations in that tab.
-3. Navigate anywhere under `/admin`.
-
-If the login fails (fresh DB, account edited/deleted, password changed), just re-run
-`pnpm dev:claude-user`. It **upserts only that one user and wipes nothing**, so it is safe on
-a dev DB full of your own test data — unlike `pnpm prisma db seed`, which resets every table
-it manages. The account is also created by `prisma/seed.ts`, so a fresh seed includes it.
-
-The provisioning script (`prisma/dev-claude-user.ts`) refuses to run against anything but a
-local database: Supabase hosts are rejected outright, and any other non-local host must be
-named explicitly via `DEV_USER_ALLOW_HOST=<host>`. Never create this account, or any account
-with a repo-committed password, on the production database.
+The bypass only exists when `NODE_ENV=development`, `DEV_AUTH_BYPASS=true`, and the DB is local.
+Never create this account on the production database.
 
 ## Always stop the dev server when you are done (IMPORTANT)
 
