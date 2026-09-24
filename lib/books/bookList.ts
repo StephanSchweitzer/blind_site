@@ -157,9 +157,19 @@ function buildRawBookWhere({
          * `expr` matches ANY spelling of this token. Parenthesised by every
          * caller that sits next to an AND — OR binds loosest in SQL.
          *
-         * `unaccent: false` is for the columns the search deliberately does not
-         * unaccent (isbn carries no accents; description is too large to fold
-         * on every row).
+         * `unaccent: false` is for the description, too large to fold on every
+         * row. The isbn carries no accents but is folded all the same: its
+         * index has to be an expression — a plain-column index is one Prisma
+         * can see, and `migrate dev` would drop it as drift.
+         *
+         * Every expression here is the exact one a trigram index was built on
+         * (migration 20260924175521_book_search_trgm_indexes, and
+         * idx_book_description_gin for `description ILIKE`) — which is why a
+         * column is never wrapped in COALESCE: a NULL just fails its LIKE.
+         * Change one side without the other and Postgres silently goes back to
+         * reading every book, which on Supabase's free tier took 0.5–2 s per
+         * query and, with a few people searching at once, the whole database
+         * down with it (2026-09-24).
          */
         const anyVariant = (expr: string, unaccent = true) =>
             placeholders
@@ -170,7 +180,7 @@ function buildRawBookWhere({
                         ? `LOWER(immutable_unaccent(${expr})) ~ ('(^|[^[:alnum:]])' || LOWER(immutable_unaccent(${ph})))`
                         : unaccent
                             ? `LOWER(immutable_unaccent(${expr})) LIKE LOWER(immutable_unaccent(${ph}))`
-                            : `LOWER(${expr}) LIKE LOWER(${ph})`,
+                            : `${expr} ILIKE ${ph}`,
                 )
                 .join(' OR ');
 
@@ -181,31 +191,36 @@ function buildRawBookWhere({
         const tokenId = parseEntityId(token);
         const idClause = tokenId !== null ? `b.id = ${tokenId} OR ` : '';
 
+        // The books of every genre whose name matches, gathered ONCE into an
+        // array (an InitPlan) and matched on the primary key. A correlated
+        // EXISTS here was a per-row subplan, and a single arm Postgres cannot
+        // serve from an index makes it scan the whole table for the entire OR
+        // — trigram indexes on the other columns included.
         const genreExists = `
-                EXISTS (
-                    SELECT 1 FROM "BookGenre" bg
+                b.id = ANY(ARRAY(
+                    SELECT bg."bookId" FROM "BookGenre" bg
                     JOIN "Genre" g ON bg."genreId" = g.id
-                    WHERE bg."bookId" = b.id AND (${anyVariant('g.name')})
-                )`;
+                    WHERE ${anyVariant('g.name')}
+                ))`;
 
         if (filter === 'all' && strict) {
             whereConditions.push(`(
                 ${idClause}
                 ${anyVariant('b.title')} OR
-                ${anyVariant("COALESCE(b.subtitle, '')")} OR
+                ${anyVariant('b.subtitle')} OR
                 ${anyVariant('b.author')} OR
-                ${anyVariant("COALESCE(b.publisher, '')")} OR
+                ${anyVariant('b.publisher')} OR
                 ${genreExists}
             )`);
         } else if (filter === 'all') {
             whereConditions.push(`(
                 ${idClause}
                 ${anyVariant('b.title')} OR
-                ${anyVariant("COALESCE(b.subtitle, '')")} OR
+                ${anyVariant('b.subtitle')} OR
                 ${anyVariant('b.author')} OR
-                ${anyVariant("COALESCE(b.publisher, '')")} OR
-                (b.isbn IS NOT NULL AND (${anyVariant('b.isbn', false)})) OR
-                (b.description IS NOT NULL AND (${anyVariant('b.description', false)})) OR
+                ${anyVariant('b.publisher')} OR
+                ${anyVariant('b.isbn')} OR
+                ${anyVariant('b.description', false)} OR
                 ${genreExists}
             )`);
         } else if (filter === 'genre') {
@@ -225,10 +240,9 @@ function buildRawBookWhere({
             if (filter === 'description') {
                 whereConditions.push(`(${anyVariant('b.description', false)})`);
             } else if (filter === 'isbn') {
-                // ISBN carries no accents; a plain LIKE is enough (and matches with/without hyphens).
-                whereConditions.push(`(b.isbn IS NOT NULL AND (${anyVariant('b.isbn', false)}))`);
+                whereConditions.push(`(${anyVariant('b.isbn')})`);
             } else {
-                whereConditions.push(`(${anyVariant(`COALESCE(${column}, '')`)})`);
+                whereConditions.push(`(${anyVariant(column)})`);
             }
         }
     }

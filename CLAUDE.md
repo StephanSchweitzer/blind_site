@@ -54,8 +54,13 @@ unique index `Book_isbn_key`, the accent-insensitive `idx_book_*` / `idx_genre_n
 search indexes, the `orders_billed_requires_bill` CHECK, the functions
 `immutable_unaccent` / `search_fold` / `user_search_key_trigger` / `refresh_search_vocabulary`,
 the `user_search_key` trigger, the `search_vocabulary` materialized view, the role's
-`idle_in_transaction_session_timeout`, and the `unaccent` / `pg_trgm` extensions. Prisma
-never creates, changes or drops them, so change them in a hand-edited migration. The view
+`idle_in_transaction_session_timeout`, and the `unaccent` / `pg_trgm` extensions — plus,
+since `20260924175521_book_search_trgm_indexes`, the trigram indexes `idx_book_*_trgm` on
+`lower(immutable_unaccent(col))`. Prisma
+never creates, changes or drops them, so change them in a hand-edited migration. Keep such an
+index an *expression*: one on a bare column is visible to Prisma, and `migrate dev` then
+treats it as drift and wants to drop it. The catalogue search SQL (`lib/books/bookList.ts`)
+must use the indexed expressions verbatim, or every search reads the whole `Book` table. The view
 and trigger read `User` and `Book` columns (names, title, author, `deletedAt`…): a migration
 that renames or retypes one of those must drop and recreate the view in the same file, or it
 fails on Postgres.
