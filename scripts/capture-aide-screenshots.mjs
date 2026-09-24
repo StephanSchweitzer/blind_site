@@ -297,6 +297,23 @@ const SPECS = [
         why: 'le coût conseillé par CD',
     },
     {
+        // Longtemps une capture faite à la main, restée sur l'ancien défaut
+        // « Duplication ». Une ligne neuve naît désormais « Enregistrement ».
+        name: 'demandes-08.jpg',
+        url: '/admin/orders',
+        waitFor: 'table tbody tr',
+        steps: [{ clickText: 'Ajouter une demande' }, { waitFor: '[role="dialog"]' }, { sleep: 800 }],
+        clip: '[role="dialog"] .rounded-lg.border.space-y-3',
+        // Les numeros reprennent ceux du paragraphe de 06-demandes.md.
+        // Par selecteur et non par libelle : « Duplication » figure aussi dans le
+        // tableau derriere le modal, que la recherche par texte trouve d'abord.
+        annotations: [
+            { n: 1, selector: '[role="dialog"] .rounded-lg.border.space-y-3 > .grid.grid-cols-2 > button:nth-child(1)', self: true },
+            { n: 2, selector: '[role="dialog"] .rounded-lg.border.space-y-3 > .grid.grid-cols-2 > button:nth-child(2)', self: true },
+        ],
+        why: 'le type de la ligne, Enregistrement par défaut',
+    },
+    {
         name: 'demandes-14.jpg',
         viewport: { width: 1440, height: 1400 },
         url: '/admin/orders',

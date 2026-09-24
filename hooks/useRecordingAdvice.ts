@@ -8,6 +8,7 @@ import {
     type RecordingContext,
     type RecordingDecision,
 } from "@/lib/orders/recordingAdvice";
+import { suggestOrderType, type OrderTypeSuggestion } from "@/lib/orders/orderTypeSuggestion";
 
 /** Attribution encore en cours pour ce livre — bloque une duplication. */
 export interface BlockingRecording {
@@ -166,5 +167,40 @@ export function useRecordingAdvice({
         [byBook]
     );
 
-    return { adviceFor, conflicts, blockingRecordingFor };
+    /**
+     * Un enregistrement de ce livre est-il déjà en route — demande
+     * d'enregistrement ouverte, ou attribution pas encore revenue ? `null` tant
+     * que la réponse n'est pas là : ne rien affirmer plutôt que d'affirmer à tort.
+     * Hors de la porte des avis, comme `blockingRecordingFor` : c'est l'état du
+     * livre, pas une mise en garde sur la décision.
+     */
+    const recordingUnderWayFor = useCallback(
+        (catalogueId: number | null): boolean | null => {
+            const res = catalogueId ? byBook[catalogueId] : null;
+            if (!res) return null;
+            return res.activeRecordingCount > 0 || res.blockingRecording !== null;
+        },
+        [byBook]
+    );
+
+    /**
+     * Le type à proposer pour un livre qu'on vient de choisir
+     * (`lib/orders/orderTypeSuggestion.ts`). Un livre qui a déjà son audio n'a pas
+     * besoin du serveur. Si la vérification échoue, on retombe sur
+     * « Enregistrement » : l'avis « demande d'enregistrement active » le dira
+     * alors sous la ligne, ce que le silence d'une duplication ne ferait pas.
+     */
+    const suggestTypeFor = useCallback(
+        async (bookId: number, bookHasAudio: boolean): Promise<OrderTypeSuggestion> => {
+            if (bookHasAudio) return suggestOrderType({ bookHasAudio, recordingUnderWay: false });
+            const res = await lookup(bookId);
+            return suggestOrderType({
+                bookHasAudio,
+                recordingUnderWay: !!res && (res.activeRecordingCount > 0 || res.blockingRecording !== null),
+            });
+        },
+        [lookup]
+    );
+
+    return { adviceFor, conflicts, blockingRecordingFor, recordingUnderWayFor, suggestTypeFor };
 }

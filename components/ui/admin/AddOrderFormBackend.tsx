@@ -45,6 +45,7 @@ import {
     pagePricingToPayload,
     pagePricingError,
 } from '@/lib/orders/pagePricingForm';
+import type { OrderLineType, OrderTypeReason } from '@/lib/orders/orderTypeSuggestion';
 
 // N3 — required fields, visual top→bottom. Per-line media format fields are
 // appended dynamically at validation time (one per open line).
@@ -54,12 +55,16 @@ const CREATE_FIELD_ORDER = ['aveugleId', 'deliveryMethod', 'lines'];
 // Multi-book order creation (fan-out: one order is created per book)
 // ---------------------------------------------------------------------------
 
-type OrderLineType = 'DUPLICATION' | 'ENREGISTREMENT';
-
 interface OrderBookLine {
     key: string;
     book: Book | null;
     type: OrderLineType;
+    /**
+     * Pourquoi `type` a été choisi à la place de l'utilisateur, au choix du livre
+     * (lib/orders/orderTypeSuggestion.ts). `null` dès qu'il clique lui-même un
+     * type : la note d'explication n'a alors plus lieu d'être.
+     */
+    typeReason: OrderTypeReason | null;
     cost: string;
     /** Seulement pour un enregistrement : une duplication n'a pas de lecture à compter. */
     pagePricing: PagePricingForm;
@@ -70,7 +75,10 @@ let lineKeySeq = 0;
 const makeLine = (cost: string): OrderBookLine => ({
     key: `line-${++lineKeySeq}-${Date.now()}`,
     book: null,
-    type: 'DUPLICATION',
+    // « Enregistrement » tant qu'aucun livre n'est choisi : c'est le cas d'un
+    // livre inconnu du corpus. Choisir le livre corrige ensuite s'il y a lieu.
+    type: 'ENREGISTREMENT',
+    typeReason: null,
     cost,
     pagePricing: emptyPagePricing(),
     mediaFormatId: null,
@@ -199,7 +207,12 @@ export function AddOrderFormBackend({
             })),
         [lines]
     );
-    const { adviceFor: recordingAdviceFor, conflicts: recordingConflicts } = useRecordingAdvice({
+    const {
+        adviceFor: recordingAdviceFor,
+        conflicts: recordingConflicts,
+        recordingUnderWayFor,
+        suggestTypeFor,
+    } = useRecordingAdvice({
         current: recordingLines,
     });
 
@@ -256,15 +269,35 @@ export function AddOrderFormBackend({
     // (lib/pricing.ts). This is where adjustments go missing: ten ouvrages saisis
     // d'affilée, un seul coût recopié partout. Le champ « Coût » de la ligne reste
     // libre juste en dessous, et un livre au poids inconnu garde le coût en place.
-    const selectBookForLine = (key: string, book: Book | null) => {
+    //
+    // Le type de la ligne suit le livre de la même façon (lib/orders/orderTypeSuggestion.ts).
+    // On l'attend AVANT de remplir la ligne : le sélecteur garde sa liste ouverte,
+    // avec un indicateur sur la ligne choisie, tant que ce callback n'a pas rendu
+    // la main — la ligne n'apparaît donc jamais avec un type qui change sous les yeux.
+    const selectBookForLine = async (key: string, book: Book | null) => {
         const suggested = book ? costSuggestion(book.audioSizeKb) : null;
-        updateLine(key, { book, ...(suggested ? { cost: suggested.value } : {}) });
+        const typeSuggestion = book
+            ? await suggestTypeFor(book.id, Boolean(book.audio_filepath))
+            : null;
+        updateLine(key, {
+            book,
+            ...(suggested ? { cost: suggested.value } : {}),
+            ...(typeSuggestion
+                ? {
+                    type: typeSuggestion.type,
+                    typeReason: typeSuggestion.reason,
+                    // Même remise à zéro que le bouton « Duplication » : une
+                    // duplication n'a pas de lecture à compter.
+                    ...(typeSuggestion.type === 'DUPLICATION' ? { pagePricing: emptyPagePricing() } : {}),
+                }
+                : {}),
+        });
     };
 
-    // Counted over the lines that carry a book only. A fresh line is born
-    // « Duplication » with no book, so counting every line announced « 14
-    // duplications » / « Créer 14 demandes » over 11 books chosen — three
-    // forgotten empty lines — and the submit then refused the lot.
+    // Counted over the lines that carry a book only. A fresh line has a type but
+    // no book, so counting every line announced « 14 demandes » / « Créer 14
+    // demandes » over 11 books chosen — three forgotten empty lines — and the
+    // submit then refused the lot.
     const filledLines = lines.filter(l => l.book);
     const filledCount = filledLines.length;
     const emptyCount = lines.length - filledCount;
@@ -493,20 +526,51 @@ export function AddOrderFormBackend({
                                             viewHref={(b) => `/admin/books?book=${b.id}`}
                                         />
                                     </div>
-                                    <CreateBookDialog onCreated={(b) => selectBookForLine(line.key, b)} />
+                                    <CreateBookDialog onCreated={(b) => void selectBookForLine(line.key, b)} />
                                 </div>
 
-                                {/* Type — per book */}
+                                {/* Type — per book. Proposé au choix du livre ; un clic ici l'emporte. */}
                                 <div className="grid grid-cols-2 gap-2">
-                                    <button type="button" onClick={() => updateLine(line.key, { type: 'ENREGISTREMENT' })}
+                                    <button type="button" onClick={() => updateLine(line.key, { type: 'ENREGISTREMENT', typeReason: null })}
                                             className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-100 border-amber-400 text-amber-900 dark:bg-amber-700/30 dark:border-amber-600 dark:text-amber-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Enregistrement
                                     </button>
-                                    <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION', pagePricing: emptyPagePricing() })}
+                                    <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION', typeReason: null, pagePricing: emptyPagePricing() })}
                                             className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-100 border-green-400 text-green-900 dark:bg-green-700/30 dark:border-green-600 dark:text-green-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Duplication
                                     </button>
                                 </div>
+
+                                {/* Pourquoi « Duplication » a été choisi à sa place. Rien pour
+                                    « Enregistrement » : c'est le type de départ, l'annoncer
+                                    à chaque livre ne serait que du bruit. */}
+                                {line.type === 'DUPLICATION' && line.typeReason === 'audio' && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Un fichier audio existe déjà pour ce livre : « Duplication » a été
+                                        choisi automatiquement. Choisissez « Enregistrement » s&apos;il faut
+                                        le faire relire.
+                                    </p>
+                                )}
+                                {line.type === 'DUPLICATION' && line.typeReason === 'recording-under-way' && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Ce livre est déjà en cours d&apos;enregistrement : « Duplication » a été
+                                        choisi automatiquement. Elle pourra être faite au retour de
+                                        l&apos;enregistrement.
+                                    </p>
+                                )}
+                                {/* Le cas que l'ancien défaut produisait sans bruit : une duplication
+                                    d'un livre qui n'a rien à copier et que personne n'enregistre.
+                                    Seulement une fois la vérification revenue (`false`, pas `null`). */}
+                                {line.type === 'DUPLICATION' &&
+                                    line.book &&
+                                    !line.book.audio_filepath &&
+                                    recordingUnderWayFor(line.book.id) === false && (
+                                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                                        Ce livre n&apos;a pas encore de fichier audio et aucun enregistrement
+                                        n&apos;est en cours : il n&apos;y a rien à dupliquer. S&apos;il doit être
+                                        lu, choisissez « Enregistrement ».
+                                    </p>
+                                )}
 
                                 {/* #2 — audio déjà présent / demande d'enregistrement concurrente */}
                                 <RecordingAdviceNotice advice={recordingAdviceFor(recordingLines[idx])} />

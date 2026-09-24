@@ -107,7 +107,15 @@ Vous pouvez également saisir un coût spécifique pour la demande. Par défaut,
 
 ![Demandes - capture 7](/admin/aide/images/demandes-07.jpg)
 
-Si le livre est déjà enregistré, nous classons la demande comme une (1) duplication. Si le livre doit être lu par quelqu'un, nous classons la demande comme un (2) enregistrement.
+Si le livre doit être lu par quelqu'un, nous classons la demande comme un (1) enregistrement. Si le livre est déjà enregistré, nous la classons comme une (2) duplication.
+
+Le portail choisit le type pour vous au moment où vous sélectionnez le livre :
+
+- le livre a déjà un fichier audio → **Duplication** ;
+- le livre n'a pas encore d'audio mais il est déjà en cours d'enregistrement (une demande d'enregistrement ouverte, ou une attribution « Attente envoi vers lecteur » ou « En cours ») → **Duplication** : elle pourra être faite au retour de l'enregistrement ;
+- sinon → **Enregistrement**. C'est aussi le type d'une ligne tant qu'aucun livre n'est choisi.
+
+Quand le portail choisit « Duplication », une note sous les boutons dit pourquoi. Ce n'est qu'une proposition : cliquez sur l'autre bouton pour la changer, par exemple pour faire relire un livre déjà enregistré. Si vous choisissez « Duplication » pour un livre qui n'a ni audio ni enregistrement en cours, un avertissement rappelle qu'il n'y a rien à dupliquer.
 
 ![Demandes - capture 8](/admin/aide/images/demandes-08.jpg)
 
