@@ -8,6 +8,8 @@ order: 2
 
 Le tableau de bord d'administration est le point d'entrée vers « Arbre Rose », la partie back-office du site, distincte de la partie publique eca-aveugles.fr. Pour y accéder, il suffit d'ajouter /admin à l'URL du site : **https://eca-aveugles.fr/admin**
 
+En haut à gauche de chaque page, l'arbre rose et le nom « Arbre Rose » ramènent à ce tableau de bord. Le tableau de bord lui-même s'ouvre sur un bonjour à votre prénom, tel qu'il figure sur votre fiche.
+
 Cette page répertorie les liens et descriptions de toutes les sections disponibles. À noter que les Super Admins ont accès à davantage de pages que les Admins/Permanents, votre tableau de bord peut donc différer de celui d'un collègue.
 
 La barre de navigation en haut de la page reprend les mêmes liens que les cartes affichées en dessous — les deux mènent aux mêmes pages au sein d'Arbre Rose, et chaque page y porte la même icône, dans la même couleur, que sa carte.

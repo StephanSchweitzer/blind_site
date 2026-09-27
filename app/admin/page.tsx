@@ -1,4 +1,5 @@
 // app/admin/page.tsx
+import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { AdminCard } from '@/components/ui/admin';
@@ -66,6 +67,8 @@ export default async function Dashboard() {
         orderDelais,
         assignmentDelais,
         lateBillCount,
+        // Le prénom du bonjour en tête du tableau de bord.
+        myName,
     ] = await Promise.all([
         Promise.all([
             prisma.book.count(),
@@ -98,7 +101,9 @@ export default async function Dashboard() {
         getOpenOrderDelais(),
         getOpenAssignmentDelais(),
         prisma.bill.count({ where: { isActive: true, ...lateBillsWhere() } }),
+        me ? prisma.user.findUnique({ where: { id: me.id }, select: { firstName: true } }) : null,
     ]);
+    const firstName = myName?.firstName?.trim();
     // Each card counts what its own list shows: the demandes stages from the
     // demandes, the lecteurs from the attributions — so a line's number is the
     // number of rows it opens.
@@ -110,6 +115,17 @@ export default async function Dashboard() {
             {/* The section titles are h2 and the cards h3; without an h1 a screen
                 reader's heading list started mid-outline. */}
             <h1 className="sr-only">Tableau de bord</h1>
+            {/* Le bonjour d'Arbre Rose, avec l'arbre choisi par l'équipe. Sans
+                prénom sur la fiche, un simple « Bonjour ». */}
+            <div className="mb-8 flex items-center gap-4 px-1">
+                <Image src="/arbre_rose.png" alt="" aria-hidden="true" width={226} height={237} className="h-16 w-auto md:h-20" priority />
+                <div>
+                    <p className="text-2xl font-semibold text-foreground">
+                        Bonjour{firstName ? ` ${firstName}` : ''}
+                    </p>
+                    <p className="text-muted-foreground">Bienvenue sur Arbre Rose.</p>
+                </div>
+            </div>
             {/* Content Management Section */}
             <div className="mb-10">
                 <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Livres</h2>

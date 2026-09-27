@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, X, ChevronDown, HelpCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -115,13 +116,18 @@ const BackendNavbar: React.FC = () => {
         <nav className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
             <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between gap-4 h-16">
-                    {/* Brand */}
+                    {/* Brand — « Arbre Rose », le nom que l'équipe donne au
+                        back-office, avec l'arbre qu'elle a choisi pour lui.
+                        L'image est décorative : le nom est écrit à côté. */}
                     <Link
                         href="/admin"
                         onClick={closeAll}
-                        className="text-xl font-bold bg-gradient-to-r from-blue-500 to-blue-700 dark:from-blue-300 dark:to-blue-500 bg-clip-text text-transparent tracking-wide whitespace-nowrap"
+                        className="flex items-center gap-2 whitespace-nowrap"
                     >
-                        Administration
+                        <Image src="/arbre_rose.png" alt="" aria-hidden="true" width={226} height={237} className="h-10 w-auto" priority />
+                        <span className="text-xl font-bold bg-gradient-to-r from-pink-500 to-rose-600 dark:from-pink-300 dark:to-rose-400 bg-clip-text text-transparent tracking-wide">
+                            Arbre Rose
+                        </span>
                     </Link>
 
                     {/* Desktop navigation — hover-triggered dropdowns */}
