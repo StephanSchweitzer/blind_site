@@ -13,6 +13,7 @@ import {
     type DelaiTally,
 } from '@/lib/orders/delais';
 import { lateBillsWhere } from '@/lib/billing';
+import { parisDate } from '@/lib/paris-day';
 
 /**
  * One line under a card for one stage of the délais (lib/orders/delais.ts):
@@ -104,6 +105,11 @@ export default async function Dashboard() {
         me ? prisma.user.findUnique({ where: { id: me.id }, select: { firstName: true } }) : null,
     ]);
     const firstName = myName?.firstName?.trim();
+    // La date du jour sous le bonjour, en heure française. Pas d'heure : la
+    // barre des tâches l'affiche déjà, et une horloge qui bouge distrait —
+    // surtout un permanent malvoyant qui travaille à la loupe.
+    const today = parisDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const todayLabel = today.charAt(0).toUpperCase() + today.slice(1);
     // Each card counts what its own list shows: the demandes stages from the
     // demandes, the lecteurs from the attributions — so a line's number is the
     // number of rows it opens.
@@ -116,14 +122,16 @@ export default async function Dashboard() {
                 reader's heading list started mid-outline. */}
             <h1 className="sr-only">Tableau de bord</h1>
             {/* Le bonjour d'Arbre Rose, avec l'arbre choisi par l'équipe. Sans
-                prénom sur la fiche, un simple « Bonjour ». */}
+                prénom sur la fiche, un simple « Bonjour ». Sous lui la date, qui
+                change chaque jour, plutôt qu'une phrase d'accueil qu'on finit
+                par ne plus lire. */}
             <div className="mb-8 flex items-center gap-4 px-1">
                 <Image src="/arbre_rose.png" alt="" aria-hidden="true" width={226} height={237} className="h-16 w-auto md:h-20" priority />
                 <div>
                     <p className="text-2xl font-semibold text-foreground">
                         Bonjour{firstName ? ` ${firstName}` : ''}
                     </p>
-                    <p className="text-muted-foreground">Bienvenue sur Arbre Rose.</p>
+                    <p className="text-muted-foreground">{todayLabel}</p>
                 </div>
             </div>
             {/* Content Management Section */}
