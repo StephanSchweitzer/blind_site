@@ -772,6 +772,35 @@ const SPECS = [
         sleep: 800,
         why: 'le tableau de bord tel qu\'on y arrive, les cartes par theme',
     },
+    // 02 a 04 etaient prises a la main, fleches dessinees comprises, et
+    // montraient encore « Administration » sans « Rechercher » ni « Aide ».
+    // Cadrees sur la barre comme la 05, un repere chacune.
+    {
+        name: 'page-principale-02.jpg',
+        url: '/admin',
+        waitFor: 'nav',
+        clip: 'nav',
+        // Le theme est force en clair avant la photo : le bouton propose donc
+        // le sombre.
+        annotations: [{ n: 1, selector: 'nav button[aria-label="Activer le thème sombre"]', self: true }],
+        why: 'le bouton soleil / lune qui bascule entre mode clair et mode sombre',
+    },
+    {
+        name: 'page-principale-03.jpg',
+        url: '/admin',
+        waitFor: 'nav',
+        clip: 'nav',
+        annotations: [{ n: 1, label: 'Site principal', self: true }],
+        why: 'le bouton « Site principal », vers la partie publique',
+    },
+    {
+        name: 'page-principale-04.jpg',
+        url: '/admin',
+        waitFor: 'nav',
+        clip: 'nav',
+        annotations: [{ n: 1, label: 'Mon Compte', self: true }],
+        why: 'le bouton « Mon Compte », vers ses propres parametres',
+    },
     {
         name: 'page-principale-06.jpg',
         // Assez haut pour que toute la rangee tienne sous la barre fixe : le
