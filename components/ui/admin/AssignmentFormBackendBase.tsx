@@ -1163,17 +1163,33 @@ export function AssignmentFormBackendBase({
                         <label className="text-sm font-medium text-foreground">
                             Livre <span className="text-red-400">*</span>
                         </label>
-                        <div
-                            ref={registerField('catalogueId')}
-                            tabIndex={-1}
-                            className="flex items-center w-full rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
-                            aria-readonly="true"
-                            title="Le livre provient de la demande sélectionnée. Pour le changer, sélectionnez une autre demande ci-dessus."
-                        >
-                            {selectedBook ? (
-                                <span>{selectedBook.title} - {selectedBook.author}</span>
-                            ) : (
-                                <span className="text-muted-foreground">Sélectionnez une demande pour définir le livre</span>
+                        {/* Même bouton « Voir la fiche » que le sélecteur de livre des
+                            demandes (EntitySearchCombobox), en nouvel onglet. */}
+                        <div className="flex items-center gap-1.5">
+                            <div
+                                ref={registerField('catalogueId')}
+                                tabIndex={-1}
+                                className="flex min-w-0 flex-1 items-center rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
+                                aria-readonly="true"
+                                title="Le livre provient de la demande sélectionnée. Pour le changer, sélectionnez une autre demande ci-dessus."
+                            >
+                                {selectedBook ? (
+                                    <span>{selectedBook.title} - {selectedBook.author}</span>
+                                ) : (
+                                    <span className="text-muted-foreground">Sélectionnez une demande pour définir le livre</span>
+                                )}
+                            </div>
+                            {selectedBook && (
+                                <Link
+                                    href={`/admin/books?book=${selectedBook.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Voir la fiche"
+                                    aria-label="Voir la fiche"
+                                    className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                >
+                                    <ExternalLink className="h-4 w-4" />
+                                </Link>
                             )}
                         </div>
                         <p className="text-xs text-muted-foreground">
