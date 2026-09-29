@@ -273,15 +273,25 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const selectable = books.filter((book) => !inListIds.has(book.id));
+    // Un livre masqué du catalogue public reste montré, grisé, plutôt que
+    // retiré de la fenêtre : il a bien été ajouté depuis la date, et un
+    // permanent qui l'y chercherait en vain croirait à un oubli. Mais il n'a
+    // rien à faire dans une liste — le site et la liste imprimée l'écartent de
+    // toute façon (listes-de-livres/data.ts, CoupDeCoeurPDFButton) —, et la
+    // mise en ligne de son enregistrement le rend « disponible » comme les
+    // autres (/api/books/[id]/audio/commit), donc c'est ici qu'on l'écarte.
+    const isLocked = (book: ListBook) => inListIds.has(book.id) || !!book.hiddenFromCatalogue;
+
+    const selectable = books.filter((book) => !isLocked(book));
     const allChecked = selectable.length > 0 && selectable.every((book) => checked.has(book.id));
 
     // Décompte des livres CHARGÉS (pas seulement cochés) : de quoi voir d'un
     // coup d'œil, avant même de cocher quoi que ce soit, combien de la fenêtre
     // sont réellement inédits plutôt que déjà casés ailleurs.
-    const newCount = books.filter((book) => !inListIds.has(book.id) && !membership.has(book.id)).length;
-    const elsewhereCount = books.filter((book) => !inListIds.has(book.id) && membership.has(book.id)).length;
+    const newCount = selectable.filter((book) => !membership.has(book.id)).length;
+    const elsewhereCount = selectable.filter((book) => membership.has(book.id)).length;
     const hereCount = books.filter((book) => inListIds.has(book.id)).length;
+    const maskedCount = books.filter((book) => !inListIds.has(book.id) && book.hiddenFromCatalogue).length;
 
     const toggle = (bookId: number) => {
         setChecked((prev) => {
@@ -292,7 +302,7 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
         });
     };
 
-    const toAdd = books.filter((book) => checked.has(book.id) && !inListIds.has(book.id));
+    const toAdd = books.filter((book) => checked.has(book.id) && !isLocked(book));
     const checkedAlreadyListed = toAdd.filter((book) => membership.has(book.id)).length;
 
     return (
@@ -304,7 +314,9 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
                     </DialogTitle>
                     <DialogDescription>
                         Seuls les livres disponibles sont proposés : un enregistrement encore en
-                        cours n&apos;a rien à faire dans une liste. Cochez ceux à ajouter.
+                        cours n&apos;a rien à faire dans une liste. Les livres masqués du catalogue
+                        public sont grisés : ils n&apos;apparaîtraient pas sur le site. Cochez ceux à
+                        ajouter.
                     </DialogDescription>
                     {books.length > 0 && (
                         <p className="text-xs text-muted-foreground">
@@ -316,6 +328,7 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
                             </span>
                             {elsewhereCount > 0 && ` · ${elsewhereCount} déjà dans une autre liste`}
                             {hereCount > 0 && ` · ${hereCount} déjà ici`}
+                            {maskedCount > 0 && ` · ${maskedCount} masqué${maskedCount > 1 ? 's' : ''} du catalogue`}
                         </p>
                     )}
                 </DialogHeader>
@@ -356,22 +369,27 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
                                 <TableBody>
                                     {books.map((book) => {
                                         const alreadyHere = inListIds.has(book.id);
+                                        const locked = isLocked(book);
                                         return (
                                             <TableRow
                                                 key={book.id}
                                                 className={cn(
                                                     'border-b border-border',
-                                                    alreadyHere ? 'opacity-60' : 'cursor-pointer hover:bg-muted/60',
-                                                    checked.has(book.id) && 'bg-primary/5'
+                                                    locked ? 'opacity-60' : 'cursor-pointer hover:bg-muted/60',
+                                                    !locked && checked.has(book.id) && 'bg-primary/5'
                                                 )}
-                                                onClick={() => { if (!alreadyHere) toggle(book.id); }}
+                                                onClick={() => { if (!locked) toggle(book.id); }}
                                             >
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <Checkbox
-                                                        aria-label={`Cocher « ${book.title} »`}
-                                                        checked={alreadyHere || checked.has(book.id)}
+                                                        aria-label={
+                                                            !alreadyHere && book.hiddenFromCatalogue
+                                                                ? `« ${book.title} » est masqué du catalogue public`
+                                                                : `Cocher « ${book.title} »`
+                                                        }
+                                                        checked={alreadyHere || (!locked && checked.has(book.id))}
                                                         onCheckedChange={() => toggle(book.id)}
-                                                        disabled={alreadyHere}
+                                                        disabled={locked}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">

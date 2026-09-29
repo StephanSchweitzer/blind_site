@@ -66,6 +66,8 @@ Pour retrouver les livres ajoutés au catalogue depuis la dernière liste, utili
 
 (1) Vous pouvez changer cette date en cliquant dans le champ. (2) Cliquez ensuite sur « **Voir** » : une fenêtre s'ouvre avec les nouveautés depuis cette date. Cochez celles que vous voulez, puis cliquez sur « Ajouter à la liste ».
 
+Les livres « **Masqué du catalogue public** » figurent dans la fenêtre, mais grisés et impossibles à cocher : ils n'apparaîtraient ni sur le site ni dans la liste imprimée.
+
 ![Liste de Livres - capture 10](/admin/aide/images/liste-de-livres-10.jpg)
 
 Une fois la liste commencée, le bloc Livres se présente ainsi :
