@@ -26,6 +26,11 @@ import { dimensionsImage, taillePourBoite } from '@/lib/aide-image-size';
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Sans valeur explicite, Vercel coupe à sa limite par défaut (10 s) et le
+// bouton reçoit un 504. Le rendu prend ~1,6 s en local, mais la fonction a
+// moins de CPU et, à froid, doit d'abord charger react-pdf : la marge est
+// pour ça, pas pour un code lent.
+export const maxDuration = 60;
 
 const IMAGES = path.join(process.cwd(), 'content', 'aide', 'images');
 // Comme les captures : le rendu tourne côté serveur (Node), pas dans un

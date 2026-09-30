@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
         '/admin/aide/[slug]': ['./content/aide/**'],
         // Les captures sont lues au disque a chaque requete par la route gardee.
         '/admin/aide/images/[name]': ['./content/aide/images/**'],
+        // Le PDF lit le Markdown, les captures et le logo au disque ; `public/`
+        // part sur le CDN, pas dans la fonction, sauf à l'inclure ici.
+        '/admin/aide/pdf': ['./content/aide/**', './public/eca_logo_facture.png'],
     },
     /**
      * The « listes de livres » pages used to live under /coups-de-coeur (and
