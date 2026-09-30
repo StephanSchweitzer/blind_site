@@ -30,6 +30,14 @@ const formatDuration = (minutes: number | null): string => {
     return `${hours} ${hourText} ${remainingMinutes} ${minuteText} d'écoute`;
 };
 
+// The three public states. Sky, like emerald and amber, at its 700 shade so
+// the 12px white label keeps 4.5:1+ in both themes.
+const availabilityBadge = (book: PublicBook) => {
+    if (book.available) return { label: 'Disponible', glyph: '✓', className: 'bg-emerald-700' };
+    if (book.recordingInProgress) return { label: 'Enregistrement en cours', glyph: '🎙', className: 'bg-sky-700' };
+    return { label: "En attente d'enregistrement", glyph: '⏳', className: 'bg-amber-700' };
+};
+
 export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
     return (
         // The cards used to be bare `div`s with an onClick: the whole catalogue
@@ -43,6 +51,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                 // the card just below — the colour only helps the eye group
                 // neighbours, it never says anything alone.
                 const spine = GENRE_FAMILY_SPINE[genreFamily(book.genres[0]?.genre.name)];
+                const badge = availabilityBadge(book);
                 return (
                 <li key={book.id}>
                 <article
@@ -112,13 +121,14 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 shades keep the same colour language at 5:1+ in both
                                 themes, now as flat fills. « En attente » no longer
                                 pulses: a badge that breathes is motion for its own sake.
-                                The ✓ / ⏳ glyphs are decoration: read aloud they become
-                                "coche" / "sablier" and clutter the status. */}
-                            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold text-white ${
-                                book.available ? 'bg-emerald-700' : 'bg-amber-700'
-                            }`}>
-                                <span aria-hidden="true">{book.available ? '✓' : '⏳'}</span>{' '}
-                                {book.available ? 'Disponible' : 'En attente'}
+                                The ✓ / 🎙 / ⏳ glyphs are decoration: read aloud they
+                                become "coche" / "micro" / "sablier" and clutter the status.
+                                « En attente » split in two so a visitor knows whether a
+                                lecteur already has the book; no date or estimate here
+                                (lib/books/publicBook.ts, recordingInProgress). */}
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold text-white ${badge.className}`}>
+                                <span aria-hidden="true">{badge.glyph}</span>{' '}
+                                {badge.label}
                             </span>
                         </div>
                     </div>

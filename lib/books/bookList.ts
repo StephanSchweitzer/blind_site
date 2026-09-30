@@ -2,7 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BookWithGenres } from '@/types/book';
-import { PublicBook, toPublicBook } from '@/lib/books/publicBook';
+import { PublicBook, findBooksBeingRecorded, toPublicBook } from '@/lib/books/publicBook';
 import { audioMissingWhere, audioPresentWhere, AUDIO_MISSING_STATUSES } from '@/lib/books/audioFilter';
 import { AudioFilter, buildBookScopeWhere } from '@/lib/books/searchWhere';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
@@ -967,14 +967,19 @@ export async function listPublicBooks(query: BookListQuery): Promise<BookListPag
         since: null,
         includeHidden: false,
     });
+    const { books, searchSuggestions, ...rest } = result;
+    const beingRecorded = await findBooksBeingRecorded([
+        ...books,
+        ...(searchSuggestions ?? []).flatMap((s) => s.rows),
+    ]);
     return {
-        ...result,
-        books: result.books.map(toPublicBook),
-        ...(result.searchSuggestions
+        ...rest,
+        books: books.map((b) => toPublicBook(b, beingRecorded)),
+        ...(searchSuggestions
             ? {
-                searchSuggestions: result.searchSuggestions.map((s) => ({
+                searchSuggestions: searchSuggestions.map((s) => ({
                     ...s,
-                    rows: s.rows.map(toPublicBook),
+                    rows: s.rows.map((b) => toPublicBook(b, beingRecorded)),
                 })),
             }
             : {}),

@@ -98,6 +98,15 @@ Lorsque vous cliquez sur ce bouton, l'attribution est immédiatement mise à jou
 
 La réattribution fait repartir le délai « chez le lecteur » de la demande : le nouveau lecteur n'hérite pas du retard du précédent (voir [Délais et retards](/admin/aide/demandes#delais-et-retards)).
 
+### Ce que voit le catalogue public
+
+Sur le catalogue public, un livre qui n'est pas encore « Disponible » porte l'un de ces deux badges, calculés à partir des attributions sans rien à saisir de plus :
+
+- « Enregistrement en cours » : une attribution « En cours » le tient, un lecteur l'enregistre ;
+- « En attente d'enregistrement » : aucun lecteur ne l'a encore, qu'il y ait une demande ou non.
+
+Le public ne voit ni le nom du lecteur, ni la date d'envoi, ni aucune échéance : seulement l'un de ces deux états.
+
 ### Changer la demande d'une attribution
 
 Si une attribution a été rattachée à la mauvaise demande, choisissez la bonne dans le champ « Demande » puis enregistrez. La nouvelle demande doit porter sur le même livre, ne pas être une duplication et ne pas avoir déjà sa propre attribution.

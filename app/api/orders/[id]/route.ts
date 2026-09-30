@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import {
     OrderQueryModeSchema,
@@ -713,6 +714,12 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 
             return { order, newTotal, issued, proforma };
         });
+
+        // Statut ou livre repoussé sur l'attribution : le badge public qui en
+        // dépend (« Enregistrement en cours ») doit suivre.
+        if (assignment && (statusIsChanging || catalogueChanged)) {
+            revalidateCatalogue();
+        }
 
         // Reprint notice for issued bills (never for DRAFT — nothing has been sent).
         let billNotice: BillNotice | null = null;

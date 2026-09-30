@@ -1,4 +1,6 @@
 import type { BookWithGenres } from '@/types/book';
+import { prisma } from '@/lib/prisma';
+import { STATUS } from '@/lib/statusSync';
 
 /**
  * The book fields a visitor to the public site has any use for.
@@ -26,6 +28,14 @@ export interface PublicBook {
     publishedDate: Date | null;
     readingDurationMinutes: number | null;
     available: boolean;
+    /**
+     * Pas encore disponible, mais une attribution « En cours » le tient : un
+     * lecteur l'enregistre. Sert au badge du catalogue (« Enregistrement en
+     * cours » / « En attente d'enregistrement »). Volontairement un booléen et rien
+     * de plus : ni date d'envoi, ni échéance, ni lecteur ne sortent vers le
+     * public — une date affichée ferait d'un bénévole lent un retard visible.
+     */
+    recordingInProgress: boolean;
     genres: {
         bookId: number;
         genreId: number;
@@ -33,7 +43,28 @@ export interface PublicBook {
     }[];
 }
 
-export function toPublicBook(book: BookWithGenres): PublicBook {
+/**
+ * Parmi ces livres, ceux qu'un lecteur enregistre en ce moment — une requête pour
+ * toute la page. Un livre déjà disponible n'est jamais compté : une relecture ne
+ * doit pas le faire passer pour indisponible.
+ *
+ * Tout ce qui change une attribution (création, statut, livre, suppression) doit
+ * donc appeler revalidateCatalogue(), sans quoi le badge reste figé en cache.
+ */
+export async function findBooksBeingRecorded(
+    books: Pick<BookWithGenres, 'id' | 'available'>[],
+): Promise<ReadonlySet<number>> {
+    const ids = books.filter((b) => !b.available).map((b) => b.id);
+    if (ids.length === 0) return new Set();
+    const rows = await prisma.assignment.findMany({
+        where: { catalogueId: { in: ids }, statusId: STATUS.EN_COURS, deletedAt: null },
+        select: { catalogueId: true },
+        distinct: ['catalogueId'],
+    });
+    return new Set(rows.map((r) => r.catalogueId));
+}
+
+export function toPublicBook(book: BookWithGenres, beingRecorded: ReadonlySet<number>): PublicBook {
     return {
         id: book.id,
         title: book.title,
@@ -45,6 +76,7 @@ export function toPublicBook(book: BookWithGenres): PublicBook {
         publishedDate: book.publishedDate,
         readingDurationMinutes: book.readingDurationMinutes,
         available: book.available,
+        recordingInProgress: !book.available && beingRecorded.has(book.id),
         genres: book.genres.map(({ bookId, genreId, genre }) => ({
             bookId,
             genreId,

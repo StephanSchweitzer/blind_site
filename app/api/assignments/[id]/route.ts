@@ -602,9 +602,10 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             return { assignment, orderTransition, billDetached };
         });
 
-        if (assignmentLeavesTermine) {
-            revalidateCatalogue();
-        }
+        // Toujours, pas seulement quand `available` retombe : le statut et le
+        // livre de l'attribution font le badge public « Enregistrement en cours »
+        // / « En attente d'enregistrement » (lib/books/publicBook.ts).
+        revalidateCatalogue();
 
         return NextResponse.json({
             message: 'Attribution mise à jour avec succès',
@@ -786,6 +787,9 @@ export const DELETE = withAdmin(async (_request, { me, params }) => {
 
             return { orderReset, billDetached };
         });
+
+        // Le livre perd peut-être son badge « Enregistrement en cours ».
+        revalidateCatalogue();
 
         return NextResponse.json({
             message: 'Attribution supprimée avec succès',
