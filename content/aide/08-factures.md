@@ -75,7 +75,7 @@ Sur un brouillon, les fonctions de base sont les suivantes :
 
 (2) « **Ajouter une demande** » ajoute une demande à la facture. Encore une fois, je ne le ferais pas, sauf dans des circonstances exceptionnelles, car les demandes sont automatiquement ajoutées aux factures dès qu'elles atteignent le statut « terminé ».
 
-C'est le **passage** à « Terminé » qui fait entrer une demande sur un brouillon, pas le fait d'y être. Une demande que vous retirez d'une facture (« Retirer de la facture »), ou qu'une restauration a détachée de sa facture, reste « Terminé » sans être rattachée à rien : elle n'y retournera pas toute seule, même si vous la modifiez. C'est ici, avec « Ajouter une demande », que vous la placez sur la facture voulue.
+C'est le **passage** à « Terminé » qui fait entrer une demande sur un brouillon, pas le fait d'y être. Une demande que vous retirez d'une facture (« Retirer de la facture »), ou qu'une restauration a détachée de sa facture, reste « Terminé » sans être rattachée à rien : elle n'y retournera pas toute seule, même si vous la modifiez. C'est ici, avec « Ajouter une demande », que vous la placez sur la facture voulue. Seule exception : si vous la retirez pour changer son auditeur, le formulaire de la demande propose de la facturer directement au nouvel auditeur (voir [Changer l'auditeur d'une demande](/admin/aide/demandes#changer-l-auditeur-d-une-demande)).
 
 (3) « **Supprimer la facture** » supprime définitivement la facture
 

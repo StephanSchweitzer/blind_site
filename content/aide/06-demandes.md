@@ -166,6 +166,14 @@ La case « Tarifer à la page (pour les revues) » se retrouve aussi dans ce mod
 
 Si vous corrigez le livre d'une demande, l'attribution liée prend automatiquement le même livre.
 
+### Changer l'auditeur d'une demande
+
+Tant que la demande figure sur une facture, même un brouillon, son auditeur est verrouillé : c'est lui qui décide à qui la facture est adressée. La note sous le champ donne le numéro de la facture, avec un lien pour l'ouvrir dans un nouvel onglet : retirez-y la demande (« Retirer de la facture »), puis revenez corriger l'auditeur.
+
+Si la demande est déjà « Terminé », elle ne rejoindra plus de brouillon toute seule, puisque c'est le **passage** à « Terminé » qui l'y fait entrer. Dès que vous choisissez le nouvel auditeur, une case « **Facturer cette demande à …** » apparaît, cochée par défaut : à l'enregistrement, la demande est ajoutée au brouillon du nouvel auditeur (un brouillon est ouvert s'il n'en a pas), et une fenêtre vous indique lequel. Si ce brouillon atteint alors le seuil de facturation, il est émis, comme pour une demande qui vient d'être terminée. Une demande tarifée à la page reçoit sa facture pro-forma.
+
+Décochez la case si la demande ne doit pas être facturée, par exemple une ancienne demande déjà réglée que vous corrigez seulement pour l'historique : elle reste « Terminé » sans facture. La case n'apparaît pas pour une demande « Non facturable ».
+
 Si la demande est associée à une attribution ou à une facture déjà émise, la suppression sera refusée. Vous devez d'abord supprimer l'attribution, ou retirer la demande de la facture.
 
 Une demande supprimée n'apparaît plus dans les listes ni les recherches, mais reste consultable en rouvrant un lien qui pointe vers elle (depuis le journal des modifications ou une facture, par exemple) : le modal s'ouvre avec un bandeau rouge « Demande supprimée le … » et tous les champs en lecture seule.

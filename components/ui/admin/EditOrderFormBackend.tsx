@@ -62,17 +62,18 @@ export function EditOrderFormBackend({
     type Notice =
         | { billId: number; billState: string; kind: 'COST'; newTotal?: string | null }
         | { billId: number; billState: string; kind: 'VISIBLE' }
-        | { billId: number; billState: string; kind: 'ISSUED'; total: string }
-        | { billId: number; billState: string; kind: 'PROFORMA'; total: string }
-        | { billId: number; billState: string; kind: 'DETACHED'; newTotal?: string | null };
+        | { billId: number; billState: string; kind: 'ISSUED'; total: string; trigger?: 'CLIENT_CHANGE' }
+        | { billId: number; billState: string; kind: 'PROFORMA'; total: string; trigger?: 'CLIENT_CHANGE' }
+        | { billId: number; billState: string; kind: 'DETACHED'; newTotal?: string | null }
+        | { billId: number; billState: string; kind: 'ATTACHED' };
     const [notice, setNotice] = useState<Notice | null>(null);
     const resolveRef = useRef<((id: number) => void) | null>(null);
 
-    // Deux boîtes, une seule à la fois. Trois des quatre avis se terminent par
+    // Trois boîtes, une seule à la fois. Les avis qui se terminent par
     // « imprimez ce document » — le seuil vient d'émettre la facture, ou une
-    // facture déjà partie n'est plus à jour — et passent donc par la boîte qui
-    // porte le bouton d'impression. « Retirée du brouillon » n'a rien à
-    // imprimer : le brouillon n'est jamais sorti.
+    // facture déjà partie n'est plus à jour — passent par la boîte qui porte le
+    // bouton d'impression. « Retirée du brouillon » et « ajoutée au brouillon »
+    // n'ont rien à imprimer : le brouillon n'est jamais sorti.
     const printNotice: BillPrintNotice | null = React.useMemo(() => {
         if (!notice) return null;
         switch (notice.kind) {
@@ -82,7 +83,9 @@ export function EditOrderFormBackend({
                     title: `Facture #${notice.billId} émise`,
                     description: (
                         <>
-                            En passant cette demande à « Terminé », elle a été rattachée à la facture
+                            {notice.trigger === 'CLIENT_CHANGE'
+                                ? 'En changeant l’auditeur de cette demande terminée, elle a été rattachée à la facture '
+                                : 'En passant cette demande à « Terminé », elle a été rattachée à la facture '}
                             #{notice.billId}, qui a atteint le seuil de facturation du client et vient
                             d&apos;être émise (total : {formatEuro2(notice.total)} €).
                         </>
@@ -100,8 +103,11 @@ export function EditOrderFormBackend({
                     title: `Facture pro-forma n° ${notice.billId} émise`,
                     description: (
                         <>
-                            Cette demande est tarifée à la page : en la passant à « Terminé », sa facture
-                            pro-forma (n° {notice.billId}) a été créée et émise d&apos;office
+                            Cette demande est tarifée à la page :{' '}
+                            {notice.trigger === 'CLIENT_CHANGE'
+                                ? 'en la facturant à son nouvel auditeur'
+                                : 'en la passant à « Terminé »'}
+                            , sa facture pro-forma (n° {notice.billId}) a été créée et émise d&apos;office
                             (total : {formatEuro2(notice.total)} €).
                         </>
                     ),
@@ -157,6 +163,7 @@ export function EditOrderFormBackend({
         }
     }, [notice]);
     const detachedNotice = notice?.kind === 'DETACHED' ? notice : null;
+    const attachedNotice = notice?.kind === 'ATTACHED' ? notice : null;
 
     const acknowledgeNotice = () => {
         const resolve = resolveRef.current;
@@ -309,6 +316,39 @@ export function EditOrderFormBackend({
                     </div>
                     <div className="flex justify-end mt-4">
                         <Button onClick={acknowledgeNotice} className="bg-amber-600 hover:bg-amber-700 text-white">
+                            J&apos;ai compris
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Le pendant de « retirée du brouillon » : rien à imprimer, mais une
+                ligne vient d'entrer dans un total, et le permanent doit savoir lequel. */}
+            <Dialog open={!!attachedNotice} onOpenChange={(open) => { if (!open) acknowledgeNotice(); }}>
+                <DialogContent className="bg-card border-border max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-foreground">
+                            Demande ajoutée au brouillon
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="text-foreground text-sm space-y-3">
+                        <DialogDescription className="text-foreground text-sm">
+                            Cette demande terminée a été facturée à son nouvel auditeur : elle figure
+                            maintenant sur son brouillon, la facture #{attachedNotice?.billId}.
+                        </DialogDescription>
+                        {attachedNotice && (
+                            <Link
+                                href={`/admin/bills?bill=${attachedNotice.billId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block text-blue-400 hover:text-blue-300 underline underline-offset-2"
+                            >
+                                Voir la facture #{attachedNotice.billId}
+                            </Link>
+                        )}
+                    </div>
+                    <div className="flex justify-end mt-4">
+                        <Button onClick={acknowledgeNotice}>
                             J&apos;ai compris
                         </Button>
                     </div>

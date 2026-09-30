@@ -357,6 +357,13 @@ export async function getOrCreateOpenDraft(
 }
 
 /**
+ * `payload.reason` of the ORDER_ATTACHED an accrual logs. 'accrual' = the demande just
+ * reached « Terminé » (the facture history reads it as « Demande clôturée »);
+ * 'client-change' = a finished demande moved to another auditeur and was billed to them.
+ */
+export type AccrualReason = 'accrual' | 'client-change';
+
+/**
  * Attaches an order to the client's open DRAFT (creating one if needed), recomputing
  * the total off whatever cost is on the order right now. No-op if the order is already
  * on a bill, is UNBILLABLE, or is inactive.
@@ -365,11 +372,17 @@ export async function getOrCreateOpenDraft(
  * — see the accrual point in PUT /api/orders/[id]) — a
  * demande is only billed once the service is rendered, so its price has had a chance
  * to be finalized first. Don't call this at order creation.
+ *
+ * The one other caller is a CHANGE OF AUDITEUR on a demande already « Terminé » and on
+ * no facture, and only when the permanent ticked « Facturer cette demande à … » in the
+ * same save (`reason: 'client-change'`). Never on a mere edit of such a demande: see
+ * the accrual point for the double billing that caused.
  */
 export async function accrueOrderToOpenDraft(
     tx: TransactionClient,
     orderId: number,
-    performedById: number | null = null
+    performedById: number | null = null,
+    reason: AccrualReason = 'accrual'
 ): Promise<{ billId: number; proformaTotal?: number } | null> {
     const order = await tx.orders.findUnique({
         where: { id: orderId },
@@ -382,7 +395,7 @@ export async function accrueOrderToOpenDraft(
     // propre facture, une pro-forma, émise d'emblée. `proforma` sert à l'appelant à
     // annoncer l'émission, comme le fait issueDraftIfOverThreshold.
     if (order.pages != null) {
-        const proforma = await accrueOrderToProforma(tx, order.id, performedById);
+        const proforma = await accrueOrderToProforma(tx, order.id, performedById, reason);
         return proforma ? { billId: proforma.billId, proformaTotal: proforma.total } : null;
     }
 
@@ -395,7 +408,7 @@ export async function accrueOrderToOpenDraft(
     await logBillEvent(tx, {
         billId: draft.id,
         type: BillEventType.ORDER_ATTACHED,
-        payload: { orderId: order.id, reason: 'accrual' },
+        payload: { orderId: order.id, reason },
         performedById,
     });
     return { billId: draft.id };
@@ -427,7 +440,8 @@ export async function accrueOrderToOpenDraft(
 export async function accrueOrderToProforma(
     tx: TransactionClient,
     orderId: number,
-    performedById: number | null = null
+    performedById: number | null = null,
+    reason: AccrualReason = 'accrual'
 ): Promise<{ billId: number; total: number } | null> {
     const order = await tx.orders.findUnique({
         where: { id: orderId },
@@ -466,7 +480,7 @@ export async function accrueOrderToProforma(
     await logBillEvent(tx, {
         billId: bill.id,
         type: BillEventType.ORDER_ATTACHED,
-        payload: { orderId: order.id, reason: 'accrual' },
+        payload: { orderId: order.id, reason },
         performedById,
     });
     return { billId: bill.id, total: Number(total) };

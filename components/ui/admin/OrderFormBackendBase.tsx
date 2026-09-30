@@ -12,7 +12,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar } from 'lucide-react';
+import { AlertCircle, Calendar, ExternalLink } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -92,6 +92,8 @@ export interface OrderFormData {
     billingStatus: 'UNBILLED' | 'BILLED' | 'UNBILLABLE';
     lentPhysicalBook: boolean;
     notes: string;
+    /** Case « Facturer cette demande à … » — envoyée seulement quand elle est proposée. */
+    billToNewClient?: boolean;
 }
 
 // Read-only context for the affectation linked to this order (if any).
@@ -141,6 +143,21 @@ export const formatEuro2 = (v: string | null | undefined): string => {
     const n = parseFloat(String(v).replace(',', '.'));
     return Number.isNaN(n) ? '' : n.toFixed(2);
 };
+
+// La facture citée dans une note du formulaire, ouverte dans un nouvel onglet comme
+// « Voir la facture » plus bas : la demande en cours de saisie ne se perd pas.
+function BillLink({ billId, children }: { billId: number; children: React.ReactNode }) {
+    return (
+        <Link
+            href={`/admin/bills?bill=${billId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium underline underline-offset-2 hover:opacity-80"
+        >
+            {children}
+        </Link>
+    );
+}
 
 export function OrderFormBackendBase({
                                          initialData,
@@ -202,6 +219,9 @@ export function OrderFormBackendBase({
     // order, so the banner doesn't nag on every (already-duplication) order.
     const [dupAutoChecked, setDupAutoChecked] = useState(false);
 
+    // Cochée par défaut : voir offerBillToNewClient plus bas.
+    const [billToNewClient, setBillToNewClient] = useState(true);
+
     // Form data state
     const [formData, setFormData] = useState<OrderFormData>(() =>
         initialData
@@ -224,6 +244,23 @@ export function OrderFormBackendBase({
                 notes: '',
             }
     );
+
+    // ── Auditeur changé sur une demande déjà terminée, hors facture ─────────
+    // Elle ne rejoindra plus de brouillon toute seule (l'accrual ne réagit qu'au
+    // PASSAGE à « Terminé »), donc on propose de la facturer au nouvel auditeur —
+    // case cochée, parce que c'est le cas courant : la demande était au mauvais
+    // nom, on l'a retirée de sa facture pour la corriger. Décochable, parce qu'une
+    // demande « Terminé » sans facture peut aussi être un reliquat d'Access déjà
+    // réglé, qu'une correction d'historique ne doit pas refacturer. Le serveur
+    // applique la même condition (billToNewClient, PUT /api/orders/[id]).
+    const offerBillToNewClient =
+        !!initialData &&
+        !hasBill &&
+        savedStatusIsTermine &&
+        formData.statusId === STATUS.TERMINE &&
+        formData.aveugleId != null &&
+        formData.aveugleId !== initialData.aveugleId &&
+        formData.billingStatus !== 'UNBILLABLE';
 
     // Options data
     const [statuses, setStatuses] = useState<Status[]>([]);
@@ -528,7 +565,9 @@ export function OrderFormBackendBase({
         }
 
         try {
-            const newOrderId = await onSubmit(formData);
+            const newOrderId = await onSubmit(
+                offerBillToNewClient ? { ...formData, billToNewClient } : formData
+            );
             if (onSuccess) {
                 onSuccess(newOrderId);
             }
@@ -648,7 +687,8 @@ export function OrderFormBackendBase({
                     <Alert className="mb-4 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
                         <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-400" />
                         <AlertDescription className="text-amber-800 dark:text-amber-300">
-                            Cette demande figure sur la facture #{initialBill.id} (
+                            Cette demande figure sur la{' '}
+                            <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink> (
                             {getBillingStatusLabel(initialBill.state as BillingStatus).toLowerCase()}), déjà
                             imprimée et envoyée à l&apos;auditeur. Le livre, la date et le coût restent
                             modifiables — le document devra alors être réimprimé. L&apos;auditeur et le
@@ -674,12 +714,41 @@ export function OrderFormBackendBase({
                         />
                         {hasBill && initialBill && (
                             <p className="text-xs text-amber-700 dark:text-amber-400">
-                                Auditeur verrouillé : la demande figure sur la facture #{initialBill.id}, qui
+                                Auditeur verrouillé : la demande figure sur la{' '}
+                                <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink>, qui
                                 appartient à cet auditeur.{' '}
                                 {billIssued
                                     ? 'Rouvrez la facture et retirez-en la demande pour le modifier.'
-                                    : 'Retirez-la de la facture pour le modifier.'}
+                                    : 'Retirez-la de la facture pour le modifier.'}{' '}
+                                <BillLink billId={initialBill.id}>
+                                    Vous pouvez la voir ici
+                                    <ExternalLink className="inline h-3 w-3 ml-1 align-[-1px]" aria-hidden="true" />
+                                </BillLink>
                             </p>
+                        )}
+                        {offerBillToNewClient && selectedUser && (
+                            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                                <div className="flex items-start gap-3">
+                                    <Checkbox
+                                        id="billToNewClient"
+                                        checked={billToNewClient}
+                                        onCheckedChange={(checked) => setBillToNewClient(checked === true)}
+                                        className="mt-0.5 border-2 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    />
+                                    <label htmlFor="billToNewClient" className="text-sm text-foreground cursor-pointer leading-snug flex-1">
+                                        <span className="font-medium">
+                                            Facturer cette demande à {getUserDisplayName(selectedUser)}
+                                        </span>
+                                        <span className="block text-xs text-muted-foreground mt-1">
+                                            {formData.pagePricing.pageBased
+                                                ? 'Elle est terminée et ne figure sur aucune facture : sa facture pro-forma sera créée et émise à l’enregistrement.'
+                                                : 'Elle est terminée et ne figure sur aucune facture : elle sera ajoutée à son brouillon, ou un brouillon sera ouvert.'}{' '}
+                                            Décochez si elle ne doit pas être facturée (ancienne demande déjà réglée,
+                                            correction d&apos;historique) : elle restera « Terminé » sans facture.
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
                         )}
                         {/* The envelope this demande will go back in. Sits under the
                             auditeur — the person being written to — the same way the
@@ -1080,8 +1149,9 @@ export function OrderFormBackendBase({
                             tout en se déclarant hors du cycle. */}
                         {hasBill && initialBill && formData.billingStatus !== 'BILLED' && (
                             <p className="text-xs text-amber-700 dark:text-amber-400">
-                                « Non facturable » indisponible : la demande figure sur la facture #
-                                {initialBill.id} et son montant y est compté.{' '}
+                                « Non facturable » indisponible : la demande figure sur la{' '}
+                                <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink> et son
+                                montant y est compté.{' '}
                                 {billIssued
                                     ? 'Rouvrez la facture et retirez-en la demande d’abord.'
                                     : 'Retirez-la de la facture d’abord.'}

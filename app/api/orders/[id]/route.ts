@@ -49,17 +49,21 @@ import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liv
 // non-DRAFT (issued) bill. COST = total recomputed; VISIBLE = printed field changed.
 // ISSUED = completing this demande accrued it onto its client's brouillon and that
 // crossed the seuil in the same request, so the facture is now émise for the first time.
-// DETACHED is the only one that describes a DRAFT: the demande left « Terminé », so it
-// left the brouillon it had joined by reaching it — nothing to reprint, but the
-// permanent has to be told the line is gone from the total.
+// DETACHED and ATTACHED are the two that describe a DRAFT. DETACHED: the demande left
+// « Terminé », so it left the brouillon it had joined by reaching it — nothing to
+// reprint, but the permanent has to be told the line is gone from the total. ATTACHED:
+// a finished demande moved to another auditeur and joined THEIR brouillon (billToNewClient).
+// `trigger: 'CLIENT_CHANGE'` on ISSUED/PROFORMA says the same move, not a completion,
+// is what billed it — the dialog words it accordingly.
 type BillNotice =
     | { billId: number; billState: BillingStatus; kind: 'COST'; newTotal: string | null }
     | { billId: number; billState: BillingStatus; kind: 'VISIBLE' }
-    | { billId: number; billState: BillingStatus; kind: 'ISSUED'; total: string }
+    | { billId: number; billState: BillingStatus; kind: 'ISSUED'; total: string; trigger?: 'CLIENT_CHANGE' }
     // PROFORMA = the demande is priced by the page, so completing it created its own
     // pro-forma, issued on the spot (no brouillon, no seuil).
-    | { billId: number; billState: BillingStatus; kind: 'PROFORMA'; total: string }
-    | { billId: number; billState: BillingStatus; kind: 'DETACHED'; newTotal: string | null };
+    | { billId: number; billState: BillingStatus; kind: 'PROFORMA'; total: string; trigger?: 'CLIENT_CHANGE' }
+    | { billId: number; billState: BillingStatus; kind: 'DETACHED'; newTotal: string | null }
+    | { billId: number; billState: BillingStatus; kind: 'ATTACHED' };
 
 // Normalize a cost input to a number or null (treats '' / null / undefined / NaN as null).
 function parseCost(raw: unknown): number | null {
@@ -496,6 +500,24 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             billState === BillingStatus.DRAFT &&
             leavesTermine(existingOrder.statusId, resultingStatusId);
 
+        // ── Changement d'auditeur sur une demande terminée hors facture ──────────
+        // Le cas typique : la demande était au mauvais nom, on l'a retirée de sa
+        // facture (l'auditeur est verrouillé tant qu'elle y figure), puis corrigée.
+        // Déjà « Terminé », elle ne passera plus par l'accrual plus bas, qui ne
+        // réagit qu'à la TRANSITION — elle serait restée sur aucune facture.
+        //
+        // Jamais implicite pour autant : le formulaire le propose (case cochée par
+        // défaut) et envoie billToNewClient. Une demande « Terminé » sans facture
+        // peut aussi être un reliquat d'Access, livré il y a des années, ou une
+        // demande restaurée dont la facture était déjà partie — la corriger ne doit
+        // pas, à l'insu du permanent, la faire payer à quelqu'un.
+        const billToNewClient =
+            clientIsChanging &&
+            data.billToNewClient === true &&
+            existingOrder.billId == null &&
+            existingOrder.statusId === STATUS.TERMINE &&
+            resultingStatusId === STATUS.TERMINE;
+
         // Date de clôture follows the status: stamped on entering « Terminé »,
         // cleared on leaving it. An explicit date from the form still wins.
         const closureDate = resolveClosureDate({
@@ -572,7 +594,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             notes: data.notes === undefined ? undefined : (data.notes || null),
         };
 
-        const { order, newTotal, issued, proforma } = await prisma.$transaction(async (tx) => {
+        const { order, newTotal, issued, proforma, attachedToDraft } = await prisma.$transaction(async (tx) => {
             // Le refus de guardLiveBooks plus haut, relu sous verrou : voir lockLiveBooks.
             if (catalogueChanged) await lockLiveBooks(tx, [data.catalogueId!]);
 
@@ -667,7 +689,8 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // /api/orders/[id]/restore). The next harmless edit put the first back on
             // the newest brouillon and billed the second a second time. Billing one
             // of those is a permanent's decision: « Ajouter une demande » on a
-            // brouillon, or POST /api/bills.
+            // brouillon, POST /api/bills, or the « Facturer cette demande à … » box
+            // ticked while changing its auditeur (billToNewClient, above).
             const justCompletedAndUnbilled =
                 existingOrder.billId == null &&
                 existingOrder.statusId !== STATUS.TERMINE &&
@@ -676,10 +699,22 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // lui crée sa pro-forma, émise d'emblée, et le dit par `proforma`. Elle n'est
             // donc soumise ni au seuil (branche suivante) ni au brouillon de l'auditeur.
             let proforma: { billId: number; total: number } | null = null;
-            if (justCompletedAndUnbilled) {
-                const accrued = await accrueOrderToOpenDraft(tx, orderId, performedById);
+            // Brouillon rejoint sans être émis dans la foulée : rien à imprimer, mais
+            // le permanent doit savoir où la demande est allée (avis ATTACHED).
+            let attachedToDraft: number | null = null;
+            if (justCompletedAndUnbilled || billToNewClient) {
+                // L'update ci-dessus a déjà posé le nouvel auditeur : l'accrual lit
+                // la demande à jour, donc le brouillon est bien celui du nouveau.
+                const accrued = await accrueOrderToOpenDraft(
+                    tx,
+                    orderId,
+                    performedById,
+                    billToNewClient ? 'client-change' : 'accrual'
+                );
                 if (accrued?.proformaTotal !== undefined) {
                     proforma = { billId: accrued.billId, total: accrued.proformaTotal };
+                } else if (accrued && billToNewClient) {
+                    attachedToDraft = accrued.billId;
                 }
             }
 
@@ -689,7 +724,11 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             // Jamais après un détachement : le total vient de BAISSER, émettre la
             // facture à ce moment-là serait déclencher un envoi sur un retour en arrière.
             let issued: { billId: number; total: number } | null = null;
-            if (!detachFromDraft && !proforma && (justCompletedAndUnbilled || billState === BillingStatus.DRAFT)) {
+            if (
+                !detachFromDraft &&
+                !proforma &&
+                (justCompletedAndUnbilled || attachedToDraft != null || billState === BillingStatus.DRAFT)
+            ) {
                 issued = await issueDraftIfOverThreshold(tx, order.aveugleId, performedById);
             }
 
@@ -712,7 +751,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 await syncAssignmentToStatus(tx, assignment.id, data.statusId, performedById);
             }
 
-            return { order, newTotal, issued, proforma };
+            return { order, newTotal, issued, proforma, attachedToDraft };
         });
 
         // Statut ou livre repoussé sur l'attribution : le badge public qui en
@@ -736,11 +775,20 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 billState: BillingStatus.BILLED,
                 kind: 'PROFORMA',
                 total: proforma.total.toString(),
+                ...(billToNewClient ? { trigger: 'CLIENT_CHANGE' as const } : {}),
             };
         } else if (issued) {
             // The bill this demande just accrued onto tipped over the seuil in this
             // same request — first time it's ever been émise, so print/send it.
-            billNotice = { billId: issued.billId, billState: BillingStatus.BILLED, kind: 'ISSUED', total: issued.total.toString() };
+            billNotice = {
+                billId: issued.billId,
+                billState: BillingStatus.BILLED,
+                kind: 'ISSUED',
+                total: issued.total.toString(),
+                ...(billToNewClient ? { trigger: 'CLIENT_CHANGE' as const } : {}),
+            };
+        } else if (attachedToDraft != null) {
+            billNotice = { billId: attachedToDraft, billState: BillingStatus.DRAFT, kind: 'ATTACHED' };
         } else if (hasBill && existingOrder.billId != null && billState && billState !== BillingStatus.DRAFT) {
             if (costChanged) {
                 billNotice = { billId: existingOrder.billId, billState, kind: 'COST', newTotal: newTotal?.toString() ?? null };

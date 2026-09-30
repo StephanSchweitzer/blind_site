@@ -127,6 +127,9 @@ function summarize(e: BillEventDTO): string | null {
             if (p.reason === 'order-restored') {
                 return `Demande #${asString(p.orderId) ?? '?'} restaurée — de nouveau dans le total (nouveau total : ${asString(p.newTotal) ?? '—'} €).`;
             }
+            if (p.reason === 'client-change') {
+                return `Demande #${asString(p.orderId) ?? '?'} — terminée, rattachée à cet auditeur au changement d'auditeur.`;
+            }
             return asString(p.orderId) ? `Demande #${asString(p.orderId)}` : null;
         default:
             return null;

@@ -139,6 +139,10 @@ export const OrderUpdateInputSchema = z.object({
     billId: z.number().int().positive().nullable().optional(),
     lentPhysicalBook: z.boolean().optional(),
     notes: z.string().nullable().optional(),
+    // Pas une colonne : la case « Facturer cette demande à … » du formulaire. Lue
+    // seulement quand l'auditeur change sur une demande « Terminé » hors facture
+    // (voir billToNewClient dans PUT /api/orders/[id]).
+    billToNewClient: z.boolean().optional(),
 });
 
 export type OrderUpdateInput = z.infer<typeof OrderUpdateInputSchema>;
