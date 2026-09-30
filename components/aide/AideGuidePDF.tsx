@@ -40,6 +40,10 @@ export interface AideImageResolue {
 // LOGO_RATIO là-bas). Pas eca_logo.png : trop étroit, pensé pour un bandeau
 // web, pas pour une couverture.
 const LOGO_RATIO = 1000 / 508;
+// 226 × 237 px, fond transparent — public/arbre_rose.png, le même fichier que
+// la barre du back-office et le tableau de bord.
+const ARBRE_RATIO = 226 / 237;
+const ARBRE_HAUTEUR = 52;
 
 const styles = StyleSheet.create({
     page: { paddingTop: 54, paddingBottom: 56, paddingHorizontal: 48, fontSize: 10.5, lineHeight: 1.5 },
@@ -48,7 +52,11 @@ const styles = StyleSheet.create({
     // reste, lui, aligné à gauche sur toute la largeur.
     couvertureEntete: { alignItems: 'center', marginBottom: 46 },
     couvertureLogo: { width: 230, height: 230 / LOGO_RATIO, marginBottom: 28 },
-    couvertureTitre: { fontFamily: BOLD, fontSize: 36, lineHeight: 1, color: NAVY, marginTop: 8, marginBottom: 20, textAlign: 'center' },
+    // L'arbre d'Arbre Rose à gauche du titre, sur la même ligne : c'est le
+    // guide de CE back-office-là, pas un document générique de l'association.
+    couvertureTitreLigne: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 20 },
+    couvertureArbre: { width: ARBRE_HAUTEUR * ARBRE_RATIO, height: ARBRE_HAUTEUR, marginRight: 14 },
+    couvertureTitre: { fontFamily: BOLD, fontSize: 36, lineHeight: 1, color: NAVY, textAlign: 'center' },
     couvertureSous: { fontSize: 13, color: GRIS, textAlign: 'center', lineHeight: 1.6 },
     sommaireTitre: { fontFamily: BOLD, fontSize: 14, color: NAVY, marginBottom: 16 },
     // Deux colonnes plutôt qu'une : à 16 sections, une colonne unique laisse la
@@ -195,12 +203,15 @@ export function AideGuidePDF({
     sections,
     images,
     logo,
+    arbre,
     dateImpression,
 }: {
     sections: AideSectionPDF[];
     images: Map<string, AideImageResolue>;
-    /** Le logotype ECA, lu au disque côté serveur — voir app/admin/aide/pdf/route.ts. */
+    /** Le logotype ECA, lu au disque côté serveur — voir lib/aide-pdf.ts. */
     logo: Buffer;
+    /** L'arbre d'Arbre Rose, lu au disque de la même façon. */
+    arbre: Buffer;
     dateImpression: string;
 }) {
     // Deux colonnes : la première reçoit la section en plus quand le compte est impair.
@@ -213,7 +224,11 @@ export function AideGuidePDF({
                 <View style={styles.couvertureEntete}>
                     {/* eslint-disable-next-line jsx-a11y/alt-text -- l'Image de react-pdf n'accepte pas d'alt */}
                     <Image style={styles.couvertureLogo} src={{ data: logo, format: 'png' }} />
-                    <Text style={styles.couvertureTitre}>Mode d&apos;emploi</Text>
+                    <View style={styles.couvertureTitreLigne}>
+                        {/* eslint-disable-next-line jsx-a11y/alt-text -- l'Image de react-pdf n'accepte pas d'alt */}
+                        <Image style={styles.couvertureArbre} src={{ data: arbre, format: 'png' }} />
+                        <Text style={styles.couvertureTitre}>Mode d&apos;emploi</Text>
+                    </View>
                     <Text style={styles.couvertureSous}>
                         Arbre Rose — la partie administration du site aux ECA{'\n'}
                         Édition du {dateImpression}

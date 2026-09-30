@@ -13,9 +13,16 @@ const nextConfig: NextConfig = {
         '/admin/aide/[slug]': ['./content/aide/**'],
         // Les captures sont lues au disque a chaque requete par la route gardee.
         '/admin/aide/images/[name]': ['./content/aide/images/**'],
-        // Le PDF lit le Markdown, les captures et le logo au disque ; `public/`
-        // part sur le CDN, pas dans la fonction, sauf à l'inclure ici.
-        '/admin/aide/pdf': ['./content/aide/**', './public/eca_logo_facture.png'],
+        // Le PDF rendu par `pnpm build` (lib/aide-pdf.ts). Le reste sert au
+        // rendu de repli, qui lit le Markdown, les captures, le logo et l'arbre
+        // au disque ; `public/` part sur le CDN, pas dans la fonction, sauf à
+        // l'inclure ici.
+        '/admin/aide/pdf': [
+            './generated/mode-d-emploi.pdf',
+            './content/aide/**',
+            './public/eca_logo_facture.png',
+            './public/arbre_rose.png',
+        ],
     },
     /**
      * The « listes de livres » pages used to live under /coups-de-coeur (and

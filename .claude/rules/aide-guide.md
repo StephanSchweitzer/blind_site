@@ -50,8 +50,12 @@ Rules that keep it honest:
   one entry per `##`/`###` heading), so it needs no upkeep of its own. Synonyms are one-way
   (typed word → guide word), written accent-free and lowercase; add one when a term people
   actually type isn't the interface's (legacy *commande*, *affectation*, everyday words).
-- The printable guide is **generated, never stored**: `/admin/aide/pdf` renders the same
-  Markdown through `@react-pdf/renderer` (button on `/admin/aide`). Two traps live in
+- The printable guide is **generated at build time, never committed**: `pnpm build` runs
+  `scripts/build-aide-pdf.ts` (`lib/aide-pdf.ts`), which renders the same Markdown through
+  `@react-pdf/renderer` into the git-ignored `generated/mode-d-emploi.pdf`; `/admin/aide/pdf`
+  serves it in production (button on `/admin/aide`) and renders on request in dev. A guide
+  change therefore reaches the PDF with the next deploy, never before. `pnpm aide:pdf` renders
+  it by hand — run it after touching the PDF component to check the render still passes. Two traps live in
   `components/aide/AideGuidePDF.tsx`, both commented there — a `fixed` element carrying
   `render={({ pageNumber }) => …}` kills the render past ~20 screenshots, and an `Image`
   without explicit width/height is laid out at its intrinsic pixel size and overflows the

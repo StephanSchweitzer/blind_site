@@ -125,9 +125,13 @@ is nothing left to fall out of sync.
   a page number does not. `pnpm aide:check` (`scripts/check-aide-links.ts`) fails if an
   `AideLink`'s `section` doesn't resolve to a real file, so a broken help link breaks the build
   instead of quietly sending someone to the wrong page.
-- **The PDF is generated on request, never stored** — a file saved somewhere would be a second
-  copy to keep in step, i.e. a copy that goes stale. `/admin/aide/pdf` (`withAuth`, since the
-  guide is for anyone who can reach `/admin`) re-renders the same Markdown through
+- **The PDF is rendered at build time, never committed** — `pnpm build` runs
+  `scripts/build-aide-pdf.ts` (also `pnpm aide:pdf`), which writes `generated/mode-d-emploi.pdf`
+  (git-ignored, traced into the route's function). Rebuilt from the same Markdown on every
+  deploy, it can't drift from the online guide; rendering it per click took ~15 s on Vercel.
+  `/admin/aide/pdf` (`withAuth`, since the guide is for anyone who can reach `/admin`) serves
+  that file in production and falls back to rendering on request in dev (or if the file is
+  missing). The render (`lib/aide-pdf.ts`) passes the same Markdown through
   `@react-pdf/renderer` (`components/aide/AideGuidePDF.tsx`), via `lib/aide-blocks.ts` — a small
   parser purpose-built for this content (headings, paragraphs, images, tables, block quotes,
   links) that re-joins hand-wrapped plain-text lines into paragraphs the way `react-markdown`

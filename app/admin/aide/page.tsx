@@ -1,6 +1,7 @@
 // app/admin/aide/page.tsx
+import Image from 'next/image';
 import Link from 'next/link';
-import { BookOpen, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAideSearchEntries, listAideSections } from '@/lib/aide';
 import { AidePdfButton } from '@/components/aide/AidePdfButton';
@@ -26,8 +27,19 @@ export default function AidePage() {
             <Card className="bg-card border-border">
                 <CardHeader className="border-b border-border pb-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex items-start gap-3">
-                            <BookOpen className="h-6 w-6 text-primary mt-1 shrink-0" aria-hidden="true" />
+                        <div className="flex items-center gap-4">
+                            {/* L'arbre d'Arbre Rose, comme dans la barre et sur le tableau
+                                de bord : le guide est celui de CE back-office. Décoratif,
+                                le titre dit déjà de quoi il s'agit. */}
+                            <Image
+                                src="/arbre_rose.png"
+                                alt=""
+                                aria-hidden="true"
+                                width={226}
+                                height={237}
+                                className="h-16 w-auto shrink-0"
+                                priority
+                            />
                             <div>
                                 <CardTitle className="text-2xl font-bold text-foreground">
                                     Mode d&apos;emploi

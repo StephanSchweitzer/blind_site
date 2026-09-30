@@ -50,9 +50,9 @@ const PAGE_PREPARATION = `<!doctype html>
 </head>
 <body>
   <div class="conteneur">
-    <div class="spinner" role="status" aria-label="Génération en cours"></div>
-    <p>Génération du mode d'emploi en cours…</p>
-    <p class="discret">Une centaine de pages à mettre en forme, quelques secondes suffisent.</p>
+    <div class="spinner" role="status" aria-label="Chargement en cours"></div>
+    <p>Chargement du mode d'emploi en cours…</p>
+    <p class="discret">Une centaine de pages, quelques secondes suffisent.</p>
   </div>
 </body>
 </html>`;
@@ -86,8 +86,8 @@ function pageImpression(url: string) {
 /**
  * Télécharge ou imprime le mode d'emploi complet en PDF.
  *
- * Le document est engendré à la demande (/admin/aide/pdf), donc l'attente est
- * réelle : une centaine de captures y passent. Un simple lien laisserait croire
+ * Le document est rendu d'avance au build (voir lib/aide-pdf.ts), mais il pèse
+ * une dizaine de Mo : l'attente reste réelle. Un simple lien laisserait croire
  * au clic que rien ne se passe — d'où le passage par `fetch`, qui permet
  * d'afficher « Préparation… » puis de remettre les boutons en état.
  *
@@ -98,7 +98,7 @@ function pageImpression(url: string) {
  * un `window.open` lancé après un `await` se fait bloquer comme popup par la
  * plupart des navigateurs. En attendant le PDF, l'onglet affiche tout de
  * suite une page d'attente (même esprit que le bouton « Préparation… ») pour
- * qu'il ne reste pas blanc pendant les quelques secondes de fabrication.
+ * qu'il ne reste pas blanc pendant les quelques secondes de chargement.
  * Une fois le blob prêt, l'onglet est réécrit avec un `<iframe>` plein cadre
  * pointant vers le PDF ; `contentWindow.print()` sur ce cadre ouvre
  * directement la boîte d'impression du PDF (naviguer l'onglet lui-même vers
@@ -188,7 +188,7 @@ export function AidePdfButton({ className }: { className?: string }) {
                 {erreur
                     ? erreur
                     : enCours
-                      ? 'Le document est en cours de fabrication, cela prend quelques secondes.'
+                      ? 'Le document est en cours de chargement, cela prend quelques secondes.'
                       : ''}
             </p>
         </div>
