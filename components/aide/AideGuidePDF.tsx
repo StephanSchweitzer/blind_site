@@ -58,7 +58,12 @@ const styles = StyleSheet.create({
     couvertureArbre: { width: ARBRE_HAUTEUR * ARBRE_RATIO, height: ARBRE_HAUTEUR, marginRight: 14 },
     couvertureTitre: { fontFamily: BOLD, fontSize: 36, lineHeight: 1, color: NAVY, textAlign: 'center' },
     couvertureSous: { fontSize: 13, color: GRIS, textAlign: 'center', lineHeight: 1.6 },
-    sommaireTitre: { fontFamily: BOLD, fontSize: 14, color: NAVY, marginBottom: 16 },
+    // Le sommaire, centré comme l'en-tête au-dessus de lui. Sur toute la
+    // largeur utile (499 pt), ses titres courts, alignés à gauche dans chaque
+    // colonne, laissaient un blanc à droite : le bloc penchait vers la gauche
+    // sous un en-tête centré. 380 pt suffisent au plus long titre.
+    sommaire: { width: 380, alignSelf: 'center' },
+    sommaireTitre: { fontFamily: BOLD, fontSize: 14, color: NAVY, marginBottom: 16, textAlign: 'center' },
     // Deux colonnes plutôt qu'une : à 16 sections, une colonne unique laisse la
     // moitié droite de la page vide et le sommaire ressemble à une liste
     // abandonnée sur le bord gauche. Le total tient alors sur une seule page
@@ -243,20 +248,22 @@ export function AideGuidePDF({
                     numéro de page n'aurait rien apporté de plus et aurait fait courir
                     le risque documenté sur `pied` plus bas.
                 */}
-                <Text style={styles.sommaireTitre}>Sommaire</Text>
-                <View style={styles.sommaireGrille}>
-                    {colonnes.map((colonne, c) => (
-                        <View key={c} style={c === 0 ? styles.sommaireColonneGauche : styles.sommaireColonneDroite}>
-                            {colonne.map((section, i) => (
-                                <View key={section.slug} style={styles.sommaireLigne}>
-                                    <Text style={styles.sommaireNumero}>{c * milieu + i + 1}.</Text>
-                                    <Link src={`#${section.slug}`} style={styles.sommaireLien}>
-                                        {section.titre}
-                                    </Link>
-                                </View>
-                            ))}
-                        </View>
-                    ))}
+                <View style={styles.sommaire}>
+                    <Text style={styles.sommaireTitre}>Sommaire</Text>
+                    <View style={styles.sommaireGrille}>
+                        {colonnes.map((colonne, c) => (
+                            <View key={c} style={c === 0 ? styles.sommaireColonneGauche : styles.sommaireColonneDroite}>
+                                {colonne.map((section, i) => (
+                                    <View key={section.slug} style={styles.sommaireLigne}>
+                                        <Text style={styles.sommaireNumero}>{c * milieu + i + 1}.</Text>
+                                        <Link src={`#${section.slug}`} style={styles.sommaireLien}>
+                                            {section.titre}
+                                        </Link>
+                                    </View>
+                                ))}
+                            </View>
+                        ))}
+                    </View>
                 </View>
 
                 <Text style={styles.pied} fixed>Mode d&apos;emploi — Arbre Rose</Text>
