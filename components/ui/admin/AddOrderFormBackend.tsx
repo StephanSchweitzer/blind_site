@@ -20,6 +20,7 @@ import { fr } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AddBookFormBackend } from '@/admin/BookFormBackendBase';
 import { useFormToast } from '@/hooks/useFormToast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { useRecordingAdvice } from '@/hooks/useRecordingAdvice';
 import { RecordingAdviceNotice, recordingConflictConfirmText } from '@/components/ui/admin/RecordingAdviceNotice';
@@ -146,6 +147,7 @@ export function AddOrderFormBackend({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { toastError } = useFormToast();
+    const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const {
         blocked: activityBlocked,
@@ -367,7 +369,10 @@ export function AddOrderFormBackend({
             const titles = conflicts.map(
                 (c) => lines.find((l) => l.book?.id === c.catalogueId)?.book?.title ?? ''
             );
-            if (!window.confirm(recordingConflictConfirmText(conflicts, titles))) {
+            if (!(await confirm({
+                title: 'Une demande d’enregistrement est déjà en cours',
+                description: recordingConflictConfirmText(conflicts, titles),
+            }))) {
                 setIsLoading(false);
                 return;
             }

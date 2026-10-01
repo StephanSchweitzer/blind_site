@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Plus, Trash2, Mail } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useFormToast } from "@/hooks/useFormToast";
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useInvalidField } from "@/hooks/useInvalidField";
 import {
     Dialog,
@@ -128,6 +129,7 @@ export function UserFormBackendBase({
     const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
     const { toast } = useToast();
     const { toastError } = useFormToast();
+    const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
 
     const [civilities, setCivilities] = useState<{ id: number; name: string }[]>([]);
@@ -283,7 +285,11 @@ export function UserFormBackendBase({
     const handleDeleteClick = async () => {
         if (!onDelete) return;
 
-        if (window.confirm('Êtes-vous sûr de vouloir supprimer cette personne ?')) {
+        if (await confirm({
+            title: 'Supprimer cette personne ?',
+            confirmLabel: 'Supprimer',
+            destructive: true,
+        })) {
             setIsLoading(true);
             try {
                 await onDelete();

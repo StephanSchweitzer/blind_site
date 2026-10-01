@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
 import { useFormToast } from '@/hooks/useFormToast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 export interface GenreFormData {
     name: string;
@@ -51,6 +52,7 @@ export function GenreFormBackendBase({
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { toastError } = useFormToast();
+    const confirm = useConfirm();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -74,7 +76,12 @@ export function GenreFormBackendBase({
 
     const handleDeleteClick = async () => {
         if (!onDelete) return;
-        if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce genre ? Cette action est irréversible.')) return;
+        if (!(await confirm({
+            title: 'Supprimer ce genre ?',
+            description: 'Cette action est irréversible.',
+            confirmLabel: 'Supprimer',
+            destructive: true,
+        }))) return;
 
         setIsDeleting(true);
         try {

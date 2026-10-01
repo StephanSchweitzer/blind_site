@@ -28,6 +28,7 @@ import {
     X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAudioUpload, type FileProgress, type UploadPhase } from '@/hooks/useAudioUpload';
 import { safeZipName, useAudioFolderZip, type ZipEntry } from '@/hooks/useAudioFolderZip';
 import {
@@ -345,6 +346,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         reset,
     } = useAudioUpload(bookId);
     const zip = useAudioFolderZip();
+    const confirm = useConfirm();
 
     const notifyError = useCallback(
         (message: string) => {
@@ -547,16 +549,18 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
      * player uses, so the bytes go straight from the bucket — see
      * useAudioFolderZip.
      */
-    const handleDownloadFolder = () => {
+    const handleDownloadFolder = async () => {
         if (!data || !data.tracks.length) return;
 
         // No streaming sink here: the whole archive has to sit in memory first.
         if (zip.bufferedFallback) {
-            const proceed = window.confirm(
-                `Ce navigateur doit préparer l’archive entièrement en mémoire (${formatSize(data.totalBytes)}).\n\n` +
-                    'Sur un dossier volumineux, Chrome ou Edge écrivent directement sur le disque et sont préférables.\n\n' +
-                    'Continuer quand même ?',
-            );
+            const proceed = await confirm({
+                title: 'Archive préparée en mémoire',
+                description:
+                    `Ce navigateur doit préparer l’archive entièrement en mémoire (${formatSize(data.totalBytes)}).\n\n` +
+                    'Sur un dossier volumineux, Chrome ou Edge écrivent directement sur le disque et sont préférables.',
+                confirmLabel: 'Télécharger quand même',
+            });
             if (!proceed) return;
         }
 
@@ -577,7 +581,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
      * An upload in flight is not offered that choice at all: it cannot be
      * resumed, and a half-written folder is worse than a slow one.
      */
-    const handleOpenChange = (open: boolean) => {
+    const handleOpenChange = async (open: boolean) => {
         if (!open && busy) {
             notifyError(
                 'Un envoi est en cours. Attendez la fin de la préparation dans le cloud avant de fermer cette fenêtre.',
@@ -585,9 +589,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             return;
         }
         if (!open && zipping) {
-            const stop = window.confirm(
-                'Une archive est en cours de préparation. La fermeture annulera le téléchargement.\n\nFermer quand même ?',
-            );
+            const stop = await confirm({
+                title: 'Annuler le téléchargement ?',
+                description: 'Une archive est en cours de préparation. La fermeture annulera le téléchargement.',
+                confirmLabel: 'Fermer quand même',
+                cancelLabel: 'Continuer le téléchargement',
+                destructive: true,
+            });
             if (!stop) return;
             zip.cancel();
         }

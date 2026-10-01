@@ -27,6 +27,8 @@ import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
 import { SearchSuggestions } from '@/components/ui/search-suggestions';
 import type { VocabularyDomain } from '@/lib/search-suggestion-types';
 import { pageInfo } from '@/lib/pagination';
+import { useFormToast } from '@/hooks/useFormToast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { AdminPagerButtons } from './AdminPagination';
 
 /** Demandes non facturées par page, dans le panneau « Ajouter » d'un brouillon. */
@@ -161,6 +163,8 @@ export function EditBillModal({
                                   onRequestDelete,
                                   onBillUpdated,
                               }: EditBillModalProps) {
+    const { toastError } = useFormToast();
+    const confirm = useConfirm();
     const [bill, setBill] = useState<BillDetail | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -318,7 +322,7 @@ export function EditBillModal({
             if (bill) loadUnbilledOrders(orderSearch, orderPage, bill.client.id);
             onBillUpdated?.();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Erreur inattendue');
+            toastError(err instanceof Error ? err.message : 'Erreur inattendue');
         } finally {
             setAddingOrderId(null);
         }
@@ -339,7 +343,7 @@ export function EditBillModal({
             if (bill) loadUnbilledOrders(orderSearch, orderPage, bill.client.id);
             onBillUpdated?.();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Erreur inattendue');
+            toastError(err instanceof Error ? err.message : 'Erreur inattendue');
         } finally {
             setRemovingOrderId(null);
         }
@@ -348,11 +352,13 @@ export function EditBillModal({
     const handleReopen = async () => {
         if (!billId) return;
         const hasPayments = (bill?.payments.length ?? 0) > 0;
-        if (!window.confirm(
-            hasPayments
-                ? "Rouvrir cette facture la repassera à « émise » et détachera ses paiements (ils restent dans « Paiements », et leur numéro part à l'historique). Continuer ?"
-                : "Rouvrir cette facture la repassera à « émise » : elle redeviendra une créance à réclamer. Continuer ?"
-        )) return;
+        if (!(await confirm({
+            title: 'Rouvrir cette facture ?',
+            description: hasPayments
+                ? "Elle repassera à « émise » et ses paiements en seront détachés (ils restent dans « Paiements », et leur numéro part à l'historique)."
+                : "Elle repassera à « émise » : elle redeviendra une créance à réclamer.",
+            confirmLabel: 'Rouvrir',
+        }))) return;
         setIsReopening(true);
         try {
             const res = await fetch(`/api/bills/${billId}`, {
@@ -365,7 +371,7 @@ export function EditBillModal({
             await loadBill(billId);
             onBillUpdated?.();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Erreur inattendue');
+            toastError(err instanceof Error ? err.message : 'Erreur inattendue');
         } finally {
             setIsReopening(false);
         }

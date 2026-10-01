@@ -40,6 +40,7 @@ import {
 } from '@/types';
 import { STATUS } from '@/lib/statusSync';
 import { useFormToast } from '@/hooks/useFormToast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { useUserActivityGuard } from '@/hooks/useUserActivityGuard';
 import { UserActivityGuardDialog } from '@/components/ui/admin/UserActivityGuardDialog';
@@ -334,6 +335,7 @@ export function AssignmentFormBackendBase({
 
     const { toast } = useToast();
     const { toastError } = useFormToast();
+    const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const {
         blocked: activityBlocked,
@@ -468,10 +470,13 @@ export function AssignmentFormBackendBase({
         const max = user.maxConcurrentAssignments ?? 3;
         if (active >= max) {
             const name = getReaderDisplayName(user) ?? 'Ce lecteur';
-            const confirmed = window.confirm(
-                `${name} a déjà atteint son nombre maximum d'attributions. ` +
-                `Voulez-vous quand même lui en attribuer une autre ?`
-            );
+            const confirmed = await confirm({
+                title: 'Nombre maximum d’attributions atteint',
+                description:
+                    `${name} a déjà atteint son nombre maximum d'attributions. ` +
+                    `Voulez-vous quand même lui en attribuer une autre ?`,
+                confirmLabel: 'Attribuer quand même',
+            });
             if (!confirmed) {
                 return false;
             }
@@ -746,9 +751,12 @@ export function AssignmentFormBackendBase({
     const handleDeleteClick = async () => {
         if (!onDelete) return;
 
-        const confirmed = window.confirm(
-            'Êtes-vous sûr de vouloir supprimer cette attribution ? Cette action est irréversible.'
-        );
+        const confirmed = await confirm({
+            title: 'Supprimer cette attribution ?',
+            description: 'Cette action est irréversible.',
+            confirmLabel: 'Supprimer',
+            destructive: true,
+        });
 
         if (!confirmed) return;
 

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
 import { useFormToast } from '@/hooks/useFormToast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { newsTypeLabels, type NewsType } from '@/types/news';
 
 export interface NewsFormData {
@@ -56,6 +57,7 @@ export function NewsFormBackendBase({
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { toastError } = useFormToast();
+    const confirm = useConfirm();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -82,7 +84,11 @@ export function NewsFormBackendBase({
 
     const handleDeleteClick = async () => {
         if (!onDelete) return;
-        if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette information ?')) return;
+        if (!(await confirm({
+            title: 'Supprimer cette information ?',
+            confirmLabel: 'Supprimer',
+            destructive: true,
+        }))) return;
 
         setIsDeleting(true);
         try {

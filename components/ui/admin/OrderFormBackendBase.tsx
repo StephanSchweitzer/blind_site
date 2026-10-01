@@ -23,6 +23,7 @@ import { DELIVERY_METHOD_VALUES, getDeliveryMethodLabel } from '@/lib/user-enums
 import { isLegacyValue } from '@/lib/select-options';
 import type { BillingStatus } from '@prisma/client';
 import { useFormToast } from '@/hooks/useFormToast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { useRecordingAdvice } from '@/hooks/useRecordingAdvice';
 import { RecordingAdviceNotice, recordingConflictConfirmText } from '@/components/ui/admin/RecordingAdviceNotice';
@@ -179,6 +180,7 @@ export function OrderFormBackendBase({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { toastError } = useFormToast();
+    const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const {
         blocked: activityBlocked,
@@ -550,7 +552,10 @@ export function OrderFormBackendBase({
         // sans toucher à sa décision d'enregistrement ne demande rien à personne.
         const conflicts = await recordingConflicts();
         if (conflicts.length > 0) {
-            if (!window.confirm(recordingConflictConfirmText(conflicts, []))) {
+            if (!(await confirm({
+                title: 'Une demande d’enregistrement est déjà en cours',
+                description: recordingConflictConfirmText(conflicts, []),
+            }))) {
                 setIsLoading(false);
                 return;
             }
@@ -585,7 +590,11 @@ export function OrderFormBackendBase({
     const handleDeleteClick = async () => {
         if (!onDelete) return;
 
-        if (window.confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) {
+        if (await confirm({
+            title: 'Supprimer cette demande ?',
+            confirmLabel: 'Supprimer',
+            destructive: true,
+        })) {
             setIsLoading(true);
             try {
                 await onDelete();
