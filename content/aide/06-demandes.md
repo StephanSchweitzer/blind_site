@@ -138,7 +138,7 @@ Pour un ouvrage de type « Enregistrement », cochez « **Tarifer à la page (po
 
 Le coût de la demande se calcule tout seul, sous les champs : *pages comptées (à défaut, pages lues) × prix par page + frais d'envoi*. Il ne se saisit plus à la main, et il n'est plus recalculé d'après le poids de l'enregistrement. Le champ « Coût » disparaît donc du formulaire tant que la case est cochée.
 
-Une duplication ne peut pas être tarifée à la page : elle n'a pas de lecture à compter. Et une fois la demande rattachée à une facture, on ne peut plus la faire passer d'une tarification au poids à une tarification à la page (ni l'inverse) : détachez-la d'abord.
+Une duplication ne peut pas être tarifée à la page : elle n'a pas de lecture à compter. Si le choix du livre bascule l'ouvrage en « Duplication » (le livre a déjà un fichier audio), ce que vous aviez saisi n'est pas effacé : c'est simplement masqué et non envoyé, et tout réapparaît si vous repassez sur « Enregistrement ». Et une fois la demande rattachée à une facture, on ne peut plus la faire passer d'une tarification au poids à une tarification à la page (ni l'inverse) : détachez-la d'abord.
 
 Quand la demande passe à « Terminé », sa **facture pro-forma** est créée et émise d'office — voir [Les factures pro-forma](/admin/aide/factures#les-factures-pro-forma).
 

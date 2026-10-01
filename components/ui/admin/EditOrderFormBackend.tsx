@@ -211,11 +211,16 @@ export function EditOrderFormBackend({
     const handleSubmit = async (formData: OrderFormData): Promise<number> => {
         // Le formulaire garde la tarification à la page dans un seul objet ; le
         // serveur attend quatre champs à plat, `null` partout quand la case est décochée.
+        // Une duplication n'a pas de lecture (le serveur refuse sinon) : la saisie
+        // gardée en mémoire dans le formulaire ne part pas avec elle.
         const { pagePricing, ...rest } = formData;
         const response = await fetch(`/api/orders/${orderId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...rest, ...pagePricingToPayload(pagePricing) }),
+            body: JSON.stringify({
+                ...rest,
+                ...pagePricingToPayload(formData.isDuplication ? { ...pagePricing, pageBased: false } : pagePricing),
+            }),
         });
 
         if (!response.ok) {

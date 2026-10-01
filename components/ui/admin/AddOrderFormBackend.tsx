@@ -67,7 +67,11 @@ interface OrderBookLine {
      */
     typeReason: OrderTypeReason | null;
     cost: string;
-    /** Seulement pour un enregistrement : une duplication n'a pas de lecture à compter. */
+    /**
+     * Seulement pour un enregistrement : une duplication n'a pas de lecture à
+     * compter. Conservée en mémoire quand la ligne passe en duplication (masquée,
+     * jamais envoyée), pour que la saisie revienne si on repasse en enregistrement.
+     */
     pagePricing: PagePricingForm;
     mediaFormatId: number | null; // required per line at submit; null until chosen
 }
@@ -288,9 +292,10 @@ export function AddOrderFormBackend({
                 ? {
                     type: typeSuggestion.type,
                     typeReason: typeSuggestion.reason,
-                    // Même remise à zéro que le bouton « Duplication » : une
-                    // duplication n'a pas de lecture à compter.
-                    ...(typeSuggestion.type === 'DUPLICATION' ? { pagePricing: emptyPagePricing() } : {}),
+                    // La tarification à la page n'est PAS remise à zéro, même pour une
+                    // duplication : choisir un livre ne doit pas effacer ce qui a été
+                    // saisi. Elle reste dans la ligne, masquée, et l'envoi l'ignore
+                    // tant que la ligne est une duplication (voir handleSubmit).
                 }
                 : {}),
         });
@@ -540,7 +545,7 @@ export function AddOrderFormBackend({
                                             className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'ENREGISTREMENT' ? 'bg-amber-100 border-amber-400 text-amber-900 dark:bg-amber-700/30 dark:border-amber-600 dark:text-amber-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Enregistrement
                                     </button>
-                                    <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION', typeReason: null, pagePricing: emptyPagePricing() })}
+                                    <button type="button" onClick={() => updateLine(line.key, { type: 'DUPLICATION', typeReason: null })}
                                             className={`p-3 rounded-md border text-sm font-medium transition-colors ${line.type === 'DUPLICATION' ? 'bg-green-100 border-green-400 text-green-900 dark:bg-green-700/30 dark:border-green-600 dark:text-green-200' : 'bg-field border-border text-foreground hover:bg-muted'}`}>
                                         Duplication
                                     </button>

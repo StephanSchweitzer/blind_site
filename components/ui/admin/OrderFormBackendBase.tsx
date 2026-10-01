@@ -561,7 +561,9 @@ export function OrderFormBackendBase({
             }
         }
 
-        const pageError = pagePricingError(formData.pagePricing);
+        // Une duplication n'a pas de lecture : sa saisie de pages, gardée en mémoire,
+        // ne la concerne pas et ne doit ni la bloquer ni partir au serveur.
+        const pageError = formData.isDuplication ? null : pagePricingError(formData.pagePricing);
         if (pageError) {
             setError(pageError);
             toastError(pageError);
@@ -637,6 +639,11 @@ export function OrderFormBackendBase({
     // derived, never stored.
     const demandeIsClosed =
         formData.statusId === STATUS.TERMINE || formData.statusId === STATUS.SOLDE;
+
+    // La saisie « à la page » survit au passage en duplication (cochée par le choix
+    // d'un livre déjà enregistré, par exemple) : elle reste dans formData, mais n'est
+    // ni affichée ni envoyée tant que la demande est une duplication.
+    const pagePricingActive = formData.pagePricing.pageBased && !formData.isDuplication;
 
     // Only « Terminé » carries a date de clôture, so only « Terminé » lets you pick one.
     // A legacy demande that holds an inconsistent date still displays it (read-only) —
@@ -749,7 +756,7 @@ export function OrderFormBackendBase({
                                             Facturer cette demande à {getUserDisplayName(selectedUser)}
                                         </span>
                                         <span className="block text-xs text-muted-foreground mt-1">
-                                            {formData.pagePricing.pageBased
+                                            {pagePricingActive
                                                 ? 'Elle est terminée et ne figure sur aucune facture : sa facture pro-forma sera créée et émise à l’enregistrement.'
                                                 : 'Elle est terminée et ne figure sur aucune facture : elle sera ajoutée à son brouillon, ou un brouillon sera ouvert.'}{' '}
                                             Décochez si elle ne doit pas être facturée (ancienne demande déjà réglée,
@@ -1235,7 +1242,7 @@ export function OrderFormBackendBase({
                         (elle n'a pas de lecture à compter). Les champs se figent avec le
                         coût quand la facture est payée ou soldée. */}
                     <PagePricingFields
-                        value={formData.pagePricing}
+                        value={formData.isDuplication ? { ...formData.pagePricing, pageBased: false } : formData.pagePricing}
                         onChange={(pagePricing) => setFormData({ ...formData, pagePricing })}
                         toggleDisabledReason={
                             hasBill
@@ -1252,7 +1259,7 @@ export function OrderFormBackendBase({
                     />
 
                     {/* Cost — dérivé des pages quand la demande est tarifée à la page */}
-                    {!formData.pagePricing.pageBased && (
+                    {!pagePricingActive && (
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Coût</label>
                         <div className="relative">
