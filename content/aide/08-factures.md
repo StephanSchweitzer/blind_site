@@ -125,7 +125,7 @@ Une demande **tarifée à la page** ne rejoint jamais le brouillon de l'auditeur
 
 Dans le tableau, une pro-forma se reconnaît à la mention « Revue » sous son numéro, et la même pastille « Revue » figure à côté du titre dans la fenêtre de la facture. Elle suit ensuite le même chemin que les autres factures : paiement, « Payée », « Soldée », historique.
 
-Le PDF est celui d'une pro-forma : l'adresse du client, « Paris, le … », le titre de l'ouvrage, l'adresse d'envoi WeTransfer (celle du client), la ligne de lecture (« Lecture de 42 pages, comptées comme 14 pages à 3,00 € »), les frais d'envoi s'il y en a, le total, puis les modalités de règlement.
+Le PDF reprend la mise en page d'une facture standard — logotype, titre « FACTURE PRO-FORMA », bande « Facturé à » avec le numéro et la date d'émission, tableau, totaux, encadré de règlement. Le tableau porte le titre de l'ouvrage, l'adresse d'envoi WeTransfer (celle du client), la ligne de lecture (« Lecture de 42 pages, comptées comme 14 pages à 3,00 € ») et les frais d'envoi s'il y en a ; viennent ensuite le total et les modalités de règlement.
 
 Quelques règles propres aux pro-formas :
 
