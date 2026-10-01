@@ -1,7 +1,6 @@
 import { PrismaClient, Prisma } from '@/generated/prisma/client';
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from 'pg';
-import { attachDatabasePool } from '@vercel/functions';
 import { auditExtension } from '@/lib/audit/extension';
 import { isAuditRead, runInAuditTransaction } from '@/lib/audit/context';
 
@@ -30,13 +29,14 @@ const getLogConfig = () => {
 // never reads (confirmed: `pg.Pool` silently drops unrecognized connection
 // string params), so `max` here is the only real cap.
 //
-// attachDatabasePool: on Vercel's Fluid compute an instance is suspended
-// between requests, and a suspended instance never runs pg's idle timer — its
-// connections stay open, counted by Supabase, until the instance is reclaimed.
-// Enough of those and Postgres answers « too many clients already »; the proxy
-// then waits on its access check until Vercel kills it with a 504
-// MIDDLEWARE_INVOCATION_TIMEOUT (2026-09-24). Attaching the pool keeps the
-// instance alive just long enough to close idle clients. No-op off Vercel.
+// No `attachDatabasePool` (@vercel/functions), on purpose. It was added on
+// 2026-09-24 to close idle clients on suspended instances, and works by
+// calling waitUntil() for idleTimeoutMillis + 100 ms after EVERY release: each
+// invocation that touched the database stayed alive ~10 s after its response.
+// Vercel bills that wait — Function Duration without Fluid compute, Provisioned
+// Memory with it — and the free tier ran out within days. The transaction
+// pooler (port 6543, checked below) is what keeps Postgres backends free: an
+// idle client left on a frozen instance holds no backend there.
 //
 // Built inside makePrisma, not at module scope: in dev every hot reload
 // re-evaluates this file, and the global-cached client below would leave each
@@ -44,14 +44,12 @@ const getLogConfig = () => {
 function makePool(): Pool {
     const connectionString = process.env.DATABASE_URL!;
     warnIfNotTransactionPooler(connectionString);
-    const pool = new Pool({
+    return new Pool({
         connectionString,
         max: 3,
         connectionTimeoutMillis: 5_000,
         idleTimeoutMillis: 10_000,
     });
-    attachDatabasePool(pool);
-    return pool;
 }
 
 // The deployed app must reach Supabase through the transaction pooler (6543),
