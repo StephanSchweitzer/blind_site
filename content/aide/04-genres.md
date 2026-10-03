@@ -28,4 +28,4 @@ Cela ouvre la fenêtre contextuelle de modification du genre, dans laquelle vous
 
 ## La couleur d'un genre sur le site public
 
-Sur le site public, chaque livre porte un dos de couleur qui dépend de la famille de son premier genre (romans, policiers, histoire…). Un nouveau genre trouve sa famille d'après les mots de son nom : « Roman policier » ira avec les policiers, « Histoire de l'art » avec l'histoire. S'il n'en contient aucun, son dos reste gris. Le détail des familles est dans [La couleur des livres](/admin/aide/pages-publiques#la-couleur-des-livres).
+Dans le catalogue public, chaque livre porte un dos de couleur qui dépend de la famille de son premier genre (romans, policiers, histoire…). Un nouveau genre trouve sa famille d'après les mots de son nom : « Roman policier » ira avec les policiers, « Histoire de l'art » avec l'histoire. S'il n'en contient aucun, son dos reste gris. Le détail des familles est dans [La couleur des livres](/admin/aide/pages-publiques#la-couleur-des-livres).

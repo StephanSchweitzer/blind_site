@@ -49,6 +49,27 @@ export const GENRE_FAMILY_SPINE: Record<GenreFamily, string> = {
     autre: 'bg-dos-neutre',
 };
 
+/**
+ * Les sept dos dans l'ordre du logo (components/Dos.tsx), pour les listes de
+ * livres. Là, les livres sont regroupés par genre, et c'est la frontière entre
+ * deux groupes que la couleur doit montrer : avec la couleur de famille,
+ * « Autobiographies-Mémoires », « Biographies » et « Témoignage » se suivaient
+ * tous en orange et ne se distinguaient plus. Chaque section prend donc le dos
+ * suivant — deux sections voisines ne partagent jamais une couleur, et une
+ * liste de sept genres ou moins n'en répète aucune.
+ */
+export const SECTION_SPINES = [
+    'bg-dos-bleu',
+    'bg-dos-violet',
+    'bg-dos-rose',
+    'bg-dos-rouge',
+    'bg-dos-orange',
+    'bg-dos-jaune',
+    'bg-dos-turquoise',
+] as const;
+
+export const sectionSpine = (index: number) => SECTION_SPINES[index % SECTION_SPINES.length];
+
 const fold = (s: string) =>
     s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 

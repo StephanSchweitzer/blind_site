@@ -42,7 +42,11 @@ Au-dessus, la page d'accueil donne le téléphone et le courriel de la page **Co
 
 ## La couleur des livres
 
-Sur le site public, chaque livre du catalogue et des listes de livres porte sur son bord gauche un « dos » de couleur, comme sur une étagère — les sept couleurs des livres du logo. La couleur dit la **famille** de son premier genre :
+Sur le site public, chaque livre du catalogue et des listes de livres porte sur son bord gauche un « dos » de couleur, comme sur une étagère — les sept couleurs des livres du logo.
+
+Dans une **liste de livres**, les livres sont regroupés par genre, et chaque groupe prend la couleur suivante du logo (bleu, violet, rose, rouge, orange, jaune, turquoise, puis on recommence) : deux genres qui se suivent n'ont jamais la même couleur, et l'œil voit tout de suite où l'un s'arrête et où l'autre commence. La couleur n'y dit donc rien du genre lui-même.
+
+Dans le **catalogue**, la couleur dit la **famille** du premier genre du livre :
 
 | Couleur | Famille | Exemples de genres |
 |---|---|---|

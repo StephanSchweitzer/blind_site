@@ -1,7 +1,7 @@
 import React from 'react';
 import { groupBy } from 'lodash';
 import type { PublicBook } from '@/lib/books/publicBook';
-import { genreFamily, GENRE_FAMILY_SPINE } from '@/lib/books/genreFamily';
+import { sectionSpine } from '@/lib/books/genreFamily';
 
 interface BookListProps {
     books: { book: PublicBook }[];
@@ -60,9 +60,9 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                     style={{ animationDelay: `${genreIndex * 100}ms` }}
                 >
                     <div className="flex items-center gap-3 mb-5">
-                        {/* The genre family's spine (lib/books/genreFamily.ts), next to
+                        {/* The section's spine (lib/books/genreFamily.ts, SECTION_SPINES), next to
                             the genre's written name. */}
-                        <span aria-hidden="true" className={`block h-7 w-2 shrink-0 rounded-[2px] ${GENRE_FAMILY_SPINE[genreFamily(genre)]}`} />
+                        <span aria-hidden="true" className={`block h-7 w-2 shrink-0 rounded-[2px] ${sectionSpine(genreIndex)}`} />
                         <h3 id={`genre-${genreIndex}`} className="text-xl font-bold text-foreground">{genre}</h3>
                         <div aria-hidden="true" className="h-0.5 flex-1 bg-border"></div>
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-3 py-1 rounded-full">
@@ -82,7 +82,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 className="group relative cursor-pointer overflow-hidden rounded-xl border border-border bg-card py-4 pl-6 pr-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-md focus-within:border-primary"
                                 onClick={() => onBookClick(book)}
                             >
-                                <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${GENRE_FAMILY_SPINE[genreFamily(genre)]}`} />
+                                <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1.5 ${sectionSpine(genreIndex)}`} />
 
                                 <div className="relative z-10">
                                     <div className="mb-3">
