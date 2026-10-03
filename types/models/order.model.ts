@@ -89,7 +89,6 @@ export const orderSummaryInclude = {
     aveugle: {
         select: {
             id: true,
-            name: true,
             firstName: true,
             lastName: true,
         },
@@ -107,7 +106,6 @@ export const orderIncludeConfigs = {
     aveugle: {
         select: {
             id: true,
-            name: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -143,7 +141,8 @@ export const orderIncludeConfigs = {
     processedByStaff: {
         select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
         },
     } satisfies Prisma.UserDefaultArgs,
@@ -172,7 +171,8 @@ export const orderIncludeConfigs = {
                     reader: {
                         select: {
                             id: true,
-                            name: true,
+                            firstName: true,
+                            lastName: true,
                             email: true,
                         },
                     },
@@ -194,7 +194,6 @@ export const orderIncludeConfigs = {
         aveugle: {
             select: {
                 id: true,
-                name: true,
                 firstName: true,
                 lastName: true,
                 email: true,
@@ -223,7 +222,8 @@ export const orderIncludeConfigs = {
         processedByStaff: {
             select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
             },
         },
         bill: {
@@ -247,7 +247,8 @@ export const orderIncludeConfigs = {
                         reader: {
                             select: {
                                 id: true,
-                                name: true,
+                                firstName: true,
+                                lastName: true,
                                 email: true,
                             },
                         },
@@ -288,9 +289,7 @@ export const linkedAssignmentArgs = {
 export type LinkedAssignment = Prisma.AssignmentGetPayload<{ select: typeof linkedAssignmentArgs.select }>;
 
 export const ordersTableInclude = {
-    // firstName/lastName are what the row displays (getUserNameOnly); `name` is
-    // the legacy column and only a fallback.
-    aveugle: { select: { name: true, email: true, firstName: true, lastName: true } },
+    aveugle: { select: { email: true, firstName: true, lastName: true } },
     // audio_filepath drives the « en attente d'enregistrement » badge: a duplication
     // whose book already has audio is never blocked (lib/orders/duplicationBlocked.ts).
     catalogue: { select: { title: true, author: true, audio_filepath: true } },

@@ -5,6 +5,7 @@ import { buildUserNameSearch, searchTokens } from '@/lib/search';
 import { meetsSearchMinLength, normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { searchVariants } from '@/lib/search-normalize';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { rankByNameMatch } from '@/lib/users/nameRank';
 import { ACCESS_LEVEL_LABELS, MEMBER_TYPE_LABELS, type AccessLevel, type MemberType } from '@/lib/user-enums';
 
 /**
@@ -96,16 +97,17 @@ export const GET = withAdmin(async (request) => {
     const userWhere = buildUserNameSearch(q);
 
     const [users, books, bookById, order, assignment, bill, payment] = await Promise.all([
+        // Every match, ranked, then cut to five — sorting by nom and cutting
+        // first is what hid « Yvonne JEAN » behind the Jean and Jeanne
+        // (lib/users/nameRank.ts).
         userWhere
             ? prisma.user.findMany({
                 where: userWhere,
                 select: {
-                    id: true, name: true, firstName: true, lastName: true, email: true,
+                    id: true, firstName: true, lastName: true, email: true,
                     memberType: true, accessLevel: true,
                 },
-                orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-                take: PER_GROUP,
-            })
+            }).then((people) => rankByNameMatch(people, q).slice(0, PER_GROUP))
             : [],
         findBooks(q),
         id ? prisma.book.findFirst({ where: { id }, select: { id: true, title: true } }) : null,
@@ -113,7 +115,7 @@ export const GET = withAdmin(async (request) => {
         // facture 412. Each one found is offered; none replaces the others.
         id ? prisma.orders.findFirst({
             where: { id },
-            select: { id: true, catalogue: { select: { title: true } }, aveugle: { select: { name: true, firstName: true, lastName: true, email: true } } },
+            select: { id: true, catalogue: { select: { title: true } }, aveugle: { select: { firstName: true, lastName: true, email: true } } },
         }) : null,
         id ? prisma.assignment.findFirst({
             where: { id },
@@ -121,11 +123,11 @@ export const GET = withAdmin(async (request) => {
         }) : null,
         id ? prisma.bill.findFirst({
             where: { id, isActive: true },
-            select: { id: true, client: { select: { name: true, firstName: true, lastName: true, email: true } } },
+            select: { id: true, client: { select: { firstName: true, lastName: true, email: true } } },
         }) : null,
         id ? prisma.payment.findFirst({
             where: { id },
-            select: { id: true, client: { select: { name: true, firstName: true, lastName: true, email: true } } },
+            select: { id: true, client: { select: { firstName: true, lastName: true, email: true } } },
         }) : null,
     ]);
 

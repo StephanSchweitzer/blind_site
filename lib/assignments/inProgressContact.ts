@@ -42,7 +42,6 @@ export interface InProgressReading {
 const personSelect = {
     firstName: true,
     lastName: true,
-    name: true,
     email: true,
 } as const;
 

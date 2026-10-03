@@ -24,7 +24,7 @@ export default async function DemandesTab({ params, searchParams }: PageProps) {
         loadOrderList(sp, { aveugleId }),
         prisma.user.findUnique({
             where: { id: aveugleId },
-            select: { id: true, name: true, email: true },
+            select: { id: true, firstName: true, lastName: true, email: true },
         }),
     ]);
 

@@ -57,7 +57,7 @@ interface BillsTableProps {
     initialSearch: string;
     availableStatuses: BillingStatus[];
     hideSearch?: boolean;
-    presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string } | null;
+    presetClient?: { id: number; firstName: string | null; lastName: string | null; email: string } | null;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
     searchSuggestions?: RescueSuggestion[];
 }

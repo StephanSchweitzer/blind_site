@@ -24,6 +24,7 @@ import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { PageInfo } from '@/lib/pagination';
 import { AdminPaginatedList } from '@/admin/AdminPagination';
+import { getUserNameOnly, type UserNameParts } from '@/lib/users/displayName';
 
 export type TrashTab = 'a-purger' | 'sans-fiche' | 'restaurees' | 'purgees';
 
@@ -45,8 +46,8 @@ export interface TrashRow {
     /** Ce qu'il en reste sinon (markTrashOrigin, lib/audio/trash.ts). */
     originBookId: number | null;
     originBookTitle: string | null;
-    deletedBy: { name: string | null; email: string | null } | null;
-    restoredBy: { name: string | null; email: string | null } | null;
+    deletedBy: { firstName: string | null; lastName: string | null; email: string | null } | null;
+    restoredBy: { firstName: string | null; lastName: string | null; email: string | null } | null;
 }
 
 /**
@@ -86,8 +87,8 @@ const TAB_LABELS: Record<TrashTab, string> = {
     purgees: 'Purgées',
 };
 
-const personLabel = (p: { name: string | null; email: string | null } | null) =>
-    p?.name || p?.email || 'inconnu';
+const personLabel = (p: UserNameParts | null) =>
+    getUserNameOnly(p) || p?.email || 'inconnu';
 
 /** Jours restants avant la purge — négatif veut dire « au prochain passage ». */
 const daysUntil = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);

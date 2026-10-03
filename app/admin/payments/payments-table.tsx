@@ -70,7 +70,7 @@ interface PaymentsTableProps {
     availableMethods: PaymentMethod[];
     initialTotalAmount: string;
     hideSearch?: boolean;
-    presetClient?: { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null } | null;
+    presetClient?: { id: number; firstName: string | null; lastName: string | null; email: string | null } | null;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
     searchSuggestions?: RescueSuggestion[];
 }

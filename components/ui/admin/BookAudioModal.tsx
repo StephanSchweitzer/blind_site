@@ -51,6 +51,7 @@ import { InProgressReadingNotice } from '@/admin/InProgressReadingNotice';
 import { parisDate } from '@/lib/paris-day';
 import { ApiErrorMessage, apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse, type UserFacingError } from '@/lib/user-error';
+import { getUserNameOnly, type UserNameParts } from '@/lib/users/displayName';
 
 interface Track {
     order: number;
@@ -91,8 +92,8 @@ interface TrashItem {
     retainForever: boolean;
     /** null when retainForever — otherwise deletedAt + the retention window. */
     purgeEligibleAt: string | null;
-    deletedBy: { id: number; name: string | null; email: string | null } | null;
-    restoredBy: { id: number; name: string | null; email: string | null } | null;
+    deletedBy: { id: number; firstName: string | null; lastName: string | null; email: string | null } | null;
+    restoredBy: { id: number; firstName: string | null; lastName: string | null; email: string | null } | null;
 }
 
 interface BookAudioModalProps {
@@ -128,8 +129,8 @@ const formatDate = (iso: string) =>
         minute: '2-digit',
     });
 
-const personLabel = (p: { name: string | null; email: string | null } | null) =>
-    p?.name || p?.email || 'inconnu';
+const personLabel = (p: UserNameParts | null) =>
+    getUserNameOnly(p) || p?.email || 'inconnu';
 
 /** Retention line for an active (not restored, not purged) corbeille row. */
 const retentionLabel = (item: TrashItem): string => {

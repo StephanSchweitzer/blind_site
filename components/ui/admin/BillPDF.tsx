@@ -73,7 +73,6 @@ export interface BillPDFData {
     invoiceAmount: number | string;
     client: {
         id: number;
-        name: string | null;
         email: string | null;
         civility?: string | null;   // 'Madame' | 'Monsieur'
         firstName?: string | null;
@@ -215,7 +214,6 @@ export const BillPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: bo
 
     const auditeurName =
         [bill.client.civility, bill.client.firstName, bill.client.lastName].filter(Boolean).join(' ')
-        || bill.client.name
         || 'Auditeur';
 
     return (

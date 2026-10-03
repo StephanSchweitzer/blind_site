@@ -80,7 +80,8 @@ export const GET = withAdmin(async (_req, { params }) => {
                 addedBy: {
                     select: {
                         id: true,
-                        name: true,
+                        firstName: true,
+                        lastName: true,
                         email: true
                     }
                 }
@@ -251,7 +252,8 @@ export const PUT = withAdmin(async (req, { params }) => {
                 addedBy: {
                     select: {
                         id: true,
-                        name: true,
+                        firstName: true,
+                        lastName: true,
                         email: true
                     }
                 }

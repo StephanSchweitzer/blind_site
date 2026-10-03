@@ -55,7 +55,6 @@ export async function POST(req: Request) {
                 accessLevel: true,
                 firstName: true,
                 lastName: true,
-                name: true,
             },
         });
 

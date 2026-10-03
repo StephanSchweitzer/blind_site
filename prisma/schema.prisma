@@ -21,7 +21,6 @@ model User {
   id                        Int                 @id @default(autoincrement())
   email                     String?             @unique
   password                  String?
-  name                      String?
   memberType                MemberType          @default(auditeur)
   accessLevel               AccessLevel         @default(member)
   role                      String              @default("user")
@@ -50,7 +49,7 @@ model User {
   /// LEGACY: superseded by UserActivityEvent.reason; no longer written. Refactor out.
   terminationReason         String?
   lastUpdated               DateTime?           @updatedAt
-  /// Lower-case, accent-folded « prénom nom name email », maintained by the
+  /// Lower-case, accent-folded « prénom nom email », maintained by the
   /// `user_search_key` trigger — never written by the app (whatever it writes is
   /// overwritten). Searched through `searchKeyVariants` (lib/search-normalize.ts).
   /// Created in prisma/migrations/0_baseline (Part 2).

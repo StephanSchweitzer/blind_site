@@ -50,7 +50,7 @@ import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { EntitySearchCombobox } from '@/admin/EntitySearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { BookUsageLinks } from '@/admin/BookUsageLinks';
-import { getUserDisplayName } from '@/lib/users/displayName';
+import { getUserDisplayName, getUserNameOnly } from '@/lib/users/displayName';
 import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
 import type { LinkedAssignment } from '@/types/models/order.model';
 import { AudioConfirmationRequiredError } from '@/admin/AssignmentFormErrors';
@@ -1098,7 +1098,7 @@ export function AssignmentFormBackendBase({
                                 <span className="flex items-center gap-2">
                                     <Package className="h-4 w-4 shrink-0" />
                                     <span className="text-base">
-                                        {order.aveugle?.name || 'Auditeur inconnu'}
+                                        {getUserNameOnly(order.aveugle ?? null) || 'Auditeur inconnu'}
                                         {(order.requestReceivedDate || order.createdDate) && (
                                             <> · {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}</>
                                         )}
@@ -1142,7 +1142,7 @@ export function AssignmentFormBackendBase({
                                             <span className="flex items-center gap-2 mb-1">
                                                 <Package className="h-4 w-4 text-blue-400 shrink-0" />
                                                 <span className="font-semibold text-foreground text-base">
-                                                    {order.aveugle?.name || 'Auditeur inconnu'}
+                                                    {getUserNameOnly(order.aveugle ?? null) || 'Auditeur inconnu'}
                                                 </span>
                                                 {(order.requestReceivedDate || order.createdDate) && (
                                                     <span className="text-sm text-muted-foreground">

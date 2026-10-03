@@ -12,7 +12,7 @@ import {
 // Summary Types (for forms and UI components)
 // ============================================================================
 
-export type ReaderSummary = Pick<User, 'id' | 'name' | 'email' | 'firstName' | 'lastName'> & {
+export type ReaderSummary = Pick<User, 'id' | 'email' | 'firstName' | 'lastName'> & {
     // Present only when the reader list is fetched with assignable=true (#3).
     activeAssignmentCount?: number;
     maxConcurrentAssignments?: number | null;
@@ -20,8 +20,8 @@ export type ReaderSummary = Pick<User, 'id' | 'name' | 'email' | 'firstName' | '
     // delivery method default from the reader's profile preference.
     preferredDeliveryMethod?: DeliveryMethod | null;
 };
-export type UserSummary = Pick<User, 'id' | 'name' | 'email' | 'firstName' | 'lastName'>;
-export type UserMinimal = Pick<User, 'id' | 'name'>;
+export type UserSummary = Pick<User, 'id' | 'email' | 'firstName' | 'lastName'>;
+export type UserMinimal = Pick<User, 'id' | 'firstName' | 'lastName'>;
 
 // ============================================================================
 // Query Parameter Validators
@@ -86,7 +86,6 @@ export type FullUserWithIncludesResponse = Prisma.UserGetPayload<{
 export const UserCreateInputSchema = z.object({
     email: z.string().email(),
     password: z.string().min(8),
-    name: z.string(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     accessLevel: z.nativeEnum(AccessLevel).default(AccessLevel.member),
@@ -116,7 +115,6 @@ export type UserCreateInput = z.input<typeof UserCreateInputSchema>;
 // ============================================================================
 
 export const UserUpdateInputSchema = z.object({
-    name: z.string().optional(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     email: z.string().email().optional(),
@@ -148,7 +146,6 @@ export type UserUpdateInput = z.infer<typeof UserUpdateInputSchema>;
 
 // Prisma update data type (what actually goes to the database)
 export type UserUpdateData = {
-    name?: string | null;
     firstName?: string | null;
     lastName?: string | null;
     email?: string | null;
@@ -183,7 +180,8 @@ export type UserDeleteResponse = {
     message: string;
     user?: {
         id: number;
-        name: string | null;
+        firstName: string | null;
+        lastName: string | null;
         email: string | null;
         isActive: boolean | null;
     };

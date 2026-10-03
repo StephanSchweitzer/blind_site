@@ -2,7 +2,7 @@ import 'server-only';
 
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { getUserDisplayName } from '@/lib/users/displayName';
+import { getUserDisplayName, getUserNameOnly } from '@/lib/users/displayName';
 import type { AuditChangeMap, AuditFieldLabelEntry, AuditRecordLabel } from '@/types';
 
 /**
@@ -71,7 +71,6 @@ function euros(value: unknown): string | null {
 /** The name parts every user-bearing query below selects under the same aliases. */
 const userName = (row: Row, prefix = ''): string =>
     getUserDisplayName({
-        name: str(row[`${prefix}name`]),
         firstName: str(row[`${prefix}firstName`]),
         lastName: str(row[`${prefix}lastName`]),
         email: str(row[`${prefix}email`]),
@@ -160,7 +159,7 @@ const asId = (value: unknown): number | null =>
     typeof value === 'number' && Number.isInteger(value) ? value : null;
 
 /** Selected by every query that names a person, so `userName` can stay generic. */
-const USER_NAME_COLUMNS = Prisma.sql`u.name, u."firstName", u."lastName", u.email, c.name AS civility`;
+const USER_NAME_COLUMNS = Prisma.sql`u."firstName", u."lastName", u.email, c.name AS civility`;
 const USER_CIVILITY_JOIN = Prisma.sql`LEFT JOIN "Civility" c ON c.id = u."civilityId"`;
 
 const SOURCES: Record<string, LabelSource> = {
@@ -179,14 +178,16 @@ const SOURCES: Record<string, LabelSource> = {
         build: (row) => label(userName(row) || null, str(row.email)),
         // No civility in a snapshot (it is a foreign key), so the name comes back
         // as « Prénom Nom » rather than « Mme Prénom Nom ». Close enough to name a
-        // deleted person.
+        // deleted person. `snap.name` is the legacy User.name column, dropped in
+        // October 2026: a snapshot taken before then may hold nothing else, and
+        // the journal is append-only, so it stays readable as a last resort.
         fromSnapshot: (snap) =>
-            label(getUserDisplayName({
-                name: str(snap.name),
-                firstName: str(snap.firstName),
-                lastName: str(snap.lastName),
-                email: str(snap.email),
-            }) || null, str(snap.email)),
+            label(
+                getUserNameOnly({ firstName: str(snap.firstName), lastName: str(snap.lastName) })
+                    || str(snap.name)
+                    || getUserDisplayName({ email: str(snap.email) }),
+                str(snap.email),
+            ),
     },
 
     Orders: {
@@ -675,8 +676,7 @@ export async function findRecordsByTerm(term: string): Promise<SubjectMatch[]> {
             ORDER BY id DESC LIMIT ${SUBJECT_SEARCH_LIMIT}`,
         prisma.$queryRaw<Array<{ id: number }>>`
             SELECT id FROM "User"
-            WHERE name ILIKE ${like}
-               OR email ILIKE ${like}
+            WHERE email ILIKE ${like}
                OR concat_ws(' ', "firstName", "lastName") ILIKE ${like}
             ORDER BY id DESC LIMIT ${SUBJECT_SEARCH_LIMIT}`,
     ]);

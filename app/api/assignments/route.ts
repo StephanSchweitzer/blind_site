@@ -52,7 +52,6 @@ export const GET = withAdmin(async (request: NextRequest) => {
                             reader: {
                                 select: {
                                     id: true,
-                                    name: true,
                                     email: true,
                                     firstName: true,
                                     lastName: true,
@@ -93,7 +92,6 @@ export const GET = withAdmin(async (request: NextRequest) => {
                         reader: {
                             select: {
                                 id: true,
-                                name: true,
                                 email: true,
                                 firstName: true,
                                 lastName: true,
@@ -393,7 +391,6 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
                             reader: {
                                 select: {
                                     id: true,
-                                    name: true,
                                     email: true,
                                     firstName: true,
                                     lastName: true,

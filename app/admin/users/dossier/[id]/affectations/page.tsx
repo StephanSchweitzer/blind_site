@@ -36,7 +36,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
 
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { memberType: true, name: true, firstName: true, lastName: true, email: true },
+        select: { memberType: true, firstName: true, lastName: true, email: true },
     });
 
     // A lecteur's dossier shows assignments they read; everyone else's shows
@@ -44,7 +44,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
     const isReader = user?.memberType === 'lecteur';
     const presetReader =
         isReader && user
-            ? { id: userId, name: user.name, firstName: user.firstName, lastName: user.lastName, email: user.email ?? '' }
+            ? { id: userId, firstName: user.firstName, lastName: user.lastName, email: user.email ?? '' }
             : null;
     // Not the reader (who does the work) — the aveugle whose demandes this
     // dossier shows. Assignment has no aveugleId of its own to preset with,
@@ -52,7 +52,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
     // Demande picker, the same way the demande/facture/paiement forms show it.
     const presetClient =
         !isReader && user
-            ? { id: userId, name: user.name, firstName: user.firstName, lastName: user.lastName, email: user.email ?? '' }
+            ? { id: userId, firstName: user.firstName, lastName: user.lastName, email: user.email ?? '' }
             : null;
     const ownWhere: Prisma.AssignmentWhereInput = isReader
         ? { readerHistory: { some: { readerId: userId } } }
@@ -87,7 +87,7 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
                     take: 1,
                     include: {
                         reader: {
-                            select: { id: true, name: true, email: true, firstName: true, lastName: true },
+                            select: { id: true, email: true, firstName: true, lastName: true },
                         },
                     },
                 },
@@ -118,7 +118,6 @@ export default async function AffectationsTab({ params, searchParams }: PageProp
             currentReader: currentReader
                 ? {
                       id: currentReader.id,
-                      name: currentReader.name,
                       email: currentReader.email,
                       firstName: currentReader.firstName,
                       lastName: currentReader.lastName,

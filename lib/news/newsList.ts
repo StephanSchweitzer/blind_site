@@ -43,7 +43,7 @@ export * from './news-list-types';
  *
  * L'AUDIENCE EST ÉCRITE DANS LE MOTEUR, pas passée en drapeau par l'appelant :
  * `listPublicNews` cherche l'auteur par son nom AFFICHÉ seulement. `User.searchKey`
- * contient aussi le prénom, le nom et l'e-mail — l'ouvrir au public ferait de la
+ * contient aussi l'e-mail — l'ouvrir au public ferait de la
  * recherche un oracle (« jean@… a-t-il écrit une info ? »). Elle ne propose pas
  * non plus de personnes en « Vouliez-vous dire », et ne renvoie jamais
  * d'identifiant d'auteur.
@@ -92,9 +92,9 @@ function authorContains(token: string): Prisma.Sql[] {
     );
 }
 
-/** L'auteur tel qu'un visiteur le voit : son nom affiché, jamais l'e-mail ni le nom civil. */
+/** L'auteur tel qu'un visiteur le voit : son prénom et son nom, jamais l'e-mail. */
 function publicAuthorContains(token: string): Prisma.Sql[] {
-    return unaccentedContains(Prisma.sql`COALESCE(u.name, '')`, token);
+    return unaccentedContains(Prisma.sql`concat_ws(' ', u."firstName", u."lastName")`, token);
 }
 
 function tokenClause(token: string, field: NewsSearchField, audience: Audience): Prisma.Sql {
@@ -283,7 +283,7 @@ export async function listAdminNews(query: AdminNewsQuery): Promise<AdminNewsRes
             publishedAt: Date;
             authorName: string | null;
         }[]>`
-            SELECT n.id, n.title, n.content, n.type, n."publishedAt", u.name AS "authorName"
+            SELECT n.id, n.title, n.content, n.type, n."publishedAt", NULLIF(concat_ws(' ', u."firstName", u."lastName"), '') AS "authorName"
             ${FROM}
             WHERE ${where} ${typeWhere}
             ORDER BY n."publishedAt" DESC, n.id DESC
@@ -376,7 +376,7 @@ export async function listPublicNews(query: PublicNewsQuery): Promise<NewsRespon
             publishedAt: Date;
             authorName: string | null;
         }[]>`
-            SELECT n.id, n.title, n.content, n.type, n."publishedAt", u.name AS "authorName"
+            SELECT n.id, n.title, n.content, n.type, n."publishedAt", NULLIF(concat_ws(' ', u."firstName", u."lastName"), '') AS "authorName"
             ${FROM}
             WHERE ${where} ${typeWhere}
             ORDER BY n."publishedAt" DESC, n.id DESC

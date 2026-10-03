@@ -22,7 +22,6 @@ import type { StaffStatsResponse, StaffStatsRow, StatsActor } from '@/types';
 
 interface RawUserName {
     id: number;
-    name: string | null;
     firstName: string | null;
     lastName: string | null;
     email: string | null;
@@ -37,7 +36,7 @@ async function resolveActors(actorIds: number[]): Promise<StatsActor[]> {
     const realIds = actorIds.filter((id) => id !== 0);
     const users = realIds.length
         ? await prisma.$queryRaw<RawUserName[]>`
-            SELECT id, name, "firstName", "lastName", email
+            SELECT id, "firstName", "lastName", email
             FROM "User"
             WHERE id IN (${Prisma.join(realIds)})`
         : [];

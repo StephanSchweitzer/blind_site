@@ -33,7 +33,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
             include: {
                 author: {
                     select: {
-                        name: true
+                        firstName: true,
+                        lastName: true
                     }
                 }
             }
@@ -115,7 +116,8 @@ export const PUT = withAdmin(async (req, { params }) => {
             include: {
                 author: {
                     select: {
-                        name: true
+                        firstName: true,
+                        lastName: true
                     }
                 }
             }

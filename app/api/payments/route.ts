@@ -18,7 +18,7 @@ import {
     buildPaymentListOrderBy,
 } from '@/lib/payments/list-query';
 
-const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
+const clientSelect = { id: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
 
 export const GET = withAdmin(async (request) => {

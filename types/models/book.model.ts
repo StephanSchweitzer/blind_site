@@ -103,7 +103,8 @@ export const bookIncludeConfigs = {
     addedBy: {
         select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
         },
     } satisfies Prisma.UserDefaultArgs,
@@ -118,7 +119,8 @@ export const bookIncludeConfigs = {
             requestReceivedDate: true,
             aveugle: {
                 select: {
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true,
                 },
             },
@@ -157,7 +159,8 @@ export const bookIncludeConfigs = {
         addedBy: {
             select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
             },
         },
     },

@@ -2,6 +2,7 @@
 import React from 'react';
 import { BillingStatus, getBillingStatusLabel, HAND_TYPED_SETTLEMENT_ARCHIVED } from '@/lib/billing-enums';
 import { parisDate, parisDateTimeDisplay } from '@/lib/paris-day';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 export interface BillEventDTO {
     id: number;
@@ -10,7 +11,7 @@ export interface BillEventDTO {
     toState: BillingStatus | null;
     payload: Record<string, unknown> | null;
     createdAt: string;
-    performedBy: { id: number; name: string | null } | null;
+    performedBy: { id: number; firstName: string | null; lastName: string | null } | null;
 }
 
 export const TYPE_LABEL: Record<string, string> = {
@@ -161,7 +162,7 @@ export function BillHistory({ events }: { events: BillEventDTO[] }) {
                             {summary && <p className="text-sm text-foreground mt-1 break-words">{summary}</p>}
                             <p className="text-xs text-muted-foreground mt-1">
                                 {fmtDateTime(e.createdAt)}
-                                {e.performedBy?.name ? ` · ${e.performedBy.name}` : ''}
+                                {getUserNameOnly(e.performedBy) ? ` · ${getUserNameOnly(e.performedBy)}` : ''}
                             </p>
                         </div>
                     </li>

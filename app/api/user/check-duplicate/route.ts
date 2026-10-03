@@ -21,7 +21,6 @@ export const GET = withAdmin(async (request) => {
             },
             select: {
                 id: true,
-                name: true,
                 firstName: true,
                 lastName: true,
                 email: true,

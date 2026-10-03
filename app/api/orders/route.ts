@@ -39,7 +39,7 @@ const ORDER_LIST_SELECT = {
     lentPhysicalBook: true,
     notes: true,
     aveugle: {
-        select: { name: true, email: true },
+        select: { firstName: true, lastName: true, email: true },
     },
     catalogue: {
         select: { title: true, author: true },
@@ -748,7 +748,7 @@ export const POST = withAdmin(async (request, { me }) => {
                     lentPhysicalBook: true,
                     notes: true,
                     aveugle: {
-                        select: { name: true, email: true },
+                        select: { firstName: true, lastName: true, email: true },
                     },
                     catalogue: {
                         select: { title: true, author: true },

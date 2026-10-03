@@ -311,7 +311,7 @@ async function main() {
 
     const superAdmin = await prisma.user.create({
         data: {
-            ...base, email: 'superadmin@eca.test', name: 'Camille Dubois',
+            ...base, email: 'superadmin@eca.test',
             firstName: 'Camille', lastName: 'Dubois', memberType: 'administration',
             accessLevel: 'super_admin', role: 'admin',
             civilityId: civilityId.get('Madame'), cellPhone: '+33 6 12 34 56 78',
@@ -321,7 +321,7 @@ async function main() {
     // which recreates just this user without wiping anything).
     await prisma.user.create({
         data: {
-            ...base, email: 'claude@eca.test', name: 'Claude Dev',
+            ...base, email: 'claude@eca.test',
             firstName: 'Claude', lastName: 'Dev', memberType: 'informaticien',
             accessLevel: 'super_admin', role: 'admin',
             password: await hash('ClaudeDev2026!', 10),
@@ -332,7 +332,7 @@ async function main() {
 
     const permanentA = await prisma.user.create({
         data: {
-            ...base, email: 'permanent@eca.test', name: 'Julien Moreau',
+            ...base, email: 'permanent@eca.test',
             firstName: 'Julien', lastName: 'Moreau', memberType: 'administration',
             accessLevel: 'admin', civilityId: civilityId.get('Monsieur'),
             homePhone: '+33 1 45 67 89 01',
@@ -340,14 +340,14 @@ async function main() {
     });
     const permanentB = await prisma.user.create({
         data: {
-            ...base, email: 'permanent2@eca.test', name: 'Sophie Laurent',
+            ...base, email: 'permanent2@eca.test',
             firstName: 'Sophie', lastName: 'Laurent', memberType: 'administration',
             accessLevel: 'admin', civilityId: civilityId.get('Madame'),
         },
     });
     await prisma.user.create({
         data: {
-            ...base, email: 'informaticien@eca.test', name: 'Thomas Bernard',
+            ...base, email: 'informaticien@eca.test',
             firstName: 'Thomas', lastName: 'Bernard', memberType: 'informaticien',
             accessLevel: 'admin', specialization: 'Maintenance du portail',
         },
@@ -356,7 +356,7 @@ async function main() {
     // Readers (lecteurs)
     const reader1 = await prisma.user.create({
         data: {
-            ...base, email: 'lecteur1@eca.test', name: 'Nathalie Petit',
+            ...base, email: 'lecteur1@eca.test',
             firstName: 'Nathalie', lastName: 'Petit', memberType: 'lecteur',
             accessLevel: 'member', civilityId: civilityId.get('Madame'),
             saveType: 'AUDACITY', specialization: 'Romans et littérature',
@@ -366,7 +366,7 @@ async function main() {
     });
     const reader2 = await prisma.user.create({
         data: {
-            ...base, email: 'lecteur2@eca.test', name: 'Philippe Girard',
+            ...base, email: 'lecteur2@eca.test',
             firstName: 'Philippe', lastName: 'Girard', memberType: 'lecteur',
             accessLevel: 'member', civilityId: civilityId.get('Monsieur'),
             saveType: 'REAPER', specialization: 'Essais et histoire',
@@ -376,7 +376,7 @@ async function main() {
     });
     const reader3 = await prisma.user.create({
         data: {
-            ...base, email: 'lecteur3@eca.test', name: 'Isabelle Roux',
+            ...base, email: 'lecteur3@eca.test',
             firstName: 'Isabelle', lastName: 'Roux', memberType: 'lecteur',
             accessLevel: 'member', civilityId: civilityId.get('Madame'),
             saveType: 'GARAGEBAND', specialization: 'Jeunesse',
@@ -389,7 +389,7 @@ async function main() {
     // Listeners (auditeurs — the visually impaired members)
     const listener1 = await prisma.user.create({
         data: {
-            ...base, email: 'auditeur1@eca.test', name: 'Marcel Fontaine',
+            ...base, email: 'auditeur1@eca.test',
             firstName: 'Marcel', lastName: 'Fontaine', memberType: 'auditeur',
             accessLevel: 'member', civilityId: civilityId.get('Monsieur'),
             preferredMediaFormatId: mediaId.get('Clé USB'),
@@ -399,7 +399,7 @@ async function main() {
     });
     const listener2 = await prisma.user.create({
         data: {
-            ...base, email: 'auditeur2@eca.test', name: 'Denise Lefebvre',
+            ...base, email: 'auditeur2@eca.test',
             firstName: 'Denise', lastName: 'Lefebvre', memberType: 'auditeur',
             accessLevel: 'member', civilityId: civilityId.get('Madame'),
             preferredMediaFormatId: mediaId.get('CDR'),
@@ -409,7 +409,7 @@ async function main() {
     });
     const listener3 = await prisma.user.create({
         data: {
-            ...base, email: 'auditeur3@eca.test', name: 'André Mercier',
+            ...base, email: 'auditeur3@eca.test',
             firstName: 'André', lastName: 'Mercier', memberType: 'auditeur',
             accessLevel: 'member', civilityId: civilityId.get('Monsieur'),
             preferredMediaFormatId: mediaId.get('WeTransfer'),
@@ -421,7 +421,7 @@ async function main() {
     // Donor (bienfaiteur)
     const donor = await prisma.user.create({
         data: {
-            ...base, email: 'bienfaiteur1@eca.test', name: 'Hélène Garnier',
+            ...base, email: 'bienfaiteur1@eca.test',
             firstName: 'Hélène', lastName: 'Garnier', memberType: 'bienfaiteur',
             accessLevel: 'member', civilityId: civilityId.get('Madame'),
         },
@@ -430,7 +430,7 @@ async function main() {
     // Legacy `ecouteur` member type (renders as "Auditeur") — to exercise legacy display.
     await prisma.user.create({
         data: {
-            ...base, email: 'ecouteur1@eca.test', name: 'Robert Ancien',
+            ...base, email: 'ecouteur1@eca.test',
             firstName: 'Robert', lastName: 'Ancien', memberType: 'ecouteur',
             accessLevel: 'member',
         },
@@ -439,7 +439,7 @@ async function main() {
     // Inactive user (with activity history) + a soft-deleted user (edge cases).
     const inactive = await prisma.user.create({
         data: {
-            ...base, email: 'inactif1@eca.test', name: 'Georges Durand',
+            ...base, email: 'inactif1@eca.test',
             firstName: 'Georges', lastName: 'Durand', memberType: 'lecteur',
             accessLevel: 'member', activityStatus: 'INACTIVE', isActive: false,
             isAvailable: false, activityChangedAt: daysAgo(30),
@@ -447,7 +447,7 @@ async function main() {
     });
     await prisma.user.create({
         data: {
-            ...base, email: 'supprime@eca.test', name: 'Utilisateur Supprimé',
+            ...base, email: 'supprime@eca.test',
             firstName: 'Ancien', lastName: 'Compte', memberType: 'lecteur',
             accessLevel: 'member', deletedAt: daysAgo(10),
         },

@@ -58,10 +58,10 @@ async function main() {
 
     // ------------------------------------------------ 2. every stored key
     const users = await prisma.$queryRawUnsafe<
-        { id: number; firstName: string | null; lastName: string | null; name: string | null; email: string | null; searchKey: string }[]
-    >(`SELECT id, "firstName", "lastName", name, email, "searchKey" FROM "User"`);
+        { id: number; firstName: string | null; lastName: string | null; email: string | null; searchKey: string }[]
+    >(`SELECT id, "firstName", "lastName", email, "searchKey" FROM "User"`);
     const stale = users.filter(
-        (u) => u.searchKey !== foldForSearchKey([u.firstName, u.lastName, u.name, u.email].filter((v) => v != null).join(' ')),
+        (u) => u.searchKey !== foldForSearchKey([u.firstName, u.lastName, u.email].filter((v) => v != null).join(' ')),
     );
     check(
         `searchKey conforme pour ${users.length} personnes`,

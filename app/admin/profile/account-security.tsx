@@ -22,32 +22,32 @@ import ChangePasswordDialog from '@/components/ChangePasswordDialog';
 import { toast } from '@/hooks/use-toast';
 
 interface AccountSecurityProps {
-    name: string;
     email: string;
 }
 
 /**
- * « Identifiants et sécurité » — the only fields a person may change about
- * themselves, plus the two session actions.
+ * « Identifiants et sécurité » — the only field a person may change about
+ * themselves (their login e-mail), plus the password and the two session actions.
+ * Their name is the fiche's prénom / nom, kept by the secrétariat.
  *
- * Fields stay editable rather than hiding behind a « Modifier » mode: there are
- * two of them, and the Save button only lights up once something differs, which
- * says the same thing with one control instead of three.
+ * The field stays editable rather than hiding behind a « Modifier » mode, and the
+ * Save button only lights up once it differs, which says the same thing with one
+ * control instead of three.
  *
  * Changing the e-mail ends the session, because it IS the login — the JWT is
  * keyed on the old address and every later request would resolve to nobody. The
  * confirmation says so before the write, rather than surprising the person with
  * a sign-out afterwards.
  */
-export default function AccountSecurity({ name, email }: AccountSecurityProps) {
+export default function AccountSecurity({ email }: AccountSecurityProps) {
     const router = useRouter();
-    const [form, setForm] = useState({ name, email });
+    const [form, setForm] = useState({ email });
     const [saving, setSaving] = useState(false);
     const [confirmEmail, setConfirmEmail] = useState(false);
     const [passwordOpen, setPasswordOpen] = useState(false);
 
     const emailChanged = form.email.trim().toLowerCase() !== email.trim().toLowerCase();
-    const dirty = form.name.trim() !== name.trim() || emailChanged;
+    const dirty = emailChanged;
 
     const save = async () => {
         setSaving(true);
@@ -55,7 +55,7 @@ export default function AccountSecurity({ name, email }: AccountSecurityProps) {
             const response = await fetch('/api/user/update', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: form.name, email: form.email }),
+                body: JSON.stringify({ email: form.email }),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
@@ -101,20 +101,11 @@ export default function AccountSecurity({ name, email }: AccountSecurityProps) {
         <AdminCard className="p-6">
             <h2 className="text-lg font-semibold text-foreground">Identifiants et sécurité</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-                Votre nom d’affichage et l’adresse avec laquelle vous vous connectez. Le reste de
-                votre fiche est tenu par le secrétariat.
+                L’adresse avec laquelle vous vous connectez. Votre nom et le reste de votre
+                fiche sont tenus par le secrétariat.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="account-name">Nom d’affichage</Label>
-                    <Input
-                        id="account-name"
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        autoComplete="name"
-                    />
-                </div>
                 <div className="space-y-2">
                     <Label htmlFor="account-email">Adresse email (identifiant de connexion)</Label>
                     <Input

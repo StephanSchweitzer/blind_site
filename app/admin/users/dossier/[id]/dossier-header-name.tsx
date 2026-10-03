@@ -43,7 +43,6 @@ export default function DossierHeaderName({ userId, fullName, currentUserAccessL
 
             const formData: UserFormData = {
                 email: userData.email || '',
-                name: userData.name || '',
                 memberType: userData.memberType || 'auditeur',
                 accessLevel: userData.accessLevel || 'member',
                 firstName: userData.firstName || '',

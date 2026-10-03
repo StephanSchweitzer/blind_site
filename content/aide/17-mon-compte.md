@@ -14,7 +14,7 @@ L'URL de cette page est https://eca-aveugles.fr/admin/profile
 
 ## Identifiants et sécurité
 
-Vous pouvez y modifier votre nom d'affichage, votre adresse email (qui sert à vous connecter) et votre mot de passe.
+Vous pouvez y modifier votre adresse email (qui sert à vous connecter) et votre mot de passe. Votre nom, lui, est celui de votre fiche : demandez au secrétariat de le corriger.
 
 ## Mes indisponibilités
 

@@ -13,7 +13,7 @@ import {
     BILL_IS_DRAFT_MESSAGE,
 } from '@/lib/billing';
 
-const clientSelect = { id: true, name: true, firstName: true, lastName: true, email: true };
+const clientSelect = { id: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
 
 function serialize(p: {

@@ -106,7 +106,7 @@ export const GET = withAdmin(async (request) => {
                         skip,
                         take: Math.min(CHUNK, limit - skip),
                         include: {
-                            client: { select: { name: true, firstName: true, lastName: true, email: true } },
+                            client: { select: { firstName: true, lastName: true, email: true } },
                             bill: { select: { id: true, state: true } },
                         },
                     });

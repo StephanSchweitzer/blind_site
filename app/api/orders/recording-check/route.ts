@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { STATUS } from '@/lib/statusSync';
 import { withAdmin } from '@/lib/auth/guards';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 /**
  * GET /api/orders/recording-check?bookId=123[&excludeOrderId=45]
@@ -34,7 +35,7 @@ export const GET = withAdmin(async (req: NextRequest) => {
         },
         select: {
             id: true,
-            aveugle: { select: { name: true } },
+            aveugle: { select: { firstName: true, lastName: true } },
             status: { select: { name: true } },
         },
         orderBy: { id: 'desc' },
@@ -56,7 +57,7 @@ export const GET = withAdmin(async (req: NextRequest) => {
             readerHistory: {
                 orderBy: { assignedDate: 'desc' },
                 take: 1,
-                select: { reader: { select: { name: true } } },
+                select: { reader: { select: { firstName: true, lastName: true } } },
             },
         },
     });
@@ -66,7 +67,7 @@ export const GET = withAdmin(async (req: NextRequest) => {
         orders,
         blockingRecording: inFlight
             ? {
-                readerName: inFlight.readerHistory[0]?.reader?.name ?? null,
+                readerName: getUserNameOnly(inFlight.readerHistory[0]?.reader ?? null) || null,
                 sentToReaderDate: inFlight.sentToReaderDate
                     ? inFlight.sentToReaderDate.toISOString()
                     : null,

@@ -209,7 +209,6 @@ export default function AssignmentsTable({
 
             const selectedReader: ReaderSummary | null = currentReader ? {
                 id: currentReader.id,
-                name: currentReader.name,
                 email: currentReader.email,
                 firstName : currentReader.firstName,
                 lastName : currentReader.lastName

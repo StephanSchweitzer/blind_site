@@ -72,7 +72,6 @@ export const paymentSummaryInclude = {
     client: {
         select: {
             id: true,
-            name: true,
             firstName: true,
             lastName: true,
         },
@@ -90,7 +89,6 @@ export const paymentIncludeConfigs = {
     client: {
         select: {
             id: true,
-            name: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -110,7 +108,6 @@ export const paymentIncludeConfigs = {
         client: {
             select: {
                 id: true,
-                name: true,
                 firstName: true,
                 lastName: true,
                 email: true,
@@ -132,9 +129,7 @@ export const paymentIncludeConfigs = {
 // ============================================================================
 
 export const paymentsTableInclude = {
-    // firstName/lastName are what the row displays (getUserNameOnly); `name` is
-    // the legacy column and only a fallback.
-    client: { select: { name: true, email: true, firstName: true, lastName: true } },
+    client: { select: { email: true, firstName: true, lastName: true } },
     // La facture réglée, affichée en colonne et cliquable : c'est le lien qui
     // manquait entre les deux listes. La recherche sait déjà retrouver un
     // paiement par le numéro de sa facture (buildPaymentSearchWhere) ; la

@@ -6,10 +6,11 @@ import { withAuth } from '@/lib/auth/guards';
 import { isSendableEmail } from '@/lib/email/sendEmail';
 
 /**
- * The two identity fields a person may change about THEMSELVES, from
- * « Mon compte ». Everything else on their fiche — type de membre, niveau
- * d'accès, statut d'activité, coordonnées, notes — belongs to a permanent and
- * goes through /api/user/[id]; nothing here may widen into those.
+ * The one identity field a person may change about THEMSELVES, from
+ * « Mon compte » — their login e-mail. Everything else on their fiche — their
+ * prénom / nom, type de membre, niveau d'accès, statut d'activité, coordonnées,
+ * notes — belongs to a permanent and goes through /api/user/[id]; nothing here
+ * may widen into those.
  *
  * The e-mail is the login, so it is normalized and validated exactly the way
  * /api/user does on creation: an account whose address is unreachable or
@@ -22,7 +23,7 @@ export const PUT = withAuth(async (request, { me }) => {
         if (typeof body !== 'object' || body === null) {
             return NextResponse.json({ message: 'Requête invalide' }, { status: 400 });
         }
-        const { name, email } = body as { name?: unknown; email?: unknown };
+        const { email } = body as { email?: unknown };
 
         if (typeof email !== 'string' || !email.trim()) {
             return NextResponse.json({ message: 'L’email est requis' }, { status: 400 });
@@ -30,9 +31,6 @@ export const PUT = withAuth(async (request, { me }) => {
         const normalizedEmail = email.trim().toLowerCase();
         if (!isSendableEmail(normalizedEmail)) {
             return NextResponse.json({ message: 'Adresse email invalide' }, { status: 400 });
-        }
-        if (name !== undefined && name !== null && typeof name !== 'string') {
-            return NextResponse.json({ message: 'Nom invalide' }, { status: 400 });
         }
 
         // Case-insensitive, like the creation path: two accounts differing only
@@ -56,13 +54,12 @@ export const PUT = withAuth(async (request, { me }) => {
         const updatedUser = await prisma.user.update({
             where: { id: me.id },
             data: {
-                name: typeof name === 'string' ? name.trim() || null : undefined,
                 email: normalizedEmail,
             },
-            select: { id: true, email: true, name: true },
+            select: { id: true, email: true },
         });
 
-        // The name shows up wherever this person authored something, so the
+        // The e-mail shows up wherever this person authored something, so the
         // whole back office can be stale after this write.
         revalidateAdmin();
 

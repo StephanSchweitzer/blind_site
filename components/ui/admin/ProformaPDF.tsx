@@ -88,7 +88,6 @@ export const ProformaPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?
 
     const clientName =
         [bill.client.civility, bill.client.firstName, bill.client.lastName].filter(Boolean).join(' ')
-        || bill.client.name
         || 'Auditeur';
     const address = bill.client.address?.filter(Boolean) ?? [];
 

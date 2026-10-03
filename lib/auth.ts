@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { compare } from 'bcrypt';
 import { type NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 type CustomUser = {
     id: string;
@@ -17,7 +18,8 @@ type CustomUser = {
 type AuthorizedUser = {
     id: number;
     email: string | null;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     role: string;
     memberType: string;
     accessLevel: string;
@@ -30,7 +32,8 @@ function toSessionUser(user: AuthorizedUser): CustomUser {
     return {
         id: user.id + '',
         email: user.email,
-        name: user.name,
+        // NextAuth's own `name` slot, filled from the fiche's prénom / nom.
+        name: getUserNameOnly(user) || null,
         randomKey: 'Hey cool',
         role: user.role,
         memberType: user.memberType,
@@ -151,7 +154,8 @@ export const authOptions: NextAuthOptions = {
                             id: true,
                             role: true,
                             email: true,
-                            name: true,
+                            firstName: true,
+                            lastName: true,
                             accessLevel: true,
                             memberType: true,
                             passwordNeedsChange: true
@@ -164,7 +168,7 @@ export const authOptions: NextAuthOptions = {
                         token.accessLevel = freshUser.accessLevel;
                         token.memberType = freshUser.memberType;
                         token.email = freshUser.email;
-                        token.name = freshUser.name;
+                        token.name = getUserNameOnly(freshUser) || null;
                         token.passwordNeedsChange = freshUser.passwordNeedsChange;
                     }
                 } catch (error) {

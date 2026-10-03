@@ -11,7 +11,8 @@ import { OrderFormData } from '@/admin/OrderFormBackendBase';
 
 interface User {
     id: number;
-    name: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
     email: string;
 }
 

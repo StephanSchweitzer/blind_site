@@ -35,8 +35,8 @@ export const GET = withAdmin(async (_req, { params }) => {
             restoredAt: true,
             purgedAt: true,
             retainForever: true,
-            deletedBy: { select: { id: true, name: true, email: true } },
-            restoredBy: { select: { id: true, name: true, email: true } },
+            deletedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+            restoredBy: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
     });
 

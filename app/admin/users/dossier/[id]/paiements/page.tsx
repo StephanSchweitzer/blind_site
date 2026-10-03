@@ -48,7 +48,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
 
     const client = await prisma.user.findUnique({
         where: { id: clientId },
-        select: { id: true, name: true, firstName: true, lastName: true, email: true },
+        select: { id: true, firstName: true, lastName: true, email: true },
     });
 
     const serializedPayments = payments.map((payment) => ({

@@ -44,7 +44,6 @@ export type AssignmentReaderHistory = Prisma.AssignmentReaderGetPayload<{
         reader: {
             select: {
                 id: true;
-                name: true;
                 email: true;
                 firstName: true;
                 lastName: true;
@@ -61,7 +60,6 @@ export const assignmentReaderIncludeConfigs = {
     reader: {
         select: {
             id: true,
-            name: true,
             email: true,
             firstName: true,
             lastName: true,
@@ -81,7 +79,8 @@ export const assignmentReaderIncludeConfigs = {
         reader: {
             select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
             },
         },
@@ -91,7 +90,6 @@ export const assignmentReaderIncludeConfigs = {
         reader: {
             select: {
                 id: true,
-                name: true,
                 email: true,
                 firstName: true,
                 lastName: true,

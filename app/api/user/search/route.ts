@@ -6,7 +6,10 @@ import { MemberType, AccessLevel } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
 import { meetsSearchMinLength, normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
 import { buildUserNameSearch } from '@/lib/search';
+import { rankByNameMatch } from '@/lib/users/nameRank';
 
+/** How many people a picker lists at once. */
+const PICKER_LIMIT = 20;
 
 export const GET = withAdmin(async (request) => {
     try {
@@ -37,8 +40,8 @@ export const GET = withAdmin(async (request) => {
 
         // Staff look people up by the id shown in « Modifier la personne #42 ».
         // OR-ed with the name search rather than replacing it: an all-digit
-        // query can also be part of an email or a legacy imported name, and
-        // silently dropping those matches would be worse than a longer list.
+        // query can also be part of an email, and silently dropping those
+        // matches would be worse than a longer list.
         const entityId = parseEntityId(query);
 
         const whereClause: Prisma.UserWhereInput = {
@@ -72,8 +75,26 @@ export const GET = withAdmin(async (request) => {
             whereClause.isAvailable = { not: false };
         }
 
-        const users = await prisma.user.findMany({
+        // Every match, ranked, BEFORE the cap — see lib/users/nameRank.ts. Sorting
+        // alphabetically and keeping the first 20 hid « Yvonne JEAN » behind
+        // fifty-odd Jean and Jeanne whenever she was searched by her nom. A light
+        // read: the people table is under a thousand rows.
+        const candidates = await prisma.user.findMany({
             where: whereClause,
+            select: { id: true, firstName: true, lastName: true, email: true },
+        });
+        const ranked = rankByNameMatch(candidates, query).map((u) => u.id);
+        // A typed id names one person outright: it must survive the cap too.
+        const shortlist = (entityId !== null && ranked.includes(entityId)
+            ? [entityId, ...ranked.filter((id) => id !== entityId)]
+            : ranked
+        ).slice(0, PICKER_LIMIT);
+        const rankOf = new Map(shortlist.map((id, index) => [id, index]));
+        const byRank = (a: { id: number }, b: { id: number }) =>
+            (rankOf.get(a.id) ?? 0) - (rankOf.get(b.id) ?? 0);
+
+        const users = await prisma.user.findMany({
+            where: { id: { in: shortlist } },
             select: {
                 id: true,
                 email: true,
@@ -89,13 +110,8 @@ export const GET = withAdmin(async (request) => {
                 preferredMediaFormatId: true,
                 preferredDeliveryMethod: true,
             },
-            take: 20,
-            orderBy: [
-                { firstName: 'asc' },
-                { lastName: 'asc' },
-                { email: 'asc' },
-            ],
         });
+        users.sort(byRank);
 
         // #5 — dedupe legacy Access-migration duplicates by normalized email.
         // Two rows can share the same person (e.g. an UPPERCASE-email legacy row
@@ -122,7 +138,7 @@ export const GET = withAdmin(async (request) => {
                 byEmail.set(key, u);
             }
         }
-        let deduped = [...byEmail.values(), ...noEmail];
+        let deduped = [...byEmail.values(), ...noEmail].sort(byRank);
 
         // An explicit id match must survive the dedupe and lead the list. Two
         // legacy rows can share an email, and the scoring above would happily

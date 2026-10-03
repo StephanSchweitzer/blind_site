@@ -34,7 +34,6 @@ const actorCondition = (column: Prisma.Sql, actorId: number): Prisma.Sql =>
     actorId === 0 ? Prisma.sql`${column} IS NULL` : Prisma.sql`${column} = ${actorId}`;
 
 interface NameParts {
-    name: string | null;
     firstName: string | null;
     lastName: string | null;
     email: string | null;
@@ -101,7 +100,7 @@ async function loadItems(
                 id: number; billId: number; type: string; payload: Record<string, unknown> | null; at: string;
             } & NameParts>>`
                 SELECT e.id, e."billId", e.type::text AS type, e.payload, ${isoUtc(Prisma.sql`e."createdAt"`)} AS at,
-                       u.name, u."firstName", u."lastName", u.email
+                       u."firstName", u."lastName", u.email
                 FROM "BillEvent" e
                 JOIN "Bill" bl ON bl.id = e."billId"
                 JOIN "User" u ON u.id = bl."clientId"
@@ -127,7 +126,7 @@ async function loadItems(
             } & NameParts>>`
                 SELECT e.id, e."orderId", bk.title AS "bookTitle", e.type::text AS type,
                        st.name AS "statusName", ${isoUtc(Prisma.sql`e."createdAt"`)} AS at,
-                       u.name, u."firstName", u."lastName", u.email
+                       u."firstName", u."lastName", u.email
                 FROM "OrderEvent" e
                 JOIN "Orders" o ON o.id = e."orderId"
                 JOIN "Book" bk ON bk.id = o."catalogueId"
@@ -153,7 +152,7 @@ async function loadItems(
                 statusName: string | null; readerName: string | null; at: string;
             }>>`
                 SELECT e.id, e."assignmentId", bk.title AS "bookTitle", e.type::text AS type,
-                       st.name AS "statusName", u.name AS "readerName",
+                       st.name AS "statusName", NULLIF(concat_ws(' ', u."firstName", u."lastName"), '') AS "readerName",
                        ${isoUtc(Prisma.sql`e."createdAt"`)} AS at
                 FROM "AssignmentEvent" e
                 JOIN "Assignment" a ON a.id = e."assignmentId"

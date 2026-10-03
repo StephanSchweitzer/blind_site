@@ -23,6 +23,7 @@ import {
 } from '@/types';
 import { AddressCreateInput } from '@/types/api/common.api';
 import { Prisma, MemberType, AccessLevel, DeliveryMethod, Language } from '@prisma/client';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 export async function GET(
     request: NextRequest,
@@ -352,7 +353,8 @@ export const PATCH = withAdmin(async (
             select: {
                 id: true,
                 email: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 memberType: true,
                 accessLevel: true,
                 password: true,
@@ -469,7 +471,6 @@ export const PATCH = withAdmin(async (
         }
 
         // Profile fields
-        if (body.name !== undefined) updateData.name = body.name || null;
         if (body.firstName !== undefined) updateData.firstName = body.firstName || null;
         if (body.lastName !== undefined) updateData.lastName = body.lastName || null;
         if (body.role !== undefined) updateData.role = body.role; // legacy
@@ -623,7 +624,6 @@ export const PATCH = withAdmin(async (
             select: {
                 id: true,
                 email: true,
-                name: true,
                 firstName: true,
                 lastName: true,
                 role: true,
@@ -639,7 +639,7 @@ export const PATCH = withAdmin(async (
         if (needsProvisioning && temporaryPassword) {
             const emailResult = await sendInvitationEmail({
                 email: resultingEmail!,
-                name: updatedUser.name,
+                name: getUserNameOnly(updatedUser),
                 accessLevel: resultingAccessLevel as string,
                 memberType: (updateData.memberType ?? existingUser.memberType) as string | undefined,
                 temporaryPassword,
@@ -699,7 +699,7 @@ export const DELETE = withAdmin(async (
         // that was already soft-deleted (lets us answer idempotently).
         const existingUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, name: true, email: true, deletedAt: true, accessLevel: true },
+            select: { id: true, firstName: true, lastName: true, email: true, deletedAt: true, accessLevel: true },
         });
 
         if (!existingUser) {

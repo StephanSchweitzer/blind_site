@@ -36,7 +36,7 @@ export const GET = withAdmin(async (_request, { params }) => {
                     unavailableUntil: true,
                     changedAt: true,
                     changedBy: {
-                        select: { id: true, name: true, firstName: true, lastName: true },
+                        select: { id: true, firstName: true, lastName: true },
                     },
                 },
             }),
@@ -146,7 +146,7 @@ export const POST = withAdmin(async (request, { me, params }) => {
                     unavailableFrom: true,
                     unavailableUntil: true,
                     changedAt: true,
-                    changedBy: { select: { id: true, name: true, firstName: true, lastName: true } },
+                    changedBy: { select: { id: true, firstName: true, lastName: true } },
                 },
             }),
             prisma.user.update({

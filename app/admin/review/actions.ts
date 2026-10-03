@@ -459,7 +459,7 @@ export async function escalateReview(
                     : Promise.resolve(null),
                 prisma.user.findUnique({
                     where: { id: me.id },
-                    select: { name: true, email: true, firstName: true, lastName: true },
+                    select: { email: true, firstName: true, lastName: true },
                 }),
             ]);
             if (!flagged) return { ok: false, message: 'Livre introuvable' };

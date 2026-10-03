@@ -24,7 +24,6 @@ import type {
  */
 const availabilitySelect = {
     id: true,
-    name: true,
     email: true,
     firstName: true,
     lastName: true,
@@ -44,7 +43,6 @@ const availabilitySelect = {
 /** Structural shape of a row read through `availabilitySelect`. */
 interface AvailabilityRow {
     id: number;
-    name: string | null;
     email: string | null;
     firstName: string | null;
     lastName: string | null;
@@ -264,7 +262,7 @@ export async function getPersonAvailability(
                 unavailableUntil: true,
                 changedAt: true,
                 changedBy: {
-                    select: { id: true, name: true, email: true, firstName: true, lastName: true, civility: { select: { name: true } } },
+                    select: { id: true, email: true, firstName: true, lastName: true, civility: { select: { name: true } } },
                 },
             },
         }),

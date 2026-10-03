@@ -48,7 +48,6 @@ const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'statusId', 'mediaFormatId
 
 export interface User {
     id: number;
-    name: string | null;
     email: string;
     firstName?: string | null;
     lastName?: string | null;

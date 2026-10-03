@@ -29,7 +29,7 @@ interface ActivityEvent {
     unavailableFrom: string | null;
     unavailableUntil: string | null;
     changedAt: string;
-    changedBy: { id: number; name: string | null; firstName: string | null; lastName: string | null } | null;
+    changedBy: { id: number; firstName: string | null; lastName: string | null } | null;
 }
 
 /** The person's stored status + window, as returned by the activity route. */
@@ -138,7 +138,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
     const who = (e: ActivityEvent) => {
         if (!e.changedBy) return 'Syst\u00e8me';
         const full = [e.changedBy.firstName, e.changedBy.lastName].filter(Boolean).join(' ');
-        return full || e.changedBy.name || `#${e.changedBy.id}`;
+        return full || `#${e.changedBy.id}`;
     };
 
     return (

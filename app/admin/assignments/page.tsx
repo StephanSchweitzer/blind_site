@@ -84,7 +84,6 @@ async function getAssignments(
                             reader: {
                                 select: {
                                     id: true,
-                                    name: true,
                                     email: true,
                                     firstName: true,
                                     lastName: true,
@@ -171,7 +170,7 @@ async function rescueAssignments(
         filters.push({ key: 'retard', label: retardLabels[active.retard] });
     }
 
-    const nameSelect = { name: true, email: true, firstName: true, lastName: true } as const;
+    const nameSelect = { email: true, firstName: true, lastName: true } as const;
 
     return rescueEmptySearch({
         search,
@@ -266,7 +265,6 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
             deliveryMethod: assignment.deliveryMethod,
             currentReader: currentReader ? {
                 id: currentReader.id,
-                name: currentReader.name,
                 email: currentReader.email,
                 firstName: currentReader.firstName,
                 lastName: currentReader.lastName,

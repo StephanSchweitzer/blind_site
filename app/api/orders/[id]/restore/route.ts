@@ -6,6 +6,7 @@ import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { BillingStatus } from '@prisma/client';
 import { recomputeBillTotal, detachOrderFromBill, logBillEvent } from '@/lib/billing';
 import { DeletedBookError, lockLiveBooks } from '@/lib/books/liveBookGuard';
+import { getUserNameOnly, type UserNameParts } from '@/lib/users/displayName';
 
 async function orderIdFrom(params?: Promise<Record<string, string>>): Promise<number | null> {
     const { id } = (await params) ?? {};
@@ -61,9 +62,9 @@ function bookDeletedRefusal(book: { id: number; title: string }): string {
  * cachée partout ailleurs. Rien ne l'empêchait — guardUserIsActive, qui refuse
  * désormais une fiche supprimée, ne passait pas par ici.
  */
-function clientDeletedRefusal(client: { id: number; name: string | null }): string {
+function clientDeletedRefusal(client: { id: number } & UserNameParts): string {
     return (
-        `La fiche de l’auditeur de cette demande (${client.name ?? `n°${client.id}`}) a été supprimée. ` +
+        `La fiche de l’auditeur de cette demande (${getUserNameOnly(client) || `n°${client.id}`}) a été supprimée. ` +
         `Restaurez d’abord sa fiche, puis cette demande.`
     );
 }
@@ -92,7 +93,7 @@ export const GET = withAdmin(async (_request, { params }) => {
             // Relation : non filtrée par lib/prisma.ts, donc la fiche supprimée
             // est bien lue ici.
             catalogue: { select: { id: true, title: true, deletedAt: true } },
-            aveugle: { select: { id: true, name: true, deletedAt: true } },
+            aveugle: { select: { id: true, firstName: true, lastName: true, deletedAt: true } },
         },
     });
     if (!order) {
@@ -134,7 +135,7 @@ export const POST = withAdmin(async (_request, { params, me }) => {
                     billId: true,
                     bill: { select: { id: true, state: true } },
                     catalogue: { select: { id: true, title: true } },
-                    aveugle: { select: { id: true, name: true, deletedAt: true } },
+                    aveugle: { select: { id: true, firstName: true, lastName: true, deletedAt: true } },
                 },
             });
             if (!order) return { kind: 'not-found' as const };

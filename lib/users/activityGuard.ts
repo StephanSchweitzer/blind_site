@@ -30,23 +30,21 @@ export type ActivityGuardResult =
     | { ok: false; httpStatus: number; message: string; blocked?: BlockedActivityInfo };
 
 type NameParts = {
-    name: string | null;
     email: string | null;
     firstName: string | null;
     lastName: string | null;
     civility?: { name: string } | null;
 };
 
-/** "Civilité Prénom Nom", falling back to name/email — same convention used app-wide. */
+/** "Civilité Prénom Nom", falling back to the email — same convention used app-wide. */
 export function composeUserDisplayName(u: NameParts): string {
     const full = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
     const composed = [u.civility?.name, full].filter(Boolean).join(' ').trim();
-    return composed || u.name || u.email || 'Personne sans nom';
+    return composed || u.email || 'Personne sans nom';
 }
 
 const userActivitySelect = {
     id: true,
-    name: true,
     email: true,
     firstName: true,
     lastName: true,

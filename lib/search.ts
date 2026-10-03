@@ -44,7 +44,7 @@ export function fieldVariants<W>(token: string, build: (value: string) => W): W[
  * do their own token loop and hand each token in here, so a name and a title
  * can satisfy different tokens of the same query.
  *
- * Matched against `searchKey` — prénom, nom, name and email in one column,
+ * Matched against `searchKey` — prénom, nom and email in one column,
  * lower-cased and accent-folded by a trigger — rather than the four columns
  * themselves, because Prisma compares those byte for byte: « Muller » never
  * found « Müller », nor « Noel » « Noël ». The token is folded the same way on
@@ -68,7 +68,7 @@ export function userNameFieldsForToken(token: string): Prisma.UserWhereInput {
  * full-name query like "steffy ref" matches firstName="Steffy" + lastName="Ref"
  * — which a single `contains "steffy ref"` never could, because no one column
  * holds both words. Each token must match somewhere in firstName / lastName /
- * name / email (through `searchKey`).
+ * email (through `searchKey`).
  *
  * Returns null when the term has no usable tokens (empty / whitespace only), so
  * callers can skip adding a person clause entirely.
@@ -339,7 +339,7 @@ export function buildCoupsDeCoeurSearchWhere(
         const clauses: Prisma.CoupsDeCoeurWhereInput[] = [
             ...fieldVariants(token, (v) => ({ title: contains(v) })),
             ...fieldVariants(token, (v) => ({ description: contains(v) })),
-            ...fieldVariants(token, (v) => ({ addedBy: { name: contains(v) } })),
+            { addedBy: userNameFieldsForToken(token) },
             { books: { some: { book: { OR: bookTextFieldsForToken(token) } } } },
         ];
         const id = tokenAsId(token);

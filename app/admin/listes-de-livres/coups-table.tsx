@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { CoupDeCoeurPDFButton } from "@/admin/CoupDeCoeurPDFButton";
 import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
 import { parisDate } from '@/lib/paris-day';
+import { getUserNameOnly } from '@/lib/users/displayName';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { Plus, Search } from 'lucide-react';
 import { ListStatusBadge } from './components/list-book';
@@ -164,7 +165,7 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                                             </div>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground">{item.addedBy?.name || 'Inconnu'}</TableCell>
+                                    <TableCell className="text-muted-foreground">{getUserNameOnly(item.addedBy) || 'Inconnu'}</TableCell>
                                     <TableCell><ListStatusBadge active={item.active} /></TableCell>
                                     <TableCell className="text-muted-foreground whitespace-nowrap">
                                         {(() => {

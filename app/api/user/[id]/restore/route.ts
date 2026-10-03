@@ -35,7 +35,6 @@ export const POST = withAdmin(async (_request, { me, params }) => {
             where: { id: userId },
             select: {
                 id: true,
-                name: true,
                 firstName: true,
                 lastName: true,
                 email: true,
@@ -50,7 +49,6 @@ export const POST = withAdmin(async (_request, { me, params }) => {
         }
 
         const named = getUserDisplayName({
-            name: user.name,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,

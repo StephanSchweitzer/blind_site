@@ -66,7 +66,6 @@ interface BillDetail {
     invoiceAmount: number | string;
     client: {
         id: number;
-        name: string | null;
         email: string | null;
         civility?: string | null;
         firstName?: string | null;
@@ -96,7 +95,7 @@ interface UnbilledOrder {
     requestReceivedDate: string;
     cost: number | string | null;
     catalogue: { title: string; author: string };
-    aveugle: { name: string | null; email: string | null };
+    aveugle: { firstName: string | null; lastName: string | null; email: string | null };
 }
 
 interface EditBillModalProps {
@@ -1058,7 +1057,6 @@ export function EditBillModal({
                                 preset={{
                                     client: {
                                         id: bill.client.id,
-                                        name: bill.client.name,
                                         firstName: bill.client.firstName ?? null,
                                         lastName: bill.client.lastName ?? null,
                                         email: bill.client.email,

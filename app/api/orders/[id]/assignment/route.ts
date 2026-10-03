@@ -32,7 +32,7 @@ export const GET = withAdmin(async (_request, { params }) => {
                     take: 1,
                     select: {
                         reader: {
-                            select: { id: true, name: true, firstName: true, lastName: true, email: true },
+                            select: { id: true, firstName: true, lastName: true, email: true },
                         },
                     },
                 },
@@ -42,8 +42,6 @@ export const GET = withAdmin(async (_request, { params }) => {
         if (!a) return NextResponse.json(null);
 
         const r = a.readerHistory[0]?.reader ?? null;
-        // firstName/lastName first: the legacy `name` column is often stale
-        // (old casing, missing accents) or empty, so it is only a fallback.
         const readerName = r ? getUserDisplayName(r) : null;
 
         return NextResponse.json({

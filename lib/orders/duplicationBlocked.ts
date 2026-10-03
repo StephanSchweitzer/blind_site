@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { STATUS, type TransactionClient } from '@/lib/statusSync';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 /**
  * A duplication is « À faire » — it's meant to be done straight away. The one
@@ -114,7 +115,7 @@ export async function findBlockedDuplications(
             readerHistory: {
                 orderBy: { assignedDate: 'desc' },
                 take: 1,
-                select: { reader: { select: { name: true } } },
+                select: { reader: { select: { firstName: true, lastName: true } } },
             },
         },
         orderBy: { id: 'desc' },
@@ -125,7 +126,7 @@ export async function findBlockedDuplications(
     for (const r of recordings) {
         if (byCatalogue.has(r.catalogueId)) continue;
         byCatalogue.set(r.catalogueId, {
-            readerName: r.readerHistory[0]?.reader?.name ?? null,
+            readerName: getUserNameOnly(r.readerHistory[0]?.reader ?? null) || null,
             sentToReaderDate: r.sentToReaderDate,
         });
     }

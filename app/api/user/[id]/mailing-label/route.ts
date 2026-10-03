@@ -27,7 +27,6 @@ export const GET = withAdmin(async (_request, { params }) => {
             where: { id: userId },
             select: {
                 id: true,
-                name: true,
                 firstName: true,
                 lastName: true,
                 civility: { select: { name: true } },

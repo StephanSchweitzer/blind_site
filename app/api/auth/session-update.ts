@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Verify the user exists in the database
         const user = await prisma.user.findUnique({
             where: { email: session.user.email },
-            select: { id: true, email: true, name: true, role: true }
+            select: { id: true, email: true, firstName: true, lastName: true, role: true }
         });
 
         if (!user) {

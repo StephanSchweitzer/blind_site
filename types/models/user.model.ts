@@ -60,7 +60,6 @@ export type UserWithAllRelations = Prisma.UserGetPayload<{
 
 export const basicUserSelect = {
     id: true,
-    name: true,
     firstName: true,
     lastName: true,
     email: true,
@@ -72,7 +71,6 @@ export const basicUserSelect = {
 export const profileUserSelect = {
     id: true,
     email: true,
-    name: true,
     firstName: true,
     lastName: true,
     role: true, // legacy
@@ -105,7 +103,6 @@ export const profileUserSelect = {
 export const fullUserSelect = {
     id: true,
     email: true,
-    name: true,
     firstName: true,
     lastName: true,
     role: true, // legacy
@@ -169,7 +166,8 @@ export const userIncludeConfigs = {
         include: {
             aveugle: {
                 select: {
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true,
                 },
             },
@@ -227,7 +225,8 @@ export const userIncludeConfigs = {
                     reader: {
                         select: {
                             id: true,
-                            name: true,
+                            firstName: true,
+                            lastName: true,
                             email: true,
                         },
                     },
@@ -317,7 +316,8 @@ export const userIncludeConfigs = {
 export type UserWithRelationCounts = Prisma.UserGetPayload<{
     select: {
         id: true;
-        name: true;
+        firstName: true;
+        lastName: true;
         email: true;
         isActive: true;
         _count: {

@@ -33,7 +33,6 @@ export const GET = withAdmin(async (_request, context) => {
                 client: {
                     select: {
                         id: true,
-                        name: true,
                         email: true,
                         firstName: true,
                         lastName: true,
@@ -107,7 +106,7 @@ export const GET = withAdmin(async (_request, context) => {
                         toState: true,
                         payload: true,
                         createdAt: true,
-                        performedBy: { select: { id: true, name: true } },
+                        performedBy: { select: { id: true, firstName: true, lastName: true } },
                     },
                 },
             },

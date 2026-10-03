@@ -100,7 +100,6 @@ export const assignmentIncludeConfigs = {
             aveugle: {
                 select: {
                     id: true,
-                    name: true,
                     firstName: true,
                     lastName: true,
                     email: true,
@@ -132,7 +131,8 @@ export const assignmentIncludeConfigs = {
     processedByStaff: {
         select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
         },
     } satisfies Prisma.UserDefaultArgs,
@@ -145,7 +145,8 @@ export const assignmentIncludeConfigs = {
             reader: {
                 select: {
                     id: true,
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true,
                 },
             },
@@ -170,7 +171,8 @@ export const assignmentIncludeConfigs = {
                         // id: the attribution form prints the auditeur's étiquette
                         // d'adresse from here, and needs someone to look up.
                         id: true,
-                        name: true,
+                        firstName: true,
+                        lastName: true,
                         email: true,
                     },
                 },
@@ -198,7 +200,8 @@ export const assignmentIncludeConfigs = {
         processedByStaff: {
             select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
             },
         },
         readerHistory: {
@@ -209,7 +212,8 @@ export const assignmentIncludeConfigs = {
                 reader: {
                     select: {
                         id: true,
-                        name: true,
+                        firstName: true,
+                        lastName: true,
                         email: true,
                     },
                 },

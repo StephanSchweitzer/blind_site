@@ -168,8 +168,8 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
               orderBy: [{ deletedAt: 'desc' }, { id: 'desc' }],
               include: {
                   book: { select: { id: true, title: true } },
-                  deletedBy: { select: { name: true, email: true } },
-                  restoredBy: { select: { name: true, email: true } },
+                  deletedBy: { select: { firstName: true, lastName: true, email: true } },
+                  restoredBy: { select: { firstName: true, lastName: true, email: true } },
               },
           })
         : [];

@@ -40,7 +40,6 @@ const FIELD_ORDER = ['client', 'bill', 'amount'];
 
 interface User {
     id: number;
-    name: string | null;
     firstName: string | null;
     lastName: string | null;
     email: string | null;

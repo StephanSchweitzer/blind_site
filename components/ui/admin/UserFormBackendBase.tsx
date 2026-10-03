@@ -77,7 +77,6 @@ function sanitizeInitialData(
         civilityId: data.civilityId ?? null,
         civilityOther: data.civilityOther || '',
         email: data.email || '',
-        name: data.name || '',
         firstName: data.firstName || '',
         lastName: data.lastName || '',
         homePhone: formatPhone(data.homePhone),
@@ -124,7 +123,7 @@ export function UserFormBackendBase({
     const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const [duplicateMatches, setDuplicateMatches] = useState<
-        { id: number; name: string | null; firstName: string | null; lastName: string | null; email: string | null }[]
+        { id: number; firstName: string | null; lastName: string | null; email: string | null }[]
     >([]);
     const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
     const { toast } = useToast();
@@ -170,7 +169,6 @@ export function UserFormBackendBase({
             ? sanitizeInitialData(initialData, defaultMemberType, defaultAccessLevel)
             : {
                 email: '',
-                name: '',
                 memberType: defaultMemberType,
                 accessLevel: defaultAccessLevel,
                 civilityId: null,
@@ -394,7 +392,6 @@ export function UserFormBackendBase({
     const postalName = getPostalName({
         firstName: formData.firstName,
         lastName: formData.lastName,
-        name: formData.name,
         civility: showCivilityOther ? formData.civilityOther : selectedCivility?.name,
     });
 
@@ -1053,7 +1050,7 @@ export function UserFormBackendBase({
                             {duplicateMatches.map((m) => (
                                 <div key={m.id} className="rounded border border-border bg-card p-2 text-sm text-foreground">
                                     <div className="font-medium">
-                                        {[m.firstName, m.lastName].filter(Boolean).join(' ') || m.name || `#${m.id}`}
+                                        {[m.firstName, m.lastName].filter(Boolean).join(' ') || `#${m.id}`}
                                     </div>
                                     {m.email && <div className="text-muted-foreground">{m.email}</div>}
                                 </div>

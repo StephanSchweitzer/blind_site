@@ -10,7 +10,8 @@ export type { MemberType, AccessLevel, UserType };
 // Simple user representation used in dropdowns, lists, etc.
 export interface SimpleUser {
     id: number;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
 }
 
@@ -38,7 +39,8 @@ export interface OrderListItem {
     id: number;
     requestReceivedDate?: string;
     aveugle?: {
-        name: string | null;
+        firstName: string | null;
+        lastName: string | null;
         email: string;
     };
     catalogue?: {
@@ -63,7 +65,8 @@ export interface AssignmentListItem {
     notes: string | null;
     currentReader: {
         id: number;
-        name: string | null;
+        firstName: string | null;
+        lastName: string | null;
         email: string;
     } | null;
     catalogue: {
@@ -88,7 +91,8 @@ export interface AssignmentReaderHistoryItem {
     notes: string | null;
     reader: {
         id: number;
-        name: string | null;
+        firstName: string | null;
+        lastName: string | null;
         email: string;
     };
 }
@@ -144,7 +148,6 @@ export interface BookFormData {
 
 export interface UserFormData {
     email: string;
-    name: string;
     role?: string; // legacy – remove once role column is dropped
     memberType: MemberType;
     accessLevel: AccessLevel;

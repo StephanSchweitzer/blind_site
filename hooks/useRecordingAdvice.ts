@@ -9,6 +9,7 @@ import {
     type RecordingDecision,
 } from "@/lib/orders/recordingAdvice";
 import { suggestOrderType, type OrderTypeSuggestion } from "@/lib/orders/orderTypeSuggestion";
+import { getUserNameOnly } from "@/lib/users/displayName";
 
 /** Attribution encore en cours pour ce livre — bloque une duplication. */
 export interface BlockingRecording {
@@ -25,7 +26,7 @@ export interface RecordingConflict {
 
 interface RecordingCheckResponse {
     activeRecordingCount: number;
-    orders: { id: number; aveugle: { name: string | null } | null; status: { name: string } | null }[];
+    orders: { id: number; aveugle: { firstName: string | null; lastName: string | null } | null; status: { name: string } | null }[];
     blockingRecording: BlockingRecording | null;
 }
 
@@ -118,7 +119,7 @@ export function useRecordingAdvice({
             if (!res) return null;
             return {
                 activeRecordingCount: res.activeRecordingCount,
-                otherAuditeurName: res.orders[0]?.aveugle?.name ?? null,
+                otherAuditeurName: getUserNameOnly(res.orders[0]?.aveugle ?? null) || null,
             };
         },
         [byBook]
@@ -147,7 +148,7 @@ export function useRecordingAdvice({
                 out.push({
                     catalogueId: c.catalogueId,
                     activeRecordingCount: res.activeRecordingCount,
-                    otherAuditeurName: res.orders[0]?.aveugle?.name ?? null,
+                    otherAuditeurName: getUserNameOnly(res.orders[0]?.aveugle ?? null) || null,
                 });
             }
         }

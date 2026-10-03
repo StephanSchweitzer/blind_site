@@ -70,7 +70,6 @@ async function main() {
     const account = {
         password,
         passwordNeedsChange: false, // proxy.ts would otherwise trap every request
-        name: 'Claude Dev',
         firstName: 'Claude',
         lastName: 'Dev',
         memberType: 'informaticien' as const,

@@ -78,7 +78,7 @@ type OrdersTableProps = {
     /** Demandes past their stage's amber or red line, keyed by id — lib/orders/delais.ts. */
     delais?: Record<number, SerializedDelai>;
     hideSearch?: boolean;
-    presetClient?: { id: number; name: string | null; email: string } | null;
+    presetClient?: { id: number; firstName: string | null; lastName: string | null; email: string } | null;
     /** Le livre du filtre `?bookId=`, résolu côté serveur — voir lib/books/bookFilter.ts. */
     filterBook?: BookFilter | null;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */

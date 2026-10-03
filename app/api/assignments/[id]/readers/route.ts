@@ -41,7 +41,6 @@ export const GET = withAdmin(async (_request, { params }) => {
                 reader: {
                     select: {
                         id: true,
-                        name: true,
                         email: true,
                         firstName: true,
                         lastName: true,
@@ -174,7 +173,6 @@ export const POST = withAdmin(async (request, { params }) => {
                 reader: {
                     select: {
                         id: true,
-                        name: true,
                         email: true,
                         firstName: true,
                         lastName: true,

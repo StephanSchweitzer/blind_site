@@ -103,7 +103,6 @@ interface AuditRaw {
 
 interface RawUserName {
     id: number;
-    name: string | null;
     firstName: string | null;
     lastName: string | null;
     email: string | null;
@@ -278,7 +277,7 @@ export const GET = withSuperAdmin(async (request) => {
         const realIds = actorIds.map((a) => a.actorId).filter((id): id is number => id !== null);
         const users = realIds.length
             ? await prisma.$queryRaw<RawUserName[]>`
-                SELECT id, name, "firstName", "lastName", email
+                SELECT id, "firstName", "lastName", email
                 FROM "User"
                 WHERE id IN (${Prisma.join(realIds)})`
             : [];

@@ -65,7 +65,7 @@ export async function createResetToken(userId: number): Promise<string> {
 }
 
 export type ResolvedToken =
-    | { ok: true; tokenId: number; user: ResetCandidate & { firstName: string | null; lastName: string | null; name: string | null } }
+    | { ok: true; tokenId: number; user: ResetCandidate & { firstName: string | null; lastName: string | null } }
     | { ok: false };
 
 /**
@@ -92,7 +92,6 @@ export async function resolveResetToken(token: string | null | undefined): Promi
                     deletedAt: true,
                     firstName: true,
                     lastName: true,
-                    name: true,
                 },
             },
         },

@@ -155,12 +155,9 @@ export { assignmentIncludeConfigs };
 // ============================================================================
 
 // Type for the current reader extracted from readerHistory.
-// firstName/lastName are the source of truth for display — `name` is the legacy
-// column and can be stale (old casing/accents) or empty. Render with
-// getUserDisplayName(), never `name` alone.
+// Render with getUserDisplayName().
 export type CurrentReaderInfo = {
     id: number;
-    name: string | null;
     email: string | null;
     firstName: string | null;
     lastName: string | null;

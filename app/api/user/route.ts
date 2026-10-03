@@ -9,6 +9,7 @@ import { sendInvitationEmail } from '@/lib/email/sendInvitationEmail';
 import { UserCreateInput } from '@/types/api/user.api';
 import { AddressCreateInput } from '@/types/api/common.api';
 import { MemberType, AccessLevel, Language } from '@prisma/client';
+import { getUserNameOnly } from '@/lib/users/displayName';
 
 export const GET = withAdmin(async () => {
     try {
@@ -109,7 +110,6 @@ export const POST = withAdmin(async (request, { me }) => {
                 email: normalizedEmail,
                 password: hashedPassword,
                 passwordNeedsChange: passwordNeedsChange,
-                name: body.name || null,
                 role: derivedRole, // legacy – kept for backward compatibility
                 memberType: body.memberType ?? MemberType.auditeur,
                 accessLevel: body.accessLevel ?? AccessLevel.member,
@@ -157,7 +157,6 @@ export const POST = withAdmin(async (request, { me }) => {
             select: {
                 id: true,
                 email: true,
-                name: true,
                 firstName: true,
                 lastName: true,
                 memberType: true,
@@ -172,7 +171,7 @@ export const POST = withAdmin(async (request, { me }) => {
         if (isLoginAccount && temporaryPassword) {
             const emailResult = await sendInvitationEmail({
                 email: normalizedEmail!,
-                name: body.name,
+                name: getUserNameOnly({ firstName: body.firstName, lastName: body.lastName }),
                 accessLevel: body.accessLevel as string,
                 memberType: body.memberType as string | undefined,
                 temporaryPassword,

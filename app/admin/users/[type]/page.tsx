@@ -13,6 +13,7 @@ import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLas
 import { buildUserNameSearch } from '@/lib/search';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserDisplayName } from '@/lib/users/displayName';
+import { rankByNameMatch } from '@/lib/users/nameRank';
 import { resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
 import { getUserActivityStatusLabel } from '@/lib/user-activity-enums';
 import { getAccessLevelLabel, getLanguageLabel, getMemberTypeLabel, USER_TYPE_META } from '@/lib/user-enums';
@@ -55,8 +56,7 @@ async function getUsers(
         // Tokens AND-ed, each satisfiable by any name column, so "Leila Be" matches
         // firstName="Leila" + lastName="Bennour" and the order is irrelevant
         // ("Bennour Leila" works too). Handed to the shared builder rather than
-        // spelled out here: this list used to carry its own copy, which left it the
-        // only people-search that ignored the legacy `name` column and matched
+        // spelled out here: this list used to carry its own copy, which matched
         // apostrophes byte for byte. See buildUserNameSearch.
         const nameSearch = buildUserNameSearch(term);
         if (nameSearch?.AND) {
@@ -121,12 +121,26 @@ async function getUsers(
     const { listWhere, activeWhere, inactiveWhere } = wheresFor(searchTerm);
 
     try {
+        // With a search, best match first rather than newest first: « jean » used
+        // to bury Mme Yvonne JEAN pages deep among the Jean and Jeanne
+        // (lib/users/nameRank.ts). The whole match set is ranked, then paged.
+        const skip = pageSkip(page, usersPerPage);
+        const ids = searchTerm.trim()
+            ? rankByNameMatch(
+                await prisma.user.findMany({
+                    where: listWhere,
+                    select: { id: true, firstName: true, lastName: true, email: true },
+                }),
+                searchTerm,
+            )
+                .slice(skip, skip + usersPerPage)
+                .map((u) => u.id)
+            : null;
         const [users, totalUsers, activeCount, inactiveCount] = await Promise.all([
             prisma.user.findMany({
-                where: listWhere,
+                where: ids ? { id: { in: ids } } : listWhere,
                 orderBy: { id: 'desc' },
-                skip: pageSkip(page, usersPerPage),
-                take: usersPerPage,
+                ...(ids ? {} : { skip, take: usersPerPage }),
                 select: {
                     id: true,
                     email: true,
@@ -146,6 +160,7 @@ async function getUsers(
             prisma.user.count({ where: activeWhere }),
             prisma.user.count({ where: inactiveWhere }),
         ]);
+        if (ids) users.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 
         // Only when the search found nobody — see lib/search-rescue.ts.
         const searchSuggestions =
@@ -229,7 +244,6 @@ async function rescueUsers(
                 select: {
                     id: true,
                     email: true,
-                    name: true,
                     firstName: true,
                     lastName: true,
                     memberType: true,
@@ -240,7 +254,7 @@ async function rescueUsers(
                     languages: { select: { language: true } },
                 },
             }),
-        rankText: (u) => [u.firstName, u.lastName, u.name, u.email].filter(Boolean).join(' '),
+        rankText: (u) => [u.firstName, u.lastName, u.email].filter(Boolean).join(' '),
         toRow: (u, q): RescueRow => ({
             id: u.id,
             title: getUserDisplayName(u),

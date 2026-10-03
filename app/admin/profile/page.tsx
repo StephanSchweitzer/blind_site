@@ -43,7 +43,6 @@ export default async function ProfilePage() {
         select: {
             id: true,
             email: true,
-            name: true,
             firstName: true,
             lastName: true,
             civility: { select: { name: true } },
@@ -122,7 +121,7 @@ export default async function ProfilePage() {
             </AdminCard>
 
             <div className="grid gap-4 lg:grid-cols-2 items-start">
-                <AccountSecurity name={user.name ?? ''} email={user.email ?? ''} />
+                <AccountSecurity email={user.email ?? ''} />
                 <MyUnavailability
                     activityStatus={user.activityStatus}
                     unavailableFrom={toDayString(user.unavailableFrom)}

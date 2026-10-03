@@ -35,7 +35,6 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
         where: { id: userId },
         select: {
             id: true,
-            name: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -68,7 +67,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
     const cotisation = computeCotisationStatus(cotisationPayments);
 
     const fullName =
-        [user.firstName, user.lastName].filter(Boolean).join(' ') || user.name || 'Sans nom';
+        [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Sans nom';
 
     const isDeleted = user.deletedAt !== null;
 
