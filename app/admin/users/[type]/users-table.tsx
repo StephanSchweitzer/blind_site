@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -82,6 +83,8 @@ interface UsersTableProps {
     currentUserAccessLevel?: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nobody. */
     searchSuggestions?: RescueSuggestion[];
+    /** The same search's matches in the OTHER tabs, when this one found someone. */
+    alsoFoundIn?: { tab: string; label: string; count: number }[];
 }
 
 /**
@@ -120,6 +123,7 @@ export default function UsersTable({
                                        inactiveCount,
                                        currentUserAccessLevel,
                                        searchSuggestions,
+                                       alsoFoundIn = [],
                                    }: UsersTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -435,6 +439,29 @@ export default function UsersTable({
                     )}
                     </MobileFilters>
                 </div>
+
+                {/* Another tab: its own page, the search and filters carried over —
+                    the same link « Essayez plutôt » builds when nobody is found. */}
+                {initialUsers.length > 0 && alsoFoundIn.length > 0 && (
+                    <p className="-mt-3 mb-4 text-sm text-muted-foreground">
+                        Aussi dans :{' '}
+                        {alsoFoundIn.map((t, i) => {
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.delete('page');
+                            return (
+                                <span key={t.tab}>
+                                    {i > 0 && <span aria-hidden className="text-muted-foreground/50"> · </span>}
+                                    <Link
+                                        href={`/admin/users/${t.tab}?${params.toString()}`}
+                                        className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                    >
+                                        {t.label} ({t.count})
+                                    </Link>
+                                </span>
+                            );
+                        })}
+                    </p>
+                )}
 
                 <AdminPaginatedList
                     info={pagination}

@@ -168,8 +168,25 @@ async function getUsers(
                 ? await rescueUsers(searchTerm, userType, wheresFor, { statusFilter, languageFilter, cotisationFilter })
                 : [];
 
+        // The tabs are scopes, and the commonest wrong search here is a lecteur
+        // looked for among the auditeurs. With nobody found, « Essayez plutôt »
+        // already says so; with a few namesakes found, nothing did — « yvonne »
+        // on Auditeurs showed three people and never hinted that Mme Yvonne JEAN
+        // was a lecteur. Same search, same filters, counted in the other tabs.
+        const alsoFoundIn =
+            totalUsers > 0 && searchTerm.trim()
+                ? (await Promise.all(
+                    USER_TYPE_VALUES.filter((tab) => tab !== userType).map(async (tab) => ({
+                        tab,
+                        label: USER_TYPE_META[tab].plural,
+                        count: await prisma.user.count({ where: wheresFor(searchTerm, [], tab).listWhere }),
+                    })),
+                )).filter((t) => t.count > 0)
+                : [];
+
         return {
             users,
+            alsoFoundIn,
             // Scoped total = actifs + inactifs (they partition the scoped set), so
             // the summary line is always internally consistent.
             scopedTotal: activeCount + inactiveCount,
@@ -317,7 +334,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
         notFound();
     }
 
-    const { users, pagination, scopedTotal, activeCount, inactiveCount, searchSuggestions } = data;
+    const { users, pagination, scopedTotal, activeCount, inactiveCount, searchSuggestions, alsoFoundIn } = data;
     redirectPastLastPage(`/admin/users/${userType}`, searchParamsResolved, pagination, users.length);
 
     const serializedUsers = users.map(user => ({
@@ -342,6 +359,7 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
                 inactiveCount={inactiveCount}
                 currentUserAccessLevel={me.accessLevel}
                 searchSuggestions={searchSuggestions}
+                alsoFoundIn={alsoFoundIn}
             />
         </div>
     );
