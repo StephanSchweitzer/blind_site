@@ -115,6 +115,8 @@ Vous pouvez consulter l'historique des modifications apportées à la facture en
 
 Seul un brouillon peut être supprimé. « Supprimer la facture » vous demande une confirmation.
 
+Une facture supprimée quitte la liste, mais son numéro reste valable : en l'ouvrant par un lien (depuis l'historique d'un paiement, par exemple), la fenêtre affiche un bandeau rouge « **Facture supprimée** » et tout le reste est grisé, en lecture seule. Le bouton « **Restaurer** » du bandeau la ramène dans la liste, **en brouillon et vide** : ses demandes et ses paiements ont été détachés à la suppression et ne sont pas rattachés de nouveau (ils auraient pu être facturés ailleurs entre-temps). « Ajouter une demande » la remplit à nouveau. Si la fiche de l'auditeur a elle aussi été supprimée, restaurez-la d'abord.
+
 ![Factures - capture 13](/admin/aide/images/factures-13.jpg)
 
 ## Les factures pro-forma

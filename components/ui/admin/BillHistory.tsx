@@ -46,6 +46,9 @@ export const TYPE_TINT: Record<string, string> = {
  */
 export function billEventLabel(type: string, payload: Record<string, unknown> | null): string {
     if (type === 'ORDER_ATTACHED' && payload?.reason === 'accrual') return 'Demande clôturée';
+    // CREATED aussi sert deux fois : la restauration d'une facture supprimée
+    // (POST /api/bills/[id]/restore) n'a pas de type à elle.
+    if (type === 'CREATED' && payload?.reason === 'bill-restored') return 'Facture restaurée';
     // Même procédé : un PAID qui n'encaisse rien, il archive le règlement saisi à
     // la main avant la reprise (archiveHandTypedSettlement, lib/billing.ts).
     if (type === 'PAID' && payload?.reason === HAND_TYPED_SETTLEMENT_ARCHIVED) return 'Ancien règlement archivé';
@@ -113,6 +116,10 @@ function summarize(e: BillEventDTO): string | null {
                 ? `Abandonné : ${off} €${paid != null && Number(paid) > 0 ? ` (encaissé ${paid} €)` : ''}`
                 : 'Soldée sans rien abandonner — les paiements couvraient la facture.';
         }
+        case 'CREATED':
+            return p.reason === 'bill-restored'
+                ? 'Facture supprimée puis restaurée — revenue en brouillon, sans demande ni paiement rattaché.'
+                : null;
         case 'ORDER_DETACHED':
             if (p.reason === 'bill-deleted') {
                 const ids = Array.isArray(p.detachedPaymentIds) ? p.detachedPaymentIds.map(String) : [];

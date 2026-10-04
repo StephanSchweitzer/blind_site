@@ -22,6 +22,7 @@ import { AddPaymentFormBackend } from './PaymentFormBackendBase';
 import { BillPDFButton } from './BillPDFButton';
 import { CopyableId } from './CopyableId';
 import { BillHistory, BillEventDTO } from './BillHistory';
+import { BillDeletedNotice } from './BillDeletedNotice';
 import { parisDate } from '@/lib/paris-day';
 import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
 import { SearchSuggestions } from '@/components/ui/search-suggestions';
@@ -64,6 +65,9 @@ interface BillDetail {
     paymentDate: string | null;
     paymentReference: string | null;
     invoiceAmount: number | string;
+    /** Faux (avec `deletedAt`) pour une facture supprimée : la modale la montre en lecture seule. */
+    isActive: boolean;
+    deletedAt: string | null;
     client: {
         id: number;
         email: string | null;
@@ -380,6 +384,7 @@ export function EditBillModal({
     // fetched yet. Avoids a setState-in-effect just to toggle a spinner.
     const isLoading = isOpen && billId !== null && bill === null && error === null;
 
+    const isDeleted = bill ? !bill.isActive : false;
     const isDraft = bill?.state === BillingStatus.DRAFT;
 
     /**
@@ -430,7 +435,7 @@ export function EditBillModal({
                             )}
                             {billId && <CopyableId id={billId} label="de la facture" />}
                         </DialogTitle>
-                        {bill && !isLoading && (
+                        {bill && !isLoading && !isDeleted && (
                             <BillPDFButton
                                 bill={bill}
                                 onBillUpdated={async () => {
@@ -456,6 +461,22 @@ export function EditBillModal({
 
                 {bill && !isLoading && (
                     <div className="space-y-5">
+                        {isDeleted && (
+                            <BillDeletedNotice
+                                billId={bill.id}
+                                deletedAt={bill.deletedAt}
+                                onRestored={async () => {
+                                    await loadBill(bill.id);
+                                    onBillUpdated?.();
+                                }}
+                            />
+                        )}
+
+                        {/* Tout ce qui se modifie, d'un bloc : grisé et inerte tant que la
+                            facture est supprimée (`inert` retire aussi les boutons du
+                            parcours au clavier). L'historique et le bandeau restent hors
+                            du bloc — l'un se consulte, l'autre restaure. */}
+                        <div className={isDeleted ? 'space-y-5 opacity-50 select-none' : 'space-y-5'} inert={isDeleted}>
                         {/* L'identité de la facture — qui, quel état, quelles dates.
 
                             Groupée, et non posée dans la pile comme deux sections de plus :
@@ -1008,6 +1029,8 @@ export function EditBillModal({
                             <span className="text-xl font-bold text-foreground">{formatCurrency(bill.invoiceAmount)}</span>
                         </div>
 
+                        </div>
+
                         {/* History */}
                         <div className="space-y-2 pt-3 border-t border-border">
                             <button
@@ -1025,7 +1048,8 @@ export function EditBillModal({
                             )}
                         </div>
 
-                        {/* Actions */}
+                        {/* Actions — une facture déjà supprimée ne se supprime plus (409). */}
+                        {!isDeleted && (
                         <div className="flex justify-end pt-2">
                             <Button
                                 type="button"
@@ -1037,6 +1061,7 @@ export function EditBillModal({
                                 Supprimer la facture
                             </Button>
                         </div>
+                        )}
                     </div>
                 )}
             </DialogContent>
