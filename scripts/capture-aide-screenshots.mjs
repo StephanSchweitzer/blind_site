@@ -1077,7 +1077,10 @@ const SPECS = [
         clip: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2)',
         // Coin haut-droit : les trois cadres commencent sur du texte.
         annotations: [
-            { n: 1, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) ul > li:first-child > div.mt-1', coin: 'hd' },
+            // Les liens de CHAQUE attribution, sous le meme numero.
+            { n: 1, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) ul > li:nth-child(1) > div.mt-1', coin: 'hd' },
+            { n: 1, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) ul > li:nth-child(2) > div.mt-1', coin: 'hd' },
+            { n: 1, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) ul > li:nth-child(3) > div.mt-1', coin: 'hd' },
             { n: 2, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) details > summary', coin: 'hd' },
             { n: 3, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) > div.border-t', coin: 'hd' },
         ],
@@ -1106,6 +1109,7 @@ const SPECS = [
         annotations: [
             { selector: '.rounded-lg.border:has(button[aria-label*="indisponible actuellement"]) .space-y-1 > div:nth-child(1) > div:first-child > button', self: true },
             { selector: '.rounded-lg.border:has(button[aria-label*="indisponible actuellement"]) .space-y-1 > div:nth-child(2) > div:first-child > button', self: true },
+            { selector: '.rounded-lg.border:has(button[aria-label*="indisponible actuellement"]) .space-y-1 > div:nth-child(3) > div:first-child > button', self: true },
         ],
         why: 'une ligne par personne indisponible : son nom ouvre sa fenêtre',
     },
