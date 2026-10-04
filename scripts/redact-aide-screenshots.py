@@ -185,13 +185,6 @@ MASQUES_MANUELS = {
         [95, 457, 330, 475],
         [95, 514, 330, 532],
     ],
-    'disponibilites-03.jpg': [
-        [215, 168, 435, 210],
-    ],
-    'disponibilites-01.png': [
-        [30, 826, 96, 862],       # prenom manque par l'OCR (colonne de gauche)
-        [1035, 788, 1106, 824],   # le meme prenom, colonne de droite
-    ],
 }
 
 

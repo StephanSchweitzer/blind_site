@@ -963,6 +963,174 @@ const SPECS = [
         ],
         why: 'la suppression, logique',
     },
+    /**
+     * Les DISPONIBILITES (11-disponibilites.md).
+     *
+     * Elles etaient prises a la main, noms noircis au rectangle : la page
+     * entiere y disparaissait sous des aplats (alertes, calendrier, colonne
+     * « Lecteur »). Un pseudonyme montre la vraie mise en page ; l'anonymisation
+     * du DOM fait le reste, et le garde-fou refuse la capture s'il reste un nom.
+     *
+     * Les alertes et le calendrier ne montrent rien sans indisponibilites en
+     * cours : une indisponibilite se referme d'elle-meme a l'ouverture de la
+     * page, et la base de dev n'en garde donc pas. Avant de recapturer, poser
+     * quelques fenetres d'absence sur des lecteurs (et les remettre ensuite).
+     */
+    {
+        name: 'disponibilites-01.jpg',
+        viewport: { width: 1440, height: 1240 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1500,
+        clip: '.space-y-6',
+        why: 'la page à son ouverture : recherche, quatre compteurs, points à surveiller',
+    },
+    {
+        name: 'disponibilites-02.jpg',
+        viewport: { width: 1440, height: 400 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.space-y-6',
+        annotations: [{ selector: 'input[placeholder^="Filtrer toute la page"]', self: true }],
+        why: 'la barre « Filtrer toute la page par nom »',
+    },
+    {
+        name: 'disponibilites-03.jpg',
+        viewport: { width: 1440, height: 900 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        steps: [
+            { typeIn: { selector: 'input[placeholder^="Filtrer toute la page"]', value: 'Françoise' } },
+            { sleep: 1500 },
+        ],
+        prenomFictif: { reel: 'Françoise', fictif: 'Sylvie' },
+        clip: '.space-y-6',
+        why: 'une recherche sur un prénom : compteurs fixes, alertes et calendrier filtrés',
+    },
+    {
+        name: 'disponibilites-04.jpg',
+        viewport: { width: 1440, height: 400 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.space-y-6',
+        // Les numeros reprennent ceux du paragraphe de 11-disponibilites.md.
+        annotations: [
+            { n: 1, label: 'Langue', self: true, coin: 'hd' },
+            { n: 2, label: 'Gérer la disponibilité de…', self: true, coin: 'hd' },
+        ],
+        why: 'le filtre par langue et la recherche « Gérer la disponibilité de… »',
+    },
+    {
+        name: 'disponibilites-05.jpg',
+        viewport: { width: 1440, height: 1000 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        steps: [
+            // L'apostrophe du bouton est typographique : on cherche le début.
+            { clickText: 'Les plus chargés' }, { sleep: 600 },
+            { clickText: 'Attribuables seulement' }, { sleep: 600 },
+            { clickInRow: { cell: '3 / 3', text: 'Gérer', sauf: 'ne prend pas' } },
+            { waitFor: '[role="dialog"] section' }, { sleep: 1800 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'la fenêtre de disponibilité d\'un lecteur au plafond : statut, réglages, attributions',
+    },
+    {
+        name: 'disponibilites-06.jpg',
+        viewport: { width: 1440, height: 1000 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        steps: [
+            { clickText: 'Les plus chargés' }, { sleep: 600 },
+            { clickText: 'Attribuables seulement' }, { sleep: 600 },
+            { clickInRow: { cell: '3 / 3', text: 'Gérer', sauf: 'ne prend pas' } },
+            { waitFor: '[role="dialog"] section' }, { sleep: 1800 },
+        ],
+        clip: '[role="dialog"]',
+        // Les numeros reprennent ceux du paragraphe de 11-disponibilites.md.
+        annotations: [
+            { n: 1, selector: '[role="dialog"] section.rounded-xl' },
+            // Le coin haut-droit : a gauche, la pastille recouvrirait « Réglages du
+            // lecteur » et « Attributions », dont le texte commence au bord du cadre.
+            { n: 2, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(1)', coin: 'hd' },
+            { n: 3, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2)', coin: 'hd' },
+        ],
+        why: 'les trois zones de la fenêtre : statut, réglages du lecteur, attributions',
+    },
+    {
+        name: 'disponibilites-07.jpg',
+        viewport: { width: 1440, height: 1000 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        steps: [
+            { clickText: 'Les plus chargés' }, { sleep: 600 },
+            { clickText: 'Attribuables seulement' }, { sleep: 600 },
+            { clickInRow: { cell: '3 / 3', text: 'Gérer', sauf: 'ne prend pas' } },
+            { waitFor: '[role="dialog"] section' }, { sleep: 1800 },
+        ],
+        clip: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2)',
+        // Coin haut-droit : les trois cadres commencent sur du texte.
+        annotations: [
+            { n: 1, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) ul > li:first-child > div.mt-1', coin: 'hd' },
+            { n: 2, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) details > summary', coin: 'hd' },
+            { n: 3, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) > div.border-t', coin: 'hd' },
+        ],
+        why: 'la colonne Attributions : liens, attributions terminées, historique des statuts',
+    },
+    {
+        name: 'disponibilites-08.jpg',
+        viewport: { width: 1440, height: 1100 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.rounded-lg.border:has(button[aria-label*="indisponible actuellement"])',
+        // Le groupe entier — période, puis type de membre — et non un seul bouton.
+        annotations: [
+            { selector: '.rounded-lg.border:has(button[aria-label*="indisponible actuellement"]) div.flex.flex-wrap.items-center.gap-2:has(> div.flex.items-center.gap-1 > button)', self: true, fleche: true },
+        ],
+        why: 'le calendrier des indisponibilités et ses filtres de période et de type',
+    },
+    {
+        name: 'disponibilites-09.jpg',
+        viewport: { width: 1440, height: 1100 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.rounded-lg.border:has(button[aria-label*="indisponible actuellement"])',
+        annotations: [
+            { selector: '.rounded-lg.border:has(button[aria-label*="indisponible actuellement"]) .space-y-1 > div:nth-child(1) > div:first-child > button', self: true },
+            { selector: '.rounded-lg.border:has(button[aria-label*="indisponible actuellement"]) .space-y-1 > div:nth-child(2) > div:first-child > button', self: true },
+        ],
+        why: 'une ligne par personne indisponible : son nom ouvre sa fenêtre',
+    },
+    {
+        name: 'disponibilites-10.jpg',
+        viewport: { width: 1440, height: 1000 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.rounded-lg.border:has(table)',
+        why: 'le tableau des lecteurs, du moins chargé au plus chargé',
+    },
+    {
+        name: 'disponibilites-11.jpg',
+        viewport: { width: 1440, height: 1000 },
+        url: '/admin/disponibilites',
+        waitFor: 'table tbody tr',
+        sleep: 1200,
+        clip: '.rounded-lg.border:has(table)',
+        annotations: [
+            { selector: 'table tbody tr:nth-child(1) td:last-child button', self: true, fleche: true },
+            { selector: 'table tbody tr:nth-child(2) td:last-child button', self: true, fleche: true },
+        ],
+        why: 'le bouton « Gérer » de chaque ligne',
+    },
 ];
 
 // ── CDP, au strict nécessaire ────────────────────────────────────────────────
@@ -1065,6 +1233,25 @@ async function clickText(text, exact = false) {
         return true;
     })()`);
     if (!clicked) throw new Error(`element « ${text} » introuvable`);
+}
+
+/**
+ * Clique un bouton dans la PREMIERE ligne de tableau dont une cellule vaut
+ * exactement `cell`. Pour viser une ligne par ce qu'elle montre (« 3 / 3 » : un
+ * lecteur au plafond) plutot que par sa position, qui change avec les donnees.
+ */
+async function clickInRow(cell, text, sauf) {
+    const ok = await evaluate(`(() => {
+        const row = [...document.querySelectorAll('table tbody tr')].find((r) =>
+            [...r.querySelectorAll('td')].some((c) => c.textContent.trim() === ${JSON.stringify(cell)})
+            && !(${JSON.stringify(sauf ?? null)} && r.textContent.includes(${JSON.stringify(sauf ?? null)})));
+        if (!row) return false;
+        const bouton = [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(text)});
+        if (!bouton) return false;
+        bouton.click();
+        return true;
+    })()`);
+    if (!ok) throw new Error(`aucune ligne avec « ${cell} » et un bouton « ${text} »`);
 }
 
 /** Amene un libelle au centre de son conteneur defilant, pour le photographier. */
@@ -1190,13 +1377,27 @@ async function clipFor(selector) {
         const el = els.sort((a, b) =>
             b.getBoundingClientRect().height * b.getBoundingClientRect().width -
             a.getBoundingClientRect().height * a.getBoundingClientRect().width)[0];
-        el.scrollIntoView({ block: 'nearest' });
+        // Un element plus haut que la fenetre : « nearest » aligne son haut sur celui
+        // de la fenetre, donc SOUS la barre de navigation fixe, et le titre de la
+        // page disparait de la photo. On amene plutot son haut sous la barre — 160
+        // px, car /admin/disponibilites pose en plus une barre de recherche collante
+        // sous la navigation, qui recouvrait le titre « Lecteurs » de sa carte.
+        const haut = el.getBoundingClientRect();
+        if (haut.height <= window.innerHeight) el.scrollIntoView({ block: 'nearest' });
+        else if (Math.abs(haut.top - 160) > 1 && haut.top > 160) window.scrollBy(0, haut.top - 160);
         const r = el.getBoundingClientRect();
         const pad = 8;
         const x = Math.max(0, r.left - pad);
         const y = Math.max(0, r.top - pad);
+        // Le cadrage de CDP est en coordonnees du DOCUMENT, le rectangle ci-dessus
+        // en coordonnees de la FENETRE : sur une page defilee (le scrollIntoView
+        // ci-dessus, ou un clic plus bas dans une longue liste) les deux
+        // different de scrollY, et la photo tombait a cote — page vide, ou barre
+        // de navigation en milieu d'image. Un element fixe (un modal) suit la
+        // meme regle : sa place dans la fenetre vaut scrollY de plus dans le document.
         return {
-            x, y,
+            x: x + window.scrollX,
+            y: y + window.scrollY,
             width: Math.min(window.innerWidth - x, r.width + pad * 2),
             height: Math.min(window.innerHeight - y, r.height + pad * 2),
         };
@@ -1228,7 +1429,7 @@ async function reperesPour(annotations, clip, densite = 1) {
                 const cible = document.querySelector(${JSON.stringify(a.selector)});
                 if (!cible) return null;
                 const r = cible.getBoundingClientRect();
-                return { x: r.x, y: r.y, w: r.width, h: r.height };
+                return { x: r.x + window.scrollX, y: r.y + window.scrollY, w: r.width, h: r.height };
             }` : ''}
             const libelle = ${JSON.stringify(a.label)};
             const propre = ${a.self ? "true" : "false"};
@@ -1262,7 +1463,7 @@ async function reperesPour(annotations, clip, densite = 1) {
                 }
             }
             const r = cible.getBoundingClientRect();
-            return { x: r.x, y: r.y, w: r.width, h: r.height };
+            return { x: r.x + window.scrollX, y: r.y + window.scrollY, w: r.width, h: r.height };
         })()`);
         if (!rect) {
             console.log(`     ! repere ${a.n} : « ${a.label} » introuvable`);
@@ -1309,10 +1510,25 @@ async function reperesPour(annotations, clip, densite = 1) {
  * aurait rebaptise « Claire » dans un titre du catalogue ; la verite terrain,
  * non. Le garde-fou en fin de fonction refuse la capture s'il reste un nom.
  */
-const NOMS_FICTIFS = [
-    'Camille Berger', 'Julien Marchand', 'Sylvie Lemoine', 'Thierry Nadaud',
-    'Odile Vasseur', 'Marc Delaunay', 'Hélène Rousseau', 'Patrick Fontaine',
-    'Nicole Aubry', 'Damien Perrot', 'Christiane Loiseau', 'Serge Bonnet',
+// Deux listes, parce que « Madame Julien Marchand » ne se lit pas : quand la
+// civilite est a l'ecran, on pioche dans la liste qui lui convient. Assez longues
+// pour qu'un tableau de vingt lignes ne redonne pas deux fois le meme nom — avec
+// douze noms, la page des disponibilites en repetait dans une meme colonne.
+const NOMS_FICTIFS_F = [
+    'Camille Berger', 'Sylvie Lemoine', 'Odile Vasseur', 'Hélène Rousseau',
+    'Nicole Aubry', 'Christiane Loiseau', 'Martine Colin', 'Brigitte Renaud',
+    'Josiane Maillard', 'Annie Duval', 'Monique Lefort', 'Florence Garnier',
+    'Danielle Perrin', 'Véronique Morel', 'Isabelle Gauthier', 'Claudine Barbier',
+    'Mireille Chevalier', 'Colette Poirier', 'Dominique Lambert', 'Joëlle Fabre',
+    'Nadine Collet', 'Agnès Rivière', 'Laurence Dumas', 'Évelyne Carpentier',
+];
+const NOMS_FICTIFS_M = [
+    'Julien Marchand', 'Thierry Nadaud', 'Marc Delaunay', 'Patrick Fontaine',
+    'Damien Perrot', 'Serge Bonnet', 'Gérard Meunier', 'Alain Roussel',
+    'Bernard Faure', 'Christian Giraud', 'Michel André', 'Philippe Mercier',
+    'Daniel Blanchard', 'Pascal Dupuis', 'Laurent Henry', 'Olivier Masson',
+    'Denis Clément', 'Hervé Gilbert', 'Yves Roche', 'Francis Leclerc',
+    'Raymond Texier', 'Lucien Poulain', 'Maurice Guérin', 'Étienne Lacroix',
 ];
 
 /**
@@ -1363,16 +1579,72 @@ async function chargerNomsReels() {
     return NOMS_REELS.length;
 }
 
-async function anonymiser(pseudonymes = []) {
+/**
+ * `prenomFictif` : { reel, fictif } — pour une capture qui montre une RECHERCHE
+ * PAR PRENOM. Le terme tape doit retrouver les lignes affichees : si la
+ * recherche porte sur « Françoise » et que les lignes deviennent « Camille
+ * Berger », l'image se contredit. Toute personne dont le nom contient le prenom
+ * reel recoit donc le prenom fictif (avec un autre nom de famille), et le champ
+ * de recherche affiche le prenom fictif.
+ */
+async function anonymiser(pseudonymes = [], prenomFictif = null) {
     const restes = await evaluate(`(() => {
-        const NOMS = ${JSON.stringify(NOMS_FICTIFS)};
+        const FEM = ${JSON.stringify(NOMS_FICTIFS_F)};
+        const MASC = ${JSON.stringify(NOMS_FICTIFS_M)};
         const REELS = ${JSON.stringify(NOMS_REELS)};
+        const PRENOM = ${JSON.stringify(prenomFictif)};
+        const VRAIS = new Set(REELS);
 
-        // Meme chaine -> meme pseudonyme, pour toute la session.
+        const sansAccents = (s) => s.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');
+        const compact = (s) => sansAccents(s).toLowerCase().replace(/[^a-z]/g, '');
+
+        // Meme personne -> meme pseudonyme, pour toute la page. La cle ignore
+        // l'ordre des mots : l'API rend « Alain BERBONDE » et « BERBONDE Alain »
+        // pour la meme fiche, qui ne doivent pas devenir deux personnes.
         const memoire = (window.__pseudos ||= new Map());
-        const pseudo = (brut) => {
-            if (!memoire.has(brut)) memoire.set(brut, NOMS[memoire.size % NOMS.length]);
-            return memoire.get(brut);
+        const compteurs = (window.__pseudoN ||= { f: 0, m: 0, x: 0 });
+        const pseudo = (brut, genre) => {
+            const cle = brut.includes('@')
+                ? brut
+                : brut.split(/\\s+/).filter(Boolean).map(compact).sort().join('|');
+            if (!memoire.has(cle)) {
+                const g = genre ?? (compteurs.x++ % 2 ? 'm' : 'f');
+                const liste = g === 'f' ? FEM : MASC;
+                // Un pseudonyme qui est AUSSI le nom d'un vrai membre serait
+                // pris par le garde-fou pour une fuite — et, pire, designerait
+                // une vraie personne. On le saute.
+                let pioche;
+                do {
+                    const k = g === 'f' ? compteurs.f++ : compteurs.m++;
+                    pioche = liste[k % liste.length];
+                } while (VRAIS.has(pioche) && (g === 'f' ? compteurs.f : compteurs.m) < liste.length * 3);
+                const force = PRENOM && compact(brut).includes(compact(PRENOM.reel));
+                memoire.set(cle, force ? PRENOM.fictif + ' ' + pioche.split(' ').slice(1).join(' ') : pioche);
+            }
+            return memoire.get(cle);
+        };
+
+        // La civilite qui precède un nom dit de quelle liste le tirer.
+        const genreAvant = (texte, index) => {
+            const avant = texte.slice(Math.max(0, index - 12), index);
+            if (/(Madame|Mademoiselle|Mme|Mlle)\\s*$/i.test(avant)) return 'f';
+            if (/(Monsieur|M\\.|Mr)\\s*$/i.test(avant)) return 'm';
+            return undefined;
+        };
+
+        // Un courriel suit le nom de SA personne quand il en porte les lettres
+        // (« alain.berbonde@… » pour « Alain BERBONDE ») : la boite de dialogue
+        // affiche les deux l'un sous l'autre, et deux identites differentes
+        // y tiendraient pour une erreur.
+        const nomDuCourriel = (courriel) => {
+            const local = compact(courriel.split('@')[0]);
+            return REELS.find((reel) => {
+                const mots = reel.split(' ').map(compact).filter(Boolean);
+                // Le plus long mot est le patronyme ; l'initiale de l'autre suffit.
+                const [long, ...autres] = [...mots].sort((a, b) => b.length - a.length);
+                return long && long.length >= 4 && local.includes(long)
+                    && autres.every((m) => local.includes(m[0]));
+            });
         };
 
         const COURRIEL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/g;
@@ -1398,17 +1670,30 @@ async function anonymiser(pseudonymes = []) {
             const avant = noeud.nodeValue;
             if (!avant || !avant.trim()) continue;
             let apres = avant
-                .replace(COURRIEL, (m) => pseudo(m).toLowerCase().replace(/ /g, '.')
-                    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '') + '@exemple.fr')
+                .replace(COURRIEL, (m) => {
+                    // Une adresse qui ne reprend le nom de personne n'a pas de
+                    // pseudonyme a suivre : un gabarit, plutot qu'un second faux
+                    // nom qui contredirait celui affiche juste au-dessus.
+                    const reel = nomDuCourriel(m);
+                    return reel
+                        ? sansAccents(pseudo(reel)).toLowerCase().replace(/ /g, '.') + '@exemple.fr'
+                        : 'prenom.nom@exemple.fr';
+                })
                 .replace(TELEPHONE, '01 23 45 67 89')
                 .replace(VOIE, '12 rue des Lilas')
                 .replace(CODE_POSTAL, '57000 EXEMPLEVILLE');
 
             // Les noms reels, par correspondance exacte contre la liste des
             // membres — aucune heuristique, donc aucun faux positif sur un
-            // titre du catalogue.
+            // titre du catalogue. La civilite qui precede (« Madame ») choisit
+            // la liste de pseudonymes.
             for (const reel of REELS) {
-                if (apres.includes(reel)) apres = apres.split(reel).join(pseudo(reel));
+                let i = apres.indexOf(reel);
+                while (i !== -1) {
+                    const faux = pseudo(reel, genreAvant(apres, i));
+                    apres = apres.slice(0, i) + faux + apres.slice(i + reel.length);
+                    i = apres.indexOf(reel, i + faux.length);
+                }
             }
             if (apres !== avant) noeud.nodeValue = apres;
         }
@@ -1427,17 +1712,49 @@ async function anonymiser(pseudonymes = []) {
          */
         const restant = () => REELS.filter((r) => document.body.innerText.includes(r));
         for (const reel of restant()) {
-            // On descend par innerText, PAS par textContent. « Agnes Blanc »
-            // s'affiche en deux elements voisins : l'espace qui les separe
-            // vient du rendu, pas du texte. textContent rend donc
-            // « AgnesBlanc » et ne trouve jamais le nom qu'on voit a l'ecran.
-            let element = document.body;
-            for (;;) {
-                const enfant = [...element.children].find((e) => e.innerText?.includes(reel));
-                if (!enfant) break;
-                element = enfant;
+            // UNE passe par OCCURRENCE : un meme nom figure souvent a plusieurs
+            // endroits (une alerte, le calendrier, le tableau). N'en reecrire
+            // qu'un laissait les autres lisibles — c'est le garde-fou qui l'a
+            // dit sur « Françoise  Rey », ecrit avec une double espace que le
+            // texte brut ne retrouve pas mais que l'ecran, lui, affiche.
+            for (let tour = 0; tour < 50; tour++) {
+                // On descend par innerText, PAS par textContent. « Agnes Blanc »
+                // s'affiche en deux elements voisins : l'espace qui les separe
+                // vient du rendu, pas du texte. textContent rend donc
+                // « AgnesBlanc » et ne trouve jamais le nom qu'on voit a l'ecran.
+                let element = document.body;
+                for (;;) {
+                    const enfant = [...element.children].find((e) => e.innerText?.includes(reel));
+                    if (!enfant) break;
+                    element = enfant;
+                }
+                if (element === document.body) break;
+                const texteElement = element.innerText ?? '';
+                element.textContent = pseudo(reel, genreAvant(texteElement, texteElement.indexOf(reel)));
             }
-            if (element !== document.body) element.textContent = pseudo(reel);
+        }
+
+        // La recherche par prenom : le terme tape, lui, n'est ni un noeud de
+        // texte ni un nom complet. On reecrit sa valeur AFFICHEE sans declencher
+        // d'evenement — l'etat de React garde le vrai terme, et la page ne se
+        // re-rend pas avant la photo.
+        if (PRENOM) {
+            const motif = new RegExp(PRENOM.reel.replace(/[.*+?^$()|[\\]{}\\\\]/g, '\\\\$&'), 'gi');
+            const reecrire = (s) => s.replace(motif, PRENOM.fictif);
+            for (const champ of document.querySelectorAll('input, textarea')) {
+                motif.lastIndex = 0;
+                if (champ.value && motif.test(champ.value)) {
+                    const proto = champ instanceof HTMLTextAreaElement
+                        ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+                    Object.getOwnPropertyDescriptor(proto, 'value').set.call(champ, reecrire(champ.value));
+                }
+            }
+            const marcheur = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            while (marcheur.nextNode()) {
+                const n = marcheur.currentNode;
+                motif.lastIndex = 0;
+                if (n.nodeValue && motif.test(n.nodeValue)) n.nodeValue = reecrire(n.nodeValue);
+            }
         }
 
         // Garde-fou : ce qui ressemble encore a une donnee personnelle apres
@@ -1448,8 +1765,21 @@ async function anonymiser(pseudonymes = []) {
         if (/\\b0[1-9](?:[ .\\-]?\\d{2}){4}\\b/.test(texte.replace(/01 23 45 67 89/g, ''))) restes.push('téléphone');
         // Un nom de membre encore lisible : la capture est refusee. On ne dit
         // que le NOMBRE — ce script n'imprime jamais la donnee qu'il protege.
-        const noms = REELS.filter((r) => texte.includes(r)).length;
-        if (noms) restes.push(noms + ' nom(s) de membre');
+        const noms = REELS.filter((r) => texte.includes(r));
+        if (noms.length) {
+            // OU est le reste, jamais QUI : l'element le plus petit qui le porte.
+            const ou = noms.map((reel) => {
+                let element = document.body;
+                for (;;) {
+                    const enfant = [...element.children].find((e) => e.innerText?.includes(reel));
+                    if (!enfant) break;
+                    element = enfant;
+                }
+                return element.tagName.toLowerCase() + '.' + String(element.className).slice(0, 40)
+                    + ' ← ' + (element.parentElement?.tagName.toLowerCase() ?? '');
+            });
+            restes.push(noms.length + ' nom(s) de membre [' + ou.join(' ; ') + ']');
+        }
         return restes;
     })()`);
 
@@ -1638,6 +1968,7 @@ async function main() {
                     if (step.clickText) await clickText(step.clickText);
                     if (step.clickExact) await clickText(step.clickExact, true);
                     if (step.clickSelector) await clickSelector(step.clickSelector);
+                    if (step.clickInRow) await clickInRow(step.clickInRow.cell, step.clickInRow.text, step.clickInRow.sauf);
                     if (step.typeIn) await typeIn(step.typeIn.selector, step.typeIn.value);
                     if (step.importAudio) await importFile(step.importAudio, wavMuet());
                     if (step.scrollToText) await scrollToText(step.scrollToText);
@@ -1652,7 +1983,7 @@ async function main() {
                 await sleep(300);
                 // Juste avant la photo : apres toute la navigation, donc plus
                 // rien ne peut recharger de vraies donnees par-dessus.
-                await anonymiser(spec.pseudonymes ?? []);
+                await anonymiser(spec.pseudonymes ?? [], spec.prenomFictif ?? null);
                 const size = await capture(spec.name, spec.clip, spec.annotations ?? [], spec.densite ?? 1);
                 console.log(`  ✓ ${spec.name.padEnd(26)} ${String(Math.round(size / 1024)).padStart(4)} Ko   ${spec.why}`);
             } catch (error) {
