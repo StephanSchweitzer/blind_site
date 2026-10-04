@@ -369,6 +369,20 @@ export function PaymentFormBackendBase({
                         </div>
                     )}
 
+                    {/* Cotisation year (COTISATION only) — what the payment is for, like the bill link above. */}
+                    {type === PaymentType.COTISATION && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Année de cotisation</label>
+                            <Input
+                                inputMode="numeric"
+                                value={cotisationYear}
+                                onChange={(e) => setCotisationYear(e.target.value.replace(/\D/g, ''))}
+                                placeholder="2024"
+                                className="bg-field border-border text-foreground"
+                            />
+                        </div>
+                    )}
+
                     {/* Amount */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
@@ -387,59 +401,49 @@ export function PaymentFormBackendBase({
                         </div>
                     </div>
 
-                    {/* Payment method */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Méthode de paiement</label>
-                        <Select
-                            value={paymentMethod || NONE}
-                            onValueChange={(v) => setPaymentMethod(v === NONE ? '' : (v as PaymentMethod))}
-                        >
-                            <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border">
-                                <SelectItem value={NONE} className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
-                                    Non renseignée
-                                </SelectItem>
-                                {Object.values(PaymentMethod).map((m) => (
-                                    <SelectItem
-                                        key={m}
-                                        value={m}
-                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer"
-                                    >
-                                        {getPaymentMethodLabel(m)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Payment reference — saisie ICI et nulle part ailleurs.
-                        La facture liée la reprend (syncBillPaymentInfo) : c'est
-                        pourquoi le formulaire des factures ne la demande plus. */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Référence de paiement</label>
-                        <Input
-                            value={paymentReference}
-                            onChange={(e) => setPaymentReference(e.target.value)}
-                            placeholder="N° de chèque, référence de virement..."
-                            className="bg-field border-border text-foreground"
-                        />
-                    </div>
-
-                    {/* Cotisation year (COTISATION only) */}
-                    {type === PaymentType.COTISATION && (
+                    {/* Méthode et référence côte à côte : la référence dépend de la méthode
+                        (n° de chèque, référence de virement…). */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                        {/* Payment method */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Année de cotisation</label>
+                            <label className="text-sm font-medium text-foreground">Méthode de paiement</label>
+                            <Select
+                                value={paymentMethod || NONE}
+                                onValueChange={(v) => setPaymentMethod(v === NONE ? '' : (v as PaymentMethod))}
+                            >
+                                <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value={NONE} className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
+                                        Non renseignée
+                                    </SelectItem>
+                                    {Object.values(PaymentMethod).map((m) => (
+                                        <SelectItem
+                                            key={m}
+                                            value={m}
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer"
+                                        >
+                                            {getPaymentMethodLabel(m)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Payment reference — saisie ICI et nulle part ailleurs.
+                            La facture liée la reprend (syncBillPaymentInfo) : c'est
+                            pourquoi le formulaire des factures ne la demande plus. */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Référence de paiement</label>
                             <Input
-                                inputMode="numeric"
-                                value={cotisationYear}
-                                onChange={(e) => setCotisationYear(e.target.value.replace(/\D/g, ''))}
-                                placeholder="2024"
+                                value={paymentReference}
+                                onChange={(e) => setPaymentReference(e.target.value)}
+                                placeholder="N° de chèque, référence de virement..."
                                 className="bg-field border-border text-foreground"
                             />
                         </div>
-                    )}
+                    </div>
 
                     {/* Dates */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

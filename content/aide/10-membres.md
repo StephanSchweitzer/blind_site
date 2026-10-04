@@ -76,7 +76,7 @@ Pour supprimer une section d'adresse, ainsi que l'adresse qu'elle contient, cliq
 
 ![Membres - capture 7](/admin/aide/images/membres-07.jpg)
 
-Vous trouverez en bas de la page certains champs (1) qui portent pour l'instant la mention « gestconte », mais qui s'appelleront bientôt « Auxi-DV ». Ils servent à établir une « passerelle » entre nos deux systèmes et à assurer le suivi des utilisateurs.
+Vous trouverez en bas de la page certains champs (1) qui portent pour l'instant la mention « gestconte », mais qui s'appelleront bientôt « Auxi-DV ». Ils servent à établir une « passerelle » entre nos deux systèmes et à assurer le suivi des utilisateurs. C'est aussi dans cette section « Comptabilité » que se trouvent, pour un auditeur, son seuil de paiement et son solde actuel.
 
 Vous pouvez également définir vos préférences pour (2) « Méthode de livraison préférée » et « Format média préféré ». Si vous ajoutez ces informations, les valeurs par défaut correspondantes seront définies pour les demandes et les attributions des auditeurs.
 
@@ -122,7 +122,7 @@ Si vous mettez à jour les préférences, ces options seront renseignées automa
 
 ![Membres - capture 16](/admin/aide/images/membres-16.jpg)
 
-Vous pouvez également (1) indiquer le nombre maximal de lectures / enregistrements / attributions qu'un lecteur peut gérer simultanément, et (2) préciser les langues que le lecteur maîtrise, afin que nous puissions filtrer les lecteurs disponibles par langue si un livre nécessite une autre langue que le français pour être lu.
+Dans « Paramètres de lecture », vous pouvez également (1) indiquer le nombre maximal de lectures / enregistrements / attributions qu'un lecteur peut gérer simultanément, (2) préciser les langues que le lecteur maîtrise, afin que nous puissions filtrer les lecteurs disponibles par langue si un livre nécessite une autre langue que le français pour être lu, et indiquer son logiciel d'enregistrement.
 
 ![Membres - capture 17](/admin/aide/images/membres-17.jpg)
 

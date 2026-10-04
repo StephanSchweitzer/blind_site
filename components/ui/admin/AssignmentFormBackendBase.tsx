@@ -1233,18 +1233,40 @@ export function AssignmentFormBackendBase({
                         onChange={(date) => setFormData({ ...formData, receptionDate: date })}
                     />
 
-                    <DatePicker
-                        label="Date d'envoi au lecteur"
-                        placeholder="Sélectionner une date..."
-                        value={formData.sentToReaderDate}
-                        onChange={(date) => setFormData({ ...formData, sentToReaderDate: date })}
-                        triggerRef={registerField('sentToReaderDate')}
-                        warning={
-                            sentOutOfOrder
-                                ? "La date de réception doit être renseignée avant cette date."
-                                : undefined
-                        }
-                    />
+                    {/* La méthode de livraison dit comment le livre part chez le lecteur :
+                        à côté de la date d'envoi. */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                        <DatePicker
+                            label="Date d'envoi au lecteur"
+                            placeholder="Sélectionner une date..."
+                            value={formData.sentToReaderDate}
+                            onChange={(date) => setFormData({ ...formData, sentToReaderDate: date })}
+                            triggerRef={registerField('sentToReaderDate')}
+                            warning={
+                                sentOutOfOrder
+                                    ? "La date de réception doit être renseignée avant cette date."
+                                    : undefined
+                            }
+                        />
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Méthode de livraison</label>
+                            <Select
+                                value={formData.deliveryMethod ?? ''}
+                                onValueChange={(value) =>
+                                    setFormData({ ...formData, deliveryMethod: (value || null) as DeliveryMethod | null })
+                                }
+                            >
+                                <SelectTrigger className="bg-field border-border text-foreground">
+                                    <SelectValue placeholder="Sélectionner..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
+                                    <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
 
                     <DatePicker
                         label="Date de retour aux ECA"
@@ -1352,25 +1374,6 @@ export function AssignmentFormBackendBase({
                                 />
                             </div>
                         )}
-                    </div>
-
-                    {/* Delivery method */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Méthode de livraison</label>
-                        <Select
-                            value={formData.deliveryMethod ?? ''}
-                            onValueChange={(value) =>
-                                setFormData({ ...formData, deliveryMethod: (value || null) as DeliveryMethod | null })
-                            }
-                        >
-                            <SelectTrigger className="bg-field border-border text-foreground">
-                                <SelectValue placeholder="Sélectionner..." />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border">
-                                <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
-                                <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
-                            </SelectContent>
-                        </Select>
                     </div>
 
                     {/* Notes */}

@@ -335,7 +335,7 @@ export function BookFormBackendBase({
                         </div>
 
                         <div className="space-y-2">
-                            <label htmlFor="title" className="text-sm font-medium text-foreground">
+                            <label htmlFor="subtitle" className="text-sm font-medium text-foreground">
                                 Sous-titre
                             </label>
                             <Input
@@ -380,7 +380,8 @@ export function BookFormBackendBase({
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Année, pages et ISBN sur une rangée : trois champs courts. */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label htmlFor="publishedYear" className="text-sm font-medium text-foreground">
                                     Année de publication *
@@ -411,6 +412,21 @@ export function BookFormBackendBase({
                                     onChange={handleChange}
                                     className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                                     placeholder="Nombre de pages"
+                                />
+                            </div>
+
+                            <div className="space-y-2 col-span-2 sm:col-span-1">
+                                <label htmlFor="isbn" className="text-sm font-medium text-foreground">
+                                    ISBN
+                                </label>
+                                <Input
+                                    type="text"
+                                    name="isbn"
+                                    id="isbn"
+                                    value={formData.isbn || ''}
+                                    onChange={handleChange}
+                                    className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
+                                    placeholder="Numéro ISBN (facultatif)"
                                 />
                             </div>
                         </div>
@@ -508,27 +524,6 @@ export function BookFormBackendBase({
                         </div>
 
                         <div className="space-y-2">
-                            <label htmlFor="isbn" className="text-sm font-medium text-foreground">
-                                ISBN
-                            </label>
-                            <Input
-                                type="text"
-                                name="isbn"
-                                id="isbn"
-                                value={formData.isbn || ''}
-                                onChange={handleChange}
-                                className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
-                                placeholder="Indiquer le numéro ISBN du livre (facultatif)"
-                            />
-                        </div>
-
-                        <DurationInputs
-                            formData={formData}
-                            bookId={audioBookId}
-                            onMeasured={handleMeasuredDuration}
-                        />
-
-                        <div className="space-y-2">
                             <label htmlFor="description" className="text-sm font-medium text-foreground">
                                 Description
                             </label>
@@ -541,6 +536,12 @@ export function BookFormBackendBase({
                                 placeholder="Décrire le livre pour aider les personnes à comprendre de quoi il s'agit."
                             />
                         </div>
+
+                        <DurationInputs
+                            formData={formData}
+                            bookId={audioBookId}
+                            onMeasured={handleMeasuredDuration}
+                        />
 
                         <div className="flex items-center space-x-2">
                             <Checkbox

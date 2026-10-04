@@ -490,16 +490,6 @@ export function AddOrderFormBackend({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">État de facturation</label>
-                            <Select value={billingStatus} onValueChange={(v) => setBillingStatus(v as 'UNBILLED' | 'BILLED' | 'UNBILLABLE')}>
-                                <SelectTrigger className="bg-field border-border text-foreground"><SelectValue /></SelectTrigger>
-                                <SelectContent className="bg-card border-border">
-                                    <SelectItem value="UNBILLED" className="text-foreground">Non facturé</SelectItem>
-                                    <SelectItem value="UNBILLABLE" className="text-foreground">Non facturable</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
                     </div>
 
                     {/* Book lines */}
@@ -647,6 +637,21 @@ export function AddOrderFormBackend({
                                 className="w-full bg-field border-border text-foreground hover:bg-muted">
                             <Plus className="h-4 w-4 mr-2" /> Ajouter un ouvrage
                         </Button>
+                    </div>
+
+                    {/* Facturation — rarement changée : sous les ouvrages, avec les notes,
+                        plutôt qu'en troisième case d'une rangée de deux. */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">État de facturation</label>
+                            <Select value={billingStatus} onValueChange={(v) => setBillingStatus(v as 'UNBILLED' | 'BILLED' | 'UNBILLABLE')}>
+                                <SelectTrigger className="bg-field border-border text-foreground"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="UNBILLED" className="text-foreground">Non facturé</SelectItem>
+                                    <SelectItem value="UNBILLABLE" className="text-foreground">Non facturable</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     {/* Shared notes */}

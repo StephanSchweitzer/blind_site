@@ -30,7 +30,7 @@ Les types de paiement sont les suivants : **cotisation**, **enregistrement**, **
 
 ![Paiements - capture 2](/admin/aide/images/paiements-02.jpg)
 
-Pour la cotisation, vous devez indiquer (1) le type, (2) l'auditeur concerné, (3) le montant qu'il a versé et (4) l'année de la cotisation. (5) « Créer le paiement » enregistre le paiement.
+Pour la cotisation, vous devez indiquer (1) le type, (2) l'auditeur concerné, (3) l'année de la cotisation, juste sous l'auditeur, et (4) le montant qu'il a versé. (5) « Créer le paiement » enregistre le paiement.
 
 ![Paiements - capture 3](/admin/aide/images/paiements-03.jpg)
 

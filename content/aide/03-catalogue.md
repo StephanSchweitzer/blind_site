@@ -68,7 +68,7 @@ Dès que je clique sur la ligne, la petite barre de recherche et la section des 
 
 ![Catalogue - capture 11](/admin/aide/images/catalogue-11.jpg)
 
-Vérifiez toujours que les informations renseignées automatiquement par Google sont correctes et correspondent bien au titre, à l'éditeur et à l'année de publication de votre livre.
+Vérifiez toujours que les informations renseignées automatiquement par Google sont correctes et correspondent bien au titre, à l'éditeur, à l'année de publication et à l'ISBN de votre livre — ces champs se suivent, en haut du formulaire. Viennent ensuite les genres et la description.
 
 C'est à vous de cliquer sur la rubrique « Sélectionner les genres associés » et d'associer un ou plusieurs genres à ce livre.
 

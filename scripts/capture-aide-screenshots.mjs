@@ -484,8 +484,8 @@ const SPECS = [
         annotations: [
             { n: 1, label: 'Type *' },
             { n: 2, label: 'Auditeur *' },
-            { n: 3, label: 'Montant *' },
-            { n: 4, label: 'Année de cotisation' },
+            { n: 3, label: 'Année de cotisation' },
+            { n: 4, label: 'Montant *' },
             { n: 5, label: 'Créer le paiement', self: true },
         ],
         why: 'une COTISATION : le champ « Année de cotisation » lui est propre',

@@ -468,6 +468,15 @@ export function BillFormBackendBase({
                         </div>
                     )}
 
+                    {/* Amount (derived) — la somme des demandes cochées, juste sous
+                        elles ; on l'a sous les yeux avant de saisir un règlement. */}
+                    <div className="flex items-center justify-between pt-4 border-t border-border">
+                        <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                            Montant total ({selectedOrderIds.size} demande{selectedOrderIds.size > 1 ? 's' : ''})
+                        </span>
+                        <span className="text-xl font-bold text-foreground">{formatCurrency(totalAmount)}</span>
+                    </div>
+
                     {/* State */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">État de la facture</label>
@@ -494,71 +503,74 @@ export function BillFormBackendBase({
                         </Select>
                     </div>
 
-                    {/* Creation date */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Date de création</label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                                >
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    {format(creationDate, 'PPP', { locale: fr })}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-card border-border">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={creationDate}
-                                    onSelect={(d) => d && setCreationDate(d)}
-                                    initialFocus
-                                    className="bg-card text-foreground"
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    {/* Issue date — absente d'un brouillon, qui n'a pas été émis (la route
-                        l'ignorerait). Vide sur une facture émise, c'est la date de création
-                        qui vaut émission : POST /api/bills la reporte, et le bouton le dit. */}
-                    {state !== BillingStatus.DRAFT && (
+                    {/* Création et émission côte à côte : deux dates courtes. */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                        {/* Creation date */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">
-                                Date d&apos;émission {markAsPaid && <span className="text-red-500">*</span>}
-                            </label>
+                            <label className="text-sm font-medium text-foreground">Date de création</label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
-                                        ref={registerField('issueDate')}
                                         variant="outline"
                                         className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
                                     >
                                         <Calendar className="mr-2 h-4 w-4" />
-                                        {issueDate ? (
-                                            format(issueDate, 'PPP', { locale: fr })
-                                        ) : markAsPaid ? (
-                                            <span>Sélectionner une date</span>
-                                        ) : (
-                                            <span className="text-muted-foreground">
-                                                {format(creationDate, 'PPP', { locale: fr })} (date de création)
-                                            </span>
-                                        )}
+                                        {format(creationDate, 'PPP', { locale: fr })}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0 bg-card border-border">
                                     <CalendarComponent
                                         mode="single"
-                                        selected={issueDate || undefined}
-                                        defaultMonth={issueDate || undefined}
-                                        onSelect={(d) => setIssueDate(d || null)}
+                                        selected={creationDate}
+                                        onSelect={(d) => d && setCreationDate(d)}
                                         initialFocus
                                         className="bg-card text-foreground"
                                     />
                                 </PopoverContent>
                             </Popover>
                         </div>
-                    )}
+
+                        {/* Issue date — absente d'un brouillon, qui n'a pas été émis (la route
+                            l'ignorerait). Vide sur une facture émise, c'est la date de création
+                            qui vaut émission : POST /api/bills la reporte, et le bouton le dit. */}
+                        {state !== BillingStatus.DRAFT && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-foreground">
+                                    Date d&apos;émission {markAsPaid && <span className="text-red-500">*</span>}
+                                </label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            ref={registerField('issueDate')}
+                                            variant="outline"
+                                            className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
+                                        >
+                                            <Calendar className="mr-2 h-4 w-4" />
+                                            {issueDate ? (
+                                                format(issueDate, 'PPP', { locale: fr })
+                                            ) : markAsPaid ? (
+                                                <span>Sélectionner une date</span>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    {format(creationDate, 'PPP', { locale: fr })} (date de création)
+                                                </span>
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 bg-card border-border">
+                                        <CalendarComponent
+                                            mode="single"
+                                            selected={issueDate || undefined}
+                                            defaultMonth={issueDate || undefined}
+                                            onSelect={(d) => setIssueDate(d || null)}
+                                            initialFocus
+                                            className="bg-card text-foreground"
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Facture déjà réglée — évite la création puis l'encaissement en deux temps.
                         La case et le menu ci-dessus sont le MÊME état (voir SELECTABLE_STATES) :
@@ -586,41 +598,44 @@ export function BillFormBackendBase({
                                         là-bas ; la facture ne fait que le refléter.
                                     </p>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">
-                                            Référence de paiement
-                                            <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
-                                        </label>
-                                        <Input
-                                            value={paymentReference}
-                                            onChange={(e) => setPaymentReference(e.target.value)}
-                                            placeholder="N° de chèque, référence de virement..."
-                                            className="bg-field border-border text-foreground"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">
-                                            Méthode de paiement
-                                        </label>
-                                        <Select
-                                            value={paymentMethod || 'NONE'}
-                                            onValueChange={(v) => setPaymentMethod(v === 'NONE' ? '' : (v as PaymentMethod))}
-                                        >
-                                            <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-card border-border">
-                                                <SelectItem value="NONE" className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
-                                                    Non renseignée
-                                                </SelectItem>
-                                                {Object.values(PaymentMethod).map((m) => (
-                                                    <SelectItem key={m} value={m} className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer">
-                                                        {getPaymentMethodLabel(m)}
+                                    {/* Méthode et référence côte à côte, comme dans le formulaire des paiements. */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-foreground">
+                                                Méthode de paiement
+                                            </label>
+                                            <Select
+                                                value={paymentMethod || 'NONE'}
+                                                onValueChange={(v) => setPaymentMethod(v === 'NONE' ? '' : (v as PaymentMethod))}
+                                            >
+                                                <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-card border-border">
+                                                    <SelectItem value="NONE" className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
+                                                        Non renseignée
                                                     </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                                    {Object.values(PaymentMethod).map((m) => (
+                                                        <SelectItem key={m} value={m} className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer">
+                                                            {getPaymentMethodLabel(m)}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-foreground">
+                                                Référence de paiement
+                                                <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
+                                            </label>
+                                            <Input
+                                                value={paymentReference}
+                                                onChange={(e) => setPaymentReference(e.target.value)}
+                                                placeholder="N° de chèque, référence de virement..."
+                                                className="bg-field border-border text-foreground"
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">
@@ -653,14 +668,6 @@ export function BillFormBackendBase({
                             )}
                         </div>
                     )}
-
-                    {/* Amount (derived) */}
-                    <div className="flex items-center justify-between pt-4 border-t border-border">
-                        <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                            Montant total ({selectedOrderIds.size} demande{selectedOrderIds.size > 1 ? 's' : ''})
-                        </span>
-                        <span className="text-xl font-bold text-foreground">{formatCurrency(totalAmount)}</span>
-                    </div>
 
                     <Button
                         type="submit"

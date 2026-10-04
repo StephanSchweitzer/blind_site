@@ -95,7 +95,7 @@ En cliquant dessus, vous ouvrez le modal « Nouvelle demande ».
 
 ![Demandes - capture 5](/admin/aide/images/demandes-05.jpg)
 
-Vous pouvez saisir ici le nom de l'auditeur à l'origine de la demande, ainsi que toutes les métadonnées associées à celle-ci. Certaines demandes ne pouvant pas faire l'objet d'une facturation, une option permet de l'indiquer dans le champ « État de facturation ».
+Vous pouvez saisir ici le nom de l'auditeur à l'origine de la demande, ainsi que toutes les métadonnées associées à celle-ci. Certaines demandes ne pouvant pas faire l'objet d'une facturation, une option permet de l'indiquer dans le champ « État de facturation », sous les ouvrages, juste avant les notes.
 
 ![Demandes - capture 6](/admin/aide/images/demandes-06.jpg)
 
@@ -154,7 +154,7 @@ En haut de la page, on peut voir les informations générales que nous avons ajo
 
 ![Demandes - capture 11](/admin/aide/images/demandes-11.jpg)
 
-En faisant défiler la page vers le bas, on trouve des informations et des liens permettant d'accéder à la (1) facture correspondante (s'il y en a déjà une) et à l'attribution correspondante (2), si la demande concernait un enregistrement.
+Le statut est suivi de la date de clôture, qui se remplit d'elle-même quand la demande passe « Terminé » et reste grisée tant qu'elle ne l'est pas. En faisant défiler la page vers le bas, on trouve des informations et des liens permettant d'accéder à l'attribution correspondante (2), juste sous la date de clôture, si la demande concernait un enregistrement, puis à la (1) facture correspondante (s'il y en a déjà une).
 
 ![Demandes - capture 12](/admin/aide/images/demandes-12.jpg)
 
@@ -162,7 +162,7 @@ Nous pouvons mettre à jour la demande avec les informations que nous avons modi
 
 ![Demandes - capture 13](/admin/aide/images/demandes-13.jpg)
 
-La case « Tarifer à la page (pour les revues) » se retrouve aussi dans ce modal, sous le livre, avec les mêmes champs : voir [Une demande tarifée à la page](#une-demande-tarifee-a-la-page-pour-les-revues). Elle est grisée quand la demande est déjà rattachée à une facture ou qu'il s'agit d'une duplication, et les champs se figent quand la facture est payée ou soldée.
+La case « Tarifer à la page (pour les revues) » se retrouve aussi dans ce modal, juste au-dessus du coût, avec les mêmes champs : voir [Une demande tarifée à la page](#une-demande-tarifee-a-la-page-pour-les-revues). Elle est grisée quand la demande est déjà rattachée à une facture ou qu'il s'agit d'une duplication, et les champs se figent quand la facture est payée ou soldée.
 
 Si vous corrigez le livre d'une demande, l'attribution liée prend automatiquement le même livre.
 

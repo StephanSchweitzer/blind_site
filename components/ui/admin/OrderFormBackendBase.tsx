@@ -788,6 +788,37 @@ export function OrderFormBackendBase({
                         )}
                     </div>
 
+                    {/* Request Received Date */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                            Date de réception <span className="text-red-500">*</span>
+                        </label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
+                                >
+                                    <Calendar className="mr-2 h-4 w-4" />
+                                    {formData.requestReceivedDate ? (
+                                        format(formData.requestReceivedDate, 'PPP', { locale: fr })
+                                    ) : (
+                                        <span>Sélectionner une date</span>
+                                    )}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 bg-card border-border">
+                                <CalendarComponent
+                                    mode="single"
+                                    selected={formData.requestReceivedDate}
+                                    onSelect={(date) => date && setFormData({ ...formData, requestReceivedDate: date })}
+                                    initialFocus
+                                    className="bg-card text-foreground"
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
                     {/* Book Search */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
@@ -841,73 +872,6 @@ export function OrderFormBackendBase({
                         )}
                     </div>
 
-                    {/* Request Received Date */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Date de réception <span className="text-red-500">*</span>
-                        </label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                                >
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    {formData.requestReceivedDate ? (
-                                        format(formData.requestReceivedDate, 'PPP', { locale: fr })
-                                    ) : (
-                                        <span>Sélectionner une date</span>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-card border-border">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={formData.requestReceivedDate}
-                                    onSelect={(date) => date && setFormData({ ...formData, requestReceivedDate: date })}
-                                    initialFocus
-                                    className="bg-card text-foreground"
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    {/* Closure Date */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Date de clôture</label>
-                        <p className="text-xs text-muted-foreground">
-                            Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).
-                            Renseignée automatiquement au passage au statut « Terminé » et effacée si la
-                            demande en ressort — modifiez-la seulement pour corriger le jour.
-                            {!isTermine && ' Seule une demande « Terminé » peut porter une date de clôture.'}
-                        </p>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    disabled={!isTermine}
-                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    {formData.closureDate ? (
-                                        format(formData.closureDate, 'PPP', { locale: fr })
-                                    ) : (
-                                        <span>Sélectionner une date</span>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-card border-border">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={formData.closureDate || undefined}
-                                    onSelect={(date) => setFormData({ ...formData, closureDate: date || null })}
-                                    initialFocus
-                                    className="bg-card text-foreground"
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
                     {/* Type de la demande */}
                     <div className="space-y-2 pt-4 border-t border-border">
                         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -921,45 +885,48 @@ export function OrderFormBackendBase({
                                     s&apos;il s&apos;agit d&apos;une réécoute / nouvel enregistrement.
                                 </div>
                             )}
-                            <div className="bg-card/50 p-4 rounded-lg border border-border">
-                                <div className="flex items-center space-x-3">
-                                    <Checkbox
-                                        id="isDuplication"
-                                        checked={formData.isDuplication}
-                                        onCheckedChange={handleDuplicationChange}
-                                        className="border-2 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary w-6 h-6"
-                                    />
-                                    <label htmlFor="isDuplication" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
-                                        Duplication
-                                    </label>
+                            {/* Côte à côte, comme les deux boutons du formulaire de création. */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                                <div className="bg-card/50 p-4 rounded-lg border border-border">
+                                    <div className="flex items-center space-x-3">
+                                        <Checkbox
+                                            id="isDuplication"
+                                            checked={formData.isDuplication}
+                                            onCheckedChange={handleDuplicationChange}
+                                            className="border-2 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary w-6 h-6"
+                                        />
+                                        <label htmlFor="isDuplication" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
+                                            Duplication
+                                        </label>
+                                    </div>
+                                    {blockingRecording && (
+                                        <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
+                                            En attente d&apos;enregistrement : cet ouvrage n&apos;a pas encore
+                                            de fichier audio et un enregistrement est en cours
+                                            {blockingRecording.readerName ? ` (lecteur ${blockingRecording.readerName}` : ''}
+                                            {blockingRecording.readerName && blockingRecording.sentToReaderDate
+                                                ? `, envoyé le ${parisDate(blockingRecording.sentToReaderDate)}`
+                                                : ''}
+                                            {blockingRecording.readerName ? ')' : ''}. La duplication ne pourra
+                                            être faite qu&apos;au retour de l&apos;enregistrement.
+                                        </p>
+                                    )}
                                 </div>
-                                {blockingRecording && (
-                                    <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
-                                        En attente d&apos;enregistrement : cet ouvrage n&apos;a pas encore
-                                        de fichier audio et un enregistrement est en cours
-                                        {blockingRecording.readerName ? ` (lecteur ${blockingRecording.readerName}` : ''}
-                                        {blockingRecording.readerName && blockingRecording.sentToReaderDate
-                                            ? `, envoyé le ${parisDate(blockingRecording.sentToReaderDate)}`
-                                            : ''}
-                                        {blockingRecording.readerName ? ')' : ''}. La duplication ne pourra
-                                        être faite qu&apos;au retour de l&apos;enregistrement.
-                                    </p>
-                                )}
-                            </div>
 
-                            <div className="bg-card/50 p-4 rounded-lg border border-border">
-                                <div className="flex items-center space-x-3">
-                                    <Checkbox
-                                        id="lentPhysicalBook"
-                                        checked={formData.lentPhysicalBook}
-                                        onCheckedChange={handleRecordingChange}
-                                        className="border-2 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary w-6 h-6"
-                                    />
-                                    <label htmlFor="lentPhysicalBook" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
-                                        Enregistrement
-                                    </label>
+                                <div className="bg-card/50 p-4 rounded-lg border border-border">
+                                    <div className="flex items-center space-x-3">
+                                        <Checkbox
+                                            id="lentPhysicalBook"
+                                            checked={formData.lentPhysicalBook}
+                                            onCheckedChange={handleRecordingChange}
+                                            className="border-2 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary w-6 h-6"
+                                        />
+                                        <label htmlFor="lentPhysicalBook" className="text-base font-bold text-foreground cursor-pointer leading-tight flex-1">
+                                            Enregistrement
+                                        </label>
+                                    </div>
+                                    <RecordingAdviceNotice advice={recordingAdvice} className="mt-2 ml-9" />
                                 </div>
-                                <RecordingAdviceNotice advice={recordingAdvice} className="mt-2 ml-9" />
                             </div>
                         </div>
                     </div>
@@ -1055,150 +1022,43 @@ export function OrderFormBackendBase({
                         )}
                     </div>
 
-                    {/* Media Format */}
+                    {/* Closure Date — sous le statut, qui la remplit et la verrouille. */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Format média <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={formData.mediaFormatId?.toString() || ''}
-                            onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}
-                        >
-                            <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
-                                <SelectValue placeholder="Sélectionner un format" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
-                                <div className="py-1">
-                                    {mediaFormats.map((format) => (
-                                        <SelectItem
-                                            key={format.id}
-                                            value={format.id.toString()}
-                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
-                                        >
-                                            <span className="font-medium">{format.name}</span>
-                                        </SelectItem>
-                                    ))}
-                                </div>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Delivery Method */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Méthode de livraison <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={formData.deliveryMethod || ''}
-                            onValueChange={(value) => setFormData({ ...formData, deliveryMethod: value as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE'})}
-                        >
-                            <SelectTrigger ref={registerField('deliveryMethod')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
-                                <SelectValue placeholder="Sélectionner une méthode" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border">
-                                <div className="py-1">
-                                    <SelectItem
-                                        value="RETRAIT"
-                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
-                                    >
-                                        <span className="font-medium">Retrait</span>
-                                    </SelectItem>
-                                    <SelectItem
-                                        value="ENVOI"
-                                        className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
-                                    >
-                                        <span className="font-medium">Envoi</span>
-                                    </SelectItem>
-                                    {/* An older demande saved as NON_APPLICABLE keeps its option, so
-                                        editing it doesn't show an empty required field and force a rewrite. */}
-                                    {isLegacyValue(DELIVERY_METHOD_VALUES, formData.deliveryMethod) && (
-                                        <SelectItem
-                                            value={formData.deliveryMethod!}
-                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-t border-border/50 transition-colors"
-                                        >
-                                            <span className="font-medium">{getDeliveryMethodLabel(formData.deliveryMethod!)}</span>
-                                        </SelectItem>
-                                    )}
-                                </div>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-
-                    {/* Billing Status */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">État de facturation</label>
-                        {formData.billingStatus === 'BILLED' ? (
-                            <div className="bg-card border border-border rounded-md px-3 py-2.5 text-foreground">
-                                Facturé <span className="text-xs text-muted-foreground">(géré par la facture liée)</span>
-                            </div>
-                        ) : (
-                            <Select
-                                value={formData.billingStatus}
-                                onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
-                            >
-                                <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border">
-                                    <div className="py-1">
-                                        <SelectItem
-                                            value="UNBILLED"
-                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
-                                        >
-                                            <span className="font-medium">Non facturé</span>
-                                        </SelectItem>
-                                        <SelectItem
-                                            value="UNBILLABLE"
-                                            disabled={hasBill}
-                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                                        >
-                                            <span className="font-medium">Non facturable</span>
-                                        </SelectItem>
-                                    </div>
-                                </SelectContent>
-                            </Select>
-                        )}
-                        {/* Le total d'une facture se calcule par billId, pas par état de
-                            facturation : une ligne « Non facturable » resterait facturée
-                            tout en se déclarant hors du cycle. */}
-                        {hasBill && initialBill && formData.billingStatus !== 'BILLED' && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                « Non facturable » indisponible : la demande figure sur la{' '}
-                                <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink> et son
-                                montant y est compté.{' '}
-                                {billIssued
-                                    ? 'Rouvrez la facture et retirez-en la demande d’abord.'
-                                    : 'Retirez-la de la facture d’abord.'}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Linked Bill — read-only */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Facture associée</label>
-                        {initialBill ? (
-                            <div className="flex items-center justify-between gap-3 px-3 py-2 bg-card border border-border rounded-md">
-                                <span className="text-foreground text-sm">
-                                    Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
-                                </span>
-                                <Link
-                                    href={`/admin/bills?bill=${initialBill.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
+                        <label className="text-sm font-medium text-foreground">Date de clôture</label>
+                        <p className="text-xs text-muted-foreground">
+                            Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).
+                            Renseignée automatiquement au passage au statut « Terminé » et effacée si la
+                            demande en ressort — modifiez-la seulement pour corriger le jour.
+                            {!isTermine && ' Seule une demande « Terminé » peut porter une date de clôture.'}
+                        </p>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    disabled={!isTermine}
+                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
-                                    Voir la facture
-                                </Link>
-                            </div>
-                        ) : (
-                            <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
-                                Aucune facture associée
-                            </div>
-                        )}
+                                    <Calendar className="mr-2 h-4 w-4" />
+                                    {formData.closureDate ? (
+                                        format(formData.closureDate, 'PPP', { locale: fr })
+                                    ) : (
+                                        <span>Sélectionner une date</span>
+                                    )}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 bg-card border-border">
+                                <CalendarComponent
+                                    mode="single"
+                                    selected={formData.closureDate || undefined}
+                                    onSelect={(date) => setFormData({ ...formData, closureDate: date || null })}
+                                    initialFocus
+                                    className="bg-card text-foreground"
+                                />
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
-                    {/* Affectation liée — read-only. Hidden for duplications:
+                    {/* Affectation liée — read-only, sous le statut : c'est elle qui fait « En cours ». Hidden for duplications:
                         a duplication never has an affectation, so showing it confuses the team. */}
                     {!formData.isDuplication && (
                         <div className="space-y-2">
@@ -1234,6 +1094,153 @@ export function OrderFormBackendBase({
                             )}
                         </div>
                     )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                        {/* Media Format */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">
+                                Format média <span className="text-red-500">*</span>
+                            </label>
+                            <Select
+                                value={formData.mediaFormatId?.toString() || ''}
+                                onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}
+                            >
+                                <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
+                                    <SelectValue placeholder="Sélectionner un format" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
+                                    <div className="py-1">
+                                        {mediaFormats.map((format) => (
+                                            <SelectItem
+                                                key={format.id}
+                                                value={format.id.toString()}
+                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
+                                            >
+                                                <span className="font-medium">{format.name}</span>
+                                            </SelectItem>
+                                        ))}
+                                    </div>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Delivery Method */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">
+                                Méthode de livraison <span className="text-red-500">*</span>
+                            </label>
+                            <Select
+                                value={formData.deliveryMethod || ''}
+                                onValueChange={(value) => setFormData({ ...formData, deliveryMethod: value as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE'})}
+                            >
+                                <SelectTrigger ref={registerField('deliveryMethod')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
+                                    <SelectValue placeholder="Sélectionner une méthode" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <div className="py-1">
+                                        <SelectItem
+                                            value="RETRAIT"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
+                                        >
+                                            <span className="font-medium">Retrait</span>
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="ENVOI"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                        >
+                                            <span className="font-medium">Envoi</span>
+                                        </SelectItem>
+                                        {/* An older demande saved as NON_APPLICABLE keeps its option, so
+                                            editing it doesn't show an empty required field and force a rewrite. */}
+                                        {isLegacyValue(DELIVERY_METHOD_VALUES, formData.deliveryMethod) && (
+                                            <SelectItem
+                                                value={formData.deliveryMethod!}
+                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-t border-border/50 transition-colors"
+                                            >
+                                                <span className="font-medium">{getDeliveryMethodLabel(formData.deliveryMethod!)}</span>
+                                            </SelectItem>
+                                        )}
+                                    </div>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                        {/* Billing Status */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">État de facturation</label>
+                            {formData.billingStatus === 'BILLED' ? (
+                                <div className="bg-card border border-border rounded-md px-3 py-2.5 text-foreground">
+                                    Facturé <span className="text-xs text-muted-foreground">(géré par la facture liée)</span>
+                                </div>
+                            ) : (
+                                <Select
+                                    value={formData.billingStatus}
+                                    onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
+                                >
+                                    <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-card border-border">
+                                        <div className="py-1">
+                                            <SelectItem
+                                                value="UNBILLED"
+                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
+                                            >
+                                                <span className="font-medium">Non facturé</span>
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="UNBILLABLE"
+                                                disabled={hasBill}
+                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                                            >
+                                                <span className="font-medium">Non facturable</span>
+                                            </SelectItem>
+                                        </div>
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            {/* Le total d'une facture se calcule par billId, pas par état de
+                                facturation : une ligne « Non facturable » resterait facturée
+                                tout en se déclarant hors du cycle. */}
+                            {hasBill && initialBill && formData.billingStatus !== 'BILLED' && (
+                                <p className="text-xs text-amber-700 dark:text-amber-400">
+                                    « Non facturable » indisponible : la demande figure sur la{' '}
+                                    <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink> et son
+                                    montant y est compté.{' '}
+                                    {billIssued
+                                        ? 'Rouvrez la facture et retirez-en la demande d’abord.'
+                                        : 'Retirez-la de la facture d’abord.'}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Linked Bill — read-only */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Facture associée</label>
+                            {initialBill ? (
+                                <div className="flex items-center justify-between gap-3 px-3 py-2 bg-card border border-border rounded-md">
+                                    <span className="text-foreground text-sm">
+                                        Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
+                                    </span>
+                                    <Link
+                                        href={`/admin/bills?bill=${initialBill.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
+                                    >
+                                        Voir la facture
+                                    </Link>
+                                </div>
+                            ) : (
+                                <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
+                                    Aucune facture associée
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
 
                     {/* Tarification à la page. La case ne bouge plus une fois la demande
                         sur une facture (le serveur refuse : une pro-forma et une facture

@@ -443,8 +443,9 @@ export function UserFormBackendBase({
                             )}
                         </div>
 
-                        {/* Prénom + Nom */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Prénom + Nom + Civilité — une seule rangée, dans le même ordre
+                            qu'avant ; « préciser » se range sous la civilité. */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Prénom</label>
                                 <Input
@@ -462,10 +463,7 @@ export function UserFormBackendBase({
                                     className="bg-field border-border text-foreground"
                                 />
                             </div>
-                        </div>
 
-                        {/* Civilité */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Civilité</label>
                                 <Select
@@ -493,7 +491,7 @@ export function UserFormBackendBase({
                             </div>
 
                             {showCivilityOther && (
-                                <div className="space-y-2">
+                                <div className="space-y-2 md:col-start-3">
                                     <label className="text-sm font-medium text-foreground">Civilité (préciser)</label>
                                     <Input
                                         value={formData.civilityOther || ''}
@@ -559,6 +557,37 @@ export function UserFormBackendBase({
                             )}
                         </div>
                     </div>
+
+                    {/* Gestion du compte — password reset, permanent members (super_admin only).
+                        Right under the email and the access level it goes with. */}
+                    {initialData &&
+                        currentUserAccessLevel === 'super_admin' &&
+                        (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
+                        formData.email && (
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                                    Gestion du compte
+                                </h3>
+                                <div className="bg-card/30 p-4 rounded-lg border border-border flex items-center justify-between gap-4">
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">Mot de passe</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            G&#233;n&#232;re un nouveau mot de passe temporaire et l&apos;envoie par email
+                                            &#224; la personne. L&apos;ancien mot de passe cessera de fonctionner.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        onClick={() => setIsPasswordResetDialogOpen(true)}
+                                        variant="outline"
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground border-primary shrink-0"
+                                    >
+                                        <Mail className="h-4 w-4 mr-2" />
+                                        R&#233;initialiser mot de passe
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
 
                     <div className="space-y-4">
                         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
@@ -700,6 +729,33 @@ export function UserFormBackendBase({
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* #16: payment threshold + balance only for auditeur — accounting, not a préférence. */}
+                            {formData.memberType === 'auditeur' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-foreground">Seuil de paiement (€)</label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.paymentThreshold}
+                                            onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
+                                            className="bg-field border-border text-foreground"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-foreground">Solde actuel (€)</label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.currentBalance}
+                                            onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
+                                            className="bg-field border-border text-foreground"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Affiliation non-profit</label>
                                 <Input
@@ -784,63 +840,62 @@ export function UserFormBackendBase({
                                                 placeholder="Ex: Il ne peut venir récupérer les livres que le samedi...."
                                             />
                                         </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">Logiciel d&apos;enregistrement</label>
-                                            <Select
-                                                value={formData.saveType || 'none'}
-                                                onValueChange={(value) =>
-                                                    setFormData({ ...formData, saveType: value === 'none' ? '' : value })
-                                                }
-                                            >
-                                                <SelectTrigger className="bg-field border-border text-foreground">
-                                                    <SelectValue placeholder="Sélectionner..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-card border-border">
-                                                    <SelectItem value="none" className="text-foreground">—</SelectItem>
-                                                    {withCurrentValue(SAVE_TYPE_VALUES, formData.saveType).map((v) => (
-                                                        <SelectItem key={v} value={v} className="text-foreground">
-                                                            {getSaveTypeLabel(v)}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
                                     </>
                                 )}
                             </div>
                         </div>
                     )}
 
-                    {/* Gestion du compte — password reset, permanent members (super_admin only). */}
-                    {initialData &&
-                        currentUserAccessLevel === 'super_admin' &&
-                        (formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') &&
-                        formData.email && (
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
-                                    Gestion du compte
-                                </h3>
-                                <div className="bg-card/30 p-4 rounded-lg border border-border flex items-center justify-between gap-4">
-                                    <div>
-                                        <p className="text-sm font-medium text-foreground">Mot de passe</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            G&#233;n&#232;re un nouveau mot de passe temporaire et l&apos;envoie par email
-                                            &#224; la personne. L&apos;ancien mot de passe cessera de fonctionner.
-                                        </p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        onClick={() => setIsPasswordResetDialogOpen(true)}
-                                        variant="outline"
-                                        className="bg-primary hover:bg-primary/90 text-primary-foreground border-primary shrink-0"
+                    {/* Reader-specific fields - Only for Lecteurs — next to their availability. */}
+                    {formData.memberType === 'lecteur' && (
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                                Paramètres de lecture
+                            </h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-sm font-medium text-foreground">Langues (spécialisation)</label>
+                                    <ReaderLanguagesField
+                                        value={formData.languages}
+                                        onChange={(languages) => setFormData({ ...formData, languages })}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Logiciel d&apos;enregistrement</label>
+                                    <Select
+                                        value={formData.saveType || 'none'}
+                                        onValueChange={(value) =>
+                                            setFormData({ ...formData, saveType: value === 'none' ? '' : value })
+                                        }
                                     >
-                                        <Mail className="h-4 w-4 mr-2" />
-                                        R&#233;initialiser mot de passe
-                                    </Button>
+                                        <SelectTrigger className="bg-field border-border text-foreground">
+                                            <SelectValue placeholder="Sélectionner..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-card border-border">
+                                            <SelectItem value="none" className="text-foreground">—</SelectItem>
+                                            {withCurrentValue(SAVE_TYPE_VALUES, formData.saveType).map((v) => (
+                                                <SelectItem key={v} value={v} className="text-foreground">
+                                                    {getSaveTypeLabel(v)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Nombre maximum d&apos;attributions simultanées</label>
+                                    <Input
+                                        type="number"
+                                        value={formData.maxConcurrentAssignments || ''}
+                                        onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: e.target.value ? parseInt(e.target.value) : null })}
+                                        className="bg-field border-border text-foreground"
+                                    />
                                 </div>
                             </div>
-                        )}
+                        </div>
+                    )}
 
                     {/* Preferences & Settings — #14: only for auditeur or lecteur */}
                     {(formData.memberType === 'auditeur' || formData.memberType === 'lecteur') && (
@@ -890,62 +945,6 @@ export function UserFormBackendBase({
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                </div>
-
-                                {/* #16: payment threshold + balance only for auditeur */}
-                                {formData.memberType === 'auditeur' && (
-                                    <>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">Seuil de paiement (€)</label>
-                                            <Input
-                                                type="number"
-                                                step="0.01"
-                                                value={formData.paymentThreshold}
-                                                onChange={(e) => setFormData({ ...formData, paymentThreshold: e.target.value })}
-                                                className="bg-field border-border text-foreground"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">Solde actuel (€)</label>
-                                            <Input
-                                                type="number"
-                                                step="0.01"
-                                                value={formData.currentBalance}
-                                                onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-                                                className="bg-field border-border text-foreground"
-                                            />
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Reader-specific fields - Only for Lecteurs */}
-                    {formData.memberType === 'lecteur' && (
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
-                                Paramètres de lecture
-                            </h3>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2 md:col-span-2">
-                                    <label className="text-sm font-medium text-foreground">Langues (spécialisation)</label>
-                                    <ReaderLanguagesField
-                                        value={formData.languages}
-                                        onChange={(languages) => setFormData({ ...formData, languages })}
-                                    />
-                                </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <label className="text-sm font-medium text-foreground">Nombre maximum d&apos;attributions simultanées</label>
-                                    <Input
-                                        type="number"
-                                        value={formData.maxConcurrentAssignments || ''}
-                                        onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: e.target.value ? parseInt(e.target.value) : null })}
-                                        className="bg-field border-border text-foreground"
-                                    />
                                 </div>
                             </div>
                         </div>

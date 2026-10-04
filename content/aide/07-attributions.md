@@ -58,7 +58,7 @@ Une fois que vous aurez cliqué dessus, la demande et le livre associé à celle
 
 ![Attributions - capture 9](/admin/aide/images/attributions-09.jpg)
 
-En faisant défiler la page vers le bas, on peut voir d’autres champs, notamment la date de réception de l’attribution, la date d’envoi au lecteur et la date de retour à l’ECA. Le statut n’est pas directement modifiable afin de préserver la cohérence de nos données. Il est déterminé en fonction des dates renseignées.
+En faisant défiler la page vers le bas, on peut voir d’autres champs, notamment la date de réception de l’attribution, la date d’envoi au lecteur — avec, à côté, la méthode de livraison, qui dit comment le livre part chez lui — et la date de retour aux ECA. Le statut n’est pas directement modifiable afin de préserver la cohérence de nos données. Il est déterminé en fonction des dates renseignées.
 
 Ainsi, si seule la (1) « Date de réception » est renseignée, le statut est « en attente d'envoi au lecteur ». Si (2) la « Date d'envoi au lecteur » est renseignée, le statut est « en cours », et lorsque (3) la « Date de retour aux ECA » est renseignée, le statut est « Terminé ». Pour modifier une date, il suffit de cliquer sur le champ correspondant.
 

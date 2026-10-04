@@ -55,11 +55,11 @@ Enfin, pour la nouvelle facture, vous pouvez :
 
 ![Factures - capture 6](/admin/aide/images/factures-06.jpg)
 
-Le montant total se calcule tout seul à partir des demandes cochées.
+Le montant total se calcule tout seul à partir des demandes cochées ; il s'affiche juste sous leur liste.
 
 ### Saisir une facture déjà réglée
 
-Si le règlement est déjà arrivé, cochez la case « **Facture déjà réglée** », puis renseignez la méthode et la date de paiement. La facture et son paiement sont créés en même temps ; le paiement apparaît ensuite dans la page [Paiements](/admin/aide/paiements).
+Si le règlement est déjà arrivé, cochez la case « **Facture déjà réglée** », puis renseignez la méthode, la référence (facultative) et la date de paiement — dans cet ordre, le même que dans le formulaire des [paiements](/admin/aide/paiements#ajout-des-paiements). La facture et son paiement sont créés en même temps ; le paiement apparaît ensuite dans la page [Paiements](/admin/aide/paiements).
 
 ![Factures - capture 7](/admin/aide/images/factures-07.jpg)
 
