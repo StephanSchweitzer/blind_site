@@ -42,7 +42,7 @@ Vous pouvez filtrer votre recherche selon les critères suivants :
 
 3. Le statut de la facturation de la demande
 
-4. Le type de la demande (enregistrement et duplication)
+4. Le type de la demande : enregistrement ou duplication. Deux choix de plus trient les duplications ouvertes : « Duplication réalisable » (celles qui peuvent être faites dès maintenant — c'est la liste qu'ouvre la ligne « Duplications à faire » de la page principale) et « Duplication en attente » (celles dont le livre est encore en cours d'enregistrement)
 
 5. Si la demande est en retard, à surveiller ou à jour — voir [Délais et retards](/admin/aide/demandes#delais-et-retards) juste en dessous
 

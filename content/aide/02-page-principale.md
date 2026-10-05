@@ -61,6 +61,8 @@ Les cartes « Demandes », « Attributions » et « Factures » comportent, sous
 
 Chaque ligne indique combien d'éléments sont **en retard** (en rouge) ou **à surveiller** (en orange) — pour les livres chez les lecteurs, « à relancer ». Quand tout va bien, elle affiche « À jour » en vert.
 
+Les duplications font exception, parce qu'elles se font tout de suite : la ligne « Duplications à faire » compte **toutes** celles qui peuvent être faites dès maintenant, en retard ou non — en bleu quand aucune n'est en retard ni à surveiller, sinon en rouge ou en orange avec le détail (« 5, dont 2 en retard »). Les duplications qui attendent encore un enregistrement chez un lecteur n'y sont pas comptées : elles ont leur propre ligne, en gris, « Duplications en attente d'enregistrement », qui n'apparaît que s'il y en a.
+
 Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais qui décident de ce qui est « en retard » sont expliqués dans [Délais et retards](/admin/aide/demandes#delais-et-retards).
 
 ![Page principale - capture 6](/admin/aide/images/page-principale-06.jpg)

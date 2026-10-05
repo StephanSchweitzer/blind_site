@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
 import { STATUS, type TransactionClient } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
 
@@ -9,7 +8,7 @@ import { getUserNameOnly } from '@/lib/users/displayName';
  * is still recording it. That dependency is not modelled: a duplication owns no
  * attribution (see guardNotDuplication), so the only thing it shares with the
  * recording is the book. It is therefore derived on read, never stored — the
- * attribution reaching « Terminé » unblocks the duplication without anything
+ * recording coming back (its audio in the bucket) unblocks it without anything
  * touching the demande, and a stored flag would silently go stale at exactly
  * that moment.
  */
@@ -20,28 +19,15 @@ const RECORDING_UNDER_WAY = [STATUS.ATTENTE, STATUS.EN_COURS];
 /** A closed demande waits for nothing — whatever the book is doing is no longer its problem. */
 const DEMANDE_CLOSED: number[] = [STATUS.TERMINE, STATUS.SOLDE];
 
-/**
- * Prisma filter for "this demande is a duplication that can't start yet".
- * Sits on `catalogue`, which the orders list leaves free (its search puts the
- * book conditions inside an OR instead).
+/*
+ * The « Duplication réalisable » / « Duplication en attente » filters and the
+ * dashboard count read the same derivation off the délais
+ * (lib/orders/delais.ts, `duplicationStateWhere`) — no Prisma copy of it here.
  */
-export const blockedDuplicationWhere: Prisma.OrdersWhereInput = {
-    isDuplication: true,
-    statusId: { notIn: DEMANDE_CLOSED },
-    catalogue: {
-        audio_filepath: null,
-        // `deletedAt` explicite : un filtre de relation imbriqué échappe à
-        // l'extension soft-delete de lib/prisma.ts, et une attribution supprimée
-        // continuerait de bloquer les duplications d'un livre que plus personne
-        // n'enregistre.
-        assignments: { some: { deletedAt: null, statusId: { in: RECORDING_UNDER_WAY } } },
-    },
-};
 
 /**
- * The open duplications of a book that were waiting on a recording which has
- * just come back — the mirror of the derivation above, taken at the moment the
- * block lifts rather than on read.
+ * The open duplications of a book whose recording has just come back, named in
+ * the toast of the attribution that finishes it.
  *
  * This is the case that used to disappear silently. A demande d'enregistrement
  * comes in for a book; while the lecteur has it, a second auditeur asks for the
@@ -51,24 +37,33 @@ export const blockedDuplicationWhere: Prisma.OrdersWhereInput = {
  * second exists. Naming them at that exact moment is the only place the two
  * ever meet.
  *
- * Call inside the finishing transaction. `audio_filepath: null` is deliberate:
- * a book that already had audio was never blocked by this recording.
+ * Every open duplication of the book, not just the ones that were blocked. The
+ * lookup used to require `audio_filepath: null`, which made it dead code: an
+ * attribution only reaches « Terminé » once the book holds weighed audio, which
+ * needs a folder, so by then `audio_filepath` is always set. Telling « was
+ * waiting » from « was placed during a re-reading » would need history nothing
+ * keeps, and doesn't change the answer either way — the audio is here, and
+ * every one of them can be done now.
+ *
+ * Same « open » as the délais (closure date AND status), so the toast never
+ * names a demande the dashboard considers done. Call inside the finishing
+ * transaction, only when the attribution finished WITH audio.
  */
-export async function findDuplicationsFreedByRecording(
+export async function findOpenDuplicationsOfBook(
     tx: TransactionClient,
     catalogueId: number
 ): Promise<number[]> {
-    const freed = await tx.orders.findMany({
+    const open = await tx.orders.findMany({
         where: {
             isDuplication: true,
             catalogueId,
+            closureDate: null,
             statusId: { notIn: DEMANDE_CLOSED },
-            catalogue: { audio_filepath: null },
         },
         select: { id: true },
         orderBy: { id: 'asc' },
     });
-    return freed.map((o) => o.id);
+    return open.map((o) => o.id);
 }
 
 export type BlockingRecording = {

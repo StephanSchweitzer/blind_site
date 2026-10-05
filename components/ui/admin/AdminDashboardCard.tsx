@@ -10,7 +10,12 @@ import { SECTION_ICONS, sectionAccent } from '@/components/admin/section-icons';
 export type DashboardStatusRow = {
     label: string;
     href: string;
-    tone: 'danger' | 'warning' | 'ok';
+    /**
+     * `todo` — work to do now that isn't late yet (duplications: they're meant
+     * to be done straight away, so « À jour » would hide them).
+     * `neutral` — for information only, nothing anyone can act on yet.
+     */
+    tone: 'danger' | 'warning' | 'todo' | 'ok' | 'neutral';
     value: string;
 };
 
@@ -34,12 +39,14 @@ interface AdminDashboardCardProps {
 }
 
 // Solid pills with white text: a late count has to stand out whatever the
-// colour of the card above it (the Corbeille card is red too). White on red-600
-// and amber-700 keeps 4.5:1.
+// colour of the card above it (the Corbeille card is red too). White on red-600,
+// amber-700 and blue-700 keeps 4.5:1.
 const toneClass: Record<DashboardStatusRow['tone'], string> = {
     danger: 'rounded-full bg-red-600 px-2.5 py-0.5 text-white',
     warning: 'rounded-full bg-amber-700 px-2.5 py-0.5 text-white',
+    todo: 'rounded-full bg-blue-700 px-2.5 py-0.5 text-white',
     ok: 'text-emerald-700 dark:text-emerald-300',
+    neutral: 'text-muted-foreground',
 };
 
 const countFormat = new Intl.NumberFormat('fr-FR');

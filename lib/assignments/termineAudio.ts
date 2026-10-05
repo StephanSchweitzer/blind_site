@@ -15,7 +15,7 @@ import { STATUS, guardAssignmentHasAudio, type AudioGuardResult } from '@/lib/st
  * `withoutAudio` : l'attribution passe « Terminé » sans enregistrement pesé, ce
  * que seule une revue confirmée permet. Rien alors n'a été rapporté aux ECA : les
  * duplications du même livre restent bloquées, et l'appelant ne doit pas les
- * annoncer comme libérées (findDuplicationsFreedByRecording).
+ * annoncer comme réalisables (findOpenDuplicationsOfBook).
  *
  * Call outside a transaction: bookHasWeighedAudio may reach the bucket.
  */

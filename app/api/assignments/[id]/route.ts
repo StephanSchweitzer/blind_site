@@ -24,7 +24,7 @@ import {
     logOrderEvent,
 } from '@/lib/statusSync';
 import { checkAssignmentTermineAudio } from '@/lib/assignments/termineAudio';
-import { findDuplicationsFreedByRecording } from '@/lib/orders/duplicationBlocked';
+import { findOpenDuplicationsOfBook } from '@/lib/orders/duplicationBlocked';
 import { withAdmin } from '@/lib/auth/guards';
 import type { BillingStatus } from '@prisma/client';
 import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liveBookGuard';
@@ -462,7 +462,12 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             updateData.deliveryMethod = validation.data.deliveryMethod;
         }
 
-        const { assignment: updatedAssignment, orderTransition, billDetached } = await prisma.$transaction(async (tx) => {
+        const {
+            assignment: updatedAssignment,
+            orderTransition,
+            billDetached,
+            openDuplicationIds,
+        } = await prisma.$transaction(async (tx) => {
             // Le refus de guardLiveBooks plus haut, relu sous verrou : voir lockLiveBooks.
             if (
                 validation.data.catalogueId !== undefined &&
@@ -477,8 +482,6 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 orderId: number;
                 /** Demande now « Attente envoi vers auditeur »: enregistrement revenu, pas encore expédié. */
                 awaitingShipment: boolean;
-                /** Open duplications of the same book that were waiting on this recording. */
-                freedDuplicationIds: number[];
             } | null = null;
 
             // Renseigné quand la réouverture a sorti la demande d'un brouillon.
@@ -587,19 +590,23 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                     orderTransition = {
                         orderId: order.id,
                         awaitingShipment: order.statusId === STATUS.ATTENTE_AUDITEUR,
-                        // Une revue terminée sans audio n'a rien rapporté à
-                        // dupliquer : ces duplications attendent toujours.
-                        freedDuplicationIds: termineWithoutAudio
-                            ? []
-                            : await findDuplicationsFreedByRecording(
-                                  tx,
-                                  existingAssignment.catalogueId
-                              ),
                     };
                 }
             }
 
-            return { assignment, orderTransition, billDetached };
+            // The book's open duplications, now that its audio is here — named in
+            // the toast. Outside the demande block above: an attribution with no
+            // demande brings the recording back just the same, and that case used
+            // to announce nothing. A revue finished without audio brought nothing
+            // to copy: those duplications are still waiting.
+            const openDuplicationIds =
+                newStatusId === STATUS.TERMINE &&
+                newStatusId !== existingAssignment.statusId &&
+                !termineWithoutAudio
+                    ? await findOpenDuplicationsOfBook(tx, assignment.catalogueId)
+                    : [];
+
+            return { assignment, orderTransition, billDetached, openDuplicationIds };
         });
 
         // Toujours, pas seulement quand `available` retombe : le statut et le
@@ -612,6 +619,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             assignment: updatedAssignment,
             orderTransition,
             billDetached,
+            openDuplicationIds,
         });
     } catch (error) {
         if (error instanceof DeletedBookError) {

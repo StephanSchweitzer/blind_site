@@ -1,12 +1,14 @@
 import { Prisma, OrderBillingStatus, BillingStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { andClauses, buildOrderSearchWhere } from '@/lib/search';
-import { getOpenOrderDelais, retardWhere, serializeDelaisFor, type Delai } from '@/lib/orders/delais';
 import {
-    blockedDuplicationWhere,
-    findBlockedDuplications,
-    serializeBlockedDuplications,
-} from '@/lib/orders/duplicationBlocked';
+    duplicationStateWhere,
+    getOpenOrderDelais,
+    retardWhere,
+    serializeDelaisFor,
+    type Delai,
+} from '@/lib/orders/delais';
+import { findBlockedDuplications, serializeBlockedDuplications } from '@/lib/orders/duplicationBlocked';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 import { ordersTableInclude } from '@/types/models/order.model';
 import { orderListOrderBy, parseOrderSort } from '@/lib/orders/orderSort';
@@ -84,8 +86,13 @@ export function orderListWhere(
     if (on('isDuplication')) {
         if (f.isDuplication === 'true') where.isDuplication = true;
         else if (f.isDuplication === 'false') where.isDuplication = false;
-        // Duplications that can't start yet — the book is still being recorded.
-        else if (f.isDuplication === 'blocked') Object.assign(where, blockedDuplicationWhere);
+        else {
+            // « Réalisable » / « En attente » — open duplications that can be
+            // done now, or that wait on a recording still under way. Read off
+            // the délais, like « Retard », so the dashboard count matches.
+            const dupClause = duplicationStateWhere(f.isDuplication, ctx.delais);
+            if (dupClause) where.AND = [...andClauses(where), dupClause];
+        }
     }
 
     // Délais par étape (lib/orders/delais.ts) — no longer « déposée il y a

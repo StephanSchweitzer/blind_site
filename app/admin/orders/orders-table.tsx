@@ -537,6 +537,9 @@ export default function OrdersTable({
                             <SelectContent className="bg-card border-border">
                                 <SelectItem value="all" className="text-foreground">Tous</SelectItem>
                                 <SelectItem value="true" className="text-foreground">Duplication</SelectItem>
+                                {/* Open duplications that can be done now — what the
+                                    dashboard's « Duplications à faire » line opens. */}
+                                <SelectItem value="ready" className="text-foreground">Duplication réalisable</SelectItem>
                                 {/* Duplications held up by an enregistrement still in flight. */}
                                 <SelectItem value="blocked" className="text-foreground">Duplication en attente</SelectItem>
                                 <SelectItem value="false" className="text-foreground">Enregistrement</SelectItem>

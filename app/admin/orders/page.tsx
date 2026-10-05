@@ -46,7 +46,12 @@ async function rescueOrders(
                 : getOrderBillingStatusLabel(active.billingStatus)}`,
         });
     }
-    const types: Record<string, string> = { true: 'Duplication', false: 'Enregistrement', blocked: 'Duplication en attente' };
+    const types: Record<string, string> = {
+        true: 'Duplication',
+        false: 'Enregistrement',
+        ready: 'Duplication réalisable',
+        blocked: 'Duplication en attente',
+    };
     if (active.isDuplication && types[active.isDuplication]) {
         filters.push({ key: 'isDuplication', label: `Type : ${types[active.isDuplication]}` });
     }

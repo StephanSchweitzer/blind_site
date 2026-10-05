@@ -31,6 +31,41 @@ function delaiRow(label: string, baseHref: string, tally: DelaiTally, surveiller
     return { label, href: baseHref, tone: 'ok', value: 'À jour' };
 }
 
+/**
+ * The duplication lines differ from the other stages: a duplication is meant to
+ * be done straight away, so every one that CAN be done is work, late or not —
+ * « À jour » on a fresh one let it sit unseen for the week its clock takes to
+ * turn amber. The line counts those (the blocked ones never go late, so the
+ * late and amber counts are among them) and opens exactly them. The ones still
+ * waiting on a recording get a quiet line of their own, only when there are
+ * some: nobody can act on them yet.
+ */
+function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
+    const ready = tally.total - tally.bloquees;
+    const label = 'Duplications à faire';
+    const href = '/admin/orders?isDuplication=ready';
+    // « 5 en retard » rather than « 5, dont 5 en retard » when it's all of them.
+    const part = (n: number, word: string) => (n === ready ? `${n} ${word}` : `${ready}, dont ${n} ${word}`);
+    const rows: DashboardStatusRow[] = [
+        ready === 0
+            ? { label, href, tone: 'ok', value: 'À jour' }
+            : tally.enRetard > 0
+                ? { label, href, tone: 'danger', value: part(tally.enRetard, 'en retard') }
+                : tally.aSurveiller > 0
+                    ? { label, href, tone: 'warning', value: part(tally.aSurveiller, 'à surveiller') }
+                    : { label, href, tone: 'todo', value: String(ready) },
+    ];
+    if (tally.bloquees > 0) {
+        rows.push({
+            label: "Duplications en attente d'enregistrement",
+            href: '/admin/orders?isDuplication=blocked',
+            tone: 'neutral',
+            value: String(tally.bloquees),
+        });
+    }
+    return rows;
+}
+
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
@@ -189,7 +224,7 @@ export default async function Dashboard() {
                         rows={[
                             delaiRow("En attente d'un lecteur", '/admin/orders?isDuplication=false&statusId=1', orderTally.attente_lecteur, 'à surveiller'),
                             delaiRow('À expédier aux auditeurs', '/admin/orders?isDuplication=false&statusId=6', orderTally.a_expedier, 'à surveiller'),
-                            delaiRow('Duplications à faire', '/admin/orders?isDuplication=true', orderTally.duplication, 'à surveiller'),
+                            ...duplicationRows(orderTally.duplication),
                         ]}
                     />
                     <AdminDashboardCard

@@ -322,6 +322,30 @@ export function retardWhere(
     return null;
 }
 
+/**
+ * The two derived values of the demandes « Type » filter, as ids read off the
+ * délais like `retardWhere`:
+ *  - `ready`   — « Duplication réalisable »: open, and nothing to wait for
+ *  - `blocked` — « Duplication en attente »: its book is still being recorded
+ * The dashboard's « Duplications à faire » line counts the same map, so its
+ * number is the number of rows it opens. `blocked` used to be a Prisma clause
+ * of its own; it now shares the one derivation instead of a second copy.
+ */
+export function duplicationStateWhere(
+    value: string | undefined,
+    delais: Map<number, Delai>,
+): { id: { in: number[] } } | null {
+    if (value !== 'ready' && value !== 'blocked') return null;
+    const wantBlocked = value === 'blocked';
+    return {
+        id: {
+            in: [...delais]
+                .filter(([, d]) => d.etape === 'duplication' && d.bloquee === wantBlocked)
+                .map(([id]) => id),
+        },
+    };
+}
+
 /** JSON-safe, display-ready délai for a table row — only for rows past a line. */
 export type SerializedDelai = {
     niveau: Exclude<DelaiNiveau, 'a_jour'>;

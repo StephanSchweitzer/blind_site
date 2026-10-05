@@ -14,7 +14,6 @@ type BillDetached = {
 type OrderTransition = {
     orderId: number;
     awaitingShipment: boolean;
-    freedDuplicationIds: number[];
 };
 
 // Edit Assignment Form using the base
@@ -109,6 +108,9 @@ export function EditAssignmentFormBackend({
             // brouillon, elle vient d'en sortir (une facture émise, elle, aurait fait
             // échouer la requête plus haut). Le dire ici, pas dans le journal.
             const billDetached: BillDetached | null = payload?.billDetached ?? null;
+            // L'audio est revenu : les duplications ouvertes du même livre peuvent
+            // être faites — qu'elles l'aient attendu ou non, avec ou sans demande liée.
+            const openDuplicationIds: number[] = payload?.openDuplicationIds ?? [];
 
             toast({
                 // @ts-expect-error jsx in toast
@@ -147,12 +149,12 @@ export function EditAssignmentFormBackend({
                                 terminée. Elle y reviendra le jour où elle le sera.
                             </span>
                         )}
-                        {!!orderTransition?.freedDuplicationIds.length && (
+                        {openDuplicationIds.length > 0 && (
                             <span className="mt-2 block text-base">
-                                {orderTransition.freedDuplicationIds.length === 1
-                                    ? 'Une duplication attendait cet enregistrement et devient réalisable : '
-                                    : `${orderTransition.freedDuplicationIds.length} duplications attendaient cet enregistrement et deviennent réalisables : `}
-                                {orderTransition.freedDuplicationIds.map((dupId, i) => (
+                                {openDuplicationIds.length === 1
+                                    ? 'Une duplication de ce livre peut maintenant être faite : '
+                                    : `${openDuplicationIds.length} duplications de ce livre peuvent maintenant être faites : `}
+                                {openDuplicationIds.map((dupId, i) => (
                                     <React.Fragment key={dupId}>
                                         {i > 0 && ', '}
                                         <a
