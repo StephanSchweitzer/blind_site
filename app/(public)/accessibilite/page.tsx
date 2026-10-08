@@ -57,12 +57,12 @@ export default async function AccessibilitePage() {
                     <section className={section} aria-labelledby="etat">
                         <h2 id="etat" className={h2}>Où en est le site</h2>
                         <p className={texte}>
-                            Nous visons le niveau AA des règles internationales d&apos;accessibilité du web (WCAG 2.2),
-                            sur lesquelles s&apos;appuie le référentiel français (RGAA).
+                            Nous visons le niveau AA des règles internationales d&apos;accessibilité du web (WCAG 2.2).
+                            Le site n&apos;a pas encore été audité par un organisme extérieur.
                         </p>
                         <p className={texte}>
-                            Le site n&apos;a pas encore fait l&apos;objet d&apos;un audit de conformité complet par un
-                            organisme extérieur. Nous ne pouvons donc pas annoncer de taux de conformité.
+                            Chaque page publique est vérifiée par un outil automatique et parcourue au clavier.
+                            Dernière vérification : {DERNIERE_VERIFICATION}.
                         </p>
                     </section>
 
@@ -75,16 +75,16 @@ export default async function AccessibilitePage() {
                                 votre appareil.
                             </li>
                             <li>
-                                Les réglages de votre appareil sont respectés : thème clair ou sombre, contraste
-                                renforcé, réduction des animations, couleurs forcées de Windows.
+                                Le site suit aussi les réglages de votre appareil : thème sombre, contraste renforcé,
+                                animations réduites, couleurs forcées de Windows.
                             </li>
                             <li>
                                 Tout se fait au clavier. Dès la première touche Tab, deux liens mènent directement au
                                 contenu de la page ou au menu.
                             </li>
                             <li>
-                                Pour les lecteurs d&apos;écran : des pages titrées et structurées, des images décrites,
-                                et les résultats d&apos;une recherche annoncés dès qu&apos;ils arrivent.
+                                Avec un lecteur d&apos;écran, les pages se parcourent par titres, et les résultats
+                                d&apos;une recherche sont annoncés dès qu&apos;ils arrivent.
                             </li>
                             <li>
                                 Dans le catalogue, la fiche de chaque livre peut lire sa description à voix haute.
@@ -93,39 +93,15 @@ export default async function AccessibilitePage() {
                                 Le lecteur audio des listes de livres règle la vitesse d&apos;écoute (jusqu&apos;à
                                 deux fois plus vite) et avance ou recule de 15 secondes.
                             </li>
-                            <li>Depuis un téléphone, il suffit de toucher nos numéros pour nous appeler.</li>
                         </ul>
-                    </section>
-
-                    <section className={section} aria-labelledby="verifications">
-                        <h2 id="verifications" className={h2}>Comment nous vérifions</h2>
-                        <p className={texte}>
-                            Chaque page publique passe un contrôle automatique (outil axe) dans toutes les
-                            présentations que le site propose : thème clair et sombre, ordinateur et téléphone,
-                            texte très grand, texte espacé, contraste renforcé et couleurs forcées. Nous le
-                            complétons par des vérifications à la main : parcours au clavier et lecture de la
-                            structure de chaque page telle qu&apos;un lecteur d&apos;écran la présente.
-                        </p>
-                        <p className={texte}>Dernière vérification : {DERNIERE_VERIFICATION}.</p>
                     </section>
 
                     <section className={section} aria-labelledby="limites">
                         <h2 id="limites" className={h2}>Ce qui reste imparfait</h2>
-                        <ul className={liste}>
-                            <li>
-                                Un contrôle automatique ne repère qu&apos;une partie des difficultés. Le site n&apos;a
-                                pas encore été éprouvé avec chacun des lecteurs d&apos;écran courants (NVDA, JAWS,
-                                VoiceOver, TalkBack).
-                            </li>
-                            <li>
-                                Les enregistrements des listes de livres n&apos;ont pas de transcription mot à mot ;
-                                les livres présentés sont en revanche tous listés par écrit sur la même page.
-                            </li>
-                            <li>
-                                L&apos;espace de gestion réservé à l&apos;équipe des ECA n&apos;est pas concerné par
-                                cette page.
-                            </li>
-                        </ul>
+                        <p className={texte}>
+                            Le site n&apos;a pas encore été essayé avec chacun des lecteurs d&apos;écran courants
+                            (NVDA, JAWS, VoiceOver, TalkBack).
+                        </p>
                     </section>
 
                     <section className={section} aria-labelledby="signaler">
@@ -133,7 +109,8 @@ export default async function AccessibilitePage() {
                         <p className={texte}>
                             Si une page, un bouton ou une information vous reste inaccessible, dites-le-nous : nous
                             chercherons à le corriger, et en attendant à vous transmettre l&apos;information
-                            autrement.
+                            autrement. Indiquez-nous si possible la page, ce que vous cherchiez à faire et l&apos;outil
+                            que vous utilisez (lecteur d&apos;écran, loupe, téléphone…).
                         </p>
                         {contact ? (
                             <ul className={liste}>
