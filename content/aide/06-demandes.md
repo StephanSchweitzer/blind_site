@@ -20,6 +20,8 @@ Pour l’enregistrement, c’est plus compliqué car il existe un processus déd
 
 Le statut d'une demande ne se choisit pas : il se déduit de son attribution et de sa date de clôture, comme celui d'une attribution se déduit de ses dates.
 
+Il ne se recalcule que si vous touchez à la date de clôture ou au type de la demande. Modifier autre chose (les notes, le format…) laisse le statut tel qu'il est, même sur une ancienne demande reprise d'Access dont le statut et la date ne s'accordent pas. Une demande « terminé » sans date de clôture peut recevoir la sienne sans changer de statut.
+
 Si la demande concerne un enregistrement, elle est « en attente d’envoi vers le lecteur ». Une fois que l'attribution a un lecteur et une date d'envoi, la demande devient « en cours ».
 
 Lorsque l'attribution est terminée (sa date de retour aux ECA est renseignée), la demande passe automatiquement « en attente d'envoi à l'auditeur ». Le jour où vous envoyez l'enregistrement et le livre à l'auditeur demandeur, renseignez la date de clôture de la demande : elle passe « terminé ». C'est ce passage, et non le retour de l'enregistrement, qui [facture](/admin/aide/factures) la demande : elle rejoint le brouillon de l'auditeur, ou reçoit sa pro-forma si elle est tarifée à la page. Une duplication passe de « à faire » à « terminé » de la même façon, dès que sa date de clôture est renseignée.

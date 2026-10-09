@@ -174,6 +174,8 @@ export function BillFormBackendBase({
     const [orderSearch, setOrderSearch] = useState('');
     const [orderSearchResult, setOrderSearchResult] = useState<{
         matchingIds: Set<number>;
+        /** Les grisées trouvées : une demande forcée ici en fait partie côté serveur. */
+        unavailableIds: Set<number>;
         unavailable: UnavailableOrder[];
         total: number;
     } | null>(null);
@@ -272,9 +274,11 @@ export function BillFormBackendBase({
                 const res = await fetch(`/api/bills/eligible-orders?${params}`, { signal: controller.signal });
                 if (!res.ok) return;
                 const data = await res.json();
+                const unavailable: UnavailableOrder[] = data.unavailable ?? [];
                 setOrderSearchResult({
                     matchingIds: new Set((data.orders as EligibleOrder[]).map((o) => o.id)),
-                    unavailable: data.unavailable ?? [],
+                    unavailableIds: new Set(unavailable.map((o) => o.id)),
+                    unavailable,
                     total: data.unavailableTotal ?? 0,
                 });
             } catch {
@@ -287,13 +291,18 @@ export function BillFormBackendBase({
         };
     }, [orderSearch, selectedClient]);
 
-    const visibleOrders = orderSearchResult
-        ? eligibleOrders.filter((o) => orderSearchResult.matchingIds.has(o.id))
-        : eligibleOrders;
-    const hiddenSelectedCount = orderSearchResult
-        ? eligibleOrders.filter((o) => selectedOrderIds.has(o.id) && !orderSearchResult.matchingIds.has(o.id)).length
-        : 0;
-    const shownUnavailable = orderSearchResult ? orderSearchResult.unavailable : unavailableOrders;
+    // Une demande facturée avant clôture est passée chez les cochables ici, mais le
+    // serveur la range toujours parmi les grisées : c'est là que la recherche la
+    // trouve, et c'est là qu'il ne faut plus la proposer — forcée deux fois, elle
+    // était listée et comptée deux fois.
+    const matchesSearch = (o: EligibleOrder): boolean =>
+        !orderSearchResult ||
+        orderSearchResult.matchingIds.has(o.id) ||
+        (forcedReasons.has(o.id) && orderSearchResult.unavailableIds.has(o.id));
+    const visibleOrders = eligibleOrders.filter(matchesSearch);
+    const hiddenSelectedCount = eligibleOrders.filter((o) => selectedOrderIds.has(o.id) && !matchesSearch(o)).length;
+    const listedUnavailable = orderSearchResult ? orderSearchResult.unavailable : unavailableOrders;
+    const shownUnavailable = listedUnavailable.filter((o) => !forcedReasons.has(o.id));
 
     // Une revue se facture seule, sur sa pro-forma : le type de la facture se
     // déduit de ce qui est coché (billKindForOrders, côté serveur), et ce qui ne
@@ -306,7 +315,11 @@ export function BillFormBackendBase({
         if (revueSelected) return 'Une revue est cochée : elle se facture seule, sur sa propre facture pro-forma';
         return o.pagePriced ? REVUE_ALONE : null;
     };
-    const shownUnavailableTotal = orderSearchResult ? orderSearchResult.total : unavailableTotal;
+    // …et le compte des grisées ne la compte plus : sinon « 1 autre demande n'est
+    // pas affichée » apparaissait dès qu'on en forçait une.
+    const shownUnavailableTotal =
+        (orderSearchResult ? orderSearchResult.total : unavailableTotal) -
+        (listedUnavailable.length - shownUnavailable.length);
 
     const totalAmount = useMemo(
         () =>
@@ -329,7 +342,7 @@ export function BillFormBackendBase({
     // raison. Rien n'est écrit ici — c'est à la création de la facture que le serveur
     // revérifie (blocage, tarif, raison) et enregistre.
     const forceOrder = (order: UnavailableOrder, reason: string): string | null => {
-        setEligibleOrders((prev) => [
+        setEligibleOrders((prev) => prev.some((o) => o.id === order.id) ? prev : [
             {
                 id: order.id,
                 requestReceivedDate: order.requestReceivedDate,
@@ -343,10 +356,6 @@ export function BillFormBackendBase({
             },
             ...prev,
         ]);
-        setUnavailableOrders((prev) => prev.filter((o) => o.id !== order.id));
-        setOrderSearchResult((prev) =>
-            prev ? { ...prev, unavailable: prev.unavailable.filter((o) => o.id !== order.id) } : prev
-        );
         setForcedReasons((prev) => new Map(prev).set(order.id, reason));
         setSelectedOrderIds((prev) => new Set(prev).add(order.id));
         return null;

@@ -231,6 +231,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 catalogueId: true,
                 requestReceivedDate: true,
                 closureDate: true,
+                forcedBillReason: true,
                 deletedAt: true,
                 assignments: {
                     // Un include de relation n'est PAS filtré par l'extension
@@ -579,7 +580,25 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         // (duplication) and the pages of a line could still change under it, with
         // a mere reprint notice. On an ÉMISE facture that notice stays the
         // answer; on a closed one the way out is to reopen it.
-        if (visibleChanged && hasBill && (billState === BillingStatus.PAID || billState === BillingStatus.SOLDE)) {
+        //
+        // Une exception : la clôture d'une demande facturée AVANT sa clôture
+        // (« Facturer avant clôture », lib/billing.ts). Sa facture a pu être réglée
+        // d'avance, et c'est justement la date de clôture qu'on attend d'elle — la
+        // refuser laissait la demande ouverte et son badge affiché pour toujours.
+        // Seulement la première date, et seulement si rien d'autre d'imprimé ne bouge.
+        const closingForcedOrder =
+            existingOrder.forcedBillReason != null &&
+            existingOrder.closureDate == null &&
+            closureDate != null &&
+            !catalogueChanged &&
+            !dupChanged &&
+            !pagePricing.visibleChanged;
+        if (
+            visibleChanged &&
+            !closingForcedOrder &&
+            hasBill &&
+            (billState === BillingStatus.PAID || billState === BillingStatus.SOLDE)
+        ) {
             return NextResponse.json(
                 {
                     message: `Cette demande figure sur la facture #${existingOrder.billId}, ${

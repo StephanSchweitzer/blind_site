@@ -166,6 +166,13 @@ function today(): Date {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
+/** Le jour local d'une date de clôture, pour comparer sans l'heure (null = pas de date). */
+function dayKey(date: Date | string | null | undefined): string | null {
+    if (!date) return null;
+    const d = new Date(date);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
 // La facture citée dans une note du formulaire, ouverte dans un nouvel onglet comme
 // « Voir la facture » plus bas : la demande en cours de saisie ne se perd pas.
 function BillLink({ billId, children }: { billId: number; children: React.ReactNode }) {
@@ -275,16 +282,30 @@ export function OrderFormBackendBase({
     // lecteur ». Une création n'a pas d'attribution, par définition.
     const assignmentUnknown = !!initialData && initialAssignment === undefined;
     const assignmentStatusId = initialAssignment?.statusId ?? null;
+    // Le statut ne se déduit que si la session touche ce dont il dépend — la date
+    // de clôture ou le type —, comme PUT /api/orders/[id]. Sinon on renvoie le
+    // statut enregistré : une ancienne demande reprise d'Access dont la paire
+    // statut/date n'a jamais été cohérente (« Terminé » sans date, par exemple)
+    // basculait à la première note modifiée — rouverte, retirée de son brouillon,
+    // ou refusée tout court sur une facture émise.
+    const dependsOnTouched = (data: OrderFormData): boolean =>
+        !initialData ||
+        data.isDuplication !== initialData.isDuplication ||
+        dayKey(data.closureDate) !== dayKey(initialData.closureDate);
     // Une fonction et non une simple valeur : la réouverture envoie un état qui
-    // n'est pas encore celui du formulaire (date effacée), voir submitForm.
-    const statusFor = (data: OrderFormData): number =>
-        assignmentUnknown && !data.isDuplication && !data.closureDate
-            ? (initialData!.statusId ?? STATUS.ATTENTE)
-            : deriveOrderStatus({
-                isDuplication: data.isDuplication,
-                hasClosureDate: !!data.closureDate,
-                assignmentStatusId,
-            });
+    // n'est pas encore celui du formulaire (date effacée), voir submitForm. Elle
+    // redéduit toujours (`rederive`) : une demande « Terminé » sans date n'a pas de
+    // date à effacer, et c'est pourtant bien ce qu'on lui demande de quitter.
+    const statusFor = (data: OrderFormData, rederive = false): number =>
+        !rederive && !dependsOnTouched(data) && initialData!.statusId != null
+            ? initialData!.statusId
+            : assignmentUnknown && !data.isDuplication && !data.closureDate
+                ? (initialData!.statusId ?? STATUS.ATTENTE)
+                : deriveOrderStatus({
+                    isDuplication: data.isDuplication,
+                    hasClosureDate: !!data.closureDate,
+                    assignmentStatusId,
+                });
     const derivedStatusId = statusFor(formData);
 
     // « Rouvrir la demande » : le pendant de « Rouvrir l'attribution ». Rouvrir =
@@ -574,13 +595,13 @@ export function OrderFormBackendBase({
     // réouverture (handleReopenConfirm) efface la date dans le même envoi que le
     // reste du formulaire, sans attendre un re-rendu. Comme submitForm côté
     // attribution.
-    const submitForm = async (overrides?: Partial<OrderFormData>) => {
+    const submitForm = async (overrides?: Partial<OrderFormData>, rederive = false) => {
         setIsLoading(true);
         try {
             const data: OrderFormData = { ...formData, ...overrides };
             // statusId n'est jamais saisi : c'est toujours la valeur que
             // deriveOrderStatus tire de ces mêmes données.
-            const submitted: OrderFormData = { ...data, statusId: statusFor(data) };
+            const submitted: OrderFormData = { ...data, statusId: statusFor(data, rederive) };
             const newOrderId = await onSubmit(
                 offerBillToNewClient ? { ...submitted, billToNewClient } : submitted
             );
@@ -605,7 +626,7 @@ export function OrderFormBackendBase({
         void submitForm({
             closureDate: null,
             notes: formData.notes ? `${formData.notes}\n${reopenNote}` : reopenNote,
-        });
+        }, true);
     };
 
     const handleDeleteClick = async () => {
@@ -669,9 +690,11 @@ export function OrderFormBackendBase({
     // ce que guardOrderCompletion exige de toute façon. Une date déjà présente
     // reste modifiable (et effaçable) même hors de ce cas : une demande reprise
     // d'Access peut porter n'importe quelle paire, et c'est ici qu'on la corrige.
+    // De même pour une demande déjà enregistrée « Terminé » sans date : on peut lui
+    // donner la sienne sans qu'elle change de statut.
     const recordingIsBack = assignmentStatusId === STATUS.TERMINE;
     const closureDateEnabled =
-        formData.isDuplication || recordingIsBack || !!formData.closureDate;
+        formData.isDuplication || recordingIsBack || !!formData.closureDate || savedStatusIsTermine;
     // La date est là, mais l'enregistrement, lui, n'est pas revenu.
     const closureBlocked =
         !formData.isDuplication && !!formData.closureDate && !assignmentUnknown && !recordingIsBack;
@@ -685,19 +708,18 @@ export function OrderFormBackendBase({
 
     const statusName = (id: number | null | undefined) =>
         statuses.find((s) => s.id === id)?.name ?? '—';
-    // Le statut enregistré ne correspond plus à ce que dit la demande : soit on
-    // vient de toucher la date ou le type, soit c'est une ancienne demande dont la
-    // paire statut/date n'a jamais été cohérente. Dans les deux cas, dire ce que
-    // l'enregistrement va changer.
+    // On vient de toucher la date ou le type, et le statut enregistré ne
+    // correspond plus : dire ce que l'enregistrement va changer. (Sans y toucher,
+    // statusFor renvoie le statut enregistré, donc rien ne s'annonce.)
     const statusWillChange =
         !!initialData && !assignmentUnknown && derivedStatusId !== initialData.statusId;
 
-    // Offert sur une demande ENREGISTRÉE « Terminé » qui porte encore sa date —
-    // comme « Rouvrir l'attribution » sur une attribution terminée. Une date saisie
-    // dans cette session, elle, s'efface par « Effacer » à côté du champ.
-    const canReopen = !!initialData && !readOnly && savedStatusIsTermine && !!formData.closureDate;
+    // Offert sur une demande ENREGISTRÉE « Terminé », avec ou sans date — comme
+    // « Rouvrir l'attribution » sur une attribution terminée. Une date saisie dans
+    // cette session, elle, s'efface par « Effacer » à côté du champ.
+    const canReopen = !!initialData && !readOnly && savedStatusIsTermine;
     // Ce que la demande redeviendra une fois la date effacée.
-    const reopenedStatusId = statusFor({ ...formData, closureDate: null });
+    const reopenedStatusId = statusFor({ ...formData, closureDate: null }, true);
 
     const blockingRecording =
         formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
@@ -1072,7 +1094,7 @@ export function OrderFormBackendBase({
                                         : 'Renseignable une fois l’enregistrement revenu aux ECA (date de retour sur l’attribution).'}
                                 </p>
                             )}
-                            {closureBlocked && (
+                            {closureBlocksSave && (
                                 <p className="text-xs text-amber-700 dark:text-amber-400">
                                     {closureBlockedMessage}
                                 </p>
