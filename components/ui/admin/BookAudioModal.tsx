@@ -333,6 +333,8 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const [restoringId, setRestoringId] = useState<number | null>(null);
     /** A picked folder, awaiting the admin's confirmation. See the panel below. */
     const [selection, setSelection] = useState<FolderSelection | null>(null);
+    /** The reading-time measurement that follows an upload — see measureAfterUpload. */
+    const [durationCheck, setDurationCheck] = useState<'running' | { failed: string } | null>(null);
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -455,10 +457,38 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         setSelection(chosen);
     };
 
+    /**
+     * Measure the reading time once an upload is committed.
+     *
+     * This used to happen inside the commit call, before it refreshed the
+     * book: a slow storage moment pushed it past its time limit, and the
+     * track count, the status and « Disponible » were never written. Now the
+     * commit answers first and this runs after it, through the same route as
+     * « Recalculer ». A failure here leaves the upload intact — it is only the
+     * figure that waits for the button.
+     */
+    const measureAfterUpload = useCallback(async () => {
+        setDurationCheck('running');
+        try {
+            const res = await fetch(`/api/books/${bookId}/audio/duration`, { method: 'POST' }).catch(
+                () => null,
+            );
+            if (!res) throw new Error('le serveur est injoignable');
+            const d = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(String(d?.message ?? 'la mesure a échoué'));
+            setDurationCheck(null);
+            await refreshAll();
+        } catch (e) {
+            setDurationCheck({ failed: e instanceof Error ? e.message : 'la mesure a échoué' });
+        }
+    }, [bookId, refreshAll]);
+
     const handleFilesChosen = async (files: File[]) => {
         if (!files.length) return;
         setSelection(null);
-        const { ok, becameAvailable, recovered, repriced, alreadyPresent } = await upload(files);
+        setDurationCheck(null);
+        const { ok, becameAvailable, recovered, repriced, alreadyPresent, committed } =
+            await upload(files);
         const added = files.length - alreadyPresent;
         if (ok) {
             toast({
@@ -497,6 +527,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             // Counters may still have moved if part of the batch landed.
             await refreshAll();
         }
+        // Not awaited: the upload is finished and the dialogue is free again;
+        // the figure follows when the measurement does.
+        if (committed > 0) void measureAfterUpload();
     };
 
     const handleRestore = async (item: TrashItem) => {
@@ -1213,6 +1246,23 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
 
                                     {uploadError && (
                                         <p className="mt-3 text-sm text-red-500">{uploadError}</p>
+                                    )}
+
+                                    {durationCheck === 'running' && (
+                                        <p
+                                            className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"
+                                            role="status"
+                                        >
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            Calcul de la durée de lecture…
+                                        </p>
+                                    )}
+                                    {durationCheck && durationCheck !== 'running' && (
+                                        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+                                            Les fichiers sont bien en ligne, mais la durée de lecture n’a pas
+                                            pu être calculée ({durationCheck.failed}). Utilisez « Recalculer »
+                                            à côté de « Durée de la lecture » sur la fiche du livre.
+                                        </p>
                                     )}
 
                                     {/* The one-click way out of a partial failure.

@@ -72,9 +72,12 @@ export interface MeasureResult {
  * against the header bytes unless a permanent later pressed Recalculer. That
  * is a known-unreliable number — some browsers report it wrong, occasionally
  * Infinity, for MP3s that carry no duration metadata of their own — and nothing
- * corrected it automatically. Calling this from the commit route means a fresh
- * upload gets the exact same, byte-accurate answer as a manual recalculation,
- * the moment it lands: resolveTrackDurations (lib/audio/state.ts) already
+ * corrected it automatically. The upload dialogue now calls the Recalculer
+ * route (measureBookDurations, below) as soon as a batch is committed — no
+ * longer from inside the commit route, where a slow measurement could push it
+ * past its time limit and lose the refresh that follows — so a fresh upload
+ * gets the exact same, byte-accurate answer as a manual recalculation, moments
+ * after it lands: resolveTrackDurations (lib/audio/state.ts) already
  * prefers a cached measurement over the browser-reported event whenever the
  * two describe the same size, so populating the cache here is all it takes for
  * that preference to kick in immediately instead of waiting for a button press.
@@ -189,8 +192,8 @@ export async function measureBookDurations(bookId: number): Promise<MeasureResul
 
     // A cached row is believed only while the object still weighs what it did
     // when measured — see the model comment for why the filename alone is not an
-    // identity in this corpus. Shared with the commit route, which primes this
-    // same cache right after an upload — see measureAndCacheTracks above.
+    // identity in this corpus. Already-measured tracks cost a lookup, so the
+    // call the upload dialogue makes after every batch only reads the new ones.
     const { tracks: results, fromCache } = await measureAndCacheTracks(bookId, tracks);
 
     const measured = results.filter((r) => r.seconds !== null);

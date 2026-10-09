@@ -113,6 +113,13 @@ export interface UploadOutcome {
     repriced: number;
     /** Files skipped because the folder already held them. For the summary. */
     alreadyPresent: number;
+    /**
+     * Files the commit confirmed in the bucket, across every chunk and pass.
+     * Non-zero means the folder changed and its durations need measuring —
+     * done by the caller, after the upload, not inside the commit (see the
+     * commit route's « Duration is measured afterwards »).
+     */
+    committed: number;
 }
 
 /** Nothing landed — every early exit from `upload` returns this. */
@@ -122,6 +129,7 @@ const FAILED: UploadOutcome = {
     recovered: 0,
     repriced: 0,
     alreadyPresent: 0,
+    committed: 0,
 };
 
 interface SignedFile {
@@ -629,6 +637,7 @@ export function useAudioUpload(bookId: number) {
 
             let becameAvailable = false;
             let repriced = 0;
+            let committed = 0;
             let aborted = false;
             let pending = files;
 
@@ -867,6 +876,7 @@ export function useAudioUpload(bookId: number) {
                         }
 
                         if (data?.becameAvailable === true) becameAvailable = true;
+                        if (typeof data?.confirmed === 'number') committed += data.confirmed;
                         // Overwrite rather than accumulate: each chunk re-tarifies
                         // the same demandes, so summing would count them twice.
                         if (typeof data?.repriced === 'number' && data.repriced > 0) {
@@ -952,11 +962,11 @@ export function useAudioUpload(bookId: number) {
                         (stillFailed.length > 1 ? 's' : '') +
                         '. Le détail et la marche à suivre sont indiqués pour chacun ci-dessous.',
                 );
-                return { ok: false, becameAvailable, recovered, repriced, alreadyPresent };
+                return { ok: false, becameAvailable, recovered, repriced, alreadyPresent, committed };
             }
 
             setPhase('done');
-            return { ok: true, becameAvailable, recovered, repriced, alreadyPresent };
+            return { ok: true, becameAvailable, recovered, repriced, alreadyPresent, committed };
         },
         [bookId, publish, publishProgress],
     );
