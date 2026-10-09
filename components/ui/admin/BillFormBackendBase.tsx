@@ -28,6 +28,7 @@ import { parisDate } from '@/lib/paris-day';
 import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
 import { SearchSuggestions } from '@/components/ui/search-suggestions';
 import type { VocabularyDomain } from '@/lib/search-suggestion-types';
+import { OrderNotFinishedNote } from './OrderNotFinishedNote';
 
 const PEOPLE_DOMAIN: readonly VocabularyDomain[] = ['people'];
 
@@ -437,11 +438,7 @@ export function BillFormBackendBase({
                                                     {o.statusName ? ` · ${o.statusName}` : ''}
                                                 </div>
                                                 {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}
-                                                {o.statusId !== TERMINE_STATUS_ID && (
-                                                    <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
-                                                        Prestation pas encore terminée
-                                                    </div>
-                                                )}
+                                                <OrderNotFinishedNote statusId={o.statusId} />
                                                 {o.cost == null && (
                                                     <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
                                                         Aucun tarif renseigné — serait facturée 0,00 €

@@ -22,7 +22,7 @@ Le statut d'une demande ne se choisit pas : il se déduit de son attribution et 
 
 Si la demande concerne un enregistrement, elle est « en attente d’envoi vers le lecteur ». Une fois que l'attribution a un lecteur et une date d'envoi, la demande devient « en cours ».
 
-Lorsque l'attribution est terminée (sa date de retour aux ECA est renseignée), la demande passe automatiquement « en attente d'envoi à l'auditeur ». Le jour où vous envoyez l'enregistrement et le livre à l'auditeur demandeur, renseignez la date de clôture de la demande : elle passe « terminé ». Une duplication passe de « à faire » à « terminé » de la même façon, dès que sa date de clôture est renseignée.
+Lorsque l'attribution est terminée (sa date de retour aux ECA est renseignée), la demande passe automatiquement « en attente d'envoi à l'auditeur ». Le jour où vous envoyez l'enregistrement et le livre à l'auditeur demandeur, renseignez la date de clôture de la demande : elle passe « terminé ». C'est ce passage, et non le retour de l'enregistrement, qui [facture](/admin/aide/factures) la demande : elle rejoint le brouillon de l'auditeur, ou reçoit sa pro-forma si elle est tarifée à la page. Une duplication passe de « à faire » à « terminé » de la même façon, dès que sa date de clôture est renseignée.
 
 L'URL de cette page est https://eca-aveugles.fr/admin/orders.
 

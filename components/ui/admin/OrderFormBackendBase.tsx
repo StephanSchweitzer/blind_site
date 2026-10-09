@@ -1180,7 +1180,12 @@ export function OrderFormBackendBase({
                             <p className="text-xs text-amber-700 dark:text-amber-400">
                                 L&apos;enregistrement est revenu du lecteur mais n&apos;a pas encore été
                                 expédié à l&apos;auditeur. Renseignez la date de clôture le jour de
-                                l&apos;expédition : la demande passera « Terminé ».
+                                l&apos;expédition : la demande passera « Terminé »
+                                {/* Le retour du lecteur ne facture rien : des permanents la
+                                    cherchaient sur les factures dès ce moment-là. */}
+                                {!hasBill && formData.billingStatus !== 'UNBILLABLE'
+                                    ? <> et c&apos;est à ce moment qu&apos;elle sera facturée.</>
+                                    : '.'}
                             </p>
                         )}
                         {statusRollbackLocked && initialBill && (

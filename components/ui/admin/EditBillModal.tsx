@@ -31,6 +31,7 @@ import { pageInfo } from '@/lib/pagination';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { AdminPagerButtons } from './AdminPagination';
+import { OrderNotFinishedNote } from './OrderNotFinishedNote';
 
 /** Demandes non facturées par page, dans le panneau « Ajouter » d'un brouillon. */
 const UNBILLED_PAGE_SIZE = 10;
@@ -98,6 +99,8 @@ interface UnbilledOrder {
     id: number;
     requestReceivedDate: string;
     cost: number | string | null;
+    statusId: number;
+    status: { name: string } | null;
     catalogue: { title: string; author: string };
     aveugle: { firstName: string | null; lastName: string | null; email: string | null };
 }
@@ -978,8 +981,10 @@ export function EditBillModal({
                                                                 </div>
                                                                 <div className="text-muted-foreground text-xs break-words">
                                                                     {o.catalogue.author} · {formatDate(o.requestReceivedDate)}
+                                                                    {o.status?.name && ` · ${o.status.name}`}
                                                                     {o.cost != null && ` · ${formatCurrency(o.cost)}`}
                                                                 </div>
+                                                                <OrderNotFinishedNote statusId={o.statusId} />
                                                             </div>
                                                             <a
                                                                 href={`/admin/orders?order=${o.id}`}

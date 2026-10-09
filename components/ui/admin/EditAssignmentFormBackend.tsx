@@ -14,6 +14,7 @@ type BillDetached = {
 type OrderTransition = {
     orderId: number;
     awaitingShipment: boolean;
+    billable: boolean;
 };
 
 // Edit Assignment Form using the base
@@ -129,8 +130,11 @@ export function EditAssignmentFormBackend({
                                 >
                                     #{orderTransition.orderId}
                                 </a>{' '}
-                                passe « Attente envoi vers auditeur » : passez-la « Terminé »
-                                une fois l&apos;audio expédié.
+                                attend son envoi à l&apos;auditeur. Renseignez sa date de clôture
+                                le jour de l&apos;expédition : elle passera « Terminé »
+                                {orderTransition.billable
+                                    ? <> et c&apos;est à ce moment qu&apos;elle sera facturée.</>
+                                    : '.'}
                             </span>
                         )}
                         {billDetached && (

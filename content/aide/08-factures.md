@@ -6,7 +6,7 @@ order: 8
 
 # Factures
 
-La page « Factures » vous permet de consulter les factures que les utilisateurs doivent régler pour leurs demandes. Lorsqu'une demande est finalisée, elle est automatiquement ajoutée à une facture brouillon existante de l'utilisateur ou une nouvelle facture brouillon est créée. Chaque utilisateur dispose d'un seuil de facturation (**21 € par défaut**, modifiable sur sa fiche) ; dès que ce montant est atteint, la facture passe automatiquement du statut « brouillon » à « émise ».
+La page « Factures » vous permet de consulter les factures que les utilisateurs doivent régler pour leurs demandes. Lorsqu'une demande est finalisée, elle est automatiquement ajoutée à une facture brouillon existante de l'utilisateur ou une nouvelle facture brouillon est créée. Une demande est finalisée quand sa date de clôture est renseignée, le jour de l'expédition à l'auditeur : le retour de l'enregistrement par le lecteur (attribution « Terminé ») ne suffit pas, la demande attend alors « Attente envoi vers auditeur » et ne figure encore sur aucune facture. Chaque utilisateur dispose d'un seuil de facturation (**21 € par défaut**, modifiable sur sa fiche) ; dès que ce montant est atteint, la facture passe automatiquement du statut « brouillon » à « émise ».
 
 Lorsque vous ouvrez la fenêtre contextuelle « Facture », vous pouvez générer des fichiers PDF des factures à envoyer aux auditeurs pour leur demander le paiement.
 
@@ -35,7 +35,7 @@ Pour associer un auditeur et ses demandes disponibles, cliquez sur le champ « R
 
 ![Factures - capture 3](/admin/aide/images/factures-03.jpg)
 
-Cela affichera alors les demandes facturables de l'auditeur. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Un message en ambre signale une demande qui n'est pas encore terminée ou qui n'a pas de tarif.
+Cela affichera alors les demandes facturables de l'auditeur. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Un message en ambre signale une demande qui n'est pas encore terminée ou qui n'a pas de tarif. Pour une demande « Attente envoi vers auditeur » — l'enregistrement est revenu du lecteur mais n'est pas encore parti chez l'auditeur —, le message rappelle qu'il suffit de renseigner sa date de clôture : elle sera alors facturée toute seule. Ces demandes ne sont pas cochées d'avance.
 
 ![Factures - capture 4](/admin/aide/images/factures-04.jpg)
 
@@ -73,7 +73,7 @@ Sur un brouillon, les fonctions de base sont les suivantes :
 
 (1) La section « **Changer le statut** » permet d'émettre la facture
 
-(2) « **Ajouter une demande** » ajoute une demande à la facture. Encore une fois, je ne le ferais pas, sauf dans des circonstances exceptionnelles, car les demandes sont automatiquement ajoutées aux factures dès qu'elles atteignent le statut « terminé ».
+(2) « **Ajouter une demande** » ajoute une demande à la facture. Encore une fois, je ne le ferais pas, sauf dans des circonstances exceptionnelles, car les demandes sont automatiquement ajoutées aux factures dès qu'elles atteignent le statut « terminé ». La liste indique le statut de chaque demande, avec le même message en ambre que dans « Créer une facture » pour celles qui ne sont pas encore terminées.
 
 C'est le **passage** à « Terminé » qui fait entrer une demande sur un brouillon, pas le fait d'y être. Une demande que vous retirez d'une facture (« Retirer de la facture »), ou qu'une restauration a détachée de sa facture, reste « Terminé » sans être rattachée à rien : elle n'y retournera pas toute seule, même si vous la modifiez. C'est ici, avec « Ajouter une demande », que vous la placez sur la facture voulue. Seule exception : si vous la retirez pour changer son auditeur, le formulaire de la demande propose de la facturer directement au nouvel auditeur (voir [Changer l'auditeur d'une demande](/admin/aide/demandes#changer-l-auditeur-d-une-demande)).
 

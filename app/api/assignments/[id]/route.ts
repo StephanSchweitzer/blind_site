@@ -508,6 +508,13 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 orderId: number;
                 /** Demande now « Attente envoi vers auditeur »: enregistrement revenu, pas encore expédié. */
                 awaitingShipment: boolean;
+                /**
+                 * Sur aucune facture et pas « Non facturable » : c'est sa clôture qui la
+                 * facturera (accrueOrderToOpenDraft). Le toast le dit, parce
+                 * que des permanents cherchaient la demande sur les factures dès le retour
+                 * du lecteur — c'était l'effet de « Terminé » avant l'étape d'expédition.
+                 */
+                billable: boolean;
             } | null = null;
 
             // Renseigné quand la réouverture a sorti la demande d'un brouillon.
@@ -609,13 +616,14 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             ) {
                 const order = await tx.orders.findUnique({
                     where: { id: syncedOrderId },
-                    select: { id: true, statusId: true },
+                    select: { id: true, statusId: true, billingStatus: true, billId: true },
                 });
 
                 if (order) {
                     orderTransition = {
                         orderId: order.id,
                         awaitingShipment: order.statusId === STATUS.ATTENTE_AUDITEUR,
+                        billable: order.billId == null && order.billingStatus !== 'UNBILLABLE',
                     };
                 }
             }
