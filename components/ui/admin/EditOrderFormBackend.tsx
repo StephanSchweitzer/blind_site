@@ -51,10 +51,12 @@ export function EditOrderFormBackend({
     // Fetch the linked affectation (if any) so the form can show reader/status
     // context and a deep-link. Self-contained here, so callers (EditOrderModal)
     // need no changes.
-    const [assignment, setAssignment] = useState<OrderAssignment | null>(null);
+    // `undefined` until the answer arrives (and on a failed fetch): the form derives
+    // the statut from this attribution, so "not known yet" must not read as "none".
+    const [assignment, setAssignment] = useState<OrderAssignment | null | undefined>(undefined);
     useEffect(() => {
         fetch(`/api/orders/${orderId}/assignment`)
-            .then((r) => (r.ok ? r.json() : null))
+            .then((r) => (r.ok ? r.json() : undefined))
             .then(setAssignment)
             .catch(() => {});
     }, [orderId]);

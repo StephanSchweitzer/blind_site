@@ -134,7 +134,7 @@ Quelques règles propres aux pro-formas :
 - une demande à la page ne se rattache qu'à une pro-forma, et une demande au poids qu'à une facture standard : le rattachement à la main l'interdit ;
 - la facture pro-forma ne se coche pas dans « Ajouter une facture » ;
 - la pro-forma étant déjà émise, on ne peut plus faire revenir la demande en arrière depuis « Terminé » : remettez d'abord la facture en brouillon ;
-- une pro-forma remise en brouillon puis supprimée n'est pas recréée toute seule : sortez la demande de « Terminé », puis remettez-la-y.
+- une pro-forma remise en brouillon puis supprimée n'est pas recréée toute seule : effacez la date de clôture de la demande et enregistrez, puis renseignez-la de nouveau.
 
 ## L'avis d'impression
 

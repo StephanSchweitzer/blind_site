@@ -18,11 +18,11 @@ Ces statuts pour les demandes sont diffèrent selon qu’il s’agit d’une dup
 
 Pour l’enregistrement, c’est plus compliqué car il existe un processus dédié à la lecture et à l’enregistrement des livres.
 
-Lorsque l'attribution est marquée comme « terminée », le statut de la demande reste automatiquement « en attente d'envoi à l'auditeur ». Un membre du personnel devra venir définir manuellement ce statut comme « terminé » une fois qu'il aura envoyé l'enregistrement et le livre à l'auditeur demandeur.
+Le statut d'une demande ne se choisit pas : il se déduit de son attribution et de sa date de clôture, comme celui d'une attribution se déduit de ses dates.
 
-Si la demande concerne un enregistrement, elle est « en attente d’envoi vers le lecteur ». Une fois que vous avez créé une attribution et désigné un lecteur, la demande devient « en cours ».
+Si la demande concerne un enregistrement, elle est « en attente d’envoi vers le lecteur ». Une fois que l'attribution a un lecteur et une date d'envoi, la demande devient « en cours ».
 
-Lorsque l'attribution est marquée comme « terminée », le statut de la demande reste automatiquement « en attente d'envoi à l'auditeur ». Un membre du personnel devra venir définir manuellement ce statut comme « terminé » une fois qu'il aura envoyé l'enregistrement et le livre à l'auditeur demandeur.
+Lorsque l'attribution est terminée (sa date de retour aux ECA est renseignée), la demande passe automatiquement « en attente d'envoi à l'auditeur ». Le jour où vous envoyez l'enregistrement et le livre à l'auditeur demandeur, renseignez la date de clôture de la demande : elle passe « terminé ». Une duplication passe de « à faire » à « terminé » de la même façon, dès que sa date de clôture est renseignée.
 
 L'URL de cette page est https://eca-aveugles.fr/admin/orders.
 
@@ -154,7 +154,13 @@ En haut de la page, on peut voir les informations générales que nous avons ajo
 
 ![Demandes - capture 11](/admin/aide/images/demandes-11.jpg)
 
-Le statut est suivi de la date de clôture, qui se remplit d'elle-même quand la demande passe « Terminé » et reste grisée tant qu'elle ne l'est pas. En faisant défiler la page vers le bas, on trouve des informations et des liens permettant d'accéder à l'attribution correspondante (2), juste sous la date de clôture, si la demande concernait un enregistrement, puis à la (1) facture correspondante (s'il y en a déjà une).
+Sous le type de la demande viennent, dans l'ordre, l'attribution correspondante (2) si la demande concerne un enregistrement, la date de clôture, puis le statut. *Les captures de cette partie montrent encore l'ancien formulaire, où le statut se choisissait dans un menu.*
+
+La date de clôture est le jour où l'enregistrement est expédié à l'auditeur. Le bouton « Aujourd'hui » la remplit d'un clic, « Effacer » la vide. Pour un enregistrement, elle reste grisée tant que l'attribution n'est pas terminée ; une duplication peut être close à tout moment.
+
+Le statut n'est plus un menu : il se lit, et suit l'attribution et la date de clôture. Renseigner la date fait passer la demande « Terminé » ; l'effacer la rouvre. Si l'enregistrement va changer le statut, une ligne sous le statut le dit avant que vous validiez. En faisant défiler la page vers le bas, on trouve la (1) facture correspondante (s'il y en a déjà une).
+
+Si la demande figure sur une facture déjà émise, sa date de clôture peut être corrigée mais plus effacée : la facture annonce la prestation comme rendue. Rouvrez la facture et retirez-en la demande d'abord.
 
 ![Demandes - capture 12](/admin/aide/images/demandes-12.jpg)
 

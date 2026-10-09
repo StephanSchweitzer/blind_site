@@ -37,14 +37,14 @@ import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import { getUserDisplayName } from '@/lib/users/displayName';
-import { STATUS } from '@/lib/statusSync';
+import { STATUS, orderStatusForAssignmentStatus } from '@/lib/statusSync';
 import { costSuggestion } from '@/lib/pricing';
 import { parisDate } from '@/lib/paris-day';
 import { PagePricingFields } from '@/admin/PagePricingFields';
 import { type PagePricingForm, emptyPagePricing, pagePricingError } from '@/lib/orders/pagePricingForm';
 
 // N3 — required fields, visual top→bottom.
-const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'statusId', 'mediaFormatId', 'deliveryMethod'];
+const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'mediaFormatId', 'deliveryMethod'];
 
 export interface User {
     id: number;
@@ -125,7 +125,9 @@ interface OrderFormBackendBaseProps {
     initialSelectedStaff?: User | null;
     // Linked bill (read-only context)
     initialBill?: { id: number; state: string } | null;
-    // Linked affectation (read-only context)
+    // Linked attribution (read-only context). `null` = none; `undefined` = not
+    // known yet (still loading, or creating) — the derived statut then falls back
+    // to the saved one rather than flashing « Attente envoi vers lecteur ».
     initialAssignment?: OrderAssignment | null;
     /** Greys out and disables every field/button — set when the demande is soft-deleted. */
     readOnly?: boolean;
@@ -143,6 +145,43 @@ export const formatEuro2 = (v: string | null | undefined): string => {
     const n = parseFloat(String(v).replace(',', '.'));
     return Number.isNaN(n) ? '' : n.toFixed(2);
 };
+
+/**
+ * Le statut d'une demande se déduit de ce qu'elle contient, comme celui d'une
+ * attribution se déduit de ses dates (deriveAssignmentStatus dans
+ * AssignmentFormBackendBase) — il n'est plus choisi dans un menu. Le seul geste
+ * humain qui reste à une demande est l'expédition à l'auditeur, et c'est
+ * exactement ce que dit sa date de clôture :
+ *
+ *  - date de clôture renseignée → « Terminé » (duplication comme enregistrement) ;
+ *  - duplication sans date      → « À faire » ;
+ *  - enregistrement sans date   → le statut que l'attribution fait monter
+ *    (orderStatusForAssignmentStatus : « Terminé » côté attribution donne
+ *    « Attente envoi vers auditeur »), ou « Attente envoi vers lecteur » tant
+ *    qu'il n'y a pas d'attribution.
+ *
+ * Avant, c'était l'inverse : on choisissait « Terminé » et la date se remplissait.
+ * Le serveur n'a pas changé — il reçoit toujours un statutId et le contrôle avec
+ * les mêmes gardes (lib/statusSync.ts) ; c'est seulement le formulaire qui ne le
+ * demande plus.
+ */
+function deriveOrderStatus(args: {
+    isDuplication: boolean;
+    hasClosureDate: boolean;
+    /** `null` = la demande n'a pas d'attribution. */
+    assignmentStatusId: number | null;
+}): number {
+    if (args.hasClosureDate) return STATUS.TERMINE;
+    if (args.isDuplication) return STATUS.A_FAIRE;
+    if (args.assignmentStatusId === null) return STATUS.ATTENTE;
+    return orderStatusForAssignmentStatus(args.assignmentStatusId);
+}
+
+/** Minuit local, comme toutes les dates que produit le sélecteur de calendrier. */
+function today(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
 
 // La facture citée dans une note du formulaire, ouverte dans un nouvel onglet comme
 // « Voir la facture » plus bas : la demande en cours de saisie ne se perd pas.
@@ -246,6 +285,22 @@ export function OrderFormBackendBase({
             }
     );
 
+    // ── Statut dérivé (voir deriveOrderStatus) ──────────────────────────────
+    // L'attribution arrive par un fetch séparé (EditOrderFormBackend) : tant
+    // qu'elle n'est pas connue, une demande d'enregistrement sans date garde son
+    // statut enregistré plutôt que d'afficher un instant « Attente envoi vers
+    // lecteur ». Une création n'a pas d'attribution, par définition.
+    const assignmentUnknown = !!initialData && initialAssignment === undefined;
+    const assignmentStatusId = initialAssignment?.statusId ?? null;
+    const derivedStatusId =
+        assignmentUnknown && !formData.isDuplication && !formData.closureDate
+            ? (initialData!.statusId ?? STATUS.ATTENTE)
+            : deriveOrderStatus({
+                isDuplication: formData.isDuplication,
+                hasClosureDate: !!formData.closureDate,
+                assignmentStatusId,
+            });
+
     // ── Auditeur changé sur une demande déjà terminée, hors facture ─────────
     // Elle ne rejoindra plus de brouillon toute seule (l'accrual ne réagit qu'au
     // PASSAGE à « Terminé »), donc on propose de la facturer au nouvel auditeur —
@@ -258,7 +313,7 @@ export function OrderFormBackendBase({
         !!initialData &&
         !hasBill &&
         savedStatusIsTermine &&
-        formData.statusId === STATUS.TERMINE &&
+        derivedStatusId === STATUS.TERMINE &&
         formData.aveugleId != null &&
         formData.aveugleId !== initialData.aveugleId &&
         formData.billingStatus !== 'UNBILLABLE';
@@ -455,65 +510,32 @@ export function OrderFormBackendBase({
     const handleDuplicationChange = (checked: boolean) => {
         // The admin is now deciding manually — the auto-check banner no longer applies.
         setDupAutoChecked(false);
-        setFormData(prev => {
-            // An already-finished demande keeps « Terminé » whichever way this goes.
-            const isTermine = prev.statusId === STATUS.TERMINE;
-
-            return {
-                ...prev,
-                isDuplication: checked,
-                lentPhysicalBook: checked ? false : prev.lentPhysicalBook,
-                // A duplication is « À faire » until it's done — it never goes to a
-                // lecteur, so « En cours » (which used to be set here) said something
-                // untrue about it. Un-ticking the box drops back to the recording
-                // workflow's first state, since « À faire » is duplication-only and
-                // the server would otherwise reject the save.
-                statusId: isTermine
-                    ? prev.statusId
-                    : (checked ? STATUS.A_FAIRE : STATUS.ATTENTE),
-            };
-        });
+        // Le statut suit tout seul (deriveOrderStatus) : une duplication sans date
+        // est « À faire », un enregistrement repart de son attribution.
+        setFormData(prev => ({
+            ...prev,
+            isDuplication: checked,
+            lentPhysicalBook: checked ? false : prev.lentPhysicalBook,
+        }));
     };
 
     const handleRecordingChange = (checked: boolean) => {
         // The admin is now deciding manually — the auto-check banner no longer applies.
         setDupAutoChecked(false);
-        setFormData(prev => {
-            // An already-finished demande keeps « Terminé » whichever way this goes.
-            const isTermine = prev.statusId === STATUS.TERMINE;
-
-            return {
-                ...prev,
-                lentPhysicalBook: checked,
-                isDuplication: checked ? false : prev.isDuplication,
-                // A demande d'enregistrement starts at « Attente envoi vers lecteur ».
-                statusId: (checked && !isTermine) ? STATUS.ATTENTE : prev.statusId,
-            };
-        });
+        setFormData(prev => ({
+            ...prev,
+            lentPhysicalBook: checked,
+            isDuplication: checked ? false : prev.isDuplication,
+        }));
     };
 
-    // Date de clôture is derived from the statut, never typed by hand: entering
-    // « Terminé » stamps today, leaving it clears the date again. Mirrors
-    // resolveClosureDate() in lib/statusSync.ts, which is the authority — this
-    // only gives the admin immediate feedback in the form. A date already filled
-    // in is kept, so a manual correction survives.
-    const handleStatusChange = (value: string) => {
-        const nextStatusId = parseInt(value);
-        setFormData(prev => {
-            const wasTermine = prev.statusId === STATUS.TERMINE;
-            const isTermine = nextStatusId === STATUS.TERMINE;
-
-            let closureDate = prev.closureDate;
-            if (isTermine && !wasTermine && !closureDate) {
-                // Local midnight, like every date the calendar picker produces.
-                const now = new Date();
-                closureDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            } else if (wasTermine && !isTermine) {
-                closureDate = null;
-            }
-
-            return { ...prev, statusId: nextStatusId, closureDate };
-        });
+    // Une facture émise annonce la prestation comme rendue : la date de clôture
+    // peut y être corrigée d'un jour, jamais effacée (ce serait rouvrir la
+    // demande — guardOrderLeavingTermineOnBill le refuse côté serveur). Le
+    // calendrier rend `undefined` quand on reclique le jour choisi : on l'ignore.
+    const setClosureDate = (date: Date | null) => {
+        if (!date && statusRollbackLocked) return;
+        setFormData(prev => ({ ...prev, closureDate: date }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -525,7 +547,6 @@ export function OrderFormBackendBase({
         const invalid: string[] = [];
         if (!formData.aveugleId) invalid.push('aveugleId');
         if (!formData.catalogueId) invalid.push('catalogueId');
-        if (!formData.statusId) invalid.push('statusId');
         if (!formData.mediaFormatId) invalid.push('mediaFormatId');
         if (!formData.deliveryMethod) invalid.push('deliveryMethod');
 
@@ -533,7 +554,6 @@ export function OrderFormBackendBase({
             const messages: Record<string, string> = {
                 aveugleId: 'Veuillez sélectionner un auditeur',
                 catalogueId: 'Veuillez sélectionner un livre',
-                statusId: 'Veuillez sélectionner un statut',
                 mediaFormatId: 'Veuillez sélectionner un format média',
                 deliveryMethod: 'Veuillez sélectionner une méthode de livraison',
             };
@@ -542,6 +562,16 @@ export function OrderFormBackendBase({
             setError(msg);
             toastError(msg);
             focusFirstInvalid(EDIT_FIELD_ORDER, new Set(invalid));
+            setIsLoading(false);
+            return;
+        }
+
+        // guardOrderCompletion (lib/statusSync.ts) : la date ferait passer la demande
+        // « Terminé » alors que l'enregistrement n'est pas revenu. Dit ici plutôt
+        // qu'en 409 générique — même principe que readerBlocksAdvance côté attribution.
+        if (closureBlocksSave) {
+            setError(closureBlockedMessage);
+            toastError(closureBlockedMessage);
             setIsLoading(false);
             return;
         }
@@ -571,8 +601,11 @@ export function OrderFormBackendBase({
         }
 
         try {
+            // statusId n'est jamais saisi : c'est toujours la valeur que
+            // deriveOrderStatus vient de tirer de ces mêmes données.
+            const submitted: OrderFormData = { ...formData, statusId: derivedStatusId };
             const newOrderId = await onSubmit(
-                offerBillToNewClient ? { ...formData, billToNewClient } : formData
+                offerBillToNewClient ? { ...submitted, billToNewClient } : submitted
             );
             if (onSuccess) {
                 onSuccess(newOrderId);
@@ -636,44 +669,42 @@ export function OrderFormBackendBase({
     // copied until that comes back. A closed demande is excluded — it waits for
     // nothing. Same rule as the list badge (lib/orders/duplicationBlocked.ts);
     // derived, never stored.
-    const demandeIsClosed =
-        formData.statusId === STATUS.TERMINE || formData.statusId === STATUS.SOLDE;
+    const demandeIsClosed = derivedStatusId === STATUS.TERMINE;
 
     // La saisie « à la page » survit au passage en duplication (cochée par le choix
     // d'un livre déjà enregistré, par exemple) : elle reste dans formData, mais n'est
     // ni affichée ni envoyée tant que la demande est une duplication.
     const pagePricingActive = formData.pagePricing.pageBased && !formData.isDuplication;
 
-    // Only « Terminé » carries a date de clôture, so only « Terminé » lets you pick one.
-    // A legacy demande that holds an inconsistent date still displays it (read-only) —
-    // the server accepts that pair round-tripped unchanged (guardClosureDateRequiresTermine).
-    const isTermine = formData.statusId === STATUS.TERMINE;
+    // ── La date de clôture : le seul champ qui fait bouger le statut ici ─────
+    // Une duplication peut être close à tout moment. Un enregistrement seulement
+    // une fois l'attribution « Terminé » — l'enregistrement est revenu aux ECA —,
+    // ce que guardOrderCompletion exige de toute façon. Une date déjà présente
+    // reste modifiable (et effaçable) même hors de ce cas : une demande reprise
+    // d'Access peut porter n'importe quelle paire, et c'est ici qu'on la corrige.
+    const recordingIsBack = assignmentStatusId === STATUS.TERMINE;
+    const closureDateEnabled =
+        formData.isDuplication || recordingIsBack || !!formData.closureDate;
+    // La date est là, mais l'enregistrement, lui, n'est pas revenu.
+    const closureBlocked =
+        !formData.isDuplication && !!formData.closureDate && !assignmentUnknown && !recordingIsBack;
+    // Refusé seulement si l'enregistrement CHANGERAIT le statut, comme le serveur
+    // (guardOrderCompletion n'y regarde que sur un vrai changement) : une demande
+    // déjà « Terminé » reprise d'Access reste modifiable pour ses notes.
+    const closureBlocksSave = closureBlocked && derivedStatusId !== initialData?.statusId;
+    const closureBlockedMessage = assignmentStatusId === null
+        ? "Cette demande d'enregistrement n'a pas d'attribution : créez-la et terminez-la (date de retour aux ECA) avant de renseigner la date de clôture."
+        : "L'attribution n'est pas terminée : l'enregistrement doit être revenu aux ECA (date de retour sur l'attribution) avant que la demande puisse être close.";
 
-    // « En cours » is attribution-driven and can't be chosen here (see the note by
-    // the select). A demande already sitting on it keeps it selected — the option
-    // is only ever locked *out of*, never *out from under*, the current value.
-    const enCoursIsLocked =
-        !formData.isDuplication && formData.statusId !== STATUS.EN_COURS;
-    // …but only explain it where someone would actually reach for « En cours ».
-    // Once the enregistrement is back (« Attente envoi vers auditeur » / « Terminé »)
-    // the note below about the expédition is the one that matters, and stacking both
-    // just buries it.
-    const showEnCoursHint =
-        enCoursIsLocked &&
-        (formData.statusId === null || formData.statusId === STATUS.ATTENTE);
-    const isAttenteAuditeur = formData.statusId === STATUS.ATTENTE_AUDITEUR;
-    // Reaching « Attente envoi vers auditeur » normally means the attribution is
-    // « Terminé » (guardOrderCompletion), carrying a date d'envoi and une date de
-    // retour — walking the demande back to « Attente envoi vers lecteur » would
-    // contradict those attribution-owned dates, and the server refuses it
-    // (guardDemandeStatusSync). That guard only fires when an attribution is
-    // actually linked, so mirror it exactly: a demande with no attribution at all
-    // (data edited outside the guarded API) has nothing to contradict and the
-    // server would accept the change — don't lock it here either.
-    const attenteIsLocked =
-        isAttenteAuditeur &&
-        !!initialAssignment &&
-        (!!initialAssignment.sentToReaderDate || !!initialAssignment.returnedToECADate);
+    const statusName = (id: number | null | undefined) =>
+        statuses.find((s) => s.id === id)?.name ?? '—';
+    // Le statut enregistré ne correspond plus à ce que dit la demande : soit on
+    // vient de toucher la date ou le type, soit c'est une ancienne demande dont la
+    // paire statut/date n'a jamais été cohérente. Dans les deux cas, dire ce que
+    // l'enregistrement va changer.
+    const statusWillChange =
+        !!initialData && !assignmentUnknown && derivedStatusId !== initialData.statusId;
+
     const blockingRecording =
         formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
             ? blockingRecordingFor(formData.catalogueId)
@@ -706,9 +737,9 @@ export function OrderFormBackendBase({
                             <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink> (
                             {getBillingStatusLabel(initialBill.state as BillingStatus).toLowerCase()}), déjà
                             imprimée et envoyée à l&apos;auditeur. Le livre, la date et le coût restent
-                            modifiables — le document devra alors être réimprimé. L&apos;auditeur et le
-                            retour en arrière du statut sont verrouillés : rouvrez la facture et
-                            retirez-en la demande pour y toucher.
+                            modifiables — le document devra alors être réimprimé. L&apos;auditeur est
+                            verrouillé et la date de clôture ne peut plus être effacée : rouvrez la
+                            facture et retirez-en la demande pour y toucher.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -931,135 +962,10 @@ export function OrderFormBackendBase({
                         </div>
                     </div>
 
-                    {/* Status */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Statut <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={formData.statusId?.toString() || ''}
-                            onValueChange={handleStatusChange}
-                        >
-                            <SelectTrigger ref={registerField('statusId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
-                                <SelectValue placeholder="Sélectionner un statut" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
-                                <div className="py-1">
-                                    {/* « Soldé » is a facture status, not a demande status — only a
-                                        facture may be soldée. No exception for a legacy demande: no
-                                        demande in production holds it, so it is never offered, full stop
-                                        (guardOrderStatus rejects it server-side too).
-
-                                        A duplication has a two-state lifecycle, « À faire » → « Terminé »:
-                                        it owns no attribution, so the statuts that describe a book sitting
-                                        with a lecteur are never offered on one. Conversely « À faire » is
-                                        duplication-only — an enregistrement starts at « Attente envoi vers
-                                        lecteur », which already means "à faire" and names the action. */}
-                                    {statuses
-                                        .filter((status) => {
-                                            if (status.id === STATUS.SOLDE) return false;
-                                            // Whatever else the demande already holds stays visible, so a
-                                            // legacy row never opens on a blank required field.
-                                            if (status.id === formData.statusId) return true;
-                                            if (formData.isDuplication) {
-                                                return status.id === STATUS.A_FAIRE || status.id === STATUS.TERMINE;
-                                            }
-                                            return status.id !== STATUS.A_FAIRE;
-                                        })
-                                        .map((status) => (
-                                            <SelectItem
-                                                key={status.id}
-                                                value={status.id.toString()}
-                                                disabled={
-                                                    (enCoursIsLocked && status.id === STATUS.EN_COURS) ||
-                                                    (attenteIsLocked && status.id === STATUS.ATTENTE) ||
-                                                    (statusRollbackLocked && status.id !== STATUS.TERMINE)
-                                                }
-                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                                            >
-                                                <span className="font-medium">{status.name}</span>
-                                            </SelectItem>
-                                        ))}
-                                </div>
-                            </SelectContent>
-                        </Select>
-                        {/* « En cours » décrit un livre parti chez un lecteur : ce sont
-                            l'attribution et sa date d'envoi qui le rendent vrai, pas ce
-                            menu. L'option reste visible mais désactivée — la masquer
-                            laisserait croire à un oubli au lieu d'expliquer la règle.
-                            Le serveur la refuse aussi (guardManualEnCours) : ceci n'est
-                            que le rappel de tous les jours. */}
-                        {statusRollbackLocked && initialBill && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                Statut verrouillé : la facture #{initialBill.id} annonce cette prestation
-                                comme rendue et elle est déjà partie. Rouvrez-la et retirez-en la demande
-                                pour la rouvrir à son tour.
-                            </p>
-                        )}
-                        {statusRollbackDetaches && initialBill && (
-                            <p className="text-xs text-muted-foreground">
-                                Sortir de « Terminé » retirera la demande de la facture #{initialBill.id}
-                                {' '}(brouillon) et son montant du total — c&apos;est « Terminé » qui
-                                l&apos;y avait mise.
-                            </p>
-                        )}
-                        {showEnCoursHint && (
-                            <p className="text-xs text-muted-foreground">
-                                « En cours » suit l&apos;attribution : renseignez-y le lecteur et la date
-                                d&apos;envoi, la demande passera « En cours » automatiquement.
-                            </p>
-                        )}
-                        {isAttenteAuditeur && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                L&apos;enregistrement est revenu du lecteur mais n&apos;a pas encore été
-                                expédié à l&apos;auditeur. Passez la demande « Terminé » le jour de
-                                l&apos;expédition — c&apos;est ce jour-là qui devient la date de clôture.
-                                {attenteIsLocked && (
-                                    <> « Attente envoi vers lecteur » est verrouillé : l&apos;attribution
-                                    est déjà « Terminé », avec sa date d&apos;envoi et sa date de retour.</>
-                                )}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Closure Date — sous le statut, qui la remplit et la verrouille. */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Date de clôture</label>
-                        <p className="text-xs text-muted-foreground">
-                            Date à laquelle la demande terminée est expédiée à l&apos;auditeur (clôture).
-                            Renseignée automatiquement au passage au statut « Terminé » et effacée si la
-                            demande en ressort — modifiez-la seulement pour corriger le jour.
-                            {!isTermine && ' Seule une demande « Terminé » peut porter une date de clôture.'}
-                        </p>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    disabled={!isTermine}
-                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    {formData.closureDate ? (
-                                        format(formData.closureDate, 'PPP', { locale: fr })
-                                    ) : (
-                                        <span>Sélectionner une date</span>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-card border-border">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={formData.closureDate || undefined}
-                                    onSelect={(date) => setFormData({ ...formData, closureDate: date || null })}
-                                    initialFocus
-                                    className="bg-card text-foreground"
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    {/* Affectation liée — read-only, sous le statut : c'est elle qui fait « En cours ». Hidden for duplications:
-                        a duplication never has an affectation, so showing it confuses the team. */}
+                    {/* Attribution liée — read-only, au-dessus de la date de clôture et du
+                        statut : c'est elle qui fait « En cours » puis « Attente envoi vers
+                        auditeur ». Hidden for duplications: a duplication never has an
+                        attribution, so showing it confuses the team. */}
                     {!formData.isDuplication && (
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Attribution</label>
@@ -1077,6 +983,11 @@ export function OrderFormBackendBase({
                                                 Envoyé au lecteur le {format(new Date(initialAssignment.sentToReaderDate), 'dd/MM/yyyy', { locale: fr })}
                                             </div>
                                         )}
+                                        {initialAssignment.returnedToECADate && (
+                                            <div className="text-xs text-muted-foreground">
+                                                Revenu aux ECA le {format(new Date(initialAssignment.returnedToECADate), 'dd/MM/yyyy', { locale: fr })}
+                                            </div>
+                                        )}
                                     </div>
                                     <Link
                                         href={`/admin/assignments?assignment=${initialAssignment.id}`}
@@ -1089,11 +1000,134 @@ export function OrderFormBackendBase({
                                 </div>
                             ) : (
                                 <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
-                                    Aucune attribution
+                                    {assignmentUnknown ? 'Chargement…' : 'Aucune attribution'}
                                 </div>
                             )}
                         </div>
                     )}
+
+                    {/* Date de clôture — le jour de l'expédition à l'auditeur. C'est elle, et
+                        non plus un menu, qui fait passer la demande « Terminé » : le statut
+                        en dessous en est déduit (deriveOrderStatus). */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                            Date de clôture (envoi à l&apos;auditeur)
+                        </label>
+                        <div className="flex items-center gap-2">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        disabled={!closureDateEnabled}
+                                        className="min-w-0 flex-1 justify-start text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
+                                    >
+                                        <Calendar className="mr-2 h-4 w-4" />
+                                        {formData.closureDate ? (
+                                            format(formData.closureDate, 'PPP', { locale: fr })
+                                        ) : (
+                                            <span className="text-muted-foreground">Sélectionner une date</span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 bg-card border-border">
+                                    <CalendarComponent
+                                        mode="single"
+                                        selected={formData.closureDate || undefined}
+                                        onSelect={(date) => setClosureDate(date || null)}
+                                        initialFocus
+                                        className="bg-card text-foreground"
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                            {/* Le cas courant — on expédie aujourd'hui — reste à un clic,
+                                comme quand choisir « Terminé » remplissait la date. Et
+                                « Effacer » parce que personne ne devine qu'on vide un
+                                calendrier en recliquant le jour choisi. */}
+                            {!formData.closureDate ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={!closureDateEnabled}
+                                    onClick={() => setClosureDate(today())}
+                                    className="shrink-0"
+                                >
+                                    Aujourd&apos;hui
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={statusRollbackLocked}
+                                    onClick={() => setClosureDate(null)}
+                                    className="shrink-0"
+                                >
+                                    Effacer
+                                </Button>
+                            )}
+                        </div>
+                        {!closureDateEnabled && !assignmentUnknown && (
+                            <p className="text-xs text-muted-foreground">
+                                {assignmentStatusId === null
+                                    ? 'Renseignable une fois l’attribution créée et terminée (date de retour aux ECA).'
+                                    : 'Renseignable une fois l’enregistrement revenu aux ECA (date de retour sur l’attribution).'}
+                            </p>
+                        )}
+                        {closureBlocked && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                {closureBlockedMessage}
+                            </p>
+                        )}
+                        {statusRollbackLocked && initialBill && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                La date ne peut plus être effacée : la facture #{initialBill.id} annonce
+                                cette prestation comme rendue et elle est déjà partie. Rouvrez-la et
+                                retirez-en la demande pour rouvrir la demande à son tour.
+                            </p>
+                        )}
+                        {statusRollbackDetaches && initialBill && (
+                            <p className="text-xs text-muted-foreground">
+                                Effacer la date retirera la demande de la facture #{initialBill.id}
+                                {' '}(brouillon) et son montant du total — c&apos;est la clôture qui
+                                l&apos;y avait mise.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Statut — déduit, pas choisi : de la date de clôture et de l'attribution
+                        (deriveOrderStatus). Affiché comme celui de l'attribution. */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Statut</label>
+                        <div
+                            tabIndex={-1}
+                            className="flex items-center w-full rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
+                            aria-readonly="true"
+                            title="Le statut est déterminé automatiquement par l'attribution et la date de clôture."
+                        >
+                            {statusName(derivedStatusId)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            {formData.isDuplication
+                                ? 'Déterminé automatiquement par la date de clôture.'
+                                : 'Déterminé automatiquement par l’attribution et la date de clôture.'}
+                            {statusWillChange && (
+                                <> Enregistré aujourd&apos;hui : « {statusName(initialData?.statusId)} » — il
+                                deviendra « {statusName(derivedStatusId)} » à l&apos;enregistrement.</>
+                            )}
+                        </p>
+                        {derivedStatusId === STATUS.ATTENTE && assignmentStatusId === null && !assignmentUnknown && (
+                            <p className="text-xs text-muted-foreground">
+                                La demande passera « En cours » dès que son attribution aura un lecteur
+                                et une date d&apos;envoi.
+                            </p>
+                        )}
+                        {derivedStatusId === STATUS.ATTENTE_AUDITEUR && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                L&apos;enregistrement est revenu du lecteur mais n&apos;a pas encore été
+                                expédié à l&apos;auditeur. Renseignez la date de clôture le jour de
+                                l&apos;expédition : la demande passera « Terminé ».
+                            </p>
+                        )}
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                         {/* Media Format */}
