@@ -91,3 +91,5 @@ La modification d'une liste s'effectue de la même manière que son ajout. La se
 En haut à droite, vous pouvez imprimer la liste, ou la supprimer avec le bouton « ⋯ ». Les livres eux-mêmes restent au catalogue.
 
 La liste imprimée contient exactement ce que montre le site public : les livres masqués du catalogue et les livres supprimés n'y figurent pas. Un livre supprimé reste dans la liste avec l'étiquette « **Supprimé** » : il reviendra tout seul si sa fiche est restaurée.
+
+La liste imprimée est mise en page pour tenir sur le moins de pages possible. En tête : le logo, le titre de la liste et le message habituel aux adhérents dans un cadre ; en pied : le numéro de page. Le reste : un seul corps de texte, un titre de genre centré en gras, puis pour chaque livre le titre et l'auteur en gras sur la même ligne, suivis de la présentation justifiée et de l'éditeur, de l'année, du nombre de pages et de la durée d'écoute. Plus les présentations sont courtes, moins il y a de pages : pensez à les résumer dans la fiche du livre.
