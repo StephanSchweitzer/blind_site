@@ -28,7 +28,7 @@ import { parisDate } from '@/lib/paris-day';
 import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
 import { SearchSuggestions } from '@/components/ui/search-suggestions';
 import type { VocabularyDomain } from '@/lib/search-suggestion-types';
-import { OrderNotFinishedNote } from './OrderNotFinishedNote';
+import { OrderNotFinishedNote, UnavailableOrderList, type UnavailableOrder } from './BillOrderPicker';
 
 const PEOPLE_DOMAIN: readonly VocabularyDomain[] = ['people'];
 
@@ -155,6 +155,19 @@ export function BillFormBackendBase({
     const [eligibleOrders, setEligibleOrders] = useState<EligibleOrder[]>([]);
     const [isLoadingOrders, setIsLoadingOrders] = useState(false);
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<number>>(new Set());
+    // Les autres demandes de l'auditeur, grisées sous les cochables (BillOrderPicker).
+    const [unavailableOrders, setUnavailableOrders] = useState<UnavailableOrder[]>([]);
+    const [unavailableTotal, setUnavailableTotal] = useState(0);
+    // Recherche dans les demandes de l'auditeur. `eligibleOrders` reste la liste
+    // COMPLÈTE des cochables, chargée sans recherche : la recherche ne fait que
+    // masquer des lignes, si bien qu'une demande cochée puis masquée compte
+    // toujours dans le total — et la phrase sous la liste le dit.
+    const [orderSearch, setOrderSearch] = useState('');
+    const [orderSearchResult, setOrderSearchResult] = useState<{
+        matchingIds: Set<number>;
+        unavailable: UnavailableOrder[];
+        total: number;
+    } | null>(null);
 
     // Search users
     useEffect(() => {
@@ -204,8 +217,10 @@ export function BillFormBackendBase({
             try {
                 const res = await fetch(`/api/bills/eligible-orders?clientId=${selectedClient.id}`);
                 if (res.ok) {
-                    const { orders } = await res.json();
+                    const { orders, unavailable, unavailableTotal } = await res.json();
                     setEligibleOrders(orders);
+                    setUnavailableOrders(unavailable ?? []);
+                    setUnavailableTotal(unavailableTotal ?? 0);
                     // Pré-cochées : seulement celles qui sont prêtes à être
                     // facturées. Voir isReadyToBill.
                     setSelectedOrderIds(
@@ -217,16 +232,59 @@ export function BillFormBackendBase({
                     );
                 } else {
                     setEligibleOrders([]);
+                    setUnavailableOrders([]);
+                    setUnavailableTotal(0);
                 }
             } catch (err) {
                 console.error('Error loading eligible orders:', err);
                 setEligibleOrders([]);
+                setUnavailableOrders([]);
+                setUnavailableTotal(0);
             } finally {
                 setIsLoadingOrders(false);
             }
         };
         loadOrders();
     }, [selectedClient]);
+
+    // La recherche, à part : elle ne recharge pas les cochables (voir orderSearchResult).
+    useEffect(() => {
+        if (!selectedClient) return;
+        const q = orderSearch.trim();
+        const controller = new AbortController();
+        const timer = setTimeout(async () => {
+            if (!q) {
+                setOrderSearchResult(null);
+                return;
+            }
+            try {
+                const params = new URLSearchParams({ clientId: String(selectedClient.id), search: q });
+                const res = await fetch(`/api/bills/eligible-orders?${params}`, { signal: controller.signal });
+                if (!res.ok) return;
+                const data = await res.json();
+                setOrderSearchResult({
+                    matchingIds: new Set((data.orders as EligibleOrder[]).map((o) => o.id)),
+                    unavailable: data.unavailable ?? [],
+                    total: data.unavailableTotal ?? 0,
+                });
+            } catch {
+                // Abandonnée par une frappe plus récente, ou réseau : la liste reste telle quelle.
+            }
+        }, 350);
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
+    }, [orderSearch, selectedClient]);
+
+    const visibleOrders = orderSearchResult
+        ? eligibleOrders.filter((o) => orderSearchResult.matchingIds.has(o.id))
+        : eligibleOrders;
+    const hiddenSelectedCount = orderSearchResult
+        ? eligibleOrders.filter((o) => selectedOrderIds.has(o.id) && !orderSearchResult.matchingIds.has(o.id)).length
+        : 0;
+    const shownUnavailable = orderSearchResult ? orderSearchResult.unavailable : unavailableOrders;
+    const shownUnavailableTotal = orderSearchResult ? orderSearchResult.total : unavailableTotal;
 
     const totalAmount = useMemo(
         () =>
@@ -247,6 +305,8 @@ export function BillFormBackendBase({
 
     const handleClientSelect = (user: User) => {
         setSelectedClient(user);
+        setOrderSearch('');
+        setOrderSearchResult(null);
         setUserPopoverOpen(false);
         setUserSearch('');
     };
@@ -413,54 +473,88 @@ export function BillFormBackendBase({
                                 <div className="flex items-center gap-2 text-muted-foreground px-3 py-4">
                                     <Loader2 className="h-4 w-4 animate-spin" /> Chargement des demandes...
                                 </div>
-                            ) : eligibleOrders.length === 0 ? (
+                            ) : eligibleOrders.length === 0 && unavailableTotal === 0 ? (
                                 <div className="px-3 py-4 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
-                                    Aucune demande facturable pour ce client
+                                    Aucune demande pour cet auditeur
                                 </div>
                             ) : (
-                                <div className="border border-border rounded-md divide-y divide-border max-h-[260px] overflow-y-auto">
-                                    {eligibleOrders.map((o) => (
-                                        <label
-                                            key={o.id}
-                                            className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted cursor-pointer"
-                                        >
-                                            <Checkbox
-                                                checked={selectedOrderIds.has(o.id)}
-                                                onCheckedChange={() => toggleOrder(o.id)}
-                                                className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-foreground text-sm font-medium truncate">
-                                                    #{o.id} — {o.catalogue.title}
-                                                </div>
-                                                <div className="text-muted-foreground text-xs truncate">
-                                                    {o.catalogue.author} · {parisDate(o.requestReceivedDate)}
-                                                    {o.statusName ? ` · ${o.statusName}` : ''}
-                                                </div>
-                                                {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}
-                                                <OrderNotFinishedNote statusId={o.statusId} />
-                                                {o.cost == null && (
-                                                    <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
-                                                        Aucun tarif renseigné — serait facturée 0,00 €
+                                <>
+                                    {/* Une demande absente des cochables se retrouve ici, avec
+                                        la raison : un auditeur en a parfois des milliers. */}
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            value={orderSearch}
+                                            onChange={(e) => setOrderSearch(e.target.value)}
+                                            placeholder="Rechercher une de ses demandes : titre, auteur, n°…"
+                                            aria-label="Rechercher une demande de cet auditeur"
+                                            className="pl-8 bg-muted border-border text-foreground placeholder:text-muted-foreground h-9 text-sm"
+                                        />
+                                    </div>
+                                    {visibleOrders.length === 0 ? (
+                                        <div className="px-3 py-3 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
+                                            {orderSearchResult
+                                                ? 'Aucune demande à facturer ne correspond à cette recherche'
+                                                : 'Aucune demande à facturer : voyez pourquoi ci-dessous'}
+                                        </div>
+                                    ) : (
+                                        <div className="border border-border rounded-md divide-y divide-border max-h-[260px] overflow-y-auto">
+                                            {visibleOrders.map((o) => (
+                                                <label
+                                                    key={o.id}
+                                                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted cursor-pointer"
+                                                >
+                                                    <Checkbox
+                                                        checked={selectedOrderIds.has(o.id)}
+                                                        onCheckedChange={() => toggleOrder(o.id)}
+                                                        className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-foreground text-sm font-medium truncate">
+                                                            #{o.id} — {o.catalogue.title}
+                                                        </div>
+                                                        <div className="text-muted-foreground text-xs truncate">
+                                                            {o.catalogue.author} · {parisDate(o.requestReceivedDate)}
+                                                            {o.statusName ? ` · ${o.statusName}` : ''}
+                                                        </div>
+                                                        {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}
+                                                        <OrderNotFinishedNote statusId={o.statusId} />
+                                                        {o.cost == null && (
+                                                            <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
+                                                                Aucun tarif renseigné — serait facturée 0,00 €
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                            <span className="text-foreground text-sm font-medium whitespace-nowrap">
-                                                {o.cost == null ? '—' : formatCurrency(o.cost)}
-                                            </span>
-                                            <a
-                                                href={`/admin/orders?order=${o.id}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                onClick={(e) => e.stopPropagation()}
-                                                title="Ouvrir la demande dans un nouvel onglet"
-                                                className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
-                                            >
-                                                <ExternalLink className="h-3.5 w-3.5" />
-                                            </a>
-                                        </label>
-                                    ))}
-                                </div>
+                                                    <span className="text-foreground text-sm font-medium whitespace-nowrap">
+                                                        {o.cost == null ? '—' : formatCurrency(o.cost)}
+                                                    </span>
+                                                    <a
+                                                        href={`/admin/orders?order=${o.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        title="Ouvrir la demande dans un nouvel onglet"
+                                                        className="shrink-0 p-1 rounded text-muted-foreground hover:text-blue-600 hover:bg-blue-100 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
+                                                    >
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                    </a>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {hiddenSelectedCount > 0 && (
+                                        <p className="text-xs text-muted-foreground px-1">
+                                            {hiddenSelectedCount === 1
+                                                ? '1 demande cochée est masquée par la recherche ; elle compte dans le total.'
+                                                : `${hiddenSelectedCount} demandes cochées sont masquées par la recherche ; elles comptent dans le total.`}
+                                        </p>
+                                    )}
+                                    <UnavailableOrderList
+                                        orders={shownUnavailable}
+                                        total={shownUnavailableTotal}
+                                        clientName={[selectedClient.firstName, selectedClient.lastName].filter(Boolean).join(' ')}
+                                    />
+                                </>
                             )}
                         </div>
                     )}

@@ -27,14 +27,9 @@ import { parisDate } from '@/lib/paris-day';
 import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
 import { SearchSuggestions } from '@/components/ui/search-suggestions';
 import type { VocabularyDomain } from '@/lib/search-suggestion-types';
-import { pageInfo } from '@/lib/pagination';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { AdminPagerButtons } from './AdminPagination';
-import { OrderNotFinishedNote } from './OrderNotFinishedNote';
-
-/** Demandes non facturées par page, dans le panneau « Ajouter » d'un brouillon. */
-const UNBILLED_PAGE_SIZE = 10;
+import { OrderNotFinishedNote, UnavailableOrderList, type UnavailableOrder } from './BillOrderPicker';
 
 const BOOK_DOMAINS: readonly VocabularyDomain[] = ['books'];
 
@@ -95,14 +90,14 @@ interface BillPayment {
     paymentReference: string | null;
 }
 
+/** Une demande rattachable à ce brouillon (GET /api/bills/eligible-orders). */
 interface UnbilledOrder {
     id: number;
     requestReceivedDate: string;
-    cost: number | string | null;
+    cost: number | null;
     statusId: number;
-    status: { name: string } | null;
+    statusName: string | null;
     catalogue: { title: string; author: string };
-    aveugle: { firstName: string | null; lastName: string | null; email: string | null };
 }
 
 interface EditBillModalProps {
@@ -186,9 +181,11 @@ export function EditBillModal({
     // Order add (draft mode)
     const [orderSearch, setOrderSearch] = useState('');
     const [unbilledOrders, setUnbilledOrders] = useState<UnbilledOrder[]>([]);
-    const [orderPage, setOrderPage] = useState(1);
-    // Le total, pas seulement le nombre de pages : la barre dit « 11–20 sur 57 ».
-    const [orderTotal, setOrderTotal] = useState(0);
+    // Les autres demandes de l'auditeur, grisées sous les rattachables (BillOrderPicker).
+    // Plus de pagination : les rattachables sont une poignée, les autres plafonnées
+    // par la route, et la recherche retrouve le reste.
+    const [unavailableOrders, setUnavailableOrders] = useState<UnavailableOrder[]>([]);
+    const [unavailableTotal, setUnavailableTotal] = useState(0);
     const [isLoadingOrders, setIsLoadingOrders] = useState(false);
     const [addingOrderId, setAddingOrderId] = useState<number | null>(null);
     const [removingOrderId, setRemovingOrderId] = useState<number | null>(null);
@@ -218,7 +215,6 @@ export function EditBillModal({
         setStatusError(null);
         setShowAddPanel(false);
         setOrderSearch('');
-        setOrderPage(1);
     }, []);
 
     useEffect(() => {
@@ -238,23 +234,28 @@ export function EditBillModal({
 
     // ── Load unbilled orders (debounced) ───────────────────────────────────────
 
-    const loadUnbilledOrders = useCallback(async (search: string, page: number, clientId: number) => {
+    // La même route que « Créer une nouvelle facture », avec ce brouillon : elle
+    // applique la règle du serveur (orderAttachBlock), si bien que la liste ne
+    // propose plus une demande que « Ajouter » refuserait — une revue tarifée à la
+    // page, avant.
+    const loadUnbilledOrders = useCallback(async (search: string, clientId: number, forBillId: number) => {
         setIsLoadingOrders(true);
         try {
             const params = new URLSearchParams({
-                unbilled: 'true',
-                aveugleId: String(clientId),
-                page: String(page),
-                limit: String(UNBILLED_PAGE_SIZE),
+                clientId: String(clientId),
+                billId: String(forBillId),
                 ...(search ? { search } : {}),
             });
-            const res = await fetch(`/api/orders?${params}`);
+            const res = await fetch(`/api/bills/eligible-orders?${params}`);
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.message || 'Erreur');
             setUnbilledOrders(data.orders ?? []);
-            setOrderTotal(data.totalOrders ?? 0);
+            setUnavailableOrders(data.unavailable ?? []);
+            setUnavailableTotal(data.unavailableTotal ?? 0);
         } catch {
             setUnbilledOrders([]);
+            setUnavailableOrders([]);
+            setUnavailableTotal(0);
         } finally {
             setIsLoadingOrders(false);
         }
@@ -264,24 +265,27 @@ export function EditBillModal({
         if (!showAddPanel || !bill) return;
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         searchTimeoutRef.current = setTimeout(() => {
-            loadUnbilledOrders(orderSearch, orderPage, bill.client.id);
+            loadUnbilledOrders(orderSearch, bill.client.id, bill.id);
         }, 350);
         return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
-    }, [showAddPanel, orderSearch, orderPage, bill, loadUnbilledOrders]);
+    }, [showAddPanel, orderSearch, bill, loadUnbilledOrders]);
 
-    // « Vouliez-vous dire … ? » when the demande search finds nothing — checked
-    // through the same route and filters (this client, non facturées).
-    const orderSuggestions = useVerifiedSuggestions<UnbilledOrder>({
+    // « Vouliez-vous dire … ? » when the demande search finds nothing at all —
+    // checked through the same route (this client, this brouillon), and counting
+    // the greyed demandes too: finding one there is an answer.
+    const orderSuggestions = useVerifiedSuggestions<Pick<UnbilledOrder, 'id' | 'catalogue'>>({
         query: orderSearch,
-        active: showAddPanel && !!bill && !!orderSearch.trim() && !isLoadingOrders && unbilledOrders.length === 0,
+        active:
+            showAddPanel && !!bill && !!orderSearch.trim() && !isLoadingOrders &&
+            unbilledOrders.length === 0 && unavailableOrders.length === 0,
         domains: BOOK_DOMAINS,
         fetcher: async (q, signal) => {
             if (!bill) return [];
-            const params = new URLSearchParams({ unbilled: 'true', aveugleId: String(bill.client.id), search: q });
-            const res = await fetch(`/api/orders?${params}`, { signal });
+            const params = new URLSearchParams({ clientId: String(bill.client.id), billId: String(bill.id), search: q });
+            const res = await fetch(`/api/bills/eligible-orders?${params}`, { signal });
             if (!res.ok) return [];
             const data = await res.json();
-            return data.orders ?? [];
+            return [...(data.orders ?? []), ...(data.unavailable ?? [])];
         },
         resultLimit: 10,
     });
@@ -325,7 +329,7 @@ export function EditBillModal({
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.message || 'Erreur');
             await loadBill(billId);
-            if (bill) loadUnbilledOrders(orderSearch, orderPage, bill.client.id);
+            if (bill) loadUnbilledOrders(orderSearch, bill.client.id, bill.id);
             onBillUpdated?.();
         } catch (err) {
             toastError(err instanceof Error ? err.message : 'Erreur inattendue');
@@ -346,7 +350,7 @@ export function EditBillModal({
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.message || 'Erreur');
             await loadBill(billId);
-            if (bill) loadUnbilledOrders(orderSearch, orderPage, bill.client.id);
+            if (bill) loadUnbilledOrders(orderSearch, bill.client.id, bill.id);
             onBillUpdated?.();
         } catch (err) {
             toastError(err instanceof Error ? err.message : 'Erreur inattendue');
@@ -932,7 +936,6 @@ export function EditBillModal({
                                         onClick={() => {
                                             setShowAddPanel((v) => !v);
                                             setOrderSearch('');
-                                            setOrderPage(1);
                                         }}
                                         className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors mt-1"
                                     >
@@ -946,8 +949,9 @@ export function EditBillModal({
                                         <div className="mt-2 space-y-2 border border-border rounded-md p-3">
                                             <Input
                                                 value={orderSearch}
-                                                onChange={(e) => { setOrderSearch(e.target.value); setOrderPage(1); }}
-                                                placeholder="Rechercher par titre, auteur…"
+                                                onChange={(e) => setOrderSearch(e.target.value)}
+                                                placeholder="Rechercher une de ses demandes : titre, auteur, n°…"
+                                                aria-label="Rechercher une demande de cet auditeur"
                                                 className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-sm"
                                             />
 
@@ -955,23 +959,35 @@ export function EditBillModal({
                                                 <div className="flex items-center justify-center py-4 text-muted-foreground gap-2">
                                                     <Loader2 className="h-4 w-4 animate-spin" /> Chargement…
                                                 </div>
-                                            ) : unbilledOrders.length === 0 ? (
+                                            ) : unbilledOrders.length === 0 && unavailableOrders.length === 0 ? (
                                                 <div>
-                                                    <div className="text-muted-foreground text-sm italic py-2">Aucune demande disponible</div>
+                                                    <div className="text-muted-foreground text-sm italic py-2">
+                                                        {orderSearch.trim()
+                                                            ? 'Aucune demande de cet auditeur ne correspond à cette recherche'
+                                                            : 'Aucune autre demande pour cet auditeur'}
+                                                    </div>
                                                     {orderSearch.trim() && (
                                                         <SearchSuggestions
                                                             suggestions={orderSuggestions}
-                                                            onPick={(q) => { setOrderSearch(q); setOrderPage(1); }}
+                                                            onPick={(q) => setOrderSearch(q)}
                                                             renderItem={(o) => `#${o.id} — ${o.catalogue.title}`}
                                                             getItemKey={(o) => o.id}
                                                             // Adding a demande changes the facture: a click here
                                                             // only brings it into the list, where « Ajouter » does it.
-                                                            onPickItem={(o) => { setOrderSearch(String(o.id)); setOrderPage(1); }}
+                                                            onPickItem={(o) => setOrderSearch(String(o.id))}
                                                             compact
                                                         />
                                                     )}
                                                 </div>
                                             ) : (
+                                                <>
+                                                {unbilledOrders.length === 0 ? (
+                                                    <div className="text-muted-foreground text-sm italic py-2">
+                                                        {orderSearch.trim()
+                                                            ? 'Aucune demande à ajouter ne correspond à cette recherche'
+                                                            : 'Aucune demande à ajouter : voyez pourquoi ci-dessous'}
+                                                    </div>
+                                                ) : (
                                                 <div className="divide-y divide-border max-h-[200px] overflow-y-auto">
                                                     {unbilledOrders.map((o) => (
                                                         <div key={o.id} className="flex items-start gap-3 py-2">
@@ -981,7 +997,7 @@ export function EditBillModal({
                                                                 </div>
                                                                 <div className="text-muted-foreground text-xs break-words">
                                                                     {o.catalogue.author} · {formatDate(o.requestReceivedDate)}
-                                                                    {o.status?.name && ` · ${o.status.name}`}
+                                                                    {o.statusName && ` · ${o.statusName}`}
                                                                     {o.cost != null && ` · ${formatCurrency(o.cost)}`}
                                                                 </div>
                                                                 <OrderNotFinishedNote statusId={o.statusId} />
@@ -1009,19 +1025,14 @@ export function EditBillModal({
                                                         </div>
                                                     ))}
                                                 </div>
-                                            )}
-
-                                            {/* Des boutons, pas des liens : une page de cette liste n'a pas
-                                                d'adresse, elle vit dans le modal (voir AdminPagerButtons). */}
-                                            <div className="pt-1">
-                                                <AdminPagerButtons
-                                                    info={pageInfo(orderPage, UNBILLED_PAGE_SIZE, orderTotal)}
-                                                    noun={{ one: 'demande', many: 'demandes', feminine: true }}
-                                                    label="Pages des demandes à ajouter"
-                                                    onPage={setOrderPage}
-                                                    pending={isLoadingOrders}
+                                                )}
+                                                <UnavailableOrderList
+                                                    orders={unavailableOrders}
+                                                    total={unavailableTotal}
+                                                    clientName={[bill.client.firstName, bill.client.lastName].filter(Boolean).join(' ')}
                                                 />
-                                            </div>
+                                                </>
+                                            )}
                                         </div>
                                     )}
                                 </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
-import { Prisma, BillingStatus, OrderBillingStatus } from '@prisma/client';
+import { Prisma, BillingStatus } from '@prisma/client';
 import { userAddressLines } from '@/lib/users/formatAddress';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { STATUS } from '@/lib/statusSync';
@@ -15,9 +15,17 @@ import {
     paymentPrecedesIssue,
     summarizeBillPayments,
     syncBillPaymentInfo,
-    guardOrderMatchesBillKind,
+    orderAttachBlock,
+    type OrderAttachBlock,
 } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
+
+const ATTACH_BLOCK_ERROR: Record<OrderAttachBlock, string> = {
+    ON_BILL: 'ORDER_ALREADY_BILLED',
+    UNBILLABLE: 'ORDER_UNBILLABLE',
+    KIND_MISMATCH: 'BILL_KIND_MISMATCH',
+    AWAITING_SHIPMENT: 'ORDER_AWAITING_SHIPMENT',
+};
 
 export const GET = withAdmin(async (_request, context) => {
     try {
@@ -422,15 +430,14 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 // rattachée : l'accepter par ici revenait à contourner le garde.
                 const order = await tx.orders.findUnique({
                     where: { id: parseInt(orderId) },
-                    select: { aveugleId: true, billId: true, isActive: true, billingStatus: true, pages: true },
+                    select: { aveugleId: true, billId: true, isActive: true, billingStatus: true, pages: true, statusId: true },
                 });
                 if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
                 if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
                 if (order.aveugleId !== bill.clientId) throw new Error('CLIENT_MISMATCH');
-                if (order.billingStatus === OrderBillingStatus.UNBILLABLE) throw new Error('ORDER_UNBILLABLE');
-                if (!guardOrderMatchesBillKind({ orderPages: order.pages, billKind: bill.kind }).ok) {
-                    throw new Error('BILL_KIND_MISMATCH');
-                }
+                // La même règle que la liste qui propose la demande — voir orderAttachBlock.
+                const block = orderAttachBlock(order, bill.kind);
+                if (block) throw new Error(ATTACH_BLOCK_ERROR[block]);
 
                 await tx.orders.update({
                     where: { id: parseInt(orderId) },
@@ -528,6 +535,10 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             ORDER_UNBILLABLE: ['Cette demande est marquée « Non facturable » et ne peut pas être rattachée à une facture', 400],
             BILL_KIND_MISMATCH: [
                 'Une demande tarifée à la page ne se rattache qu’à une facture pro-forma, et une demande au poids qu’à une facture standard',
+                409,
+            ],
+            ORDER_AWAITING_SHIPMENT: [
+                "Cette demande attend son envoi à l'auditeur : renseignez sa date de clôture, elle sera alors facturée toute seule",
                 409,
             ],
         };

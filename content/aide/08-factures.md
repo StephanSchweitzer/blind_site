@@ -35,7 +35,18 @@ Pour associer un auditeur et ses demandes disponibles, cliquez sur le champ « R
 
 ![Factures - capture 3](/admin/aide/images/factures-03.jpg)
 
-Cela affichera alors les demandes facturables de l'auditeur. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Un message en ambre signale une demande qui n'est pas encore terminée ou qui n'a pas de tarif. Pour une demande « Attente envoi vers auditeur » — l'enregistrement est revenu du lecteur mais n'est pas encore parti chez l'auditeur —, le message rappelle qu'il suffit de renseigner sa date de clôture : elle sera alors facturée toute seule. Ces demandes ne sont pas cochées d'avance.
+Cela affichera alors les demandes de l'auditeur que vous pouvez facturer. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Un message en ambre signale une demande qui n'est pas encore terminée ou qui n'a pas de tarif ; elle reste cochable, mais n'est pas cochée d'avance.
+
+### Les demandes qui ne peuvent pas être facturées ici
+
+Sous la liste viennent, grisées, les autres demandes de l'auditeur, chacune avec la raison qui l'empêche d'être ajoutée :
+
+- **déjà sur une facture** : le lien bleu « Sur la facture #… » ouvre cette facture dans un nouvel onglet, et indique son état (brouillon, émise…). Une facture pro-forma y figure comme les autres ;
+- **pas encore expédiée** (« Attente envoi vers auditeur ») : l'enregistrement est revenu du lecteur, mais n'est pas encore parti chez l'auditeur. Ouvrez la demande (l'icône à droite de la ligne) et renseignez sa date de clôture le jour de l'expédition : elle sera alors facturée toute seule. Elle ne peut pas être ajoutée à la main : sans date de clôture, elle resterait ouverte, et en retard ;
+- **tarifée à la page** : elle aura sa propre facture [pro-forma](#les-factures-pro-forma), émise à sa clôture ;
+- **non facturable**.
+
+Les demandes à clôturer viennent en premier, puis celles des factures en cours, et la liste s'arrête à dix. Pour en retrouver une autre, tapez son titre, son auteur ou son numéro dans la barre de recherche au-dessus de la liste : elle apparaît, cochable ou grisée, avec sa raison. Le lien « voyez toutes ses factures », sous la liste, ouvre la page des factures sur le nom de l'auditeur.
 
 ![Factures - capture 4](/admin/aide/images/factures-04.jpg)
 
@@ -73,7 +84,7 @@ Sur un brouillon, les fonctions de base sont les suivantes :
 
 (1) La section « **Changer le statut** » permet d'émettre la facture
 
-(2) « **Ajouter une demande** » ajoute une demande à la facture. Encore une fois, je ne le ferais pas, sauf dans des circonstances exceptionnelles, car les demandes sont automatiquement ajoutées aux factures dès qu'elles atteignent le statut « terminé ». La liste indique le statut de chaque demande, avec le même message en ambre que dans « Créer une facture » pour celles qui ne sont pas encore terminées.
+(2) « **Ajouter une demande** » ajoute une demande à la facture. Encore une fois, je ne le ferais pas, sauf dans des circonstances exceptionnelles, car les demandes sont automatiquement ajoutées aux factures dès qu'elles atteignent le statut « terminé ». La liste et sa barre de recherche fonctionnent comme dans « Créer une facture » : les demandes qu'on ne peut pas ajouter suivent, grisées, avec la raison (voir [Les demandes qui ne peuvent pas être facturées ici](#les-demandes-qui-ne-peuvent-pas-etre-facturees-ici)).
 
 C'est le **passage** à « Terminé » qui fait entrer une demande sur un brouillon, pas le fait d'y être. Une demande que vous retirez d'une facture (« Retirer de la facture »), ou qu'une restauration a détachée de sa facture, reste « Terminé » sans être rattachée à rien : elle n'y retournera pas toute seule, même si vous la modifiez. C'est ici, avec « Ajouter une demande », que vous la placez sur la facture voulue. Seule exception : si vous la retirez pour changer son auditeur, le formulaire de la demande propose de la facturer directement au nouvel auditeur (voir [Changer l'auditeur d'une demande](/admin/aide/demandes#changer-l-auditeur-d-une-demande)).
 

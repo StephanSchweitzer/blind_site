@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
-import { Prisma, BillingStatus, BillKind, OrderBillingStatus, PaymentType, PaymentMethod } from '@prisma/client';
+import { Prisma, BillingStatus, BillKind, PaymentType, PaymentMethod } from '@prisma/client';
 import {
     recomputeBillTotal,
     logBillEvent,
     orderBillingForBillState,
     paymentPrecedesIssue,
     syncBillPaymentInfo,
+    orderAttachBlock,
+    type OrderAttachBlock,
 } from '@/lib/billing';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
@@ -91,6 +93,13 @@ export const GET = withAdmin(async (request) => {
         );
     }
 });
+
+const ATTACH_BLOCK_ERROR: Record<OrderAttachBlock, string> = {
+    ON_BILL: 'ORDER_ALREADY_BILLED',
+    UNBILLABLE: 'ORDER_UNBILLABLE',
+    KIND_MISMATCH: 'ORDER_PAGE_PRICED',
+    AWAITING_SHIPMENT: 'ORDER_AWAITING_SHIPMENT',
+};
 
 /**
  * POST /api/bills - Manually create a facture for a client, attaching a set of
@@ -310,15 +319,16 @@ export const POST = withAdmin(async (request, { me }) => {
                         isActive: true,
                         cost: true,
                         pages: true,
+                        statusId: true,
                     },
                 });
                 if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
                 if (order.aveugleId !== parsedClientId) throw new Error('CLIENT_MISMATCH');
-                if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
-                if (order.billingStatus === OrderBillingStatus.UNBILLABLE) throw new Error('ORDER_UNBILLABLE');
                 // Cette route ne crée que des factures STANDARD : une demande à la page a
-                // sa pro-forma, émise à sa clôture (accrueOrderToProforma).
-                if (order.pages != null) throw new Error('ORDER_PAGE_PRICED');
+                // sa pro-forma, émise à sa clôture (accrueOrderToProforma). Même règle
+                // que la liste qui les propose — voir orderAttachBlock.
+                const block = orderAttachBlock(order, BillKind.STANDARD);
+                if (block) throw new Error(ATTACH_BLOCK_ERROR[block]);
                 orders.push({ id: order.id, cost: order.cost });
             }
             // Même arithmétique que recomputeBillTotal, faite plus tôt parce que la
@@ -472,6 +482,10 @@ export const POST = withAdmin(async (request, { me }) => {
             ORDER_UNBILLABLE: ['Une des demandes sélectionnées est marquée non-facturable', 400],
             ORDER_PAGE_PRICED: [
                 'Une des demandes sélectionnées est tarifée à la page : elle a sa propre facture pro-forma, émise quand la demande passe « Terminé »',
+                409,
+            ],
+            ORDER_AWAITING_SHIPMENT: [
+                "Une des demandes sélectionnées attend son envoi à l'auditeur : renseignez sa date de clôture, elle sera alors facturée toute seule",
                 409,
             ],
             SETTLED_ZERO_TOTAL: [

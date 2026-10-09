@@ -507,6 +507,48 @@ export function guardOrderMatchesBillKind(args: {
     );
 }
 
+// ── Ce qu'un permanent peut rattacher à la main ──────────────────────────────
+/**
+ * Pourquoi une demande ne peut pas être rattachée à la main à une facture de son
+ * auditeur — ou null si elle le peut.
+ *
+ * UNE définition pour les trois endroits qui en décident : la liste qui propose
+ * les demandes (GET /api/bills/eligible-orders), la création d'une facture
+ * (POST /api/bills) et « Ajouter une demande » d'un brouillon (PATCH
+ * /api/bills/[id]). Chacun avait la sienne : la liste d'un brouillon proposait
+ * une demande à la page que le serveur refusait au clic, et le formulaire de
+ * création taisait celles qu'il écartait — « Aucune demande facturable » devant
+ * un auditeur qui avait une revue à facturer.
+ *
+ * AWAITING_SHIPMENT : l'enregistrement est revenu du lecteur, il n'est pas parti
+ * chez l'auditeur. C'est sa date de clôture qui la facture, toute seule ; la
+ * rattacher à la main laissait la demande ouverte pour de bon (douze l'étaient en
+ * production en octobre 2026, facturées sans avoir été expédiées).
+ *
+ * L'ordre compte : une demande déjà sur une facture l'est avant tout le reste,
+ * et c'est ce que la liste doit en dire (avec le lien vers cette facture).
+ */
+export type OrderAttachBlock = 'ON_BILL' | 'UNBILLABLE' | 'KIND_MISMATCH' | 'AWAITING_SHIPMENT';
+
+export function orderAttachBlock(
+    order: { billId: number | null; billingStatus: OrderBillingStatus; pages: number | null; statusId: number },
+    billKind: BillKind = BillKind.STANDARD
+): OrderAttachBlock | null {
+    if (order.billId != null) return 'ON_BILL';
+    if (order.billingStatus === OrderBillingStatus.UNBILLABLE) return 'UNBILLABLE';
+    if (!guardOrderMatchesBillKind({ orderPages: order.pages, billKind }).ok) return 'KIND_MISMATCH';
+    if (order.statusId === STATUS.ATTENTE_AUDITEUR) return 'AWAITING_SHIPMENT';
+    return null;
+}
+
+/** orderAttachBlock(…) === null, en clause Prisma — pour lister sans tout charger. Garder les deux d'accord. */
+export const attachableOrderWhere = (billKind: BillKind = BillKind.STANDARD): Prisma.OrdersWhereInput => ({
+    billId: null,
+    billingStatus: { not: OrderBillingStatus.UNBILLABLE },
+    pages: billKind === BillKind.PROFORMA ? { not: null } : null,
+    statusId: { not: STATUS.ATTENTE_AUDITEUR },
+});
+
 /**
  * When the client's open DRAFT reaches their paymentThreshold (seuil), issue it:
  * DRAFT -> BILLED, and its orders UNBILLED -> BILLED. The next order for the client
