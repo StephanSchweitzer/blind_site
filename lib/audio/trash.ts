@@ -122,8 +122,14 @@ export async function softDeleteTracks(opts: {
      * already has it, from deciding what to pass as `tracks`.
      */
     priorObjects?: { key: string; size: number }[];
+    /**
+     * Appelé à chaque piste dont le sort est réglé (copiée, en échec, ou déjà
+     * faite par une tentative précédente), avec le total à traiter. La copie est
+     * la phase longue : c'est elle qui fait avancer la barre de progression.
+     */
+    onProgress?: (done: number, total: number) => void;
 }): Promise<BulkTrashResult> {
-    const { bookId, prefix, tracks, userId, skipFinalisation = false, priorObjects } = opts;
+    const { bookId, prefix, tracks, userId, skipFinalisation = false, priorObjects, onProgress } = opts;
     if (!tracks.length) return { moved: 0, skipped: 0, failed: [], parked: [] };
 
     const failed: BulkTrashResult['failed'] = [];
@@ -203,8 +209,21 @@ export async function softDeleteTracks(opts: {
 
     const todo = tracks.filter((t) => !leftoverKeys.has(t.key) && !doneKeys.has(t.key));
 
+    // Une reprise part de ce que la tentative précédente a déjà réglé.
+    let settled = tracks.length - todo.length;
+    onProgress?.(settled, tracks.length);
+
     // --- Copy and verify, in parallel. Nothing is destroyed in this phase. ---
     const copied = await pool(todo, COPY_CONCURRENCY, async (track) => {
+        try {
+            return await copyOne(track);
+        } finally {
+            settled += 1;
+            onProgress?.(settled, tracks.length);
+        }
+    });
+
+    async function copyOne(track: (typeof todo)[number]) {
         if (track.sizeBytes > MAX_COPY_BYTES) {
             failed.push({
                 filename: track.name,
@@ -229,7 +248,7 @@ export async function softDeleteTracks(opts: {
             failed.push({ filename: track.name, reason: 'copie vers la corbeille impossible' });
             return null;
         }
-    });
+    }
 
     const ok = copied.filter((c): c is NonNullable<typeof c> => c !== null);
     if (!ok.length && !leftovers.length) return { moved: 0, skipped: doneKeys.size, failed, parked: [] };

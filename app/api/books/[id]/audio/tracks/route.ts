@@ -96,49 +96,101 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     // DeleteObjects call. A track an earlier run already copied is not copied
     // again (its leftover original is just removed), so a run that timed out
     // half way is finished simply by confirming again.
-    let result: Awaited<ReturnType<typeof softDeleteTracks>>;
-    try {
-        result = await softDeleteTracks({
-            bookId,
-            prefix,
-            tracks: tracks.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes })),
-            userId: me.id,
-            // The listing above already covers the whole prefix, so the
-            // placeholder check and the final state refresh don't need a second one.
-            priorObjects: objects,
-        });
-    } catch (e) {
-        // Per-track copy failures come back in `failed`; an exception here is
-        // the bookkeeping around them (rows, journal, placeholder, state), so
-        // some tracks may already be gone from the folder.
-        return unexpectedErrorResponse({
-            where: `DELETE /api/books/${bookId}/audio/tracks`,
-            error: e,
-            what: 'La suppression des pistes s’est interrompue.',
-            outcome:
-                'Une partie des pistes a pu être déjà déplacée dans la corbeille : rouvrez ' +
-                'l’éditeur audio pour voir ce qui reste, puis relancez — les fichiers déjà ' +
-                'déplacés ne le seront pas deux fois.',
-        });
+    const run = async (onProgress?: (done: number, total: number) => void) => {
+        let result: Awaited<ReturnType<typeof softDeleteTracks>>;
+        try {
+            result = await softDeleteTracks({
+                bookId,
+                prefix,
+                tracks: tracks.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes })),
+                userId: me.id,
+                // The listing above already covers the whole prefix, so the
+                // placeholder check and the final state refresh don't need a second one.
+                priorObjects: objects,
+                onProgress,
+            });
+        } catch (e) {
+            // Per-track copy failures come back in `failed`; an exception here is
+            // the bookkeeping around them (rows, journal, placeholder, state), so
+            // some tracks may already be gone from the folder.
+            return {
+                ok: false as const,
+                response: unexpectedErrorResponse({
+                    where: `DELETE /api/books/${bookId}/audio/tracks`,
+                    error: e,
+                    what: 'La suppression des pistes s’est interrompue.',
+                    outcome:
+                        'Une partie des pistes a pu être déjà déplacée dans la corbeille : rouvrez ' +
+                        'l’éditeur audio pour voir ce qui reste, puis relancez — les fichiers déjà ' +
+                        'déplacés ne le seront pas deux fois.',
+                }),
+            };
+        }
+
+        // `parked`: what actually left the folder — fresh moves and an earlier
+        // attempt's leftovers alike, never a track whose removal failed.
+        const deleted = { length: result.parked.length };
+        if (deleted.length > 0) {
+            // Le catalogue public affiche la durée et la disponibilité, que
+            // refreshBookAudioState vient de relire : sans cette invalidation, il gardait
+            // l'ancienne jusqu'à une heure (le repli de unstable_cache).
+            revalidateCatalogue();
+        }
+        const failed = result.failed.map((f) => ({ name: f.filename, message: f.reason }));
+
+        return {
+            ok: true as const,
+            body: {
+                message:
+                    failed.length === 0
+                        ? `${deleted.length} piste${deleted.length > 1 ? 's' : ''} déplacée${deleted.length > 1 ? 's' : ''} dans la corbeille.`
+                        : `${deleted.length} piste${deleted.length > 1 ? 's' : ''} déplacée${deleted.length > 1 ? 's' : ''}, ${failed.length} échec${failed.length > 1 ? 's' : ''} — le${failed.length > 1 ? 's' : ''} fichier${failed.length > 1 ? 's' : ''} en échec ${failed.length > 1 ? 'sont restés' : 'est resté'} en place.`,
+                deletedCount: deleted.length,
+                failed,
+            },
+        };
+    };
+
+    if (body?.stream !== true) {
+        const outcome = await run();
+        return outcome.ok ? NextResponse.json(outcome.body) : outcome.response;
     }
 
-    // `parked`: what actually left the folder — fresh moves and an earlier
-    // attempt's leftovers alike, never a track whose removal failed.
-    const deleted = { length: result.parked.length };
-    if (deleted.length > 0) {
-        // Le catalogue public affiche la durée et la disponibilité, que
-        // refreshBookAudioState vient de relire : sans cette invalidation, il gardait
-        // l'ancienne jusqu'à une heure (le repli de unstable_cache).
-        revalidateCatalogue();
-    }
-    const failed = result.failed.map((f) => ({ name: f.filename, message: f.reason }));
+    // Avec `stream: true`, la réponse est un flux NDJSON : une ligne
+    // `{ type: 'progress', done, total }` par piste réglée, puis une dernière
+    // ligne `{ type: 'done', ...corps }` ou `{ type: 'error', ...corps }`.
+    // Tous les refus ci-dessus (404, 409) restent de simples réponses JSON : le
+    // flux ne s'ouvre qu'une fois la suppression réellement lancée. Le corps
+    // sans `stream` est inchangé, pour les appelants qui n'ont pas besoin de la barre.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+            const send = (line: Record<string, unknown>) => {
+                try {
+                    controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`));
+                } catch {
+                    // Onglet fermé : la suppression, elle, continue jusqu'au bout.
+                }
+            };
+            const outcome = await run((done, total) => send({ type: 'progress', done, total }));
+            if (outcome.ok) {
+                send({ type: 'done', ...outcome.body });
+            } else {
+                send({ type: 'error', ...(await outcome.response.json()) });
+            }
+            try {
+                controller.close();
+            } catch {
+                // Déjà fermé par le client.
+            }
+        },
+    });
 
-    return NextResponse.json({
-        message:
-            failed.length === 0
-                ? `${deleted.length} piste${deleted.length > 1 ? 's' : ''} déplacée${deleted.length > 1 ? 's' : ''} dans la corbeille.`
-                : `${deleted.length} piste${deleted.length > 1 ? 's' : ''} déplacée${deleted.length > 1 ? 's' : ''}, ${failed.length} échec${failed.length > 1 ? 's' : ''} — le${failed.length > 1 ? 's' : ''} fichier${failed.length > 1 ? 's' : ''} en échec ${failed.length > 1 ? 'sont restés' : 'est resté'} en place.`,
-        deletedCount: deleted.length,
-        failed,
+    return new Response(stream, {
+        headers: {
+            'Content-Type': 'application/x-ndjson; charset=utf-8',
+            'Cache-Control': 'no-store, no-transform',
+            'X-Accel-Buffering': 'no',
+        },
     });
 });
