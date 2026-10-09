@@ -37,7 +37,11 @@ Pour associer un auditeur et ses demandes disponibles, cliquez sur le champ « R
 
 Cela affichera alors les demandes de l'auditeur que vous pouvez facturer. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Un message en ambre signale une demande qui n'est pas encore terminée ou qui n'a pas de tarif ; elle reste cochable, mais n'est pas cochée d'avance.
 
+![Factures - capture 4](/admin/aide/images/factures-04.jpg)
+
 Vous n'avez pas à choisir le type de la facture : il se déduit de ce que vous cochez. Une revue (demande tarifée à la page) se facture **seule**, sur sa propre facture [pro-forma](#les-factures-pro-forma) : dès que vous cochez une revue, les autres demandes se grisent ; dès que vous cochez une autre demande, ce sont les revues qui se grisent. Une note sous chaque ligne grisée le rappelle, et tout décocher rend tout cochable. Une revue n'est jamais cochée d'avance.
+
+![Factures - capture 5](/admin/aide/images/factures-05.jpg)
 
 ### Les demandes qui ne peuvent pas être facturées ici
 
@@ -51,9 +55,9 @@ Sous la liste viennent, grisées, les autres demandes de l'auditeur, chacune ave
 
 Les demandes à clôturer viennent en premier, puis celles des factures en cours, et la liste s'arrête à dix. Pour en retrouver une autre, tapez son titre, son auteur ou son numéro dans la barre de recherche au-dessus de la liste : elle apparaît, cochable ou grisée, avec sa raison. Le lien « voyez toutes ses factures », sous la liste, ouvre la page des factures sur le nom de l'auditeur.
 
-![Factures - capture 4](/admin/aide/images/factures-04.jpg)
+![Factures - capture 8](/admin/aide/images/factures-08.jpg)
 
-Compte tenu de la génération automatique des factures et de leur lien automatique avec les demandes, vous devez faire très attention lorsque vous effectuez cette opération afin de ne pas associer des demandes qui ont déjà été facturées automatiquement.
+Une demande déjà facturée automatiquement ne peut pas être associée une seconde fois : elle figure parmi les demandes grisées, avec le lien vers sa facture.
 
 Enfin, pour la nouvelle facture, vous pouvez :
 

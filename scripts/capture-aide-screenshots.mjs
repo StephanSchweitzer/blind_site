@@ -85,6 +85,9 @@ const SPECS = [
     },
     {
         name: 'factures-04.jpg',
+        // Assez haute pour toute la liste : les cochables, les grisees et la
+        // ligne « N autres demandes… » sous elles.
+        viewport: { width: 1440, height: 1500 },
         url: '/admin/bills',
         waitFor: 'table tbody tr',
         steps: [
@@ -98,7 +101,60 @@ const SPECS = [
             { scrollToText: 'Demandes à facturer *' }, { sleep: 400 },
         ],
         clip: '[role="dialog"]',
-        why: 'les avertissements ambre : prestation non terminée, tarif absent',
+        why: 'la recherche, les avertissements ambre, le début des demandes grisées',
+    },
+    {
+        name: 'factures-05.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/bills',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickSelector: '[role="dialog"] [role="combobox"]' }, { sleep: 600 },
+            // Les seuls auditeurs de la base de dev qui ont des revues libres.
+            { typeIn: { selector: '[placeholder="Rechercher par nom ou email..."]', value: 'ZZZ Proforma' } },
+            { sleep: 1600 },
+            { clickSelector: '[data-radix-popper-content-wrapper] button' },
+            { sleep: 2200 },
+            // Coche la premiere revue : son libelle porte la mention.
+            { clickText: 'Revue, tarifée à la page' }, { sleep: 600 },
+            { scrollToText: 'Demandes à facturer *' }, { sleep: 300 },
+            { scrollToSelector: '[role="dialog"] button[role="checkbox"][data-state="checked"]' }, { sleep: 400 },
+        ],
+        // Les demandes de test s'appellent « ZZZ Test … » : des titres fictifs
+        // a la place, comme les pseudonymes a la place des noms.
+        remplacer: {
+            'ZZZ Test revue sans audio (POST)': 'Horizons, n° 214',
+            'ZZZ Test revue sans audio': 'Horizons, n° 213',
+            'ZZZ Test livre sans audio': 'Le Jardin d’hiver',
+            'ZZZ Test creation normale 1790180732088': 'La Maison des dunes',
+            'ZZZ Test course creation-d-abord 1790180732088': 'Le Phare de l’aube',
+            'ZZZ Magazine Test 1789749853664': 'Horizons, n° 212',
+            'ZZZ': 'Éditions du Phare',
+        },
+        clip: '[role="dialog"]',
+        why: 'une revue cochée : tout le reste grisé, elle se facture seule',
+    },
+    {
+        name: 'factures-08.jpg',
+        viewport: { width: 1440, height: 1400 },
+        url: '/admin/bills',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
+            { clickSelector: '[role="dialog"] [role="combobox"]' }, { sleep: 600 },
+            { typeIn: { selector: '[placeholder="Rechercher par nom ou email..."]', value: 'stef' } },
+            { sleep: 1600 },
+            { clickSelector: '[data-radix-popper-content-wrapper] button' },
+            { sleep: 2200 },
+            // Une demande ancienne, sur une facture payee : hors des dix montrees
+            // d'emblee, la recherche la retrouve avec le lien vers sa facture.
+            { typeIn: { selector: '[placeholder="Rechercher une de ses demandes : titre, auteur, n°…"]', value: 'Collier' } },
+            { sleep: 1800 },
+            { scrollToText: 'Demandes à facturer *' }, { sleep: 400 },
+        ],
+        clip: '[role="dialog"]',
+        why: 'la recherche retrouve une demande hors liste, avec le lien vers sa facture',
     },
     {
         name: 'factures-06.jpg',
@@ -1311,15 +1367,21 @@ async function searchFor(term) {
         if (!input) return false;
         setter.call(input, ${JSON.stringify(term)});
         input.dispatchEvent(new Event('input', { bubbles: true }));
+        /**
+         * Le bouton « Rechercher » VOISIN du champ, pas le premier de la page :
+         * la barre du haut a le sien (la recherche globale, Ctrl+K), qui vient
+         * avant dans le document. Cliquer celui-la ouvrait la palette par-dessus
+         * la liste, que rien ne filtrait. On remonte depuis le champ jusqu'au
+         * premier conteneur qui porte un tel bouton.
+         */
+        for (let box = input.parentElement, i = 0; box && i < 5; box = box.parentElement, i++) {
+            const bouton = [...box.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Rechercher');
+            if (bouton) { bouton.click(); return true; }
+        }
+        // Certaines pages filtrent a la frappe et n'ont pas de bouton : son
+        // absence n'est pas une erreur.
         return true;
     })()`);
-    // Certaines pages filtrent a la frappe et n'ont pas de bouton : son absence
-    // n'est pas une erreur.
-    try {
-        await clickText('Rechercher');
-    } catch {
-        /* recherche instantanee */
-    }
 }
 
 /**
@@ -1346,6 +1408,35 @@ async function typeIn(selector, value) {
         return true;
     })()`);
     if (!ok) throw new Error(`champ ${selector} introuvable`);
+}
+
+async function scrollToSelector(selector) {
+    // « nearest » : amene la ligne dans sa liste deroulante sans recentrer toute
+    // la fenetre, que l'etape precedente a deja cadree.
+    const ok = await evaluate(`(() => {
+        const el = document.querySelector(${JSON.stringify(selector)});
+        if (!el) return false;
+        el.scrollIntoView({ block: 'nearest' });
+        return true;
+    })()`);
+    if (!ok) throw new Error(`élément ${selector} introuvable`);
+}
+
+/**
+ * Remplace des textes EXACTS de la page (nœud de texte entier, espaces
+ * ignorés) : pour les titres des donnees de test, qu'une capture du guide ne
+ * doit pas montrer. Meme principe que anonymiser : on reecrit le DOM juste
+ * avant la photo.
+ */
+async function remplacerTextes(table) {
+    await evaluate(`(() => {
+        const table = ${JSON.stringify(table)};
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            const t = n.nodeValue.trim();
+            if (Object.prototype.hasOwnProperty.call(table, t)) n.nodeValue = n.nodeValue.replace(t, table[t]);
+        }
+    })()`);
 }
 
 async function clickSelector(selector) {
@@ -2009,6 +2100,7 @@ async function main() {
                     if (step.typeIn) await typeIn(step.typeIn.selector, step.typeIn.value);
                     if (step.importAudio) await importFile(step.importAudio, wavMuet());
                     if (step.scrollToText) await scrollToText(step.scrollToText);
+                    if (step.scrollToSelector) await scrollToSelector(step.scrollToSelector);
                     if (step.searchFor) await searchFor(step.searchFor);
                     if (step.waitFor) await waitFor(step.waitFor);
                     if (step.sleep) await sleep(step.sleep);
@@ -2021,6 +2113,7 @@ async function main() {
                 // Juste avant la photo : apres toute la navigation, donc plus
                 // rien ne peut recharger de vraies donnees par-dessus.
                 await anonymiser(spec.pseudonymes ?? [], spec.prenomFictif ?? null);
+                if (spec.remplacer) await remplacerTextes(spec.remplacer);
                 const size = await capture(spec.name, spec.clip, spec.annotations ?? [], spec.densite ?? 1);
                 console.log(`  ✓ ${spec.name.padEnd(26)} ${String(Math.round(size / 1024)).padStart(4)} Ko   ${spec.why}`);
             } catch (error) {
