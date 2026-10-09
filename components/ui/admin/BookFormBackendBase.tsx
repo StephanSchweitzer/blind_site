@@ -316,7 +316,9 @@ export function BookFormBackendBase({
 
                     {!initialData && <BookSearch onBookSelect={handleBookSelect}/>}
 
-                    <fieldset disabled={readOnly} className="space-y-6 disabled:opacity-60">
+                    {/* min-w-0 : voir OrderFormBackendBase — sans lui, un fieldset
+                        s'élargit au champ le plus large et déborde du modal. */}
+                    <fieldset disabled={readOnly} className="min-w-0 space-y-6 disabled:opacity-60">
                     <div className="grid gap-6">
                         <div className="space-y-2">
                             <label htmlFor="title" className="text-sm font-medium text-foreground">

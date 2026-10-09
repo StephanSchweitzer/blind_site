@@ -1094,9 +1094,10 @@ export function AssignmentFormBackendBase({
                             contentClassName="w-[min(600px,calc(100vw-2rem))]"
                             itemClassName="items-start px-4 py-3 border-b border-border last:border-b-0"
                             renderValue={(order) => (
-                                <span className="flex items-center gap-2">
+                                <span className="flex min-w-0 items-center gap-2">
                                     <Package className="h-4 w-4 shrink-0" />
-                                    <span className="text-base">
+                                    {/* Tronqué avec « … » quand la ligne est trop étroite (téléphone). */}
+                                    <span className="min-w-0 truncate text-base">
                                         {getUserNameOnly(order.aveugle ?? null) || 'Auditeur inconnu'}
                                         {(order.requestReceivedDate || order.createdDate) && (
                                             <> · {format(new Date(order.requestReceivedDate || order.createdDate!), 'dd/MM/yyyy', { locale: fr })}</>

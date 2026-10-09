@@ -100,8 +100,11 @@ export interface EntitySearchComboboxProps<T> {
     viewHrefLabel?: string;
 }
 
+// `min-w-0` : le déclencheur partage sa ligne avec le lien « Voir la fiche ».
+// Sans lui, un élément flex ne descend jamais sous la largeur de son texte, le
+// libellé ne se tronque pas et la ligne déborde du modal sur un téléphone.
 const DEFAULT_TRIGGER =
-    'w-full justify-between bg-field border-border text-foreground hover:bg-muted transition-colors';
+    'w-full min-w-0 justify-between bg-field border-border text-foreground hover:bg-muted transition-colors';
 
 export function EntitySearchCombobox<T>({
     value,
@@ -291,9 +294,9 @@ export function EntitySearchCombobox<T>({
                     )}
                 >
                     {value ? (
-                        <span className="truncate">{renderValue(value)}</span>
+                        <span className="min-w-0 truncate">{renderValue(value)}</span>
                     ) : (
-                        <span className="text-muted-foreground">{placeholder}</span>
+                        <span className="min-w-0 truncate text-muted-foreground">{placeholder}</span>
                     )}
                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>

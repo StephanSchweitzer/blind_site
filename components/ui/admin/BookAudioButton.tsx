@@ -107,17 +107,22 @@ export function BookAudioButton({
                         : `Ouvrir l’éditeur audio — ${label}`
                 }
                 title={missing ? `${label} — ${getAudioLinkStatusHint(status)}` : label}
-                className={`${
+                // Peut passer sur deux lignes : sur un téléphone, une colonne de
+                // formulaire fait ~220 px et « Ouvrir l'éditeur audio » + « Pas
+                // d'audio associé » n'y tiennent pas — le bouton, insécable par
+                // défaut, débordait du modal. La hauteur minimale reste celle du
+                // bouton d'origine, donc rien ne change là où tout tient.
+                className={`h-auto max-w-full whitespace-normal py-1.5 ${size === 'sm' ? 'min-h-9' : 'min-h-10'} ${
                     state ? getAudioLinkStatusButtonColor(status) : 'bg-field border-border text-foreground hover:bg-muted'
                 } ${className ?? ''}`}
             >
-                <span className="flex items-center gap-2">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     {missing ? <FileX2 className="h-4 w-4" /> : <FileAudio className="h-4 w-4" />}
                     Ouvrir l’éditeur audio
                     {/* Spelled out, not just colour-coded: the absence of a
                         recording is the thing people come here to find out. */}
                     {state && (
-                        <span className="rounded bg-black/5 px-1.5 py-0.5 text-xs font-medium dark:bg-white/10">
+                        <span className="whitespace-nowrap rounded bg-black/5 px-1.5 py-0.5 text-xs font-medium dark:bg-white/10">
                             {missing
                                 ? label
                                 : `${state.trackCount ?? 0} piste${(state.trackCount ?? 0) > 1 ? 's' : ''}`}

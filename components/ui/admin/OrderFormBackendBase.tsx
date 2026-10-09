@@ -766,7 +766,10 @@ export function OrderFormBackendBase({
                 )}
 
                 <form onSubmit={handleSubmit}>
-                    <fieldset disabled={readOnly} className="space-y-4 disabled:opacity-60">
+                    {/* min-w-0 : un fieldset a par défaut `min-width: min-content` — le
+                        champ le plus large du formulaire l'élargissait au-delà du modal
+                        sur un téléphone, et tout le formulaire défilait de côté. */}
+                    <fieldset disabled={readOnly} className="min-w-0 space-y-4 disabled:opacity-60">
                     {/* User Search (Aveugle) */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
