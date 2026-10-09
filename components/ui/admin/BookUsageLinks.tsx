@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { InlineLoading } from '@/components/ui/inline-loading';
 
 type Usage = { orderCount: number; assignmentCount: number };
 
@@ -16,11 +17,13 @@ type Usage = { orderCount: number; assignmentCount: number };
  * nouvel onglet, parce que les trois vivent dans une fenêtre dont la saisie en
  * cours ne doit pas se perdre.
  *
- * Silencieux tant que les comptes ne sont pas chargés, ou si la requête échoue :
- * afficher « 0 demande » sur une erreur dirait une chose fausse.
+ * Pendant le chargement, la ligne garde sa place et ne dit que « Vérification… »
+ * (au-delà de 200 ms) ; si la requête échoue, elle disparaît : afficher
+ * « 0 demande » sur une erreur dirait une chose fausse.
  */
 export function BookUsageLinks({ bookId, className }: { bookId: number; className?: string }) {
     const [usage, setUsage] = useState<{ bookId: number; data: Usage } | null>(null);
+    const [failedFor, setFailedFor] = useState<number | null>(null);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -28,13 +31,23 @@ export function BookUsageLinks({ bookId, className }: { bookId: number; classNam
             .then((r) => (r.ok ? r.json() : null))
             .then((data: Usage | null) => {
                 if (data) setUsage({ bookId, data });
+                else setFailedFor(bookId);
             })
-            .catch(() => {});
+            .catch(() => {
+                if (!controller.signal.aborted) setFailedFor(bookId);
+            });
         return () => controller.abort();
     }, [bookId]);
 
-    // Le livre a changé et les nouveaux comptes ne sont pas encore là.
-    if (!usage || usage.bookId !== bookId) return null;
+    if (failedFor === bookId) return null;
+    // Premier chargement, ou le livre a changé et ses comptes ne sont pas encore là.
+    if (!usage || usage.bookId !== bookId) {
+        return (
+            <p className={cn('flex items-center text-sm', className)}>
+                <InlineLoading />
+            </p>
+        );
+    }
     const { orderCount, assignmentCount } = usage.data;
 
     const part = (count: number, singular: string, plural: string, href: string) =>

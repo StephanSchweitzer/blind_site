@@ -50,6 +50,7 @@ import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { EntitySearchCombobox } from '@/admin/EntitySearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { BookUsageLinks } from '@/admin/BookUsageLinks';
+import { InlineLoading } from '@/components/ui/inline-loading';
 import { getUserDisplayName, getUserNameOnly } from '@/lib/users/displayName';
 import { AudioLinkStatus, audioLinkStatusIsMissing } from '@/lib/audio-enums';
 import type { LinkedAssignment } from '@/types/models/order.model';
@@ -1411,7 +1412,7 @@ export function AssignmentFormBackendBase({
                                 La date de retour aux ECA sera effacée et l&apos;attribution repassera
                                 « En cours », tout comme sa demande. L&apos;audio déjà déposé est conservé.
                             </p>
-                            {reopenBill === 'loading' && <p>Vérification de la facture…</p>}
+                            {reopenBill === 'loading' && <p className="flex"><InlineLoading label="Vérification de la facture…" /></p>}
                             {reopenBill && reopenBill !== 'loading' && reopenBill.state === 'DRAFT' && (
                                 <p className="text-amber-700 dark:text-amber-400">
                                     La demande figure sur la facture #{reopenBill.id} (brouillon) : elle en

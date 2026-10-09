@@ -11,6 +11,7 @@ import {
     getAudioLinkStatusHint,
     getAudioLinkStatusLabel,
 } from '@/lib/audio-enums';
+import { useDelayedFlag } from '@/components/ui/inline-loading';
 
 interface BookAudioButtonProps {
     bookId: number;
@@ -67,14 +68,17 @@ export function BookAudioButton({
         audioLinkStatus ? { status: audioLinkStatus, trackCount: audioTrackCount ?? null } : null,
     );
 
+    const [failed, setFailed] = useState(false);
+
     const loadState = useCallback(async () => {
         try {
             const res = await fetch(`/api/books/${bookId}/audio/state`);
-            if (!res.ok) return;
+            if (!res.ok) throw new Error(String(res.status));
             const d = await res.json();
             setState({ status: d.status as AudioLinkStatus, trackCount: d.trackCount ?? null });
         } catch {
             // A badge that failed to load simply stays neutral; the button works.
+            setFailed(true);
         }
     }, [bookId]);
 
@@ -89,8 +93,14 @@ export function BookAudioButton({
         void loadState();
     }, [bookId, audioLinkStatus, loadState]);
 
-    const status = state?.status ?? AudioLinkStatus.UNVERIFIED;
-    const missing = state != null && audioLinkStatusIsMissing(status);
+    // A state the caller supplies after mount (it may load it alongside ours) wins.
+    const known = audioLinkStatus ? { status: audioLinkStatus, trackCount: audioTrackCount ?? null } : state;
+    // The badge keeps its place while the state loads, so the button doesn't
+    // grow under the pointer when it arrives.
+    const checking = !known && !failed;
+    const showChecking = useDelayedFlag(checking);
+    const status = known?.status ?? AudioLinkStatus.UNVERIFIED;
+    const missing = known != null && audioLinkStatusIsMissing(status);
     const label = getAudioLinkStatusLabel(status);
 
     return (
@@ -113,7 +123,7 @@ export function BookAudioButton({
                 // défaut, débordait du modal. La hauteur minimale reste celle du
                 // bouton d'origine, donc rien ne change là où tout tient.
                 className={`h-auto max-w-full whitespace-normal py-1.5 ${size === 'sm' ? 'min-h-9' : 'min-h-10'} ${
-                    state ? getAudioLinkStatusButtonColor(status) : 'bg-field border-border text-foreground hover:bg-muted'
+                    known ? getAudioLinkStatusButtonColor(status) : 'bg-field border-border text-foreground hover:bg-muted'
                 } ${className ?? ''}`}
             >
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -121,11 +131,20 @@ export function BookAudioButton({
                     Ouvrir l’éditeur audio
                     {/* Spelled out, not just colour-coded: the absence of a
                         recording is the thing people come here to find out. */}
-                    {state && (
+                    {known && (
                         <span className="whitespace-nowrap rounded bg-black/5 px-1.5 py-0.5 text-xs font-medium dark:bg-white/10">
                             {missing
                                 ? label
-                                : `${state.trackCount ?? 0} piste${(state.trackCount ?? 0) > 1 ? 's' : ''}`}
+                                : `${known.trackCount ?? 0} piste${(known.trackCount ?? 0) > 1 ? 's' : ''}`}
+                        </span>
+                    )}
+                    {checking && (
+                        <span
+                            className={`whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${
+                                showChecking ? 'bg-black/5 text-muted-foreground dark:bg-white/10' : 'invisible'
+                            }`}
+                        >
+                            Vérification…
                         </span>
                     )}
                 </span>

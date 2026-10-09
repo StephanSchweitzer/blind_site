@@ -1,9 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-
-/** How long a load may take before the skeleton shows: a fast answer goes straight to the form, no flash. */
-const SKELETON_DELAY_MS = 200;
+import React, { useEffect, useRef } from 'react';
+import { useDelayedFlag } from '@/components/ui/inline-loading';
 
 /** Label bars over input bars, roughly the shape of the forms it stands in for. */
 export function FormSkeleton({ fields = 6 }: { fields?: number }) {
@@ -25,7 +23,7 @@ const FIRST_FIELD =
 /**
  * Stands in for a form until its data is there. While loading: `aria-busy`, a
  * `role="status"` « Chargement… » for screen readers, and — after
- * SKELETON_DELAY_MS — the visible skeleton. Focus goes to the loading block
+ * LOADING_DELAY_MS — the visible skeleton. Focus goes to the loading block
  * while it shows, then to the form's first field once the form mounts, so a
  * keyboard or screen-reader user is never left on whatever the dialog picked
  * while there was nothing to fill.
@@ -49,16 +47,8 @@ export function FormLoadingGate({
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const loadingRef = useRef<HTMLDivElement>(null);
-    const [showSkeleton, setShowSkeleton] = useState(false);
-
-    useEffect(() => {
-        if (!loading) return;
-        const timer = setTimeout(() => setShowSkeleton(true), SKELETON_DELAY_MS);
-        return () => {
-            clearTimeout(timer);
-            setShowSkeleton(false);
-        };
-    }, [loading]);
+    // A fast answer goes straight to the form, no flash.
+    const showSkeleton = useDelayedFlag(loading);
 
     useEffect(() => {
         if (error) return;

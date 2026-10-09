@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { formatCotisationDate, isCotisationExempt } from '@/lib/cotisation';
+import { useDelayedFlag } from '@/components/ui/inline-loading';
 
 interface CotisationStatusResponse {
     isPaid: boolean;
@@ -52,15 +53,23 @@ export function CotisationStatusBanner({
     }, [userId]);
 
     const exempt = isCotisationExempt(memberType);
+    const showChecking = useDelayedFlag(loading);
 
     if (loading) {
         // Nothing to announce for an exempt member unless the cotisation turns
         // out to be paid — don't even flash "Vérification…".
         if (exempt) return null;
+        // The banner's place is held from the first render, so the answer
+        // doesn't push the form down; it only says « Vérification… » once the
+        // answer is slow enough to be noticed.
         return (
-            <Alert className="mb-4 bg-muted/40 border-border">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <AlertDescription className="text-muted-foreground">
+            <Alert
+                role="status"
+                aria-busy="true"
+                className={showChecking ? 'mb-4 bg-muted/40 border-border' : 'mb-4 bg-transparent border-transparent'}
+            >
+                {showChecking && <Loader2 className="h-4 w-4 animate-spin" />}
+                <AlertDescription className={showChecking ? 'text-muted-foreground' : 'invisible'}>
                     Vérification de la cotisation…
                 </AlertDescription>
             </Alert>

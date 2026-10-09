@@ -19,6 +19,7 @@ import {
     resolveEffectiveActivityStatus,
 } from '@/lib/users/activityStatus';
 import { parisDate } from '@/lib/paris-day';
+import { InlineLoading, useDelayedFlag } from '@/components/ui/inline-loading';
 
 interface ActivityEvent {
     id: number;
@@ -51,6 +52,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
     const [saveError, setSaveError] = useState<string | null>(null);
     // Non-null while a status needing a confirmation waits for it.
     const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+    const showBadgePlaceholder = useDelayedFlag(loading);
 
     useEffect(() => {
         let cancelled = false;
@@ -145,14 +147,24 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
         <div className="mt-6 border-t border-border pt-4">
             <div className="flex items-center justify-between gap-2 mb-3">
                 <h3 className="text-sm font-semibold text-foreground">Historique de statut</h3>
-                <div className="flex items-center gap-2 min-w-0">
-                    {effectiveDetail && (
-                        <span className="text-xs text-muted-foreground truncate">{effectiveDetail}</span>
-                    )}
-                    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-1 text-xs font-medium ${getUserActivityStatusColor(effectiveStatus)}`}>
-                        {getUserActivityStatusLabel(effectiveStatus)}
-                    </span>
-                </div>
+                {/* Until the route answers there is no status to show: the
+                    fallback would read « Actif » for everyone. A pill-sized
+                    placeholder keeps the header from shifting. */}
+                {loading ? (
+                    <span
+                        aria-hidden
+                        className={`inline-block h-6 w-16 shrink-0 rounded-full ${showBadgePlaceholder ? 'bg-muted animate-pulse' : ''}`}
+                    />
+                ) : (
+                    <div className="flex items-center gap-2 min-w-0">
+                        {effectiveDetail && (
+                            <span className="text-xs text-muted-foreground truncate">{effectiveDetail}</span>
+                        )}
+                        <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-1 text-xs font-medium ${getUserActivityStatusColor(effectiveStatus)}`}>
+                            {getUserActivityStatusLabel(effectiveStatus)}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Change status */}
@@ -176,7 +188,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
                     <Button
                         type="button"
                         onClick={handleSave}
-                        disabled={!draft.isComplete || draft.status === currentStatus || saving}
+                        disabled={loading || !draft.isComplete || draft.status === currentStatus || saving}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         size="sm"
                     >
@@ -192,7 +204,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
             />
 
             {/* History */}
-            {loading && <p className="text-sm text-muted-foreground">Chargement&#8230;</p>}
+            {loading && <p className="flex"><InlineLoading label="Chargement…" /></p>}
             {error && <p className="text-sm text-red-400">{error}</p>}
             {!loading && !error && events.length === 0 && (
                 <p className="text-sm text-muted-foreground">Aucun changement de statut enregistr&#233;.</p>
