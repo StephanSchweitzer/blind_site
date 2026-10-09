@@ -9,6 +9,7 @@ import {
     paymentPrecedesIssue,
     syncBillPaymentInfo,
     orderAttachBlock,
+    billKindForOrders,
     type OrderAttachBlock,
 } from '@/lib/billing';
 import { buildBillSearchWhere } from '@/lib/search';
@@ -97,8 +98,11 @@ export const GET = withAdmin(async (request) => {
 const ATTACH_BLOCK_ERROR: Record<OrderAttachBlock, string> = {
     ON_BILL: 'ORDER_ALREADY_BILLED',
     UNBILLABLE: 'ORDER_UNBILLABLE',
+    // Jamais levée ici non plus : le type vient des demandes elles-mêmes.
     KIND_MISMATCH: 'ORDER_PAGE_PRICED',
     AWAITING_SHIPMENT: 'ORDER_AWAITING_SHIPMENT',
+    // Jamais levée ici : une création n'a pas de pro-forma pleine (billKindForOrders).
+    PROFORMA_FULL: 'PROFORMA_NOT_ALONE',
 };
 
 /**
@@ -307,7 +311,7 @@ export const POST = withAdmin(async (request, { me }) => {
             // pour toujours — la correction, elle, est jetée. La seule ligne que le
             // journal verra jamais est celle de la création, et c'est pourquoi elle doit
             // déjà porter le bon chiffre.
-            const orders: { id: number; cost: Prisma.Decimal | null }[] = [];
+            const found = [];
             for (const orderId of parsedOrderIds) {
                 const order = await tx.orders.findUnique({
                     where: { id: orderId },
@@ -324,13 +328,21 @@ export const POST = withAdmin(async (request, { me }) => {
                 });
                 if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
                 if (order.aveugleId !== parsedClientId) throw new Error('CLIENT_MISMATCH');
-                // Cette route ne crée que des factures STANDARD : une demande à la page a
-                // sa pro-forma, émise à sa clôture (accrueOrderToProforma). Même règle
-                // que la liste qui les propose — voir orderAttachBlock.
-                const block = orderAttachBlock(order, BillKind.STANDARD);
-                if (block) throw new Error(ATTACH_BLOCK_ERROR[block]);
-                orders.push({ id: order.id, cost: order.cost });
+                found.push(order);
             }
+            // Le type se déduit des demandes, personne ne le choisit : une revue
+            // (tarifée à la page) fait sa pro-forma, seule ; le reste, une facture
+            // standard. C'est le même geste que l'émission automatique à la clôture
+            // (accrueOrderToProforma), fait à la main — pour une pro-forma supprimée,
+            // par exemple, qui ne se recrée pas toute seule.
+            const kind = billKindForOrders(found);
+            if (kind === 'PROFORMA_NOT_ALONE') throw new Error('PROFORMA_NOT_ALONE');
+            // Même règle que la liste qui les propose — voir orderAttachBlock.
+            for (const order of found) {
+                const block = orderAttachBlock(order, kind);
+                if (block) throw new Error(ATTACH_BLOCK_ERROR[block]);
+            }
+            const orders = found.map((o) => ({ id: o.id, cost: o.cost }));
             // Même arithmétique que recomputeBillTotal, faite plus tôt parce que la
             // ligne n'existe pas encore ; l'appel ci-dessous reste l'autorité.
             const initialTotal = orders.reduce(
@@ -360,6 +372,7 @@ export const POST = withAdmin(async (request, { me }) => {
             const bill = await tx.bill.create({
                 data: {
                     clientId: parsedClientId,
+                    kind,
                     state: finalState,
                     creationDate: parsedCreationDate,
                     issueDate: parsedIssueDate,
@@ -482,6 +495,10 @@ export const POST = withAdmin(async (request, { me }) => {
             ORDER_UNBILLABLE: ['Une des demandes sélectionnées est marquée non-facturable', 400],
             ORDER_PAGE_PRICED: [
                 'Une des demandes sélectionnées est tarifée à la page : elle a sa propre facture pro-forma, émise quand la demande passe « Terminé »',
+                409,
+            ],
+            PROFORMA_NOT_ALONE: [
+                'Une revue se facture seule, sur sa propre facture pro-forma : décochez les autres demandes',
                 409,
             ],
             ORDER_AWAITING_SHIPMENT: [

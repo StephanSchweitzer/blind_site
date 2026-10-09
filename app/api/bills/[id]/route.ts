@@ -25,6 +25,7 @@ const ATTACH_BLOCK_ERROR: Record<OrderAttachBlock, string> = {
     UNBILLABLE: 'ORDER_UNBILLABLE',
     KIND_MISMATCH: 'BILL_KIND_MISMATCH',
     AWAITING_SHIPMENT: 'ORDER_AWAITING_SHIPMENT',
+    PROFORMA_FULL: 'PROFORMA_FULL',
 };
 
 export const GET = withAdmin(async (_request, context) => {
@@ -436,7 +437,12 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
                 if (order.aveugleId !== bill.clientId) throw new Error('CLIENT_MISMATCH');
                 // La même règle que la liste qui propose la demande — voir orderAttachBlock.
-                const block = orderAttachBlock(order, bill.kind);
+                // Une pro-forma porte une seule revue : remise en brouillon, elle n'en
+                // accepte pas une seconde, que son impression ne montrerait pas.
+                const proformaFull =
+                    bill.kind === 'PROFORMA' &&
+                    (await tx.orders.count({ where: { billId, isActive: true } })) > 0;
+                const block = orderAttachBlock(order, bill.kind, { proformaFull });
                 if (block) throw new Error(ATTACH_BLOCK_ERROR[block]);
 
                 await tx.orders.update({
@@ -535,6 +541,10 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             ORDER_UNBILLABLE: ['Cette demande est marquée « Non facturable » et ne peut pas être rattachée à une facture', 400],
             BILL_KIND_MISMATCH: [
                 'Une demande tarifée à la page ne se rattache qu’à une facture pro-forma, et une demande au poids qu’à une facture standard',
+                409,
+            ],
+            PROFORMA_FULL: [
+                'Une facture pro-forma porte une seule revue, et celle-ci a déjà la sienne',
                 409,
             ],
             ORDER_AWAITING_SHIPMENT: [

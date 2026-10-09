@@ -33,7 +33,10 @@ type Row = Prisma.OrdersGetPayload<{ select: typeof ORDER_SELECT }>;
  *
  * Sert le formulaire « Créer une nouvelle facture » et « Ajouter une demande »
  * d'un brouillon (`billId`, dont la demande ne se propose pas à elle-même et
- * dont le type — standard ou pro-forma — décide de ce qui s'y rattache). La règle
+ * dont le type — standard ou pro-forma — décide de ce qui s'y rattache). Sans
+ * `billId`, le type n'est pas encore décidé : revues et demandes au poids sont
+ * toutes rattachables, et `pagePriced` permet au formulaire de griser les unes
+ * dès qu'on coche l'autre (une revue se facture seule). La règle
  * est orderAttachBlock, la même que POST /api/bills et l'action addOrder : la
  * liste ne peut plus proposer ce que le serveur refuse.
  *
@@ -65,8 +68,9 @@ export const GET = withAdmin(async (request) => {
             );
         }
 
-        let billKind: BillKind = BillKind.STANDARD;
+        let billKind: BillKind | null = null;
         let currentBillId: number | null = null;
+        let proformaFull = false;
         const billIdParam = params.get('billId');
         if (billIdParam) {
             const bill = await prisma.bill.findUnique({
@@ -81,6 +85,10 @@ export const GET = withAdmin(async (request) => {
             }
             billKind = bill.kind;
             currentBillId = bill.id;
+            // Une pro-forma porte une seule revue (orderAttachBlock, PROFORMA_FULL).
+            proformaFull =
+                bill.kind === BillKind.PROFORMA &&
+                (await prisma.orders.count({ where: { billId: bill.id, isActive: true } })) > 0;
         }
 
         const search = normalizeSearchQuery(params.get('search') || '');
@@ -95,13 +103,15 @@ export const GET = withAdmin(async (request) => {
             currentBillId != null ? { billId: { not: currentBillId } } : {};
 
         const unavailableGroups: Prisma.OrdersWhereInput[] = [
+            // Rattachables partout ailleurs, mais cette pro-forma a déjà sa revue.
+            ...(proformaFull ? [attachableOrderWhere(billKind)] : []),
             // Pas encore close : pas expédiée, ou tarifée autrement que la facture.
             {
                 billId: null,
                 billingStatus: { not: OrderBillingStatus.UNBILLABLE },
                 OR: [
-                    { pages: billKind === BillKind.PROFORMA ? null : { not: null } },
                     { statusId: STATUS.ATTENTE_AUDITEUR },
+                    ...(billKind != null ? [{ pages: billKind === BillKind.PROFORMA ? null : { not: null } }] : []),
                 ],
             },
             { ...notThisBill, bill: { state: { in: [BillingStatus.DRAFT, BillingStatus.BILLED] } } },
@@ -111,11 +121,13 @@ export const GET = withAdmin(async (request) => {
 
         const orderBy = { requestReceivedDate: 'desc' } as const;
         const [attachable, groups, counts] = await Promise.all([
-            prisma.orders.findMany({
-                where: { AND: [base, attachableOrderWhere(billKind)] },
-                orderBy,
-                select: ORDER_SELECT,
-            }),
+            proformaFull
+                ? Promise.resolve([] as Row[])
+                : prisma.orders.findMany({
+                      where: { AND: [base, attachableOrderWhere(billKind)] },
+                      orderBy,
+                      select: ORDER_SELECT,
+                  }),
             Promise.all(
                 unavailableGroups.map((where) =>
                     prisma.orders.findMany({ where, orderBy, take: UNAVAILABLE_LIMIT, select: ORDER_SELECT })
@@ -134,7 +146,7 @@ export const GET = withAdmin(async (request) => {
                 unavailable.find((o) => o.id === entityId) ??
                 (await prisma.orders.findFirst({ where: { AND: [base, { id: entityId }] }, select: ORDER_SELECT }));
             if (exact && (currentBillId == null || exact.billId !== currentBillId)) {
-                if (orderAttachBlock(exact, billKind) === null) {
+                if (orderAttachBlock(exact, billKind, { proformaFull }) === null) {
                     orders = [exact, ...orders];
                 } else {
                     unavailable = [exact, ...unavailable.filter((o) => o.id !== entityId)].slice(0, UNAVAILABLE_LIMIT);
@@ -148,6 +160,7 @@ export const GET = withAdmin(async (request) => {
             statusId: o.statusId,
             statusName: o.status?.name ?? null,
             isDuplication: o.isDuplication,
+            pagePriced: o.pages != null,
             catalogue: o.catalogue,
         });
 
@@ -159,9 +172,8 @@ export const GET = withAdmin(async (request) => {
             })),
             unavailable: unavailable.map((o) => ({
                 ...common(o),
-                pagePriced: o.pages != null,
                 // Jamais null ici : chaque groupe ci-dessus est un cas de orderAttachBlock.
-                reason: orderAttachBlock(o, billKind)!,
+                reason: orderAttachBlock(o, billKind, { proformaFull })!,
                 bill: o.bill,
             })),
             unavailableTotal: counts.reduce((sum, n) => sum + n, 0),

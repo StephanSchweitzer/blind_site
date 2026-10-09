@@ -38,6 +38,14 @@ export function OrderNotFinishedNote({ statusId }: { statusId: number }) {
     );
 }
 
+/**
+ * Une revue (tarifée à la page) se facture seule, sur sa propre pro-forma.
+ * Dans « Créer une nouvelle facture », c'est la note des lignes que le choix en
+ * cours grise : les revues dès qu'une demande est cochée, tout le reste dès
+ * qu'une revue l'est.
+ */
+export const REVUE_ALONE = 'Une revue se facture seule, sur sa propre facture pro-forma';
+
 const linkClass =
     'text-blue-700 dark:text-blue-400 underline underline-offset-2 hover:text-blue-800 dark:hover:text-blue-300';
 
@@ -61,12 +69,14 @@ function UnavailableReason({ order }: { order: UnavailableOrder }) {
             }
             if (order.statusId === TERMINE_STATUS_ID) {
                 // Terminée mais sur aucune facture : sa pro-forma a été supprimée, elle
-                // ne se recrée pas toute seule (voir le guide, « Les factures pro-forma »).
-                return <>Tarifée à la page, sans facture pro-forma : rouvrez la demande, puis renseignez de nouveau sa date de clôture</>;
+                // ne se recrée pas toute seule — mais « Ajouter une facture » la crée.
+                return <>{REVUE_ALONE} : créez-la avec « Ajouter une facture »</>;
             }
             return <>Tarifée à la page : elle aura sa propre facture pro-forma, émise à sa clôture</>;
         case 'UNBILLABLE':
             return <>Marquée « Non facturable »</>;
+        case 'PROFORMA_FULL':
+            return <>Cette facture pro-forma a déjà sa revue : une pro-forma n&apos;en porte qu&apos;une</>;
     }
 }
 

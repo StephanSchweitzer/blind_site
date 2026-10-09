@@ -525,29 +525,56 @@ export function guardOrderMatchesBillKind(args: {
  * rattacher à la main laissait la demande ouverte pour de bon (douze l'étaient en
  * production en octobre 2026, facturées sans avoir été expédiées).
  *
+ * `billKind` null : la facture n'existe pas encore (« Créer une nouvelle
+ * facture »), son type n'est pas décidé — ce sont les demandes cochées qui le
+ * décideront (billKindForOrders). Une revue y est donc rattachable comme une
+ * autre ; c'est le formulaire qui grise les unes dès qu'on coche l'autre.
+ *
+ * PROFORMA_FULL : une pro-forma porte UNE revue — son impression (ProformaPDF)
+ * n'en lit qu'une, et le n° que le client reporte sur son règlement est celui
+ * de cette revue-là. Une pro-forma remise en brouillon qui a déjà la sienne n'en
+ * accepte pas d'autre.
+ *
  * L'ordre compte : une demande déjà sur une facture l'est avant tout le reste,
  * et c'est ce que la liste doit en dire (avec le lien vers cette facture).
  */
-export type OrderAttachBlock = 'ON_BILL' | 'UNBILLABLE' | 'KIND_MISMATCH' | 'AWAITING_SHIPMENT';
+export type OrderAttachBlock = 'ON_BILL' | 'UNBILLABLE' | 'KIND_MISMATCH' | 'AWAITING_SHIPMENT' | 'PROFORMA_FULL';
 
 export function orderAttachBlock(
     order: { billId: number | null; billingStatus: OrderBillingStatus; pages: number | null; statusId: number },
-    billKind: BillKind = BillKind.STANDARD
+    billKind: BillKind | null,
+    opts: { proformaFull?: boolean } = {}
 ): OrderAttachBlock | null {
     if (order.billId != null) return 'ON_BILL';
     if (order.billingStatus === OrderBillingStatus.UNBILLABLE) return 'UNBILLABLE';
-    if (!guardOrderMatchesBillKind({ orderPages: order.pages, billKind }).ok) return 'KIND_MISMATCH';
+    if (billKind != null && !guardOrderMatchesBillKind({ orderPages: order.pages, billKind }).ok) return 'KIND_MISMATCH';
     if (order.statusId === STATUS.ATTENTE_AUDITEUR) return 'AWAITING_SHIPMENT';
+    if (billKind === BillKind.PROFORMA && opts.proformaFull) return 'PROFORMA_FULL';
     return null;
 }
 
-/** orderAttachBlock(…) === null, en clause Prisma — pour lister sans tout charger. Garder les deux d'accord. */
-export const attachableOrderWhere = (billKind: BillKind = BillKind.STANDARD): Prisma.OrdersWhereInput => ({
+/**
+ * orderAttachBlock(…) === null, en clause Prisma — pour lister sans tout charger.
+ * Garder les deux d'accord. (PROFORMA_FULL ne se traduit pas en clause : quand la
+ * pro-forma est pleine, l'appelant ne liste rien comme rattachable.)
+ */
+export const attachableOrderWhere = (billKind: BillKind | null): Prisma.OrdersWhereInput => ({
     billId: null,
     billingStatus: { not: OrderBillingStatus.UNBILLABLE },
-    pages: billKind === BillKind.PROFORMA ? { not: null } : null,
+    ...(billKind != null ? { pages: billKind === BillKind.PROFORMA ? { not: null } : null } : {}),
     statusId: { not: STATUS.ATTENTE_AUDITEUR },
 });
+
+/**
+ * Le type de la facture qu'on crée, déduit des demandes cochées : personne ne le
+ * choisit. Une revue (tarifée à la page) fait une pro-forma, à elle seule ; le
+ * reste fait une facture standard. 'PROFORMA_NOT_ALONE' : une revue cochée avec
+ * d'autres demandes — revues comprises.
+ */
+export function billKindForOrders(orders: { pages: number | null }[]): BillKind | 'PROFORMA_NOT_ALONE' {
+    if (!orders.some((o) => o.pages != null)) return BillKind.STANDARD;
+    return orders.length === 1 ? BillKind.PROFORMA : 'PROFORMA_NOT_ALONE';
+}
 
 /**
  * When the client's open DRAFT reaches their paymentThreshold (seuil), issue it:

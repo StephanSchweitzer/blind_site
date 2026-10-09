@@ -28,7 +28,7 @@ import { parisDate } from '@/lib/paris-day';
 import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
 import { SearchSuggestions } from '@/components/ui/search-suggestions';
 import type { VocabularyDomain } from '@/lib/search-suggestion-types';
-import { OrderNotFinishedNote, UnavailableOrderList, type UnavailableOrder } from './BillOrderPicker';
+import { OrderNotFinishedNote, REVUE_ALONE, UnavailableOrderList, type UnavailableOrder } from './BillOrderPicker';
 
 const PEOPLE_DOMAIN: readonly VocabularyDomain[] = ['people'];
 
@@ -71,6 +71,8 @@ interface EligibleOrder {
     statusId: number;
     statusName: string | null;
     isDuplication: boolean;
+    /** Une revue : elle se facture seule, sur sa propre pro-forma. */
+    pagePriced: boolean;
     catalogue: { title: string; author: string };
 }
 
@@ -86,9 +88,12 @@ interface EligibleOrder {
  *
  * Une duplication n'a pas d'attribution et se termine sur place : « Terminé »
  * est le seul état qui la concerne, comme pour les autres.
+ *
+ * Jamais une revue : elle se facture seule, et la pré-cocher avec les autres
+ * griserait tout le reste — ou en ferait une facture que le serveur refuse.
  */
 const isReadyToBill = (o: EligibleOrder): boolean =>
-    o.statusId === TERMINE_STATUS_ID && o.cost != null;
+    o.statusId === TERMINE_STATUS_ID && o.cost != null && !o.pagePriced;
 
 /** STATUS.TERMINE — dupliqué ici parce que lib/statusSync.ts est serveur. */
 const TERMINE_STATUS_ID = 3;
@@ -284,6 +289,18 @@ export function BillFormBackendBase({
         ? eligibleOrders.filter((o) => selectedOrderIds.has(o.id) && !orderSearchResult.matchingIds.has(o.id)).length
         : 0;
     const shownUnavailable = orderSearchResult ? orderSearchResult.unavailable : unavailableOrders;
+
+    // Une revue se facture seule, sur sa pro-forma : le type de la facture se
+    // déduit de ce qui est coché (billKindForOrders, côté serveur), et ce qui ne
+    // peut plus l'accompagner se grise sur place, avec la raison. Tout décocher
+    // rend tout cochable.
+    const selected = eligibleOrders.filter((o) => selectedOrderIds.has(o.id));
+    const revueSelected = selected.some((o) => o.pagePriced);
+    const lockedReason = (o: EligibleOrder): string | null => {
+        if (selectedOrderIds.has(o.id) || selected.length === 0) return null;
+        if (revueSelected) return 'Une revue est cochée : elle se facture seule, sur sa propre facture pro-forma';
+        return o.pagePriced ? REVUE_ALONE : null;
+    };
     const shownUnavailableTotal = orderSearchResult ? orderSearchResult.total : unavailableTotal;
 
     const totalAmount = useMemo(
@@ -499,33 +516,43 @@ export function BillFormBackendBase({
                                         </div>
                                     ) : (
                                         <div className="border border-border rounded-md divide-y divide-border max-h-[260px] overflow-y-auto">
-                                            {visibleOrders.map((o) => (
+                                            {visibleOrders.map((o) => {
+                                                const locked = lockedReason(o);
+                                                return (
                                                 <label
                                                     key={o.id}
-                                                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted cursor-pointer"
+                                                    className={`flex items-center gap-3 px-3 py-2.5 ${locked ? 'bg-muted/40 cursor-default' : 'hover:bg-muted cursor-pointer'}`}
                                                 >
                                                     <Checkbox
                                                         checked={selectedOrderIds.has(o.id)}
                                                         onCheckedChange={() => toggleOrder(o.id)}
+                                                        disabled={!!locked}
                                                         className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                                     />
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="text-foreground text-sm font-medium truncate">
+                                                        <div className={`${locked ? 'text-muted-foreground' : 'text-foreground'} text-sm font-medium truncate`}>
                                                             #{o.id} — {o.catalogue.title}
                                                         </div>
                                                         <div className="text-muted-foreground text-xs truncate">
                                                             {o.catalogue.author} · {parisDate(o.requestReceivedDate)}
                                                             {o.statusName ? ` · ${o.statusName}` : ''}
+                                                            {o.pagePriced ? ' · Revue, tarifée à la page' : ''}
                                                         </div>
-                                                        {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}
-                                                        <OrderNotFinishedNote statusId={o.statusId} />
-                                                        {o.cost == null && (
-                                                            <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
-                                                                Aucun tarif renseigné — serait facturée 0,00 €
-                                                            </div>
+                                                        {locked ? (
+                                                            <div className="text-muted-foreground text-xs mt-0.5">{locked}</div>
+                                                        ) : (
+                                                            <>
+                                                                {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}
+                                                                <OrderNotFinishedNote statusId={o.statusId} />
+                                                                {o.cost == null && (
+                                                                    <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
+                                                                        Aucun tarif renseigné — serait facturée 0,00 €
+                                                                    </div>
+                                                                )}
+                                                            </>
                                                         )}
                                                     </div>
-                                                    <span className="text-foreground text-sm font-medium whitespace-nowrap">
+                                                    <span className={`${locked ? 'text-muted-foreground' : 'text-foreground'} text-sm font-medium whitespace-nowrap`}>
                                                         {o.cost == null ? '—' : formatCurrency(o.cost)}
                                                     </span>
                                                     <a
@@ -539,7 +566,8 @@ export function BillFormBackendBase({
                                                         <ExternalLink className="h-3.5 w-3.5" />
                                                     </a>
                                                 </label>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                     {hiddenSelectedCount > 0 && (
@@ -567,6 +595,11 @@ export function BillFormBackendBase({
                         </span>
                         <span className="text-xl font-bold text-foreground">{formatCurrency(totalAmount)}</span>
                     </div>
+                    {revueSelected && (
+                        <p className="-mt-2 text-xs text-muted-foreground">
+                            Une revue est cochée : la facture créée sera sa facture pro-forma.
+                        </p>
+                    )}
 
                     {/* State */}
                     <div className="space-y-2">

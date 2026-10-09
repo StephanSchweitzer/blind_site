@@ -37,13 +37,16 @@ Pour associer un auditeur et ses demandes disponibles, cliquez sur le champ « R
 
 Cela affichera alors les demandes de l'auditeur que vous pouvez facturer. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Un message en ambre signale une demande qui n'est pas encore terminée ou qui n'a pas de tarif ; elle reste cochable, mais n'est pas cochée d'avance.
 
+Vous n'avez pas à choisir le type de la facture : il se déduit de ce que vous cochez. Une revue (demande tarifée à la page) se facture **seule**, sur sa propre facture [pro-forma](#les-factures-pro-forma) : dès que vous cochez une revue, les autres demandes se grisent ; dès que vous cochez une autre demande, ce sont les revues qui se grisent. Une note sous chaque ligne grisée le rappelle, et tout décocher rend tout cochable. Une revue n'est jamais cochée d'avance.
+
 ### Les demandes qui ne peuvent pas être facturées ici
 
 Sous la liste viennent, grisées, les autres demandes de l'auditeur, chacune avec la raison qui l'empêche d'être ajoutée :
 
 - **déjà sur une facture** : le lien bleu « Sur la facture #… » ouvre cette facture dans un nouvel onglet, et indique son état (brouillon, émise…). Une facture pro-forma y figure comme les autres ;
 - **pas encore expédiée** (« Attente envoi vers auditeur ») : l'enregistrement est revenu du lecteur, mais n'est pas encore parti chez l'auditeur. Ouvrez la demande (l'icône à droite de la ligne) et renseignez sa date de clôture le jour de l'expédition : elle sera alors facturée toute seule. Elle ne peut pas être ajoutée à la main : sans date de clôture, elle resterait ouverte, et en retard ;
-- **tarifée à la page** : elle aura sa propre facture [pro-forma](#les-factures-pro-forma), émise à sa clôture ;
+- **tarifée à la page**, dans la liste d'un brouillon : elle ne va pas sur une facture standard, elle aura sa propre facture [pro-forma](#les-factures-pro-forma) ;
+- **pro-forma déjà remplie**, dans la liste d'une pro-forma remise en brouillon : une pro-forma ne porte qu'une revue ;
 - **non facturable**.
 
 Les demandes à clôturer viennent en premier, puis celles des factures en cours, et la liste s'arrête à dix. Pour en retrouver une autre, tapez son titre, son auteur ou son numéro dans la barre de recherche au-dessus de la liste : elle apparaît, cochable ou grisée, avec sa raison. Le lien « voyez toutes ses factures », sous la liste, ouvre la page des factures sur le nom de l'auditeur.
@@ -143,9 +146,10 @@ Le PDF reprend la mise en page d'une facture standard — logotype, titre « FAC
 Quelques règles propres aux pro-formas :
 
 - une demande à la page ne se rattache qu'à une pro-forma, et une demande au poids qu'à une facture standard : le rattachement à la main l'interdit ;
-- la facture pro-forma ne se coche pas dans « Ajouter une facture » ;
+- une pro-forma porte **une seule** revue : remise en brouillon, elle n'en accepte pas une seconde ;
+- une pro-forma se crée aussi à la main, depuis « Ajouter une facture » : cochez la revue seule, la facture créée est sa pro-forma ;
 - la pro-forma étant déjà émise, on ne peut plus faire revenir la demande en arrière depuis « Terminé » : remettez d'abord la facture en brouillon ;
-- une pro-forma remise en brouillon puis supprimée n'est pas recréée toute seule : rouvrez la demande (« Rouvrir la demande »), puis renseignez de nouveau sa date de clôture.
+- une pro-forma remise en brouillon puis supprimée n'est pas recréée toute seule : recréez-la depuis « Ajouter une facture », en cochant la revue.
 
 ## L'avis d'impression
 
