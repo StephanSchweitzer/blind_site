@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
     Dialog,
@@ -37,6 +37,7 @@ import {
     type FolderSelection,
     type RejectReason,
 } from '@/lib/audio/folder-selection';
+import { alreadyUploadedFinder } from '@/lib/audio/naming';
 import {
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
@@ -457,15 +458,23 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const handleFilesChosen = async (files: File[]) => {
         if (!files.length) return;
         setSelection(null);
-        const { ok, becameAvailable, recovered, repriced } = await upload(files);
+        const { ok, becameAvailable, recovered, repriced, alreadyPresent } = await upload(files);
+        const added = files.length - alreadyPresent;
         if (ok) {
             toast({
                 // @ts-expect-error jsx in toast
                 title: <span className="text-2xl font-bold">Envoi terminé</span>,
                 description: (
                     <span className="text-xl mt-2">
-                        {files.length} fichier{files.length > 1 ? 's' : ''} ajouté
-                        {files.length > 1 ? 's' : ''} au dossier.
+                        {added > 0
+                            ? `${added} fichier${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} au dossier.`
+                            : 'Aucun fichier ajouté.'}
+                        {/* Only reachable when the folder changed between the
+                            confirmation panel and the send: the panel already
+                            leaves out what it can see is there. */}
+                        {alreadyPresent > 0 &&
+                            ` ${alreadyPresent} ${alreadyPresent > 1 ? 'étaient' : 'était'} déjà dans le dossier ` +
+                                `et n’${alreadyPresent > 1 ? 'ont' : 'a'} pas été renvoyé${alreadyPresent > 1 ? 's' : ''}.`}
                         {/* Say it out loud: the admin saw bars restart and
                             deserves to know it was handled, not glossed over. */}
                         {recovered > 0 &&
@@ -523,6 +532,28 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     };
 
     const busy = phase === 'preparing' || phase === 'uploading' || phase === 'finalising';
+
+    /**
+     * The picked files the folder already holds (same title, same size), left
+     * out of the send. Re-picking a folder used to append a whole second copy
+     * after the first — see alreadyUploadedFinder. The upload route applies the
+     * same rule, so this is the warning and that is the guard.
+     */
+    const findAlreadyUploaded = useMemo(() => alreadyUploadedFinder(data?.tracks ?? []), [data]);
+    const selectionPresent = useMemo(
+        () =>
+            (selection?.files ?? []).flatMap((file) => {
+                const existingName = findAlreadyUploaded(file);
+                return existingName ? [{ file, existingName }] : [];
+            }),
+        [selection, findAlreadyUploaded],
+    );
+    const selectionToSend = useMemo(() => {
+        const present = new Set(selectionPresent.map((p) => p.file));
+        return (selection?.files ?? []).filter((f) => !present.has(f));
+    }, [selection, selectionPresent]);
+    const selectionToSendBytes = selectionToSend.reduce((sum, f) => sum + f.size, 0);
+    const existingTrackCount = data?.tracks.length ?? 0;
     const activeTrash = trash.filter((t) => !t.restoredAt);
     const zipping = zip.phase === 'running';
 
@@ -1045,13 +1076,56 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                 ) : (
                                                     'Sélection : '
                                                 )}
-                                                <strong>
-                                                    {selection.files.length} fichier
-                                                    {selection.files.length > 1 ? 's' : ''} audio
-                                                </strong>{' '}
-                                                ({formatSize(selection.totalBytes)}) seront envoyés dans
-                                                l’ordre de lecture.
+                                                {selectionToSend.length > 0 ? (
+                                                    <>
+                                                        <strong>
+                                                            {selectionToSend.length} fichier
+                                                            {selectionToSend.length > 1 ? 's' : ''} audio
+                                                        </strong>{' '}
+                                                        ({formatSize(selectionToSendBytes)}){' '}
+                                                        {selectionToSend.length > 1 ? 'seront envoyés' : 'sera envoyé'}{' '}
+                                                        dans l’ordre de lecture.
+                                                    </>
+                                                ) : (
+                                                    <strong>
+                                                        tous ces fichiers sont déjà dans le dossier, rien à
+                                                        envoyer.
+                                                    </strong>
+                                                )}
                                             </p>
+
+                                            {existingTrackCount > 0 && (
+                                                <div className="mt-2">
+                                                    <p className="text-amber-700 dark:text-amber-300">
+                                                        {selectionToSend.length > 0 &&
+                                                            `Ce dossier contient déjà ${existingTrackCount} piste${existingTrackCount > 1 ? 's' : ''} ; ` +
+                                                                `les fichiers seront ajoutés après ${existingTrackCount > 1 ? 'elles' : 'elle'}. `}
+                                                        {selectionPresent.length > 0 &&
+                                                            `${selectionPresent.length} fichier${selectionPresent.length > 1 ? 's' : ''} ` +
+                                                                `${selectionPresent.length > 1 ? 'semblent' : 'semble'} déjà présent${selectionPresent.length > 1 ? 's' : ''} ` +
+                                                                `(même nom, même taille) et ne ${selectionPresent.length > 1 ? 'seront' : 'sera'} pas ` +
+                                                                `renvoyé${selectionPresent.length > 1 ? 's' : ''}. Pour remplacer une piste, ` +
+                                                                'supprimez-la d’abord.'}
+                                                    </p>
+                                                    {selectionPresent.length > 0 && (
+                                                        <details className="mt-1">
+                                                            <summary className="cursor-pointer text-xs text-muted-foreground">
+                                                                Voir les fichiers déjà présents
+                                                            </summary>
+                                                            <ul className="mt-1 space-y-0.5">
+                                                                {selectionPresent.map((p) => (
+                                                                    <li
+                                                                        key={p.file.name}
+                                                                        className="font-mono text-xs break-all text-muted-foreground"
+                                                                    >
+                                                                        {p.file.name} — déjà en ligne sous « {p.existingName} »
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </details>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {selection.rejected.length > 0 && (
                                                 <div className="mt-2">
@@ -1092,19 +1166,19 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             )}
 
                                             <div className="mt-3 flex flex-wrap gap-2">
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        void handleFilesChosen(selection.files)
-                                                    }
-                                                >
-                                                    <span className="flex items-center gap-2">
-                                                        <Upload className="h-4 w-4" /> Envoyer{' '}
-                                                        {selection.files.length} fichier
-                                                        {selection.files.length > 1 ? 's' : ''}
-                                                    </span>
-                                                </Button>
+                                                {selectionToSend.length > 0 && (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        onClick={() => void handleFilesChosen(selectionToSend)}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <Upload className="h-4 w-4" /> Envoyer{' '}
+                                                            {selectionToSend.length} fichier
+                                                            {selectionToSend.length > 1 ? 's' : ''}
+                                                        </span>
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     type="button"
                                                     size="sm"
@@ -1227,7 +1301,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                                 ? 'envoyé, enregistrement en cours…'
                                                                 : p.status === 'nouvelle tentative'
                                                                   ? 'incident du stockage, nouvel essai…'
-                                                                  : p.status}
+                                                                  : p.alreadyPresent
+                                                                    ? 'déjà présent, non renvoyé'
+                                                                    : p.status}
                                                             {/* A retry is not a failure, but it is not
                                                                 nothing either: say it happened rather
                                                                 than let the bar restart unexplained. */}

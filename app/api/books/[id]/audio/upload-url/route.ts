@@ -9,6 +9,7 @@ import {
     isAppleDoubleName,
     splitExtension,
     newBookFolderPrefix,
+    alreadyUploadedFinder,
 } from '@/lib/audio/naming';
 import { MAX_UPLOAD_BYTES } from '@/lib/audio/folder-selection';
 import { pool } from '@/lib/concurrency';
@@ -193,6 +194,12 @@ export const POST = withAdmin(async (req, { params }) => {
     // per file (an extra ~50 serial round trips before a single byte moved);
     // a Set lookup answers the same question for free.
     const nameSet = new Set(names);
+    // Matched against the listing as it was BEFORE this batch: a file can only
+    // duplicate something that was already there, never a sibling in its own
+    // selection (one folder cannot hold two files of the same name).
+    const findAlreadyUploaded = alreadyUploadedFinder(existing);
+    /** Files already in the folder, not signed — see the duplicate guard below. */
+    const skipped: { originalName: string; existingName: string }[] = [];
 
     const results: {
         originalName: string;
@@ -259,6 +266,22 @@ export const POST = withAdmin(async (req, { params }) => {
         let filename: string;
         let strategy: string;
         let key: string;
+
+        // --- The same file is already in the folder: don't send it again ----
+        //
+        // A second pick of a folder used to append a complete new set after
+        // the first, because every fresh name sorts after the last track and
+        // `existingKey` only survives within one upload session. Same title
+        // (numbering aside) and same size to the byte is that file; it is
+        // reported back as skipped rather than refused, so re-picking a folder
+        // after a half-failed upload sends exactly what is missing. Not
+        // applied to a reused key, which by design names this file's own
+        // earlier landing.
+        const alreadyThere = reuseKey ? null : findAlreadyUploaded({ name: originalName, size });
+        if (alreadyThere) {
+            skipped.push({ originalName, existingName: alreadyThere });
+            continue;
+        }
 
         if (reuseKey) {
             key = reuseKey;
@@ -332,5 +355,5 @@ export const POST = withAdmin(async (req, { params }) => {
         r.url = await putTrackUrl(r.key, r.contentType, r.checksum, URL_TTL_SECONDS);
     }
 
-    return NextResponse.json({ prefix, expiresIn: URL_TTL_SECONDS, files: results });
+    return NextResponse.json({ prefix, expiresIn: URL_TTL_SECONDS, files: results, skipped });
 });

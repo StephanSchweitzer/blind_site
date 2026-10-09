@@ -192,6 +192,58 @@ export function nextTrackName(existing: string[], originalFilename: string): Nex
     );
 }
 
+/** Case and Unicode form are noise here: macOS hands over NFD names, Windows ignores case. */
+const foldName = (s: string) => s.normalize('NFC').toLowerCase();
+
+/** The title part `nextTrackName` would keep from this original filename. */
+function uploadedTitleOf(originalFilename: string): string {
+    const { base, ext } = splitExtension(originalFilename);
+    return foldName(`${sanitiseTrackTitle(base) || 'piste'}.${ext}`);
+}
+
+/**
+ * The titles a stored name could have come from: the name minus the one or two
+ * number tokens `nextTrackName` puts in front (an optional folder lead, then the
+ * running number), or the name as is for a file that never went through it.
+ * Every variant is offered because the original's own title may start with a
+ * number too — `01 Titre.mp3` is stored as `001 040 01 Titre.mp3`.
+ */
+function storedTitlesOf(storedName: string): string[] {
+    const { base, ext } = splitExtension(storedName);
+    const once = base.replace(/^\d+\s+/, '');
+    const twice = once.replace(/^\d+\s+/, '');
+    return [...new Set([base, once, twice])].filter(Boolean).map((t) => foldName(`${t}.${ext}`));
+}
+
+/**
+ * Finds, for a file about to be uploaded, the track already in the folder that
+ * is that same file — same title once the numbering is set aside, same size to
+ * the byte.
+ *
+ * This exists because uploading is not idempotent across two picks of the same
+ * folder: every fresh name sorts after the folder's last track, so a folder sent
+ * three times became 117 tracks — the same 39, three times over (« D'un soleil à
+ * l'autre », October 2026). The in-session retry memory (`existingKey`) cannot
+ * see a second pick; this compares against what the bucket actually holds, so
+ * the upload route and the confirmation panel can both refuse to send it again.
+ *
+ * The size is what keeps it honest: a re-recorded take under the same name
+ * differs in bytes and still goes through. Replacing a track on purpose means
+ * deleting the old one first, which is the existing flow anyway.
+ */
+export function alreadyUploadedFinder(
+    tracks: { name: string; sizeBytes: number }[],
+): (file: { name: string; size: number }) => string | null {
+    const index = new Map<string, string>();
+    for (const t of tracks) {
+        for (const title of storedTitlesOf(t.name)) {
+            const k = `${t.sizeBytes}|${title}`;
+            if (!index.has(k)) index.set(k, t.name);
+        }
+    }
+    return (file) => index.get(`${file.size}|${uploadedTitleOf(file.name)}`) ?? null;
+}
+
 /**
  * Prefix for a book that has no audio folder yet.
  *

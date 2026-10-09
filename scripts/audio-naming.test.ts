@@ -16,6 +16,7 @@ import {
     commonLead,
     isAllowedAudioExtension,
     naturalCompare,
+    alreadyUploadedFinder,
 } from '../lib/audio/naming';
 
 let failures = 0;
@@ -154,6 +155,60 @@ check(
         msg = (e as Error).message;
     }
     check('extension non audio rejetée', msg.startsWith('Extension non autorisée'), true);
+}
+
+// ------------------------------------------------------- fichiers déjà envoyés
+
+{
+    // The October 2026 incident: the same 39 files picked three times became
+    // 117 tracks. Replays the first pick through nextTrackName, then checks the
+    // second pick finds every file already there.
+    const originals = Array.from({ length: 39 }, (_, i) => ({
+        name: `${String(i + 1).padStart(2, '0')} D'un soleil à l'autre.mp3`,
+        size: 4_000_000 + i,
+    }));
+    const folder: { name: string; sizeBytes: number }[] = [];
+    for (const f of originals) {
+        const { filename } = nextTrackName(folder.map((t) => t.name), f.name);
+        folder.push({ name: filename, sizeBytes: f.size });
+    }
+    const find = alreadyUploadedFinder(folder);
+    check(
+        'second choix du même dossier : les 39 fichiers sont reconnus',
+        originals.filter((f) => find(f) !== null).length,
+        39,
+    );
+    check('reconnu sous son nom stocké', find(originals[0]), folder[0].name);
+    check('reconnu malgré la numérotation de tête', find(originals[38]), folder[38].name);
+    check(
+        'même nom, autre taille : pas un doublon (nouvelle prise)',
+        find({ name: originals[4].name, size: originals[4].size + 1 }),
+        null,
+    );
+    check(
+        'même taille, autre titre : pas un doublon',
+        find({ name: '05 Autre titre.mp3', size: originals[4].size }),
+        null,
+    );
+    check(
+        'extension en majuscules et accents décomposés (macOS)',
+        find({ name: originals[2].name.replace('.mp3', '.MP3').normalize('NFD'), size: originals[2].size }),
+        folder[2].name,
+    );
+    check(
+        'dossier ancien avec lead : « 1000 22- Titre.mp3 » ← « 22- Titre.mp3 »',
+        alreadyUploadedFinder([{ name: '1000 22- Titre.mp3', sizeBytes: 10 }])({
+            name: '22- Titre.mp3',
+            size: 10,
+        }),
+        '1000 22- Titre.mp3',
+    );
+    check(
+        'nom identique sans numéro, même taille : doublon',
+        alreadyUploadedFinder([{ name: 'Titre.mp3', sizeBytes: 10 }])({ name: 'Titre.mp3', size: 10 }),
+        'Titre.mp3',
+    );
+    check('dossier vide : rien de présent', alreadyUploadedFinder([])(originals[0]), null);
 }
 
 // ------------------------------------------------------------------- dossiers

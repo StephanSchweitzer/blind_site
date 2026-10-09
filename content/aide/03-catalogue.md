@@ -147,6 +147,8 @@ Si le dossier audio est partagé avec une autre fiche — cas des doublons issus
 
 Pour importer un fichier audio, faites défiler la page jusqu'en bas. Si vous souhaitez importer des fichiers individuels, cliquez sur « Ajouter les fichiers » ; si vous souhaitez importer un dossier entier, cliquez sur « Ajouter un dossier ».
 
+Les fichiers envoyés s'ajoutent toujours après les pistes déjà présentes. Avant l'envoi, un cadre récapitule ce qui va partir : si le dossier contient déjà des pistes, il le signale, et les fichiers qui y sont déjà (même nom, même taille) sont écartés d'office — « Envoyer » ne propose que ceux qui manquent. Vous pouvez donc choisir à nouveau le même dossier après un envoi interrompu sans créer de doublon. Si certains fichiers ont échoué, le bouton « Renvoyer » affiché sous la liste des fichiers en échec reste le plus simple. Pour remplacer une piste par une nouvelle version, supprimez d'abord l'ancienne.
+
 ![Catalogue - capture 21](/admin/aide/images/catalogue-21.jpg)
 
 Si vous souhaitez (1) télécharger, (2) modifier les noms de fichiers ou (3) supprimer des fichiers individuels, utilisez les boutons situés à droite de la ligne correspondante.

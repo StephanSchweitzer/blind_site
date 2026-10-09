@@ -84,6 +84,12 @@ export interface FileProgress {
     pass: number;
     /** Whether another pass could plausibly succeed. Internal to the hook. */
     recoverable?: boolean;
+    /**
+     * The server found this exact file already in the folder (same title, same
+     * size) and did not sign it — `assignedName` is then the existing track.
+     * Shown as « déjà présent », counted apart from the files actually sent.
+     */
+    alreadyPresent?: boolean;
 }
 
 export interface UploadOutcome {
@@ -105,10 +111,18 @@ export interface UploadOutcome {
      * count is the one that matches the finished folder.
      */
     repriced: number;
+    /** Files skipped because the folder already held them. For the summary. */
+    alreadyPresent: number;
 }
 
 /** Nothing landed — every early exit from `upload` returns this. */
-const FAILED: UploadOutcome = { ok: false, becameAvailable: false, recovered: 0, repriced: 0 };
+const FAILED: UploadOutcome = {
+    ok: false,
+    becameAvailable: false,
+    recovered: 0,
+    repriced: 0,
+    alreadyPresent: 0,
+};
 
 interface SignedFile {
     originalName: string;
@@ -664,6 +678,7 @@ export function useAudioUpload(bookId: number) {
 
                     // --- 1. Ask the server to name and sign each file ---------
                     let signed: SignedFile[];
+                    let skipped: { originalName: string; existingName: string }[];
                     try {
                         const { res, data } = await fetchJsonWithRetry(
                             `/api/books/${bookId}/audio/upload-url`,
@@ -698,6 +713,7 @@ export function useAudioUpload(bookId: number) {
                             );
                         }
                         signed = (data?.files ?? []) as SignedFile[];
+                        skipped = (data?.skipped ?? []) as typeof skipped;
                     } catch (e) {
                         // Signing is per-chunk, so this kills this chunk and
                         // everything queued behind it — but not what already
@@ -729,10 +745,25 @@ export function useAudioUpload(bookId: number) {
                         // renamed into a new slot.
                         assignedKeysRef.current.set(s.originalName, s.key);
                     }
+                    // Already in the folder: nothing to send, nothing to verify.
+                    // Settled here as done rather than failed, so re-picking a
+                    // folder after a half-failed upload ends green once the
+                    // missing files are in.
+                    for (const k of skipped) {
+                        const row = rowOf(k.originalName);
+                        if (!row) continue;
+                        row.status = 'terminé';
+                        row.loaded = row.total;
+                        row.assignedName = k.existingName;
+                        row.alreadyPresent = true;
+                    }
                     // A signature the server didn't return for is a file that
                     // would otherwise sit at « en attente » for ever and be
                     // dropped silently — the one outcome worse than a failure.
-                    const signedNames = new Set(signed.map((s) => s.originalName));
+                    const signedNames = new Set([
+                        ...signed.map((s) => s.originalName),
+                        ...skipped.map((k) => k.originalName),
+                    ]);
                     for (const f of chunk.filter((f) => !signedNames.has(f.name))) {
                         fail(
                             f.name,
@@ -904,8 +935,9 @@ export function useAudioUpload(bookId: number) {
             const rows = progressRef.current;
             const stillFailed = rows.filter((p) => p.status === 'échec');
             const recovered = rows.filter(
-                (p) => p.status === 'terminé' && (p.attempts > 1 || p.pass > 1),
+                (p) => p.status === 'terminé' && !p.alreadyPresent && (p.attempts > 1 || p.pass > 1),
             ).length;
+            const alreadyPresent = rows.filter((p) => p.alreadyPresent).length;
 
             setFailedFiles(
                 stillFailed.map((p) => byName.get(p.name)).filter((f): f is File => Boolean(f)),
@@ -920,11 +952,11 @@ export function useAudioUpload(bookId: number) {
                         (stillFailed.length > 1 ? 's' : '') +
                         '. Le détail et la marche à suivre sont indiqués pour chacun ci-dessous.',
                 );
-                return { ok: false, becameAvailable, recovered, repriced };
+                return { ok: false, becameAvailable, recovered, repriced, alreadyPresent };
             }
 
             setPhase('done');
-            return { ok: true, becameAvailable, recovered, repriced };
+            return { ok: true, becameAvailable, recovered, repriced, alreadyPresent };
         },
         [bookId, publish, publishProgress],
     );
