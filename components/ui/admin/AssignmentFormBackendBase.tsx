@@ -22,11 +22,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertCircle, Calendar, History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
+import { AlertCircle, History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { DatePickerField, fromDayString, toDayString } from '@/components/ui/admin/DatePickerField';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { DeliveryMethod } from '@prisma/client';
@@ -130,27 +129,6 @@ export interface AssignmentFormBackendBaseProps {
     initialReaderHistory?: AssignmentReaderHistory[];
 }
 
-/**
- * Calendar-date helpers. These fields (reception / sent / returned) are dates,
- * not timestamps, so we keep them as "YYYY-MM-DD" and never round-trip through
- * toISOString() — which would convert local midnight to UTC and shift the day
- * (e.g. a date picked in Paris, UTC+2, lands on the previous day).
- */
-function toDateOnly(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-}
-
-/** Parse a stored value (date-only, or a hydrated ISO datetime) into a LOCAL Date for display. */
-function parseDateOnly(value: string | null): Date | undefined {
-    if (!value) return undefined;
-    const [y, m, d] = value.slice(0, 10).split('-').map(Number);
-    if (!y || !m || !d) return undefined;
-    return new Date(y, m - 1, d); // local midnight, no TZ shift
-}
-
 /*
  * deriveAssignmentStatus — the status is fully determined by which of the three dates are filled in —
  * team rule, not left to a manual pick, and purely on the dates: no dates (or
@@ -184,50 +162,16 @@ function DatePicker({
     triggerRef?: (el: HTMLElement | null) => void;
     warning?: string;
 }) {
-    const [open, setOpen] = useState(false);
-    const date = parseDateOnly(value);
-
+    // Ces dates sont des jours, gardés en 'YYYY-MM-DD' — voir toDayString.
     return (
         <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">{label}</label>
-            {/* « Aujourd'hui » est soudé au champ (une seule commande, pas deux) : le cas
-                courant — la date est celle du jour — reste à un clic. */}
-            <div className="flex items-stretch">
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        ref={triggerRef}
-                        variant="outline"
-                        className="min-w-0 flex-1 justify-start rounded-r-none text-left font-normal bg-field border-border text-foreground hover:bg-muted"
-                    >
-                        <Calendar className="mr-2 h-4 w-4 shrink-0" />
-                        {date ? <span className="truncate">{format(date, 'PPP', { locale: fr })}</span> : <span className="truncate text-muted-foreground">{placeholder}</span>}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-card border-border">
-                    <CalendarComponent
-                        mode="single"
-                        selected={date}
-                        onSelect={(newDate) => {
-                            onChange(newDate ? toDateOnly(newDate) : null);
-                            setOpen(false);
-                        }}
-                        initialFocus
-                        locale={fr}
-                    />
-                </PopoverContent>
-            </Popover>
-            {value !== toDateOnly(new Date()) && (
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onChange(toDateOnly(new Date()))}
-                    className="shrink-0 -ml-px rounded-l-none bg-muted text-muted-foreground hover:text-foreground focus-visible:z-10"
-                >
-                    Aujourd&apos;hui
-                </Button>
-            )}
-            </div>
+            <DatePickerField
+                value={fromDayString(value)}
+                onChange={(date) => onChange(date ? toDayString(date) : null)}
+                placeholder={placeholder}
+                triggerRef={triggerRef}
+            />
             {warning && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">{warning}</p>
             )}

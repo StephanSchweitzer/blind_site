@@ -1,12 +1,7 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePickerField, fromDayString, toDayString } from '@/components/ui/admin/DatePickerField';
 import {
     Select,
     SelectContent,
@@ -38,22 +33,6 @@ import { withCurrentValue } from '@/lib/select-options';
  * ask the same confirmation.
  */
 
-/** Local Date -> 'YYYY-MM-DD' (calendar days are local, never UTC-shifted). */
-function toInputDay(date: Date | null): string {
-    if (!date) return '';
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
-    return `${date.getFullYear()}-${month}-${day}`;
-}
-
-/** 'YYYY-MM-DD' -> local Date, for the calendar's selected day. */
-function fromInputDay(value: string): Date | null {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-    const [y, m, d] = value.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return Number.isNaN(date.getTime()) ? null : date;
-}
-
 export interface ActivityStatusDraft {
     status: string;
     setStatus: (status: string) => void;
@@ -82,7 +61,7 @@ export function useActivityStatusDraft(initial?: {
     from?: string | null;
     until?: string | null;
 }): ActivityStatusDraft {
-    const today = toInputDay(new Date());
+    const today = toDayString(new Date());
     const [status, setStatus] = useState(initial?.status ?? '');
     const [from, setFrom] = useState(initial?.from || today);
     const [until, setUntil] = useState(initial?.until || '');
@@ -99,7 +78,7 @@ export function useActivityStatusDraft(initial?: {
     const reset = useCallback(
         (next = '') => {
             setStatus(next);
-            setFrom(toInputDay(new Date()));
+            setFrom(toDayString(new Date()));
             setUntil('');
         },
         []
@@ -141,37 +120,14 @@ function DayField({
     onChange: (day: string) => void;
     placeholder: string;
 }) {
-    const selected = fromInputDay(value);
     return (
         <div className="space-y-1">
             <label className="text-xs font-medium text-foreground">{label}</label>
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selected ? (
-                            format(selected, 'PPP', { locale: fr })
-                        ) : (
-                            <span className="text-muted-foreground">{placeholder}</span>
-                        )}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
-                    <Calendar
-                        mode="single"
-                        selected={selected ?? undefined}
-                        defaultMonth={selected ?? undefined}
-                        onSelect={(d) => onChange(toInputDay(d ?? null))}
-                        locale={fr}
-                        initialFocus
-                        className="bg-card text-foreground"
-                    />
-                </PopoverContent>
-            </Popover>
+            <DatePickerField
+                value={fromDayString(value)}
+                onChange={(d) => onChange(toDayString(d))}
+                placeholder={placeholder}
+            />
         </div>
     );
 }

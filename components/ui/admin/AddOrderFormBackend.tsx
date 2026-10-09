@@ -12,12 +12,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { DatePickerField } from '@/components/ui/admin/DatePickerField';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AddBookFormBackend } from '@/admin/BookFormBackendBase';
 import { useFormToast } from '@/hooks/useFormToast';
@@ -451,19 +448,10 @@ export function AddOrderFormBackend({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Date de réception <span className="text-red-500">*</span></label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button type="button" variant="outline"
-                                            className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted">
-                                        <Calendar className="mr-2 h-4 w-4" />
-                                        {format(requestReceivedDate, 'PPP', { locale: fr })}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 bg-card border-border">
-                                    <CalendarComponent mode="single" selected={requestReceivedDate}
-                                                       onSelect={(d) => d && setRequestReceivedDate(d)} initialFocus className="bg-card text-foreground" />
-                                </PopoverContent>
-                            </Popover>
+                            <DatePickerField
+                                value={requestReceivedDate}
+                                onChange={(d) => d && setRequestReceivedDate(d)}
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Méthode de livraison <span className="text-red-500">*</span></label>

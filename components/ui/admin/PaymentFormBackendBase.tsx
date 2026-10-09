@@ -13,12 +13,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, X, ChevronDown } from 'lucide-react';
+import { AlertCircle, X, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { DatePickerField } from '@/components/ui/admin/DatePickerField';
 import {
     PaymentType,
     PaymentMethod,
@@ -253,34 +250,6 @@ export function PaymentFormBackendBase({
         }
     };
 
-    const datePicker = (
-        value: Date | null,
-        onChange: (d: Date | null) => void,
-        placeholder = 'Sélectionner une date'
-    ) => (
-        <Popover>
-            <PopoverTrigger asChild>
-                <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {value ? format(value, 'PPP', { locale: fr }) : <span className="text-muted-foreground">{placeholder}</span>}
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-card border-border">
-                <CalendarComponent
-                    mode="single"
-                    selected={value || undefined}
-                    onSelect={(d) => onChange(d || null)}
-                    initialFocus
-                    className="bg-card text-foreground"
-                />
-            </PopoverContent>
-        </Popover>
-    );
-
     return (
         <Card className="bg-card border-border">
             <CardHeader>
@@ -449,11 +418,11 @@ export function PaymentFormBackendBase({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Date de création</label>
-                            {datePicker(creationDate, (d) => d && setCreationDate(d))}
+                            <DatePickerField value={creationDate} onChange={(d) => d && setCreationDate(d)} />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Date de paiement</label>
-                            {datePicker(paymentDate, setPaymentDate)}
+                            <DatePickerField value={paymentDate} onChange={setPaymentDate} />
                         </div>
                     </div>
 
@@ -493,7 +462,7 @@ export function PaymentFormBackendBase({
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-foreground">Date d&apos;émission</label>
-                                        {datePicker(issueDate, setIssueDate)}
+                                        <DatePickerField value={issueDate} onChange={setIssueDate} />
                                     </div>
                                 </div>
 
@@ -544,7 +513,7 @@ export function PaymentFormBackendBase({
                                     {isAllocated && (
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-foreground">Date d&apos;attribution</label>
-                                            {datePicker(allocationDate, setAllocationDate)}
+                                            <DatePickerField value={allocationDate} onChange={setAllocationDate} />
                                         </div>
                                     )}
                                 </div>

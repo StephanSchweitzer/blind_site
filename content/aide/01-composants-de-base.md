@@ -34,6 +34,10 @@ Un formulaire est l'élément de base de la plupart des interactions sur le Web.
 
 Un champ est une partie d'un formulaire dans laquelle il est possible de saisir des informations afin de modifier le contenu de la base de données lors de l'enregistrement du formulaire. Les informations modifiées dans les champs seront mises à jour lors de l'enregistrement et de l'envoi du formulaire.
 
+## Un champ de date
+
+Un clic sur un champ de date ouvre un calendrier : choisissez le jour, le calendrier se referme. Le bouton « Aujourd'hui », accolé au champ, le remplit avec la date du jour d'un seul clic ; il disparaît quand le champ porte déjà la date du jour. Certains champs facultatifs, comme la date de clôture d'une demande, proposent « Effacer » à la place une fois une date saisie.
+
 ## Les messages d'erreur
 
 Quand une action échoue, un message rouge s'affiche. Il en existe trois sortes :

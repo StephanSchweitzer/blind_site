@@ -23,9 +23,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertCircle, Calendar, ExternalLink } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { AlertCircle, ExternalLink } from 'lucide-react';
+import { DatePickerField } from '@/components/ui/admin/DatePickerField';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Link from 'next/link';
@@ -159,12 +158,6 @@ export const formatEuro2 = (v: string | null | undefined): string => {
     const n = parseFloat(String(v).replace(',', '.'));
     return Number.isNaN(n) ? '' : n.toFixed(2);
 };
-
-/** Minuit local, comme toutes les dates que produit le sélecteur de calendrier. */
-function today(): Date {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
 
 /** Le jour local d'une date de clôture, pour comparer sans l'heure (null = pas de date). */
 function dayKey(date: Date | string | null | undefined): string | null {
@@ -799,30 +792,10 @@ export function OrderFormBackendBase({
                         <label className="text-sm font-medium text-foreground">
                             Date de réception <span className="text-red-500">*</span>
                         </label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                                >
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    {formData.requestReceivedDate ? (
-                                        format(formData.requestReceivedDate, 'PPP', { locale: fr })
-                                    ) : (
-                                        <span>Sélectionner une date</span>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-card border-border">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={formData.requestReceivedDate}
-                                    onSelect={(date) => date && setFormData({ ...formData, requestReceivedDate: date })}
-                                    initialFocus
-                                    className="bg-card text-foreground"
-                                />
-                            </PopoverContent>
-                        </Popover>
+                        <DatePickerField
+                            value={formData.requestReceivedDate}
+                            onChange={(date) => date && setFormData({ ...formData, requestReceivedDate: date })}
+                        />
                     </div>
 
                     {/* Book Search */}
@@ -991,58 +964,17 @@ export function OrderFormBackendBase({
                             <label className="text-sm font-medium text-foreground">
                                 Date de clôture (envoi à l&apos;auditeur)
                             </label>
-                            <div className="flex items-stretch">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            disabled={!closureDateEnabled}
-                                            className="min-w-0 flex-1 justify-start rounded-r-none text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
-                                        >
-                                            <Calendar className="mr-2 h-4 w-4 shrink-0" />
-                                            {formData.closureDate ? (
-                                                <span className="truncate">{format(formData.closureDate, 'PPP', { locale: fr })}</span>
-                                            ) : (
-                                                <span className="truncate text-muted-foreground">Sélectionner une date</span>
-                                            )}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 bg-card border-border">
-                                        <CalendarComponent
-                                            mode="single"
-                                            selected={formData.closureDate || undefined}
-                                            onSelect={(date) => setClosureDate(date || null)}
-                                            initialFocus
-                                            className="bg-card text-foreground"
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                                {/* Le cas courant — on expédie aujourd'hui — reste à un clic,
-                                    comme quand choisir « Terminé » remplissait la date.
-                                    « Effacer » seulement pour une date saisie dans cette
-                                    session : une demande déjà close se rouvre par « Rouvrir la
-                                    demande », sous le statut, comme une attribution. */}
-                                {!formData.closureDate ? (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        disabled={!closureDateEnabled}
-                                        onClick={() => setClosureDate(today())}
-                                        className="shrink-0 -ml-px rounded-l-none bg-muted text-muted-foreground hover:text-foreground focus-visible:z-10"
-                                    >
-                                        Aujourd&apos;hui
-                                    </Button>
-                                ) : !savedStatusIsTermine && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => setClosureDate(null)}
-                                        className="shrink-0 -ml-px rounded-l-none bg-muted text-muted-foreground hover:text-foreground focus-visible:z-10"
-                                    >
-                                        Effacer
-                                    </Button>
-                                )}
-                            </div>
+                            {/* Le cas courant — on expédie aujourd'hui — reste à un clic,
+                                comme quand choisir « Terminé » remplissait la date.
+                                « Effacer » seulement pour une date saisie dans cette
+                                session : une demande déjà close se rouvre par « Rouvrir la
+                                demande », sous le statut, comme une attribution. */}
+                            <DatePickerField
+                                value={formData.closureDate}
+                                onChange={setClosureDate}
+                                disabled={!closureDateEnabled}
+                                clearable={!savedStatusIsTermine}
+                            />
                             {!closureDateEnabled && !assignmentUnknown && (
                                 <p className="text-xs text-muted-foreground">
                                     {assignmentStatusId === null

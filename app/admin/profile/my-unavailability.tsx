@@ -7,6 +7,7 @@ import { AdminCard } from '@/components/ui/admin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePickerField, fromDayString, toDayString } from '@/components/ui/admin/DatePickerField';
 import { toast } from '@/hooks/use-toast';
 import { getUserActivityStatusLabel } from '@/lib/user-activity-enums';
 import { formatDay, isWindowInForce } from '@/lib/users/activityStatus';
@@ -125,20 +126,18 @@ export default function MyUnavailability({
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                     <Label htmlFor="unavailable-from">Du</Label>
-                    <Input
+                    <DatePickerField
                         id="unavailable-from"
-                        type="date"
-                        value={from}
-                        onChange={(e) => setFrom(e.target.value)}
+                        value={fromDayString(from)}
+                        onChange={(d) => setFrom(toDayString(d))}
                     />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="unavailable-until">Au (inclus)</Label>
-                    <Input
+                    <DatePickerField
                         id="unavailable-until"
-                        type="date"
-                        value={until}
-                        onChange={(e) => setUntil(e.target.value)}
+                        value={fromDayString(until)}
+                        onChange={(d) => setUntil(toDayString(d))}
                     />
                 </div>
             </div>

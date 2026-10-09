@@ -13,10 +13,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Search, Loader2, ExternalLink } from 'lucide-react';
+import { AlertCircle, Search, Loader2, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { DatePickerField } from '@/components/ui/admin/DatePickerField';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
@@ -682,26 +682,10 @@ export function BillFormBackendBase({
                         {/* Creation date */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Date de création</label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                                    >
-                                        <Calendar className="mr-2 h-4 w-4" />
-                                        {format(creationDate, 'PPP', { locale: fr })}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 bg-card border-border">
-                                    <CalendarComponent
-                                        mode="single"
-                                        selected={creationDate}
-                                        onSelect={(d) => d && setCreationDate(d)}
-                                        initialFocus
-                                        className="bg-card text-foreground"
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                            <DatePickerField
+                                value={creationDate}
+                                onChange={(d) => d && setCreationDate(d)}
+                            />
                         </div>
 
                         {/* Issue date — absente d'un brouillon, qui n'a pas été émis (la route
@@ -712,36 +696,14 @@ export function BillFormBackendBase({
                                 <label className="text-sm font-medium text-foreground">
                                     Date d&apos;émission {markAsPaid && <span className="text-red-500">*</span>}
                                 </label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            ref={registerField('issueDate')}
-                                            variant="outline"
-                                            className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                                        >
-                                            <Calendar className="mr-2 h-4 w-4" />
-                                            {issueDate ? (
-                                                format(issueDate, 'PPP', { locale: fr })
-                                            ) : markAsPaid ? (
-                                                <span>Sélectionner une date</span>
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    {format(creationDate, 'PPP', { locale: fr })} (date de création)
-                                                </span>
-                                            )}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 bg-card border-border">
-                                        <CalendarComponent
-                                            mode="single"
-                                            selected={issueDate || undefined}
-                                            defaultMonth={issueDate || undefined}
-                                            onSelect={(d) => setIssueDate(d || null)}
-                                            initialFocus
-                                            className="bg-card text-foreground"
-                                        />
-                                    </PopoverContent>
-                                </Popover>
+                                <DatePickerField
+                                    value={issueDate}
+                                    onChange={setIssueDate}
+                                    triggerRef={registerField('issueDate')}
+                                    placeholder={markAsPaid
+                                        ? 'Sélectionner une date'
+                                        : `${format(creationDate, 'PPP', { locale: fr })} (date de création)`}
+                                />
                             </div>
                         )}
                     </div>
@@ -816,27 +778,10 @@ export function BillFormBackendBase({
                                         <label className="text-sm font-medium text-foreground">
                                             Date de paiement <span className="text-red-500">*</span>
                                         </label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className="w-full justify-start text-left bg-field border-border text-foreground hover:bg-muted"
-                                                >
-                                                    <Calendar className="mr-2 h-4 w-4" />
-                                                    {format(paymentDate, 'PPP', { locale: fr })}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0 bg-card border-border">
-                                                <CalendarComponent
-                                                    mode="single"
-                                                    selected={paymentDate}
-                                                    defaultMonth={paymentDate}
-                                                    onSelect={(d) => d && setPaymentDate(d)}
-                                                    initialFocus
-                                                    className="bg-card text-foreground"
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <DatePickerField
+                                            value={paymentDate}
+                                            onChange={(d) => d && setPaymentDate(d)}
+                                        />
                                     </div>
                                 </>
                             )}
