@@ -23,6 +23,8 @@ import {
     userErrorFromResponse,
     UserFacingError,
 } from '@/lib/user-error';
+import { readNdjson } from '@/lib/ndjson';
+import { AudioDeleteProgress } from './AudioDeleteProgress';
 import type {
     BookAudioDispositionMode,
     BookDeletionPreflightResponse,
@@ -110,6 +112,7 @@ export function DeleteBookModal({
     const [typedCount, setTypedCount] = useState('');
 
     const [isDeleting, setIsDeleting] = useState(false);
+    const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
     const [error, setError] = useState<UserFacingError | null>(null);
 
     const reset = useCallback(() => {
@@ -164,10 +167,14 @@ export function DeleteBookModal({
         setIsDeleting(true);
         setError(null);
         try {
+            const sendsProgress = hasFolder && mode === 'trash';
+            if (sendsProgress) setProgress({ done: 0, total: trackCount });
             const res = await fetch(`/api/books/${bookId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    // Le flux n'existe que pour la corbeille, seul sort long.
+                    ...(sendsProgress ? { stream: true } : {}),
                     audio: {
                         mode: hasFolder ? mode : 'leave',
                         ...(mode === 'transfer' && target
@@ -177,18 +184,45 @@ export function DeleteBookModal({
                     },
                 }),
             });
-            const data: (DeleteFailure & { audio?: Record<string, unknown> }) | null = await res
-                .json()
-                .catch(() => null);
 
-            if (!res.ok) {
+            type Data = DeleteFailure & { audio?: Record<string, unknown> };
+            let status = res.status;
+            let data: Data | null = null;
+            if (res.ok && res.body && res.headers.get('content-type')?.includes('ndjson')) {
+                // Flux : des lignes `progress`, puis `result` — la réponse que la
+                // route aurait rendue sans flux, refus compris.
+                const final: { status: number | null; data: Data | null } = { status: null, data: null };
+                await readNdjson<{
+                    type: string;
+                    done?: number;
+                    total?: number;
+                    status?: number;
+                    body?: Data | null;
+                }>(res.body, (msg) => {
+                    if (msg.type === 'progress') {
+                        setProgress({ done: msg.done ?? 0, total: msg.total ?? trackCount });
+                    } else if (msg.type === 'result') {
+                        final.status = msg.status ?? 500;
+                        final.data = msg.body ?? null;
+                    }
+                });
+                // Flux coupé sans ligne finale : l'issue est inconnue (délai dépassé).
+                if (final.status === null) throw new TypeError('Failed to fetch');
+                status = final.status;
+                data = final.data;
+            } else {
+                data = await res.json().catch(() => null);
+            }
+            const ok = status >= 200 && status < 300;
+
+            if (!ok) {
                 // Le livre visé porte un chemin dont le dossier est vide : on
                 // demande une confirmation plutôt que de l'écraser en silence,
                 // exactement comme le rattachement d'un dossier orphelin.
                 if (data?.requiresTargetReplaceConfirm && data.error) {
                     setReplacePrompt(data.error);
                 } else {
-                    setError(userErrorFromResponse(res, data));
+                    setError(userErrorFromResponse(new Response(null, { status }), data));
                 }
                 return;
             }
@@ -214,6 +248,7 @@ export function DeleteBookModal({
             setError(toUserFacingError(e));
         } finally {
             setIsDeleting(false);
+            setProgress(null);
         }
     };
 
@@ -512,6 +547,8 @@ export function DeleteBookModal({
                         </div>
                     )}
                 </div>
+
+                {isDeleting && progress && <AudioDeleteProgress done={progress.done} total={progress.total} />}
 
                 <div className="flex justify-end gap-3 pt-4">
                     <Button

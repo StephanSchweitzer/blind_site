@@ -122,8 +122,10 @@ export async function deleteBookWithAudio(opts: {
     performedById: number | null;
     /** Absente alors que le dossier contient des pistes : refus, voir plus bas. */
     disposition?: AudioDisposition | null;
+    /** Mode `trash` : avancement du déplacement des pistes (voir softDeleteTracks). */
+    onProgress?: (done: number, total: number) => void;
 }): Promise<DeleteBookResult> {
-    const { bookId, performedById, disposition } = opts;
+    const { bookId, performedById, disposition, onProgress } = opts;
 
     const { book, preflight, objects } = await readBookDeletionCheck(bookId);
     if (!book || !preflight) {
@@ -196,6 +198,7 @@ export async function deleteBookWithAudio(opts: {
             userId: performedById,
             // Plus rien à maintenir en vie ni à décrire : la fiche part juste après.
             skipFinalisation: true,
+            onProgress,
         });
 
         // Refus plutôt que supprimer la fiche par-dessus des pistes restées dans

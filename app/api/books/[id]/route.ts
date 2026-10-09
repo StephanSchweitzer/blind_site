@@ -345,64 +345,107 @@ export const DELETE = withAdmin(async (request, { params, me }) => {
     const bookId = await bookIdFrom(params);
     if (bookId === null) return invalidId();
 
-    const disposition = readDisposition(await request.json().catch(() => null));
+    const body = await request.json().catch(() => null);
+    const disposition = readDisposition(body);
 
-    // Le try n'entoure QUE la suppression : ce que dit le catch (« la fiche n'a
-    // pas été supprimée ») n'est vrai que là. Le `deletedAt` est la dernière
-    // écriture de deleteBookWithAudio (dans la transaction, pour un transfert) :
-    // une exception qui en sort l'a donc précédée.
-    let result: Awaited<ReturnType<typeof deleteBookWithAudio>>;
-    try {
-        result = await deleteBookWithAudio({ bookId, performedById: me.id, disposition });
-    } catch (error) {
-        // Filet : plus aucune clé étrangère connue ne devrait arriver ici (le
-        // contrôle de deleteBookWithAudio couvre les deux relations en RESTRICT),
-        // mais une contrainte ajoutée demain n'a pas à ressortir en « 500 Failed
-        // to delete book » — c'est exactement le message qui n'apprenait rien.
-        if (isForeignKeyViolation(error)) {
-            console.error('Error deleting book:', error);
+    const perform = async (
+        onProgress?: (done: number, total: number) => void,
+    ): Promise<NextResponse> => {
+        // Le try n'entoure QUE la suppression : ce que dit le catch (« la fiche n'a
+        // pas été supprimée ») n'est vrai que là. Le `deletedAt` est la dernière
+        // écriture de deleteBookWithAudio (dans la transaction, pour un transfert) :
+        // une exception qui en sort l'a donc précédée.
+        let result: Awaited<ReturnType<typeof deleteBookWithAudio>>;
+        try {
+            result = await deleteBookWithAudio({ bookId, performedById: me.id, disposition, onProgress });
+        } catch (error) {
+            // Filet : plus aucune clé étrangère connue ne devrait arriver ici (le
+            // contrôle de deleteBookWithAudio couvre les deux relations en RESTRICT),
+            // mais une contrainte ajoutée demain n'a pas à ressortir en « 500 Failed
+            // to delete book » — c'est exactement le message qui n'apprenait rien.
+            if (isForeignKeyViolation(error)) {
+                console.error('Error deleting book:', error);
+                return NextResponse.json(
+                    {
+                        error:
+                            'D’autres fiches ou enregistrements renvoient encore à ce livre, ' +
+                            'la base a donc refusé la suppression. Le livre n’a pas été supprimé.',
+                    },
+                    { status: 409 }
+                );
+            }
+            return unexpectedErrorResponse({
+                where: `DELETE /api/books/${bookId}`,
+                error,
+                what: 'La suppression du livre a échoué.',
+                // La corbeille déplace piste par piste AVANT de supprimer la fiche :
+                // une panne en chemin a pu en déplacer une partie.
+                outcome:
+                    disposition?.mode === 'trash'
+                        ? 'La fiche n’a pas été supprimée, mais une partie des pistes a pu être ' +
+                          'déjà déplacée dans la corbeille : rouvrez l’éditeur audio pour vérifier ' +
+                          'avant de recommencer.'
+                        : 'La fiche n’a pas été supprimée et le dossier audio n’a pas bougé.',
+            });
+        }
+
+        if (!result.ok) {
             return NextResponse.json(
-                {
-                    error:
-                        'D’autres fiches ou enregistrements renvoient encore à ce livre, ' +
-                        'la base a donc refusé la suppression. Le livre n’a pas été supprimé.',
-                },
-                { status: 409 }
+                { error: result.error, ...(result.extra ?? {}) },
+                { status: result.status },
             );
         }
-        return unexpectedErrorResponse({
-            where: `DELETE /api/books/${bookId}`,
-            error,
-            what: 'La suppression du livre a échoué.',
-            // La corbeille déplace piste par piste AVANT de supprimer la fiche :
-            // une panne en chemin a pu en déplacer une partie.
-            outcome:
-                disposition?.mode === 'trash'
-                    ? 'La fiche n’a pas été supprimée, mais une partie des pistes a pu être ' +
-                      'déjà déplacée dans la corbeille : rouvrez l’éditeur audio pour vérifier ' +
-                      'avant de recommencer.'
-                    : 'La fiche n’a pas été supprimée et le dossier audio n’a pas bougé.',
-        });
-    }
 
-    if (!result.ok) {
+        revalidateCatalogue();
+
         return NextResponse.json(
-            { error: result.error, ...(result.extra ?? {}) },
-            { status: result.status },
+            {
+                success: true,
+                audio: result.audio,
+                // Conservé pour la fiche livre, qui sait déjà le dire : plus rien
+                // ne le remplit, le mode `trash` refusant la suppression tant
+                // qu'un fichier n'a pas rejoint la corbeille.
+                audioFailures: [],
+            },
+            { status: 200 },
         );
-    }
+    };
 
-    revalidateCatalogue();
+    // Seul le mode corbeille est long : lui seul a une progression à montrer.
+    if (body?.stream !== true || disposition?.mode !== 'trash') return perform();
 
-    return NextResponse.json(
-        {
-            success: true,
-            audio: result.audio,
-            // Conservé pour la fiche livre, qui sait déjà le dire : plus rien
-            // ne le remplit, le mode `trash` refusant la suppression tant
-            // qu'un fichier n'a pas rejoint la corbeille.
-            audioFailures: [],
+    // Flux NDJSON : une ligne `{ type: 'progress', done, total }` par piste
+    // réglée, puis `{ type: 'result', status, body }` — la réponse que la route
+    // aurait renvoyée sans flux, refus compris. Les erreurs d'identifiant plus
+    // haut restent de simples réponses JSON.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+            const send = (line: Record<string, unknown>) => {
+                try {
+                    controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`));
+                } catch {
+                    // Onglet fermé : la suppression, elle, continue jusqu'au bout.
+                }
+            };
+            const response = await perform((done, total) => send({ type: 'progress', done, total }));
+            send({
+                type: 'result',
+                status: response.status,
+                body: await response.json().catch(() => null),
+            });
+            try {
+                controller.close();
+            } catch {
+                // Déjà fermé par le client.
+            }
         },
-        { status: 200 },
-    );
+    });
+    return new Response(stream, {
+        headers: {
+            'Content-Type': 'application/x-ndjson; charset=utf-8',
+            'Cache-Control': 'no-store, no-transform',
+            'X-Accel-Buffering': 'no',
+        },
+    });
 });

@@ -14,6 +14,8 @@ import { AlertTriangle, Loader2, Undo2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
+import { readNdjson } from '@/lib/ndjson';
+import { AudioDeleteProgress } from './AudioDeleteProgress';
 
 interface DeleteAllAudioTracksModalProps {
     isOpen: boolean;
@@ -57,40 +59,27 @@ export function DeleteAllAudioTracksModal({
             });
             // Les refus (404, 409…) arrivent en JSON ordinaire, avant tout flux.
             const streaming = res.ok && !!res.body;
-            let data: { message?: string; failed?: { name: string; message: string }[] } | null = null;
             if (!streaming) {
-                data = await res.json().catch(() => null);
-                throw userErrorFromResponse(res, data);
+                throw userErrorFromResponse(res, await res.json().catch(() => null));
             }
 
             // Flux NDJSON : des lignes `progress`, puis `done` ou `error`.
-            const reader = res.body!.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            const handleLine = (line: string) => {
-                if (!line.trim()) return;
-                const msg = JSON.parse(line);
-                if (msg.type === 'progress') setProgress({ done: msg.done, total: msg.total });
-                else if (msg.type === 'done') data = msg;
+            type Done = { message?: string; failed?: { name: string; message: string }[] };
+            const final: { data: Done | null } = { data: null };
+            await readNdjson<Done & { type: string; done?: number; total?: number }>(res.body!, (msg) => {
+                if (msg.type === 'progress') setProgress({ done: msg.done ?? 0, total: msg.total ?? trackCount });
+                else if (msg.type === 'done') final.data = msg;
                 else if (msg.type === 'error') {
                     throw userErrorFromResponse(new Response(null, { status: 500 }), msg);
                 }
-            };
-            for (;;) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() ?? '';
-                lines.forEach(handleLine);
-            }
-            handleLine(buffer);
+            });
             // Flux coupé sans ligne finale : l'issue est inconnue (délai dépassé).
-            if (!data) {
+            if (!final.data) {
                 throw new TypeError('Failed to fetch');
             }
+            const data = final.data;
 
-            const failed = (data?.failed ?? []) as { name: string; message: string }[];
+            const failed = (data.failed ?? []) as { name: string; message: string }[];
             toast({
                 ...(failed.length > 0
                     ? // Une suppression partielle reste à l'écran : elle dit quoi relancer.
@@ -104,7 +93,7 @@ export function DeleteAllAudioTracksModal({
                 ),
                 description: (
                     <span className="text-xl mt-2">
-                        {data?.message ?? 'Les pistes ont été déplacées dans la corbeille.'}
+                        {data.message ?? 'Les pistes ont été déplacées dans la corbeille.'}
                         {failed.length > 0 && (
                             <span className="block mt-2 text-base">
                                 En échec : {failed.map((f) => `« ${f.name} » (${f.message})`).join(', ')}.
@@ -192,33 +181,7 @@ export function DeleteAllAudioTracksModal({
                     </div>
                 </div>
 
-                {isDeleting && progress && (
-                    <div className="space-y-1" aria-live="polite">
-                        <div className="flex justify-between text-sm text-foreground">
-                            <span>
-                                {progress.done} / {progress.total} piste{progress.total > 1 ? 's' : ''}{' '}
-                                traitée{progress.total > 1 ? 's' : ''}
-                            </span>
-                            <span>{Math.round((progress.done / Math.max(1, progress.total)) * 100)} %</span>
-                        </div>
-                        <div
-                            role="progressbar"
-                            aria-label="Déplacement des pistes vers la corbeille"
-                            aria-valuemin={0}
-                            aria-valuemax={progress.total}
-                            aria-valuenow={progress.done}
-                            className="h-3 w-full overflow-hidden rounded-full bg-muted"
-                        >
-                            <div
-                                className="h-full bg-red-600 transition-[width] duration-300"
-                                style={{ width: `${(progress.done / Math.max(1, progress.total)) * 100}%` }}
-                            />
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Ne fermez pas cette fenêtre avant la fin.
-                        </p>
-                    </div>
-                )}
+                {isDeleting && progress && <AudioDeleteProgress done={progress.done} total={progress.total} />}
 
                 <div className="flex justify-end gap-3 pt-4">
                     <Button
