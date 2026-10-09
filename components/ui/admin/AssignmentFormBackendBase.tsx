@@ -185,15 +185,18 @@ function DatePicker({
     return (
         <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">{label}</label>
+            {/* « Aujourd'hui » est soudé au champ (une seule commande, pas deux) : le cas
+                courant — la date est celle du jour — reste à un clic. */}
+            <div className="flex items-stretch">
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
                         ref={triggerRef}
                         variant="outline"
-                        className="w-full justify-start text-left font-normal bg-field border-border text-foreground hover:bg-muted"
+                        className="min-w-0 flex-1 justify-start rounded-r-none text-left font-normal bg-field border-border text-foreground hover:bg-muted"
                     >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {date ? format(date, 'PPP', { locale: fr }) : <span className="text-muted-foreground">{placeholder}</span>}
+                        <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                        {date ? <span className="truncate">{format(date, 'PPP', { locale: fr })}</span> : <span className="truncate text-muted-foreground">{placeholder}</span>}
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 bg-card border-border">
@@ -209,6 +212,17 @@ function DatePicker({
                     />
                 </PopoverContent>
             </Popover>
+            {value !== toDateOnly(new Date()) && (
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onChange(toDateOnly(new Date()))}
+                    className="shrink-0 -ml-px rounded-l-none bg-muted text-muted-foreground hover:text-foreground focus-visible:z-10"
+                >
+                    Aujourd&apos;hui
+                </Button>
+            )}
+            </div>
             {warning && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">{warning}</p>
             )}
