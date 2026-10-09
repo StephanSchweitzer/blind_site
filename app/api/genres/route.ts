@@ -1,7 +1,7 @@
 // app/api/genres/route.ts
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateAdmin, revalidateReferenceData } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { Prisma } from '@prisma/client';
 import { withAdmin } from '@/lib/auth/guards';
@@ -117,6 +117,7 @@ export const POST = withAdmin(async (request: NextRequest) => {
         const genre = await createGenre(body);
 
         revalidateCatalogue();
+        revalidateReferenceData();
 
         return NextResponse.json({
             success: true,

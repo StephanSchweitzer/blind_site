@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,29 +53,17 @@ export default function AddBook() {
         available: true,
         readingDurationMinutes: 0,
     });
-    const [genres, setGenres] = useState<Genre[]>([]);
+    const referenceData = useReferenceData();
+    const genres = useMemo<Genre[]>(
+        () => referenceData.genres.map((genre) => ({ ...genre, id: genre.id.toString() })),
+        [referenceData.genres]
+    );
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
-
-    useEffect(() => {
-        const fetchGenres = async () => {
-            try {
-                const response = await fetch('/api/genres');
-                if (response.ok) {
-                    const data = await response.json();
-                    setGenres(data);
-                }
-            } catch (error) {
-                setError('Failed to fetch genres ' + error);
-            }
-        };
-
-        fetchGenres();
-    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;

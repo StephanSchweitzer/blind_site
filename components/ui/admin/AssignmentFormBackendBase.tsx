@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef} from 'react';
+import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,7 +35,6 @@ import {
     UserSummary,
     BookSummary,
     OrderSummary,
-    Status,
     AssignmentFormData,
     AssignmentReaderHistory,
 } from '@/types';
@@ -274,7 +274,7 @@ export function AssignmentFormBackendBase({
     const [currentReader, setCurrentReader] = useState<ReaderSummary | null>(null);
 
     // Options data
-    const [statuses, setStatuses] = useState<Status[]>([]);
+    const { statuses } = useReferenceData();
 
     // Reader history
     const [readerHistory, setReaderHistory] = useState<AssignmentReaderHistory[]>([]);
@@ -357,32 +357,13 @@ export function AssignmentFormBackendBase({
         resolveAndClose: closeActivityGuard,
     } = useUserActivityGuard();
 
-    // Fetch initial data
+    // Demandes are no longer prefetched here: the picker owns its own list
+    // (EntitySearchCombobox in searchOnEmpty mode fetches the recent
+    // attributable demandes when it opens), and statuses come preloaded from
+    // the admin layout (useReferenceData). `onOrdersLoaded` still fires — it
+    // gates the modal's loading overlay.
     useEffect(() => {
-        const fetchInitialData = async () => {
-            try {
-                // Demandes are no longer prefetched here: the picker owns its
-                // own list now (EntitySearchCombobox in searchOnEmpty mode
-                // fetches the recent attributable demandes when it opens), so
-                // loading 100 of them on every form mount was work nobody had
-                // asked for yet. `onOrdersLoaded` still fires below — it gates
-                // the modal's loading overlay, and statuses are what the form
-                // actually can't render without.
-                const statusesRes = await fetch('/api/statuses');
-
-                if (statusesRes.ok) {
-                    const statusesData = await statusesRes.json();
-                    setStatuses(statusesData);
-                }
-            } catch (err) {
-                console.error('Error fetching initial data:', err);
-                setError('Échec du chargement des options du formulaire');
-            } finally {
-                onOrdersLoaded?.();
-            }
-        };
-
-        fetchInitialData();
+        onOrdersLoaded?.();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,7 +36,6 @@ import {
     formatEuro2,
     type User,
     type Book,
-    type MediaFormat,
 } from '@/admin/OrderFormBackendBase';
 import { STATUS } from '@/lib/statusSync';
 import { costSuggestion } from '@/lib/pricing';
@@ -161,7 +161,7 @@ export function AddOrderFormBackend({
     } = useUserActivityGuard();
 
     // Options
-    const [mediaFormats, setMediaFormats] = useState<MediaFormat[]>([]);
+    const { mediaFormats } = useReferenceData();
 
     // Le lot vient de faire franchir le seuil à un brouillon : l'avis d'émission
     // retient la fermeture du modal, sinon la boîte partirait avec lui.
@@ -221,21 +221,6 @@ export function AddOrderFormBackend({
     } = useRecordingAdvice({
         current: recordingLines,
     });
-
-    useEffect(() => {
-        const fetchOptions = async () => {
-            try {
-                // Statuses aren't fetched: a line's statut is derived from its type
-                // via the STATUS constants, not looked up by name.
-                const formatsRes = await fetch('/api/media-formats');
-                if (formatsRes.ok) setMediaFormats(await formatsRes.json());
-            } catch (err) {
-                console.error('Error fetching options:', err);
-                setError('Échec du chargement des options du formulaire');
-            }
-        };
-        fetchOptions();
-    }, []);
 
     const handleUserSelect = async (user: User) => {
         // Vetoed selections return false so the picker stays open.

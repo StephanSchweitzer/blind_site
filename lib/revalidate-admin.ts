@@ -1,4 +1,5 @@
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 
 /**
  * Marks every server-rendered page under /admin as stale so the next
@@ -14,4 +15,15 @@ import { revalidatePath } from 'next/cache';
  */
 export function revalidateAdmin(): void {
     revalidatePath('/admin', 'layout');
+}
+
+/**
+ * Drops the cached reference lists (lib/reference-data.ts) the admin layout
+ * hands to every form. `expire: 0` rather than the 'max' profile public pages
+ * use: stale-while-revalidate would serve the old list once more, so a genre
+ * created a second ago would be missing from the very next book form opened.
+ * Call after a successful write to a genre, statut, format or civilité.
+ */
+export function revalidateReferenceData(): void {
+    revalidateTag(CACHE_TAGS.referenceData, { expire: 0 });
 }

@@ -1,7 +1,7 @@
 // app/api/genres/[id]/route.ts
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
+import { revalidateAdmin, revalidateReferenceData } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { withAdmin } from '@/lib/auth/guards';
 import { isRecordNotFound, notFoundResponse } from '@/lib/api-errors';
@@ -35,6 +35,7 @@ export const PUT = withAdmin(async (request, { params }) => {
         });
 
         revalidateCatalogue();
+        revalidateReferenceData();
 
         return NextResponse.json(
             { data: genre },
@@ -98,6 +99,7 @@ export const DELETE = withAdmin(async (_request, { params }) => {
         });
 
         revalidateCatalogue();
+        revalidateReferenceData();
 
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {

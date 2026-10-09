@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +14,6 @@ import { DeleteBookModal } from '@/admin/DeleteBookModal';
 import BookDeletedNotice from '@/admin/BookDeletedNotice';
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
-import { useFormToast } from "@/hooks/useFormToast";
 import { apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
 
@@ -138,37 +138,18 @@ export function BookFormBackendBase({
         setFormDataState(next);
     };
 
-    const [genres, setGenres] = useState<Genre[]>([]);
+    const referenceData = useReferenceData();
+    // The form keys genres by string id (formData.genres), the reference list by number.
+    const genres = useMemo<Genre[]>(
+        () => referenceData.genres.map((genre) => ({ ...genre, id: genre.id.toString() })),
+        [referenceData.genres]
+    );
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     /** La fenêtre de suppression, qui porte refus, décision audio et appel. */
     const [deleteOpen, setDeleteOpen] = useState(false);
-    const { toastError } = useFormToast();
-
-    useEffect(() => {
-        const fetchGenres = async () => {
-            try {
-                const response = await fetch('/api/genres');
-                if (response.ok) {
-                    const data = await response.json();
-                    // Temporary allow any to cast to string because of type inconsistencies. Don't want to refactor right now
-                     
-                    const genresWithStringIds = data.map((genre: any) => ({
-                        ...genre,
-                        id: genre.id.toString()
-                    }));
-                    setGenres(genresWithStringIds);
-                }
-            } catch (error) {
-                console.error('Error fetching genres:', error);
-                setError('Échec du chargement des genres'); toastError('Échec du chargement des genres');
-            }
-        };
-
-        fetchGenres();
-    }, [toastError]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;

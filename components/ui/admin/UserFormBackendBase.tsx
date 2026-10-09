@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -131,23 +132,7 @@ export function UserFormBackendBase({
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
 
-    const [civilities, setCivilities] = useState<{ id: number; name: string }[]>([]);
-
-    useEffect(() => {
-        fetch('/api/civilities')
-            .then((res) => (res.ok ? res.json() : []))
-            .then(setCivilities)
-            .catch(() => setCivilities([]));
-    }, []);
-
-    const [mediaFormats, setMediaFormats] = useState<{ id: number; name: string }[]>([]);
-
-    useEffect(() => {
-        fetch('/api/media-formats')
-            .then((res) => (res.ok ? res.json() : []))
-            .then(setMediaFormats)
-            .catch(() => setMediaFormats([]));
-    }, []);
+    const { civilities, mediaFormats } = useReferenceData();
 
     const defaultMemberType: UserFormData['memberType'] =
         userType === 'auditeurs' ? 'auditeur' :

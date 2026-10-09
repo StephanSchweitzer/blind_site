@@ -2,12 +2,16 @@
 import React from 'react';
 import BackendNavbar from '@/components/Backend-Navbar';
 import { ScrollToTopOnPageChange } from '@/components/admin/ScrollToTopOnPageChange';
+import { ReferenceDataProvider } from '@/components/admin/ReferenceDataProvider';
+import { getReferenceData } from '@/lib/reference-data';
 
-export default function AdminLayout({
+export default async function AdminLayout({
                                         children,
                                     }: {
     children: React.ReactNode
 }) {
+    const referenceData = await getReferenceData();
+
     return (
         // The document itself scrolls — never make this a scroll container
         // (fixed + overflow-auto): Next.js only resets the document's scroll on
@@ -23,7 +27,9 @@ export default function AdminLayout({
                 `container` plafonné à 1400 px (et 1280 pour la barre) d'avant. */}
             <div className="mx-auto w-full max-w-[1920px] px-4 sm:px-6 lg:px-8 py-4 md:py-8">
                 <div className="relative">
-                    {children}
+                    <ReferenceDataProvider value={referenceData}>
+                        {children}
+                    </ReferenceDataProvider>
                 </div>
             </div>
         </div>

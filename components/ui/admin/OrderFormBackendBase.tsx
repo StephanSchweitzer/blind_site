@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -311,8 +312,7 @@ export function OrderFormBackendBase({
         formData.billingStatus !== 'UNBILLABLE';
 
     // Options data
-    const [statuses, setStatuses] = useState<Status[]>([]);
-    const [mediaFormats, setMediaFormats] = useState<MediaFormat[]>([]);
+    const { statuses, mediaFormats } = useReferenceData();
 
     // Selected display values
     const [selectedUser, setSelectedUser] = useState<User | null>(initialSelectedUser || null);
@@ -360,33 +360,6 @@ export function OrderFormBackendBase({
         excludeOrderId: currentOrderId,
     });
     const recordingAdvice = recordingAdviceFor(recordingContext);
-
-    // Fetch initial data
-    useEffect(() => {
-        const fetchInitialData = async () => {
-            try {
-                const [statusesRes, formatsRes] = await Promise.all([
-                    fetch('/api/statuses'),
-                    fetch('/api/media-formats'),
-                ]);
-
-                if (statusesRes.ok) {
-                    const statusesData = await statusesRes.json();
-                    setStatuses(statusesData);
-                }
-
-                if (formatsRes.ok) {
-                    const formatsData = await formatsRes.json();
-                    setMediaFormats(formatsData);
-                }
-            } catch (err) {
-                console.error('Error fetching initial data:', err);
-                setError('Échec du chargement des options du formulaire');
-            }
-        };
-
-        fetchInitialData();
-    }, []);
 
     // Load initial selections if editing (only if not pre-fetched)
     useEffect(() => {
