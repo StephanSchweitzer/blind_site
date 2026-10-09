@@ -8,12 +8,15 @@ import {
 import { EditBookFormBackend } from '@/admin/BookFormBackendBase';
 import { CopyableId } from '@/admin/CopyableId';
 import { BookFormData } from '@/admin/BookFormBackendBase';
+import { FormLoadingGate } from '@/components/ui/form-skeleton';
 
 interface EditBookModalProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     bookId: string;
-    initialData: BookFormData;
+    /** Null while the fiche loads: the modal shows its skeleton, the form isn't mounted. */
+    initialData: BookFormData | null;
+    error?: string | null;
     onBookEdited?: (bookId: number) => void;
     onBookDeleted?: (bookId: number) => void;
 }
@@ -23,22 +26,13 @@ export function EditBookModal({
                                   onOpenChange,
                                   bookId,
                                   initialData,
+                                  error,
                                   onBookEdited,
                                   onBookDeleted
                               }: EditBookModalProps) {
     const handleSuccess = (bookId: number, isDeleted?: boolean) => {
-        console.log('Book operation completed successfully, closing modal');
-        if (isDeleted) {
-            if (onBookDeleted) {
-                console.log('Calling onBookDeleted callback with bookId:', bookId);
-                onBookDeleted(bookId);
-            }
-        } else {
-            if (onBookEdited) {
-                console.log('Calling onBookEdited callback with bookId:', bookId);
-                onBookEdited(bookId);
-            }
-        }
+        if (isDeleted) onBookDeleted?.(bookId);
+        else onBookEdited?.(bookId);
         onOpenChange(false);
     };
 
@@ -53,11 +47,15 @@ export function EditBookModal({
                     </DialogTitle>
                 </DialogHeader>
                 <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1">
-                    <EditBookFormBackend
-                        bookId={bookId}
-                        initialData={initialData}
-                        onSuccess={handleSuccess}
-                    />
+                    <FormLoadingGate loading={!initialData} error={error} fields={8}>
+                        {initialData && (
+                            <EditBookFormBackend
+                                bookId={bookId}
+                                initialData={initialData}
+                                onSuccess={handleSuccess}
+                            />
+                        )}
+                    </FormLoadingGate>
                 </div>
             </DialogContent>
         </Dialog>

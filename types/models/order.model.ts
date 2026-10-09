@@ -1,4 +1,5 @@
 import { Prisma, Orders } from '@prisma/client';
+import { basicUserSelect } from './user.model';
 
 // ============================================================================
 // Base Order Model Type (from Prisma)
@@ -155,6 +156,22 @@ export const orderIncludeConfigs = {
             invoiceAmount: true,
         },
     } satisfies Prisma.BillDefaultArgs,
+
+    // Pour la fenêtre de modification (include=client,book,staff). Un include de
+    // relation n'est pas filtré par le soft-delete (lib/prisma.ts) : un auditeur
+    // ou un livre supprimé depuis reste lisible, comme par GET /api/user/[id].
+    client: { select: basicUserSelect } satisfies Prisma.UserDefaultArgs,
+    staff: { select: basicUserSelect } satisfies Prisma.UserDefaultArgs,
+    book: {
+        select: {
+            id: true,
+            title: true,
+            author: true,
+            audio_filepath: true,
+            audioSizeKb: true,
+            deletedAt: true,
+        },
+    } satisfies Prisma.BookDefaultArgs,
 
     assignments: {
         // Un include de relation échappe au filtre soft-delete global

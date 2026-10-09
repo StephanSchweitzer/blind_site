@@ -27,23 +27,17 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, Loader2, ArrowDown, ArrowUp, ArrowUpDown, FilterX } from 'lucide-react';
+import { Search, X, Plus, ArrowDown, ArrowUp, ArrowUpDown, FilterX } from 'lucide-react';
 import { getOrderBillingStatusLabel } from '@/lib/billing-enums';
 import { AddOrderFormBackend } from '@/admin/AddOrderFormBackend';
-import { EditOrderModal } from '@/admin/EditOrderModal';
-import { OrderFormData } from '@/admin/OrderFormBackendBase';
-import { pagePricingFromRow } from '@/lib/orders/pagePricingForm';
-import { useToast } from '@/hooks/use-toast';
+import { EditOrderModal, loadOrderForEdit } from '@/admin/EditOrderModal';
+import { useRecordLoader } from '@/hooks/useRecordLoader';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { MailingLabelButton } from '@/admin/MailingLabelButton';
 import { CopyIdButton } from '@/admin/CopyableId';
 
-import type {
-    SerializedOrderTableRow,
-    OrderUserOption,
-    OrderBookOption,
-} from '@/types/models/order.model';
+import type { SerializedOrderTableRow } from '@/types/models/order.model';
 import type { SerializedBlockingRecording } from '@/lib/orders/duplicationBlocked';
 import type { SerializedDelai } from '@/lib/orders/delais';
 import { parisDate } from '@/lib/paris-day';
@@ -148,22 +142,9 @@ export default function OrdersTable({
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
-    const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isLoadingOrder, setIsLoadingOrder] = useState(false);
-    const [selectedOrder, setSelectedOrder] = useState<{
-        id: string;
-        data: OrderFormData;
-        selectedUser: OrderUserOption;
-        selectedBook: OrderBookOption;
-        selectedStaff: OrderUserOption | null;
-        bill: SerializedOrderTableRow['bill'];
-        /** ISO string when this demande is soft-deleted (open via ?order= deep-link only); null otherwise. */
-        deletedAt: string | null;
-    } | null>(null);
 
     const currentBillingStatus = searchParams.get('billingStatus') || 'all';
     const currentStatusId = searchParams.get('statusId') || 'all';
@@ -236,119 +217,21 @@ export default function OrdersTable({
         router.refresh();
     };
 
-    const handleOrderEdited = (orderId: number) => {
-        console.log('Order edited:', orderId);
-        setIsEditModalOpen(false);
-        setSelectedOrder(null);
+    // One request per open (GET /api/orders/[id] with the form's includes); the
+    // modal opens at once on its skeleton. Row click and the ?order= deep link
+    // go through the same path.
+    const orderLoader = useRecordLoader(loadOrderForEdit);
+    const openOrderById = (orderId: number | string) => orderLoader.open(String(orderId));
+    const handleRowClick = (order: SerializedOrderTableRow) => openOrderById(order.id);
+
+    const closeOrderModal = () => {
+        orderLoader.close();
         clearOrderParam();
+        // Sub-actions performed while the modal was open (e.g. changing the book)
+        // persist via their own request but never told the table to refetch; the
+        // post-save close also lands here. Refresh on every close so any DB change
+        // is reflected in the table.
         router.refresh();
-    };
-
-    const handleOrderDeleted = (orderId: number) => {
-        console.log('Order deleted:', orderId);
-        setIsEditModalOpen(false);
-        setSelectedOrder(null);
-        clearOrderParam();
-        router.refresh();
-    };
-
-    const handleRowClick = async (order: SerializedOrderTableRow & { deletedAt?: string | null }) => {
-        setIsLoadingOrder(true);
-
-        try {
-            // Pre-fetch all required data
-            const [userResponse, bookResponse, staffResponse] = await Promise.all([
-                fetch(`/api/user/${order.aveugleId}`),
-                fetch(`/api/books/${order.catalogueId}`),
-                order.processedByStaffId
-                    ? fetch(`/api/user/${order.processedByStaffId}`)
-                    : Promise.resolve(null),
-            ]);
-
-            // Check if requests were successful
-            if (!userResponse.ok || !bookResponse.ok) {
-                throw new Error('Échec du chargement des données');
-            }
-
-            // Parse the JSON responses
-            const userData = await userResponse.json();
-            const bookData = await bookResponse.json();
-            const staffData = staffResponse ? await staffResponse.json() : null;
-
-            // Validate that we actually received the data
-            if (!userData || !bookData) {
-                throw new Error('Données incomplètes reçues');
-            }
-
-            // Validate staff data if needed
-            if (order.processedByStaffId && staffResponse && !staffResponse.ok) {
-                console.warn('Failed to load staff data, but continuing anyway');
-            }
-
-            // Transform the order data to OrderFormData format
-            const formData: OrderFormData = {
-                aveugleId: order.aveugleId,
-                catalogueId: order.catalogueId,
-                requestReceivedDate: new Date(order.requestReceivedDate),
-                statusId: order.statusId,
-                isDuplication: order.isDuplication,
-                mediaFormatId: order.mediaFormatId,
-                deliveryMethod: order.deliveryMethod,
-                processedByStaffId: order.processedByStaffId,
-                closureDate: order.closureDate ? new Date(order.closureDate) : null,
-                cost: order.cost?.toString() || '0.00',
-                pagePricing: pagePricingFromRow(order),
-                billingStatus: order.billingStatus,
-                lentPhysicalBook: order.lentPhysicalBook,
-                notes: order.notes || '',
-            };
-
-            setSelectedOrder({
-                id: order.id.toString(),
-                data: formData,
-                selectedUser: userData,
-                selectedBook: bookData,
-                selectedStaff: staffData,
-                bill: order.bill,
-                deletedAt: order.deletedAt ?? null,
-            });
-
-            // Open modal only after all data is ready and validated
-            setIsEditModalOpen(true);
-        } catch (error) {
-            console.error('Error loading order:', error);
-            toast({
-                variant: "destructive",
-                title: "Erreur",
-                description: "Erreur lors du chargement de la demande. Veuillez réessayer.",
-            });
-        } finally {
-            setIsLoadingOrder(false);
-        }
-    };
-
-    // Deep-link: open an order's edit modal directly from /admin/orders?order=<id>,
-    // even when that order isn't on the current page. Fetches the row-shaped order
-    // then reuses handleRowClick (which hydrates user/book/staff and opens the modal).
-    const openOrderById = async (orderId: number | string) => {
-        setIsLoadingOrder(true);
-        try {
-            const response = await fetch(`/api/orders/${orderId}?mode=full&include=bill`);
-            if (!response.ok) throw new Error('Failed to fetch order');
-            // mode=full returns every scalar column, deletedAt included — a
-            // soft-deleted demande no longer 404s here (GET /api/orders/[id]),
-            // so a deep-link can open it with the banner instead of an error toast.
-            const order: SerializedOrderTableRow & { deletedAt: string | null } = await response.json();
-            await handleRowClick(order);
-        } catch (error) {
-            console.error('Error loading order from deep-link:', error);
-            toast({
-                variant: "destructive",
-                title: "Erreur",
-                description: "Erreur lors du chargement de la demande. Veuillez réessayer.",
-            });
-            setIsLoadingOrder(false);
-        }
     };
 
     const assignmentOrderParam = searchParams.get('order');
@@ -855,17 +738,6 @@ export default function OrdersTable({
                     />
                 </div>
 
-                {/* Loading Overlay for Order Data */}
-                {isLoadingOrder && (
-                    <div className="fixed inset-0 bg-card/80 backdrop-blur-sm flex items-center justify-center z-50">
-                        <div className="bg-card rounded-lg p-8 shadow-2xl border border-border">
-                            <div className="flex flex-col items-center gap-4">
-                                <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                <p className="text-lg font-medium text-foreground">Chargement de la demande...</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </CardContent>
 
             {/* Add Order Dialog */}
@@ -881,30 +753,15 @@ export default function OrdersTable({
             </Dialog>
 
             {/* Edit Order Modal */}
-            {selectedOrder && (
+            {orderLoader.openId && (
                 <EditOrderModal
-                    isOpen={isEditModalOpen}
-                    onOpenChange={(open) => {
-                        setIsEditModalOpen(open);
-                        if (!open) {
-                            setSelectedOrder(null);
-                            clearOrderParam();
-                            // Sub-actions performed while the modal was open (e.g. changing
-                            // the book) persist via their own request but never told the
-                            // table to refetch; the post-save close also lands here. Refresh
-                            // on every close so any DB change is reflected in the table.
-                            router.refresh();
-                        }
-                    }}
-                    orderId={selectedOrder.id}
-                    initialData={selectedOrder.data}
-                    onOrderEdited={handleOrderEdited}
-                    onOrderDeleted={handleOrderDeleted}
-                    initialSelectedUser={selectedOrder.selectedUser}
-                    initialSelectedBook={selectedOrder.selectedBook}
-                    initialSelectedStaff={selectedOrder.selectedStaff}
-                    initialBill={selectedOrder.bill}
-                    deletedAt={selectedOrder.deletedAt}
+                    // A fresh form per demande: its state is seeded from the loaded record once.
+                    key={orderLoader.openId}
+                    isOpen
+                    onOpenChange={(open) => { if (!open) closeOrderModal(); }}
+                    orderId={orderLoader.openId}
+                    order={orderLoader.data}
+                    error={orderLoader.error}
                 />
             )}
         </Card>

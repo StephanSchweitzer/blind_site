@@ -7,13 +7,11 @@ import { getFieldErrorLines, ErrorToastBody, AudioConfirmationRequiredError } fr
 // Add Assignment Form using the base
 export function AddAssignmentFormBackend({
                                              onSuccess,
-                                             onOrdersLoaded,
                                              presetClientId,
                                              initialReader,
                                              presetClient,
                                          }: {
     onSuccess?: (assignmentId: number) => void;
-    onOrdersLoaded?: () => void;
     presetClientId?: number | null;
     initialReader?: ReaderSummary | null;
     presetClient?: UserSummary | null;
@@ -89,7 +87,6 @@ export function AddAssignmentFormBackend({
             loadingText="Création en cours..."
             title="Créer une nouvelle attribution"
             onSuccess={onSuccess}
-            onOrdersLoaded={onOrdersLoaded}
             presetClientId={presetClientId}
             initialSelectedReader={initialReader}
             presetClient={presetClient}

@@ -44,6 +44,7 @@ import {
 import { resolvePagePricing } from '@/lib/orders/pagePricing';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
 import { withAdmin } from '@/lib/auth/guards';
+import { getOrderLinkedAssignment } from '@/lib/orders/linkedAssignment';
 import { DeletedBookError, guardLiveBooks, lockLiveBooks } from '@/lib/books/liveBookGuard';
 
 // Reprint notice returned to the client when an invoice-relevant field changes on a
@@ -104,6 +105,7 @@ export const GET = withAdmin(async (request, { params }) => {
 
         let select: Prisma.OrdersSelect | null = null;
         const include: OrderIncludeConfig = {};
+        let withAssignment = false;
 
         switch (mode) {
             case 'basic':
@@ -152,6 +154,18 @@ export const GET = withAdmin(async (request, { params }) => {
                     case 'all':
                         Object.assign(include, orderIncludeConfigs.all);
                         break;
+                    case 'client':
+                        include.aveugle = orderIncludeConfigs.client;
+                        break;
+                    case 'book':
+                        include.catalogue = orderIncludeConfigs.book;
+                        break;
+                    case 'staff':
+                        include.processedByStaff = orderIncludeConfigs.staff;
+                        break;
+                    case 'assignment':
+                        withAssignment = true;
+                        break;
                 }
             }
         }
@@ -183,6 +197,9 @@ export const GET = withAdmin(async (request, { params }) => {
         // quelque part, comme GET /api/books/[id] et GET /api/user/[id]. C'est
         // au front d'afficher le bandeau « supprimée » (voir OrderDeletedNotice) :
         // deletedAt n'est retiré d'aucun select/include ci-dessus.
+        if (withAssignment) {
+            return NextResponse.json({ ...order, assignment: await getOrderLinkedAssignment(orderId) });
+        }
         return NextResponse.json(order);
     } catch (error) {
         console.error('Error fetching order:', error);

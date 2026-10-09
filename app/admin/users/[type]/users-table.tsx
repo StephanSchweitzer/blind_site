@@ -15,7 +15,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, X, Loader2, Plus } from 'lucide-react';
+import { Search, X, Plus } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -30,9 +30,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { AddUserFormBackend } from '@/admin/AddUserFormBackend';
-import { EditUserModal } from '@/admin/EditUserModal';
-import { UserFormData, UserType } from '@/types';
-import { useToast } from '@/hooks/use-toast';
+import { EditUserModal, loadUserForEdit } from '@/admin/EditUserModal';
+import { useRecordLoader } from '@/hooks/useRecordLoader';
+import { UserType } from '@/types';
 import {
     getAccessLevelLabel,
     getAccessLevelColor,
@@ -130,7 +130,6 @@ export default function UsersTable({
     const [isPending, startTransition] = useTransition();
     // Pagination : un clic simple navigue dans une transition, pour griser la liste.
     const navigate = (href: string) => startTransition(() => router.push(href, { scroll: false }));
-    const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const { data: session } = useSession();
@@ -144,12 +143,6 @@ export default function UsersTable({
     const [languageFilter, setLanguageFilter] = useState(initialLanguage || 'all');
     const [cotisationFilter, setCotisationFilter] = useState(initialCotisation || 'all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isLoadingUser, setIsLoadingUser] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<{
-        id: string;
-        data: UserFormData;
-    } | null>(null);
 
     const { plural, singular } = USER_TYPE_META[type];
 
@@ -201,71 +194,19 @@ export default function UsersTable({
         router.refresh();
     };
 
-    const handleUserEdited = (userId: number) => {
-        console.log('User edited:', userId);
-        setIsEditModalOpen(false);
-        setSelectedUser(null);
+    // One request per open; the modal opens at once on its skeleton. Row click
+    // and the ?user= deep link go through the same path.
+    const userLoader = useRecordLoader(loadUserForEdit);
+    const openUserById = (userId: number | string) => userLoader.open(String(userId));
+
+    const closeUserModal = () => {
+        userLoader.close();
         clearUserParam();
+        // The activity-status changer (UserActivityHistory) inside this modal
+        // persists via its own request without refreshing the table; the main-form
+        // save path doesn't run for a status-only change. Refresh on close so the
+        // new status shows without a hard reload.
         router.refresh();
-    };
-
-    const handleUserDeleted = (userId: number) => {
-        console.log('User deleted:', userId);
-        setIsEditModalOpen(false);
-        setSelectedUser(null);
-        clearUserParam();
-        router.refresh();
-    };
-
-    const openUserById = async (userId: number | string) => {
-        setIsLoadingUser(true);
-        try {
-            const response = await fetch(`/api/user/${userId}?mode=full&include=addresses`);
-            if (!response.ok) throw new Error('\u00c9chec du chargement des donn\u00e9es');
-
-            const userData = await response.json();
-            if (!userData) throw new Error('Donn\u00e9es incompl\u00e8tes re\u00e7ues');
-
-            const formData: UserFormData = {
-                email: userData.email || '',
-                memberType: userData.memberType || 'auditeur',
-                accessLevel: userData.accessLevel || 'member',
-                firstName: userData.firstName || '',
-                lastName: userData.lastName || '',
-                civilityId: userData.civilityId ?? null,
-                civilityOther: userData.civilityOther || '',
-                homePhone: userData.homePhone || '',
-                cellPhone: userData.cellPhone || '',
-                gestconteNotes: userData.gestconteNotes || '',
-                gestconteId: userData.gestconteId,
-                nonProfitAffiliation: userData.nonProfitAffiliation || '',
-                isActive: userData.isActive ?? true,
-                terminationReason: userData.terminationReason || '',
-                preferredDeliveryMethod: userData.preferredDeliveryMethod || '',
-                paymentThreshold: userData.paymentThreshold?.toString() || '21.00',
-                currentBalance: userData.currentBalance?.toString() || '0.00',
-                preferredMediaFormatId: userData.preferredMediaFormatId ?? null,
-                isAvailable: userData.isAvailable ?? true,
-                availabilityNotes: userData.availabilityNotes || '',
-                languages: (userData.languages ?? []).map((l: { language: string }) => l.language),
-                saveType: userData.saveType || '',
-                maxConcurrentAssignments: userData.maxConcurrentAssignments,
-                notes: userData.notes || '',
-                addresses: userData.addresses || [],
-            };
-
-            setSelectedUser({ id: userId.toString(), data: formData });
-            setIsEditModalOpen(true);
-        } catch (error) {
-            console.error('Error loading user:', error);
-            toast({
-                variant: "destructive",
-                title: "Erreur",
-                description: error instanceof Error ? error.message : "\u00c9chec du chargement des donn\u00e9es de la personne",
-            });
-        } finally {
-            setIsLoadingUser(false);
-        }
     };
 
     const handleRowClick = (user: typeof initialUsers[0]) => openUserById(user.id);
@@ -560,16 +501,6 @@ export default function UsersTable({
                         </div>
                     )}
 
-                    {isLoadingUser && (
-                        <div className="fixed inset-0 bg-card/80 backdrop-blur-sm flex items-center justify-center z-50">
-                            <div className="bg-card rounded-lg p-8 shadow-2xl border border-border">
-                                <div className="flex flex-col items-center gap-4">
-                                    <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                    <p className="text-lg font-medium text-foreground">Chargement de la personne...</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 </AdminPaginatedList>
@@ -590,25 +521,15 @@ export default function UsersTable({
                 </DialogContent>
             </Dialog>
 
-            {selectedUser && (
+            {userLoader.openId && (
                 <EditUserModal
-                    isOpen={isEditModalOpen}
-                    onOpenChange={(open) => {
-                        setIsEditModalOpen(open);
-                        if (!open) {
-                            // The activity-status changer (UserActivityHistory) inside this
-                            // modal persists via its own request without refreshing the table;
-                            // the main-form save path doesn't run for a status-only change.
-                            // Refresh on close so the new status shows without a hard reload.
-                            setSelectedUser(null);
-                            clearUserParam();
-                            router.refresh();
-                        }
-                    }}
-                    userId={selectedUser.id}
-                    initialData={selectedUser.data}
-                    onUserEdited={handleUserEdited}
-                    onUserDeleted={handleUserDeleted}
+                    // A fresh form per person: its state is seeded from the loaded record once.
+                    key={userLoader.openId}
+                    isOpen
+                    onOpenChange={(open) => { if (!open) closeUserModal(); }}
+                    userId={userLoader.openId}
+                    user={userLoader.data}
+                    error={userLoader.error}
                     currentUserAccessLevel={currentUserAccessLevel}
                     userType={type}
                 />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
@@ -31,6 +31,7 @@ export function EditOrderFormBackend({
                                          initialSelectedBook,
                                          initialSelectedStaff,
                                          initialBill,
+                                         initialAssignment,
                                          deletedAt,
                                          onRestored,
                                      }: {
@@ -41,25 +42,18 @@ export function EditOrderFormBackend({
     initialSelectedBook?: Book | null;
     initialSelectedStaff?: User | null;
     initialBill?: { id: number; state: string } | null;
+    /**
+     * The linked attribution, or null when there is none — loaded with the demande
+     * (GET /api/orders/[id]?include=assignment) so it is known at mount: the form
+     * derives the statut from it.
+     */
+    initialAssignment: OrderAssignment | null;
     /** ISO string when this demande is soft-deleted; null/undefined otherwise. */
     deletedAt?: string | null;
     /** Fires once the demande is restored, so the caller can close/refresh. */
     onRestored?: () => void;
 }) {
     const { toast } = useToast();
-
-    // Fetch the linked affectation (if any) so the form can show reader/status
-    // context and a deep-link. Self-contained here, so callers (EditOrderModal)
-    // need no changes.
-    // `undefined` until the answer arrives (and on a failed fetch): the form derives
-    // the statut from this attribution, so "not known yet" must not read as "none".
-    const [assignment, setAssignment] = useState<OrderAssignment | null | undefined>(undefined);
-    useEffect(() => {
-        fetch(`/api/orders/${orderId}/assignment`)
-            .then((r) => (r.ok ? r.json() : undefined))
-            .then(setAssignment)
-            .catch(() => {});
-    }, [orderId]);
 
     type Notice =
         | { billId: number; billState: string; kind: 'COST'; newTotal?: string | null }
@@ -287,7 +281,7 @@ export function EditOrderFormBackend({
                 initialSelectedBook={initialSelectedBook}
                 initialSelectedStaff={initialSelectedStaff}
                 initialBill={initialBill}
-                initialAssignment={assignment}
+                initialAssignment={initialAssignment}
                 readOnly={!!deletedAt}
             />
 

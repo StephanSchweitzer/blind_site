@@ -42,6 +42,13 @@ export const OrderIncludeRelationSchema = z.enum([
     'bill',
     'assignments',
     'all',
+    // What the edit modal needs, in one request (EditOrderModal): the auditeur,
+    // livre and permanent in the shapes the form's pickers take, and the linked
+    // attribution (lib/orders/linkedAssignment.ts). Not part of 'all'.
+    'client',
+    'book',
+    'staff',
+    'assignment',
 ]);
 export type OrderIncludeRelation = z.infer<typeof OrderIncludeRelationSchema>;
 

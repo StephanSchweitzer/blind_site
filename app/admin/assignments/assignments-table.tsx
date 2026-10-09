@@ -22,17 +22,15 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, Loader2 } from 'lucide-react';
+import { Search, X, Plus } from 'lucide-react';
 import { AddAssignmentModal } from '@/admin/AddAssignmentModal';
-import { EditAssignmentModal } from '@/admin/EditAssignmentModal';
+import { EditAssignmentModal, loadAssignmentForEdit } from '@/admin/EditAssignmentModal';
+import { useRecordLoader } from '@/hooks/useRecordLoader';
 import { useToast } from '@/hooks/use-toast';
 import {
     StatusSummary,
-    AssignmentFormData,
     ReaderSummary,
     UserSummary,
-    BookSummary,
-    OrderSummary,
     AssignmentWithCurrentReader,
 } from '@/types';
 import { STATUS } from '@/lib/statusSync';
@@ -90,15 +88,6 @@ export default function AssignmentsTable({
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isLoadingAssignment, setIsLoadingAssignment] = useState(false);
-    const [selectedAssignment, setSelectedAssignment] = useState<{
-        id: string;
-        data: AssignmentFormData;
-        selectedReader: ReaderSummary | null;
-        selectedBook: BookSummary;
-        selectedOrder: OrderSummary | null;
-    } | null>(null);
 
     const currentStatusId = searchParams.get('statusId') || 'all';
     const currentRetard = searchParams.get('retard') || 'all';
@@ -148,110 +137,28 @@ export default function AssignmentsTable({
         router.refresh();
     };
 
-    const handleAssignmentEdited = (assignmentId: number) => {
-        console.log('Assignment edited:', assignmentId);
-        setIsEditModalOpen(false);
-        setSelectedAssignment(null);
+    // One request per open; the modal opens at once on its skeleton. Row click
+    // and the ?assignment= deep link go through the same path.
+    const assignmentLoader = useRecordLoader(loadAssignmentForEdit);
+    const openAssignmentById = (assignmentId: number | string) => assignmentLoader.open(String(assignmentId));
+
+    const closeAssignmentModal = () => {
+        assignmentLoader.close();
         clearAssignmentParam();
+        // Sub-actions performed while the modal was open (reader reassignment hits
+        // POST /readers directly) persist without telling the table to refetch; the
+        // post-save close also lands here. Refresh on every close so the change
+        // shows in the table.
         router.refresh();
     };
 
-    const handleAssignmentDeleted = (assignmentId: number) => {
-        console.log('Assignment deleted:', assignmentId);
-        setIsEditModalOpen(false);
-        setSelectedAssignment(null);
-        clearAssignmentParam();
-        router.refresh();
-
+    const handleAssignmentDeleted = () => {
         toast({
             // @ts-expect-error jsx in toast
             title: <span className="text-2xl font-bold">Succès</span>,
             description: <span className="text-xl mt-2">L&apos;attribution a été supprimée</span>,
             className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
         });
-    };
-
-    const openAssignmentById = async (assignmentId: number | string) => {
-        setIsLoadingAssignment(true);
-        console.log('Fetching assignment details for ID:', assignmentId);
-
-        try {
-            const response = await fetch(`/api/assignments/${assignmentId}`);
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch assignment details');
-            }
-
-            const assignmentData = await response.json();
-            console.log('Fetched assignment data:', assignmentData);
-
-            // Add this helper function
-            const formatDateForForm = (date: string | Date | null | undefined): string | null => {
-                if (!date) return null;
-                if (typeof date === 'string') {
-                    return date.split('T')[0];
-                }
-                return date.toISOString().split('T')[0];
-            };
-
-            const currentReader = assignmentData.readerHistory?.[0]?.reader || null;
-
-            const formData: AssignmentFormData = {
-                catalogueId: assignmentData.catalogueId,
-                orderId: assignmentData.orderId,
-                receptionDate: formatDateForForm(assignmentData.receptionDate),
-                sentToReaderDate: formatDateForForm(assignmentData.sentToReaderDate),
-                returnedToECADate: formatDateForForm(assignmentData.returnedToECADate),
-                statusId: assignmentData.statusId,
-                notes: assignmentData.notes || '',
-                deliveryMethod: assignmentData.deliveryMethod ?? null,
-            };
-
-            const selectedReader: ReaderSummary | null = currentReader ? {
-                id: currentReader.id,
-                email: currentReader.email,
-                firstName : currentReader.firstName,
-                lastName : currentReader.lastName
-            } : null;
-
-            const selectedBook: BookSummary= {
-                id: assignmentData.catalogue.id,
-                title: assignmentData.catalogue.title,
-                author: assignmentData.catalogue.author,
-            };
-
-            // Fix: Properly type the OrderSummary with all required fields
-            const selectedOrder: OrderSummary | null = assignmentData.order ? {
-                id: assignmentData.order.id,
-                requestReceivedDate: assignmentData.order.requestReceivedDate,
-                createdDate: assignmentData.order.createdDate,
-                pages: assignmentData.order.pages,
-                aveugle: assignmentData.order.aveugle,
-                catalogue: assignmentData.order.catalogue,
-            } as OrderSummary : null;
-
-            setSelectedAssignment({
-                id: assignmentData.id.toString(),
-                data: formData,
-                selectedReader,
-                selectedBook,
-                selectedOrder,
-            });
-
-            console.log('Opening edit modal');
-            setIsEditModalOpen(true);
-        } catch (error) {
-            console.error('Error fetching assignment details:', error);
-            toast({
-                variant: "destructive",
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">Impossible de charger les détails de l&apos;attribution</span>,
-                className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
-            });
-        } finally {
-            setIsLoadingAssignment(false);
-        }
     };
 
     const handleRowClick = (assignment: AssignmentWithCurrentReader) =>
@@ -634,17 +541,6 @@ export default function AssignmentsTable({
                         </div>
                     )}
 
-                    {/* Loading Overlay for Assignment Data */}
-                    {isLoadingAssignment && (
-                        <div className="fixed inset-0 bg-card/80 backdrop-blur-sm flex items-center justify-center z-50">
-                            <div className="bg-card rounded-lg p-8 shadow-2xl border border-border">
-                                <div className="flex flex-col items-center gap-4">
-                                    <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                                    <p className="text-lg font-medium text-foreground">Chargement de l&apos;attribution...</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 </AdminPaginatedList>
@@ -661,28 +557,16 @@ export default function AssignmentsTable({
             />
 
             {/* Edit Assignment Modal */}
-            {selectedAssignment && (
+            {assignmentLoader.openId && (
                 <EditAssignmentModal
-                    isOpen={isEditModalOpen}
-                    onOpenChange={(open) => {
-                        setIsEditModalOpen(open);
-                        if (!open) {
-                            setSelectedAssignment(null);
-                            clearAssignmentParam();
-                            // Sub-actions performed while the modal was open (reader
-                            // reassignment hits POST /readers directly) persist without
-                            // telling the table to refetch; the post-save close also lands
-                            // here. Refresh on every close so the change shows in the table.
-                            router.refresh();
-                        }
-                    }}
-                    assignmentId={selectedAssignment.id}
-                    initialData={selectedAssignment.data}
-                    onAssignmentEdited={handleAssignmentEdited}
+                    // A fresh form per attribution: its state is seeded from the loaded record once.
+                    key={assignmentLoader.openId}
+                    isOpen
+                    onOpenChange={(open) => { if (!open) closeAssignmentModal(); }}
+                    assignmentId={assignmentLoader.openId}
+                    assignment={assignmentLoader.data}
+                    error={assignmentLoader.error}
                     onAssignmentDeleted={handleAssignmentDeleted}
-                    initialSelectedReader={selectedAssignment.selectedReader}
-                    initialSelectedBook={selectedAssignment.selectedBook}
-                    initialSelectedOrder={selectedAssignment.selectedOrder}
                 />
             )}
         </Card>

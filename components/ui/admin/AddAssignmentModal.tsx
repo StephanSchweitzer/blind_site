@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import {
     Dialog,
     DialogContent,
@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/dialog";
 import { AddAssignmentFormBackend } from '@/admin/AddAssignmentFormBackend';
 import type { ReaderSummary, UserSummary } from '@/types';
-import { Loader2 } from 'lucide-react';
 
 interface AddAssignmentModalProps {
     isOpen: boolean;
@@ -26,16 +25,6 @@ export function AddAssignmentModal({
                                        presetReader,
                                        presetClient,
                                    }: AddAssignmentModalProps) {
-    const [isLoadingOrders, setIsLoadingOrders] = useState(true);
-    const [wasOpen, setWasOpen] = useState(isOpen);
-
-    if (isOpen && !wasOpen) {
-        setIsLoadingOrders(true);
-    }
-    if (isOpen !== wasOpen) {
-        setWasOpen(isOpen);
-    }
-
     const handleSuccess = (assignmentId: number) => {
         console.log('Assignment created successfully, closing modal');
         if (onAssignmentCreated) {
@@ -45,28 +34,17 @@ export function AddAssignmentModal({
         onOpenChange(false);
     };
 
-    const handleOrdersLoaded = useCallback(() => {
-        setIsLoadingOrders(false);
-    }, []);
-
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
                 <DialogHeader>
                     <DialogTitle className="text-foreground">Créer une nouvelle attribution</DialogTitle>
                 </DialogHeader>
-                <div className="overflow-y-auto px-1 relative">
-                    {isLoadingOrders && (
-                        <div className="absolute inset-0 bg-card/80 backdrop-blur-sm z-50 flex items-center justify-center">
-                            <div className="flex items-center">
-                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                                <span className="ml-3 text-muted-foreground">Chargement des demandes...</span>
-                            </div>
-                        </div>
-                    )}
+                {/* Rien à attendre : les statuts viennent du layout (useReferenceData),
+                    et le choix de la demande charge sa propre liste à l'ouverture. */}
+                <div className="overflow-y-auto px-1">
                     <AddAssignmentFormBackend
                         onSuccess={handleSuccess}
-                        onOrdersLoaded={handleOrdersLoaded}
                         presetClientId={presetClientId}
                         initialReader={presetReader}
                         presetClient={presetClient}

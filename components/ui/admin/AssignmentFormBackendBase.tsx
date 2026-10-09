@@ -121,8 +121,12 @@ export interface AssignmentFormBackendBaseProps {
     initialSelectedReader?: ReaderSummary | null;
     initialSelectedBook?: BookSummary | null;
     initialSelectedOrder?: OrderSummary | null;
-    onReadersLoaded?: () => void;
-    onOrdersLoaded?: () => void;
+    /**
+     * Edit mode: the full reader history, newest first, loaded with the
+     * attribution (GET /api/assignments/[id]) so the reader is known at mount
+     * and no late answer overwrites a reader the admin is picking.
+     */
+    initialReaderHistory?: AssignmentReaderHistory[];
 }
 
 /**
@@ -243,8 +247,7 @@ export function AssignmentFormBackendBase({
                                               initialSelectedReader,
                                               initialSelectedBook,
                                               initialSelectedOrder,
-                                              onReadersLoaded,
-                                              onOrdersLoaded,
+                                              initialReaderHistory,
                                               presetClientId,
                                               presetClient,
                                           }: AssignmentFormBackendBaseProps) {
@@ -271,13 +274,13 @@ export function AssignmentFormBackendBase({
     // Reader state (separate from formData)
     const [selectedReaderId, setSelectedReaderId] = useState<number | null>(initialSelectedReader?.id ?? null);
     const [selectedReader, setSelectedReader] = useState<ReaderSummary | null>(initialSelectedReader || null);
-    const [currentReader, setCurrentReader] = useState<ReaderSummary | null>(null);
+    const [currentReader, setCurrentReader] = useState<ReaderSummary | null>(initialReaderHistory?.[0]?.reader ?? null);
 
     // Options data
     const { statuses } = useReferenceData();
 
     // Reader history
-    const [readerHistory, setReaderHistory] = useState<AssignmentReaderHistory[]>([]);
+    const [readerHistory, setReaderHistory] = useState<AssignmentReaderHistory[]>(initialReaderHistory ?? []);
 
     // Selected display values
     const [selectedBook, setSelectedBook] = useState<BookSummary | null>(initialSelectedBook || null);
@@ -357,21 +360,10 @@ export function AssignmentFormBackendBase({
         resolveAndClose: closeActivityGuard,
     } = useUserActivityGuard();
 
-    // Demandes are no longer prefetched here: the picker owns its own list
-    // (EntitySearchCombobox in searchOnEmpty mode fetches the recent
-    // attributable demandes when it opens), and statuses come preloaded from
-    // the admin layout (useReferenceData). `onOrdersLoaded` still fires — it
-    // gates the modal's loading overlay.
-    useEffect(() => {
-        onOrdersLoaded?.();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
+    // Re-reads the reader history after a reassignment (the initial one comes
+    // with the attribution, see initialReaderHistory).
     const fetchReaderHistory = useCallback(async () => {
-        if (!assignmentId) {
-            onReadersLoaded?.();
-            return;
-        }
+        if (!assignmentId) return;
 
         try {
             const res = await fetch(`/api/assignments/${assignmentId}/readers`);
@@ -389,38 +381,8 @@ export function AssignmentFormBackendBase({
             }
         } catch (err) {
             console.error('Error fetching reader history:', err);
-        } finally {
-            onReadersLoaded?.();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [assignmentId]);
-
-    useEffect(() => {
-        const loadReaderHistory = async () => {
-            await fetchReaderHistory();
-        };
-        loadReaderHistory();
-    }, [fetchReaderHistory]);
-
-    // Load initial selections if editing (only if not pre-fetched)
-    useEffect(() => {
-        if (initialData) {
-            // Fetch selected book info only if not pre-fetched
-            if (initialData.catalogueId && !initialSelectedBook) {
-                fetch(`/api/books/${initialData.catalogueId}`)
-                    .then(res => res.json())
-                    .then(book => setSelectedBook(book))
-                    .catch(err => console.error('Error fetching book:', err));
-            }
-            // Fetch selected order info only if not pre-fetched
-            if (initialData.orderId && !initialSelectedOrder) {
-                fetch(`/api/orders/${initialData.orderId}`)
-                    .then(res => res.json())
-                    .then(order => setSelectedOrder(order))
-                    .catch(err => console.error('Error fetching order:', err));
-            }
-        }
-    }, [initialData, initialSelectedBook, initialSelectedOrder]);
 
     // Demandes: empty query → recent attributable list (duplications and
     // already-attributed ones excluded server-side); a real query → the full

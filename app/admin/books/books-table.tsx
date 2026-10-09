@@ -30,6 +30,8 @@ import { AddBookFormBackend, EditBookFormBackend } from '@/admin/BookFormBackend
 import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import { BookAudioModal } from '@/admin/BookAudioModal';
 import { CopyableId, CopyIdButton } from '@/admin/CopyableId';
+import { RecordLoadError, useRecordLoader } from '@/hooks/useRecordLoader';
+import { FormLoadingGate } from '@/components/ui/form-skeleton';
 import {
     AudioLinkStatus,
     audioLinkStatusHasAudio,
@@ -267,7 +269,6 @@ export default function BooksTable({
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     /** Bumped on every opening so the add form is always a blank one. */
     const [addSeq, setAddSeq] = useState(0);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     /**
      * Which dialogue is asking to discard unsaved work, if any.
      *
@@ -276,11 +277,9 @@ export default function BooksTable({
      * without it a stray click silently throws away a typed description.
      */
     const [discarding, setDiscarding] = useState<'add' | 'edit' | null>(null);
-    const [selectedBook, setSelectedBook] = useState<BookWithFormData | null>(null);
     /** Book whose audio folder is open in the management dialogue. */
     const [audioBook, setAudioBook] = useState<{ id: number; title: string } | null>(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [isLoadingBook, setIsLoadingBook] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Results state - initialize with server data
@@ -563,111 +562,93 @@ export default function BooksTable({
         }
     };
 
-    const openBookEditModal = async (book: Book) => {
-        await openBookById(book.id);
-    };
-
-    // Fetches a book's full details and opens the edit modal. Shared by the
-    // row-click handler and the ?book=<id> deep-link (e.g. from the stats page).
-    const openBookById = async (bookId: number | string, followed = false) => {
-        setIsLoadingBook(true);
-
-        try {
-            const response = await fetch(`/api/books/${bookId}`, {
+    // Fetches a book's full details for the edit modal, which opens at once on
+    // its skeleton. Shared by the row-click handler and the ?book=<id> deep-link
+    // (e.g. from the stats page).
+    const loadBookForEdit = async (bookId: string, signal: AbortSignal): Promise<BookWithFormData> => {
+        let id = bookId;
+        // A fused id forwards to the fiche that absorbed it, once: the second
+        // pass stops a malformed chain from bouncing forever.
+        for (let followed = false; ; followed = true) {
+            const response = await fetch(`/api/books/${id}`, {
+                signal,
                 headers: {
                     'Cache-Control': 'no-store, no-cache, must-revalidate',
                 },
             });
-            if (!response.ok) {
-                // 404 is not a transient failure, so it must never be answered
-                // with « réessayer » — retrying a book that no longer exists
-                // just costs the reader another round before the same result.
-                if (response.status === 404) {
-                    const body = await response.json().catch(() => null);
-                    const mergedInto = typeof body?.mergedInto === 'number' ? body.mergedInto : null;
+            if (response.ok) {
+                const bookDetails = await response.json();
 
-                    // A fused id forwards to the fiche that absorbed it, once:
-                    // `followed` stops a malformed chain from bouncing forever.
-                    if (mergedInto !== null && !followed) {
-                        // Europe/Paris, not the viewer's zone: this date is read
-                        // next to the journal row that produced the link, and
-                        // that one is pinned to the Paris day everywhere in the
-                        // app (see DISPLAY_TIMEZONE in lib/audit/labels.ts). Left
-                        // to the browser they disagree by a day either side of
-                        // midnight.
-                        const on = typeof body?.mergedAt === 'string'
-                            ? new Date(body.mergedAt).toLocaleDateString('fr-FR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                timeZone: 'Europe/Paris',
-                            })
-                            : null;
-                        toast({
-                            title: 'Fiche fusionnée',
-                            description:
-                                `Le livre n°${bookId} a été fusionné${on ? ` le ${on}` : ''} ` +
-                                `dans le livre n°${mergedInto}. Voici la fiche conservée.`,
-                        });
-                        await openBookById(mergedInto, true);
-                        return;
-                    }
+                const genreIds = bookDetails.genres.map((g: { genre: { id: number } }) => g.genre.id);
 
-                    toast({
-                        title: 'Livre introuvable',
-                        description:
-                            `Le livre n°${bookId} n’existe plus dans le catalogue. ` +
-                            `Il a été supprimé, et aucune fiche ne l’a remplacé.`,
-                        variant: 'destructive',
-                    });
-                    return;
-                }
-                throw new Error('Failed to fetch book details');
+                const formData: BookFormData = {
+                    title: bookDetails.title,
+                    subtitle: bookDetails.subtitle,
+                    author: bookDetails.author,
+                    publisher: bookDetails.publisher || undefined,
+                    // UTC year, not local: what this field shows is what the save
+                    // writes back, so reading it in the viewer's timezone moves the
+                    // date every time a book is edited west of Greenwich.
+                    publishedYear: (calendarYear(bookDetails.publishedDate) ?? new Date().getFullYear())
+                        .toString(),
+                    genres: genreIds.map(String),
+                    isbn: bookDetails.isbn || undefined,
+                    description: bookDetails.description || undefined,
+                    available: Boolean(bookDetails.available),
+                    hiddenFromCatalogue: Boolean(bookDetails.hiddenFromCatalogue),
+                    readingDurationMinutes: bookDetails.readingDurationMinutes || undefined,
+                    pageCount: bookDetails.pageCount || undefined,
+                };
+
+                // The form is about to mount fresh from these values.
+                editDirtyRef.current = false;
+                return {
+                    ...bookDetails,
+                    formData,
+                    openSeq: ++openSeqRef.current,
+                };
             }
-            const bookDetails = await response.json();
 
-            const genreIds = bookDetails.genres.map((g: { genre: { id: number } }) => g.genre.id);
+            // 404 is not a transient failure, so it must never be answered
+            // with « réessayer » — retrying a book that no longer exists
+            // just costs the reader another round before the same result.
+            if (response.status !== 404) throw new Error('Failed to fetch book details');
 
-            const formData: BookFormData = {
-                title: bookDetails.title,
-                subtitle: bookDetails.subtitle,
-                author: bookDetails.author,
-                publisher: bookDetails.publisher || undefined,
-                // UTC year, not local: what this field shows is what the save
-                // writes back, so reading it in the viewer's timezone moves the
-                // date every time a book is edited west of Greenwich.
-                publishedYear: (calendarYear(bookDetails.publishedDate) ?? new Date().getFullYear())
-                    .toString(),
-                genres: genreIds.map(String),
-                isbn: bookDetails.isbn || undefined,
-                description: bookDetails.description || undefined,
-                available: Boolean(bookDetails.available),
-                hiddenFromCatalogue: Boolean(bookDetails.hiddenFromCatalogue),
-                readingDurationMinutes: bookDetails.readingDurationMinutes || undefined,
-                pageCount: bookDetails.pageCount || undefined,
-            };
+            const body = await response.json().catch(() => null);
+            const mergedInto = typeof body?.mergedInto === 'number' ? body.mergedInto : null;
+            if (mergedInto === null || followed) {
+                throw new RecordLoadError(
+                    `Le livre n°${id} n’existe plus dans le catalogue. ` +
+                    `Il a été supprimé, et aucune fiche ne l’a remplacé.`
+                );
+            }
 
-            const selectedBookWithForm: BookWithFormData = {
-                ...bookDetails,
-                formData,
-                openSeq: ++openSeqRef.current,
-            };
-
-            // The form below is about to mount fresh from these values.
-            editDirtyRef.current = false;
-            setSelectedBook(selectedBookWithForm);
-            setIsEditModalOpen(true);
-        } catch (error) {
-            console.error('Error fetching book details:', error);
+            // Europe/Paris, not the viewer's zone: this date is read next to the
+            // journal row that produced the link, and that one is pinned to the
+            // Paris day everywhere in the app (see DISPLAY_TIMEZONE in
+            // lib/audit/labels.ts). Left to the browser they disagree by a day
+            // either side of midnight.
+            const on = typeof body?.mergedAt === 'string'
+                ? new Date(body.mergedAt).toLocaleDateString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    timeZone: 'Europe/Paris',
+                })
+                : null;
             toast({
-                title: "Erreur",
-                description: "Échec du chargement des détails du livre. Veuillez réessayer.",
-                variant: "destructive"
+                title: 'Fiche fusionnée',
+                description:
+                    `Le livre n°${id} a été fusionné${on ? ` le ${on}` : ''} ` +
+                    `dans le livre n°${mergedInto}. Voici la fiche conservée.`,
             });
-        } finally {
-            setIsLoadingBook(false);
+            id = String(mergedInto);
         }
     };
+    const bookLoader = useRecordLoader(loadBookForEdit);
+    const selectedBook = bookLoader.data;
+    const openBookById = (bookId: number | string) => bookLoader.open(String(bookId));
+    const openBookEditModal = (book: Book) => openBookById(book.id);
 
     // Deep-link: open the edit modal directly when arriving with ?book=<id>
     // (e.g. from the stats page), even when the book isn't on the current page.
@@ -711,8 +692,10 @@ export default function BooksTable({
             setDiscarding('edit');
             return;
         }
-        setIsEditModalOpen(open);
-        if (!open) clearBookParam();
+        if (!open) {
+            bookLoader.close();
+            clearBookParam();
+        }
     };
 
     const confirmDiscard = () => {
@@ -721,7 +704,7 @@ export default function BooksTable({
             setIsAddModalOpen(false);
         } else if (discarding === 'edit') {
             editDirtyRef.current = false;
-            setIsEditModalOpen(false);
+            bookLoader.close();
             clearBookParam();
         }
         setDiscarding(null);
@@ -753,8 +736,7 @@ export default function BooksTable({
                 books: prev.books.filter(book => book.id !== bookId),
                 total: prev.total - 1
             }));
-            setIsEditModalOpen(false);
-            setSelectedBook(null);
+            bookLoader.close();
 
             setTimeout(() => {
                 performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
@@ -762,8 +744,7 @@ export default function BooksTable({
             return;
         }
 
-        setIsEditModalOpen(false);
-        setSelectedBook(null);
+        bookLoader.close();
         performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
     };
 
@@ -1201,14 +1182,6 @@ export default function BooksTable({
                 </AdminPaginatedList>
             </CardContent>
 
-            {/* Book loading overlay */}
-            {isLoadingBook && (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 gap-3">
-                    <Loader2 className="h-10 w-10 animate-spin text-white" />
-                    <span className="text-white text-sm">Chargement du livre...</span>
-                </div>
-            )}
-
             {/* Add Book Modal */}
             <Dialog open={isAddModalOpen} onOpenChange={requestCloseAdd}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
@@ -1226,42 +1199,42 @@ export default function BooksTable({
             </Dialog>
 
             {/* Edit Book Modal */}
-            {selectedBook && (
-                <Dialog open={isEditModalOpen} onOpenChange={requestCloseEdit}>
+            {bookLoader.openId && (
+                <Dialog open onOpenChange={requestCloseEdit}>
                     <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
                             <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
                                 Modifier le livre
-                                <CopyableId id={selectedBook.id} label="du livre" />
+                                {/* The loaded id, once there: a fused id opens the fiche that absorbed it. */}
+                                <CopyableId id={selectedBook?.id ?? bookLoader.openId} label="du livre" />
                             </DialogTitle>
                             {/* Ce qui existe déjà pour ce livre, un clic vers chaque liste. */}
-                            <BookUsageLinks bookId={selectedBook.id} />
+                            {selectedBook && <BookUsageLinks bookId={selectedBook.id} />}
                         </DialogHeader>
                         <div className="overflow-y-auto px-1">
                             {/* key: the form seeds its state from initialData on
-                                mount only, and closing the dialogue leaves
-                                selectedBook set. Without a fresh identity per
-                                opening React reuses the instance, so the next
-                                book opens showing the previous one's values
-                                while the save targets the new book's id —
-                                overwriting one book with another's data. Keyed
-                                on the opening rather than the book id so that
-                                reopening the *same* book also discards fields
-                                abandoned last time and shows what was just
-                                refetched. */}
-                            <EditBookFormBackend
-                                key={selectedBook.openSeq}
-                                bookId={selectedBook.id.toString()}
-                                initialData={selectedBook.formData}
-                                deletedAt={
-                                    selectedBook.deletedAt
-                                        ? new Date(selectedBook.deletedAt).toISOString()
-                                        : null
-                                }
-                                onSuccess={handleBookEdited}
-                                onRestored={handleBookRestored}
-                                dirtyRef={editDirtyRef}
-                            />
+                                mount only. Keyed on the opening rather than the
+                                book id so that reopening the *same* book also
+                                discards fields abandoned last time and shows
+                                what was just refetched — and never shows one
+                                book's values while the save targets another. */}
+                            <FormLoadingGate loading={!selectedBook} error={bookLoader.error} fields={8}>
+                                {selectedBook && (
+                                    <EditBookFormBackend
+                                        key={selectedBook.openSeq}
+                                        bookId={selectedBook.id.toString()}
+                                        initialData={selectedBook.formData}
+                                        deletedAt={
+                                            selectedBook.deletedAt
+                                                ? new Date(selectedBook.deletedAt).toISOString()
+                                                : null
+                                        }
+                                        onSuccess={handleBookEdited}
+                                        onRestored={handleBookRestored}
+                                        dirtyRef={editDirtyRef}
+                                    />
+                                )}
+                            </FormLoadingGate>
                         </div>
                     </DialogContent>
                 </Dialog>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { ReaderSummary, BookSummary, OrderSummary, AssignmentFormData } from '@/types';
+import { ReaderSummary, BookSummary, OrderSummary, AssignmentFormData, AssignmentReaderHistory } from '@/types';
 import { AssignmentFormBackendBase, type AssignmentSubmitOptions } from '@/admin/AssignmentFormBackendBase';
 import { getFieldErrorLines, ErrorToastBody, AudioConfirmationRequiredError } from '@/admin/AssignmentFormErrors';
 
@@ -25,8 +25,7 @@ export function EditAssignmentFormBackend({
                                               initialSelectedReader,
                                               initialSelectedBook,
                                               initialSelectedOrder,
-                                              onReadersLoaded,
-                                              onOrdersLoaded,
+                                              initialReaderHistory,
                                           }: {
     assignmentId: string;
     initialData: AssignmentFormData;
@@ -34,8 +33,7 @@ export function EditAssignmentFormBackend({
     initialSelectedReader?: ReaderSummary | null;
     initialSelectedBook?: BookSummary | null;
     initialSelectedOrder?: OrderSummary | null;
-    onReadersLoaded?: () => void;
-    onOrdersLoaded?: () => void;
+    initialReaderHistory: AssignmentReaderHistory[];
 }) {
     const { toast } = useToast();
 
@@ -199,8 +197,7 @@ export function EditAssignmentFormBackend({
             initialSelectedReader={initialSelectedReader}
             initialSelectedBook={initialSelectedBook}
             initialSelectedOrder={initialSelectedOrder}
-            onReadersLoaded={onReadersLoaded}
-            onOrdersLoaded={onOrdersLoaded}
+            initialReaderHistory={initialReaderHistory}
         />
     );
 }

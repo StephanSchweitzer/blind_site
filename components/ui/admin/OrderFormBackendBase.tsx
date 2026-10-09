@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -276,10 +276,11 @@ export function OrderFormBackendBase({
     );
 
     // ── Statut dérivé (voir deriveOrderStatus) ──────────────────────────────
-    // L'attribution arrive par un fetch séparé (EditOrderFormBackend) : tant
+    // L'attribution arrive avec la demande (EditOrderModal, include=assignment),
+    // donc connue au montage. Garde-fou si un appelant ne la fournit pas : tant
     // qu'elle n'est pas connue, une demande d'enregistrement sans date garde son
-    // statut enregistré plutôt que d'afficher un instant « Attente envoi vers
-    // lecteur ». Une création n'a pas d'attribution, par définition.
+    // statut enregistré plutôt que d'afficher « Attente envoi vers lecteur ».
+    // Une création n'a pas d'attribution, par définition.
     const assignmentUnknown = !!initialData && initialAssignment === undefined;
     const assignmentStatusId = initialAssignment?.statusId ?? null;
     // Le statut ne se déduit que si la session touche ce dont il dépend — la date
@@ -338,7 +339,7 @@ export function OrderFormBackendBase({
     // Selected display values
     const [selectedUser, setSelectedUser] = useState<User | null>(initialSelectedUser || null);
     const [selectedBook, setSelectedBook] = useState<Book | null>(initialSelectedBook || null);
-    const [selectedStaff, setSelectedStaff] = useState<User | null>(initialSelectedStaff || null);
+    const [selectedStaff] = useState<User | null>(initialSelectedStaff || null);
 
     const audioAlreadyExists = Boolean(selectedBook?.audio_filepath);
 
@@ -381,51 +382,6 @@ export function OrderFormBackendBase({
         excludeOrderId: currentOrderId,
     });
     const recordingAdvice = recordingAdviceFor(recordingContext);
-
-    // Load initial selections if editing (only if not pre-fetched)
-    useEffect(() => {
-        if (initialData) {
-            // Fetch selected user info only if not pre-fetched
-            if (initialData.aveugleId && !initialSelectedUser) {
-                fetch(`/api/user/${initialData.aveugleId}`)
-                    .then(res => res.json())
-                    .then(user => {
-                        setSelectedUser(user);
-                        // Default-only seed: in edit mode the demande already has a
-                        // format, so this only fires for genuinely empty values.
-                        if (user?.preferredMediaFormatId != null) {
-                            setFormData(prev =>
-                                prev.mediaFormatId
-                                    ? prev
-                                    : { ...prev, mediaFormatId: user.preferredMediaFormatId }
-                            );
-                        }
-                        if (user?.preferredDeliveryMethod === 'RETRAIT' || user?.preferredDeliveryMethod === 'ENVOI') {
-                            setFormData(prev =>
-                                prev.deliveryMethod
-                                    ? prev
-                                    : { ...prev, deliveryMethod: user.preferredDeliveryMethod }
-                            );
-                        }
-                    })
-                    .catch(err => console.error('Error fetching user:', err));
-            }
-            // Fetch selected book info only if not pre-fetched
-            if (initialData.catalogueId && !initialSelectedBook) {
-                fetch(`/api/books/${initialData.catalogueId}`)
-                    .then(res => res.json())
-                    .then(book => setSelectedBook(book))
-                    .catch(err => console.error('Error fetching book:', err));
-            }
-            // Fetch selected staff info only if not pre-fetched
-            if (initialData.processedByStaffId && !initialSelectedStaff) {
-                fetch(`/api/user/${initialData.processedByStaffId}`)
-                    .then(res => res.json())
-                    .then(user => setSelectedStaff(user))
-                    .catch(err => console.error('Error fetching staff:', err));
-            }
-        }
-    }, [initialData, initialSelectedUser, initialSelectedBook, initialSelectedStaff]);
 
     const handleUserSelect = async (user: User) => {
         // Vetoed selections return false so the picker stays open (N.B. the

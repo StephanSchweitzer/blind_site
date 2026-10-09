@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { BookModalBackend } from "@/admin/BookModalBackend";
 import { EditBookModal } from '@/admin/EditBookModal';
+import { RecordLoadError, useRecordLoader } from '@/hooks/useRecordLoader';
 import { BookFormData } from "@/admin/BookFormBackendBase";
 import { toast } from "@/hooks/use-toast";
 import { calendarYear } from '@/lib/calendar-date';
@@ -57,8 +58,6 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
     // Le dernier retrait, pour « Annuler » : l'état complet d'avant, effacé dès
     // que la liste change autrement.
     const [undo, setUndo] = useState<{ snapshot: ListBook[]; count: number } | null>(null);
-    const [editing, setEditing] = useState<(ListBook & { formData: BookFormData }) | null>(null);
-    const [loadingEditId, setLoadingEditId] = useState<number | null>(null);
 
     // Les listes qui contiennent déjà chaque livre, la liste en cours
     // d'édition exclue — elle n'est pas « une autre liste ». Chargée une fois
@@ -137,56 +136,46 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
         }
     };
 
-    const openEditor = async (book: ListBook) => {
-        setLoadingEditId(book.id);
-        try {
-            const response = await fetch(`/api/books/${book.id}`);
-            if (!response.ok) {
-                // Never « réessayer » on a 404: the book is gone and retrying
-                // cannot change that. A fusion re-points this list onto the
-                // surviving fiche, so there is nothing to forward to here.
-                if (response.status === 404) {
-                    toast({
-                        title: 'Livre introuvable',
-                        description:
-                            `Le livre n°${book.id} n’existe plus. Rafraîchissez la liste : ` +
-                            `il a pu être supprimé ou fusionné depuis son affichage.`,
-                        variant: 'destructive',
-                    });
-                    return;
-                }
-                throw new Error('Failed to fetch book details');
+    // The modal opens at once on its skeleton; the fiche loads in one request.
+    const loadBookForEdit = async (bookId: string, signal: AbortSignal): Promise<BookFormData> => {
+        const response = await fetch(`/api/books/${bookId}`, { signal });
+        if (!response.ok) {
+            // Never « réessayer » on a 404: the book is gone and retrying
+            // cannot change that. A fusion re-points this list onto the
+            // surviving fiche, so there is nothing to forward to here.
+            if (response.status === 404) {
+                throw new RecordLoadError(
+                    `Le livre n°${bookId} n’existe plus. Rafraîchissez la liste : ` +
+                    `il a pu être supprimé ou fusionné depuis son affichage.`
+                );
             }
-            const details = await response.json();
-            const formData: BookFormData = {
-                title: details.title || '',
-                subtitle: details.subtitle || '',
-                author: details.author || '',
-                publisher: details.publisher || '',
-                // UTC year: this field is saved back verbatim, so a local read
-                // shifts the date on every edit west of Greenwich.
-                publishedYear: (calendarYear(details.publishedDate) ?? '').toString(),
-                genres: details.genres.map((g: { genre: { id: number | string } }) => g.genre.id.toString()),
-                isbn: details.isbn || '',
-                description: details.description || '',
-                available: Boolean(details.available),
-                hiddenFromCatalogue: Boolean(details.hiddenFromCatalogue),
-                readingDurationMinutes: details.readingDurationMinutes?.toString() || '',
-                pageCount: details.pageCount,
-            };
-            setEditing({ ...book, formData });
-        } catch (error) {
-            console.error('Error fetching book details:', error);
-            toast({ title: "Erreur", description: "Échec du chargement des détails du livre. Veuillez réessayer.", variant: "destructive" });
-        } finally {
-            setLoadingEditId(null);
+            throw new Error('Failed to fetch book details');
         }
+        const details = await response.json();
+        return {
+            title: details.title || '',
+            subtitle: details.subtitle || '',
+            author: details.author || '',
+            publisher: details.publisher || '',
+            // UTC year: this field is saved back verbatim, so a local read
+            // shifts the date on every edit west of Greenwich.
+            publishedYear: (calendarYear(details.publishedDate) ?? '').toString(),
+            genres: details.genres.map((g: { genre: { id: number | string } }) => g.genre.id.toString()),
+            isbn: details.isbn || '',
+            description: details.description || '',
+            available: Boolean(details.available),
+            hiddenFromCatalogue: Boolean(details.hiddenFromCatalogue),
+            readingDurationMinutes: details.readingDurationMinutes?.toString() || '',
+            pageCount: details.pageCount,
+        };
     };
+    const bookLoader = useRecordLoader(loadBookForEdit);
+    const editingId = bookLoader.openId ? Number(bookLoader.openId) : null;
 
     const handleBookEdited = async () => {
-        if (!editing) return;
+        if (editingId === null) return;
         try {
-            const [fresh] = await fetchBooksByIds([editing.id]);
+            const [fresh] = await fetchBooksByIds([editingId]);
             if (fresh) setBooks((prev) => prev.map((book) => (book.id === fresh.id ? fresh : book)));
         } catch (error) {
             console.error('Error refreshing book data:', error);
@@ -380,12 +369,11 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                            onClick={() => void openEditor(book)}
-                                                            disabled={loadingEditId !== null}
+                                                            onClick={() => bookLoader.open(book.id.toString())}
                                                             title="Modifier la fiche du livre"
                                                             aria-label={`Modifier la fiche de « ${book.title} »`}
                                                         >
-                                                            {loadingEditId === book.id ? <Loader2 className="animate-spin" /> : <Pencil />}
+                                                            <Pencil />
                                                         </Button>
                                                         <Button
                                                             type="button"
@@ -435,12 +423,14 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                 onBookAdded={handleBookCreated}
             />
 
-            {editing && (
+            {bookLoader.openId && (
                 <EditBookModal
+                    key={bookLoader.openId}
                     isOpen
-                    onOpenChange={(open) => { if (!open) setEditing(null); }}
-                    bookId={editing.id.toString()}
-                    initialData={editing.formData}
+                    onOpenChange={(open) => { if (!open) bookLoader.close(); }}
+                    bookId={bookLoader.openId}
+                    initialData={bookLoader.data}
+                    error={bookLoader.error}
                     onBookEdited={handleBookEdited}
                     onBookDeleted={handleBookDeleted}
                 />
