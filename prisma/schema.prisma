@@ -89,6 +89,7 @@ model User {
   activityEventsPerformed   UserActivityEvent[] @relation("UserActivityEventsBy")
   audioTracksDeleted        DeletedAudioTrack[] @relation("AudioTracksDeletedBy")
   audioTracksRestored       DeletedAudioTrack[] @relation("AudioTracksRestoredBy")
+  audioTracksPurged         DeletedAudioTrack[] @relation("AudioTracksPurgedBy")
   audioTrackEvents          AudioTrackEvent[]   @relation("AudioTrackEventsPerformedBy")
   languages                 ReaderLanguage[]
   civility                  Civility?           @relation(fields: [civilityId], references: [id])
@@ -870,8 +871,14 @@ model DeletedAudioTrack {
   deletedById   Int?
   restoredAt    DateTime?
   restoredById  Int?
-  /// Set by the nightly purge once the bucket object is actually gone.
+  /// Set once the bucket object is actually gone — by the nightly purge, or
+  /// by a permanent confirming the deletion from /admin/audio-corbeille.
   purgedAt      DateTime?
+  /// Who confirmed the permanent deletion. Null for the nightly purge (and for
+  /// every row purged before the « Supprimer définitivement » button existed):
+  /// DeletedAudioTrack is not audited, so this column is the only trace of who
+  /// destroyed what may have been the only copy of a recording.
+  purgedById    Int?
   /// Exempts a row from the 14-day purge forever. Backfilled true for every
   /// row that existed when the purge feature shipped; defaults false for
   /// everything soft-deleted afterwards.
@@ -898,6 +905,7 @@ model DeletedAudioTrack {
   book          Book?     @relation("BookDeletedAudioTracks", fields: [bookId], references: [id], onDelete: SetNull)
   deletedBy     User?     @relation("AudioTracksDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
   restoredBy    User?     @relation("AudioTracksRestoredBy", fields: [restoredById], references: [id], onDelete: SetNull)
+  purgedBy      User?     @relation("AudioTracksPurgedBy", fields: [purgedById], references: [id], onDelete: SetNull)
 
   @@index([bookId])
   @@index([deletedAt])

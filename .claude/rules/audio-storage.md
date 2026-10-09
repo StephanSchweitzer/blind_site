@@ -67,9 +67,13 @@ of that.
   book, are visible on `/admin/audio-corbeille`.
 - **Never delete a bucket object directly.** Removal goes through `softDeleteTrack` /
   `softDeleteTracks`: copy to `corbeille/`, verify the copy at the right size, write the
-  `DeletedAudioTrack` row, *then* remove the original. The only real deletion is the nightly
-  retention purge (`lib/audio/purge.ts`). Rename is the same copy-verify-delete sequence —
-  S3/B2 has no rename primitive.
+  `DeletedAudioTrack` row, *then* remove the original. The only real deletions live in
+  `lib/audio/purge.ts`, and both act on corbeille copies, never on a live track: the nightly
+  retention purge, and `purgeTrashNow` — « Supprimer définitivement » on `/admin/audio-corbeille`,
+  behind a confirmation, which stamps `purgedById` (`DeletedAudioTrack` isn't audited, so that
+  column is the only record of who did it). Purged rows drop out of the book's own corbeille
+  (`GET /api/books/[id]/audio/trash`); their history stays on the « Purgées » tab. Rename is the
+  same copy-verify-delete sequence — S3/B2 has no rename primitive.
 - **Re-check every client-supplied key** with `resolvePrefix` + `isKeyInsidePrefix` at each
   write entry point. The browser sends back keys it got from a listing; a crafted request
   must not be able to name another book's track.

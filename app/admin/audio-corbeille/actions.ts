@@ -4,6 +4,7 @@ import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { restoreTrack, restoreTracksByIds, AudioTrashError } from '@/lib/audio/trash';
+import { purgeTrashNow } from '@/lib/audio/purge';
 
 /**
  * Restaurer une piste depuis la corbeille audio générale.
@@ -95,6 +96,50 @@ export async function restoreTrashedGroup(trashIds: number[]): Promise<ActionRes
         } catch (e) {
             console.error('restoreTrashedGroup error:', e);
             return { ok: false, message: 'La restauration a échoué.' };
+        }
+    });
+}
+
+/**
+ * « Supprimer définitivement » : un fichier ou tout un groupe, sans attendre la
+ * purge nocturne — voir purgeTrashNow (lib/audio/purge.ts) pour ce qui est
+ * effacé et pourquoi. Par identifiants, comme restoreTrashedGroup, pour la même
+ * raison : un groupe « sans fiche » n'a plus de bookId à filtrer.
+ *
+ * Rien à rafraîchir côté livre : l'objet effacé vivait sous `corbeille/`, pas
+ * dans le dossier du livre, donc ni la durée ni le nombre de pistes ne bougent.
+ */
+export async function purgeTrashedTracks(trashIds: number[]): Promise<ActionResult> {
+    return asAdminAction(async (me) => {
+        const ids = trashIds.filter((id) => Number.isInteger(id));
+        if (!ids.length) return { ok: false, message: 'Identifiants invalides' };
+
+        try {
+            const { purged, failed, skipped } = await purgeTrashNow({ trashIds: ids, userId: me.id });
+            revalidateAdmin();
+
+            const s = (n: number) => (n > 1 ? 's' : '');
+            if (purged === 0 && failed === 0) {
+                return {
+                    ok: false,
+                    message: `Rien à supprimer — ${skipped > 1 ? 'ces fichiers ont' : 'ce fichier a'} déjà été restauré${s(skipped)} ou supprimé${s(skipped)}.`,
+                };
+            }
+            if (failed === 0) {
+                return {
+                    ok: true,
+                    message: `${purged} fichier${s(purged)} supprimé${s(purged)} définitivement.`,
+                };
+            }
+            return {
+                ok: purged > 0,
+                message:
+                    `${purged} fichier${s(purged)} supprimé${s(purged)}, ${failed} échec${s(failed)} : ` +
+                    `le stockage a refusé la suppression. ${failed > 1 ? 'Ils restent' : 'Il reste'} dans la corbeille ; réessayez.`,
+            };
+        } catch (e) {
+            console.error('purgeTrashedTracks error:', e);
+            return { ok: false, message: 'La suppression définitive a échoué.' };
         }
     });
 }

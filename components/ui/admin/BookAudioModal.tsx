@@ -89,7 +89,6 @@ interface TrashItem {
     sizeBytes: number;
     deletedAt: string;
     restoredAt: string | null;
-    purgedAt: string | null;
     retainForever: boolean;
     /** null when retainForever — otherwise deletedAt + the retention window. */
     purgeEligibleAt: string | null;
@@ -1436,18 +1435,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                         {personLabel(item.restoredBy)}
                                                     </>
                                                 )}
-                                                {item.purgedAt && (
-                                                    <> · supprimé définitivement du stockage le {formatDate(item.purgedAt)}</>
-                                                )}
-                                                {!item.restoredAt && !item.purgedAt && (
+                                                {!item.restoredAt && (
                                                     <> · {retentionLabel(item)}</>
                                                 )}
                                             </div>
                                         </div>
                                         {item.restoredAt ? (
                                             <span className="text-xs text-muted-foreground">Restauré</span>
-                                        ) : item.purgedAt ? (
-                                            <span className="text-xs text-red-500">Purgé</span>
                                         ) : (
                                             <Button
                                                 type="button"

@@ -91,3 +91,66 @@ export async function purgeExpiredAudioTrash(): Promise<AudioPurgeResult> {
 
     return { purged: purgedRows.length, failed: failedRows.length, remaining };
 }
+
+export interface AudioPurgeNowResult {
+    purged: number;
+    /** The bucket refused these — the rows stay in the corbeille, restorable. */
+    failed: number;
+    /** Already restored or purged by the time the request arrived. */
+    skipped: number;
+}
+
+/**
+ * « Supprimer définitivement », from /admin/audio-corbeille: the same deletion
+ * as the nightly sweep above, on rows a permanent named, without waiting for
+ * the retention window.
+ *
+ * Exists because a take deleted on purpose — a bad recording, a duplicate —
+ * otherwise sits in the book's corbeille for 14 days, counted in the audio
+ * editor's « Corbeille (n) » and offered again by the book restore preview,
+ * next to the files someone might genuinely want back.
+ *
+ * `retainForever` is NOT a refusal here: that flag exempts a row from the
+ * *automatic* purge, so the old « restorable at any time » promise isn't
+ * broken by a cron nobody watched. A human confirming the deletion row by row
+ * is precisely the decision that flag was waiting for.
+ *
+ * Only active rows are touched — the `restoredAt`/`purgedAt` filter is
+ * repeated on the update so a restore landing between the read and the write
+ * isn't stamped purged. The ids come from the browser, but a corbeille row is
+ * only ever addressed by its own id and `trashKey` is read from the database,
+ * so a crafted id can at worst purge another corbeille row the caller could
+ * already see on this screen — never a live track.
+ */
+export async function purgeTrashNow(opts: {
+    trashIds: number[];
+    userId: number;
+}): Promise<AudioPurgeNowResult> {
+    const ids = [...new Set(opts.trashIds)];
+    if (!ids.length) return { purged: 0, failed: 0, skipped: 0 };
+
+    const rows = await prisma.deletedAudioTrack.findMany({
+        where: { id: { in: ids }, restoredAt: null, purgedAt: null },
+        select: { id: true, trashKey: true },
+    });
+    const skipped = ids.length - rows.length;
+    if (!rows.length) return { purged: 0, failed: 0, skipped };
+
+    const { failed: failedKeys } = await deleteTracks(rows.map((r) => r.trashKey));
+    const failedKeySet = new Set(failedKeys);
+    const purgedRows = rows.filter((r) => !failedKeySet.has(r.trashKey));
+
+    if (purgedRows.length) {
+        await prisma.deletedAudioTrack.updateMany({
+            where: { id: { in: purgedRows.map((r) => r.id) }, restoredAt: null, purgedAt: null },
+            data: { purgedAt: new Date(), purgedById: opts.userId },
+        });
+    }
+    for (const row of rows) {
+        if (failedKeySet.has(row.trashKey)) {
+            console.error(`[purge-audio-trash] suppression manuelle refusée, ligne id=${row.id}`);
+        }
+    }
+
+    return { purged: purgedRows.length, failed: rows.length - purgedRows.length, skipped };
+}

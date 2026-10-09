@@ -170,6 +170,7 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
                   book: { select: { id: true, title: true } },
                   deletedBy: { select: { firstName: true, lastName: true, email: true } },
                   restoredBy: { select: { firstName: true, lastName: true, email: true } },
+                  purgedBy: { select: { firstName: true, lastName: true, email: true } },
               },
           })
         : [];
@@ -204,6 +205,7 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
             originBookTitle: r.originBookTitle,
             deletedBy: r.deletedBy,
             restoredBy: r.restoredBy,
+            purgedBy: r.purgedBy,
         };
     };
 

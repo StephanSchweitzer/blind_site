@@ -199,6 +199,7 @@ Consequences that shape the code:
 - Emptying a folder writes a `.bzEmpty` placeholder so the prefix survives; otherwise "an admin emptied this" (`FOLDER_EMPTY`) would read as "this book's path points nowhere" (`FOLDER_MISSING`).
 - Restoring refuses to overwrite an occupied key.
 - A **nightly purge** (14 days) really removes the bucket object. Every row that predates the purge shipping carries `retainForever = true`, so the "restorable at any time" promise already shown for those deletions keeps holding.
+- **« Supprimer définitivement »** on `/admin/audio-corbeille` does the same deletion on demand, for a file or a whole book's group, after a confirmation — for takes deleted on purpose that shouldn't sit in the book's corbeille for 14 days. It also applies to `retainForever` rows, and records who confirmed it (`purgedById`).
 
 Renaming (`lib/audio/rename.ts`) is the same copy-verify-delete sequence — S3/B2 has no rename primitive.
 

@@ -9,6 +9,11 @@ import { AUDIO_TRASH_RETENTION_DAYS } from '@/lib/audio/purge';
 /**
  * The corbeille for one book: what was deleted, by whom, and when.
  *
+ * Purged rows are left out: the object is gone, nothing here can bring it
+ * back, and a take deleted on purpose and then « Supprimer définitivement »
+ * from /admin/audio-corbeille must stop showing up on its book. Their history
+ * stays on that screen's « Purgées » tab.
+ *
  * A row deleted before the nightly purge shipped is exempt (`retainForever`)
  * and never expires. Anything deleted after that is swept once it passes
  * AUDIO_TRASH_RETENTION_DAYS — see lib/audio/purge.ts. `purgeEligibleAt` and
@@ -24,7 +29,7 @@ export const GET = withAdmin(async (_req, { params }) => {
     }
 
     const rows = await prisma.deletedAudioTrack.findMany({
-        where: { bookId },
+        where: { bookId, purgedAt: null },
         orderBy: { deletedAt: 'desc' },
         select: {
             id: true,
@@ -33,7 +38,6 @@ export const GET = withAdmin(async (_req, { params }) => {
             sizeBytes: true,
             deletedAt: true,
             restoredAt: true,
-            purgedAt: true,
             retainForever: true,
             deletedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
             restoredBy: { select: { id: true, firstName: true, lastName: true, email: true } },

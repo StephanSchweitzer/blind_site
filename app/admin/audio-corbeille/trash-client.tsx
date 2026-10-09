@@ -19,7 +19,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { formatBytes, formatDate } from '../audio-orphelins/format';
-import { restoreTrashedGroup, restoreTrashedTrack, type ActionResult } from './actions';
+import { purgeTrashedTracks, restoreTrashedGroup, restoreTrashedTrack, type ActionResult } from './actions';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { PageInfo } from '@/lib/pagination';
@@ -48,6 +49,8 @@ export interface TrashRow {
     originBookTitle: string | null;
     deletedBy: { firstName: string | null; lastName: string | null; email: string | null } | null;
     restoredBy: { firstName: string | null; lastName: string | null; email: string | null } | null;
+    /** Null pour la purge nocturne — voir purgeTrashNow (lib/audio/purge.ts). */
+    purgedBy: { firstName: string | null; lastName: string | null; email: string | null } | null;
 }
 
 /**
@@ -186,9 +189,12 @@ export default function TrashClient({
     searchSuggestions,
 }: Props) {
     const router = useRouter();
+    const confirm = useConfirm();
     const [searchTerm, setSearchTerm] = useState(search);
     const [restoringId, setRestoringId] = useState<number | null>(null);
     const [restoringGroupKey, setRestoringGroupKey] = useState<string | null>(null);
+    const [purgingId, setPurgingId] = useState<number | null>(null);
+    const [purgingGroupKey, setPurgingGroupKey] = useState<string | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [isPending, startTransition] = useTransition();
     const [isNavPending, startNav] = useTransition();
@@ -221,6 +227,64 @@ export default function TrashClient({
             setRestoringGroupKey(null);
             if (res.ok) router.refresh();
         });
+    };
+
+    /**
+     * Supprimer définitivement, après confirmation. Contrairement au reste de
+     * cet écran, il n'y a pas de retour en arrière : c'est souvent l'unique
+     * copie de l'enregistrement.
+     */
+    const runPurge = async (
+        trashIds: number[],
+        target: { id: number } | { groupKey: string },
+        what: string,
+    ) => {
+        const many = trashIds.length > 1;
+        const ok = await confirm({
+            title: many
+                ? `Supprimer définitivement ces ${trashIds.length} fichiers ?`
+                : 'Supprimer définitivement ce fichier ?',
+            description:
+                `${what}\n\n` +
+                `${many ? 'Ils seront effacés' : 'Il sera effacé'} du stockage tout de suite, sans ` +
+                'attendre la purge automatique. Cette action est irréversible : ' +
+                (many ? 'ces fichiers ne pourront plus être restaurés.' : 'ce fichier ne pourra plus être restauré.'),
+            confirmLabel: 'Supprimer définitivement',
+            destructive: true,
+        });
+        if (!ok) return;
+
+        if ('id' in target) setPurgingId(target.id);
+        else setPurgingGroupKey(target.groupKey);
+        startTransition(async () => {
+            const res = await purgeTrashedTracks(trashIds);
+            toast({
+                title: res.ok ? 'Succès' : 'Erreur',
+                description: res.message,
+                variant: res.ok ? undefined : 'destructive',
+            });
+            setPurgingId(null);
+            setPurgingGroupKey(null);
+            // Même en échec : une partie a pu partir, ou quelqu'un d'autre a
+            // restauré entre-temps.
+            router.refresh();
+        });
+    };
+
+    const purgeOne = (item: TrashRow) =>
+        void runPurge([item.id], { id: item.id }, `« ${item.filename} » (${formatBytes(item.sizeBytes)})`);
+
+    const purgeGroup = (group: TrashGroup, trashIds: number[]) => {
+        const size = group.rows
+            .filter((r) => trashIds.includes(r.id))
+            .reduce((sum, r) => sum + r.sizeBytes, 0);
+        const title = group.book?.title ?? group.originBookTitle;
+        void runPurge(
+            trashIds,
+            { groupKey: group.key },
+            `${trashIds.length} fichier${trashIds.length > 1 ? 's' : ''} (${formatBytes(size)})` +
+                (title ? ` du livre « ${title} »` : ''),
+        );
     };
 
     const navigate = (mutate: (sp: URLSearchParams) => void) => {
@@ -266,7 +330,9 @@ export default function TrashClient({
                             Tous les fichiers audio supprimés du catalogue, livre par livre ou avec
                             leur fiche. Chacun a été copié dans la corbeille du stockage avant
                             d’être retiré de son dossier, et reste restaurable {retentionDays} jours
-                            — après quoi une purge automatique le supprime définitivement. L’onglet
+                            — après quoi une purge automatique le supprime définitivement. Un
+                            fichier supprimé volontairement peut aussi être effacé tout de suite,
+                            avec « Supprimer définitivement ». L’onglet
                             « Sans fiche » réunit ceux dont le livre a été supprimé depuis :
                             personne ne pouvait les voir avant cet écran.
                         </CardDescription>
@@ -382,8 +448,10 @@ export default function TrashClient({
                         key={group.key}
                         item={group.rows[0]}
                         restoringId={restoringId}
+                        purgingId={purgingId}
                         busy={busy}
                         onRestore={(id) => run(id, () => restoreTrashedTrack(id))}
+                        onPurge={purgeOne}
                     />
                 ) : (
                     <GroupCard
@@ -392,10 +460,14 @@ export default function TrashClient({
                         isOpen={expanded.has(group.key)}
                         onToggle={() => toggle(group.key)}
                         restoringId={restoringId}
+                        purgingId={purgingId}
                         isRestoringGroup={restoringGroupKey === group.key}
+                        isPurgingGroup={purgingGroupKey === group.key}
                         busy={busy}
                         onRestore={(id) => run(id, () => restoreTrashedTrack(id))}
+                        onPurge={purgeOne}
                         onRestoreGroup={(ids) => runGroup(group.key, ids)}
+                        onPurgeGroup={(ids) => purgeGroup(group, ids)}
                     />
                 ),
             )}
@@ -409,8 +481,10 @@ export default function TrashClient({
 interface FileRowProps {
     item: TrashRow;
     restoringId: number | null;
+    purgingId: number | null;
     busy: boolean;
     onRestore: (id: number) => void;
+    onPurge: (item: TrashRow) => void;
 }
 
 interface FileRowBodyProps extends FileRowProps {
@@ -418,8 +492,9 @@ interface FileRowBodyProps extends FileRowProps {
     hideOrphanHint?: boolean;
 }
 
-/** Le corps d'une ligne de corbeille : détails du fichier + bouton Restaurer. */
-function FileRowBody({ item, restoringId, busy, onRestore, hideOrphanHint }: FileRowBodyProps) {
+/** Le corps d'une ligne de corbeille : détails du fichier + boutons Restaurer
+ *  et Supprimer définitivement. */
+function FileRowBody({ item, restoringId, purgingId, busy, onRestore, onPurge, hideOrphanHint }: FileRowBodyProps) {
     return (
         <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1 space-y-1">
@@ -437,6 +512,7 @@ function FileRowBody({ item, restoringId, busy, onRestore, hideOrphanHint }: Fil
                 ) : item.purgedAt ? (
                     <p className="text-xs text-red-600 dark:text-red-400">
                         supprimé définitivement du stockage le {formatDate(item.purgedAt)}
+                        {item.purgedBy ? ` par ${personLabel(item.purgedBy)}` : ' par la purge automatique'}
                     </p>
                 ) : (
                     <>
@@ -455,7 +531,7 @@ function FileRowBody({ item, restoringId, busy, onRestore, hideOrphanHint }: Fil
                 )}
             </div>
 
-            <div className="flex-shrink-0">
+            <div className="flex flex-shrink-0 flex-col items-end gap-2">
                 {item.restoredAt ? (
                     <span className="text-xs text-muted-foreground">Restauré</span>
                 ) : item.purgedAt ? (
@@ -463,35 +539,76 @@ function FileRowBody({ item, restoringId, busy, onRestore, hideOrphanHint }: Fil
                         <Trash2 className="h-3.5 w-3.5" aria-hidden /> Purgé
                     </span>
                 ) : (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => onRestore(item.id)}
-                    >
-                        {restoringId === item.id ? (
-                            <span className="flex items-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" /> Restauration…
-                            </span>
-                        ) : (
-                            <span className="flex items-center gap-2">
-                                <RotateCcw className="h-4 w-4" /> Restaurer
-                            </span>
-                        )}
-                    </Button>
+                    <>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => onRestore(item.id)}
+                        >
+                            {restoringId === item.id ? (
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Restauration…
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    <RotateCcw className="h-4 w-4" /> Restaurer
+                                </span>
+                            )}
+                        </Button>
+                        <PurgeButton
+                            busy={busy}
+                            pending={purgingId === item.id}
+                            onClick={() => onPurge(item)}
+                        />
+                    </>
                 )}
             </div>
         </div>
     );
 }
 
+/** En rouge et sans contour : le geste irréversible ne doit pas ressembler à
+ *  Restaurer, juste au-dessus. */
+function PurgeButton({
+    busy,
+    pending,
+    onClick,
+    label = 'Supprimer définitivement',
+}: {
+    busy: boolean;
+    pending: boolean;
+    onClick: () => void;
+    label?: string;
+}) {
+    return (
+        <Button
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={onClick}
+            className="text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+        >
+            {pending ? (
+                <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Suppression…
+                </span>
+            ) : (
+                <span className="flex items-center gap-2">
+                    <Trash2 className="h-4 w-4" aria-hidden /> {label}
+                </span>
+            )}
+        </Button>
+    );
+}
+
 /** Un livre qui n'a qu'un seul fichier en corbeille : pas de dépliant, c'est
  *  déjà toute l'information. */
-function FileCard({ item, restoringId, busy, onRestore }: FileRowProps) {
+function FileCard(props: FileRowProps) {
     return (
         <Card>
             <CardContent className="py-4">
-                <FileRowBody item={item} restoringId={restoringId} busy={busy} onRestore={onRestore} />
+                <FileRowBody {...props} />
             </CardContent>
         </Card>
     );
@@ -502,10 +619,14 @@ interface GroupCardProps {
     isOpen: boolean;
     onToggle: () => void;
     restoringId: number | null;
+    purgingId: number | null;
     isRestoringGroup: boolean;
+    isPurgingGroup: boolean;
     busy: boolean;
     onRestore: (id: number) => void;
+    onPurge: (item: TrashRow) => void;
     onRestoreGroup: (trashIds: number[]) => void;
+    onPurgeGroup: (trashIds: number[]) => void;
 }
 
 /**
@@ -520,10 +641,14 @@ function GroupCard({
     isOpen,
     onToggle,
     restoringId,
+    purgingId,
     isRestoringGroup,
+    isPurgingGroup,
     busy,
     onRestore,
+    onPurge,
     onRestoreGroup,
+    onPurgeGroup,
 }: GroupCardProps) {
     const { rows } = group;
     const totalSize = rows.reduce((sum, r) => sum + r.sizeBytes, 0);
@@ -602,6 +727,14 @@ function GroupCard({
                             )}
                         </Button>
                     )}
+                    {restorableIds.length > 0 && (
+                        <PurgeButton
+                            busy={busy}
+                            pending={isPurgingGroup}
+                            onClick={() => onPurgeGroup(restorableIds)}
+                            label="Tout supprimer définitivement"
+                        />
+                    )}
                     <Button
                         type="button"
                         variant="ghost"
@@ -630,8 +763,10 @@ function GroupCard({
                             <FileRowBody
                                 item={item}
                                 restoringId={restoringId}
+                                purgingId={purgingId}
                                 busy={busy}
                                 onRestore={onRestore}
+                                onPurge={onPurge}
                                 hideOrphanHint
                             />
                         </div>
