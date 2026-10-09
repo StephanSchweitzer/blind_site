@@ -202,6 +202,7 @@ export default function DetailDrawer({
                                     {item.href && (
                                         merged > 1 ? (
                                             <Link
+                                                prefetch={false}
                                                 href={item.href}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
@@ -283,6 +284,7 @@ export default function DetailDrawer({
 
                         return item.href ? (
                             <Link
+                                prefetch={false}
                                 key={item.id}
                                 href={item.href}
                                 target="_blank"

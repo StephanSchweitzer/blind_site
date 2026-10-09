@@ -537,6 +537,7 @@ function EventRow({
 
                 {href && (
                     <Link
+                        prefetch={false}
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -557,6 +558,7 @@ function EventRow({
                 {isDeletion && supersededHref && (
                     <Button size="sm" variant="outline" asChild>
                         <Link
+                            prefetch={false}
                             href={supersededHref}
                             target="_blank"
                             rel="noopener noreferrer"

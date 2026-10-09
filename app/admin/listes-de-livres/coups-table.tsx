@@ -153,6 +153,7 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                                 >
                                     <TableCell className="text-foreground">
                                         <Link
+                                            prefetch={false}
                                             href={`/admin/listes-de-livres/${item.id}`}
                                             className="font-medium hover:underline underline-offset-2"
                                             onClick={(e) => e.stopPropagation()}

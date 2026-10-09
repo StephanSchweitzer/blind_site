@@ -86,9 +86,15 @@ export function AdminDashboardCard({
     // announced as plain text by a screen reader, and can't be opened in a new
     // tab. It also used to pushState the URL before router.push added it again,
     // so the first « Retour » landed back on the dashboard.
+    //
+    // prefetch={false} on every link here and in the admin lists: each
+    // prefetch of a dynamic /admin page is a proxy run (with its DB read) plus
+    // a page render, and the dashboard alone shows ~30 links — Vercel counted
+    // more invocations from prefetches than from anyone clicking.
     if (!rows?.length) {
         return (
             <Link
+                prefetch={false}
                 href={href}
                 className={`block p-6 rounded-lg border ${colors.border} ${colors.bg} ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
             >
@@ -106,6 +112,7 @@ export function AdminDashboardCard({
     return (
         <div className={`flex flex-col overflow-hidden rounded-lg border ${colors.border} ${colors.bg}`}>
             <Link
+                prefetch={false}
                 href={href}
                 className={`block p-6 ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
             >
@@ -115,6 +122,7 @@ export function AdminDashboardCard({
                 {rows.map((row) => (
                     <li key={row.label}>
                         <Link
+                            prefetch={false}
                             href={row.href}
                             className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                         >

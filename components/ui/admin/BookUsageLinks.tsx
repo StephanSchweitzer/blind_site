@@ -42,6 +42,7 @@ export function BookUsageLinks({ bookId, className }: { bookId: number; classNam
             <span className="text-muted-foreground">aucune {singular}</span>
         ) : (
             <Link
+                prefetch={false}
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"

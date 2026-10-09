@@ -696,6 +696,7 @@ export default function OrdersTable({
                                                                     aveugleName || order.aveugle.email
                                                                 ) : (
                                                                     <Link
+                                                                        prefetch={false}
                                                                         href={`/admin/users/dossier/${order.aveugleId}/demandes`}
                                                                         onClick={(e) => e.stopPropagation()}
                                                                         className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
@@ -785,6 +786,7 @@ export default function OrdersTable({
                                                     <TableCell className="whitespace-nowrap">
                                                         {order.assignments[0] ? (
                                                             <Link
+                                                                prefetch={false}
                                                                 href={`/admin/assignments?assignment=${order.assignments[0].id}`}
                                                                 onClick={(e) => e.stopPropagation()}
                                                                 className="inline-flex flex-col text-sm"

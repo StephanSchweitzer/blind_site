@@ -102,6 +102,7 @@ function ActivityRow({ event }: { event: MyActivityItem }) {
                         )}
                         {href && (
                             <Link
+                                prefetch={false}
                                 href={href}
                                 className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                             >

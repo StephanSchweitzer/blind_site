@@ -105,6 +105,7 @@ function PageLink({
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick'>) {
     return (
         <Link
+            prefetch={false}
             href={href}
             scroll={false}
             // Appelé seulement pour une navigation dans l'onglet : Ctrl+clic,

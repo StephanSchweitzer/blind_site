@@ -528,6 +528,7 @@ export default function AssignmentsTable({
                                                     {assignment.orderId && (
                                                         <div className="text-xs font-normal">
                                                             <Link
+                                                                prefetch={false}
                                                                 href={`/admin/orders?order=${assignment.orderId}`}
                                                                 onClick={(e) => e.stopPropagation()}
                                                                 className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
@@ -557,6 +558,7 @@ export default function AssignmentsTable({
                                                                     getUserNameOnly(assignment.currentReader) || 'Sans nom'
                                                                 ) : (
                                                                     <Link
+                                                                        prefetch={false}
                                                                         href={`/admin/users/dossier/${assignment.currentReader.id}/affectations`}
                                                                         onClick={(e) => e.stopPropagation()}
                                                                         className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"

@@ -252,6 +252,7 @@ function AssignmentRow({ assignment }: { assignment: AvailabilityAssignment }) {
                     directly instead of just landing on the page with a search
                     term typed in. */}
                 <Link
+                    prefetch={false}
                     href={`/admin/assignments?assignment=${assignment.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -261,6 +262,7 @@ function AssignmentRow({ assignment }: { assignment: AvailabilityAssignment }) {
                 </Link>
                 {assignment.orderId && (
                     <Link
+                        prefetch={false}
                         href={`/admin/orders?order=${assignment.orderId}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -527,6 +529,7 @@ export default function PersonAvailabilityPanel({
                     <DialogTitle className="text-foreground flex flex-wrap items-center gap-2 pr-8">
                         {person ? (
                             <Link
+                                prefetch={false}
                                 href={`/admin/users/dossier/${person.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -935,6 +938,7 @@ export default function PersonAvailabilityPanel({
                     <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-6 py-3">
                         <div className="flex items-center gap-3">
                             <Link
+                                prefetch={false}
                                 href={`/admin/users/dossier/${person.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
