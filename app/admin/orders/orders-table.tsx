@@ -63,6 +63,7 @@ import {
     type OrderSortKey,
 } from '@/lib/orders/orderSort';
 import { orderStatusStyle } from '@/lib/orders/statusDisplay';
+import { ForcedBillBadge } from '@/components/ui/admin/BillOrderPicker';
 import { SECTION_ICONS, sectionAccent } from '@/components/admin/section-icons';
 import { cn } from '@/lib/utils';
 
@@ -756,6 +757,10 @@ export default function OrdersTable({
                                                                 {statusStyle.short}
                                                             </span>
                                                         )}
+                                                        {/* Facturée avant sa clôture : jusqu'à ce qu'on la clôture. */}
+                                                        <div className="mt-1 empty:hidden">
+                                                            <ForcedBillBadge reason={order.forcedBillReason} statusId={order.statusId} />
+                                                        </div>
                                                         {/* The reason, in words — the row colour alone says
                                                             nothing to a screen reader, nor which clock ran out.
                                                             Only past a line: an « à jour » row stays quiet. */}

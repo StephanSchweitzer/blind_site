@@ -29,7 +29,7 @@ import { SearchSuggestions } from '@/components/ui/search-suggestions';
 import type { VocabularyDomain } from '@/lib/search-suggestion-types';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { OrderNotFinishedNote, UnavailableOrderList, type UnavailableOrder } from './BillOrderPicker';
+import { ForcedBillBadge, OrderNotFinishedNote, UnavailableOrderList, type UnavailableOrder } from './BillOrderPicker';
 
 const BOOK_DOMAINS: readonly VocabularyDomain[] = ['books'];
 
@@ -43,6 +43,9 @@ interface BillOrder {
     isDuplication: boolean;
     cost: number | string | null;
     billingStatus: string;
+    statusId: number;
+    /** Facturée avant sa clôture : la raison donnée (badge jusqu'à la clôture). */
+    forcedBillReason: string | null;
     catalogue: { title: string; author: string };
     // Imprimés sur une pro-forma (ProformaPDF).
     pages: number | null;
@@ -317,22 +320,28 @@ export function EditBillModal({
         }
     };
 
-    const handleAddOrder = async (orderId: number) => {
-        if (!billId) return;
+    // `forceReason` : facturer avant clôture (le serveur revérifie tout). Rend le
+    // message d'erreur à montrer dans le panneau de la raison, ou null si c'est fait.
+    const handleAddOrder = async (orderId: number, forceReason?: string): Promise<string | null> => {
+        if (!billId) return null;
         setAddingOrderId(orderId);
         try {
             const res = await fetch(`/api/bills/${billId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'addOrder', orderId }),
+                body: JSON.stringify({ action: 'addOrder', orderId, ...(forceReason ? { forceReason } : {}) }),
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) throw new Error(data?.message || 'Erreur');
             await loadBill(billId);
             if (bill) loadUnbilledOrders(orderSearch, bill.client.id, bill.id);
             onBillUpdated?.();
+            return null;
         } catch (err) {
-            toastError(err instanceof Error ? err.message : 'Erreur inattendue');
+            const message = err instanceof Error ? err.message : 'Erreur inattendue';
+            if (forceReason) return message;
+            toastError(message);
+            return null;
         } finally {
             setAddingOrderId(null);
         }
@@ -886,7 +895,8 @@ export function EditBillModal({
                                         <div key={o.id} className="flex items-start gap-3 px-3 py-2.5">
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-foreground text-sm font-medium break-words">
-                                                    #{o.id} — {o.catalogue.title}
+                                                    #{o.id} — {o.catalogue.title}{' '}
+                                                    <ForcedBillBadge reason={o.forcedBillReason} statusId={o.statusId} />
                                                 </div>
                                                 {/* La date de clôture, comme sur la facture imprimée
                                                     (colonne « Livraison ») : deux dates différentes pour
@@ -1030,6 +1040,7 @@ export function EditBillModal({
                                                     orders={unavailableOrders}
                                                     total={unavailableTotal}
                                                     clientName={[bill.client.firstName, bill.client.lastName].filter(Boolean).join(' ')}
+                                                    onForce={(order, reason) => handleAddOrder(order.id, reason)}
                                                 />
                                                 </>
                                             )}

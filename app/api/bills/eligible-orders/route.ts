@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { BillingStatus, BillKind, OrderBillingStatus, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
-import { attachableOrderWhere, orderAttachBlock } from '@/lib/billing';
+import { attachableOrderWhere, orderAttachBlock, FORCEABLE_BLOCKS } from '@/lib/billing';
 import { STATUS } from '@/lib/statusSync';
 import { buildOrderSearchWhere } from '@/lib/search';
 import { normalizeSearchQuery, parseEntityId } from '@/lib/search-query';
@@ -110,7 +110,7 @@ export const GET = withAdmin(async (request) => {
                 billId: null,
                 billingStatus: { not: OrderBillingStatus.UNBILLABLE },
                 OR: [
-                    { statusId: STATUS.ATTENTE_AUDITEUR },
+                    { statusId: { in: [STATUS.ATTENTE, STATUS.EN_COURS, STATUS.ATTENTE_AUDITEUR] } },
                     ...(billKind != null ? [{ pages: billKind === BillKind.PROFORMA ? null : { not: null } }] : []),
                 ],
             },
@@ -170,12 +170,23 @@ export const GET = withAdmin(async (request) => {
                 cost: o.cost != null ? Number(o.cost) : null,
                 billingStatus: o.billingStatus,
             })),
-            unavailable: unavailable.map((o) => ({
-                ...common(o),
+            unavailable: unavailable.map((o) => {
                 // Jamais null ici : chaque groupe ci-dessus est un cas de orderAttachBlock.
-                reason: orderAttachBlock(o, billKind, { proformaFull })!,
-                bill: o.bill,
-            })),
+                const reason = orderAttachBlock(o, billKind, { proformaFull })!;
+                // Forçable : un blocage de déroulé, ET un tarif — voir guardForcedOrderPriced.
+                // La raison d'un forçage sans tarif est donnée dans l'interface (cost null).
+                // Une pro-forma pleine reste pleine, forcée ou non.
+                const forceable =
+                    FORCEABLE_BLOCKS.includes(reason) &&
+                    orderAttachBlock(o, billKind, { proformaFull, force: true }) === null;
+                return {
+                    ...common(o),
+                    cost: o.cost != null ? Number(o.cost) : null,
+                    reason,
+                    forceable,
+                    bill: o.bill,
+                };
+            }),
             unavailableTotal: counts.reduce((sum, n) => sum + n, 0),
         });
     } catch (error) {

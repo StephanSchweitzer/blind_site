@@ -1,7 +1,12 @@
 // lib/billing.ts
 import { Prisma, OrderBillingStatus, BillingStatus, BillEventType, BillKind } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { getBillingStatusLabel, HAND_TYPED_SETTLEMENT_ARCHIVED } from '@/lib/billing-enums';
+import {
+    getBillingStatusLabel,
+    HAND_TYPED_SETTLEMENT_ARCHIVED,
+    FORCE_REASON_MIN,
+    FORCE_REASON_MAX,
+} from '@/lib/billing-enums';
 import { STATUS, type GuardResult } from '@/lib/statusSync';
 // Le jour français, partagé — voir lib/paris-day.ts pour le pourquoi du fuseau.
 import { parisDayKey } from '@/lib/paris-day';
@@ -525,6 +530,20 @@ export function guardOrderMatchesBillKind(args: {
  * rattacher à la main laissait la demande ouverte pour de bon (douze l'étaient en
  * production en octobre 2026, facturées sans avoir été expédiées).
  *
+ * NOT_FINISHED : « Attente envoi vers lecteur » ou « En cours » — la prestation
+ * n'est pas faite, donc pas pesée, donc pas tarifée : la facture s'émettrait à un
+ * montant que rien n'a fixé, et une facture émise ne se retarife plus
+ * (ADJUSTABLE_ORDER_WHERE). L'accrual automatique n'y rattache qu'à la clôture ;
+ * la main ne le fait plus sans le dire.
+ *
+ * `opts.force` lève ces DEUX-là, et eux seuls (FORCEABLE_BLOCKS) : ce sont des
+ * blocages de déroulé, qu'un permanent peut décider de passer en en donnant la
+ * raison (guardForceReason) et si la demande a un tarif (guardForcedOrderPriced).
+ * Les autres — déjà sur une facture, non facturable, mauvais type, pro-forma
+ * pleine — protègent les données, pas le déroulé, et aucune raison ne les lève.
+ * La demande n'est pas clôturée pour autant : elle porte `forcedBillReason`, qui
+ * affiche un badge jusqu'à ce qu'elle le soit.
+ *
  * `billKind` null : la facture n'existe pas encore (« Créer une nouvelle
  * facture »), son type n'est pas décidé — ce sont les demandes cochées qui le
  * décideront (billKindForOrders). Une revue y est donc rattachable comme une
@@ -538,17 +557,39 @@ export function guardOrderMatchesBillKind(args: {
  * L'ordre compte : une demande déjà sur une facture l'est avant tout le reste,
  * et c'est ce que la liste doit en dire (avec le lien vers cette facture).
  */
-export type OrderAttachBlock = 'ON_BILL' | 'UNBILLABLE' | 'KIND_MISMATCH' | 'AWAITING_SHIPMENT' | 'PROFORMA_FULL';
+export type OrderAttachBlock =
+    | 'ON_BILL'
+    | 'UNBILLABLE'
+    | 'KIND_MISMATCH'
+    | 'AWAITING_SHIPMENT'
+    | 'NOT_FINISHED'
+    | 'PROFORMA_FULL';
+
+/** Les blocages de déroulé — les seuls qu'un permanent peut lever en forçant. */
+export const FORCEABLE_BLOCKS: readonly OrderAttachBlock[] = ['AWAITING_SHIPMENT', 'NOT_FINISHED'];
+
+/** Les statuts d'une prestation pas close : ni « Terminé » ni « À faire » (duplication). */
+const UNFINISHED_STATUS_IDS: number[] = [STATUS.ATTENTE, STATUS.EN_COURS, STATUS.ATTENTE_AUDITEUR];
+
+/** Le blocage de déroulé de ce statut, ou null — `force` ou pas. */
+export function workflowBlock(statusId: number): 'AWAITING_SHIPMENT' | 'NOT_FINISHED' | null {
+    if (statusId === STATUS.ATTENTE_AUDITEUR) return 'AWAITING_SHIPMENT';
+    if (statusId === STATUS.ATTENTE || statusId === STATUS.EN_COURS) return 'NOT_FINISHED';
+    return null;
+}
 
 export function orderAttachBlock(
     order: { billId: number | null; billingStatus: OrderBillingStatus; pages: number | null; statusId: number },
     billKind: BillKind | null,
-    opts: { proformaFull?: boolean } = {}
+    opts: { proformaFull?: boolean; force?: boolean } = {}
 ): OrderAttachBlock | null {
     if (order.billId != null) return 'ON_BILL';
     if (order.billingStatus === OrderBillingStatus.UNBILLABLE) return 'UNBILLABLE';
     if (billKind != null && !guardOrderMatchesBillKind({ orderPages: order.pages, billKind }).ok) return 'KIND_MISMATCH';
-    if (order.statusId === STATUS.ATTENTE_AUDITEUR) return 'AWAITING_SHIPMENT';
+    if (!opts.force) {
+        const workflow = workflowBlock(order.statusId);
+        if (workflow) return workflow;
+    }
     if (billKind === BillKind.PROFORMA && opts.proformaFull) return 'PROFORMA_FULL';
     return null;
 }
@@ -562,8 +603,47 @@ export const attachableOrderWhere = (billKind: BillKind | null): Prisma.OrdersWh
     billId: null,
     billingStatus: { not: OrderBillingStatus.UNBILLABLE },
     ...(billKind != null ? { pages: billKind === BillKind.PROFORMA ? { not: null } : null } : {}),
-    statusId: { not: STATUS.ATTENTE_AUDITEUR },
+    statusId: { notIn: UNFINISHED_STATUS_IDS },
 });
+
+/**
+ * Ce rattachement passe-t-il PAR le force ? Vrai quand `force` est demandé ET que
+ * la demande n'est pas close — sans quoi un « force » envoyé pour une demande
+ * terminée marquerait « facturée avant clôture » une demande qui ne l'est pas.
+ */
+export const isForcedAttach = (order: { statusId: number }, force: boolean | undefined): boolean =>
+    !!force && workflowBlock(order.statusId) !== null;
+
+// Raison minimale : une phrase, pas « ok ». Les bornes vivent dans billing-enums,
+// que le formulaire lit aussi.
+/** La raison donnée pour facturer avant clôture : texte rogné, 15 à 500 caractères. */
+export function guardForceReason(
+    raw: unknown
+): { ok: true; reason: string } | Extract<GuardResult, { ok: false }> {
+    const reason = typeof raw === 'string' ? raw.trim().replace(/\s+/g, ' ') : '';
+    if (reason.length < FORCE_REASON_MIN || reason.length > FORCE_REASON_MAX) {
+        return {
+            ok: false,
+            httpStatus: 400,
+            message:
+            `Facturer une demande avant sa clôture exige une raison de ${FORCE_REASON_MIN} à ${FORCE_REASON_MAX} caractères : ` +
+                'pourquoi ne pas la clôturer d’abord ?',
+        };
+    }
+    return { ok: true, reason };
+}
+
+/**
+ * Forcer ne dispense pas du tarif : une facture émise ne se retarife plus, et une
+ * demande sans tarif y serait facturée 0,00 € pour de bon.
+ */
+export function guardForcedOrderPriced(order: { cost: Prisma.Decimal | null }): GuardResult {
+    if (order.cost != null) return { ok: true };
+    return billFail(
+        409,
+        'Cette demande n’a pas de tarif : la facturer avant sa clôture la ferait payer 0,00 €. Renseignez son tarif d’abord.'
+    );
+}
 
 /**
  * Le type de la facture qu'on crée, déduit des demandes cochées : personne ne le
@@ -870,6 +950,9 @@ export async function detachOrderFromBill(
             billingStatus: detachedBillingStatus(
                 current?.billingStatus ?? OrderBillingStatus.UNBILLED
             ),
+            // Plus facturée : plus « avant clôture » non plus.
+            forcedBillReason: null,
+            forcedBillAt: null,
         },
     });
     const total = await recomputeBillTotal(tx, billId);

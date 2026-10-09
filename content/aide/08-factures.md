@@ -35,7 +35,7 @@ Pour associer un auditeur et ses demandes disponibles, cliquez sur le champ « R
 
 ![Factures - capture 3](/admin/aide/images/factures-03.jpg)
 
-Cela affichera alors les demandes de l'auditeur que vous pouvez facturer. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Un message en ambre signale une demande qui n'est pas encore terminée ou qui n'a pas de tarif ; elle reste cochable, mais n'est pas cochée d'avance.
+Cela affichera alors les demandes de l'auditeur que vous pouvez facturer. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Seules les demandes **terminées** sont proposées ici. Un message en ambre signale une demande sans tarif, ou une duplication pas encore terminée ; elle reste cochable, mais n'est pas cochée d'avance. Les demandes qui ne sont pas terminées sont grisées plus bas (voir ci-dessous).
 
 ![Factures - capture 4](/admin/aide/images/factures-04.jpg)
 
@@ -48,7 +48,8 @@ Vous n'avez pas à choisir le type de la facture : il se déduit de ce que vous 
 Sous la liste viennent, grisées, les autres demandes de l'auditeur, chacune avec la raison qui l'empêche d'être ajoutée :
 
 - **déjà sur une facture** : le lien bleu « Sur la facture #… » ouvre cette facture dans un nouvel onglet, et indique son état (brouillon, émise…). Une facture pro-forma y figure comme les autres ;
-- **pas encore expédiée** (« Attente envoi vers auditeur ») : l'enregistrement est revenu du lecteur, mais n'est pas encore parti chez l'auditeur. Ouvrez la demande (l'icône à droite de la ligne) et renseignez sa date de clôture le jour de l'expédition : elle sera alors facturée toute seule. Elle ne peut pas être ajoutée à la main : sans date de clôture, elle resterait ouverte, et en retard ;
+- **pas encore expédiée** (« Attente envoi vers auditeur ») : l'enregistrement est revenu du lecteur, mais n'est pas encore parti chez l'auditeur. Ouvrez la demande (l'icône à droite de la ligne) et renseignez sa date de clôture le jour de l'expédition : elle sera alors facturée toute seule. Sans date de clôture, elle resterait ouverte, et en retard ;
+- **prestation pas encore terminée** (« Attente envoi vers lecteur », « En cours ») : l'enregistrement n'est pas fait, donc pas pesé, donc pas tarifé. Clôturez la demande : elle sera alors facturée toute seule. Une facture émise ne se retarife plus, c'est pourquoi on ne facture pas avant ;
 - **tarifée à la page**, dans la liste d'un brouillon : elle ne va pas sur une facture standard, elle aura sa propre facture [pro-forma](#les-factures-pro-forma) ;
 - **pro-forma déjà remplie**, dans la liste d'une pro-forma remise en brouillon : une pro-forma ne porte qu'une revue ;
 - **non facturable**.
@@ -58,6 +59,16 @@ Les demandes à clôturer viennent en premier, puis celles des factures en cours
 ![Factures - capture 8](/admin/aide/images/factures-08.jpg)
 
 Une demande déjà facturée automatiquement ne peut pas être associée une seconde fois : elle figure parmi les demandes grisées, avec le lien vers sa facture.
+
+### Facturer une demande avant sa clôture
+
+**Ce n'est pas la procédure normale.** Une demande se facture à sa clôture, quand son tarif est établi. Si vous devez malgré tout la facturer avant (une raison comptable, un accord avec l'auditeur…), le lien « **Facturer avant clôture…** » apparaît sous les demandes « pas encore expédiée » et « prestation pas encore terminée », dans « Ajouter une facture » comme dans « Ajouter une demande » d'un brouillon. Il ouvre un panneau qui exige **la raison** (15 caractères au moins) : dites pourquoi vous ne clôturez pas la demande d'abord.
+
+- La demande doit avoir **un tarif**. Sans tarif, elle serait facturée 0,00 € pour de bon : le panneau le dit, et il faut renseigner le tarif d'abord.
+- La demande **reste ouverte** : elle garde son statut. Elle porte le badge ambre « **Facturée avant clôture** » (dans la liste des demandes, et sur sa ligne dans la facture), qui disparaît quand vous la clôturez. Passez la souris sur le badge pour relire la raison.
+- La raison et la personne qui l'a donnée figurent dans l'**historique de la facture** (« Demande facturée avant clôture »).
+- Une demande sans tarif, déjà sur une facture, « non facturable » ou d'un autre type reste impossible à ajouter : aucune raison n'y change rien.
+- Si vous retirez la demande de la facture, le badge disparaît avec elle.
 
 Enfin, pour la nouvelle facture, vous pouvez :
 

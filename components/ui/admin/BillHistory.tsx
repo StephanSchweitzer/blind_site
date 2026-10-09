@@ -46,6 +46,8 @@ export const TYPE_TINT: Record<string, string> = {
  */
 export function billEventLabel(type: string, payload: Record<string, unknown> | null): string {
     if (type === 'ORDER_ATTACHED' && payload?.reason === 'accrual') return 'Demande clôturée';
+    // Rattachée à la main AVANT sa clôture, avec la raison au journal (payload.forcedReason).
+    if (type === 'ORDER_ATTACHED' && payload?.forced === true) return 'Demande facturée avant clôture';
     // CREATED aussi sert deux fois : la restauration d'une facture supprimée
     // (POST /api/bills/[id]/restore) n'a pas de type à elle.
     if (type === 'CREATED' && payload?.reason === 'bill-restored') return 'Facture restaurée';
@@ -56,6 +58,9 @@ export function billEventLabel(type: string, payload: Record<string, unknown> | 
 }
 
 export function billEventTint(type: string, payload: Record<string, unknown> | null): string {
+    if (type === 'ORDER_ATTACHED' && payload?.forced === true) {
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200';
+    }
     if (type === 'ORDER_ATTACHED' && payload?.reason === 'accrual') {
         return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200';
     }
@@ -137,6 +142,9 @@ function summarize(e: BillEventDTO): string | null {
             }
             if (p.reason === 'client-change') {
                 return `Demande #${asString(p.orderId) ?? '?'} — terminée, rattachée à cet auditeur au changement d'auditeur.`;
+            }
+            if (p.forced === true) {
+                return `Demande #${asString(p.orderId) ?? '?'} — facturée avant sa clôture. Raison : ${asString(p.forcedReason) ?? '—'}`;
             }
             return asString(p.orderId) ? `Demande #${asString(p.orderId)}` : null;
         default:

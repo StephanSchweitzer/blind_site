@@ -1,5 +1,12 @@
+import { useState } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { getBillingStatusLabel, type BillingStatus, type BillKind } from '@/lib/billing-enums';
+import {
+    getBillingStatusLabel,
+    FORCE_REASON_MIN,
+    FORCE_REASON_MAX,
+    type BillingStatus,
+    type BillKind,
+} from '@/lib/billing-enums';
 import { parisDate } from '@/lib/paris-day';
 import type { OrderAttachBlock } from '@/lib/billing';
 
@@ -20,14 +27,19 @@ export interface UnavailableOrder {
     isDuplication: boolean;
     pagePriced: boolean;
     reason: OrderAttachBlock;
+    /** null = aucun tarif : on ne la facture pas avant clôture (guardForcedOrderPriced). */
+    cost: number | null;
+    /** Un blocage de déroulé qu'un permanent peut passer en donnant la raison. */
+    forceable: boolean;
     bill: { id: number; state: BillingStatus; kind: BillKind } | null;
     catalogue: { title: string; author: string };
 }
 
 /**
- * Sous une demande rattachable mais pas encore « Terminé » : elle reste cochable,
- * facturer une prestation en cours est parfois le bon geste. (« Attente envoi
- * vers auditeur » n'arrive plus ici : elle se facture à sa clôture.)
+ * Sous une demande rattachable mais pas « Terminé » : seule une duplication « À
+ * faire » arrive ici. Les enregistrements pas finis (« Attente envoi vers
+ * lecteur », « En cours », « Attente envoi vers auditeur ») sont grisés et ne se
+ * facturent avant clôture qu'en donnant la raison — voir ForceControl.
  */
 export function OrderNotFinishedNote({ statusId }: { statusId: number }) {
     if (statusId === TERMINE_STATUS_ID) return null;
@@ -62,6 +74,8 @@ function UnavailableReason({ order }: { order: UnavailableOrder }) {
         }
         case 'AWAITING_SHIPMENT':
             return <>Pas encore expédiée à l&apos;auditeur : renseignez sa date de clôture, elle sera alors facturée toute seule</>;
+        case 'NOT_FINISHED':
+            return <>Prestation pas encore terminée : clôturez la demande, elle sera alors facturée toute seule</>;
         case 'KIND_MISMATCH':
             if (!order.pagePriced) return <>Tarifée au poids : elle ne va pas sur une facture pro-forma</>;
             if (order.statusId === ATTENTE_AUDITEUR_STATUS_ID) {
@@ -92,11 +106,19 @@ export function UnavailableOrderList({
     orders,
     total,
     clientName,
+    onForce,
 }: {
     orders: UnavailableOrder[];
     total: number;
     clientName: string;
+    /**
+     * Facturer avant clôture. Absent = le geste n'est pas proposé (la liste est la
+     * même partout ; c'est l'appelant qui sait ce qu'il fait de la raison).
+     * Rend une erreur à afficher, ou null si c'est fait.
+     */
+    onForce?: (order: UnavailableOrder, reason: string) => Promise<string | null> | string | null;
 }) {
+    const [forcingId, setForcingId] = useState<number | null>(null);
     if (orders.length === 0) return null;
     const hidden = total - orders.length;
     return (
@@ -118,6 +140,15 @@ export function UnavailableOrderList({
                             <div className="text-muted-foreground text-xs mt-0.5">
                                 <UnavailableReason order={o} />
                             </div>
+                            {onForce && o.forceable && (
+                                <ForceControl
+                                    order={o}
+                                    open={forcingId === o.id}
+                                    onOpen={() => setForcingId(o.id)}
+                                    onClose={() => setForcingId(null)}
+                                    onForce={onForce}
+                                />
+                            )}
                         </div>
                         <a
                             href={`/admin/orders?order=${o.id}`}
@@ -150,5 +181,118 @@ export function UnavailableOrderList({
                 </p>
             )}
         </div>
+    );
+}
+
+/**
+ * Facturer une demande avant sa clôture : un geste d'exception, qui exige une
+ * raison. La demande reste ouverte et porte le badge « Facturée avant clôture »
+ * jusqu'à ce qu'on la clôture ; la raison est conservée avec la demande et au
+ * journal de la facture. Un panneau dans la ligne plutôt qu'une fenêtre : ce
+ * formulaire est déjà dans une fenêtre.
+ */
+function ForceControl({
+    order,
+    open,
+    onOpen,
+    onClose,
+    onForce,
+}: {
+    order: UnavailableOrder;
+    open: boolean;
+    onOpen: () => void;
+    onClose: () => void;
+    onForce: (order: UnavailableOrder, reason: string) => Promise<string | null> | string | null;
+}) {
+    const [reason, setReason] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    if (order.cost == null) {
+        return (
+            <div className="text-muted-foreground text-xs mt-1">
+                Aucun tarif renseigné : on ne la facture pas avant sa clôture, elle serait facturée 0,00 €. Renseignez son tarif d&apos;abord.
+            </div>
+        );
+    }
+    if (!open) {
+        return (
+            <button type="button" onClick={onOpen} className={`${linkClass} text-xs mt-1`}>
+                Facturer avant clôture…
+            </button>
+        );
+    }
+
+    const trimmed = reason.trim();
+    const missing = FORCE_REASON_MIN - trimmed.length;
+    const submit = async () => {
+        setBusy(true);
+        setError(null);
+        const failure = await onForce(order, trimmed);
+        setBusy(false);
+        if (failure) setError(failure);
+        else onClose();
+    };
+
+    return (
+        <div className="mt-2 rounded-md border border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 space-y-2">
+            <p className="text-xs text-amber-900 dark:text-amber-200 font-medium">
+                Ce n&apos;est pas la procédure normale.
+            </p>
+            <p className="text-xs text-amber-900 dark:text-amber-200">
+                Une demande se facture à sa clôture, quand son tarif est établi. Facturer #{order.id} maintenant la
+                fait payer {order.cost.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} avant que la
+                prestation soit terminée, et une facture émise ne se retarife plus. Dites pourquoi vous ne la clôturez
+                pas d&apos;abord : la raison reste avec la demande et au journal de la facture.
+            </p>
+            <label className="block text-xs font-medium text-amber-900 dark:text-amber-200" htmlFor={`force-reason-${order.id}`}>
+                Raison de la facturation avant clôture
+            </label>
+            <textarea
+                id={`force-reason-${order.id}`}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                maxLength={FORCE_REASON_MAX}
+                rows={2}
+                className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+            />
+            <div className="text-xs text-muted-foreground">
+                {missing > 0 ? `Encore ${missing} caractère${missing > 1 ? 's' : ''} au moins.` : ' '}
+            </div>
+            {error && (
+                <div className="text-xs text-red-700 dark:text-red-400" role="alert">
+                    {error}
+                </div>
+            )}
+            <div className="flex gap-2">
+                <button
+                    type="button"
+                    disabled={missing > 0 || busy}
+                    onClick={submit}
+                    className="rounded-md bg-amber-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+                >
+                    Facturer avant clôture
+                </button>
+                <button type="button" disabled={busy} onClick={onClose} className="rounded-md border border-input px-3 py-1 text-xs">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Le badge d'une demande facturée avant sa clôture. Affiché tant qu'elle n'est
+ * pas « Terminé » : la clôture le fait disparaître, sans qu'on ait rien à effacer.
+ */
+export function ForcedBillBadge({ reason, statusId }: { reason: string | null | undefined; statusId: number }) {
+    if (!reason || statusId === TERMINE_STATUS_ID) return null;
+    return (
+        <span
+            title={`Facturée avant clôture — ${reason}`}
+            className="inline-flex items-center rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
+        >
+            Facturée avant clôture
+        </span>
     );
 }

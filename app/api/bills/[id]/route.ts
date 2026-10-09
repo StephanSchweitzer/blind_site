@@ -16,6 +16,9 @@ import {
     summarizeBillPayments,
     syncBillPaymentInfo,
     orderAttachBlock,
+    isForcedAttach,
+    guardForceReason,
+    guardForcedOrderPriced,
     type OrderAttachBlock,
 } from '@/lib/billing';
 import { withAdmin } from '@/lib/auth/guards';
@@ -25,6 +28,7 @@ const ATTACH_BLOCK_ERROR: Record<OrderAttachBlock, string> = {
     UNBILLABLE: 'ORDER_UNBILLABLE',
     KIND_MISMATCH: 'BILL_KIND_MISMATCH',
     AWAITING_SHIPMENT: 'ORDER_AWAITING_SHIPMENT',
+    NOT_FINISHED: 'ORDER_NOT_FINISHED',
     PROFORMA_FULL: 'PROFORMA_FULL',
 };
 
@@ -77,6 +81,9 @@ export const GET = withAdmin(async (_request, context) => {
                         isDuplication: true,
                         cost: true,
                         billingStatus: true,
+                        // Le badge « Facturée avant clôture » de la ligne.
+                        statusId: true,
+                        forcedBillReason: true,
                         // Imprimés sur une pro-forma (ProformaPDF).
                         pages: true,
                         billedPages: true,
@@ -409,9 +416,22 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         }
 
         if (action === 'addOrder') {
-            const { orderId } = body;
+            const { orderId, forceReason } = body;
             if (!orderId || isNaN(parseInt(orderId))) {
                 return NextResponse.json({ error: 'Invalid orderId', message: 'Identifiant de demande invalide' }, { status: 400 });
+            }
+            // « Facturer avant clôture » : la raison se valide avant d'ouvrir la
+            // transaction, et ne sert que si la demande en a vraiment besoin.
+            let force: string | null = null;
+            if (forceReason != null) {
+                const reasonCheck = guardForceReason(forceReason);
+                if (!reasonCheck.ok) {
+                    return NextResponse.json(
+                        { error: 'FORCE_REASON', message: reasonCheck.message },
+                        { status: reasonCheck.httpStatus }
+                    );
+                }
+                force = reasonCheck.reason;
             }
 
             await prisma.$transaction(async (tx) => {
@@ -431,7 +451,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 // rattachée : l'accepter par ici revenait à contourner le garde.
                 const order = await tx.orders.findUnique({
                     where: { id: parseInt(orderId) },
-                    select: { aveugleId: true, billId: true, isActive: true, billingStatus: true, pages: true, statusId: true },
+                    select: { aveugleId: true, billId: true, isActive: true, billingStatus: true, pages: true, statusId: true, cost: true },
                 });
                 if (!order || !order.isActive) throw new Error('ORDER_NOT_FOUND');
                 if (order.billId !== null) throw new Error('ORDER_ALREADY_BILLED');
@@ -442,19 +462,31 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 const proformaFull =
                     bill.kind === 'PROFORMA' &&
                     (await tx.orders.count({ where: { billId, isActive: true } })) > 0;
-                const block = orderAttachBlock(order, bill.kind, { proformaFull });
+                const block = orderAttachBlock(order, bill.kind, { proformaFull, force: force != null });
                 if (block) throw new Error(ATTACH_BLOCK_ERROR[block]);
+                const forced = isForcedAttach(order, force != null);
+                if (forced) {
+                    const priced = guardForcedOrderPriced(order);
+                    if (!priced.ok) throw new Error('FORCE_NEEDS_PRICE');
+                }
 
                 await tx.orders.update({
                     where: { id: parseInt(orderId) },
-                    data: { billId, billingStatus: orderBillingForBillState(bill.state) },
+                    data: {
+                        billId,
+                        billingStatus: orderBillingForBillState(bill.state),
+                        ...(forced ? { forcedBillReason: force, forcedBillAt: new Date() } : {}),
+                    },
                 });
 
                 await recomputeBillTotal(tx, billId);
                 await logBillEvent(tx, {
                     billId,
                     type: 'ORDER_ATTACHED',
-                    payload: { orderId: parseInt(orderId) },
+                    payload: {
+                        orderId: parseInt(orderId),
+                        ...(forced ? { forced: true, forcedReason: force, statusId: order.statusId } : {}),
+                    },
                     performedById,
                 });
             });
@@ -494,6 +526,9 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                         billId: null,
                         // « Non facturable » survit au détachement (detachedBillingStatus).
                         billingStatus: detachedBillingStatus(order.billingStatus),
+                        // Plus facturée : plus « avant clôture » non plus.
+                        forcedBillReason: null,
+                        forcedBillAt: null,
                         ...(deSettled ? { statusId: STATUS.TERMINE } : {}),
                     },
                 });
@@ -547,8 +582,16 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 'Une facture pro-forma porte une seule revue, et celle-ci a déjà la sienne',
                 409,
             ],
+            FORCE_NEEDS_PRICE: [
+                'Cette demande n’a pas de tarif : la facturer avant sa clôture la ferait payer 0,00 €. Renseignez son tarif d’abord.',
+                409,
+            ],
+            ORDER_NOT_FINISHED: [
+                'Cette demande n’est pas terminée : clôturez-la, ou facturez-la avant clôture en donnant la raison',
+                409,
+            ],
             ORDER_AWAITING_SHIPMENT: [
-                "Cette demande attend son envoi à l'auditeur : renseignez sa date de clôture, elle sera alors facturée toute seule",
+                "Cette demande attend son envoi à l'auditeur : renseignez sa date de clôture, elle sera alors facturée toute seule (ou facturez-la avant clôture, en donnant la raison)",
                 409,
             ],
         };
@@ -661,7 +704,7 @@ export const DELETE = withAdmin(async (_request, { me, params }) => {
             // ligne rattachée à une facture supprimée serait le vrai état perdu.
             await tx.orders.updateMany({
                 where: { billId },
-                data: { billId: null },
+                data: { billId: null, forcedBillReason: null, forcedBillAt: null },
             });
 
             // Le total tombe à 0 avant l'événement, pour que amountAtEvent porte

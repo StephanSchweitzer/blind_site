@@ -9,6 +9,9 @@ import {
     paymentPrecedesIssue,
     syncBillPaymentInfo,
     orderAttachBlock,
+    isForcedAttach,
+    guardForceReason,
+    guardForcedOrderPriced,
     billKindForOrders,
     type OrderAttachBlock,
 } from '@/lib/billing';
@@ -101,6 +104,7 @@ const ATTACH_BLOCK_ERROR: Record<OrderAttachBlock, string> = {
     // Jamais levée ici non plus : le type vient des demandes elles-mêmes.
     KIND_MISMATCH: 'ORDER_PAGE_PRICED',
     AWAITING_SHIPMENT: 'ORDER_AWAITING_SHIPMENT',
+    NOT_FINISHED: 'ORDER_NOT_FINISHED',
     // Jamais levée ici : une création n'a pas de pro-forma pleine (billKindForOrders).
     PROFORMA_FULL: 'PROFORMA_NOT_ALONE',
 };
@@ -117,7 +121,7 @@ export const POST = withAdmin(async (request, { me }) => {
     try {
         const performedById = me.id;
         const body = await request.json();
-        const { clientId, orderIds, state, creationDate, issueDate, paymentReference, paymentDate, paymentMethod } = body;
+        const { clientId, orderIds, state, creationDate, issueDate, paymentReference, paymentDate, paymentMethod, forcedOrders } = body;
 
         const parsedClientId = parseInt(String(clientId));
         if (!clientId || isNaN(parsedClientId)) {
@@ -142,6 +146,37 @@ export const POST = withAdmin(async (request, { me }) => {
                 { error: 'Invalid orderIds', message: 'Un ou plusieurs identifiants de demande sont invalides' },
                 { status: 400 }
             );
+        }
+
+        // « Facturer avant clôture » : { orderId, reason } par demande forcée. Une
+        // raison par demande, validée ici ; elle ne sert que si la demande n'est
+        // vraiment pas close (isForcedAttach), et ne lève que les blocages de déroulé
+        // (orderAttachBlock). Voir le commentaire de ces fonctions.
+        const forceReasons = new Map<number, string>();
+        if (forcedOrders != null) {
+            if (!Array.isArray(forcedOrders)) {
+                return NextResponse.json(
+                    { error: 'Invalid forcedOrders', message: 'Les demandes facturées avant clôture sont mal formées' },
+                    { status: 400 }
+                );
+            }
+            for (const entry of forcedOrders) {
+                const forcedId = parseInt(String(entry?.orderId));
+                const reasonCheck = guardForceReason(entry?.reason);
+                if (isNaN(forcedId) || !parsedOrderIds.includes(forcedId)) {
+                    return NextResponse.json(
+                        { error: 'Invalid forcedOrders', message: 'Une demande forcée ne fait pas partie de la sélection' },
+                        { status: 400 }
+                    );
+                }
+                if (!reasonCheck.ok) {
+                    return NextResponse.json(
+                        { error: 'FORCE_REASON', message: reasonCheck.message },
+                        { status: reasonCheck.httpStatus }
+                    );
+                }
+                forceReasons.set(forcedId, reasonCheck.reason);
+            }
         }
 
         // Une facture ne NAÎT que brouillon ou émise.
@@ -338,9 +373,15 @@ export const POST = withAdmin(async (request, { me }) => {
             const kind = billKindForOrders(found);
             if (kind === 'PROFORMA_NOT_ALONE') throw new Error('PROFORMA_NOT_ALONE');
             // Même règle que la liste qui les propose — voir orderAttachBlock.
+            const forcedNow = new Map<number, string>();
             for (const order of found) {
-                const block = orderAttachBlock(order, kind);
+                const reason = forceReasons.get(order.id);
+                const block = orderAttachBlock(order, kind, { force: reason != null });
                 if (block) throw new Error(ATTACH_BLOCK_ERROR[block]);
+                if (reason != null && isForcedAttach(order, true)) {
+                    if (!guardForcedOrderPriced(order).ok) throw new Error('FORCE_NEEDS_PRICE');
+                    forcedNow.set(order.id, reason);
+                }
             }
             const orders = found.map((o) => ({ id: o.id, cost: o.cost }));
             // Même arithmétique que recomputeBillTotal, faite plus tôt parce que la
@@ -401,7 +442,13 @@ export const POST = withAdmin(async (request, { me }) => {
             for (const order of orders) {
                 await tx.orders.update({
                     where: { id: order.id },
-                    data: { billId: bill.id, billingStatus: orderBillingForBillState(finalState) },
+                    data: {
+                        billId: bill.id,
+                        billingStatus: orderBillingForBillState(finalState),
+                        ...(forcedNow.has(order.id)
+                            ? { forcedBillReason: forcedNow.get(order.id), forcedBillAt: new Date() }
+                            : {}),
+                    },
                 });
             }
 
@@ -419,7 +466,16 @@ export const POST = withAdmin(async (request, { me }) => {
                 await logBillEvent(tx, {
                     billId: bill.id,
                     type: 'ORDER_ATTACHED',
-                    payload: { orderId: order.id },
+                    payload: {
+                        orderId: order.id,
+                        ...(forcedNow.has(order.id)
+                            ? {
+                                  forced: true,
+                                  forcedReason: forcedNow.get(order.id),
+                                  statusId: found.find((f) => f.id === order.id)?.statusId,
+                              }
+                            : {}),
+                    },
                     performedById,
                 });
             }
@@ -502,7 +558,15 @@ export const POST = withAdmin(async (request, { me }) => {
                 409,
             ],
             ORDER_AWAITING_SHIPMENT: [
-                "Une des demandes sélectionnées attend son envoi à l'auditeur : renseignez sa date de clôture, elle sera alors facturée toute seule",
+                "Une des demandes sélectionnées attend son envoi à l'auditeur : renseignez sa date de clôture, elle sera alors facturée toute seule (ou facturez-la avant clôture, en donnant la raison)",
+                409,
+            ],
+            ORDER_NOT_FINISHED: [
+                'Une des demandes sélectionnées n’est pas terminée : clôturez-la, ou facturez-la avant clôture en donnant la raison',
+                409,
+            ],
+            FORCE_NEEDS_PRICE: [
+                'Une demande facturée avant sa clôture n’a pas de tarif : elle serait facturée 0,00 € pour de bon. Renseignez son tarif d’abord.',
                 409,
             ],
             SETTLED_ZERO_TOTAL: [

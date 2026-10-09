@@ -376,6 +376,13 @@ model Orders {
   transferFee         Decimal?           @db.Decimal(10, 2)
   billingStatus       OrderBillingStatus @default(UNBILLED)
   billId              Int?
+  /// Rattachée à une facture AVANT sa clôture, par un permanent qui en a donné la
+  /// raison (lib/billing.ts, orderAttachBlock + force). Le badge « Facturée avant
+  /// clôture » s'affiche tant que la demande n'est pas « Terminé » : la colonne n'a
+  /// donc pas à être effacée à la clôture, seulement au détachement. Qui l'a fait
+  /// est au journal de la facture (ORDER_ATTACHED, payload.forced).
+  forcedBillReason    String?
+  forcedBillAt        DateTime?
   lentPhysicalBook    Boolean
   notes               String?
   isActive            Boolean            @default(true)

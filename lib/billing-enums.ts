@@ -69,3 +69,7 @@ export const getOrderBillingStatusLabel = (status: string): string =>
  * (lib/billing.ts), lu par BillHistory — d'où sa place ici, côté client.
  */
 export const HAND_TYPED_SETTLEMENT_ARCHIVED = 'hand-typed-settlement-archived';
+
+/** Raison exigée pour facturer une demande avant sa clôture (lib/billing.ts, guardForceReason). */
+export const FORCE_REASON_MIN = 15;
+export const FORCE_REASON_MAX = 500;

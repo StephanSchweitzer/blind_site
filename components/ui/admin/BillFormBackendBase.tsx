@@ -101,6 +101,8 @@ const TERMINE_STATUS_ID = 3;
 export interface BillFormData {
     clientId: number;
     orderIds: number[];
+    /** Les demandes de orderIds facturées avant leur clôture, chacune avec sa raison. */
+    forcedOrders: { orderId: number; reason: string }[];
     state: BillingStatus;
     creationDate: Date;
     issueDate: Date | null;
@@ -160,6 +162,8 @@ export function BillFormBackendBase({
     const [eligibleOrders, setEligibleOrders] = useState<EligibleOrder[]>([]);
     const [isLoadingOrders, setIsLoadingOrders] = useState(false);
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<number>>(new Set());
+    // Facturées avant leur clôture : id → raison. Le serveur revalide tout (orderAttachBlock).
+    const [forcedReasons, setForcedReasons] = useState<Map<number, string>>(new Map());
     // Les autres demandes de l'auditeur, grisées sous les cochables (BillOrderPicker).
     const [unavailableOrders, setUnavailableOrders] = useState<UnavailableOrder[]>([]);
     const [unavailableTotal, setUnavailableTotal] = useState(0);
@@ -213,6 +217,7 @@ export function BillFormBackendBase({
     // When client changes, load their eligible (unbilled) orders
     useEffect(() => {
         const loadOrders = async () => {
+            setForcedReasons(new Map());
             if (!selectedClient) {
                 setEligibleOrders([]);
                 setSelectedOrderIds(new Set());
@@ -320,6 +325,33 @@ export function BillFormBackendBase({
         });
     };
 
+    // « Facturer avant clôture » : la demande passe des grisées aux cochées, avec sa
+    // raison. Rien n'est écrit ici — c'est à la création de la facture que le serveur
+    // revérifie (blocage, tarif, raison) et enregistre.
+    const forceOrder = (order: UnavailableOrder, reason: string): string | null => {
+        setEligibleOrders((prev) => [
+            {
+                id: order.id,
+                requestReceivedDate: order.requestReceivedDate,
+                cost: order.cost,
+                billingStatus: 'UNBILLED',
+                statusId: order.statusId,
+                statusName: order.statusName,
+                isDuplication: order.isDuplication,
+                pagePriced: order.pagePriced,
+                catalogue: order.catalogue,
+            },
+            ...prev,
+        ]);
+        setUnavailableOrders((prev) => prev.filter((o) => o.id !== order.id));
+        setOrderSearchResult((prev) =>
+            prev ? { ...prev, unavailable: prev.unavailable.filter((o) => o.id !== order.id) } : prev
+        );
+        setForcedReasons((prev) => new Map(prev).set(order.id, reason));
+        setSelectedOrderIds((prev) => new Set(prev).add(order.id));
+        return null;
+    };
+
     const handleClientSelect = (user: User) => {
         setSelectedClient(user);
         setOrderSearch('');
@@ -364,6 +396,9 @@ export function BillFormBackendBase({
             const billId = await onSubmit({
                 clientId: selectedClient!.id,
                 orderIds: Array.from(selectedOrderIds),
+                forcedOrders: Array.from(forcedReasons)
+                    .filter(([orderId]) => selectedOrderIds.has(orderId))
+                    .map(([orderId, reason]) => ({ orderId, reason })),
                 // « Payée » n'est pas un état créable : la route crée la facture
                 // émise, en enregistre le paiement, puis l'encaisse.
                 state: markAsPaid ? BillingStatus.BILLED : state,
@@ -544,6 +579,11 @@ export function BillFormBackendBase({
                                                             <>
                                                                 {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}
                                                                 <OrderNotFinishedNote statusId={o.statusId} />
+                                                                {forcedReasons.has(o.id) && (
+                                                                    <div className="text-amber-800 dark:text-amber-400 text-xs mt-0.5 break-words">
+                                                                        Facturée avant clôture — {forcedReasons.get(o.id)}
+                                                                    </div>
+                                                                )}
                                                                 {o.cost == null && (
                                                                     <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
                                                                         Aucun tarif renseigné — serait facturée 0,00 €
@@ -581,6 +621,7 @@ export function BillFormBackendBase({
                                         orders={shownUnavailable}
                                         total={shownUnavailableTotal}
                                         clientName={[selectedClient.firstName, selectedClient.lastName].filter(Boolean).join(' ')}
+                                        onForce={forceOrder}
                                     />
                                 </>
                             )}
@@ -817,6 +858,7 @@ export function AddBillFormBackend({ onSuccess, initialClient }: { onSuccess?: (
             body: JSON.stringify({
                 clientId: formData.clientId,
                 orderIds: formData.orderIds,
+                forcedOrders: formData.forcedOrders,
                 state: formData.state,
                 creationDate: formData.creationDate.toISOString(),
                 issueDate: formData.issueDate ? formData.issueDate.toISOString() : null,
