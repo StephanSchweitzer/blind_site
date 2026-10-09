@@ -530,7 +530,8 @@ export function guardOrderMatchesBillKind(args: {
  * rattacher à la main laissait la demande ouverte pour de bon (douze l'étaient en
  * production en octobre 2026, facturées sans avoir été expédiées).
  *
- * NOT_FINISHED : « Attente envoi vers lecteur » ou « En cours » — la prestation
+ * NOT_FINISHED : « Attente envoi vers lecteur », « En cours » ou « À faire »
+ * (une duplication pas faite) — la prestation
  * n'est pas faite, donc pas pesée, donc pas tarifée : la facture s'émettrait à un
  * montant que rien n'a fixé, et une facture émise ne se retarife plus
  * (ADJUSTABLE_ORDER_WHERE). L'accrual automatique n'y rattache qu'à la clôture ;
@@ -568,13 +569,15 @@ export type OrderAttachBlock =
 /** Les blocages de déroulé — les seuls qu'un permanent peut lever en forçant. */
 export const FORCEABLE_BLOCKS: readonly OrderAttachBlock[] = ['AWAITING_SHIPMENT', 'NOT_FINISHED'];
 
-/** Les statuts d'une prestation pas close : ni « Terminé » ni « À faire » (duplication). */
-const UNFINISHED_STATUS_IDS: number[] = [STATUS.ATTENTE, STATUS.EN_COURS, STATUS.ATTENTE_AUDITEUR];
+/** Les statuts d'une prestation pas close : tout sauf « Terminé » — « À faire » (duplication pas faite) compris. */
+const UNFINISHED_STATUS_IDS: number[] = [STATUS.ATTENTE, STATUS.EN_COURS, STATUS.A_FAIRE, STATUS.ATTENTE_AUDITEUR];
 
 /** Le blocage de déroulé de ce statut, ou null — `force` ou pas. */
 export function workflowBlock(statusId: number): 'AWAITING_SHIPMENT' | 'NOT_FINISHED' | null {
     if (statusId === STATUS.ATTENTE_AUDITEUR) return 'AWAITING_SHIPMENT';
-    if (statusId === STATUS.ATTENTE || statusId === STATUS.EN_COURS) return 'NOT_FINISHED';
+    if (statusId === STATUS.ATTENTE || statusId === STATUS.EN_COURS || statusId === STATUS.A_FAIRE) {
+        return 'NOT_FINISHED';
+    }
     return null;
 }
 

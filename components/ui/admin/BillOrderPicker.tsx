@@ -36,9 +36,9 @@ export interface UnavailableOrder {
 }
 
 /**
- * Sous une demande rattachable mais pas « Terminé » : seule une duplication « À
- * faire » arrive ici. Les enregistrements pas finis (« Attente envoi vers
- * lecteur », « En cours », « Attente envoi vers auditeur ») sont grisés et ne se
+ * Sous une demande rattachable mais pas « Terminé » : plus aucune n'arrive ici,
+ * les prestations pas finies (« À faire », « Attente envoi vers lecteur »,
+ * « En cours », « Attente envoi vers auditeur ») sont grisées et ne se
  * facturent avant clôture qu'en donnant la raison — voir ForceControl.
  */
 export function OrderNotFinishedNote({ statusId }: { statusId: number }) {

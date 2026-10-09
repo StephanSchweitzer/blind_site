@@ -35,7 +35,7 @@ Pour associer un auditeur et ses demandes disponibles, cliquez sur le champ « R
 
 ![Factures - capture 3](/admin/aide/images/factures-03.jpg)
 
-Cela affichera alors les demandes de l'auditeur que vous pouvez facturer. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Seules les demandes **terminées** sont proposées ici. Un message en ambre signale une demande sans tarif, ou une duplication pas encore terminée ; elle reste cochable, mais n'est pas cochée d'avance. Les demandes qui ne sont pas terminées sont grisées plus bas (voir ci-dessous).
+Cela affichera alors les demandes de l'auditeur que vous pouvez facturer. Cochez les cases correspondant aux demandes que vous souhaitez joindre à cette facture. Seules les demandes **terminées** sont proposées ici. Un message en ambre signale une demande sans tarif ; elle reste cochable, mais n'est pas cochée d'avance. Les demandes qui ne sont pas terminées sont grisées plus bas (voir ci-dessous).
 
 ![Factures - capture 4](/admin/aide/images/factures-04.jpg)
 
@@ -49,7 +49,7 @@ Sous la liste viennent, grisées, les autres demandes de l'auditeur, chacune ave
 
 - **déjà sur une facture** : le lien bleu « Sur la facture #… » ouvre cette facture dans un nouvel onglet, et indique son état (brouillon, émise…). Une facture pro-forma y figure comme les autres ;
 - **pas encore expédiée** (« Attente envoi vers auditeur ») : l'enregistrement est revenu du lecteur, mais n'est pas encore parti chez l'auditeur. Ouvrez la demande (l'icône à droite de la ligne) et renseignez sa date de clôture le jour de l'expédition : elle sera alors facturée toute seule. Sans date de clôture, elle resterait ouverte, et en retard ;
-- **prestation pas encore terminée** (« Attente envoi vers lecteur », « En cours ») : l'enregistrement n'est pas fait, donc pas pesé, donc pas tarifé. Clôturez la demande : elle sera alors facturée toute seule. Une facture émise ne se retarife plus, c'est pourquoi on ne facture pas avant ;
+- **prestation pas encore terminée** (« À faire » pour une duplication, « Attente envoi vers lecteur », « En cours ») : l'enregistrement n'est pas fait, donc pas pesé, donc pas tarifé. Clôturez la demande : elle sera alors facturée toute seule. Une facture émise ne se retarife plus, c'est pourquoi on ne facture pas avant ;
 - **tarifée à la page**, dans la liste d'un brouillon : elle ne va pas sur une facture standard, elle aura sa propre facture [pro-forma](#les-factures-pro-forma) ;
 - **pro-forma déjà remplie**, dans la liste d'une pro-forma remise en brouillon : une pro-forma ne porte qu'une revue ;
 - **non facturable**.

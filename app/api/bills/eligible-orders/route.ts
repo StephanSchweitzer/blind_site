@@ -110,7 +110,7 @@ export const GET = withAdmin(async (request) => {
                 billId: null,
                 billingStatus: { not: OrderBillingStatus.UNBILLABLE },
                 OR: [
-                    { statusId: { in: [STATUS.ATTENTE, STATUS.EN_COURS, STATUS.ATTENTE_AUDITEUR] } },
+                    { statusId: { in: [STATUS.ATTENTE, STATUS.EN_COURS, STATUS.A_FAIRE, STATUS.ATTENTE_AUDITEUR] } },
                     ...(billKind != null ? [{ pages: billKind === BillKind.PROFORMA ? null : { not: null } }] : []),
                 ],
             },
