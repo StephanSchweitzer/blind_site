@@ -12,6 +12,16 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { AlertCircle, Calendar, ExternalLink } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -37,14 +47,17 @@ import { BookSearchCombobox } from '@/admin/BookSearchCombobox';
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { BookUsageLinks } from '@/admin/BookUsageLinks';
 import { getUserDisplayName } from '@/lib/users/displayName';
-import { STATUS, orderStatusForAssignmentStatus } from '@/lib/statusSync';
+// Le statut n'est plus choisi dans un menu : deriveOrderStatus le tire de la date
+// de clôture et de l'attribution, comme l'attribution tire le sien de ses dates.
+// Avant, c'était l'inverse : on choisissait « Terminé » et la date se remplissait.
+import { STATUS, deriveOrderStatus } from '@/lib/statusSync';
 import { costSuggestion } from '@/lib/pricing';
-import { parisDate } from '@/lib/paris-day';
+import { parisDate, parisDateDisplay } from '@/lib/paris-day';
 import { PagePricingFields } from '@/admin/PagePricingFields';
 import { type PagePricingForm, emptyPagePricing, pagePricingError } from '@/lib/orders/pagePricingForm';
 
 // N3 — required fields, visual top→bottom.
-const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'mediaFormatId', 'deliveryMethod'];
+const EDIT_FIELD_ORDER = ['aveugleId', 'catalogueId', 'deliveryMethod', 'mediaFormatId'];
 
 export interface User {
     id: number;
@@ -145,37 +158,6 @@ export const formatEuro2 = (v: string | null | undefined): string => {
     const n = parseFloat(String(v).replace(',', '.'));
     return Number.isNaN(n) ? '' : n.toFixed(2);
 };
-
-/**
- * Le statut d'une demande se déduit de ce qu'elle contient, comme celui d'une
- * attribution se déduit de ses dates (deriveAssignmentStatus dans
- * AssignmentFormBackendBase) — il n'est plus choisi dans un menu. Le seul geste
- * humain qui reste à une demande est l'expédition à l'auditeur, et c'est
- * exactement ce que dit sa date de clôture :
- *
- *  - date de clôture renseignée → « Terminé » (duplication comme enregistrement) ;
- *  - duplication sans date      → « À faire » ;
- *  - enregistrement sans date   → le statut que l'attribution fait monter
- *    (orderStatusForAssignmentStatus : « Terminé » côté attribution donne
- *    « Attente envoi vers auditeur »), ou « Attente envoi vers lecteur » tant
- *    qu'il n'y a pas d'attribution.
- *
- * Avant, c'était l'inverse : on choisissait « Terminé » et la date se remplissait.
- * Le serveur n'a pas changé — il reçoit toujours un statutId et le contrôle avec
- * les mêmes gardes (lib/statusSync.ts) ; c'est seulement le formulaire qui ne le
- * demande plus.
- */
-function deriveOrderStatus(args: {
-    isDuplication: boolean;
-    hasClosureDate: boolean;
-    /** `null` = la demande n'a pas d'attribution. */
-    assignmentStatusId: number | null;
-}): number {
-    if (args.hasClosureDate) return STATUS.TERMINE;
-    if (args.isDuplication) return STATUS.A_FAIRE;
-    if (args.assignmentStatusId === null) return STATUS.ATTENTE;
-    return orderStatusForAssignmentStatus(args.assignmentStatusId);
-}
 
 /** Minuit local, comme toutes les dates que produit le sélecteur de calendrier. */
 function today(): Date {
@@ -292,14 +274,24 @@ export function OrderFormBackendBase({
     // lecteur ». Une création n'a pas d'attribution, par définition.
     const assignmentUnknown = !!initialData && initialAssignment === undefined;
     const assignmentStatusId = initialAssignment?.statusId ?? null;
-    const derivedStatusId =
-        assignmentUnknown && !formData.isDuplication && !formData.closureDate
+    // Une fonction et non une simple valeur : la réouverture envoie un état qui
+    // n'est pas encore celui du formulaire (date effacée), voir submitForm.
+    const statusFor = (data: OrderFormData): number =>
+        assignmentUnknown && !data.isDuplication && !data.closureDate
             ? (initialData!.statusId ?? STATUS.ATTENTE)
             : deriveOrderStatus({
-                isDuplication: formData.isDuplication,
-                hasClosureDate: !!formData.closureDate,
+                isDuplication: data.isDuplication,
+                hasClosureDate: !!data.closureDate,
                 assignmentStatusId,
             });
+    const derivedStatusId = statusFor(formData);
+
+    // « Rouvrir la demande » : le pendant de « Rouvrir l'attribution ». Rouvrir =
+    // effacer la date de clôture, donc le statut retombe sur ce que dit
+    // l'attribution ; la raison, facultative, rejoint les notes — OrderEvent n'a
+    // pas de champ texte, et c'est là que le prochain permanent la lira.
+    const [reopenOpen, setReopenOpen] = useState(false);
+    const [reopenReason, setReopenReason] = useState('');
 
     // ── Auditeur changé sur une demande déjà terminée, hors facture ─────────
     // Elle ne rejoindra plus de brouillon toute seule (l'accrual ne réagit qu'au
@@ -529,12 +521,14 @@ export function OrderFormBackendBase({
         }));
     };
 
-    // Une facture émise annonce la prestation comme rendue : la date de clôture
-    // peut y être corrigée d'un jour, jamais effacée (ce serait rouvrir la
-    // demande — guardOrderLeavingTermineOnBill le refuse côté serveur). Le
-    // calendrier rend `undefined` quand on reclique le jour choisi : on l'ignore.
+    // Sur une demande enregistrée « Terminé », la date se corrige d'un jour mais ne
+    // s'efface pas d'ici : rouvrir passe par « Rouvrir la demande », qui dit ce que
+    // la réouverture entraîne (facture) et en garde la raison. Sur une facture émise
+    // elle ne s'efface pas du tout — guardOrderLeavingTermineOnBill le refuse côté
+    // serveur. Le calendrier rend `undefined` quand on reclique le jour choisi : on
+    // l'ignore dans ces cas-là.
     const setClosureDate = (date: Date | null) => {
-        if (!date && statusRollbackLocked) return;
+        if (!date && savedStatusIsTermine) return;
         setFormData(prev => ({ ...prev, closureDate: date }));
     };
 
@@ -600,10 +594,20 @@ export function OrderFormBackendBase({
             return;
         }
 
+        await submitForm();
+    };
+
+    // `overrides` : des champs posés par un geste plutôt que saisis — la
+    // réouverture (handleReopenConfirm) efface la date dans le même envoi que le
+    // reste du formulaire, sans attendre un re-rendu. Comme submitForm côté
+    // attribution.
+    const submitForm = async (overrides?: Partial<OrderFormData>) => {
+        setIsLoading(true);
         try {
+            const data: OrderFormData = { ...formData, ...overrides };
             // statusId n'est jamais saisi : c'est toujours la valeur que
-            // deriveOrderStatus vient de tirer de ces mêmes données.
-            const submitted: OrderFormData = { ...formData, statusId: derivedStatusId };
+            // deriveOrderStatus tire de ces mêmes données.
+            const submitted: OrderFormData = { ...data, statusId: statusFor(data) };
             const newOrderId = await onSubmit(
                 offerBillToNewClient ? { ...submitted, billToNewClient } : submitted
             );
@@ -619,6 +623,16 @@ export function OrderFormBackendBase({
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleReopenConfirm = () => {
+        setReopenOpen(false);
+        const reason = reopenReason.trim();
+        const reopenNote = `Rouverte le ${parisDateDisplay(new Date())}${reason ? ` : ${reason}` : ''}`;
+        void submitForm({
+            closureDate: null,
+            notes: formData.notes ? `${formData.notes}\n${reopenNote}` : reopenNote,
+        });
     };
 
     const handleDeleteClick = async () => {
@@ -704,6 +718,13 @@ export function OrderFormBackendBase({
     // l'enregistrement va changer.
     const statusWillChange =
         !!initialData && !assignmentUnknown && derivedStatusId !== initialData.statusId;
+
+    // Offert sur une demande ENREGISTRÉE « Terminé » qui porte encore sa date —
+    // comme « Rouvrir l'attribution » sur une attribution terminée. Une date saisie
+    // dans cette session, elle, s'efface par « Effacer » à côté du champ.
+    const canReopen = !!initialData && !readOnly && savedStatusIsTermine && !!formData.closureDate;
+    // Ce que la demande redeviendra une fois la date effacée.
+    const reopenedStatusId = statusFor({ ...formData, closureDate: null });
 
     const blockingRecording =
         formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
@@ -1006,156 +1027,80 @@ export function OrderFormBackendBase({
                         </div>
                     )}
 
-                    {/* Date de clôture — le jour de l'expédition à l'auditeur. C'est elle, et
-                        non plus un menu, qui fait passer la demande « Terminé » : le statut
-                        en dessous en est déduit (deriveOrderStatus). */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Date de clôture (envoi à l&apos;auditeur)
-                        </label>
-                        <div className="flex items-center gap-2">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        disabled={!closureDateEnabled}
-                                        className="min-w-0 flex-1 justify-start text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
-                                    >
-                                        <Calendar className="mr-2 h-4 w-4" />
-                                        {formData.closureDate ? (
-                                            format(formData.closureDate, 'PPP', { locale: fr })
-                                        ) : (
-                                            <span className="text-muted-foreground">Sélectionner une date</span>
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 bg-card border-border">
-                                    <CalendarComponent
-                                        mode="single"
-                                        selected={formData.closureDate || undefined}
-                                        onSelect={(date) => setClosureDate(date || null)}
-                                        initialFocus
-                                        className="bg-card text-foreground"
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                            {/* Le cas courant — on expédie aujourd'hui — reste à un clic,
-                                comme quand choisir « Terminé » remplissait la date. Et
-                                « Effacer » parce que personne ne devine qu'on vide un
-                                calendrier en recliquant le jour choisi. */}
-                            {!formData.closureDate ? (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={!closureDateEnabled}
-                                    onClick={() => setClosureDate(today())}
-                                    className="shrink-0"
-                                >
-                                    Aujourd&apos;hui
-                                </Button>
-                            ) : (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={statusRollbackLocked}
-                                    onClick={() => setClosureDate(null)}
-                                    className="shrink-0"
-                                >
-                                    Effacer
-                                </Button>
-                            )}
-                        </div>
-                        {!closureDateEnabled && !assignmentUnknown && (
-                            <p className="text-xs text-muted-foreground">
-                                {assignmentStatusId === null
-                                    ? 'Renseignable une fois l’attribution créée et terminée (date de retour aux ECA).'
-                                    : 'Renseignable une fois l’enregistrement revenu aux ECA (date de retour sur l’attribution).'}
-                            </p>
-                        )}
-                        {closureBlocked && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                {closureBlockedMessage}
-                            </p>
-                        )}
-                        {statusRollbackLocked && initialBill && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                La date ne peut plus être effacée : la facture #{initialBill.id} annonce
-                                cette prestation comme rendue et elle est déjà partie. Rouvrez-la et
-                                retirez-en la demande pour rouvrir la demande à son tour.
-                            </p>
-                        )}
-                        {statusRollbackDetaches && initialBill && (
-                            <p className="text-xs text-muted-foreground">
-                                Effacer la date retirera la demande de la facture #{initialBill.id}
-                                {' '}(brouillon) et son montant du total — c&apos;est la clôture qui
-                                l&apos;y avait mise.
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Statut — déduit, pas choisi : de la date de clôture et de l'attribution
-                        (deriveOrderStatus). Affiché comme celui de l'attribution. */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Statut</label>
-                        <div
-                            tabIndex={-1}
-                            className="flex items-center w-full rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
-                            aria-readonly="true"
-                            title="Le statut est déterminé automatiquement par l'attribution et la date de clôture."
-                        >
-                            {statusName(derivedStatusId)}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            {formData.isDuplication
-                                ? 'Déterminé automatiquement par la date de clôture.'
-                                : 'Déterminé automatiquement par l’attribution et la date de clôture.'}
-                            {statusWillChange && (
-                                <> Enregistré aujourd&apos;hui : « {statusName(initialData?.statusId)} » — il
-                                deviendra « {statusName(derivedStatusId)} » à l&apos;enregistrement.</>
-                            )}
-                        </p>
-                        {derivedStatusId === STATUS.ATTENTE && assignmentStatusId === null && !assignmentUnknown && (
-                            <p className="text-xs text-muted-foreground">
-                                La demande passera « En cours » dès que son attribution aura un lecteur
-                                et une date d&apos;envoi.
-                            </p>
-                        )}
-                        {derivedStatusId === STATUS.ATTENTE_AUDITEUR && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                L&apos;enregistrement est revenu du lecteur mais n&apos;a pas encore été
-                                expédié à l&apos;auditeur. Renseignez la date de clôture le jour de
-                                l&apos;expédition : la demande passera « Terminé ».
-                            </p>
-                        )}
-                    </div>
-
+                    {/* Date de clôture et méthode de livraison côte à côte : l'une dit quand
+                        la demande part chez l'auditeur, l'autre comment — comme « Date d'envoi
+                        au lecteur » et sa méthode sur l'attribution. C'est la date, et non
+                        plus un menu, qui fait passer la demande « Terminé » : le statut en
+                        dessous en est déduit (deriveOrderStatus). */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                        {/* Media Format */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">
-                                Format média <span className="text-red-500">*</span>
+                                Date de clôture (envoi à l&apos;auditeur)
                             </label>
-                            <Select
-                                value={formData.mediaFormatId?.toString() || ''}
-                                onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}
-                            >
-                                <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
-                                    <SelectValue placeholder="Sélectionner un format" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
-                                    <div className="py-1">
-                                        {mediaFormats.map((format) => (
-                                            <SelectItem
-                                                key={format.id}
-                                                value={format.id.toString()}
-                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
-                                            >
-                                                <span className="font-medium">{format.name}</span>
-                                            </SelectItem>
-                                        ))}
-                                    </div>
-                                </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-2">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            disabled={!closureDateEnabled}
+                                            className="min-w-0 flex-1 justify-start text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                                            {formData.closureDate ? (
+                                                <span className="truncate">{format(formData.closureDate, 'PPP', { locale: fr })}</span>
+                                            ) : (
+                                                <span className="truncate text-muted-foreground">Sélectionner une date</span>
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 bg-card border-border">
+                                        <CalendarComponent
+                                            mode="single"
+                                            selected={formData.closureDate || undefined}
+                                            onSelect={(date) => setClosureDate(date || null)}
+                                            initialFocus
+                                            className="bg-card text-foreground"
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                                {/* Le cas courant — on expédie aujourd'hui — reste à un clic,
+                                    comme quand choisir « Terminé » remplissait la date.
+                                    « Effacer » seulement pour une date saisie dans cette
+                                    session : une demande déjà close se rouvre par « Rouvrir la
+                                    demande », sous le statut, comme une attribution. */}
+                                {!formData.closureDate ? (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={!closureDateEnabled}
+                                        onClick={() => setClosureDate(today())}
+                                        className="shrink-0"
+                                    >
+                                        Aujourd&apos;hui
+                                    </Button>
+                                ) : !savedStatusIsTermine && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setClosureDate(null)}
+                                        className="shrink-0"
+                                    >
+                                        Effacer
+                                    </Button>
+                                )}
+                            </div>
+                            {!closureDateEnabled && !assignmentUnknown && (
+                                <p className="text-xs text-muted-foreground">
+                                    {assignmentStatusId === null
+                                        ? 'Renseignable une fois l’attribution créée et terminée (date de retour aux ECA).'
+                                        : 'Renseignable une fois l’enregistrement revenu aux ECA (date de retour sur l’attribution).'}
+                                </p>
+                            )}
+                            {closureBlocked && (
+                                <p className="text-xs text-amber-700 dark:text-amber-400">
+                                    {closureBlockedMessage}
+                                </p>
+                            )}
                         </div>
 
                         {/* Delivery Method */}
@@ -1198,6 +1143,91 @@ export function OrderFormBackendBase({
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+
+                    {/* Statut — déduit, pas choisi : de la date de clôture et de l'attribution
+                        (deriveOrderStatus). Affiché comme celui de l'attribution, avec le même
+                        geste pour revenir en arrière. */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Statut</label>
+                        <div
+                            tabIndex={-1}
+                            className="flex items-center w-full rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
+                            aria-readonly="true"
+                            title="Le statut est déterminé automatiquement par l'attribution et la date de clôture."
+                        >
+                            {statusName(derivedStatusId)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            {formData.isDuplication
+                                ? 'Déterminé automatiquement par la date de clôture.'
+                                : 'Déterminé automatiquement par l’attribution et la date de clôture.'}
+                            {statusWillChange && (
+                                <> Enregistré aujourd&apos;hui : « {statusName(initialData?.statusId)} » — il
+                                deviendra « {statusName(derivedStatusId)} » à l&apos;enregistrement.</>
+                            )}
+                        </p>
+                        {derivedStatusId === STATUS.ATTENTE && assignmentStatusId === null && !assignmentUnknown && (
+                            <p className="text-xs text-muted-foreground">
+                                La demande passera « En cours » dès que son attribution aura un lecteur
+                                et une date d&apos;envoi.
+                            </p>
+                        )}
+                        {derivedStatusId === STATUS.ATTENTE_AUDITEUR && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                L&apos;enregistrement est revenu du lecteur mais n&apos;a pas encore été
+                                expédié à l&apos;auditeur. Renseignez la date de clôture le jour de
+                                l&apos;expédition : la demande passera « Terminé ».
+                            </p>
+                        )}
+                        {statusRollbackLocked && initialBill && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                La demande ne peut plus être rouverte : la facture #{initialBill.id} annonce
+                                cette prestation comme rendue et elle est déjà partie. Rouvrez-la et
+                                retirez-en la demande d&apos;abord.
+                            </p>
+                        )}
+                        {canReopen && (
+                            <div className="pt-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={isLoading || statusRollbackLocked}
+                                    onClick={() => { setReopenReason(''); setReopenOpen(true); }}
+                                    className="h-8 px-2.5 text-xs"
+                                >
+                                    Rouvrir la demande
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Media Format */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                            Format média <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                            value={formData.mediaFormatId?.toString() || ''}
+                            onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}
+                        >
+                            <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
+                                <SelectValue placeholder="Sélectionner un format" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">
+                                <div className="py-1">
+                                    {mediaFormats.map((format) => (
+                                        <SelectItem
+                                            key={format.id}
+                                            value={format.id.toString()}
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors"
+                                        >
+                                            <span className="font-medium">{format.name}</span>
+                                        </SelectItem>
+                                    ))}
+                                </div>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
@@ -1396,6 +1426,51 @@ export function OrderFormBackendBase({
                 </form>
             </CardContent>
         </Card>
+        <AlertDialog open={reopenOpen} onOpenChange={setReopenOpen}>
+            <AlertDialogContent className="bg-card border-border">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-foreground">
+                        Rouvrir la demande ?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription asChild>
+                        <div className="space-y-2 text-sm text-muted-foreground">
+                            <p>
+                                La date de clôture sera effacée et la demande repassera
+                                « {statusName(reopenedStatusId)} ».
+                                {!formData.isDuplication && ' L’attribution n’est pas modifiée.'}
+                            </p>
+                            {statusRollbackDetaches && initialBill && (
+                                <p className="text-amber-700 dark:text-amber-400">
+                                    La demande figure sur la facture #{initialBill.id} (brouillon) : elle en
+                                    sera retirée, et y reviendra une fois close de nouveau.
+                                </p>
+                            )}
+                            {statusRollbackLocked && initialBill && (
+                                <p className="text-red-700 dark:text-red-400">
+                                    La demande figure sur la facture #{initialBill.id} («&nbsp;
+                                    {getBillingStatusLabel(initialBill.state as BillingStatus)}&nbsp;») : elle ne peut
+                                    pas être rouverte en l&apos;état. Rouvrez la facture #{initialBill.id} et
+                                    retirez-en la demande, puis revenez ici.
+                                </p>
+                            )}
+                            <p>Les autres modifications du formulaire sont enregistrées en même temps.</p>
+                        </div>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <Input
+                    placeholder="Raison de la réouverture (optionnel, ajoutée aux notes)"
+                    value={reopenReason}
+                    onChange={(e) => setReopenReason(e.target.value)}
+                    className="bg-field border-border text-foreground"
+                />
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction disabled={statusRollbackLocked} onClick={handleReopenConfirm}>
+                        Rouvrir
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
         <UserActivityGuardDialog
             blocked={activityBlocked}
             role={activityRole}

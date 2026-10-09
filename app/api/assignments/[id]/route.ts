@@ -9,6 +9,7 @@ import {
 import { assignmentIncludeConfigs } from '@/types/models';
 import {
     STATUS,
+    deriveAssignmentStatus,
     guardAssignmentStatus,
     guardAssignmentConsistency,
     guardAssignmentDateSequence,
@@ -139,6 +140,31 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             return NextResponse.json(
                 { message: settledGuard.message },
                 { status: settledGuard.httpStatus }
+            );
+        }
+
+        // ── Statut absent de la requête : déduit des dates ───────────────────────
+        // Un statut ENVOYÉ reste prioritaire et passe les gardes ci-dessous. Sans
+        // statut mais avec au moins une date, on applique la règle du formulaire
+        // (deriveAssignmentStatus) aux dates qui RÉSULTERONT de la requête — et le
+        // statut déduit passe ensuite les mêmes gardes, sans passe-droit. Même
+        // dispense que le formulaire pour la date de réception : une attribution
+        // qui avait déjà sa date d'envoi est antérieure à son suivi, on ne la
+        // rétrograde pas pour un champ qu'elle n'a jamais eu. Une requête sans date
+        // (des notes, la méthode de livraison) ne touche pas au statut.
+        const datesInRequest =
+            validation.data.receptionDate !== undefined ||
+            validation.data.sentToReaderDate !== undefined ||
+            validation.data.returnedToECADate !== undefined;
+        if (validation.data.statusId === undefined && datesInRequest) {
+            // Renseignée ou non, rien de plus : la requête porte des chaînes, la base des Date.
+            const pick = (sent: string | null | undefined, stored: Date | null) =>
+                sent !== undefined ? !!sent : !!stored;
+            validation.data.statusId = deriveAssignmentStatus(
+                pick(validation.data.receptionDate, existingAssignment.receptionDate) ||
+                    !!existingAssignment.sentToReaderDate,
+                pick(validation.data.sentToReaderDate, existingAssignment.sentToReaderDate),
+                pick(validation.data.returnedToECADate, existingAssignment.returnedToECADate)
             );
         }
 

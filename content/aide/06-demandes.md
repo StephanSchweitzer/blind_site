@@ -154,15 +154,13 @@ En haut de la page, on peut voir les informations générales que nous avons ajo
 
 ![Demandes - capture 11](/admin/aide/images/demandes-11.jpg)
 
-Sous le type de la demande viennent, dans l'ordre, l'attribution correspondante (2) si la demande concerne un enregistrement, la date de clôture, puis le statut. *Les captures de cette partie montrent encore l'ancien formulaire, où le statut se choisissait dans un menu.*
-
-La date de clôture est le jour où l'enregistrement est expédié à l'auditeur. Le bouton « Aujourd'hui » la remplit d'un clic, « Effacer » la vide. Pour un enregistrement, elle reste grisée tant que l'attribution n'est pas terminée ; une duplication peut être close à tout moment.
-
-Le statut n'est plus un menu : il se lit, et suit l'attribution et la date de clôture. Renseigner la date fait passer la demande « Terminé » ; l'effacer la rouvre. Si l'enregistrement va changer le statut, une ligne sous le statut le dit avant que vous validiez. En faisant défiler la page vers le bas, on trouve la (1) facture correspondante (s'il y en a déjà une).
-
-Si la demande figure sur une facture déjà émise, sa date de clôture peut être corrigée mais plus effacée : la facture annonce la prestation comme rendue. Rouvrez la facture et retirez-en la demande d'abord.
+Sous le type de la demande viennent, dans l'ordre, l'attribution correspondante (1) si la demande concerne un enregistrement, la date de clôture (2) avec la méthode de livraison à côté, puis le statut (3). Plus bas, on trouve la facture correspondante (4), s'il y en a déjà une.
 
 ![Demandes - capture 12](/admin/aide/images/demandes-12.jpg)
+
+La date de clôture est le jour où l'enregistrement est expédié à l'auditeur. Le bouton « Aujourd'hui » la remplit d'un clic ; « Effacer » vide une date que vous venez de saisir. Pour un enregistrement, elle reste grisée tant que l'attribution n'est pas terminée ; une duplication peut être close à tout moment.
+
+Le statut n'est pas un menu : il se lit, et suit l'attribution et la date de clôture. Renseigner la date fait passer la demande « Terminé ». Si l'enregistrement va changer le statut, une ligne sous le statut le dit avant que vous validiez.
 
 Nous pouvons mettre à jour la demande avec les informations que nous avons modifiées à l'aide du bouton (1) « Mettre à jour la demande », ou supprimer la demande à l'aide du bouton (2) « Supprimer la demande ».
 
@@ -171,6 +169,12 @@ Nous pouvons mettre à jour la demande avec les informations que nous avons modi
 La case « Tarifer à la page (pour les revues) » se retrouve aussi dans ce modal, juste au-dessus du coût, avec les mêmes champs : voir [Une demande tarifée à la page](#une-demande-tarifee-a-la-page-pour-les-revues). Elle est grisée quand la demande est déjà rattachée à une facture ou qu'il s'agit d'une duplication, et les champs se figent quand la facture est payée ou soldée.
 
 Si vous corrigez le livre d'une demande, l'attribution liée prend automatiquement le même livre.
+
+### Rouvrir une demande terminée
+
+Une demande « Terminé » se rouvre par le bouton « **Rouvrir la demande** », sous son statut, comme une [attribution](/admin/aide/attributions). Une fenêtre indique ce que deviendra la demande, et vous pouvez y donner la raison de la réouverture : elle est ajoutée aux notes avec la date du jour. La date de clôture est alors effacée, et le statut retombe sur celui que donne l'attribution (ou « À faire » pour une duplication). Les autres modifications du formulaire sont enregistrées en même temps.
+
+Si la demande figure sur un brouillon de facture, elle en est retirée et y reviendra une fois close de nouveau. Si elle figure sur une facture déjà émise, elle ne peut pas être rouverte : sa date de clôture peut être corrigée, mais plus effacée, car la facture annonce la prestation comme rendue. Rouvrez la facture et retirez-en la demande d'abord.
 
 ### Changer l'auditeur d'une demande
 

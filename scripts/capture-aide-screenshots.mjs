@@ -314,6 +314,34 @@ const SPECS = [
         why: 'le type de la ligne, Enregistrement par défaut',
     },
     {
+        // Longtemps prises a la main, sur de vrais auditeurs masques au rectangle
+        // noir, et restees sur l'ancien menu « Statut ». Une demande de test « en
+        // attente d'envoi a l'auditeur » : l'etat ou la date de cloture se renseigne.
+        name: 'demandes-11.jpg',
+        url: '/admin/orders?order=25540',
+        waitFor: '[role="dialog"] form',
+        sleep: 2200,
+        clip: '[role="dialog"]',
+        why: 'le haut du modal : auditeur, réception, livre, type',
+    },
+    {
+        name: 'demandes-12.jpg',
+        viewport: { width: 1440, height: 1000 },
+        url: '/admin/orders?order=25540',
+        waitFor: '[role="dialog"] form',
+        sleep: 2200,
+        steps: [{ scrollToText: 'Statut' }, { sleep: 500 }],
+        clip: '[role="dialog"]',
+        // Les numeros reprennent ceux du paragraphe de 06-demandes.md.
+        annotations: [
+            { n: 1, label: 'Attribution', within: '[role="dialog"]' },
+            { n: 2, label: "Date de clôture (envoi à l'auditeur)", within: '[role="dialog"]' },
+            { n: 3, selector: '[role="dialog"] [aria-readonly="true"][title^="Le statut"]' },
+            { n: 4, label: 'Facture associée', within: '[role="dialog"]' },
+        ],
+        why: "l'attribution, la date de clôture et le statut qui s'en déduit",
+    },
+    {
         name: 'demandes-14.jpg',
         viewport: { width: 1440, height: 1400 },
         url: '/admin/orders',
@@ -1437,7 +1465,12 @@ async function reperesPour(annotations, clip, densite = 1) {
             }` : ''}
             const libelle = ${JSON.stringify(a.label)};
             const propre = ${a.self ? "true" : "false"};
-            const noeuds = [...document.querySelectorAll('label, button, a, p, span, div, h3, h4')];
+            // \`within\` : chercher le libelle dans un conteneur seulement. « Statut »
+            // ou « Attribution » sont aussi des en-tetes du tableau DERRIERE un
+            // modal, et ils viennent avant lui dans le document.
+            const racine = ${a.within ? `document.querySelector(${JSON.stringify(a.within)})` : 'document'};
+            if (!racine) return null;
+            const noeuds = [...racine.querySelectorAll('label, button, a, p, span, div, h3, h4')];
             // Une taille REELLE, pas seulement non nulle : le meme libelle
             // existe souvent en double, dont une copie de 1x1 px destinee aux
             // lecteurs d'ecran. Elle vient en premier dans le document, et le

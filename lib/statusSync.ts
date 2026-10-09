@@ -63,6 +63,52 @@ export function orderStatusForAssignmentStatus(assignmentStatusId: number): numb
         : assignmentStatusId;
 }
 
+/**
+ * Le statut qu'une attribution DOIT avoir d'après ses dates — règle d'équipe :
+ * aucune date (ou la seule date de réception) = « Attente envoi vers lecteur » ;
+ * + date d'envoi = « En cours » ; + date de retour aux ECA = « Terminé ».
+ * Volontairement sans le lecteur : guardAssignmentConsistency l'exige au moment
+ * qui compte, avec son propre message.
+ *
+ * Partagée par le formulaire (qui n'offre plus de choix) et par PUT
+ * /api/assignments/[id] quand une requête change des dates sans envoyer de
+ * statut. Un statut ENVOYÉ reste prioritaire : il passe les mêmes gardes.
+ */
+export function deriveAssignmentStatus(receptionSet: boolean, sentSet: boolean, returnedSet: boolean): number {
+    if (receptionSet && sentSet && returnedSet) return STATUS.TERMINE;
+    if (receptionSet && sentSet) return STATUS.EN_COURS;
+    return STATUS.ATTENTE;
+}
+
+/**
+ * Le statut qu'une demande DOIT avoir d'après ce qu'elle contient, comme
+ * deriveAssignmentStatus pour une attribution. Le seul geste humain qui reste à
+ * une demande est l'expédition à l'auditeur, et c'est exactement ce que dit sa
+ * date de clôture :
+ *
+ *  - date de clôture renseignée → « Terminé » (duplication comme enregistrement) ;
+ *  - duplication sans date      → « À faire » ;
+ *  - enregistrement sans date   → ce que l'attribution fait monter
+ *    (orderStatusForAssignmentStatus), ou « Attente envoi vers lecteur » tant
+ *    qu'il n'y a pas d'attribution.
+ *
+ * Partagée par le formulaire et par PUT /api/orders/[id] quand une requête touche
+ * la date ou le type sans envoyer de statut. Un statut ENVOYÉ reste prioritaire —
+ * un permanent peut toujours en poser un délibérément par l'API — et passe les
+ * mêmes gardes (guardOrderCompletion, guardManualEnCours…) qu'avant.
+ */
+export function deriveOrderStatus(args: {
+    isDuplication: boolean;
+    hasClosureDate: boolean;
+    /** `null` = la demande n'a pas d'attribution. */
+    assignmentStatusId: number | null;
+}): number {
+    if (args.hasClosureDate) return STATUS.TERMINE;
+    if (args.isDuplication) return STATUS.A_FAIRE;
+    if (args.assignmentStatusId === null) return STATUS.ATTENTE;
+    return orderStatusForAssignmentStatus(args.assignmentStatusId);
+}
+
 export type GuardResult =
     | { ok: true }
     | { ok: false; httpStatus: number; message: string };

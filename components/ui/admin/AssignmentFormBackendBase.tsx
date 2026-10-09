@@ -38,7 +38,7 @@ import {
     AssignmentFormData,
     AssignmentReaderHistory,
 } from '@/types';
-import { STATUS } from '@/lib/statusSync';
+import { STATUS, deriveAssignmentStatus } from '@/lib/statusSync';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useInvalidField } from '@/hooks/useInvalidField';
@@ -146,8 +146,8 @@ function parseDateOnly(value: string | null): Date | undefined {
     return new Date(y, m - 1, d); // local midnight, no TZ shift
 }
 
-/**
- * The status is fully determined by which of the three dates are filled in —
+/*
+ * deriveAssignmentStatus — the status is fully determined by which of the three dates are filled in —
  * team rule, not left to a manual pick, and purely on the dates: no dates (or
  * just date de réception) is « Attente envoi vers lecteur »; + date d'envoi is
  * « En cours »; + date de retour aux ECA is « Terminé ». Deliberately NOT
@@ -158,12 +158,11 @@ function parseDateOnly(value: string | null): Date | undefined {
  * point that actually matters — submission — enforced separately below
  * (readerBlocksAdvance) so the message is explicit instead of a generic
  * server 400.
+ *
+ * The function itself lives in lib/statusSync.ts, shared with PUT
+ * /api/assignments/[id], which applies it when a request changes dates
+ * without sending a statut.
  */
-function deriveAssignmentStatus(receptionSet: boolean, sentSet: boolean, returnedSet: boolean): number {
-    if (receptionSet && sentSet && returnedSet) return STATUS.TERMINE;
-    if (receptionSet && sentSet) return STATUS.EN_COURS;
-    return STATUS.ATTENTE;
-}
 
 function DatePicker({
                         value,

@@ -15,6 +15,7 @@ import {
 import { Prisma, BillingStatus } from '@prisma/client';
 import {
     STATUS,
+    deriveOrderStatus,
     guardOrderStatus,
     guardOrderCompletion,
     guardManualEnCours,
@@ -263,6 +264,30 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         // sans dire laquelle laissait le permanent la chercher à la main.
         const blockingAssignment = assignment ? { blockingAssignmentId: assignment.id } : {};
         const billState = existingOrder.bill?.state ?? null;
+
+        // ── Statut absent de la requête : déduit ────────────────────────────────
+        // Un statut ENVOYÉ reste prioritaire — un permanent peut en poser un
+        // délibérément — et passe toutes les gardes ci-dessous. Sans statut, mais
+        // avec la date de clôture ou le type, on applique la même règle que le
+        // formulaire (deriveOrderStatus) : la date fait « Terminé », son absence
+        // laisse l'attribution décider. Le statut déduit traverse ensuite les mêmes
+        // gardes qu'un statut envoyé, il n'a aucun passe-droit.
+        //
+        // Seulement quand la requête touche ce dont le statut dépend : un PUT qui
+        // ne corrige que des notes ne réaligne pas en douce une ancienne demande
+        // reprise d'Access dont la paire statut/date n'a jamais été cohérente.
+        if (
+            data.statusId === undefined &&
+            (data.closureDate !== undefined || data.isDuplication !== undefined)
+        ) {
+            const resultingClosureDate =
+                data.closureDate !== undefined ? data.closureDate : existingOrder.closureDate;
+            data.statusId = deriveOrderStatus({
+                isDuplication: data.isDuplication ?? existingOrder.isDuplication,
+                hasClosureDate: !!resultingClosureDate,
+                assignmentStatusId: assignment?.statusId ?? null,
+            });
+        }
         const hasBill = existingOrder.billId != null;
 
         // Changing the auditeur to someone inactive isn't allowed — only guard
