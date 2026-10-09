@@ -1,5 +1,5 @@
 // CoupDeCoeurPDF.tsx
-import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, View, Text, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import type { PublicBook } from '@/lib/books/publicBook';
 import { groupBy } from 'lodash';
@@ -11,7 +11,9 @@ import { groupBy } from 'lodash';
  * du 12 mai 2026 : un seul corps (11 pt) — sauf la ligne éditeur / pages /
  * durée, plus petite —, la hiérarchie vient du gras et de l'alignement, un
  * paragraphe justifié par livre, et aucun saut de page forcé : seuls les titres
- * ne restent jamais seuls en bas de page.
+ * ne restent jamais seuls en bas de page. Les présentations étant désormais
+ * résumées, la mise en page peut respirer un peu (interlignes et espaces entre
+ * notices plus larges).
  */
 const BODY = 11;
 const META = 9;
@@ -19,7 +21,19 @@ const TITLE = 16;
 // Interligne en points, posé texte par texte (un lineHeight sur <Page>
 // fait disparaître, sans erreur, le numéro de page — Text à `render` — et un
 // coefficient posé sur un Text est multiplié par un corps que react-pdf choisit seul).
-const LEADING = '12.8pt';
+const LEADING = '14pt';
+
+// Les polices intégrées de react-pdf (Times-Roman…) ne couvrent que le latin
+// occidental : le « ł » d'un auteur polonais sortait en signe illisible. Liberation
+// Serif (OFL, public/fonts) a les mêmes chasses que Times et couvre le latin étendu.
+const SERIF = 'Liberation Serif';
+Font.register({
+    family: SERIF,
+    fonts: [
+        { src: '/fonts/LiberationSerif-Regular.ttf' },
+        { src: '/fonts/LiberationSerif-Bold.ttf', fontWeight: 'bold' },
+    ],
+});
 
 // Même fichier que la facture (BillPDF) : fond blanc opaque, 300 dpi.
 const LOGO_SRC = '/eca_logo_facture.png';
@@ -27,37 +41,39 @@ const LOGO_WIDTH = 92;
 const LOGO_RATIO = 1000 / 508;
 
 const s = StyleSheet.create({
-    page: { paddingVertical: 42, paddingHorizontal: 50, fontFamily: 'Times-Roman', fontSize: BODY, color: '#000000' },
+    page: { paddingTop: 46, paddingBottom: 50, paddingHorizontal: 54, fontFamily: SERIF, fontSize: BODY, color: '#000000' },
 
-    header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    header: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
     logo: { width: LOGO_WIDTH, height: LOGO_WIDTH / LOGO_RATIO },
     headerText: { flex: 1, paddingLeft: 14, paddingRight: LOGO_WIDTH, alignItems: 'center' },
-    title: { fontFamily: 'Times-Bold', fontSize: TITLE, textAlign: 'center', lineHeight: '19pt' },
-    subtitle: { textAlign: 'center', marginTop: 2, lineHeight: LEADING },
-    notice: { borderWidth: 0.75, borderColor: '#000000', paddingVertical: 4, paddingHorizontal: 10, marginBottom: 6, textAlign: 'center', lineHeight: LEADING },
+    title: { fontWeight: 'bold', fontSize: TITLE, textAlign: 'center', lineHeight: '19pt' },
+    subtitle: { textAlign: 'center', marginTop: 3, lineHeight: LEADING },
+    notice: { borderWidth: 0.75, borderColor: '#000000', paddingVertical: 6, paddingHorizontal: 12, marginBottom: 10, textAlign: 'center', lineHeight: LEADING },
 
-    genreTitle: { fontFamily: 'Times-Bold', textAlign: 'center', marginTop: 8, marginBottom: 6, lineHeight: LEADING },
+    genreTitle: { fontWeight: 'bold', textAlign: 'center', marginTop: 14, marginBottom: 9, lineHeight: LEADING },
 
-    book: { marginBottom: 7 },
-    bookHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1 },
-    // Le titre cède la place à l'auteur : un titre long passe à la ligne, l'auteur
-    // reste calé à droite sans jamais être écrasé.
-    bookTitle: { fontFamily: 'Times-Bold', flex: 1, paddingRight: 12, lineHeight: LEADING },
-    author: { fontFamily: 'Times-Bold', maxWidth: '45%', textAlign: 'right', lineHeight: LEADING },
+    book: { marginBottom: 12 },
+    // Titre et auteur sur une ligne quand ils y tiennent ; sinon l'auteur passe à
+    // la ligne suivante, calé à droite (flexWrap), plutôt que d'écraser le titre.
+    bookHead: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 2 },
+    bookTitle: { fontWeight: 'bold', lineHeight: LEADING },
+    // marginLeft auto : l'auteur est poussé au bout de sa ligne, qu'il la partage
+    // avec le titre ou non.
+    author: { fontWeight: 'bold', marginLeft: 'auto', paddingLeft: 12, textAlign: 'right', lineHeight: LEADING },
     // La ligne éditeur / année / pages / durée se lit avant le résumé, sous le
     // titre : on sait de quoi il s'agit (et combien ça dure) avant de lire.
-    meta: { fontSize: META, lineHeight: '11pt', marginBottom: 1 },
+    meta: { fontSize: META, lineHeight: '12pt', marginBottom: 3 },
     bookDesc: { textAlign: 'justify', lineHeight: LEADING },
 
-    contact: { textAlign: 'center', marginTop: 14, lineHeight: LEADING },
+    contact: { textAlign: 'center', marginTop: 18, lineHeight: LEADING },
     footer: { position: 'absolute', bottom: 16, left: 0, right: 0 },
-    pageNumber: { fontSize: META, textAlign: 'center' },
+    pageNumber: { fontFamily: SERIF, fontSize: META, textAlign: 'center' },
 });
 
 // Espace insécable : « 11 h 53 » ou « 381 p. » ne se coupent jamais en fin de ligne.
 const NBSP = ' ';
 
-/** « Éditions Hermann, 2011, 381 p., durée d'écoute : 11 h 53. » — vide si rien n'est connu. */
+/** « Éditions Hermann, 2011, 381 p., durée d'écoute : 11 h 53 » — vide si rien n'est connu. */
 const formatBookMeta = (book: PublicBook) => {
     const parts: string[] = [];
     if (book.publisher) parts.push(book.publisher);
@@ -72,14 +88,17 @@ const formatBookMeta = (book: PublicBook) => {
         const min = String(book.readingDurationMinutes % 60).padStart(2, '0');
         parts.push(`durée d'écoute${NBSP}: ${h}${NBSP}h${NBSP}${min}`);
     }
-    return parts.length ? `${parts.join(', ')}.` : '';
+    return parts.join(', ');
 };
 
-// Beaucoup de présentations saisies sur le site portent déjà leurs guillemets : on
-// retire ceux des extrémités avant d'encadrer, pour ne jamais imprimer « « … » ».
-const quoted = (description: string) => {
-    const bare = description.trim().replace(/^(?:«\s*)+/, '').replace(/(?:\s*»)+$/, '');
-    return `«${NBSP}${bare}${NBSP}»`;
+// Pas de guillemets autour des présentations pour l'instant. Beaucoup de celles
+// saisies sur le site portent déjà les leurs : on les retire quand elles ouvrent
+// ET ferment la présentation, pour que toutes s'impriment pareil.
+const unquoted = (description: string) => {
+    const text = description.trim();
+    return /^«/.test(text) && /»$/.test(text)
+        ? text.replace(/^(?:«\s*)+/, '').replace(/(?:\s*»)+$/, '')
+        : text;
 };
 
 const groupBooksByGenre = (books: { book: PublicBook }[]) => {
@@ -110,7 +129,7 @@ const BookEntry = ({ book }: { book: PublicBook }) => {
                 <Text style={s.author}>{book.author}</Text>
             </View>
             {meta && <Text style={s.meta}>{meta}</Text>}
-            {book.description && <Text style={s.bookDesc}>{quoted(book.description)}</Text>}
+            {book.description && <Text style={s.bookDesc}>{unquoted(book.description)}</Text>}
         </View>
     );
 };
