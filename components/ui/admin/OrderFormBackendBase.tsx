@@ -1040,13 +1040,13 @@ export function OrderFormBackendBase({
                             <label className="text-sm font-medium text-foreground">
                                 Date de clôture (envoi à l&apos;auditeur)
                             </label>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-stretch">
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
                                             disabled={!closureDateEnabled}
-                                            className="min-w-0 flex-1 justify-start text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
+                                            className="min-w-0 flex-1 justify-start rounded-r-none text-left bg-field border-border text-foreground hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
                                         >
                                             <Calendar className="mr-2 h-4 w-4 shrink-0" />
                                             {formData.closureDate ? (
@@ -1077,7 +1077,7 @@ export function OrderFormBackendBase({
                                         variant="outline"
                                         disabled={!closureDateEnabled}
                                         onClick={() => setClosureDate(today())}
-                                        className="shrink-0"
+                                        className="shrink-0 -ml-px rounded-l-none bg-muted text-muted-foreground hover:text-foreground focus-visible:z-10"
                                     >
                                         Aujourd&apos;hui
                                     </Button>
@@ -1086,7 +1086,7 @@ export function OrderFormBackendBase({
                                         type="button"
                                         variant="outline"
                                         onClick={() => setClosureDate(null)}
-                                        className="shrink-0"
+                                        className="shrink-0 -ml-px rounded-l-none bg-muted text-muted-foreground hover:text-foreground focus-visible:z-10"
                                     >
                                         Effacer
                                     </Button>
