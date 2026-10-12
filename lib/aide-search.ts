@@ -84,7 +84,7 @@ export const AIDE_SYNONYMS: Record<string, string[]> = {
     cout: ['tarif', 'prix'],
     montant: ['tarif', 'prix'],
     donation: ['don'],
-    impaye: ['retard'],
+    impaye: ['relancer', 'retard'],
     relance: ['retard'],
     imprimer: ['impression', 'imprim'],
     pdf: ['impression', 'imprim'],

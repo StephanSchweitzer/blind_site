@@ -60,7 +60,7 @@ const SPECS = [
             { n: 2, selector: 'input[placeholder="Rechercher par auditeur..."]' },
             { n: 3, selector: 'div.flex-wrap.items-center.gap-3:has(> label)' },
         ],
-        why: 'états Payée/Soldée et le filtre « Factures en retard »',
+        why: 'états Payée/Soldée et le filtre « Factures à relancer »',
     },
     {
         name: 'factures-02.jpg',

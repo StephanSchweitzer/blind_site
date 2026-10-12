@@ -96,9 +96,9 @@ async function rescueBills(
     active: { status?: BillingStatus; showLate?: boolean; kind?: BillKind },
 ): Promise<RescueSuggestion[]> {
     const filters: RescueFilter[] = [];
-    // « En retard » forces the state to « Émise » and greys the select out:
+    // « Factures à relancer » forces the state to « Émise » and greys the select out:
     // one filter to lift, not two.
-    if (active.showLate) filters.push({ key: 'late', label: 'Factures en retard' });
+    if (active.showLate) filters.push({ key: 'late', label: 'Factures à relancer' });
     else if (active.status) filters.push({ key: 'status', label: `État : ${BILLING_STATUS_LABELS[active.status]}` });
     if (active.kind) {
         filters.push({

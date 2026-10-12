@@ -276,7 +276,7 @@ export default function BillsTable({
                                 onCheckedChange={(checked) => handleLateFilter(!!checked)}
                                 className="border-border"
                             />
-                            Factures en retard
+                            Factures à relancer
                         </label>
                     </MobileFilters>
                 </div>
