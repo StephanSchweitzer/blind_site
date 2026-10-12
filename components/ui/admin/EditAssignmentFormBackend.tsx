@@ -1,5 +1,6 @@
 import React from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { ReaderSummary, BookSummary, OrderSummary, AssignmentFormData, AssignmentReaderHistory } from '@/types';
 import { AssignmentFormBackendBase, type AssignmentSubmitOptions } from '@/admin/AssignmentFormBackendBase';
 import { getFieldErrorLines, ErrorToastBody, AudioConfirmationRequiredError } from '@/admin/AssignmentFormErrors';
@@ -111,28 +112,46 @@ export function EditAssignmentFormBackend({
             // être faites — qu'elles l'aient attendu ou non, avec ou sans demande liée.
             const openDuplicationIds: number[] = payload?.openDuplicationIds ?? [];
 
+            // Quand l'attribution vient de passer la demande à « Attente envoi vers
+            // auditeur », c'est CE toast qui le dit, avec le bouton qui mène à la demande.
+            const awaitingOrderId = orderTransition?.awaitingShipment ? orderTransition.orderId : null;
+
             toast({
                 // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
+                title: <span className="text-2xl font-bold">
+                    {awaitingOrderId != null ? `Attribution n° ${assignmentId} clôturée` : 'Succès'}
+                </span>,
+                action: awaitingOrderId != null ? (
+                    <ToastAction altText="Consulter la demande" asChild>
+                        <a
+                            href={`/admin/orders?order=${awaitingOrderId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Consulter la demande
+                        </a>
+                    </ToastAction>
+                ) : undefined,
                 description: (
                     <span className="text-xl mt-2 block">
-                        L&apos;attribution a été mise à jour avec succès
-                        {orderTransition?.awaitingShipment && (
-                            <span className="mt-2 block text-base">
-                                La demande{' '}
+                        {awaitingOrderId == null && <>L&apos;attribution a été mise à jour avec succès</>}
+                        {awaitingOrderId != null && (
+                            <span className="block text-base">
+                                La demande n°{' '}
                                 <a
-                                    href={`/admin/orders?order=${orderTransition.orderId}`}
+                                    href={`/admin/orders?order=${awaitingOrderId}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="font-semibold underline underline-offset-2"
                                 >
-                                    #{orderTransition.orderId}
+                                    {awaitingOrderId}
                                 </a>{' '}
-                                attend son envoi à l&apos;auditeur. Renseignez sa date de clôture
-                                le jour de l&apos;expédition : elle passera « Terminé »
-                                {orderTransition.billable
-                                    ? <> et c&apos;est à ce moment qu&apos;elle sera facturée.</>
-                                    : '.'}
+                                est passée en « Attente envoi vers auditeur ».
+                                {/* Renseigner la date de clôture le jour de l'expédition : c'est
+                                    elle qui facture (accrueOrderToOpenDraft). */}
+                                {orderTransition?.billable && (
+                                    <> Elle sera facturée à sa clôture, le jour de l&apos;expédition.</>
+                                )}
                             </span>
                         )}
                         {billDetached && (

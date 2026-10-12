@@ -8,7 +8,9 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
+// Les toasts s'empilent (le plus récent en tête) : un deuxième ne doit pas
+// effacer le premier avant ses 10 s. Au-delà, le plus ancien cède la place.
+const TOAST_LIMIT = 5
 const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {
