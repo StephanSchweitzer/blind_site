@@ -39,7 +39,7 @@ import { CloseOrderTodayButton } from '@/admin/CloseOrderTodayButton';
 import { CopyIdButton } from '@/admin/CopyableId';
 
 import type { SerializedOrderTableRow } from '@/types/models/order.model';
-import type { SerializedBlockingRecording } from '@/lib/orders/duplicationBlocked';
+import type { SerializedDuplicationWait } from '@/lib/orders/duplicationBlocked';
 import type { SerializedDelai } from '@/lib/orders/delais';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
@@ -70,7 +70,7 @@ type OrdersTableProps = {
     initialSearch: string;
     availableStatuses: { id: number; name: string }[];
     /** Duplications that can't start yet, keyed by demande id. Derived server-side. */
-    blockedDuplications?: Record<number, SerializedBlockingRecording>;
+    blockedDuplications?: Record<number, SerializedDuplicationWait>;
     /** Demandes past their stage's amber or red line, keyed by id — lib/orders/delais.ts. */
     delais?: Record<number, SerializedDelai>;
     hideSearch?: boolean;
@@ -269,12 +269,19 @@ export default function OrdersTable({
         return parisDate(dateString);
     };
 
-    // Tooltip behind the « Après l'enregistrement en cours » line — names the
-    // lecteur and the date d'envoi when known, so the admin can see what it follows.
-    const blockedRecordingLabel = (recording: SerializedBlockingRecording) => {
+    // Tooltip behind the line under a waiting duplication's status — names the
+    // lecteur and the date d'envoi when known, or the demande d'enregistrement
+    // still looking for one, so the admin can see what it follows.
+    const blockedRecordingLabel = (wait: SerializedDuplicationWait) => {
+        if (wait.kind === 'aucun') {
+            return "Cet ouvrage n'a pas de fichier audio et personne ne l'enregistre : ni attribution, ni demande d'enregistrement en cours. Créez une demande d'enregistrement, ou corrigez le type de cette demande.";
+        }
+        if (wait.kind === 'demande') {
+            return `Duplication à faire au retour de l'enregistrement de cet ouvrage (demande d'enregistrement n° ${wait.orderId}, en attente d'un lecteur).`;
+        }
         const details = [
-            recording.readerName ? `lecteur ${recording.readerName}` : null,
-            recording.sentToReaderDate ? `envoyé le ${formatDate(recording.sentToReaderDate)}` : null,
+            wait.readerName ? `lecteur ${wait.readerName}` : null,
+            wait.sentToReaderDate ? `envoyé le ${formatDate(wait.sentToReaderDate)}` : null,
         ].filter(Boolean);
 
         return details.length
@@ -427,6 +434,9 @@ export default function OrdersTable({
                                 <SelectItem value="ready" className="text-foreground">Duplication réalisable</SelectItem>
                                 {/* Duplications held up by an enregistrement still in flight. */}
                                 <SelectItem value="blocked" className="text-foreground">Duplication après enregistrement</SelectItem>
+                                {/* Duplications of a book nobody is recording — the
+                                    dashboard's amber « sans enregistrement prévu » line. */}
+                                <SelectItem value="unplanned" className="text-foreground">Duplication sans enregistrement prévu</SelectItem>
                                 <SelectItem value="false" className="text-foreground">Enregistrement</SelectItem>
                             </SelectContent>
                         </Select>
@@ -643,15 +653,25 @@ export default function OrdersTable({
                                                         {/* A duplication waiting on an in-flight enregistrement
                                                             stays « À faire » — never « en attente », which on this
                                                             list reads as a recording status — and says, under its
-                                                            badge, what it follows. Derived, never stored — see
+                                                            badge, what it follows — or, in amber, that nothing
+                                                            will bring its audio. Derived, never stored — see
                                                             lib/orders/duplicationBlocked.ts. Its délai is null
                                                             meanwhile, so the two lines never stack. */}
                                                         {blockedBy && (
                                                             <div
                                                                 title={blockedRecordingLabel(blockedBy)}
-                                                                className="mt-1 whitespace-nowrap text-xs font-medium text-muted-foreground"
+                                                                className={cn(
+                                                                    'mt-1 whitespace-nowrap text-xs font-medium',
+                                                                    blockedBy.kind === 'aucun'
+                                                                        ? 'text-amber-700 dark:text-amber-400'
+                                                                        : 'text-muted-foreground',
+                                                                )}
                                                             >
-                                                                <span aria-hidden="true">Après l&apos;enregistrement en cours</span>
+                                                                <span aria-hidden="true">
+                                                                    {blockedBy.kind === 'aucun'
+                                                                        ? 'Aucun enregistrement prévu'
+                                                                        : <>Après l&apos;enregistrement en cours</>}
+                                                                </span>
                                                                 <span className="sr-only">{blockedRecordingLabel(blockedBy)}</span>
                                                             </div>
                                                         )}

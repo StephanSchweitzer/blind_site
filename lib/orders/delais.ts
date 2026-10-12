@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { STATUS } from '@/lib/statusSync';
+import { RECORDING_DEMANDE_UNDER_WAY, RECORDING_UNDER_WAY } from '@/lib/orders/duplicationBlocked';
 
 /**
  * Délais par étape — when an open demande is « en retard ».
@@ -86,9 +87,6 @@ export const DELAI_ETAPES: Record<DelaiEtape, EtapeConfig> = {
 /** Demande statuses that end the story — nothing is waited for past them. */
 const CLOSED_STATUSES: number[] = [STATUS.TERMINE, STATUS.SOLDE];
 
-/** Both statuses mean the book is still being recorded (same as duplicationBlocked.ts). */
-const RECORDING_UNDER_WAY: number[] = [STATUS.ATTENTE, STATUS.EN_COURS];
-
 /**
  * An open demande: no closure date AND not in a closing status. Both, because
  * the import left a handful of « Terminé » demandes without a closure date, and
@@ -127,14 +125,21 @@ export const delaiSelect = {
         orderBy: { createdAt: 'desc' },
         take: 1,
     },
-    // A duplication is blocked while its book is being recorded, and its clock
-    // starts when that recording comes back.
+    // A duplication is blocked while its book is being recorded — an
+    // attribution under way, or a demande d'enregistrement still open — and
+    // flagged when nothing will ever bring its audio.
     catalogue: {
         select: {
             audio_filepath: true,
             assignments: {
-                where: { deletedAt: null },
-                select: { statusId: true, returnedToECADate: true },
+                where: { deletedAt: null, statusId: { in: RECORDING_UNDER_WAY } },
+                select: { id: true },
+                take: 1,
+            },
+            orders: {
+                where: { deletedAt: null, ...RECORDING_DEMANDE_UNDER_WAY },
+                select: { id: true },
+                take: 1,
             },
         },
     },
@@ -151,6 +156,13 @@ export type Delai = {
     jours: number | null;
     /** A duplication waiting on a recording still under way — never late on its own account. */
     bloquee: boolean;
+    /**
+     * A duplication of a book with no audio that nobody is recording — no
+     * attribution, no open demande d'enregistrement. It has no clock either:
+     * it has its own dashboard line, flagged from day one rather than after
+     * fourteen days of a clock that measures nothing anyone can do.
+     */
+    sansEnregistrement: boolean;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -180,9 +192,14 @@ function niveauFor(etape: DelaiEtape, jours: number | null): DelaiNiveau {
     return jours >= retardJours ? 'en_retard' : jours >= surveillerJours ? 'a_surveiller' : 'a_jour';
 }
 
-function delaiOf(etape: DelaiEtape, depuis: Date | null, now: Date, bloquee = false): Delai {
+function delaiOf(
+    etape: DelaiEtape,
+    depuis: Date | null,
+    now: Date,
+    { bloquee = false, sansEnregistrement = false } = {},
+): Delai {
     const jours = depuis ? Math.max(0, Math.floor((now.getTime() - depuis.getTime()) / DAY_MS)) : null;
-    return { etape, niveau: niveauFor(etape, jours), depuis, jours, bloquee };
+    return { etape, niveau: niveauFor(etape, jours), depuis, jours, bloquee, sansEnregistrement };
 }
 
 /** The stage an open demande is in. Status decides it — the dates only start the clock. */
@@ -203,6 +220,7 @@ export function computeDelai(row: DelaiRow, now: Date = new Date()): Delai | nul
     const etape = etapeOf(row);
     let depuis: Date | null = null;
     let bloquee = false;
+    let sansEnregistrement = false;
 
     switch (etape) {
         case 'attente_lecteur':
@@ -225,17 +243,21 @@ export function computeDelai(row: DelaiRow, now: Date = new Date()): Delai | nul
             depuis = maxDate(row.assignments.map((a) => a.returnedToECADate)) ?? row.events[0]?.createdAt ?? null;
             break;
         case 'duplication': {
-            const bookAssignments = row.catalogue.assignments;
-            bloquee = !row.catalogue.audio_filepath
-                && bookAssignments.some((a) => RECORDING_UNDER_WAY.includes(a.statusId));
-            if (!bloquee) {
-                depuis = maxDate([row.requestReceivedDate, ...bookAssignments.map((a) => a.returnedToECADate)]);
+            const { catalogue } = row;
+            if (!catalogue.audio_filepath) {
+                bloquee = catalogue.assignments.length > 0 || catalogue.orders.length > 0;
+                sansEnregistrement = !bloquee;
             }
+            // No clock while it can't be done. Once it can, the clock is the
+            // auditeur's: it runs from the demande, not from the recording's
+            // return — a duplication that waited two months for its audio is
+            // « à suivre » the day that audio arrives, not two weeks later.
+            if (!bloquee && !sansEnregistrement) depuis = row.requestReceivedDate;
             break;
         }
     }
 
-    return delaiOf(etape, depuis, now, bloquee);
+    return delaiOf(etape, depuis, now, { bloquee, sansEnregistrement });
 }
 
 /** Every open demande's délai, keyed by id — optionally narrowed (one auditeur's dossier). */
@@ -330,24 +352,31 @@ export function retardWhere(
 }
 
 /**
- * The two derived values of the demandes « Type » filter, as ids read off the
+ * The three derived values of the demandes « Type » filter, as ids read off the
  * délais like `retardWhere`:
- *  - `ready`   — « Duplication réalisable »: open, and nothing to wait for
- *  - `blocked` — « Duplication après enregistrement »: its book is still being recorded
- * The dashboard's « Duplications à faire » line counts the same map, so its
- * number is the number of rows it opens. `blocked` used to be a Prisma clause
- * of its own; it now shares the one derivation instead of a second copy.
+ *  - `ready`     — « Duplication réalisable »: open, and nothing to wait for
+ *  - `blocked`   — « Duplication après enregistrement »: its book is still being recorded
+ *  - `unplanned` — « Duplication sans enregistrement prévu »: no audio, and nobody recording it
+ * The dashboard's duplication lines count the same map, so each number is the
+ * number of rows it opens. `blocked` used to be a Prisma clause of its own; it
+ * now shares the one derivation instead of a second copy.
  */
+const DUPLICATION_STATES: Record<string, (d: Delai) => boolean> = {
+    ready: (d) => !d.bloquee && !d.sansEnregistrement,
+    blocked: (d) => d.bloquee,
+    unplanned: (d) => d.sansEnregistrement,
+};
+
 export function duplicationStateWhere(
     value: string | undefined,
     delais: Map<number, Delai>,
 ): { id: { in: number[] } } | null {
-    if (value !== 'ready' && value !== 'blocked') return null;
-    const wantBlocked = value === 'blocked';
+    const matches = value && Object.hasOwn(DUPLICATION_STATES, value) ? DUPLICATION_STATES[value] : undefined;
+    if (!matches) return null;
     return {
         id: {
             in: [...delais]
-                .filter(([, d]) => d.etape === 'duplication' && d.bloquee === wantBlocked)
+                .filter(([, d]) => d.etape === 'duplication' && matches(d))
                 .map(([id]) => id),
         },
     };
@@ -392,10 +421,16 @@ export function serializeDelaisFor(ids: number[], delais: Map<number, Delai>): R
 }
 
 /** Per-stage tallies for the dashboard's « À traiter » cards. */
-export type DelaiTally = { total: number; aSurveiller: number; enRetard: number; bloquees: number };
+export type DelaiTally = {
+    total: number;
+    aSurveiller: number;
+    enRetard: number;
+    bloquees: number;
+    sansEnregistrement: number;
+};
 
 export function tallyDelais(delais: Map<number, Delai>): Record<DelaiEtape, DelaiTally> {
-    const empty = (): DelaiTally => ({ total: 0, aSurveiller: 0, enRetard: 0, bloquees: 0 });
+    const empty = (): DelaiTally => ({ total: 0, aSurveiller: 0, enRetard: 0, bloquees: 0, sansEnregistrement: 0 });
     const out: Record<DelaiEtape, DelaiTally> = {
         attente_lecteur: empty(),
         chez_lecteur: empty(),
@@ -406,6 +441,7 @@ export function tallyDelais(delais: Map<number, Delai>): Record<DelaiEtape, Dela
         const t = out[d.etape];
         t.total += 1;
         if (d.bloquee) t.bloquees += 1;
+        if (d.sansEnregistrement) t.sansEnregistrement += 1;
         if (d.niveau === 'en_retard') t.enRetard += 1;
         else if (d.niveau === 'a_surveiller') t.aSurveiller += 1;
     }

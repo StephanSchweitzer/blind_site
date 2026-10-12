@@ -369,6 +369,7 @@ export function OrderFormBackendBase({
         adviceFor: recordingAdviceFor,
         conflicts: recordingConflicts,
         blockingRecordingFor,
+        recordingUnderWayFor,
     } = useRecordingAdvice({
         current: recordingCurrent,
         saved: savedRecordingDecision,
@@ -670,10 +671,11 @@ export function OrderFormBackendBase({
     // Ce que la demande redeviendra une fois la date effacée.
     const reopenedStatusId = statusFor({ ...formData, closureDate: null }, true);
 
-    const blockingRecording =
-        formData.isDuplication && !audioAlreadyExists && !demandeIsClosed
-            ? blockingRecordingFor(formData.catalogueId)
-            : null;
+    const duplicationAwaitsAudio = formData.isDuplication && !audioAlreadyExists && !demandeIsClosed;
+    const blockingRecording = duplicationAwaitsAudio ? blockingRecordingFor(formData.catalogueId) : null;
+    // Rien à copier et personne pour l'enregistrer — comme sur le formulaire de
+    // création, seulement une fois la vérification revenue (`false`, pas `null`).
+    const noRecordingPlanned = duplicationAwaitsAudio && recordingUnderWayFor(formData.catalogueId) === false;
 
     return (
         <>
@@ -878,7 +880,22 @@ export function OrderFormBackendBase({
                                             Duplication
                                         </label>
                                     </div>
-                                    {blockingRecording && (
+                                    {blockingRecording && blockingRecording.orderId !== null && (
+                                        <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
+                                            À faire après l&apos;enregistrement : cet ouvrage n&apos;a pas encore de
+                                            fichier audio et la demande d&apos;enregistrement n° {blockingRecording.orderId}{' '}
+                                            attend son lecteur. La duplication ne pourra être faite qu&apos;au retour
+                                            de l&apos;enregistrement.
+                                        </p>
+                                    )}
+                                    {noRecordingPlanned && (
+                                        <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
+                                            Aucun enregistrement prévu : cet ouvrage n&apos;a pas de fichier audio et
+                                            personne ne l&apos;enregistre. S&apos;il doit être lu, il faut une demande
+                                            d&apos;enregistrement.
+                                        </p>
+                                    )}
+                                    {blockingRecording && blockingRecording.orderId === null && (
                                         <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
                                             À faire après l&apos;enregistrement en cours : cet ouvrage n&apos;a pas encore
                                             de fichier audio et un enregistrement est en cours

@@ -44,7 +44,7 @@ Vous pouvez filtrer votre recherche selon les critères suivants :
 
 3. Le statut de la facturation de la demande
 
-4. Le type de la demande : enregistrement ou duplication. Deux choix de plus trient les duplications ouvertes : « Duplication réalisable » (celles qui peuvent être faites dès maintenant — c'est la liste qu'ouvre la ligne « Duplications à faire » de la page principale) et « Duplication après enregistrement » (celles dont le livre est encore en cours d'enregistrement : elles restent « À faire », avec sous leur statut la mention « Après l'enregistrement en cours », et le nom du lecteur au survol)
+4. Le type de la demande : enregistrement ou duplication. Trois choix de plus trient les duplications ouvertes : « Duplication réalisable » (celles qui peuvent être faites dès maintenant — c'est la liste qu'ouvre la ligne « Duplications à faire » de la page principale), « Duplication après enregistrement » (celles dont le livre est encore en cours d'enregistrement — une attribution chez un lecteur, ou une demande d'enregistrement qui attend encore le sien : elles restent « À faire », avec sous leur statut la mention « Après l'enregistrement en cours », et au survol le nom du lecteur ou le numéro de la demande d'enregistrement) et « Duplication sans enregistrement prévu » (celles dont le livre n'a pas de fichier audio et que personne n'enregistre : ni attribution, ni demande d'enregistrement en cours. Elles portent en orange la mention « Aucun enregistrement prévu ». Il faut créer la demande d'enregistrement, ou corriger le type de la duplication)
 
 5. Le filtre « Suivi » : « À suivre », « À surveiller » ou « À jour » — voir [Délais et suivi](/admin/aide/demandes#delais-et-suivi) juste en dessous
 
@@ -75,14 +75,15 @@ Une demande passe par plusieurs étapes, et **chaque étape a son propre délai*
 | En attente d'un lecteur | Attente envoi vers lecteur | la date de la demande | 30 jours | 60 jours |
 | Chez le lecteur | En cours | la date d'envoi au lecteur (ou de la dernière réattribution) | 60 jours | 90 jours — « à relancer » |
 | À expédier à l'auditeur | Attente envoi vers auditeur | la date de retour aux ECA | 3 jours | 7 jours |
-| Duplication à faire | À faire | la date de la demande, ou le retour de l'enregistrement qu'elle attendait | 7 jours | 14 jours |
+| Duplication à faire | À faire | la date de la demande | 7 jours | 14 jours |
 
 Ces délais viennent de nos propres chiffres : un lecteur est trouvé en moins de trois semaines pour la moitié des demandes, la moitié des livres reviennent de chez le lecteur en moins d'un mois, et neuf sur dix en moins de trois mois. Un livre chez le lecteur depuis deux mois n'a donc rien d'anormal, mais c'est le bon moment pour prendre de ses nouvelles.
 
 Quelques précisions :
 
 - **Une réattribution fait repartir le délai** : le nouveau lecteur a lui aussi ses trois mois.
-- **Une duplication à faire après un enregistrement n'est jamais à suivre** : elle attend un livre qu'un lecteur est encore en train d'enregistrer, et c'est cet enregistrement qui porte le délai. Le sien commence le jour où l'enregistrement revient.
+- **Une duplication à faire après un enregistrement n'est jamais à suivre tant qu'elle attend** : le livre est encore en cours d'enregistrement, et c'est cet enregistrement qui porte le délai. Mais son délai à elle compte depuis la date de la demande, celle où l'auditeur l'a faite : le jour où l'enregistrement revient, une duplication qui l'attendait depuis plus de 14 jours est donc aussitôt « à suivre ».
+- **Une duplication sans enregistrement prévu n'a pas de délai** : rien ne la rendra faisable tant qu'on n'a pas créé la demande d'enregistrement. Elle est signalée dès le premier jour, sur sa propre ligne de la page principale.
 - **Une demande clôturée n'a plus de délai.**
 
 Dans la liste, une demande à suivre apparaît sur fond orange clair, avec sous son statut la mention « À suivre » (« À relancer » quand le livre est chez le lecteur). Une demande à surveiller porte la mention « À surveiller » en gris. En passant la souris sur la mention, vous lisez l'étape.

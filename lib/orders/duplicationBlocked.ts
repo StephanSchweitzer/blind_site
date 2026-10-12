@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { STATUS, type TransactionClient } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
@@ -14,14 +15,29 @@ import { getUserNameOnly } from '@/lib/users/displayName';
  */
 
 /** Both statuses block: a book that hasn't gone out to a lecteur yet is just as unavailable. */
-const RECORDING_UNDER_WAY = [STATUS.ATTENTE, STATUS.EN_COURS];
+export const RECORDING_UNDER_WAY: number[] = [STATUS.ATTENTE, STATUS.EN_COURS];
 
 /** A closed demande waits for nothing — whatever the book is doing is no longer its problem. */
 const DEMANDE_CLOSED: number[] = [STATUS.TERMINE, STATUS.SOLDE];
 
+/**
+ * An open demande d'enregistrement also blocks, attribution or not. The two
+ * demandes usually meet before any lecteur is found (half the books wait about
+ * three weeks for one), and checking attributions alone made the duplication
+ * look doable — and start its clock — for that whole time. Its status must still
+ * be a recording one: « Attente envoi vers auditeur » means the recording is
+ * back, and if that brought no audio, nothing more is coming. Nested reads must
+ * add `deletedAt: null` themselves (lib/prisma.ts).
+ */
+export const RECORDING_DEMANDE_UNDER_WAY = {
+    lentPhysicalBook: true,
+    closureDate: null,
+    statusId: { in: RECORDING_UNDER_WAY },
+} satisfies Prisma.OrdersWhereInput;
+
 /*
- * The « Duplication réalisable » / « Duplication après enregistrement » filters and the
- * dashboard count read the same derivation off the délais
+ * The « Duplication réalisable » / « après enregistrement » / « sans enregistrement
+ * prévu » filters and the dashboard counts read the same derivation off the délais
  * (lib/orders/delais.ts, `duplicationStateWhere`) — no Prisma copy of it here.
  */
 
@@ -66,90 +82,114 @@ export async function findOpenDuplicationsOfBook(
     return open.map((o) => o.id);
 }
 
-export type BlockingRecording = {
-    readerName: string | null;
-    sentToReaderDate: Date | null;
-};
+/**
+ * What an open duplication of a book with no audio is waiting for:
+ *  - `lecteur` — an attribution « Attente » / « En cours » (named when known);
+ *  - `demande` — an open demande d'enregistrement no attribution carries yet;
+ *  - `aucun`   — nothing. Nobody is recording the book, so the duplication can
+ *    never be done as it stands: the case that gets forgotten, flagged on the
+ *    dashboard (« Duplications sans enregistrement prévu »).
+ * Same rule as the délais (lib/orders/delais.ts, `computeDelai`).
+ */
+export type DuplicationWait =
+    | { kind: 'lecteur'; readerName: string | null; sentToReaderDate: Date | null }
+    | { kind: 'demande'; orderId: number }
+    | { kind: 'aucun' };
 
 type OrderRowLike = {
     id: number;
     catalogueId: number;
     statusId: number;
     isDuplication: boolean;
+    closureDate: Date | null;
     catalogue: { audio_filepath: string | null };
 };
 
 /**
- * Of the given demandes, which duplications are waiting on a recording — keyed
- * by demande id, carrying enough context to name the lecteur in the UI.
+ * Of the given demandes, what each open duplication of a book with no audio is
+ * waiting for — keyed by demande id, carrying enough context to name the
+ * lecteur or the demande d'enregistrement in the UI.
  *
- * One query for the whole page. Two things exclude a duplication before any
+ * Two queries for the whole page. Two things exclude a duplication before any
  * query runs: a book that *already* has audio (the copy can be made right now,
  * even if a re-reading happens to be under way), and a demande that is already
  * closed (a « Terminé » duplication is done — it waits for nothing).
  */
 export async function findBlockedDuplications(
     orders: OrderRowLike[]
-): Promise<Map<number, BlockingRecording>> {
+): Promise<Map<number, DuplicationWait>> {
     const waiting = orders.filter(
         (o) =>
             o.isDuplication &&
             !o.catalogue.audio_filepath &&
+            o.closureDate === null &&
             !DEMANDE_CLOSED.includes(o.statusId)
     );
     if (waiting.length === 0) return new Map();
 
-    const recordings = await prisma.assignment.findMany({
-        where: {
-            catalogueId: { in: [...new Set(waiting.map((o) => o.catalogueId))] },
-            statusId: { in: RECORDING_UNDER_WAY },
-        },
-        select: {
-            catalogueId: true,
-            sentToReaderDate: true,
-            readerHistory: {
-                orderBy: { assignedDate: 'desc' },
-                take: 1,
-                select: { reader: { select: { firstName: true, lastName: true } } },
+    const catalogueIds = [...new Set(waiting.map((o) => o.catalogueId))];
+    const [recordings, demandes] = await Promise.all([
+        prisma.assignment.findMany({
+            where: {
+                catalogueId: { in: catalogueIds },
+                statusId: { in: RECORDING_UNDER_WAY },
             },
-        },
-        orderBy: { id: 'desc' },
-    });
+            select: {
+                catalogueId: true,
+                sentToReaderDate: true,
+                readerHistory: {
+                    orderBy: { assignedDate: 'desc' },
+                    take: 1,
+                    select: { reader: { select: { firstName: true, lastName: true } } },
+                },
+            },
+            orderBy: { id: 'desc' },
+        }),
+        prisma.orders.findMany({
+            where: { catalogueId: { in: catalogueIds }, ...RECORDING_DEMANDE_UNDER_WAY },
+            select: { id: true, catalogueId: true },
+            orderBy: { id: 'asc' },
+        }),
+    ]);
 
-    // Most recent attribution wins when a book somehow carries several.
-    const byCatalogue = new Map<number, BlockingRecording>();
+    // An attribution says more (who has the book) than its demande: it wins.
+    // Most recent attribution, oldest demande, when a book somehow carries several.
+    const byCatalogue = new Map<number, DuplicationWait>();
     for (const r of recordings) {
         if (byCatalogue.has(r.catalogueId)) continue;
         byCatalogue.set(r.catalogueId, {
+            kind: 'lecteur',
             readerName: getUserNameOnly(r.readerHistory[0]?.reader ?? null) || null,
             sentToReaderDate: r.sentToReaderDate,
         });
     }
+    for (const d of demandes) {
+        if (byCatalogue.has(d.catalogueId)) continue;
+        byCatalogue.set(d.catalogueId, { kind: 'demande', orderId: d.id });
+    }
 
-    const byOrder = new Map<number, BlockingRecording>();
+    const byOrder = new Map<number, DuplicationWait>();
     for (const o of waiting) {
-        const recording = byCatalogue.get(o.catalogueId);
-        if (recording) byOrder.set(o.id, recording);
+        byOrder.set(o.id, byCatalogue.get(o.catalogueId) ?? { kind: 'aucun' });
     }
     return byOrder;
 }
 
 /** JSON-safe shape handed to client components. */
-export type SerializedBlockingRecording = {
-    readerName: string | null;
-    sentToReaderDate: string | null;
-};
+export type SerializedDuplicationWait =
+    | { kind: 'lecteur'; readerName: string | null; sentToReaderDate: string | null }
+    | { kind: 'demande'; orderId: number }
+    | { kind: 'aucun' };
 
 export function serializeBlockedDuplications(
-    blocked: Map<number, BlockingRecording>
-): Record<number, SerializedBlockingRecording> {
+    blocked: Map<number, DuplicationWait>
+): Record<number, SerializedDuplicationWait> {
     return Object.fromEntries(
-        [...blocked].map(([orderId, r]) => [
+        [...blocked].map(([orderId, w]) => [
             orderId,
-            {
-                readerName: r.readerName,
-                sentToReaderDate: r.sentToReaderDate ? r.sentToReaderDate.toISOString() : null,
-            },
+            w.kind === 'lecteur'
+                ? { ...w, sentToReaderDate: w.sentToReaderDate ? w.sentToReaderDate.toISOString() : null }
+                : w,
         ])
     );
 }

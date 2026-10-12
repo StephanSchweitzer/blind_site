@@ -51,6 +51,7 @@ async function rescueOrders(
         false: 'Enregistrement',
         ready: 'Duplication réalisable',
         blocked: 'Duplication après enregistrement',
+        unplanned: 'Duplication sans enregistrement prévu',
     };
     if (active.isDuplication && types[active.isDuplication]) {
         filters.push({ key: 'isDuplication', label: `Type : ${types[active.isDuplication]}` });

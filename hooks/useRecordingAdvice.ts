@@ -11,10 +11,16 @@ import {
 import { suggestOrderType, type OrderTypeSuggestion } from "@/lib/orders/orderTypeSuggestion";
 import { getUserNameOnly } from "@/lib/users/displayName";
 
-/** Attribution encore en cours pour ce livre — bloque une duplication. */
+/**
+ * Enregistrement encore en route pour ce livre — bloque une duplication. Une
+ * attribution « Attente » / « En cours » (lecteur et date d'envoi s'ils sont
+ * connus), ou à défaut une demande d'enregistrement ouverte (`orderId`) qui
+ * attend encore son lecteur.
+ */
 export interface BlockingRecording {
     readerName: string | null;
     sentToReaderDate: string | null;
+    orderId: number | null;
 }
 
 /** Un livre pour lequel enregistrer créerait une SECONDE demande active. */

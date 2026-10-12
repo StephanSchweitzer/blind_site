@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { STATUS } from '@/lib/statusSync';
 import { withAdmin } from '@/lib/auth/guards';
 import { getUserNameOnly } from '@/lib/users/displayName';
+import { RECORDING_DEMANDE_UNDER_WAY, RECORDING_UNDER_WAY } from '@/lib/orders/duplicationBlocked';
 
 /**
  * GET /api/orders/recording-check?bookId=123[&excludeOrderId=45]
@@ -42,14 +43,15 @@ export const GET = withAdmin(async (req: NextRequest) => {
         take: 10,
     });
 
-    // An attribution still in flight for this book. A duplication of a book that
+    // An attribution still in flight for this book — or, failing one, an open
+    // demande d'enregistrement no lecteur has yet. A duplication of a book that
     // has no audio yet can't be done until this enregistrement comes back, so the
     // demande form warns instead of letting it look immediately actionable.
     // Same rule as lib/orders/duplicationBlocked.ts, which drives the list badge.
     const inFlight = await prisma.assignment.findFirst({
         where: {
             catalogueId: bookId,
-            statusId: { in: [STATUS.ATTENTE, STATUS.EN_COURS] },
+            statusId: { in: RECORDING_UNDER_WAY },
         },
         orderBy: { id: 'desc' },
         select: {
@@ -62,6 +64,20 @@ export const GET = withAdmin(async (req: NextRequest) => {
         },
     });
 
+    const openDemande = inFlight
+        ? null
+        : await prisma.orders.findFirst({
+            where: {
+                catalogueId: bookId,
+                ...RECORDING_DEMANDE_UNDER_WAY,
+                ...(Number.isInteger(excludeOrderId) && excludeOrderId > 0
+                    ? { id: { not: excludeOrderId } }
+                    : {}),
+            },
+            orderBy: { id: 'asc' },
+            select: { id: true },
+        });
+
     return NextResponse.json({
         activeRecordingCount: orders.length,
         orders,
@@ -71,7 +87,10 @@ export const GET = withAdmin(async (req: NextRequest) => {
                 sentToReaderDate: inFlight.sentToReaderDate
                     ? inFlight.sentToReaderDate.toISOString()
                     : null,
+                orderId: null,
             }
-            : null,
+            : openDemande
+                ? { readerName: null, sentToReaderDate: null, orderId: openDemande.id }
+                : null,
     });
 });

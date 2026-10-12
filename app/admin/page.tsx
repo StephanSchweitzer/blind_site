@@ -53,10 +53,12 @@ function delaiRow(label: string, baseHref: string, tally: DelaiTally, etape: Del
  * turn amber. The line counts those (the blocked ones never go late, so the
  * late and amber counts are among them) and opens exactly them. The ones still
  * waiting on a recording get a quiet line of their own, only when there are
- * some: nobody can act on them yet.
+ * some: nobody can act on them yet. The ones nobody is recording at all get an
+ * amber line, also only when there are some: they need a demande
+ * d'enregistrement (or a corrected type), and no clock will ever say so.
  */
 function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
-    const ready = tally.total - tally.bloquees;
+    const ready = tally.total - tally.bloquees - tally.sansEnregistrement;
     const label = 'Duplications à faire';
     const href = '/admin/orders?isDuplication=ready';
     // « 5 à suivre » rather than « 5, dont 5 à suivre » when it's all of them.
@@ -70,6 +72,14 @@ function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
                     ? { label, href, tone: 'todo', value: part(tally.aSurveiller, SURVEILLER_LABEL.toLowerCase()) }
                     : { label, href, tone: 'todo', value: String(ready) },
     ];
+    if (tally.sansEnregistrement > 0) {
+        rows.push({
+            label: 'Duplications sans enregistrement prévu',
+            href: '/admin/orders?isDuplication=unplanned',
+            tone: 'warning',
+            value: String(tally.sansEnregistrement),
+        });
+    }
     if (tally.bloquees > 0) {
         rows.push({
             label: 'Duplications après enregistrement',
