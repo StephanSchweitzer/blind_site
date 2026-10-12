@@ -38,6 +38,12 @@ Un champ est une partie d'un formulaire dans laquelle il est possible de saisir 
 
 Un clic sur un champ de date ouvre un calendrier : choisissez le jour, le calendrier se referme. Le bouton « Aujourd'hui », accolé au champ, le remplit avec la date du jour d'un seul clic ; il disparaît quand le champ porte déjà la date du jour. Certains champs facultatifs, comme la date de clôture d'une demande, proposent « Effacer » à la place une fois une date saisie.
 
+## Un toast
+
+Un toast est une petite vignette d'information qui apparaît en bas à droite de votre écran. Il vous informe qu'une opération a réussi ou qu'une erreur s'est produite, et propose parfois un lien qui facilite l'accès à la page que vous cherchez.
+
+![Un toast en bas à droite de l'écran](/admin/aide/images/toast-01.png)
+
 ## Les messages d'erreur
 
 Quand une action échoue, un message rouge s'affiche. Il en existe trois sortes :
