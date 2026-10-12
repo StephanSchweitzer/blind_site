@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { CACHE_TAGS } from '@/lib/cache-tags';
-import { findBooksBeingRecorded, toPublicBook } from '@/lib/books/publicBook';
+import { toPublicBook } from '@/lib/books/publicBook';
 
 /**
  * Une liste par page — chaque coup de cœur occupe la page entière.
@@ -53,16 +53,13 @@ export const getCoupsDeCoeurPage = unstable_cache(
             prisma.coupsDeCoeur.count({ where: { active: true } }),
         ]);
 
-        const beingRecorded = await findBooksBeingRecorded(
-            rows.flatMap((coup) => coup.books.map((b) => b.book)),
-        );
         const items = rows.map((coup) => ({
             ...coup,
-            books: coup.books.map((b) => ({ ...b, book: toPublicBook(b.book, beingRecorded) })),
+            books: coup.books.map((b) => ({ ...b, book: toPublicBook(b.book) })),
         }));
 
         return { items, total };
     },
-    ['coups-de-coeur-page-v2'],
+    ['coups-de-coeur-page-v3'],
     { tags: [CACHE_TAGS.coupsDeCoeur], revalidate: 3600 },
 );

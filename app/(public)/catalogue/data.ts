@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { CACHE_TAGS } from '@/lib/cache-tags';
-import { PublicBook, findBooksBeingRecorded, toPublicBook } from '@/lib/books/publicBook';
+import { PublicBook, toPublicBook } from '@/lib/books/publicBook';
 import type { Genre } from '@prisma/client';
 
 const CATALOGUE_PAGE_SIZE = 9;
@@ -40,18 +40,17 @@ export const getCatalogueData = unstable_cache(
             }),
             prisma.book.count({ where: { hiddenFromCatalogue: false } }),
         ]);
-        const beingRecorded = await findBooksBeingRecorded(books);
 
         return {
             // This is the page's own first render, not a fetch to /api/catalogue —
             // easy to forget that the same trimming has to happen here too. See
             // lib/books/publicBook.ts for what's dropped and why.
-            initialBooks: books.map((b) => toPublicBook(b, beingRecorded)),
+            initialBooks: books.map(toPublicBook),
             genres,
             totalBooks,
             totalPages: Math.ceil(totalBooks / CATALOGUE_PAGE_SIZE),
         };
     },
-    ['catalogue-initial-v2'],
+    ['catalogue-initial-v3'],
     { tags: [CACHE_TAGS.catalogue], revalidate: 3600 },
 );

@@ -1,7 +1,6 @@
 // app/api/assignments/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import {
     guardAssignmentStatus,
@@ -403,9 +402,6 @@ export const POST = withAdmin(async (request: NextRequest, { me }) => {
 
             return completeAssignment;
         });
-
-        // Le badge public « Enregistrement en cours » lit les attributions.
-        revalidateCatalogue();
 
         return NextResponse.json({ assignment: result }, { status: 201 });
     } catch (error) {
