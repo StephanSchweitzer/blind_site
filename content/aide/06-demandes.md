@@ -125,6 +125,12 @@ Au bas de la page, vous pouvez (1) ajouter des commentaires supplémentaires si 
 
 ![Demandes - capture 9](/admin/aide/images/demandes-09.jpg)
 
+### Clore une duplication dès sa saisie
+
+Une duplication est souvent copiée et envoyée pendant qu'on la saisit. Dans ce cas, cochez « **Déjà envoyée à l'auditeur — clôturer la demande** », sous les boutons Enregistrement / Duplication : la date de clôture apparaît, remplie avec la date du jour, et se corrige si l'envoi a eu lieu un autre jour (jamais avant la date de réception). La demande est alors créée « Terminé » et rejoint aussitôt le brouillon de facture de l'auditeur, sauf si elle est « Non facturable ». Le cadre au-dessus du bouton de validation rappelle combien de duplications seront créées ainsi.
+
+La case n'apparaît que pour une duplication dont le livre a déjà un fichier audio. Une duplication qui attend un enregistrement en cours n'a encore rien à envoyer : elle se clôt plus tard, depuis sa fenêtre de modification. Une demande d'enregistrement ne peut jamais être créée close : elle passe d'abord par son attribution.
+
 ### Une demande tarifée à la page (pour les revues)
 
 Certaines demandes ne se paient pas au CD mais **à la page lue** : c'est le cas des revues et magazines — des associations comme l'UNADEV, pour un numéro de magazine — qui réclament une facture pro-forma pour régler. Le bouton qui sert à les saisir est donc libellé « pour les revues ».

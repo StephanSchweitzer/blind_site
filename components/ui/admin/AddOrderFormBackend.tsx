@@ -14,7 +14,8 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { DatePickerField } from '@/components/ui/admin/DatePickerField';
+import { DatePickerField, todayLocal, toDayString } from '@/components/ui/admin/DatePickerField';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AddBookFormBackend } from '@/admin/BookFormBackendBase';
 import { useFormToast } from '@/hooks/useFormToast';
@@ -71,7 +72,20 @@ interface OrderBookLine {
      */
     pagePricing: PagePricingForm;
     mediaFormatId: number | null; // required per line at submit; null until chosen
+    /**
+     * Duplication déjà faite et envoyée pendant la saisie : la ligne naît
+     * « Terminé », à `closureDate`. Seulement si le livre a déjà son audio (voir
+     * canCloseNow) — une duplication qui attend un enregistrement n'a rien à
+     * envoyer. Comme la tarification à la page, gardée en mémoire mais ignorée à
+     * l'envoi quand la ligne cesse d'y avoir droit.
+     */
+    closeNow: boolean;
+    closureDate: Date | null;
 }
+
+const canCloseNow = (l: OrderBookLine): boolean =>
+    l.type === 'DUPLICATION' && Boolean(l.book?.audio_filepath);
+const closesNow = (l: OrderBookLine): boolean => l.closeNow && canCloseNow(l);
 
 let lineKeySeq = 0;
 const makeLine = (cost: string): OrderBookLine => ({
@@ -84,6 +98,8 @@ const makeLine = (cost: string): OrderBookLine => ({
     cost,
     pagePricing: emptyPagePricing(),
     mediaFormatId: null,
+    closeNow: false,
+    closureDate: null,
 });
 
 // Cap a displayed string so long titles don't blow out the layout
@@ -269,6 +285,9 @@ export function AddOrderFormBackend({
             : null;
         updateLine(key, {
             book,
+            // Clore une demande la facture : une case cochée pour un autre livre ne
+            // doit pas passer en silence sur celui-ci.
+            closeNow: false,
             ...(suggested ? { cost: suggested.value } : {}),
             ...(typeSuggestion
                 ? {
@@ -292,6 +311,7 @@ export function AddOrderFormBackend({
     const emptyCount = lines.length - filledCount;
     const dupCount = filledLines.filter(l => l.type === 'DUPLICATION').length;
     const recCount = filledCount - dupCount;
+    const closedCount = filledLines.filter(closesNow).length;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -338,11 +358,25 @@ export function AddOrderFormBackend({
             return;
         }
 
+        const closureErrorLine = lines.findIndex(
+            (l) => closesNow(l) && (!l.closureDate || toDayString(l.closureDate) < toDayString(requestReceivedDate))
+        );
+        if (closureErrorLine !== -1) {
+            const msg = lines[closureErrorLine].closureDate
+                ? `Ligne ${closureErrorLine + 1} : la date de clôture ne peut pas précéder la date de réception`
+                : `Ligne ${closureErrorLine + 1} : indiquez la date de clôture`;
+            setError(msg);
+            toastError(msg);
+            setIsLoading(false);
+            return;
+        }
+
         const books = lines.map(l => ({
             catalogueId: l.book!.id,
             isDuplication: l.type === 'DUPLICATION',
             lentPhysicalBook: l.type === 'ENREGISTREMENT',
-            statusId: statusForType(l.type),
+            statusId: closesNow(l) ? STATUS.TERMINE : statusForType(l.type),
+            ...(closesNow(l) ? { closureDate: l.closureDate } : {}),
             mediaFormatId: l.mediaFormatId!,
             cost: l.cost || '3.00',
             // Le coût ci-dessus est ignoré du serveur quand les pages sont renseignées.
@@ -545,6 +579,45 @@ export function AddOrderFormBackend({
                                     </p>
                                 )}
 
+                                {/* Duplication faite sur-le-champ : la clore ici évite de devoir
+                                    rouvrir sa fenêtre de modification juste après pour lui donner sa date. Absente quand le
+                                    livre n'a pas encore d'audio — il n'y a rien à envoyer. */}
+                                {canCloseNow(line) && (
+                                    <div className="flex items-start gap-3">
+                                        <Checkbox
+                                            id={`close-${line.key}`}
+                                            checked={line.closeNow}
+                                            onCheckedChange={(checked) => updateLine(line.key, {
+                                                closeNow: checked === true,
+                                                closureDate: line.closureDate ?? todayLocal(),
+                                            })}
+                                            className="mt-0.5"
+                                        />
+                                        <div className="space-y-2 min-w-0">
+                                            <label htmlFor={`close-${line.key}`} className="text-sm font-medium text-foreground cursor-pointer">
+                                                Déjà envoyée à l&apos;auditeur — clôturer la demande
+                                            </label>
+                                            {line.closeNow && (
+                                                <>
+                                                    <div className="space-y-1">
+                                                        <span className="text-xs text-muted-foreground">Date de clôture (envoi à l&apos;auditeur)</span>
+                                                        <DatePickerField
+                                                            value={line.closureDate}
+                                                            // Champ obligatoire : recliquer le jour choisi ne le vide pas.
+                                                            onChange={(d) => d && updateLine(line.key, { closureDate: d })}
+                                                        />
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {billingStatus === 'UNBILLABLE'
+                                                            ? 'La demande sera créée « Terminé ».'
+                                                            : 'La demande sera créée « Terminé » et ajoutée au brouillon de facture de l’auditeur.'}
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* #2 — audio déjà présent / demande d'enregistrement concurrente */}
                                 <RecordingAdviceNotice advice={recordingAdviceFor(recordingLines[idx])} />
 
@@ -641,6 +714,16 @@ export function AddOrderFormBackend({
                             : filledCount === 1
                                 ? '1 ouvrage → 1 demande sera créée. Le numéro sera attribué lors de la soumission.'
                                 : `${filledCount} ouvrages → ${filledCount} demandes seront créées. Les numéros seront attribués lors de la soumission.`}
+                        {closedCount > 0 && (
+                            <p className="mt-1">
+                                {closedCount === 1
+                                    ? '1 duplication sera créée « Terminé »'
+                                    : `${closedCount} duplications seront créées « Terminé »`}
+                                {billingStatus === 'UNBILLABLE'
+                                    ? '.'
+                                    : closedCount === 1 ? ' et facturée à l’auditeur.' : ' et facturées à l’auditeur.'}
+                            </p>
+                        )}
                         {emptyCount > 0 && (
                             <p className="mt-1 text-amber-700 dark:text-amber-300">
                                 {emptyCount === 1

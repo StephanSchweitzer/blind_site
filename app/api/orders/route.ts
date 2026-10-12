@@ -405,6 +405,32 @@ export const POST = withAdmin(async (request, { me }) => {
                 }
                 if (linePricing.isPageBased) lineCost = new Prisma.Decimal(linePricing.cost!);
 
+                // Une duplication faite sur-le-champ arrive avec sa date d'envoi :
+                // « Terminé » et sa date, comme une demande close après coup. Une date
+                // sur toute autre ligne est refusée (guardClosureDateRequiresTermine).
+                let lineClosureDate: Date | undefined;
+                if (b.closureDate) {
+                    lineClosureDate = new Date(b.closureDate);
+                    if (isNaN(lineClosureDate.getTime())) {
+                        return NextResponse.json(
+                            { error: 'Invalid date format', message: 'La date de clôture d\'un ouvrage est invalide', field: 'closureDate' },
+                            { status: 400 }
+                        );
+                    }
+                }
+                const lineClosureGuard = guardClosureDateRequiresTermine({
+                    statusId: lineStatusId,
+                    closureDate: lineClosureDate,
+                    previousStatusId: null,
+                    previousClosureDate: null,
+                });
+                if (!lineClosureGuard.ok) {
+                    return NextResponse.json(
+                        { error: 'Invalid closureDate', message: lineClosureGuard.message, field: 'closureDate' },
+                        { status: lineClosureGuard.httpStatus }
+                    );
+                }
+
                 preparedLines.push({
                     catalogueId: parseInt(String(b.catalogueId)),
                     statusId: lineStatusId,
@@ -413,12 +439,13 @@ export const POST = withAdmin(async (request, { me }) => {
                     lentPhysicalBook: !!b.lentPhysicalBook,
                     cost: lineCost,
                     pricing: linePricing.write,
-                    // A line created straight into « Terminé » is closed today.
+                    // A line created straight into « Terminé » is closed on the date
+                    // sent, or today.
                     closureDate:
                         resolveClosureDate({
                             previousStatusId: null,
                             nextStatusId: lineStatusId,
-                            explicitClosureDate: undefined,
+                            explicitClosureDate: lineClosureDate,
                         }) ?? null,
                 });
             }
