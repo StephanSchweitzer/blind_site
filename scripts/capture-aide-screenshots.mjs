@@ -287,12 +287,13 @@ const SPECS = [
         // Les numeros reprennent ceux de la liste de 06-demandes.md.
         annotations: [
             // Pastilles a droite : a gauche elles couvriraient les etiquettes,
-            // « Livre » en entier (voir annotate-aide-screenshots.py).
-            { n: 1, label: 'Livre', coin: 'hd' },
-            { n: 2, label: 'Statut de la demande', coin: 'hd' },
-            { n: 3, label: 'Facturation', coin: 'hd' },
-            { n: 4, label: 'Type', coin: 'hd' },
-            { n: 5, label: 'Suivi', coin: 'hd' },
+            // « Livre » en entier ; `rangee` ecarte le cadre de l'etiquette
+            // (voir annotate-aide-screenshots.py).
+            { n: 1, label: 'Livre', coin: 'hd', rangee: true },
+            { n: 2, label: 'Statut de la demande', coin: 'hd', rangee: true },
+            { n: 3, label: 'Facturation', coin: 'hd', rangee: true },
+            { n: 4, label: 'Type', coin: 'hd', rangee: true },
+            { n: 5, label: 'Suivi', coin: 'hd', rangee: true },
         ],
         why: 'les cinq filtres, dans l\'ordre du texte — « Livre » compris',
     },
@@ -1608,6 +1609,8 @@ async function reperesPour(annotations, clip, densite = 1) {
             ...(a.fleche ? { fleche: true } : {}),
             // Le coin qui porte la pastille — voir annotate-aide-screenshots.py.
             ...(a.coin ? { coin: a.coin } : {}),
+            // Un champ etiquete pris dans une rangee serree — meme script.
+            ...(a.rangee ? { rangee: true } : {}),
         });
     }
     return trouves;

@@ -29,6 +29,16 @@ VERT = (22, 128, 58)      # le vert du feutre d'origine
 EPAISSEUR = 4
 RAYON = 14
 MARGE = 6                 # air entre le champ et son cadre
+
+# UNE RANGEE DE CHAMPS ETIQUETES (`rangee`, pose par la spec de la capture).
+# Les cinq filtres des demandes ne sont separes que de 16 px. Avec MARGE des
+# deux cotes, le trait gauche d'un cadre finissait a 2 px de la premiere
+# lettre de son etiquette : une fois l'image reduite, le « F » de
+# « Facturation » ou le « S » de « Suivi » se lisaient a moitie sous le vert.
+# A droite du champ il n'y a pas de texte, seulement sa propre bordure et son
+# chevron : le cadre s'y colle, et l'air ainsi gagne passe a gauche.
+MARGE_RANGEE_GAUCHE = 10
+MARGE_RANGEE_DROITE = 0
 TAILLE_NUMERO = 34
 POLICES = ['arialbd.ttf', 'segoeuib.ttf', 'DejaVuSans-Bold.ttf']
 
@@ -61,9 +71,11 @@ def dessiner(chemin_image, reperes):
 
     dessines = 0
     for repere in reperes:
-        x0 = max(0, repere['x'] - MARGE)
+        marge_g, marge_d = ((MARGE_RANGEE_GAUCHE, MARGE_RANGEE_DROITE)
+                            if repere.get('rangee') else (MARGE, MARGE))
+        x0 = max(0, repere['x'] - marge_g)
         y0 = max(0, repere['y'] - MARGE)
-        x1 = min(image.width - 1, repere['x'] + repere['w'] + MARGE)
+        x1 = min(image.width - 1, repere['x'] + repere['w'] + marge_d)
         y1 = min(image.height - 1, repere['y'] + repere['h'] + MARGE)
 
         # Un champ hors du cadrage rend un rectangle degenere (y1 <= y0), et
