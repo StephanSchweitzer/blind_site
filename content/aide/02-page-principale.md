@@ -14,7 +14,7 @@ Cette page répertorie les liens et descriptions de toutes les sections disponib
 
 La barre de navigation en haut de la page reprend les mêmes liens que les cartes affichées en dessous — les deux mènent aux mêmes pages au sein d'Arbre Rose, et chaque page y porte la même icône, dans la même couleur, que sa carte.
 
-Chaque carte donne le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours ; sur « Statistiques », le nombre de modifications gardées au journal. Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…) ; les cartes des pages du site réservées aux Super Admins partagent un gris-bleu. Les retards, eux, s'affichent en pastilles pleines, rouges ou orange, pour se voir sur n'importe quelle carte.
+Chaque carte donne le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours ; sur « Statistiques », le nombre de modifications gardées au journal. Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…) ; les cartes des pages du site réservées aux Super Admins partagent un gris-bleu. Ce qui est à suivre s'affiche, lui, en pastilles pleines, orange ou bleues, pour se voir sur n'importe quelle carte.
 
 ![Page principale - capture 1](/admin/aide/images/page-principale-01.jpg)
 
@@ -51,19 +51,19 @@ Les accents ne comptent pas : « etranger » trouve « L'Étranger ». Choisisse
 
 ![Page principale - capture 7](/admin/aide/images/page-principale-07.jpg)
 
-## Ce qui est en retard
+## Ce qui est à suivre
 
 Les cartes « Demandes », « Attributions » et « Factures » comportent, sous leur partie colorée, quelques lignes qui disent ce qui attend quelque chose de nous :
 
 - **Demandes** : les demandes en attente d'un lecteur, les enregistrements à expédier aux auditeurs, et les duplications à faire ;
 - **Attributions** : les livres chez les lecteurs ;
-- **Factures** : les factures émises depuis plus de 30 jours et pas encore payées.
+- **Factures** : les factures émises depuis plus de 30 jours et pas encore payées, « à relancer ».
 
-Chaque ligne indique combien d'éléments sont **en retard** (en rouge) ou **à surveiller** (en orange) — pour les livres chez les lecteurs, « à relancer ». Quand tout va bien, elle affiche « À jour » en vert.
+Chaque ligne indique combien d'éléments ont passé leur date prévue — **à suivre** (pour les livres chez les lecteurs, « à relancer »), en orange — ou sont **à surveiller**, en bleu. Quand tout va bien, elle affiche « À jour » en vert.
 
-Les duplications font exception, parce qu'elles se font tout de suite : la ligne « Duplications à faire » compte **toutes** celles qui peuvent être faites dès maintenant, en retard ou non — en bleu quand aucune n'est en retard ni à surveiller, sinon en rouge ou en orange avec le détail (« 5, dont 2 en retard »). Les duplications qui attendent encore un enregistrement chez un lecteur n'y sont pas comptées : elles ont leur propre ligne, en gris, « Duplications en attente d'enregistrement », qui n'apparaît que s'il y en a.
+Les duplications font exception, parce qu'elles se font tout de suite : la ligne « Duplications à faire » compte **toutes** celles qui peuvent être faites dès maintenant, que leur date prévue soit passée ou non — en bleu, avec le détail quand certaines sont à surveiller (« 5, dont 2 à surveiller »), en orange quand certaines sont à suivre (« 5, dont 2 à suivre »). Les duplications qui attendent encore un enregistrement chez un lecteur n'y sont pas comptées : elles ont leur propre ligne, en gris, « Duplications en attente d'enregistrement », qui n'apparaît que s'il y en a.
 
-Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais qui décident de ce qui est « en retard » sont expliqués dans [Délais et retards](/admin/aide/demandes#delais-et-retards).
+Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais qui fixent la date prévue de chaque étape sont expliqués dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi).
 
 ![Page principale - capture 6](/admin/aide/images/page-principale-06.jpg)
 

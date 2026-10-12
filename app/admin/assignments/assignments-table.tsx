@@ -412,7 +412,7 @@ export default function AssignmentsTable({
                                                 onClick={() => handleRowClick(assignment)}
                                                 className={`group border-b border-border cursor-pointer transition-colors ${
                                                     delai?.niveau === 'en_retard'
-                                                        ? 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40'
+                                                        ? 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-950/30'
                                                         : 'hover:bg-muted'
                                                 }`}
                                             >
@@ -523,8 +523,8 @@ export default function AssignmentsTable({
                                                             title={delai.phrase}
                                                             className={`mt-1 whitespace-nowrap text-xs font-medium ${
                                                                 delai.niveau === 'en_retard'
-                                                                    ? 'text-red-700 dark:text-red-300'
-                                                                    : 'text-amber-700 dark:text-amber-300'
+                                                                    ? 'text-amber-800 dark:text-amber-300'
+                                                                    : 'text-muted-foreground'
                                                             }`}
                                                         >
                                                             <span aria-hidden="true">{delai.badge}</span>

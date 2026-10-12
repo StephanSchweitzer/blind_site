@@ -595,7 +595,6 @@ export default function PersonAvailabilityPanel({
                                         ? formatDayKey(person.lastAssignedAt)
                                         : 'Jamais'
                                 }
-                                hint={idleDays !== null ? `il y a ${idleDays} jours` : null}
                                 tone={
                                     idleDays !== null && idleDays >= DORMANT_READER_DAYS
                                         ? 'warn'

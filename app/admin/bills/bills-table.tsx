@@ -336,7 +336,7 @@ export default function BillsTable({
                                                     onClick={() => setViewBillId(bill.id)}
                                                     className={`group border-b border-border cursor-pointer ${
                                                         late
-                                                            ? 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40'
+                                                            ? 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-950/30'
                                                             : 'hover:bg-muted'
                                                     }`}
                                                 >
@@ -368,7 +368,12 @@ export default function BillsTable({
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-1.5">
-                                                            {late && <Clock className="h-3.5 w-3.5 text-red-400 shrink-0" />}
+                                                            {late && (
+                                                                <span title="Date prévue dépassée" className="shrink-0">
+                                                                    <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                                                                    <span className="sr-only">Date prévue dépassée</span>
+                                                                </span>
+                                                            )}
                                                             <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
                                                                 {getBillingStatusLabel(bill.state)}
                                                             </span>

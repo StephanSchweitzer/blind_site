@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { STATUS } from '@/lib/statusSync';
+import { parisDate, parisDayKey } from '@/lib/paris-day';
 
 /**
  * Délais par étape — when an open demande is « en retard ».
@@ -38,12 +39,19 @@ type EtapeConfig = {
     label: string;
     /** « chez le lecteur » — as it reads inside a sentence. */
     inSentence: string;
-    /** Days on this stage's clock before it is flagged amber, then red. */
+    /** Days on this stage's clock before it is flagged at the first, then the second line. */
     surveillerJours: number;
     retardJours: number;
-    /** The amber word. « À relancer » where the action is obvious — call the lecteur. */
-    surveillerLabel: string;
+    /**
+     * The badge word past the second line. Never « En retard »: the people on
+     * the other end are volunteers, and the badge says what to do, not whose
+     * fault it is. « À relancer » where the action is obvious — call the lecteur.
+     */
+    suiviLabel: string;
 };
+
+/** The badge word past the first line, whatever the stage. */
+export const SURVEILLER_LABEL = 'À surveiller';
 
 export const DELAI_ETAPES: Record<DelaiEtape, EtapeConfig> = {
     attente_lecteur: {
@@ -51,28 +59,28 @@ export const DELAI_ETAPES: Record<DelaiEtape, EtapeConfig> = {
         inSentence: "en attente d'un lecteur",
         surveillerJours: 30,
         retardJours: 60,
-        surveillerLabel: 'À surveiller',
+        suiviLabel: 'À suivre',
     },
     chez_lecteur: {
         label: 'Chez le lecteur',
         inSentence: 'chez le lecteur',
         surveillerJours: 60,
         retardJours: 90,
-        surveillerLabel: 'À relancer',
+        suiviLabel: 'À relancer',
     },
     a_expedier: {
         label: "À expédier à l'auditeur",
         inSentence: 'revenu aux ECA, pas encore expédié',
         surveillerJours: 3,
         retardJours: 7,
-        surveillerLabel: 'À surveiller',
+        suiviLabel: 'À suivre',
     },
     duplication: {
         label: 'Duplication à faire',
         inSentence: 'duplication à faire',
         surveillerJours: 7,
         retardJours: 14,
-        surveillerLabel: 'À surveiller',
+        suiviLabel: 'À suivre',
     },
 };
 
@@ -349,32 +357,37 @@ export function duplicationStateWhere(
 /** JSON-safe, display-ready délai for a table row — only for rows past a line. */
 export type SerializedDelai = {
     niveau: Exclude<DelaiNiveau, 'a_jour'>;
-    /** Short badge: « En retard · 97 j ». */
+    /** Short badge: « À suivre · prévu le 1er oct. ». */
     badge: string;
-    /** Full sentence for the tooltip / screen readers. */
+    /** Short sentence for the tooltip / screen readers. */
     phrase: string;
 };
 
+const DAY_MONTH: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+const DAY_MONTH_YEAR: Intl.DateTimeFormatOptions = { ...DAY_MONTH, year: 'numeric' };
+
 /**
- * « 12 jours », « 5 mois », « 8 ans ». The imported backlog holds demandes
- * open for years, and « 3263 j » is a number to decode, not a duration to read.
- * Days up to the red lines people reason in (the longest is 90), then months.
+ * « 1er oct. », « 15 sept. », « 3 mars 2019 » — the date the stage was
+ * expected to be over. A date rather than a count of days: « en retard de
+ * 97 jours » read as a reproach to the volunteers it concerns. The year only
+ * when it isn't this one — the imported backlog holds demandes open for years.
  */
-export function dureeLabel(jours: number): string {
-    if (jours < 120) return `${jours} jour${jours > 1 ? 's' : ''}`;
-    if (jours < 730) return `${Math.floor(jours / 30.44)} mois`;
-    return `${Math.floor(jours / 365.25)} ans`;
+function dateLabel(date: Date, now: Date): string {
+    const sameYear = parisDayKey(date).slice(0, 4) === parisDayKey(now).slice(0, 4);
+    return parisDate(date, sameYear ? DAY_MONTH : DAY_MONTH_YEAR).replace(/^1 /, '1er ');
 }
 
-export function serializeDelai(delai: Delai): SerializedDelai | null {
-    if (delai.niveau === 'a_jour' || delai.jours === null) return null;
+export function serializeDelai(delai: Delai, now: Date = new Date()): SerializedDelai | null {
+    if (delai.niveau === 'a_jour' || delai.depuis === null) return null;
     const cfg = DELAI_ETAPES[delai.etape];
-    const word = delai.niveau === 'en_retard' ? 'En retard' : cfg.surveillerLabel;
+    // The planned date is not stored: the stage's clock plus its second line.
+    const prevu = dateLabel(new Date(delai.depuis.getTime() + cfg.retardJours * DAY_MS), now);
+    const late = delai.niveau === 'en_retard';
     return {
         niveau: delai.niveau,
-        badge: `${word} · ${dureeLabel(delai.jours)}`,
-        phrase: `${word} : ${cfg.inSentence} depuis ${dureeLabel(delai.jours)} `
-            + `(à surveiller après ${cfg.surveillerJours} jours, en retard après ${cfg.retardJours}).`,
+        badge: `${late ? cfg.suiviLabel : SURVEILLER_LABEL} · prévu le ${prevu}`,
+        // No final full stop after a bare date: « oct. » already carries one.
+        phrase: late ? `${cfg.label} — date prévue dépassée (${prevu}).` : `${cfg.label} — prévu le ${prevu}`,
     };
 }
 

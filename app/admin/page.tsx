@@ -7,9 +7,12 @@ import { AdminDashboardCard } from '@/components/ui/admin/AdminDashboardCard';
 import { getFreeReaderCount } from '@/lib/users/availabilityData';
 import type { DashboardStatusRow } from '@/components/ui/admin/AdminDashboardCard';
 import {
+    DELAI_ETAPES,
     getOpenAssignmentDelais,
     getOpenOrderDelais,
+    SURVEILLER_LABEL,
     tallyDelais,
+    type DelaiEtape,
     type DelaiTally,
 } from '@/lib/orders/delais';
 import { lateBillsWhere } from '@/lib/billing';
@@ -17,16 +20,28 @@ import { parisDate } from '@/lib/paris-day';
 
 /**
  * One line under a card for one stage of the délais (lib/orders/delais.ts):
- * red when something is late, amber when something only needs watching, a
- * green « À jour » otherwise. It opens the list on what it counts — the late
- * ones, else the amber ones, else the whole stage.
+ * amber past the second line (« à suivre », « à relancer »), blue past the
+ * first (« à surveiller »), a green « À jour » otherwise — never red, never
+ * « en retard »: the work is the volunteers', and the pill says what to look
+ * at, not who is behind. It opens the list on what it counts — the ones past
+ * the second line, else the first, else the whole stage.
  */
-function delaiRow(label: string, baseHref: string, tally: DelaiTally, surveillerLabel: string): DashboardStatusRow {
+function delaiRow(label: string, baseHref: string, tally: DelaiTally, etape: DelaiEtape): DashboardStatusRow {
     if (tally.enRetard > 0) {
-        return { label, href: `${baseHref}&retard=true`, tone: 'danger', value: `${tally.enRetard} en retard` };
+        return {
+            label,
+            href: `${baseHref}&retard=true`,
+            tone: 'warning',
+            value: `${tally.enRetard} ${DELAI_ETAPES[etape].suiviLabel.toLowerCase()}`,
+        };
     }
     if (tally.aSurveiller > 0) {
-        return { label, href: `${baseHref}&retard=surveiller`, tone: 'warning', value: `${tally.aSurveiller} ${surveillerLabel}` };
+        return {
+            label,
+            href: `${baseHref}&retard=surveiller`,
+            tone: 'todo',
+            value: `${tally.aSurveiller} ${SURVEILLER_LABEL.toLowerCase()}`,
+        };
     }
     return { label, href: baseHref, tone: 'ok', value: 'À jour' };
 }
@@ -44,15 +59,15 @@ function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
     const ready = tally.total - tally.bloquees;
     const label = 'Duplications à faire';
     const href = '/admin/orders?isDuplication=ready';
-    // « 5 en retard » rather than « 5, dont 5 en retard » when it's all of them.
+    // « 5 à suivre » rather than « 5, dont 5 à suivre » when it's all of them.
     const part = (n: number, word: string) => (n === ready ? `${n} ${word}` : `${ready}, dont ${n} ${word}`);
     const rows: DashboardStatusRow[] = [
         ready === 0
             ? { label, href, tone: 'ok', value: 'À jour' }
             : tally.enRetard > 0
-                ? { label, href, tone: 'danger', value: part(tally.enRetard, 'en retard') }
+                ? { label, href, tone: 'warning', value: part(tally.enRetard, DELAI_ETAPES.duplication.suiviLabel.toLowerCase()) }
                 : tally.aSurveiller > 0
-                    ? { label, href, tone: 'warning', value: part(tally.aSurveiller, 'à surveiller') }
+                    ? { label, href, tone: 'todo', value: part(tally.aSurveiller, SURVEILLER_LABEL.toLowerCase()) }
                     : { label, href, tone: 'todo', value: String(ready) },
     ];
     if (tally.bloquees > 0) {
@@ -222,8 +237,8 @@ export default async function Dashboard() {
                         href="/admin/orders"
                         buttonText="Gestion des demandes d'enregistrements audio"
                         rows={[
-                            delaiRow("En attente d'un lecteur", '/admin/orders?isDuplication=false&statusId=1', orderTally.attente_lecteur, 'à surveiller'),
-                            delaiRow('À expédier aux auditeurs', '/admin/orders?isDuplication=false&statusId=6', orderTally.a_expedier, 'à surveiller'),
+                            delaiRow("En attente d'un lecteur", '/admin/orders?isDuplication=false&statusId=1', orderTally.attente_lecteur, 'attente_lecteur'),
+                            delaiRow('À expédier aux auditeurs', '/admin/orders?isDuplication=false&statusId=6', orderTally.a_expedier, 'a_expedier'),
                             ...duplicationRows(orderTally.duplication),
                         ]}
                     />
@@ -233,7 +248,7 @@ export default async function Dashboard() {
                         href="/admin/assignments"
                         buttonText="Gestion des attributions confiées aux lecteurs"
                         rows={[
-                            delaiRow('Chez les lecteurs', '/admin/assignments?statusId=2', assignmentTally.chez_lecteur, 'à relancer'),
+                            delaiRow('Chez les lecteurs', '/admin/assignments?statusId=2', assignmentTally.chez_lecteur, 'chez_lecteur'),
                         ]}
                     />
                     <AdminDashboardCard
@@ -245,8 +260,8 @@ export default async function Dashboard() {
                             {
                                 label: 'Impayées après 30 jours',
                                 href: '/admin/bills?late=true',
-                                tone: lateBillCount > 0 ? 'danger' : 'ok',
-                                value: lateBillCount > 0 ? `${lateBillCount} en retard` : 'À jour',
+                                tone: lateBillCount > 0 ? 'warning' : 'ok',
+                                value: lateBillCount > 0 ? `${lateBillCount} à relancer` : 'À jour',
                             },
                         ]}
                     />

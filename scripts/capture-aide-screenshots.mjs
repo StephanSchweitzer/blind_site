@@ -298,7 +298,7 @@ const SPECS = [
     },
     {
         // Des livres chez le lecteur depuis plus de 90 jours : la mention
-        // « En retard · … » sous le statut, que 06-demandes.md decrit.
+        // « À relancer · prevu le … » sous le statut, que 06-demandes.md decrit.
         name: 'demandes-15.jpg',
         // Toute la carte, filtres compris : on y voit aussi « Retard : En
         // retard » selectionne. Assez haut pour qu'elle tienne (voir demandes-01).
@@ -307,7 +307,7 @@ const SPECS = [
         waitFor: 'table tbody tr',
         sleep: 1200,
         clip: '.rounded-lg.border',
-        why: 'des demandes en retard : fond rouge, et la mention qui dit depuis quand',
+        why: 'des demandes à suivre : fond orange clair, et la mention qui donne la date prévue',
     },
     {
         // Des livres chez le lecteur depuis plus de 90 jours, depuis la ligne
@@ -318,7 +318,7 @@ const SPECS = [
         waitFor: 'table tbody tr',
         sleep: 1200,
         clip: '.rounded-lg.border',
-        why: 'des attributions en retard : fond rouge, et la mention qui dit depuis quand',
+        why: 'des attributions à suivre : fond orange clair, et la mention qui donne la date prévue',
     },
     {
         name: 'attributions-01.jpg',
@@ -894,7 +894,7 @@ const SPECS = [
         waitFor: 'section[aria-labelledby="dashboard-gestion"]',
         sleep: 800,
         clip: 'section[aria-labelledby="dashboard-gestion"]',
-        why: 'la rangee « Gestion » : sous chaque carte, ce qui y est en retard',
+        why: 'la rangee « Gestion » : sous chaque carte, ce qui y est à suivre',
     },
     {
         // Un titre plutot qu'un nom : la capture n'a ainsi aucune personne a

@@ -46,7 +46,7 @@ Vous pouvez filtrer votre recherche selon les critères suivants :
 
 4. Le type de la demande : enregistrement ou duplication. Deux choix de plus trient les duplications ouvertes : « Duplication réalisable » (celles qui peuvent être faites dès maintenant — c'est la liste qu'ouvre la ligne « Duplications à faire » de la page principale) et « Duplication en attente » (celles dont le livre est encore en cours d'enregistrement)
 
-5. Si la demande est en retard, à surveiller ou à jour — voir [Délais et retards](/admin/aide/demandes#delais-et-retards) juste en dessous
+5. Le filtre « Retard » : les demandes dont la date prévue est passée (« En retard »), à surveiller ou à jour — voir [Délais et suivi](/admin/aide/demandes#delais-et-suivi) juste en dessous
 
 Le bouton « Effacer les filtres » les retire tous d'un coup.
 
@@ -60,32 +60,32 @@ Au-dessus du tableau, la ligne « 26–50 sur 20 184 demandes » dit quelles dem
 
 Chaque page a sa propre adresse : vous pouvez l'ouvrir dans un nouvel onglet (clic du milieu) ou copier le lien pour l'envoyer à un collègue, avec la recherche, les filtres et le tri qui l'accompagnent. Si le lien mène au-delà de la dernière page — parce que des demandes ont été supprimées depuis, ou que le lien portait une autre recherche — vous arrivez sur la dernière.
 
-## Délais et retards
+## Délais et suivi
 
-Une demande passe par plusieurs étapes, et **chaque étape a son propre délai**. Le compteur repart de zéro à chaque nouvelle étape : un livre qui vient de partir chez un lecteur n'est pas « en retard » simplement parce que la demande est ancienne.
+Une demande passe par plusieurs étapes, et **chaque étape a son propre délai**. Le compteur repart de zéro à chaque nouvelle étape : un livre qui vient de partir chez un lecteur n'est pas « à suivre » simplement parce que la demande est ancienne.
 
-| Étape | Statut de la demande | Le délai compte à partir de | À surveiller après | En retard après |
+| Étape | Statut de la demande | Le délai compte à partir de | À surveiller après | Date prévue au bout de |
 |---|---|---|---|---|
 | En attente d'un lecteur | Attente envoi vers lecteur | la date de la demande | 30 jours | 60 jours |
-| Chez le lecteur | En cours | la date d'envoi au lecteur (ou de la dernière réattribution) | 60 jours — « à relancer » | 90 jours |
+| Chez le lecteur | En cours | la date d'envoi au lecteur (ou de la dernière réattribution) | 60 jours | 90 jours — « à relancer » |
 | À expédier à l'auditeur | Attente envoi vers auditeur | la date de retour aux ECA | 3 jours | 7 jours |
 | Duplication à faire | À faire | la date de la demande, ou le retour de l'enregistrement qu'elle attendait | 7 jours | 14 jours |
 
-Ces délais viennent de nos propres chiffres : un lecteur est trouvé en moins de trois semaines pour la moitié des demandes, la moitié des livres reviennent de chez le lecteur en moins d'un mois, et neuf sur dix en moins de trois mois. Un livre chez le lecteur depuis deux mois n'est donc pas encore en retard, mais c'est le bon moment pour prendre de ses nouvelles.
+Ces délais viennent de nos propres chiffres : un lecteur est trouvé en moins de trois semaines pour la moitié des demandes, la moitié des livres reviennent de chez le lecteur en moins d'un mois, et neuf sur dix en moins de trois mois. Un livre chez le lecteur depuis deux mois n'a donc pas encore passé sa date prévue, mais c'est le bon moment pour prendre de ses nouvelles.
 
 Quelques précisions :
 
 - **Une réattribution fait repartir le délai** : le nouveau lecteur a lui aussi ses trois mois.
-- **Une duplication « en attente d'enregistrement » n'est jamais en retard** : elle attend un livre qu'un lecteur est encore en train d'enregistrer, et c'est cet enregistrement qui porte le délai. Le sien commence le jour où l'enregistrement revient.
+- **Une duplication « en attente d'enregistrement » n'est jamais à suivre** : elle attend un livre qu'un lecteur est encore en train d'enregistrer, et c'est cet enregistrement qui porte le délai. Le sien commence le jour où l'enregistrement revient.
 - **Une demande clôturée n'a plus de délai.**
 
-Dans la liste, une demande en retard apparaît sur fond rouge, avec la mention « En retard » et depuis combien de temps sous son statut ; une demande à surveiller porte la mention en orange (« À relancer » quand le livre est chez le lecteur). En passant la souris sur la mention, vous lisez l'étape et le délai qui s'applique.
+Dans la liste, une demande dont la date prévue est passée apparaît sur fond orange clair, avec sous son statut la mention « À suivre » (« À relancer » quand le livre est chez le lecteur) et cette date : « À suivre · prévu le 1er oct. ». Une demande à surveiller porte la mention « À surveiller » en gris, avec la date prévue à venir. En passant la souris sur la mention, vous lisez l'étape.
 
 ![Demandes - capture 15](/admin/aide/images/demandes-15.jpg)
 
-La liste des [attributions](/admin/aide/attributions) a le même filtre « Retard », avec les mêmes délais pour les deux premières étapes, et les lignes sous les cartes de la [page principale](/admin/aide/page-principale#ce-qui-est-en-retard) reprennent exactement ces règles.
+La liste des [attributions](/admin/aide/attributions) a le même filtre « Retard », avec les mêmes délais pour les deux premières étapes, et les lignes sous les cartes de la [page principale](/admin/aide/page-principale#ce-qui-est-a-suivre) reprennent exactement ces règles.
 
-Les anciennes demandes restées ouvertes apparaissent elles aussi en retard, parfois depuis plusieurs années. Si une demande est en réalité terminée, clôturez-la : elle disparaît du décompte.
+Les anciennes demandes restées ouvertes apparaissent elles aussi « à suivre », avec une date prévue parfois vieille de plusieurs années. Si une demande est en réalité terminée, clôturez-la : elle disparaît du décompte.
 
 ## Ajout des demandes
 

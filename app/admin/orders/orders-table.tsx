@@ -555,13 +555,14 @@ export default function OrdersTable({
                                                     onClick={() => handleRowClick(order)}
                                                     className={cn(
                                                         'group border-b border-border hover:bg-muted cursor-pointer transition-colors',
-                                                        isOverdue && 'bg-red-100/70 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/40',
+                                                        // Amber, not red: past its planned date is « à suivre », not a fault.
+                                                        isOverdue && 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-950/30',
                                                     )}
                                                 >
-                                                    <TableCell className={`font-medium whitespace-nowrap ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-foreground'}`}>
+                                                    <TableCell className="font-medium whitespace-nowrap text-foreground">
                                                         <CopyIdButton id={order.id} label="de la demande" />
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
+                                                    <TableCell className="text-foreground">
                                                         <div>
                                                             {/* Le nom mène au dossier de l'auditeur. C'était le
                                                                 chemin manquant : une demande n'a qu'un auditeur —
@@ -589,13 +590,13 @@ export default function OrdersTable({
                                                                 )}
                                                             </div>
                                                             {aveugleName && (
-                                                                <div className={`text-sm ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
+                                                                <div className="text-sm text-muted-foreground">
                                                                     {order.aveugle.email}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className={isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground'}>
+                                                    <TableCell className="text-foreground">
                                                         {/* Le titre ouvre la demande. La ligne entière reste
                                                             cliquable à la souris, mais une ligne n'est pas
                                                             atteignable au clavier : sans ce bouton, une demande
@@ -614,12 +615,12 @@ export default function OrdersTable({
                                                                 <span className="sr-only">Ouvrir la demande n°{order.id} : </span>
                                                                 {order.catalogue.title}
                                                             </button>
-                                                            <div className={`text-sm ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground'}`}>
+                                                            <div className="text-sm text-muted-foreground">
                                                                 {order.catalogue.author}
                                                             </div>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className={cn('whitespace-nowrap tabular-nums', isOverdue ? 'text-red-900 dark:text-red-200' : 'text-foreground')}>
+                                                    <TableCell className="whitespace-nowrap tabular-nums text-foreground">
                                                         {formatDate(order.requestReceivedDate)}
                                                     </TableCell>
                                                     <TableCell>
@@ -653,8 +654,8 @@ export default function OrdersTable({
                                                                 title={delai.phrase}
                                                                 className={`mt-1 whitespace-nowrap text-xs font-medium ${
                                                                     delai.niveau === 'en_retard'
-                                                                        ? 'text-red-700 dark:text-red-300'
-                                                                        : 'text-amber-700 dark:text-amber-300'
+                                                                        ? 'text-amber-800 dark:text-amber-300'
+                                                                        : 'text-muted-foreground'
                                                                 }`}
                                                             >
                                                                 <span aria-hidden="true">{delai.badge}</span>

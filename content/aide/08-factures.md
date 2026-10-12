@@ -17,7 +17,7 @@ Une facture porte l'un de ces quatre états :
 - **Payée** — un paiement couvre la facture. Elle passe « Payée » toute seule dès que le paiement est enregistré.
 - **Soldée** — on ne réclame plus rien, sans qu'un paiement ait été reçu.
 
-Sur la page principale des factures, on trouve (1) un tableau présentant les factures existantes, (2) la barre de recherche et (3) quelques filtres que l'on peut appliquer à la recherche et au tableau. Vous pouvez filtrer les résultats par état, par type (« Factures standard » ou « Revue », les factures [pro-forma](#les-factures-pro-forma)) et/ou par factures en retard. Les trois se combinent, sauf « en retard » qui remplace le filtre d'état. Une facture en retard est une facture « Émise » depuis **plus de 30 jours** et pas encore réglée.
+Sur la page principale des factures, on trouve (1) un tableau présentant les factures existantes, (2) la barre de recherche et (3) quelques filtres que l'on peut appliquer à la recherche et au tableau. Vous pouvez filtrer les résultats par état, par type (« Factures standard » ou « Revue », les factures [pro-forma](#les-factures-pro-forma)) et/ou par factures en retard. Les trois se combinent, sauf « en retard » qui remplace le filtre d'état. Une facture en retard est une facture « Émise » depuis **plus de 30 jours** et pas encore réglée : elle apparaît sur fond orange clair, avec une petite horloge à côté de son état, et la page principale la compte « à relancer ».
 
 L'URL de cette page est https://eca-aveugles.fr/admin/bills
 
@@ -48,7 +48,7 @@ Vous n'avez pas à choisir le type de la facture : il se déduit de ce que vous 
 Sous la liste viennent, grisées, les autres demandes de l'auditeur, chacune avec la raison qui l'empêche d'être ajoutée :
 
 - **déjà sur une facture** : le lien bleu « Sur la facture #… » ouvre cette facture dans un nouvel onglet, et indique son état (brouillon, émise…). Une facture pro-forma y figure comme les autres ;
-- **pas encore expédiée** (« Attente envoi vers auditeur ») : l'enregistrement est revenu du lecteur, mais n'est pas encore parti chez l'auditeur. Ouvrez la demande (l'icône à droite de la ligne) et renseignez sa date de clôture le jour de l'expédition : elle sera alors facturée toute seule. Sans date de clôture, elle resterait ouverte, et en retard ;
+- **pas encore expédiée** (« Attente envoi vers auditeur ») : l'enregistrement est revenu du lecteur, mais n'est pas encore parti chez l'auditeur. Ouvrez la demande (l'icône à droite de la ligne) et renseignez sa date de clôture le jour de l'expédition : elle sera alors facturée toute seule. Sans date de clôture, elle resterait ouverte, et finirait « à suivre » ;
 - **prestation pas encore terminée** (« À faire » pour une duplication, « Attente envoi vers lecteur », « En cours ») : l'enregistrement n'est pas fait, donc pas pesé, donc pas tarifé. Clôturez la demande : elle sera alors facturée toute seule. Une facture émise ne se retarife plus, c'est pourquoi on ne facture pas avant ;
 - **tarifée à la page**, dans la liste d'un brouillon : elle ne va pas sur une facture standard, elle aura sa propre facture [pro-forma](#les-factures-pro-forma) ;
 - **pro-forma déjà remplie**, dans la liste d'une pro-forma remise en brouillon : une pro-forma ne porte qu'une revue ;

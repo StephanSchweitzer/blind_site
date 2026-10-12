@@ -297,7 +297,7 @@ function AlertGroup({
 }: {
     title: string;
     description: string;
-    tone: 'warn' | 'bad' | 'info';
+    tone: 'warn' | 'info';
     rows: Array<{ key: number; person: AvailabilityPerson; detail: string }>;
     onOpen: (id: number) => void;
 }) {
@@ -305,7 +305,6 @@ function AlertGroup({
 
     const toneClass = {
         warn: 'border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20',
-        bad: 'border-red-300 dark:border-red-900/60 bg-red-50 dark:bg-red-950/20',
         info: 'border-blue-300 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/20',
     }[tone];
 
@@ -718,7 +717,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     <AlertGroup
                         title="Absents avec des attributions en cours"
                         description="Ces personnes sont (ou seront bientôt) indisponibles alors qu'un livre est encore chez elles."
-                        tone="bad"
+                        tone="warn"
                         onOpen={openPerson}
                         rows={filteredAlerts.awayWithAttributions.map((a) => ({
                             key: a.person.id,
@@ -757,7 +756,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     <AlertGroup
                         title="Indisponibilités arrivées à terme"
                         description="Leur date de fin est passée mais le statut n'a pas encore été refermé. Elles se lisent déjà comme « Actif »."
-                        tone="bad"
+                        tone="warn"
                         onOpen={openPerson}
                         rows={filteredAlerts.elapsed.map((a) => ({
                             key: a.person.id,
