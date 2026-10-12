@@ -55,7 +55,7 @@ async function rescueOrders(
     if (active.isDuplication && types[active.isDuplication]) {
         filters.push({ key: 'isDuplication', label: `Type : ${types[active.isDuplication]}` });
     }
-    const retardLabels: Record<string, string> = { true: 'En retard', surveiller: 'À surveiller', false: 'À jour' };
+    const retardLabels: Record<string, string> = { true: 'À suivre', surveiller: 'À surveiller', false: 'À jour' };
     if (active.retard && retardLabels[active.retard]) {
         filters.push({ key: 'retard', label: retardLabels[active.retard] });
     }
@@ -87,7 +87,7 @@ async function rescueOrders(
                 isDuplication: () => (o.isDuplication ? 'Duplication' : 'Enregistrement'),
                 retard: () => {
                     const niveau = active.delais.get(o.id)?.niveau;
-                    return niveau === 'en_retard' ? 'En retard' : niveau === 'a_surveiller' ? 'À surveiller' : 'À jour';
+                    return niveau === 'en_retard' ? 'À suivre' : niveau === 'a_surveiller' ? 'À surveiller' : 'À jour';
                 },
                 filter: () => (o.closureDate ? 'Clôturée' : 'En cours'),
             }),

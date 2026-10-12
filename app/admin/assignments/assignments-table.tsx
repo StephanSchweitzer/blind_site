@@ -346,7 +346,7 @@ export default function AssignmentsTable({
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="all" className="text-foreground">Tous les délais</SelectItem>
-                                    <SelectItem value="true" className="text-foreground">En retard</SelectItem>
+                                    <SelectItem value="true" className="text-foreground">À suivre</SelectItem>
                                     <SelectItem value="surveiller" className="text-foreground">À surveiller</SelectItem>
                                     <SelectItem value="false" className="text-foreground">À jour</SelectItem>
                                 </SelectContent>

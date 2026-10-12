@@ -12,7 +12,7 @@ Elles possèdent également leur propre statut, qui va de « en cours » à « t
 
 L'URL de cette page est https://eca-aveugles.fr/admin/assignments.
 
-La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, (4) un filtre par statut, et un filtre par retard (« En retard », « À surveiller », « À jour »). La recherche porte sur le lecteur, l'auditeur, le livre et le numéro de l'attribution.
+La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, (4) un filtre par statut, et un filtre par retard (« À suivre », « À surveiller », « À jour »). La recherche porte sur le lecteur, l'auditeur, le livre et le numéro de l'attribution.
 
 Une attribution en attente d'envoi est « à suivre » après 60 jours sans lecteur ; un livre chez le lecteur est « à surveiller » après 60 jours et « à relancer » après 90 — les mêmes délais que pour les demandes, détaillés dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi). Une attribution à suivre apparaît sur fond orange clair, avec sous son statut la mention « À suivre » ou « À relancer ».
 

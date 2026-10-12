@@ -46,7 +46,7 @@ Vous pouvez filtrer votre recherche selon les critères suivants :
 
 4. Le type de la demande : enregistrement ou duplication. Deux choix de plus trient les duplications ouvertes : « Duplication réalisable » (celles qui peuvent être faites dès maintenant — c'est la liste qu'ouvre la ligne « Duplications à faire » de la page principale) et « Duplication après enregistrement » (celles dont le livre est encore en cours d'enregistrement : elles restent « À faire », avec sous leur statut la mention « Après l'enregistrement en cours », et le nom du lecteur au survol)
 
-5. Le filtre « Retard » : les demandes à suivre (« En retard »), à surveiller ou à jour — voir [Délais et suivi](/admin/aide/demandes#delais-et-suivi) juste en dessous
+5. Le filtre « Retard » : « À suivre », « À surveiller » ou « À jour » — voir [Délais et suivi](/admin/aide/demandes#delais-et-suivi) juste en dessous
 
 Le bouton « Effacer les filtres » les retire tous d'un coup.
 
