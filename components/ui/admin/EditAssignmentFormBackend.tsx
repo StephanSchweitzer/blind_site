@@ -1,4 +1,5 @@
 import React from 'react';
+import { ExternalLink } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { ReaderSummary, BookSummary, OrderSummary, AssignmentFormData, AssignmentReaderHistory } from '@/types';
@@ -122,13 +123,18 @@ export function EditAssignmentFormBackend({
                     {awaitingOrderId != null ? `Attribution n° ${assignmentId} clôturée` : 'Succès'}
                 </span>,
                 action: awaitingOrderId != null ? (
-                    <ToastAction altText="Consulter la demande" asChild>
+                    <ToastAction
+                        altText="Consulter la demande"
+                        asChild
+                        className="h-9 gap-2 border-green-600 bg-white px-4 text-base font-semibold text-green-900 hover:bg-green-200"
+                    >
                         <a
                             href={`/admin/orders?order=${awaitingOrderId}`}
                             target="_blank"
                             rel="noopener noreferrer"
                         >
                             Consulter la demande
+                            <ExternalLink className="h-4 w-4" aria-hidden="true" />
                         </a>
                     </ToastAction>
                 ) : undefined,

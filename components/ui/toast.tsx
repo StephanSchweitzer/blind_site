@@ -77,7 +77,10 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-md p-1.5 text-foreground/70 transition-opacity hover:text-foreground focus:outline-none focus:ring-2 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      // La croix prend la couleur du texte du toast (currentColor) : les toasts
+      // gardent leur fond clair (bg-green-100…) en mode sombre, où text-foreground
+      // devenait blanc sur vert pâle — invisible.
+      "absolute right-2 top-2 rounded-md p-1.5 text-current opacity-70 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
       className
     )}
     toast-close=""
