@@ -60,6 +60,12 @@ Au-dessus du tableau, la ligne « 26–50 sur 20 184 demandes » dit quelles dem
 
 Chaque page a sa propre adresse : vous pouvez l'ouvrir dans un nouvel onglet (clic du milieu) ou copier le lien pour l'envoyer à un collègue, avec la recherche, les filtres et le tri qui l'accompagnent. Si le lien mène au-delà de la dernière page — parce que des demandes ont été supprimées depuis, ou que le lien portait une autre recherche — vous arrivez sur la dernière.
 
+### Clôturer une duplication depuis la liste
+
+Au bout de la ligne d'une duplication ouverte dont le livre a déjà son fichier audio, à côté de l'imprimante de l'étiquette d'adresse, le bouton « **Clôturer** » la clôt sans ouvrir la demande : une fenêtre demande confirmation, puis la date de clôture devient celle du jour et la demande passe « Terminé ». Elle rejoint alors le brouillon de facture de l'auditeur, comme depuis sa fenêtre de modification — sauf si elle est « Non facturable » ou déjà sur une facture. Si ce brouillon atteint le seuil de facturation, la facture émise s'annonce avec son bouton d'impression.
+
+C'est le geste de la liste « Duplication réalisable » : imprimez l'étiquette, envoyez, clôturez, passez à la suivante. Pour une autre date que celle du jour, ouvrez la demande et corrigez sa date de clôture. Le bouton n'apparaît pas sur une duplication qui attend un enregistrement en cours, ni sur une demande d'enregistrement.
+
 ## Délais et suivi
 
 Une demande passe par plusieurs étapes, et **chaque étape a son propre délai**. Le compteur repart de zéro à chaque nouvelle étape : un livre qui vient de partir chez un lecteur n'est pas « à suivre » simplement parce que la demande est ancienne.
@@ -129,7 +135,7 @@ Au bas de la page, vous pouvez (1) ajouter des commentaires supplémentaires si 
 
 Une duplication est souvent copiée et envoyée pendant qu'on la saisit. Dans ce cas, cochez « **Déjà envoyée à l'auditeur — clôturer la demande** », sous les boutons Enregistrement / Duplication : la date de clôture apparaît, remplie avec la date du jour, et se corrige si l'envoi a eu lieu un autre jour (jamais avant la date de réception). La demande est alors créée « Terminé » et rejoint aussitôt le brouillon de facture de l'auditeur, sauf si elle est « Non facturable ». Le cadre au-dessus du bouton de validation rappelle combien de duplications seront créées ainsi.
 
-La case n'apparaît que pour une duplication dont le livre a déjà un fichier audio. Une duplication qui attend un enregistrement en cours n'a encore rien à envoyer : elle se clôt plus tard, depuis sa fenêtre de modification. Une demande d'enregistrement ne peut jamais être créée close : elle passe d'abord par son attribution.
+La case n'apparaît que pour une duplication dont le livre a déjà un fichier audio. Une duplication qui attend un enregistrement en cours n'a encore rien à envoyer : elle se clôt plus tard, par le bouton « Clôturer » de la liste (voir [Clôturer une duplication depuis la liste](/admin/aide/demandes#cloturer-une-duplication-depuis-la-liste)) ou depuis sa fenêtre de modification. Une demande d'enregistrement ne peut jamais être créée close : elle passe d'abord par son attribution.
 
 ### Une demande tarifée à la page (pour les revues)
 

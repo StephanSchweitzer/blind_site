@@ -35,6 +35,7 @@ import { useRecordLoader } from '@/hooks/useRecordLoader';
 import { STATUS } from '@/lib/statusSync';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { MailingLabelButton } from '@/admin/MailingLabelButton';
+import { CloseOrderTodayButton } from '@/admin/CloseOrderTodayButton';
 import { CopyIdButton } from '@/admin/CopyableId';
 
 import type { SerializedOrderTableRow } from '@/types/models/order.model';
@@ -537,7 +538,7 @@ export default function OrdersTable({
                                                 position:absolute and drops out of the column count,
                                                 leaving the header one cell short of every body row. */}
                                             <TableHead className="text-foreground font-medium w-[1%] whitespace-nowrap">
-                                                <span className="sr-only">Étiquette d&apos;adresse</span>
+                                                <span className="sr-only">Actions</span>
                                             </TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -549,6 +550,15 @@ export default function OrdersTable({
                                             const blockedBy = blockedDuplications[order.id];
                                             const aveugleName = getUserNameOnly(order.aveugle);
                                             const statusStyle = orderStatusStyle({ id: order.statusId, name: order.status.name });
+                                            // « Clôturer » : une duplication ouverte qui peut être faite
+                                            // maintenant — son livre a son audio, donc elle n'attend rien
+                                            // (lib/orders/duplicationBlocked.ts).
+                                            const canCloseToday =
+                                                order.isDuplication &&
+                                                !!order.catalogue.audio_filepath &&
+                                                !order.closureDate &&
+                                                order.statusId !== STATUS.TERMINE &&
+                                                order.statusId !== STATUS.SOLDE;
                                             return (
                                                 <TableRow
                                                     key={order.id}
@@ -712,6 +722,19 @@ export default function OrdersTable({
                                                         torn sleeve, a second parcel — and hiding the button then
                                                         is exactly the dead end this replaces. */}
                                                     <TableCell className="w-[1%] whitespace-nowrap text-right">
+                                                        {/* Étiquette, envoi, clôture : le geste qui suit l'impression
+                                                            de l'étiquette, sans ouvrir la demande. */}
+                                                        {canCloseToday && (
+                                                            <CloseOrderTodayButton
+                                                                order={{
+                                                                    id: order.id,
+                                                                    title: order.catalogue.title,
+                                                                    auditeurName: aveugleName || order.aveugle.email || 'l’auditeur',
+                                                                    joinsDraft: order.billingStatus === 'UNBILLED' && !order.bill,
+                                                                }}
+                                                                onClosed={() => router.refresh()}
+                                                            />
+                                                        )}
                                                         <MailingLabelButton
                                                             variant="icon"
                                                             userId={order.aveugleId}
