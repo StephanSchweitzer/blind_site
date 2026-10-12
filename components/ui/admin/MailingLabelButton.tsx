@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import type { MailingLabelData } from './MailingLabelPDF';
 import { type ShipmentContext, shipmentReference } from '@/lib/orders/labelReference';
 import { printPdfBlob } from '@/lib/print-pdf';
+import { loadOnDemand } from '@/lib/load-on-demand';
 
 /** One address as the lookup route returns it. */
 interface LabelAddress {
@@ -88,10 +89,12 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
     const print = async (data: MailingLabelData) => {
         // The PDF library is heavy and only needed on print — load it on demand,
         // same as BillPDFButton.
-        const [{ pdf }, { MailingLabelPDF }] = await Promise.all([
-            import('@react-pdf/renderer'),
-            import('./MailingLabelPDF'),
-        ]);
+        const [{ pdf }, { MailingLabelPDF }] = await loadOnDemand(() =>
+            Promise.all([
+                import('@react-pdf/renderer'),
+                import('./MailingLabelPDF'),
+            ]),
+        );
         const blob = await pdf(<MailingLabelPDF label={data} />).toBlob();
         // Straight to the print dialog — an étiquette exists to come out of a
         // printer, and the detour through Téléchargements only added a step and

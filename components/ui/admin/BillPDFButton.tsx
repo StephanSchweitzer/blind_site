@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { BillingStatus } from '@/lib/billing-enums';
 import { printPdfBlob } from '@/lib/print-pdf';
+import { loadOnDemand } from '@/lib/load-on-demand';
 import type { BillPDFData } from './BillPDF';
 
 interface BillPDFButtonProps {
@@ -68,11 +69,13 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
 
     const print = async (data: BillPDFData, draft: boolean) => {
         // The PDF library is heavy and only needed on print — load it on demand.
-        const [{ pdf }, { BillPDF }, { ProformaPDF }] = await Promise.all([
-            import('@react-pdf/renderer'),
-            import('./BillPDF'),
-            import('./ProformaPDF'),
-        ]);
+        const [{ pdf }, { BillPDF }, { ProformaPDF }] = await loadOnDemand(() =>
+            Promise.all([
+                import('@react-pdf/renderer'),
+                import('./BillPDF'),
+                import('./ProformaPDF'),
+            ]),
+        );
         // Une pro-forma n'a pas la mise en page d'une facture : un seul titre, sa
         // ligne de lecture, ses frais d'envoi. Le type de la facture choisit le document.
         const document =

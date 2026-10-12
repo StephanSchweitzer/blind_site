@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { printPdfBlob } from '@/lib/print-pdf';
+import { loadOnDemand } from '@/lib/load-on-demand';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 
 interface CoupDeCoeurPDFButtonProps {
@@ -60,10 +61,12 @@ export const CoupDeCoeurPDFButton: React.FC<CoupDeCoeurPDFButtonProps> = ({
             if (!res.ok) throw new Error(data?.error || 'Échec du chargement de la liste de livres');
 
             // The PDF library is heavy and only needed on print — load it on demand.
-            const [{ pdf }, { CoupDeCoeurPDF }] = await Promise.all([
-                import('@react-pdf/renderer'),
-                import('@/listes-de-livres/CoupDeCoeurPDF'),
-            ]);
+            const [{ pdf }, { CoupDeCoeurPDF }] = await loadOnDemand(() =>
+                Promise.all([
+                    import('@react-pdf/renderer'),
+                    import('@/listes-de-livres/CoupDeCoeurPDF'),
+                ]),
+            );
             // The editor's route returns every book still attached to the list,
             // including soft-deleted ones (badged « Supprimé » there, so they come
             // back if the fiche is restored) and titles hidden from the public
