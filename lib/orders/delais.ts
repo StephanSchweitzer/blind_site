@@ -26,7 +26,7 @@ import { STATUS } from '@/lib/statusSync';
  * for a demande, `computeAssignmentDelai` for an attribution, both on the same
  * thresholds and clocks: the list filters work on the ids they flag rather than
  * on a parallel Prisma translation of the same rule, so the badge on a row, the
- * « Retard » filter and the dashboard count can never disagree. That costs one
+ * « Suivi » filter and the dashboard count can never disagree. That costs one
  * read of the open rows per page, bounded by the work in progress, not history.
  */
 
@@ -308,7 +308,7 @@ export async function getOpenAssignmentDelais(
 // ─── Filter, badges, tallies — shared by both lists ────────────────────────
 
 /**
- * The « Retard » filter of the demandes and attributions lists, as a where
+ * The « Suivi » filter of the demandes and attributions lists, as a where
  * clause built from the ids the délais flagged. `true` / `false` are the values
  * the demandes filter has always carried in its URL, so bookmarks keep working:
  *  - `true`       — en retard, whatever the stage

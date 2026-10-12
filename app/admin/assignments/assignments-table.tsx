@@ -124,7 +124,7 @@ export default function AssignmentsTable({
         });
     };
 
-    // Délais par étape — the demandes list's « Retard » filter, same rule.
+    // Délais par étape — the demandes list's « Suivi » filter, same rule.
     const handleRetardFilter = (retard: string) => {
         updateUrl({
             retard: retard === 'all' ? undefined : retard,
@@ -339,7 +339,7 @@ export default function AssignmentsTable({
                                 disabled={isPending}
                             >
                                 <SelectTrigger
-                                    aria-label="Filtrer par retard"
+                                    aria-label="Filtrer par suivi"
                                     className="bg-field border-border text-foreground"
                                 >
                                     <SelectValue />

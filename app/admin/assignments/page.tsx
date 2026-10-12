@@ -31,7 +31,7 @@ async function getAssignments(
     const assignmentsPerPage = pageSize;
 
     // Délais par étape — the same rule as the demandes list (lib/orders/delais.ts),
-    // read once for the « Retard » filter, the row badges and the rescue notes.
+    // read once for the « Suivi » filter, the row badges and the rescue notes.
     const delais = await getOpenAssignmentDelais();
 
     // The whole where clause for a given search term — a function so the

@@ -89,7 +89,7 @@ export function orderListWhere(
         else {
             // « Réalisable » / « Après enregistrement » — open duplications that can be
             // done now, or that wait on a recording still under way. Read off
-            // the délais, like « Retard », so the dashboard count matches.
+            // the délais, like « Suivi », so the dashboard count matches.
             const dupClause = duplicationStateWhere(f.isDuplication, ctx.delais);
             if (dupClause) where.AND = [...andClauses(where), dupClause];
         }
@@ -125,7 +125,7 @@ export async function loadOrderList(
     const pageSize = parsePageSizeParam(sp.perPage);
     const filterBook = await resolveBookFilter(sp.bookId);
 
-    // Délais par étape — read once, used by the « Retard » filter, by the row
+    // Délais par étape — read once, used by the « Suivi » filter, by the row
     // badges and by the rescue notes, so all three agree (lib/orders/delais.ts).
     const delais = await getOpenOrderDelais(opts.aveugleId ? { aveugleId: opts.aveugleId } : {});
     const ctx = { delais, bookId: filterBook?.id, aveugleId: opts.aveugleId };

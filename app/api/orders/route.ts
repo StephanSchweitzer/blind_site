@@ -155,7 +155,7 @@ export const GET = withAdmin(async (request) => {
             whereClause.assignments = { none: { deletedAt: null } };
         }
 
-        // Retard filter — the délais par étape of /admin/orders (lib/orders/delais.ts),
+        // Suivi (retard) filter — the délais par étape of /admin/orders (lib/orders/delais.ts),
         // read only when asked for: no caller of this route sends it today.
         const retardClause = retard ? retardWhere(retard, await getOpenOrderDelais()) : null;
         if (retardClause) {

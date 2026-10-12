@@ -292,7 +292,7 @@ const SPECS = [
             { n: 2, label: 'Statut de la demande', coin: 'hd' },
             { n: 3, label: 'Facturation', coin: 'hd' },
             { n: 4, label: 'Type', coin: 'hd' },
-            { n: 5, label: 'Retard', coin: 'hd' },
+            { n: 5, label: 'Suivi', coin: 'hd' },
         ],
         why: 'les cinq filtres, dans l\'ordre du texte — « Livre » compris',
     },
@@ -300,8 +300,8 @@ const SPECS = [
         // Des livres chez le lecteur depuis plus de 90 jours : la mention
         // « À relancer » sous le statut, que 06-demandes.md decrit.
         name: 'demandes-15.jpg',
-        // Toute la carte, filtres compris : on y voit aussi « Retard : En
-        // retard » selectionne. Assez haut pour qu'elle tienne (voir demandes-01).
+        // Toute la carte, filtres compris : on y voit aussi « Suivi : À
+        // suivre » selectionne. Assez haut pour qu'elle tienne (voir demandes-01).
         viewport: { width: 1440, height: 1500 },
         url: '/admin/orders?isDuplication=false&statusId=2&retard=true',
         waitFor: 'table tbody tr',

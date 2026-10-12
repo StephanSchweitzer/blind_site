@@ -432,7 +432,7 @@ export default function OrdersTable({
                     </div>
 
                     <div>
-                        <label htmlFor="orders-retard" className="text-sm text-muted-foreground mb-1.5 block">Retard</label>
+                        <label htmlFor="orders-retard" className="text-sm text-muted-foreground mb-1.5 block">Suivi</label>
                         <Select
                             value={currentRetard}
                             onValueChange={(value) => handleFilterChange('retard', value)}

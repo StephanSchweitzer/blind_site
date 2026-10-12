@@ -46,7 +46,7 @@ Vous pouvez filtrer votre recherche selon les critères suivants :
 
 4. Le type de la demande : enregistrement ou duplication. Deux choix de plus trient les duplications ouvertes : « Duplication réalisable » (celles qui peuvent être faites dès maintenant — c'est la liste qu'ouvre la ligne « Duplications à faire » de la page principale) et « Duplication après enregistrement » (celles dont le livre est encore en cours d'enregistrement : elles restent « À faire », avec sous leur statut la mention « Après l'enregistrement en cours », et le nom du lecteur au survol)
 
-5. Le filtre « Retard » : « À suivre », « À surveiller » ou « À jour » — voir [Délais et suivi](/admin/aide/demandes#delais-et-suivi) juste en dessous
+5. Le filtre « Suivi » : « À suivre », « À surveiller » ou « À jour » — voir [Délais et suivi](/admin/aide/demandes#delais-et-suivi) juste en dessous
 
 Le bouton « Effacer les filtres » les retire tous d'un coup.
 
@@ -83,7 +83,7 @@ Dans la liste, une demande à suivre apparaît sur fond orange clair, avec sous 
 
 ![Demandes - capture 15](/admin/aide/images/demandes-15.jpg)
 
-La liste des [attributions](/admin/aide/attributions) a le même filtre « Retard », avec les mêmes délais pour les deux premières étapes, et les lignes sous les cartes de la [page principale](/admin/aide/page-principale#ce-qui-est-a-suivre) reprennent exactement ces règles.
+La liste des [attributions](/admin/aide/attributions) a le même filtre « Suivi », avec les mêmes délais pour les deux premières étapes, et les lignes sous les cartes de la [page principale](/admin/aide/page-principale#ce-qui-est-a-suivre) reprennent exactement ces règles.
 
 Les anciennes demandes restées ouvertes apparaissent elles aussi « à suivre », parfois depuis plusieurs années. Si une demande est en réalité terminée, clôturez-la : elle disparaît du décompte.
 
