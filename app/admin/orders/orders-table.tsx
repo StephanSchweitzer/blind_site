@@ -268,8 +268,8 @@ export default function OrdersTable({
         return parisDate(dateString);
     };
 
-    // Tooltip behind the « En attente d'enregistrement » badge — names the lecteur
-    // and the date d'envoi when known, so the admin can see what's holding it up.
+    // Tooltip behind the « Après l'enregistrement en cours » line — names the
+    // lecteur and the date d'envoi when known, so the admin can see what it follows.
     const blockedRecordingLabel = (recording: SerializedBlockingRecording) => {
         const details = [
             recording.readerName ? `lecteur ${recording.readerName}` : null,
@@ -277,8 +277,8 @@ export default function OrdersTable({
         ].filter(Boolean);
 
         return details.length
-            ? `Duplication en attente : un enregistrement de cet ouvrage est en cours (${details.join(', ')}).`
-            : "Duplication en attente : un enregistrement de cet ouvrage est en cours.";
+            ? `Duplication à faire au retour de l'enregistrement de cet ouvrage, en cours (${details.join(', ')}).`
+            : "Duplication à faire au retour de l'enregistrement de cet ouvrage, en cours.";
     };
 
     return (
@@ -425,7 +425,7 @@ export default function OrdersTable({
                                     dashboard's « Duplications à faire » line opens. */}
                                 <SelectItem value="ready" className="text-foreground">Duplication réalisable</SelectItem>
                                 {/* Duplications held up by an enregistrement still in flight. */}
-                                <SelectItem value="blocked" className="text-foreground">Duplication en attente</SelectItem>
+                                <SelectItem value="blocked" className="text-foreground">Duplication après enregistrement</SelectItem>
                                 <SelectItem value="false" className="text-foreground">Enregistrement</SelectItem>
                             </SelectContent>
                         </Select>
@@ -624,23 +624,26 @@ export default function OrdersTable({
                                                         {formatDate(order.requestReceivedDate)}
                                                     </TableCell>
                                                     <TableCell>
-                                                        {/* A duplication waiting on an in-flight enregistrement is
-                                                            « À faire » in the DB but can't actually be started yet.
-                                                            Derived, never stored — see lib/orders/duplicationBlocked.ts. */}
-                                                        {blockedBy ? (
-                                                            <span
+                                                        <span
+                                                            title={order.status.name}
+                                                            className={cn('inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium', statusStyle.badge)}
+                                                        >
+                                                            {statusStyle.short}
+                                                        </span>
+                                                        {/* A duplication waiting on an in-flight enregistrement
+                                                            stays « À faire » — never « en attente », which on this
+                                                            list reads as a recording status — and says, under its
+                                                            badge, what it follows. Derived, never stored — see
+                                                            lib/orders/duplicationBlocked.ts. Its délai is null
+                                                            meanwhile, so the two lines never stack. */}
+                                                        {blockedBy && (
+                                                            <div
                                                                 title={blockedRecordingLabel(blockedBy)}
-                                                                className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
+                                                                className="mt-1 whitespace-nowrap text-xs font-medium text-muted-foreground"
                                                             >
-                                                                En attente d&apos;enregistrement
-                                                            </span>
-                                                        ) : (
-                                                            <span
-                                                                title={order.status.name}
-                                                                className={cn('inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium', statusStyle.badge)}
-                                                            >
-                                                                {statusStyle.short}
-                                                            </span>
+                                                                <span aria-hidden="true">Après l&apos;enregistrement en cours</span>
+                                                                <span className="sr-only">{blockedRecordingLabel(blockedBy)}</span>
+                                                            </div>
                                                         )}
                                                         {/* Facturée avant sa clôture : jusqu'à ce qu'on la clôture. */}
                                                         <div className="mt-1 empty:hidden">

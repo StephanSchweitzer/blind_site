@@ -8,9 +8,8 @@ import { STATUS } from '@/lib/statusSync';
  * prisma/seed.ts STATUSES ; constantes : lib/statusSync.ts).
  *
  * Les couleurs suivent le circuit, du neutre au vert, et évitent à dessein le
- * rouge et l'ambre : sur cette liste, ils disent déjà « en retard », « à
- * surveiller » et « duplication en attente ». Deux statuts voisins n'ont jamais
- * deux teintes proches.
+ * rouge et l'ambre : sur cette liste, ils disent déjà « en retard » et « à
+ * surveiller ». Deux statuts voisins n'ont jamais deux teintes proches.
  */
 type StatusStyle = { short: string; badge: string };
 

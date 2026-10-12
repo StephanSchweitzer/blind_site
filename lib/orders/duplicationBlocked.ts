@@ -20,7 +20,7 @@ const RECORDING_UNDER_WAY = [STATUS.ATTENTE, STATUS.EN_COURS];
 const DEMANDE_CLOSED: number[] = [STATUS.TERMINE, STATUS.SOLDE];
 
 /*
- * The « Duplication réalisable » / « Duplication en attente » filters and the
+ * The « Duplication réalisable » / « Duplication après enregistrement » filters and the
  * dashboard count read the same derivation off the délais
  * (lib/orders/delais.ts, `duplicationStateWhere`) — no Prisma copy of it here.
  */

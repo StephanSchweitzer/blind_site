@@ -72,7 +72,7 @@ function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
     ];
     if (tally.bloquees > 0) {
         rows.push({
-            label: "Duplications en attente d'enregistrement",
+            label: 'Duplications après enregistrement',
             href: '/admin/orders?isDuplication=blocked',
             tone: 'neutral',
             value: String(tally.bloquees),

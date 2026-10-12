@@ -307,7 +307,7 @@ export type LinkedAssignment = Prisma.AssignmentGetPayload<{ select: typeof link
 
 export const ordersTableInclude = {
     aveugle: { select: { email: true, firstName: true, lastName: true } },
-    // audio_filepath drives the « en attente d'enregistrement » badge: a duplication
+    // audio_filepath drives the « Après l'enregistrement en cours » line: a duplication
     // whose book already has audio is never blocked (lib/orders/duplicationBlocked.ts).
     catalogue: { select: { title: true, author: true, audio_filepath: true } },
     status: { select: { name: true } },

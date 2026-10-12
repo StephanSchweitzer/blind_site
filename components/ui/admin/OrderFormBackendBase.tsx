@@ -880,7 +880,7 @@ export function OrderFormBackendBase({
                                     </div>
                                     {blockingRecording && (
                                         <p className="mt-2 ml-9 text-sm text-amber-700 dark:text-amber-400">
-                                            En attente d&apos;enregistrement : cet ouvrage n&apos;a pas encore
+                                            À faire après l&apos;enregistrement en cours : cet ouvrage n&apos;a pas encore
                                             de fichier audio et un enregistrement est en cours
                                             {blockingRecording.readerName ? ` (lecteur ${blockingRecording.readerName}` : ''}
                                             {blockingRecording.readerName && blockingRecording.sentToReaderDate

@@ -44,7 +44,7 @@ Vous pouvez filtrer votre recherche selon les critères suivants :
 
 3. Le statut de la facturation de la demande
 
-4. Le type de la demande : enregistrement ou duplication. Deux choix de plus trient les duplications ouvertes : « Duplication réalisable » (celles qui peuvent être faites dès maintenant — c'est la liste qu'ouvre la ligne « Duplications à faire » de la page principale) et « Duplication en attente » (celles dont le livre est encore en cours d'enregistrement)
+4. Le type de la demande : enregistrement ou duplication. Deux choix de plus trient les duplications ouvertes : « Duplication réalisable » (celles qui peuvent être faites dès maintenant — c'est la liste qu'ouvre la ligne « Duplications à faire » de la page principale) et « Duplication après enregistrement » (celles dont le livre est encore en cours d'enregistrement : elles restent « À faire », avec sous leur statut la mention « Après l'enregistrement en cours », et le nom du lecteur au survol)
 
 5. Le filtre « Retard » : les demandes dont la date prévue est passée (« En retard »), à surveiller ou à jour — voir [Délais et suivi](/admin/aide/demandes#delais-et-suivi) juste en dessous
 
@@ -76,7 +76,7 @@ Ces délais viennent de nos propres chiffres : un lecteur est trouvé en moins d
 Quelques précisions :
 
 - **Une réattribution fait repartir le délai** : le nouveau lecteur a lui aussi ses trois mois.
-- **Une duplication « en attente d'enregistrement » n'est jamais à suivre** : elle attend un livre qu'un lecteur est encore en train d'enregistrer, et c'est cet enregistrement qui porte le délai. Le sien commence le jour où l'enregistrement revient.
+- **Une duplication à faire après un enregistrement n'est jamais à suivre** : elle attend un livre qu'un lecteur est encore en train d'enregistrer, et c'est cet enregistrement qui porte le délai. Le sien commence le jour où l'enregistrement revient.
 - **Une demande clôturée n'a plus de délai.**
 
 Dans la liste, une demande dont la date prévue est passée apparaît sur fond orange clair, avec sous son statut la mention « À suivre » (« À relancer » quand le livre est chez le lecteur) et cette date : « À suivre · prévu le 1er oct. ». Une demande à surveiller porte la mention « À surveiller » en gris, avec la date prévue à venir. En passant la souris sur la mention, vous lisez l'étape.

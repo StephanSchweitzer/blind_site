@@ -334,7 +334,7 @@ export function retardWhere(
  * The two derived values of the demandes « Type » filter, as ids read off the
  * délais like `retardWhere`:
  *  - `ready`   — « Duplication réalisable »: open, and nothing to wait for
- *  - `blocked` — « Duplication en attente »: its book is still being recorded
+ *  - `blocked` — « Duplication après enregistrement »: its book is still being recorded
  * The dashboard's « Duplications à faire » line counts the same map, so its
  * number is the number of rows it opens. `blocked` used to be a Prisma clause
  * of its own; it now shares the one derivation instead of a second copy.

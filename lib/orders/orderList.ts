@@ -87,7 +87,7 @@ export function orderListWhere(
         if (f.isDuplication === 'true') where.isDuplication = true;
         else if (f.isDuplication === 'false') where.isDuplication = false;
         else {
-            // « Réalisable » / « En attente » — open duplications that can be
+            // « Réalisable » / « Après enregistrement » — open duplications that can be
             // done now, or that wait on a recording still under way. Read off
             // the délais, like « Retard », so the dashboard count matches.
             const dupClause = duplicationStateWhere(f.isDuplication, ctx.delais);
