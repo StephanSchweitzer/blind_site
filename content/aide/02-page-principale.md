@@ -59,11 +59,11 @@ Les cartes « Demandes », « Attributions » et « Factures » comportent, sous
 - **Attributions** : les livres chez les lecteurs ;
 - **Factures** : les factures émises depuis plus de 30 jours et pas encore payées, « à relancer ».
 
-Chaque ligne indique combien d'éléments ont passé leur date prévue — **à suivre** (pour les livres chez les lecteurs, « à relancer »), en orange — ou sont **à surveiller**, en bleu. Quand tout va bien, elle affiche « À jour » en vert.
+Chaque ligne indique combien d'éléments sont **à suivre** (pour les livres chez les lecteurs, « à relancer »), en orange, ou **à surveiller**, en bleu. Quand tout va bien, elle affiche « À jour » en vert.
 
-Les duplications font exception, parce qu'elles se font tout de suite : la ligne « Duplications à faire » compte **toutes** celles qui peuvent être faites dès maintenant, que leur date prévue soit passée ou non — en bleu, avec le détail quand certaines sont à surveiller (« 5, dont 2 à surveiller »), en orange quand certaines sont à suivre (« 5, dont 2 à suivre »). Les duplications qui attendent encore un enregistrement chez un lecteur n'y sont pas comptées : elles ont leur propre ligne, en gris, « Duplications après enregistrement », qui n'apparaît que s'il y en a.
+Les duplications font exception, parce qu'elles se font tout de suite : la ligne « Duplications à faire » compte **toutes** celles qui peuvent être faites dès maintenant, qu'elles soient à suivre ou non — en bleu, avec le détail quand certaines sont à surveiller (« 5, dont 2 à surveiller »), en orange quand certaines sont à suivre (« 5, dont 2 à suivre »). Les duplications qui attendent encore un enregistrement chez un lecteur n'y sont pas comptées : elles ont leur propre ligne, en gris, « Duplications après enregistrement », qui n'apparaît que s'il y en a.
 
-Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais qui fixent la date prévue de chaque étape sont expliqués dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi).
+Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais de chaque étape sont expliqués dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi).
 
 ![Page principale - capture 6](/admin/aide/images/page-principale-06.jpg)
 

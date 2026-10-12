@@ -369,9 +369,9 @@ export default function BillsTable({
                                                     <TableCell>
                                                         <div className="flex items-center gap-1.5">
                                                             {late && (
-                                                                <span title="Date prévue dépassée" className="shrink-0">
+                                                                <span title="Émise depuis plus de 30 jours, à relancer" className="shrink-0">
                                                                     <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                                                                    <span className="sr-only">Date prévue dépassée</span>
+                                                                    <span className="sr-only">Émise depuis plus de 30 jours, à relancer</span>
                                                                 </span>
                                                             )}
                                                             <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>

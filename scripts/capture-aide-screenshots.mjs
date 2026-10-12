@@ -298,7 +298,7 @@ const SPECS = [
     },
     {
         // Des livres chez le lecteur depuis plus de 90 jours : la mention
-        // « À relancer · prevu le … » sous le statut, que 06-demandes.md decrit.
+        // « À relancer » sous le statut, que 06-demandes.md decrit.
         name: 'demandes-15.jpg',
         // Toute la carte, filtres compris : on y voit aussi « Retard : En
         // retard » selectionne. Assez haut pour qu'elle tienne (voir demandes-01).
@@ -307,7 +307,7 @@ const SPECS = [
         waitFor: 'table tbody tr',
         sleep: 1200,
         clip: '.rounded-lg.border',
-        why: 'des demandes à suivre : fond orange clair, et la mention qui donne la date prévue',
+        why: 'des demandes à suivre : fond orange clair, et la mention « À relancer » sous le statut',
     },
     {
         // Des livres chez le lecteur depuis plus de 90 jours, depuis la ligne
@@ -318,7 +318,7 @@ const SPECS = [
         waitFor: 'table tbody tr',
         sleep: 1200,
         clip: '.rounded-lg.border',
-        why: 'des attributions à suivre : fond orange clair, et la mention qui donne la date prévue',
+        why: 'des attributions à suivre : fond orange clair, et la mention « À relancer » sous le statut',
     },
     {
         name: 'attributions-01.jpg',

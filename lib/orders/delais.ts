@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { STATUS } from '@/lib/statusSync';
-import { parisDate, parisDayKey } from '@/lib/paris-day';
 
 /**
  * Délais par étape — when an open demande is « en retard ».
@@ -357,37 +356,27 @@ export function duplicationStateWhere(
 /** JSON-safe, display-ready délai for a table row — only for rows past a line. */
 export type SerializedDelai = {
     niveau: Exclude<DelaiNiveau, 'a_jour'>;
-    /** Short badge: « À suivre · prévu le 1er oct. ». */
+    /** Short badge: « À suivre », « À relancer », « À surveiller ». */
     badge: string;
-    /** Short sentence for the tooltip / screen readers. */
+    /** Short sentence for the tooltip / screen readers: the stage, then the badge. */
     phrase: string;
 };
 
-const DAY_MONTH: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-const DAY_MONTH_YEAR: Intl.DateTimeFormatOptions = { ...DAY_MONTH, year: 'numeric' };
-
 /**
- * « 1er oct. », « 15 sept. », « 3 mars 2019 » — the date the stage was
- * expected to be over. A date rather than a count of days: « en retard de
- * 97 jours » read as a reproach to the volunteers it concerns. The year only
- * when it isn't this one — the imported backlog holds demandes open for years.
+ * The badge says what to do and nothing else. It carried a count of days
+ * (« En retard · 97 jours »), then the date the stage was expected to be over
+ * (« À suivre · prévu le 1er oct. ») — both read as a deadline missed, a
+ * reproach to the volunteers concerned, and neither told the team anything
+ * the row's own dates (demande, envoi, retour) don't already show.
  */
-function dateLabel(date: Date, now: Date): string {
-    const sameYear = parisDayKey(date).slice(0, 4) === parisDayKey(now).slice(0, 4);
-    return parisDate(date, sameYear ? DAY_MONTH : DAY_MONTH_YEAR).replace(/^1 /, '1er ');
-}
-
-export function serializeDelai(delai: Delai, now: Date = new Date()): SerializedDelai | null {
+export function serializeDelai(delai: Delai): SerializedDelai | null {
     if (delai.niveau === 'a_jour' || delai.depuis === null) return null;
     const cfg = DELAI_ETAPES[delai.etape];
-    // The planned date is not stored: the stage's clock plus its second line.
-    const prevu = dateLabel(new Date(delai.depuis.getTime() + cfg.retardJours * DAY_MS), now);
-    const late = delai.niveau === 'en_retard';
+    const badge = delai.niveau === 'en_retard' ? cfg.suiviLabel : SURVEILLER_LABEL;
     return {
         niveau: delai.niveau,
-        badge: `${late ? cfg.suiviLabel : SURVEILLER_LABEL} · prévu le ${prevu}`,
-        // No final full stop after a bare date: « oct. » already carries one.
-        phrase: late ? `${cfg.label} — date prévue dépassée (${prevu}).` : `${cfg.label} — prévu le ${prevu}`,
+        badge,
+        phrase: `${cfg.label} — ${badge.toLowerCase()}`,
     };
 }
 
