@@ -8,6 +8,7 @@ import { resolveBookFilter } from '@/lib/books/bookFilter';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { getOpenAssignmentDelais, retardWhere, serializeDelaisFor, type Delai } from '@/lib/orders/delais';
+import { getOpenAssignmentsWithUploadedAudio } from '@/lib/assignments/audioDeposee';
 import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
 interface PageProps {
@@ -26,6 +27,7 @@ async function getAssignments(
     statusId?: number,
     filterBook?: { id: number; title: string },
     retard?: string,
+    audio?: string,
 ) {
     const bookId = filterBook?.id;
     const assignmentsPerPage = pageSize;
@@ -33,6 +35,9 @@ async function getAssignments(
     // Délais par étape — the same rule as the demandes list (lib/orders/delais.ts),
     // read once for the « Suivi » filter, the row badges and the rescue notes.
     const delais = await getOpenAssignmentDelais();
+    // « Audio déposé » — the dashboard line's ids, so its number is this list's
+    // count (lib/assignments/audioDeposee.ts). Read only when the filter is on.
+    const audioDeposeeIds = audio === 'deposee' ? await getOpenAssignmentsWithUploadedAudio() : null;
 
     // The whole where clause for a given search term — a function so the
     // « Essayez plutôt » block can count another term, or the same one with
@@ -58,10 +63,12 @@ async function getAssignments(
         }
 
         const retardClause = lifted.includes('retard') ? null : retardWhere(retard, delais);
-        if (retardClause) {
+        const audioClause = audioDeposeeIds && !lifted.includes('audio') ? { id: { in: audioDeposeeIds } } : null;
+        for (const clause of [retardClause, audioClause]) {
+            if (!clause) continue;
             whereClause.AND = [
                 ...(Array.isArray(whereClause.AND) ? whereClause.AND : whereClause.AND ? [whereClause.AND] : []),
-                retardClause,
+                clause,
             ];
         }
         return whereClause;
@@ -130,6 +137,7 @@ async function getAssignments(
                     filterBook,
                     status: statusId ? statuses.find((st) => st.id === statusId)?.name ?? String(statusId) : null,
                     retard,
+                    audioDeposeeIds,
                     delais,
                 })
                 : [];
@@ -159,6 +167,7 @@ async function rescueAssignments(
         filterBook?: { id: number; title: string };
         status: string | null;
         retard?: string;
+        audioDeposeeIds: number[] | null;
         delais: Map<number, Delai>;
     },
 ): Promise<RescueSuggestion[]> {
@@ -169,6 +178,7 @@ async function rescueAssignments(
     if (active.retard && retardLabels[active.retard]) {
         filters.push({ key: 'retard', label: retardLabels[active.retard] });
     }
+    if (active.audioDeposeeIds) filters.push({ key: 'audio', label: 'Audio déposé' });
 
     const nameSelect = { email: true, firstName: true, lastName: true } as const;
 
@@ -211,6 +221,7 @@ async function rescueAssignments(
                 note: rescueNote(q.lifted, {
                     bookId: () => a.catalogue?.title ?? null,
                     statusId: () => a.status?.name ?? null,
+                    audio: () => (active.audioDeposeeIds?.includes(a.id) ? 'Audio déposé' : null),
                     retard: () => {
                         const niveau = active.delais.get(a.id)?.niveau;
                         return niveau === 'en_retard' ? 'À suivre' : niveau === 'a_surveiller' ? 'À surveiller' : 'À jour';
@@ -232,6 +243,7 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
         : undefined;
     const filterBook = await resolveBookFilter(params.bookId);
     const retard = Array.isArray(params.retard) ? params.retard[0] : params.retard;
+    const audio = Array.isArray(params.audio) ? params.audio[0] : params.audio;
 
     let assignments, pagination, availableStatuses, delais, searchSuggestions;
     try {
@@ -242,6 +254,7 @@ export default async function AdminAssignmentsPage({ searchParams }: PageProps) 
             statusId,
             filterBook ?? undefined,
             retard,
+            audio,
         ));
     } catch (error) {
         console.error('Error in Admin Assignments page:', error);

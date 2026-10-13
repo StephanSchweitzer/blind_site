@@ -91,6 +91,7 @@ export default function AssignmentsTable({
 
     const currentStatusId = searchParams.get('statusId') || 'all';
     const currentRetard = searchParams.get('retard') || 'all';
+    const currentAudio = searchParams.get('audio') || 'all';
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -128,6 +129,14 @@ export default function AssignmentsTable({
     const handleRetardFilter = (retard: string) => {
         updateUrl({
             retard: retard === 'all' ? undefined : retard,
+            page: '1',
+        });
+    };
+
+    // « Audio déposé » — the dashboard line of the same name (lib/assignments/audioDeposee.ts).
+    const handleAudioFilter = (audio: string) => {
+        updateUrl({
+            audio: audio === 'all' ? undefined : audio,
             page: '1',
         });
     };
@@ -255,7 +264,9 @@ export default function AssignmentsTable({
             <CardContent className="p-6">
                 {/* Search and Filters */}
                 <div className="mb-6 space-y-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Le champ de recherche passe au-dessus des quatre filtres tant
+                        qu'ils ne tiennent pas avec lui sur une ligne. */}
+                    <div className="flex flex-col xl:flex-row gap-4">
                         {!hideSearch && (
                             <div className="flex-1 flex gap-2">
                                 <div className="relative flex-1">
@@ -287,8 +298,8 @@ export default function AssignmentsTable({
                             </div>
                         )}
                         <MobileFilters
-                            activeCount={[filterBook, currentStatusId !== 'all', currentRetard !== 'all'].filter(Boolean).length}
-                            className="flex flex-col md:flex-row gap-4"
+                            activeCount={[filterBook, currentStatusId !== 'all', currentRetard !== 'all', currentAudio !== 'all'].filter(Boolean).length}
+                            className="flex flex-col md:flex-row md:flex-wrap gap-4"
                         >
                         {/* Sans étiquette, comme le statut à côté : ici les filtres
                             s'annoncent par leur placeholder, pas par un label. */}
@@ -349,6 +360,24 @@ export default function AssignmentsTable({
                                     <SelectItem value="true" className="text-foreground">À suivre</SelectItem>
                                     <SelectItem value="surveiller" className="text-foreground">À surveiller</SelectItem>
                                     <SelectItem value="false" className="text-foreground">À jour</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="w-full sm:w-48">
+                            <Select
+                                value={currentAudio}
+                                onValueChange={handleAudioFilter}
+                                disabled={isPending}
+                            >
+                                <SelectTrigger
+                                    aria-label="Filtrer par audio"
+                                    className="bg-field border-border text-foreground"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Avec ou sans audio</SelectItem>
+                                    <SelectItem value="deposee" className="text-foreground">Audio déposé</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

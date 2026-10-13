@@ -12,7 +12,7 @@ Elles possèdent également leur propre statut, qui va de « en cours » à « t
 
 L'URL de cette page est https://eca-aveugles.fr/admin/assignments.
 
-La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, (4) un filtre par statut, et un filtre de suivi (« À suivre », « À surveiller », « À jour »). La recherche porte sur le lecteur, l'auditeur, le livre et le numéro de l'attribution.
+La page d'accueil comporte (1) un tableau répertoriant les attributions existantes, (2) un champ de recherche permettant d'affiner la recherche, (3) un filtre par livre, (4) un filtre par statut, un filtre de suivi (« À suivre », « À surveiller », « À jour ») et un filtre « Audio déposé ». La recherche porte sur le lecteur, l'auditeur, le livre et le numéro de l'attribution.
 
 Une attribution en attente d'envoi est « à suivre » après 60 jours sans lecteur ; un livre chez le lecteur est « à surveiller » après 60 jours et « à relancer » après 90 — les mêmes délais que pour les demandes, détaillés dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi). Une attribution à suivre apparaît sur fond orange clair, avec sous son statut la mention « À suivre » ou « À relancer ».
 
@@ -65,6 +65,8 @@ Ainsi, si seule la (1) « Date de réception » est renseignée, le statut est �
 ![Attributions - capture 10](/admin/aide/images/attributions-10.jpg)
 
 Ces trois dates se remplissent dans cet ordre. Une attribution ne peut pas passer « Terminé » tant que l'enregistrement n'a pas été déposé dans l'éditeur audio du livre, depuis le [Catalogue](/admin/aide/catalogue).
+
+Déposer l'audio ne termine pas l'attribution : pensez ensuite à renseigner sa date de retour aux ECA. Tant que ce n'est pas fait, l'attribution reste ouverte, sa demande n'arrive jamais à « Attente envoi vers auditeur », et l'enregistrement n'apparaît sur aucune liste à expédier. Le filtre « Audio déposé » — comme la ligne du même nom sur la carte Attributions, sur la [page principale](/admin/aide/page-principale#ce-qui-est-a-suivre) — retrouve ces oublis : les attributions encore ouvertes dont le livre a reçu un dépôt audio depuis le début de la lecture (ou depuis sa réouverture). L'audio d'une lecture antérieure du même livre n'y compte pas.
 
 Une attribution « Terminé » ne termine pas sa demande : celle-ci passe « Attente envoi vers auditeur », et le message de confirmation le rappelle, avec un lien vers la demande. Elle ne sera terminée — et facturée — que lorsque vous renseignerez sa date de clôture, le jour de l'expédition à l'auditeur (voir [Demandes](/admin/aide/demandes)). D'ici là, elle n'apparaît sur aucune facture.
 

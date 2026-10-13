@@ -16,6 +16,7 @@ import {
     type DelaiTally,
 } from '@/lib/orders/delais';
 import { lateBillsWhere } from '@/lib/billing';
+import { getOpenAssignmentsWithUploadedAudio } from '@/lib/assignments/audioDeposee';
 import { parisDate } from '@/lib/paris-day';
 
 /**
@@ -128,6 +129,9 @@ export default async function Dashboard() {
         orderDelais,
         assignmentDelais,
         lateBillCount,
+        // Attributions encore ouvertes dont l'audio est déjà déposé — à terminer
+        // (lib/assignments/audioDeposee.ts).
+        audioDeposeeIds,
         // Le prénom du bonjour en tête du tableau de bord.
         myName,
     ] = await Promise.all([
@@ -162,6 +166,7 @@ export default async function Dashboard() {
         getOpenOrderDelais(),
         getOpenAssignmentDelais(),
         prisma.bill.count({ where: { isActive: true, ...lateBillsWhere() } }),
+        getOpenAssignmentsWithUploadedAudio(),
         me ? prisma.user.findUnique({ where: { id: me.id }, select: { firstName: true } }) : null,
     ]);
     const firstName = myName?.firstName?.trim();
@@ -259,6 +264,15 @@ export default async function Dashboard() {
                         buttonText="Gestion des attributions confiées aux lecteurs"
                         rows={[
                             delaiRow('Chez les lecteurs', '/admin/assignments?statusId=2', assignmentTally.chez_lecteur, 'chez_lecteur'),
+                            // Pas de délai ici : l'enregistrement est déjà aux ECA, il
+                            // ne reste qu'à saisir la date de retour — du travail à
+                            // faire tout de suite, en bleu comme les duplications.
+                            {
+                                label: 'Audio déposé',
+                                href: '/admin/assignments?audio=deposee',
+                                tone: audioDeposeeIds.length > 0 ? 'todo' : 'ok',
+                                value: audioDeposeeIds.length > 0 ? `${audioDeposeeIds.length} à terminer` : 'À jour',
+                            },
                         ]}
                     />
                     <AdminDashboardCard

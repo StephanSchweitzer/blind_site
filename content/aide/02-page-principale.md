@@ -56,12 +56,14 @@ Les accents ne comptent pas : « etranger » trouve « L'Étranger ». Choisisse
 Les cartes « Demandes », « Attributions » et « Factures » comportent, sous leur partie colorée, quelques lignes qui disent ce qui attend quelque chose de nous :
 
 - **Demandes** : les demandes en attente d'un lecteur, les enregistrements à expédier aux auditeurs, et les duplications à faire ;
-- **Attributions** : les livres chez les lecteurs ;
+- **Attributions** : les livres chez les lecteurs, et les attributions dont l'audio est déjà déposé mais qui ne sont pas terminées (« Audio déposé ») ;
 - **Factures** : les factures émises depuis plus de 30 jours et pas encore payées, « à relancer ».
 
 Chaque ligne indique combien d'éléments sont **à suivre** (pour les livres chez les lecteurs, « à relancer »), en orange, ou **à surveiller**, en bleu. Quand tout va bien, elle affiche « À jour » en vert.
 
 Les duplications font exception, parce qu'elles se font tout de suite : la ligne « Duplications à faire » compte **toutes** celles qui peuvent être faites dès maintenant, qu'elles soient à suivre ou non — en bleu, avec le détail quand certaines sont à surveiller (« 5, dont 2 à surveiller »), en orange quand certaines sont à suivre (« 5, dont 2 à suivre »). Les duplications qui attendent encore un enregistrement (chez un lecteur, ou dont la demande d'enregistrement attend son lecteur) n'y sont pas comptées : elles ont leur propre ligne, en gris, « Duplications après enregistrement », qui n'apparaît que s'il y en a. Celles dont le livre n'a pas d'audio et que personne n'enregistre ne le sont pas non plus : elles ont une ligne en orange, « Duplications sans enregistrement prévu », elle aussi seulement s'il y en a — il faut leur créer une demande d'enregistrement, ou corriger leur type.
+
+La ligne « Audio déposé » n'a pas de délai : l'enregistrement est déjà aux ECA, il ne reste qu'à renseigner la date de retour de l'attribution. Elle affiche en bleu le nombre d'attributions « à terminer », ou « À jour » en vert.
 
 Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais de chaque étape sont expliqués dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi).
 
