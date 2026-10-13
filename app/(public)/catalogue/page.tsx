@@ -64,7 +64,7 @@ export default async function BooksPage() {
                     sans défiler, téléphone compris. */}
                 <PageHeader title="Catalogue des livres">
                     <p className="text-xl font-semibold text-foreground">
-                        {new Intl.NumberFormat('fr-FR').format(totalBooks)} titres au catalogue !
+                        {new Intl.NumberFormat('fr-FR').format(totalBooks)} titres au catalogue&nbsp;!
                     </p>
                     {contact && (
                         <p>

@@ -177,19 +177,24 @@ export default async function Home() {
                 sommes (et comment nous joindre), les deux publics reliés par la
                 « passerelle », puis où en est le service. */}
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-16">
-                {/* Un seul titre de niveau 1 : le nom, qui était un second titre,
-                    est désormais sa ligne d'accompagnement. Le logo en grande
-                    image, qui le répétait une troisième fois, est retiré. */}
+                {/* Un seul titre de niveau 1, et c'est le nom : il dit ce que
+                    sont les ECA, aux moteurs de recherche comme au lecteur
+                    d'écran qui saute de titre en titre — « Bienvenue sur le
+                    site » ne disait rien. Le salut reste en tête, en ligne
+                    d'accueil au-dessus. Le logo en grande image, qui répétait
+                    le nom une troisième fois, est retiré.
+                    Espaces insécables devant « ! » et « : », à la française :
+                    le point d'exclamation ne part plus seul à la ligne. */}
                 <header className="grid gap-8 lg:grid-cols-12 lg:items-end">
                     <div className="space-y-6 lg:col-span-7">
                         <Dos />
                         <div className="space-y-2">
-                            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
-                                Bienvenue sur le site ECA !
-                            </h1>
                             <p className="text-2xl font-semibold text-foreground">
-                                ECA : Enregistrements à la Carte pour les Aveugles
+                                Bienvenue sur le site ECA&nbsp;!
                             </p>
+                            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
+                                ECA&nbsp;: Enregistrements à la Carte pour les Aveugles
+                            </h1>
                         </div>
                         <p className="max-w-prose text-xl text-muted-foreground">
                             Les ECA (Enregistrements à la Carte pour les Aveugles) proposent à leurs auditeurs un service
