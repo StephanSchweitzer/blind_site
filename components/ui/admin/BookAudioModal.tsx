@@ -79,6 +79,8 @@ interface ManageResponse {
     assignmentCount: number;
     /** Attribution « En cours » sur ce livre — voir InProgressReadingNotice. */
     inProgressReading: { contactName: string | null } | null;
+    /** Attribution encore ouverte dont l'audio vient d'être déposé — voir InProgressReadingNotice. */
+    assignmentToFinish: { assignmentId: number } | null;
     tracks: Track[];
 }
 
@@ -732,7 +734,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                     {/* Même principe que MissingDemandeNotice ci-dessous : monté sans condition. */}
                     <InProgressReadingNotice
                         reading={data?.inProgressReading}
+                        toFinish={data?.assignmentToFinish}
                         trackCount={data?.trackCount}
+                        disabled={busy}
                     />
 
                     {/* Monté sans condition : c'est le composant qui décide de se

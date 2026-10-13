@@ -1,5 +1,6 @@
 import 'server-only';
 
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { STATUS } from '@/lib/statusSync';
 
@@ -26,14 +27,35 @@ import { STATUS } from '@/lib/statusSync';
  * Dérivé à la lecture, comme les délais (lib/orders/delais.ts) : la ligne du
  * tableau de bord et le filtre de la liste lisent les mêmes ids, donc le nombre
  * affiché est le nombre de lignes ouvertes. Borné par le travail en cours.
+ * La fenêtre audio du livre pose la même question pour un seul livre
+ * (readAssignmentToFinish), sur la même règle.
  */
 export async function getOpenAssignmentsWithUploadedAudio(): Promise<number[]> {
+    return findOpenAssignmentsWithUploadedAudio({});
+}
+
+/**
+ * L'attribution à terminer d'un livre, pour le rappel de la fenêtre audio
+ * (InProgressReadingNotice) : celle qui vient de recevoir son dépôt. La plus
+ * récente si plusieurs sont ouvertes, comme readInProgressReading.
+ */
+export async function readAssignmentToFinish(bookId: number): Promise<{ assignmentId: number } | null> {
+    const ids = await findOpenAssignmentsWithUploadedAudio({ catalogueId: bookId });
+    return ids.length > 0 ? { assignmentId: Math.max(...ids) } : null;
+}
+
+async function findOpenAssignmentsWithUploadedAudio(where: Prisma.AssignmentWhereInput): Promise<number[]> {
     // Le filtre de suppression logique (lib/prisma.ts) écarte les attributions
     // et les livres supprimés.
     const open = await prisma.assignment.findMany({
         where: {
-            statusId: { in: [STATUS.ATTENTE, STATUS.EN_COURS] },
-            catalogue: { audioLinkStatus: 'OK' },
+            AND: [
+                {
+                    statusId: { in: [STATUS.ATTENTE, STATUS.EN_COURS] },
+                    catalogue: { audioLinkStatus: 'OK' },
+                },
+                where,
+            ],
         },
         select: {
             id: true,
