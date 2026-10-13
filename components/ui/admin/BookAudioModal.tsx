@@ -1234,6 +1234,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                 {folderConflict.proposedPrefix}
                                             </p>
                                             <Link
+                                                prefetch={false}
                                                 href="/admin/audio-orphelins"
                                                 target="_blank"
                                                 className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-primary underline underline-offset-2"

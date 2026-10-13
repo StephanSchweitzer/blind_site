@@ -88,7 +88,7 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                     </CardDescription>
                 </div>
                 <Button asChild className="w-full sm:w-auto">
-                    <Link href="/admin/listes-de-livres/new">
+                    <Link prefetch={false} href="/admin/listes-de-livres/new">
                         <Plus /> Nouvelle liste de livres
                     </Link>
                 </Button>

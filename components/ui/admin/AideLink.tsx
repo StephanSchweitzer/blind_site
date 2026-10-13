@@ -24,6 +24,7 @@ interface AideLinkProps {
 export function AideLink({ section, anchor, label = 'Aide', className }: AideLinkProps) {
     return (
         <Link
+            prefetch={false}
             href={`/admin/aide/${section}${anchor ? `#${anchor}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"

@@ -21,6 +21,7 @@ export function UserTypeTabs({ currentType }: UserTypeTabsProps) {
                     const isActive = currentType === tab.key;
                     return (
                         <Link
+                            prefetch={false}
                             key={tab.key}
                             href={`/admin/users/${tab.key}`}
                             className={`

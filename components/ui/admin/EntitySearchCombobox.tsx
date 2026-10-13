@@ -441,6 +441,7 @@ export function EntitySearchCombobox<T>({
         </Popover>
         {resolvedViewHref && (
             <Link
+                prefetch={false}
                 href={resolvedViewHref}
                 target="_blank"
                 rel="noopener noreferrer"

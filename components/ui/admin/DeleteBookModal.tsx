@@ -316,6 +316,7 @@ export function DeleteBookModal({
                                 {preflight.audio.sharedWith.map((b) => (
                                     <li key={b.id}>
                                         <Link
+                                            prefetch={false}
                                             href={`/admin/books?book=${b.id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -466,6 +467,7 @@ export function DeleteBookModal({
                                             Chaque fichier est copié dans la corbeille, vérifié, puis
                                             retiré du dossier. Restaurable 14 jours depuis{' '}
                                             <Link
+                                                prefetch={false}
                                                 href="/admin/audio-corbeille"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
@@ -523,6 +525,7 @@ export function DeleteBookModal({
                                 déjà dans la corbeille. {audio!.trashCount > 1 ? 'Ils resteront' : 'Il restera'}{' '}
                                 restaurable{audio!.trashCount > 1 ? 's' : ''} depuis{' '}
                                 <Link
+                                    prefetch={false}
                                     href="/admin/audio-corbeille"
                                     target="_blank"
                                     rel="noopener noreferrer"

@@ -25,6 +25,7 @@ export default function DossierTabs({ userId }: DossierTabsProps) {
                 const active = pathname === href || pathname.startsWith(`${href}/`);
                 return (
                     <Link
+                        prefetch={false}
                         key={tab.slug}
                         href={href}
                         className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${

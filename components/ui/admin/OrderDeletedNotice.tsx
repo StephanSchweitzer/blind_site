@@ -179,6 +179,7 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                                     book is the refusal whenever both are gone. */}
                                 {preview.book.deleted || !preview.client?.deleted ? (
                                     <Link
+                                        prefetch={false}
                                         href={`/admin/books?book=${preview.book.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -188,6 +189,7 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                                     </Link>
                                 ) : (
                                     <Link
+                                        prefetch={false}
                                         href={`/admin/users/dossier/${preview.client.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -207,6 +209,7 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                                 <p>{preview.restoreWarning}</p>
                                 {preview.billId != null && (
                                     <Link
+                                        prefetch={false}
                                         href={`/admin/bills?bill=${preview.billId}`}
                                         target="_blank"
                                         rel="noopener noreferrer"

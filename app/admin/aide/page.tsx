@@ -70,6 +70,7 @@ export default function AidePage() {
                             {sections.map((section, index) => (
                                 <li key={section.slug}>
                                     <Link
+                                        prefetch={false}
                                         href={`/admin/aide/${section.slug}`}
                                         className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     >

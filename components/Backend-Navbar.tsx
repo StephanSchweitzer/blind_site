@@ -120,6 +120,7 @@ const BackendNavbar: React.FC = () => {
                         back-office, avec l'arbre qu'elle a choisi pour lui.
                         L'image est décorative : le nom est écrit à côté. */}
                     <Link
+                        prefetch={false}
                         href="/admin"
                         onClick={closeAll}
                         className="flex items-center gap-2 whitespace-nowrap"
@@ -130,7 +131,13 @@ const BackendNavbar: React.FC = () => {
                         </span>
                     </Link>
 
-                    {/* Desktop navigation — hover-triggered dropdowns */}
+                    {/* Desktop navigation — hover-triggered dropdowns.
+                        Every panel stays mounted, hidden by CSS only, so Next
+                        counts all ~25 links as visible and would prefetch each
+                        on every page load — one proxy run (with its DB read)
+                        plus a page render apiece. prefetch={false} on every
+                        link of this bar, as in the dashboard and the lists
+                        (components/ui/admin/AdminDashboardCard.tsx). */}
                     <div className="hidden lg:flex items-center gap-1 flex-1">
                         {visibleGroups.map((group) => (
                             <div key={group.label} className="relative group">
@@ -149,6 +156,7 @@ const BackendNavbar: React.FC = () => {
                                     <div className="min-w-[220px] bg-popover border border-border rounded-lg shadow-xl overflow-hidden">
                                         {group.items.map((item) => (
                                             <Link
+                                                prefetch={false}
                                                 key={item.href}
                                                 href={item.href}
                                                 onClick={closeAll}
@@ -173,6 +181,7 @@ const BackendNavbar: React.FC = () => {
                     {/* Desktop right-aligned actions */}
                     <div className="hidden lg:flex items-center gap-3">
                         <Link
+                            prefetch={false}
                             href="/admin/aide"
                             onClick={closeAll}
                             className="flex items-center gap-1.5 px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
@@ -181,6 +190,7 @@ const BackendNavbar: React.FC = () => {
                             Aide
                         </Link>
                         <Link
+                            prefetch={false}
                             href="/admin/profile"
                             onClick={closeAll}
                             className="whitespace-nowrap px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
@@ -188,6 +198,7 @@ const BackendNavbar: React.FC = () => {
                             Mon Compte
                         </Link>
                         <Link
+                            prefetch={false}
                             href="/"
                             onClick={closeAll}
                             className="whitespace-nowrap px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 transition-opacity duration-100"
@@ -233,6 +244,7 @@ const BackendNavbar: React.FC = () => {
                                     <div className="pl-4 mt-1 mb-2 space-y-1 border-l-2 border-border ml-3">
                                         {group.items.map((item) => (
                                             <Link
+                                                prefetch={false}
                                                 key={item.href}
                                                 href={item.href}
                                                 onClick={closeAll}
@@ -247,6 +259,7 @@ const BackendNavbar: React.FC = () => {
                             </div>
                         ))}
                         <Link
+                            prefetch={false}
                             href="/admin/aide"
                             onClick={closeAll}
                             className="flex items-center gap-2 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-100"
@@ -255,6 +268,7 @@ const BackendNavbar: React.FC = () => {
                             Aide
                         </Link>
                         <Link
+                            prefetch={false}
                             href="/admin/profile"
                             onClick={closeAll}
                             className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-100"
@@ -262,6 +276,7 @@ const BackendNavbar: React.FC = () => {
                             Mon Compte
                         </Link>
                         <Link
+                            prefetch={false}
                             href="/"
                             onClick={closeAll}
                             className="flex items-center justify-center min-h-11 px-4 py-2.5 mt-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity duration-100"

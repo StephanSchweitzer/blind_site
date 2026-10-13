@@ -75,6 +75,7 @@ export default async function AideSectionPage({ params }: PageProps) {
             <AideHashScroll />
 
             <Link
+                prefetch={false}
                 href="/admin/aide"
                 className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
@@ -124,6 +125,7 @@ export default async function AideSectionPage({ params }: PageProps) {
                         >
                             {previous ? (
                                 <Link
+                                    prefetch={false}
                                     href={`/admin/aide/${previous.slug}`}
                                     className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
                                 >
@@ -135,6 +137,7 @@ export default async function AideSectionPage({ params }: PageProps) {
                             )}
                             {next && (
                                 <Link
+                                    prefetch={false}
                                     href={`/admin/aide/${next.slug}`}
                                     className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary sm:justify-end"
                                 >

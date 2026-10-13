@@ -144,7 +144,7 @@ export function GenreFormBackendBase({
                                 <>
                                     {booksCount} livre{booksCount > 1 ? 's' : ''} associé
                                     {booksCount > 1 ? 's' : ''} —{' '}
-                                    <Link href={booksHref} className="underline underline-offset-2 hover:text-foreground">
+                                    <Link prefetch={false} href={booksHref} className="underline underline-offset-2 hover:text-foreground">
                                         voir dans le catalogue
                                     </Link>
                                 </>

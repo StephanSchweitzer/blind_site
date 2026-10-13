@@ -86,6 +86,7 @@ export function AideSearch({ entries }: { entries: AideSearchEntry[] }) {
                     {hits.map((hit) => (
                         <li key={`${hit.entry.slug}#${hit.entry.anchor ?? ''}`}>
                             <Link
+                                prefetch={false}
                                 href={hitHref(hit)}
                                 className="group flex items-start justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >

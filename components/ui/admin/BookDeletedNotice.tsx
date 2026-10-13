@@ -247,6 +247,7 @@ export default function BookDeletedNotice({
                                 <p>{preview.isbnConflict}</p>
                                 {preview.isbnHolder && (
                                     <Link
+                                        prefetch={false}
                                         href={`/admin/books?book=${preview.isbnHolder.id}`}
                                         className="mt-1 inline-block font-medium underline underline-offset-2"
                                     >

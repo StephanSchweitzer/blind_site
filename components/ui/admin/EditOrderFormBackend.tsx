@@ -306,6 +306,7 @@ export function EditOrderFormBackend({
                         </DialogDescription>
                         {detachedNotice && (
                             <Link
+                                prefetch={false}
                                 href={`/admin/bills?bill=${detachedNotice.billId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -339,6 +340,7 @@ export function EditOrderFormBackend({
                         </DialogDescription>
                         {attachedNotice && (
                             <Link
+                                prefetch={false}
                                 href={`/admin/bills?bill=${attachedNotice.billId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"

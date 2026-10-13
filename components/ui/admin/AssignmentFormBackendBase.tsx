@@ -1025,6 +1025,7 @@ export function AssignmentFormBackendBase({
                                     <span className="mt-1 flex flex-wrap items-center gap-x-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                                         Déjà attribuée :
                                         <Link
+                                            prefetch={false}
                                             href={`/admin/assignments?assignment=${blocking.id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -1091,6 +1092,7 @@ export function AssignmentFormBackendBase({
                             </div>
                             {selectedBook && (
                                 <Link
+                                    prefetch={false}
                                     href={`/admin/books?book=${selectedBook.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"

@@ -141,6 +141,7 @@ function OrphanRestoreHint({ plural = false }: { plural?: boolean }) {
         <p className="text-xs text-muted-foreground">
             {plural ? 'seront restaurés' : 'sera restauré'} dans{' '}
             <Link
+                prefetch={false}
                 href="/admin/audio-orphelins"
                 className="text-blue-600 hover:text-blue-500 dark:text-blue-400 underline underline-offset-2"
             >

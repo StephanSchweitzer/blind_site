@@ -81,6 +81,7 @@ export const BillPrintNoticeDialog: React.FC<BillPrintNoticeDialogProps> = ({ no
             <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                 {notice && (
                     <Link
+                        prefetch={false}
                         href={`/admin/bills?bill=${notice.billId}`}
                         target="_blank"
                         rel="noopener noreferrer"

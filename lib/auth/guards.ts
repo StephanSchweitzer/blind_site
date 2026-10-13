@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { cookies } from 'next/headers';
+import { getToken } from 'next-auth/jwt';
 import { prisma } from '@/lib/prisma';
 import { runWithAuditActor, setAuditActor } from '@/lib/audit/context';
 // The server build of `unstable_rethrow`, not `next/navigation`: that entry
@@ -19,6 +19,25 @@ export interface CurrentUser {
 }
 
 /**
+ * The email of the signed-in account, decoded from the session cookie.
+ *
+ * Not getServerSession: that runs the `session` callback (lib/auth.ts), whose
+ * own user lookup getCurrentUser repeated right after — two identical reads
+ * per API call, three per /admin page with the proxy's, each one billed as
+ * function time while it waits on Supabase. getToken decodes and verifies the
+ * same JWT (signature, expiry) the way proxy.ts already does, with no
+ * callback. The email it carries is the one getServerSession handed out.
+ *
+ * Cookies only: an empty `headers` keeps getToken's `Authorization: Bearer`
+ * fallback out, which getServerSession never accepted.
+ */
+async function sessionEmail(): Promise<string | null> {
+    const req = { cookies: await cookies(), headers: new Headers() };
+    const token = await getToken({ req: req as unknown as NextRequest });
+    return typeof token?.email === 'string' && token.email ? token.email : null;
+}
+
+/**
  * Resolves the signed-in user authoritatively from the DB (keyed off the session
  * email), so authorization never trusts a stale/forged token field. Returns null
  * when there's no valid session.
@@ -34,10 +53,10 @@ export interface CurrentUser {
  * they already held did not. `email` is unique, so nothing else changes.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return null;
+    const email = await sessionEmail();
+    if (!email) return null;
     const me = await prisma.user.findFirst({
-        where: { email: session.user.email },
+        where: { email },
         select: { id: true, email: true, accessLevel: true, passwordNeedsChange: true },
     });
     if (me) setAuditActor({ actorId: me.id, actorEmail: me.email });

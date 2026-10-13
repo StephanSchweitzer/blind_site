@@ -393,6 +393,7 @@ export default function UsersTable({
                                 <span key={t.tab}>
                                     {i > 0 && <span aria-hidden className="text-muted-foreground/50"> · </span>}
                                     <Link
+                                        prefetch={false}
                                         href={`/admin/users/${t.tab}?${params.toString()}`}
                                         className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
                                     >

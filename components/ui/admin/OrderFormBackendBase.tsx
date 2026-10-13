@@ -171,6 +171,7 @@ function dayKey(date: Date | string | null | undefined): string | null {
 function BillLink({ billId, children }: { billId: number; children: React.ReactNode }) {
     return (
         <Link
+            prefetch={false}
             href={`/admin/bills?bill=${billId}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -955,6 +956,7 @@ export function OrderFormBackendBase({
                                         )}
                                     </div>
                                     <Link
+                                        prefetch={false}
                                         href={`/admin/assignments?assignment=${initialAssignment.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -1197,6 +1199,7 @@ export function OrderFormBackendBase({
                                         Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
                                     </span>
                                     <Link
+                                        prefetch={false}
                                         href={`/admin/bills?bill=${initialBill.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"

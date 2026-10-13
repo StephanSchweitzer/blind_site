@@ -111,6 +111,7 @@ export default async function ProfilePage() {
                     {/* The fiche itself lives on the dossier — demandes, factures,
                         paiements, attributions — and is not re-implemented here. */}
                     <Link
+                        prefetch={false}
                         href={`/admin/users/dossier/${user.id}`}
                         className="shrink-0 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-accent transition-colors"
                     >
