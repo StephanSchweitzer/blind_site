@@ -66,6 +66,11 @@ export default function CoupsDeCoeurClient({
 
     // Une seule requête par page, partagée entre le préchargement et le clic.
     const loadPage = useCallback((page: number) => {
+        // La route ne connaît que les pages existant au déploiement, plus une
+        // réserve (app/api/listes-de-livres/page/[page]/route.ts) : un lien vers
+        // la page 40 y recevrait un 404. Une page qu'on sait vide n'est pas
+        // demandée — outOfRangePage, plus bas, ramène à la dernière.
+        if (page > initialTotal) return Promise.resolve<ListPage>({ items: [], total: initialTotal });
         let request = requests.current.get(page);
         if (!request) {
             request = fetch(`/api/listes-de-livres/page/${page}`).then(async (response) => {
@@ -77,7 +82,7 @@ export default function CoupsDeCoeurClient({
             requests.current.set(page, request);
         }
         return request;
-    }, []);
+    }, [initialTotal]);
 
     useEffect(() => {
         if (pages[currentPage]) return;
