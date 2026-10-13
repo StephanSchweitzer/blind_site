@@ -32,7 +32,7 @@ interface CoupsDeCoeurClientProps {
 /**
  * La page est servie en statique : la page 1 arrive avec le HTML, et la
  * navigation depuis le reste du site est instantanée (préchargée par les
- * liens). Les autres pages se chargent ici, par /api/listes-de-livres/page, et
+ * liens). Les autres pages se chargent ici, par /api/listes-de-livres/page/N, et
  * restent en mémoire — revenir à une liste déjà vue ne recharge rien, et la
  * suivante est préchargée pendant qu'on lit celle-ci.
  *
@@ -68,7 +68,7 @@ export default function CoupsDeCoeurClient({
     const loadPage = useCallback((page: number) => {
         let request = requests.current.get(page);
         if (!request) {
-            request = fetch(`/api/listes-de-livres/page?page=${page}`).then(async (response) => {
+            request = fetch(`/api/listes-de-livres/page/${page}`).then(async (response) => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json() as Promise<ListPage>;
             });
