@@ -1,31 +1,57 @@
 import React from "react";
 import FrontendNavbar from "@/components/Frontend-Navbar";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { getHomeFigures, type HomeFigures } from "./chiffres";
 import { getSiteContact } from "./contact/data";
 import { degradeOnReadError } from "@/lib/isr-read-error";
-import { PhoneLines } from "@/components/PhoneLines";
+import { PhoneLines, phoneNumbers } from "@/components/PhoneLines";
+import { publicPageMetadata, SITE_URL } from "@/lib/seo";
 import { Dos } from "@/components/Dos";
 import { ArrowRight, Headphones, Mail, Mic, Phone } from "lucide-react";
 
-export const metadata: Metadata = {
-    title: 'ECA - Enregistrements à la Carte pour les Aveugles',
+export const metadata = publicPageMetadata({
+    // `absolute` : le modèle « %s | ECA Aveugles » du layout répétait le nom.
+    title: { absolute: 'ECA - Enregistrements à la Carte pour les Aveugles' },
     description: "Les ECA proposent aux personnes aveugles et malvoyantes un service gratuit d'enregistrement à la carte de livres et documents, lus par des bénévoles.",
-    alternates: { canonical: '/' },
-};
+    path: '/',
+});
 
-const organizationJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'NGO',
-    name: 'ECA - Enregistrements à la Carte pour les Aveugles',
-    alternateName: 'Délégation des Auxiliaires des Aveugles',
-    url: 'https://eca-aveugles.fr',
-    logo: 'https://eca-aveugles.fr/eca_logo.png',
-    description: "Service gratuit d'enregistrement à la carte de livres et documents pour les personnes aveugles et malvoyantes, réalisé par des lecteurs bénévoles.",
-    areaServed: 'FR',
-    availableLanguage: 'fr',
-};
+/**
+ * La fiche de l'association pour les moteurs de recherche. Adresse, téléphones
+ * et courriel viennent des coordonnées éditées au back-office, comme le bloc
+ * affiché à côté du titre : rien à tenir à jour ici. L'adresse n'est donnée
+ * que si sa dernière ligne se lit « code postal + ville » — une adresse mal
+ * découpée renseignerait mal Google, mieux vaut ne rien dire.
+ */
+function organizationJsonLd(contact: { addressLines: string; phones: string; email: string } | null) {
+    const lignes = contact?.addressLines.split('\n').map((l) => l.trim()).filter(Boolean) ?? [];
+    const ville = lignes.at(-1)?.match(/^(\d{5})\s+(.+)$/);
+    const telephones = contact ? phoneNumbers(contact.phones) : [];
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'NGO',
+        name: 'ECA - Enregistrements à la Carte pour les Aveugles',
+        alternateName: 'Délégation des Auxiliaires des Aveugles',
+        url: SITE_URL,
+        logo: `${SITE_URL}/eca_mark.png`,
+        image: `${SITE_URL}/og-image.png`,
+        description: "Service gratuit d'enregistrement à la carte de livres et documents pour les personnes aveugles et malvoyantes, réalisé par des lecteurs bénévoles.",
+        foundingDate: '1985',
+        areaServed: 'FR',
+        availableLanguage: 'fr',
+        ...(ville && lignes.length > 1 && {
+            address: {
+                '@type': 'PostalAddress',
+                streetAddress: lignes.slice(0, -1).join(', '),
+                postalCode: ville[1],
+                addressLocality: ville[2],
+                addressCountry: 'FR',
+            },
+        }),
+        ...(telephones.length > 0 && { telephone: telephones.length === 1 ? telephones[0] : telephones }),
+        ...(contact?.email && { email: contact.email }),
+    };
+}
 
 // Les chiffres d'« Aujourd'hui aux ECA » (./chiffres.ts) : la page est servie
 // depuis le cache et regénérée au plus une fois par jour, comme le catalogue —
@@ -140,7 +166,9 @@ export default async function Home() {
         <div className="flex min-h-screen flex-col">
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+                // `<` échappé : les coordonnées sont du texte saisi au back-office,
+                // et un « </script> » y fermerait la balise.
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(contact)).replace(/</g, '\\u003c') }}
             />
             <FrontendNavbar />
         <main id="contenu-principal" className="relative flex-1">

@@ -2,14 +2,14 @@ import Link from "next/link";
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { PhoneLines } from "@/components/PhoneLines";
 import { getSiteContact } from "../contact/data";
-import type { Metadata } from "next";
 import { PageHeader } from "@/components/PageHeader";
+import { publicPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
     title: 'Accessibilité',
     description: "Ce que le site des ECA propose aux personnes aveugles et malvoyantes, ce que nous vérifions, et comment nous signaler un problème d'accessibilité.",
-    alternates: { canonical: '/accessibilite' },
-};
+    path: '/accessibilite',
+});
 
 /**
  * La déclaration d'accessibilité du site public.
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
  * Coordonnées lues dans le même enregistrement que la page Contact : les
  * changer dans le back-office les change ici.
  */
-const DERNIERE_VERIFICATION = '23 septembre 2026';
+const DERNIERE_VERIFICATION = '13 octobre 2026';
 
 export default async function AccessibilitePage() {
     const contact = await getSiteContact();

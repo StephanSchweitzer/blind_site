@@ -6,9 +6,19 @@ import type React from 'react';
  */
 const PHONE_PATTERN = /(?:\+33[\s.-]?|0)[1-9](?:[\s.-]?\d{2}){4}/g;
 
-function telHref(phone: string): string {
+/** « +33188323147 » : la forme internationale, quelle que soit la saisie. */
+function internationalPhone(phone: string): string {
     const digits = phone.replace(/[^\d+]/g, '');
-    return `tel:${digits.startsWith('0') ? `+33${digits.slice(1)}` : digits}`;
+    return digits.startsWith('0') ? `+33${digits.slice(1)}` : digits;
+}
+
+function telHref(phone: string): string {
+    return `tel:${internationalPhone(phone)}`;
+}
+
+/** Les numéros d'un champ de texte libre, en forme internationale (données structurées). */
+export function phoneNumbers(text: string): string[] {
+    return [...text.matchAll(PHONE_PATTERN)].map((match) => internationalPhone(match[0]));
 }
 
 /**
@@ -29,7 +39,7 @@ export function PhoneLines({ text }: { text: string }) {
                         <a
                             key={match.index}
                             href={telHref(match[0])}
-                            className="text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 underline underline-offset-2"
+                            className="whitespace-nowrap text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 underline underline-offset-2"
                         >
                             {match[0]}
                         </a>,

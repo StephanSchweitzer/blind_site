@@ -12,6 +12,7 @@ import { PDFButton } from '@/listes-de-livres/PDFButton';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import type { PublicBook } from '@/lib/books/publicBook';
 import { PageHeader } from "@/components/PageHeader";
+import { DemandeContact } from '@/components/DemandeContact';
 
 type ListPage = { items: CoupDeCoeur[]; total: number };
 
@@ -27,6 +28,8 @@ interface CoupsDeCoeurClientProps {
     initialContent: CoupDeCoeur[];
     /** Nombre de listes : une par page (COUPS_DE_COEUR_PAGE_SIZE). */
     initialTotal: number;
+    /** Les coordonnées du back-office (SiteContact) ; absentes seulement au build ou en dev. */
+    contact: { phones: string; email: string } | null;
 }
 
 /**
@@ -42,6 +45,7 @@ interface CoupsDeCoeurClientProps {
 export default function CoupsDeCoeurClient({
                                                initialContent,
                                                initialTotal,
+                                               contact,
                                            }: CoupsDeCoeurClientProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const [pages, setPages] = useState<Record<number, ListPage>>({
@@ -162,16 +166,12 @@ export default function CoupsDeCoeurClient({
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-8">
                 <PageHeader title="Listes de livres">
-                    <p>
-                        À demander au{' '}
-                        {/* Both numbers in full and as tel: links: « ou 48 », read aloud
-                            or tapped, leads nowhere. */}
-                        <a href="tel:+33188323147" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 47</a>{' '}
-                        ou{' '}
-                        <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 48</a>{' '}
-                        ou par courriel à{' '}
-                        <a href="mailto:ecapermanence@gmail.com" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">ecapermanence@gmail.com</a>
-                    </p>
+                    {contact && (
+                        <p>
+                            À demander au{' '}
+                            <DemandeContact phones={contact.phones} email={contact.email} />
+                        </p>
+                    )}
                 </PageHeader>
 
                 <div className="space-y-8">

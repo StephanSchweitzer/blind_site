@@ -2,12 +2,13 @@ import FrontendNavbar from "@/components/Frontend-Navbar";
 import { getInitialNews } from './data';
 import { DernieresInfosClient } from './DernieresInfosClient';
 import { PageHeader } from "@/components/PageHeader";
+import { publicPageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = publicPageMetadata({
     title: 'Dernières Informations',
     description: 'Actualités, événements et informations récentes des ECA - Enregistrements à la Carte pour les Aveugles.',
-    alternates: { canonical: '/dernieres-infos' },
-};
+    path: '/dernieres-infos',
+});
 
 // Statique, comme le catalogue : la page part du cache et les liens du menu la
 // préchargent en entier, sans écran « Chargement… ». Recherche, filtre et page

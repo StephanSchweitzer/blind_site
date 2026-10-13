@@ -23,6 +23,8 @@ Seuls les Super Admins voient l'ensemble de ce groupe. Un permanent n'y trouve q
 
 ![Pages publiques - les dernières infos](/admin/aide/images/pages-publiques-01.jpg)
 
+Le téléphone et le courriel saisis dans **Contact** ne servent pas qu'à la page Contact : l'accueil, le catalogue, les listes de livres et la page Accessibilité les reprennent. Les modifier une fois les modifie partout. L'adresse, elle, sert aussi à la fiche de l'association que lisent les moteurs de recherche : gardez le code postal et la ville seuls sur la dernière ligne (« 75015 Paris »), sinon Google ne la reçoit pas. Écrivez les numéros comme on les compose en France (« 01 88 32 31 47 ») : un lecteur d'écran lit « +33 » « plus trente-trois ».
+
 ## Ce qu'elles ont en commun
 
 Toutes ces pages fonctionnent de la même manière :
@@ -79,6 +81,10 @@ Sur la page des listes de livres, le lecteur de la présentation audio a ses pro
 Le lien « **Accessibilité** », en bas de chaque page du site public, mène à une page qui explique aux visiteurs ce que le site leur propose, comment il est vérifié, ce qui reste imparfait, et comment signaler un problème. Le courriel et les numéros de téléphone qu'elle donne sont ceux de la page **Contact** : les modifier dans Arbre Rose les modifie aussi là.
 
 Si un auditeur vous signale une difficulté avec le site, notez la page, ce qu'il cherchait à faire et l'outil qu'il utilise (lecteur d'écran, loupe, téléphone…), et transmettez-le à l'informaticien.
+
+## Envoyer le lien d'un livre
+
+Sur le catalogue du site public, ouvrir la fiche d'un livre met son adresse dans la barre du navigateur, par exemple `eca-aveugles.fr/catalogue?livre=1234`. Copiée dans un courriel, elle ouvre directement cette fiche chez l'auditeur. Si la recherche était en cours, le lien la garde : en refermant la fiche, il retrouve la même liste. Un livre masqué ou supprimé ne s'ouvre pas par un lien : le catalogue s'affiche simplement sans fiche.
 
 ## Dernières infos
 

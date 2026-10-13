@@ -4,6 +4,9 @@ import FrontendNavbar from "@/components/Frontend-Navbar";
 import { getCatalogueData } from './data';
 import { PageHeader } from '@/components/PageHeader';
 import { degradeOnReadError } from '@/lib/isr-read-error';
+import { publicPageMetadata } from '@/lib/seo';
+import { getSiteContact } from '../contact/data';
+import { DemandeContact } from '@/components/DemandeContact';
 
 async function getInitialData() {
     try {
@@ -42,7 +45,14 @@ function BooksLoading() {
 export const revalidate = 86400;
 
 export default async function BooksPage() {
-    const { initialBooks, genres, totalBooks, totalPages } = await getInitialData();
+    const [{ initialBooks, genres, totalBooks, totalPages }, contact] = await Promise.all([
+        getInitialData(),
+        getSiteContact().catch((error) => {
+            console.error('Coordonnées du catalogue indisponibles :', error);
+            if (!degradeOnReadError()) throw error;
+            return null;
+        }),
+    ]);
 
     return (
         <div className="flex min-h-screen flex-col">
@@ -56,17 +66,13 @@ export default async function BooksPage() {
                     <p className="text-xl font-semibold text-foreground">
                         {new Intl.NumberFormat('fr-FR').format(totalBooks)} titres au catalogue !
                     </p>
-                    <p>
-                        Consultez-nous si vous avez une recherche particulière,
-                        et faites votre demande au{' '}
-                        {/* Both numbers in full and as tel: links: « ou 48 », read aloud
-                            or tapped, leads nowhere. */}
-                        <a href="tel:+33188323147" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 47</a>{' '}
-                        ou{' '}
-                        <a href="tel:+33188323148" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">01 88 32 31 48</a>{' '}
-                        ou par courriel à{' '}
-                        <a href="mailto:ecapermanence@gmail.com" className="font-semibold whitespace-nowrap text-primary dark:text-blue-300 underline underline-offset-2">ecapermanence@gmail.com</a>
-                    </p>
+                    {contact && (
+                        <p>
+                            Consultez-nous si vous avez une recherche particulière,
+                            et faites votre demande au{' '}
+                            <DemandeContact phones={contact.phones} email={contact.email} />
+                        </p>
+                    )}
                 </PageHeader>
 
                 <Suspense fallback={<BooksLoading />}>
@@ -83,8 +89,8 @@ export default async function BooksPage() {
     );
 }
 
-export const metadata = {
+export const metadata = publicPageMetadata({
     title: 'Catalogue des livres',
     description: 'Consultez le catalogue des livres audio disponibles aux ECA pour les auditeurs aveugles et malvoyants.',
-    alternates: { canonical: '/catalogue' },
-};
+    path: '/catalogue',
+});

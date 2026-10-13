@@ -143,9 +143,19 @@ export const BookModal: React.FC<BookModalProps> = ({
                     // Un clic sur un genre filtre le catalogue : la carte a pu
                     // disparaître, et Radix garde alors son comportement.
                     const opener = openerRef.current;
-                    if (opener?.isConnected) {
+                    if (opener?.isConnected && opener !== document.body) {
                         event.preventDefault();
                         opener.focus();
+                        return;
+                    }
+                    // Ouverte par un lien (`/catalogue?livre=…`) : aucune carte ne
+                    // l'a ouverte. Le titre de la page plutôt que le haut du
+                    // document, d'où le lecteur d'écran repartirait du menu.
+                    const titre = document.querySelector<HTMLElement>('main h1');
+                    if (titre) {
+                        event.preventDefault();
+                        titre.tabIndex = -1;
+                        titre.focus();
                     }
                 }}
                 className="max-w-2xl w-[95vw] max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] overflow-hidden flex flex-col

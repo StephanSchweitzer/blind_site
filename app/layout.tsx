@@ -4,6 +4,7 @@ import React from "react";
 import { Toaster } from "@/components/ui/toaster"
 import type { Metadata } from "next";
 import { AFFICHAGE_INIT_SCRIPT } from '@/lib/affichage';
+import { SHARED_OPEN_GRAPH, SITE_URL } from '@/lib/seo';
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from 'next/font/google';
 
 // Atkinson Hyperlegible : dessinée par le Braille Institute pour les lecteurs
@@ -25,31 +26,17 @@ const atkinsonMono = Atkinson_Hyperlegible_Mono({
     variable: '--font-mono',
 });
 
-const siteUrl = 'https://eca-aveugles.fr';
-const description = "Les ECA (Enregistrements à la Carte pour les Aveugles) proposent aux personnes aveugles et malvoyantes un service gratuit d'enregistrement de livres et documents sur mesure, lus par des bénévoles.";
-
+// Titre, description et image des aperçus viennent de chaque page (lib/seo.ts) ;
+// la carte Twitter reprend ceux de l'aperçu Open Graph.
 export const metadata: Metadata = {
-    metadataBase: new URL(siteUrl),
+    metadataBase: new URL(SITE_URL),
     title: {
         default: 'ECA - Enregistrements à la Carte pour les Aveugles',
         template: '%s | ECA Aveugles',
     },
-    description,
-    openGraph: {
-        type: 'website',
-        locale: 'fr_FR',
-        siteName: 'ECA Aveugles',
-        title: 'ECA - Enregistrements à la Carte pour les Aveugles',
-        description,
-        url: siteUrl,
-        images: [{ url: '/eca_logo.png', width: 1024, height: 168, alt: 'ECA - Enregistrements à la Carte pour les Aveugles' }],
-    },
-    twitter: {
-        card: 'summary_large_image',
-        title: 'ECA - Enregistrements à la Carte pour les Aveugles',
-        description,
-        images: ['/eca_logo.png'],
-    },
+    description: "Les ECA (Enregistrements à la Carte pour les Aveugles) proposent aux personnes aveugles et malvoyantes un service gratuit d'enregistrement de livres et documents sur mesure, lus par des bénévoles.",
+    openGraph: SHARED_OPEN_GRAPH,
+    twitter: { card: 'summary_large_image' },
 }
 
 export default function RootLayout({

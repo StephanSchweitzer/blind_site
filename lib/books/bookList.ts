@@ -981,6 +981,20 @@ export async function listPublicBooks(query: BookListQuery): Promise<BookListPag
     };
 }
 
+/**
+ * Une fiche du catalogue public, par son id — le lien `/catalogue?livre=<id>`.
+ * Mêmes contraintes que `listPublicBooks` : ni livre masqué ni livre supprimé
+ * (null, comme un id inconnu : la réponse ne dit pas lequel des deux), et
+ * jamais autre chose que `PublicBook`.
+ */
+export async function findPublicBook(id: number): Promise<PublicBook | null> {
+    const book = await prisma.book.findFirst({
+        where: { id, hiddenFromCatalogue: false, deletedAt: null },
+        include: { genres: { include: { genre: true } } },
+    });
+    return book ? toPublicBook(book) : null;
+}
+
 /** Back-office only — call from behind `withAdmin`. Full rows, hidden books included. */
 export function listAdminBooks(query: AdminBookListQuery): Promise<BookListPage<BookWithGenres>> {
     return listBooks({ ...query, includeHidden: true });

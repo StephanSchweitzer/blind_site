@@ -1,12 +1,14 @@
 import CoupsDeCoeurClient from './CoupsDeCoeurClient';
 import { getCoupsDeCoeurPage, COUPS_DE_COEUR_PAGE_SIZE } from './data';
-import type { Metadata } from 'next';
+import { publicPageMetadata } from '@/lib/seo';
+import { getSiteContact } from '../contact/data';
+import { degradeOnReadError } from '@/lib/isr-read-error';
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
     title: 'Listes de livres',
     description: 'Découvrez les listes de livres et recommandations de lecture sélectionnées par les ECA.',
-    alternates: { canonical: '/listes-de-livres' },
-};
+    path: '/listes-de-livres',
+});
 
 // Statique, comme le catalogue et les dernières infos : sans `searchParams`,
 // la page part du cache et les liens du menu la préchargent en entier — plus
@@ -16,7 +18,20 @@ export const metadata: Metadata = {
 export const revalidate = 86400;
 
 export default async function CoupsDeCoeurPage() {
-    const { items, total } = await getCoupsDeCoeurPage(1, COUPS_DE_COEUR_PAGE_SIZE);
+    const [{ items, total }, contact] = await Promise.all([
+        getCoupsDeCoeurPage(1, COUPS_DE_COEUR_PAGE_SIZE),
+        getSiteContact().catch((error) => {
+            console.error('Coordonnées des listes de livres indisponibles :', error);
+            if (!degradeOnReadError()) throw error;
+            return null;
+        }),
+    ]);
 
-    return <CoupsDeCoeurClient initialContent={items} initialTotal={total} />;
+    return (
+        <CoupsDeCoeurClient
+            initialContent={items}
+            initialTotal={total}
+            contact={contact && { phones: contact.phones, email: contact.email }}
+        />
+    );
 }

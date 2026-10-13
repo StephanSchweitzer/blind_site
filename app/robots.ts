@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
-
-const siteUrl = 'https://eca-aveugles.fr';
+import { SITE_URL as siteUrl } from '@/lib/seo';
 
 export default function robots(): MetadataRoute.Robots {
     return {

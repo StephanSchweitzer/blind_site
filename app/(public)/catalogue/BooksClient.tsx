@@ -53,6 +53,31 @@ function parseCatalogueParams(params: URLSearchParams, genreIds: Set<number>): C
     };
 }
 
+/**
+ * `?livre=<id>` : la fiche ouverte, pour qu'un lien mène à un livre précis.
+ * Posée par-dessus la recherche, qu'elle ne remplace pas : refermer la fiche
+ * rend la liste telle qu'elle était.
+ */
+function parseBookParam(value: string | null): number | null {
+    const id = Number(value);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+/** L'URL courante, la fiche posée ou retirée — recherche et page inchangées. */
+function withBook(id: number | null): URLSearchParams {
+    const params = new URLSearchParams(window.location.search);
+    if (id === null) params.delete('livre');
+    else params.set('livre', String(id));
+    return params;
+}
+
+/** Les paramètres d'une recherche, en gardant la fiche ouverte s'il y en a une. */
+function keepingBook(params: URLSearchParams): URLSearchParams {
+    const livre = new URLSearchParams(window.location.search).get('livre');
+    if (livre) params.set('livre', livre);
+    return params;
+}
+
 interface BooksClientProps {
     initialBooks: PublicBook[];
     genres: { id: number; name: string; description: string | null; }[];
@@ -72,6 +97,9 @@ export function BooksClient({
     const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
     const [selectedBook, setSelectedBook] = useState<PublicBook | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    // La fiche que nomme l'URL (`?livre=`) — ouverte au clic, ou chargée à
+    // l'arrivée par un lien partagé.
+    const [bookParam, setBookParam] = useState<number | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +118,11 @@ export function BooksClient({
     // list as loading straight away rather than showing « 1–9 sur 15 428 » and
     // then swapping.
     const writeUrl = useListUrl((params) => {
+        const livre = parseBookParam(params.get('livre'));
+        if (livre !== bookParam) setBookParam(livre);
+        if (livre === null) setIsModalOpen(false);
+        else if (livre === selectedBook?.id) setIsModalOpen(true);
+
         const next = parseCatalogueParams(params, new Set(genres.map((g) => g.id)));
         const current = { search: searchTerm, filter: selectedFilter, genres: selectedGenres, page: currentPage };
         if (catalogueParams(next).toString() === catalogueParams(current).toString()) return;
@@ -113,7 +146,7 @@ export function BooksClient({
             abortControllerRef.current.abort();
         }
 
-        writeUrl(catalogueParams({ search: term, filter, genres: genreIds, page }));
+        writeUrl(keepingBook(catalogueParams({ search: term, filter, genres: genreIds, page })));
 
         if (!term && genreIds.length === 0 && page === 1) {
             setSearchResults({
@@ -160,7 +193,7 @@ export function BooksClient({
             // last page, replacing the entry — kept, it would lead back here.
             const lastPage = outOfRangePage(pageInfo(page, ITEMS_PER_PAGE, data.total), data.books.length);
             if (lastPage) {
-                writeUrl(catalogueParams({ search: term, filter, genres: genreIds, page: lastPage }), { replace: true });
+                writeUrl(keepingBook(catalogueParams({ search: term, filter, genres: genreIds, page: lastPage })), { replace: true });
                 setCurrentPage(lastPage);
                 return;
             }
@@ -234,7 +267,39 @@ export function BooksClient({
     const handleBookClick = useCallback((book: PublicBook) => {
         setSelectedBook(book);
         setIsModalOpen(true);
-    }, []);
+        setBookParam(book.id);
+        writeUrl(withBook(book.id));
+    }, [writeUrl]);
+
+    const closeBook = useCallback(() => {
+        setIsModalOpen(false);
+        setBookParam(null);
+        writeUrl(withBook(null));
+    }, [writeUrl]);
+
+    // Un lien `?livre=<id>` : le livre n'est pas forcément sur la page de
+    // résultats affichée, on le demande donc à part. Masqué, supprimé ou
+    // inconnu, la route répond 404 et le paramètre est retiré sans bruit — la
+    // liste s'affiche comme si le lien n'en portait pas.
+    useEffect(() => {
+        if (bookParam === null || selectedBook?.id === bookParam) return;
+        const controller = new AbortController();
+        fetch(`/api/catalogue/${bookParam}`, { signal: controller.signal })
+            .then((response) => (response.ok ? response.json() as Promise<PublicBook> : null))
+            .then((book) => {
+                if (book) {
+                    setSelectedBook(book);
+                    setIsModalOpen(true);
+                } else {
+                    setBookParam(null);
+                    writeUrl(withBook(null), { replace: true });
+                }
+            })
+            .catch((err) => {
+                if (err instanceof Error && err.name !== 'AbortError') console.error('Book link error:', err);
+            });
+        return () => controller.abort();
+    }, [bookParam, selectedBook?.id, writeUrl]);
 
     // The « Essayez plutôt » block — see components/ui/book-search-suggestions.tsx.
     // A visitor can only have set « Rechercher dans » and genres; the hidden
@@ -261,8 +326,8 @@ export function BooksClient({
             setSelectedGenres(prev => [...prev, genreId]);
             setCurrentPage(1);
         }
-        setIsModalOpen(false);
-    }, [selectedGenres]);
+        closeBook();
+    }, [selectedGenres, closeBook]);
 
     return (
         <div className="space-y-8">
@@ -345,7 +410,7 @@ export function BooksClient({
             <BookModal
                 book={selectedBook}
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={closeBook}
                 onGenreClick={handleGenreClickFromModal}
                 selectedGenres={selectedGenres}
             />
