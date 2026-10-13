@@ -1,7 +1,7 @@
 // app/api/books/route.ts
 import { prisma } from '@/lib/prisma';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { revalidatePublic } from '@/lib/revalidate-public';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 import { BookWithGenres } from '@/types/book';
 import { withAdmin } from '@/lib/auth/guards';
 import { unexpectedErrorResponse } from '@/lib/api-errors';
@@ -80,7 +80,6 @@ interface CreateBookResponse {
 }
 
 export const POST = withAdmin(async (req, { me }): Promise<Response> => {
-    revalidateAdmin();
     let created: CreateBookResponse;
     try {
         const userId = me.id;
@@ -166,7 +165,9 @@ export const POST = withAdmin(async (req, { me }): Promise<Response> => {
         });
     }
 
-    revalidateCatalogue();
+    // Un livre neuf est le plus récent : visible, il ouvre la première page du
+    // catalogue et en change le compte. Il n'est encore dans aucune liste de livres.
+    if (!created.book?.hiddenFromCatalogue) revalidatePublic(CACHE_TAGS.catalogue, '/catalogue');
 
     return new Response(JSON.stringify(created), {
         status: 201,

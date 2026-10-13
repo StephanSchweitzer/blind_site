@@ -11,12 +11,21 @@ paths:
   `Nous rejoindre` is **DB-backed**, edited under `/admin`, with drag-and-drop ordering.
   Content isn't hardcoded.
 - Cached public reads are tagged from **one registry**, `lib/cache-tags.ts`. After a
-  successful write (never before), call `revalidatePublic(tag, path)` — or
-  `revalidateCatalogue()` for a book/genre change, which invalidates the catalogue *and* the
-  coups de cœur, since books are embedded in the latter.
-- Admin mutations call `revalidateAdmin()`, which marks the whole `/admin` subtree stale —
-  status propagates between demandes, attributions and factures, so one write can move rows
-  in several tables.
+  successful write (never before), call `revalidatePublic(tag, path)`.
+- **Every invalidation is paid in ISR writes** (Vercel bills each regenerated page and cache
+  entry, in 8 KB units). Invalidate on a real change to what the public site shows, never
+  "just in case", and keep the fallback `revalidate` at a day, not an hour.
+- **A write to a book**: `snapshotPublicBooks([ids])` before it, `revalidateChangedBooks(snapshot)`
+  after. It compares what the public site shows (`toPublicBook`, visibility, active lists) and
+  invalidates the catalogue only when the book is on its cached first page or the title count
+  moved, the coups de cœur only when the book is (or was) in an active list, and nothing when
+  nothing public changed. A new visible book: `revalidatePublic(CACHE_TAGS.catalogue, …)`.
+  `revalidateCatalogue()` (both, unconditionally) is for genre writes only.
+- **No path-wide admin invalidation.** Back-office pages are `force-dynamic`; a
+  `revalidatePath('/admin', 'layout')` refreshes none of them and only throws away the
+  prerendered admin pages and the reference-data cache. Server Actions call `refresh()` from
+  `next/cache`; route handlers call nothing. Reference lists (genres, statuts…) are invalidated
+  by `revalidateReferenceData()`, whose tag the prerendered admin pages carry too.
 - `Book.hiddenFromCatalogue` hides a title from the public site only; it stays fully usable in
   the back office. Public queries must respect it — including the **unauthenticated** ones
   (`/api/polly`, `listes-de-livres/preview`), which accept any id the caller sends.

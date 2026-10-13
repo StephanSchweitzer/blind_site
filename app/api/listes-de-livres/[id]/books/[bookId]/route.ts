@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
@@ -39,7 +38,6 @@ export const GET = withAdmin(async (_req, { params }) => {
 });
 
 export const POST = withAdmin(async (_req, { params }) => {
-    revalidateAdmin();
     const key = await keyFrom(params);
     if (!key) return invalidId();
 
@@ -58,7 +56,6 @@ export const POST = withAdmin(async (_req, { params }) => {
 });
 
 export const DELETE = withAdmin(async (_req, { params }) => {
-    revalidateAdmin();
     const key = await keyFrom(params);
     if (!key) return invalidId();
 

@@ -1,6 +1,5 @@
 // app/api/assignments/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
     guardAssignmentStatus,
@@ -113,7 +112,6 @@ export const GET = withAdmin(async (request: NextRequest) => {
 });
 
 export const POST = withAdmin(async (request: NextRequest, { me }) => {
-    revalidateAdmin();
     try {
         const performedById = me.id;
 

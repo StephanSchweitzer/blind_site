@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { withSuperAdmin } from '@/lib/auth/guards';
@@ -52,7 +51,6 @@ export const PUT = withSuperAdmin(async (req) => {
             create: { id: 1, ...data },
         });
 
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.siteContact, '/contact');
 
         return NextResponse.json(contact);

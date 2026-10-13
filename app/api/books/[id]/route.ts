@@ -1,7 +1,6 @@
 // app/api/books/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 import { resolveMergedBook } from '@/lib/books/merged';
@@ -135,7 +134,6 @@ export const GET = withAdmin(async (_req, { params }) => {
  * stale copy of itself, so the route no longer takes it at all.
  */
 export const PUT = withAdmin(async (req, { params }) => {
-    revalidateAdmin();
     const bookId = await bookIdFrom(params);
     if (bookId === null) return invalidId();
 
@@ -176,6 +174,10 @@ export const PUT = withAdmin(async (req, { params }) => {
             );
         }
     }
+
+    // Avant l'écriture : revalidateChangedBooks compare après, et n'invalide le
+    // site public que si ce livre y montre réellement autre chose.
+    const publicBefore = await snapshotPublicBooks([bookId]);
 
     let updatedBook;
     try {
@@ -286,7 +288,7 @@ export const PUT = withAdmin(async (req, { params }) => {
 
     // Hors du try : la modification est faite, une panne ici ne doit pas se
     // lire « pas enregistrée » (le filet de withAdmin le dira « inconnue »).
-    revalidateCatalogue();
+    await revalidateChangedBooks(publicBefore);
 
     return NextResponse.json({
         message: 'Book updated successfully',
@@ -341,7 +343,6 @@ function readDisposition(body: unknown): AudioDisposition | null {
  * lib/books/deleteBookWithAudio.ts, avec la suppression depuis Doublons.
  */
 export const DELETE = withAdmin(async (request, { params, me }) => {
-    revalidateAdmin();
     const bookId = await bookIdFrom(params);
     if (bookId === null) return invalidId();
 
@@ -355,6 +356,8 @@ export const DELETE = withAdmin(async (request, { params, me }) => {
         // pas été supprimée ») n'est vrai que là. Le `deletedAt` est la dernière
         // écriture de deleteBookWithAudio (dans la transaction, pour un transfert) :
         // une exception qui en sort l'a donc précédée.
+        // La fiche transférée gagne une durée : elle compte aussi.
+        const publicBefore = await snapshotPublicBooks([bookId, disposition?.targetBookId]);
         let result: Awaited<ReturnType<typeof deleteBookWithAudio>>;
         try {
             result = await deleteBookWithAudio({ bookId, performedById: me.id, disposition, onProgress });
@@ -396,7 +399,7 @@ export const DELETE = withAdmin(async (request, { params, me }) => {
             );
         }
 
-        revalidateCatalogue();
+        await revalidateChangedBooks(publicBefore);
 
         return NextResponse.json(
             {

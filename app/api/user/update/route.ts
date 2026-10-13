@@ -1,6 +1,5 @@
 // app/api/user/update/route.ts
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth/guards';
 import { isSendableEmail } from '@/lib/email/sendEmail';
@@ -61,7 +60,6 @@ export const PUT = withAuth(async (request, { me }) => {
 
         // The e-mail shows up wherever this person authored something, so the
         // whole back office can be stale after this write.
-        revalidateAdmin();
 
         return NextResponse.json(updatedUser);
     } catch (error) {

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 // d'écran « Chargement… » en y arrivant. `?page=N` est lu dans le navigateur
 // (CoupsDeCoeurClient). L'invalidation par le tag `coups-de-coeur` la
 // régénère après chaque modification ; ce délai n'est qu'un filet.
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 export default async function CoupsDeCoeurPage() {
     const { items, total } = await getCoupsDeCoeurPage(1, COUPS_DE_COEUR_PAGE_SIZE);

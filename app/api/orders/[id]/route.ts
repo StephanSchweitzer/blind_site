@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import {
     OrderQueryModeSchema,
@@ -210,7 +209,6 @@ export const GET = withAdmin(async (request, { params }) => {
 });
 
 export const PUT = withAdmin(async (request, { me, params }) => {
-    revalidateAdmin();
     try {
         const performedById = me.id;
 
@@ -865,7 +863,6 @@ export const PUT = withAdmin(async (request, { me, params }) => {
 });
 
 export const DELETE = withAdmin(async (_request, { me, params }) => {
-    revalidateAdmin();
     try {
         const { id } = await params!;
         const orderId = parseInt(id);

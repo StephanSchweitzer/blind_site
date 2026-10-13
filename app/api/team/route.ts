@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma, TeamSection } from '@prisma/client';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { withSuperAdmin } from '@/lib/auth/guards';
@@ -43,7 +42,6 @@ export const POST = withSuperAdmin(async (req) => {
             },
         });
 
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.team, '/nous-connaitre/equipe');
 
         return NextResponse.json(member, { status: 201 });
@@ -70,7 +68,6 @@ export const PATCH = withSuperAdmin(async (req) => {
             ),
         );
 
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.team, '/nous-connaitre/equipe');
 
         return NextResponse.json({ success: true });

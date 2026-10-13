@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import {
     closeElapsedUnavailabilities,
     describeExpiryResult,
@@ -37,8 +36,6 @@ export async function GET(request: NextRequest) {
     try {
         const result = await closeElapsedUnavailabilities();
         if (result.closed > 0) {
-            // Only touch the cache when something actually changed.
-            revalidateAdmin();
             console.log(`[cron] ${describeExpiryResult(result)} (ids: ${result.userIds.join(', ')})`);
         }
         return NextResponse.json({ closed: result.closed, userIds: result.userIds });

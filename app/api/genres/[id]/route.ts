@@ -1,13 +1,12 @@
 // app/api/genres/[id]/route.ts
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { revalidateAdmin, revalidateReferenceData } from '@/lib/revalidate-admin';
+import { revalidateReferenceData } from '@/lib/revalidate-admin';
 import { revalidateCatalogue } from '@/lib/revalidate-public';
 import { withAdmin } from '@/lib/auth/guards';
 import { isRecordNotFound, notFoundResponse } from '@/lib/api-errors';
 
 export const PUT = withAdmin(async (request, { params }) => {
-    revalidateAdmin();
     try {
         const body = await request.json();
 
@@ -58,7 +57,6 @@ export const PUT = withAdmin(async (request, { params }) => {
 });
 
 export const DELETE = withAdmin(async (_request, { params }) => {
-    revalidateAdmin();
     try {
         const { id } = (await params) ?? {};
         const genreId = Number(id);

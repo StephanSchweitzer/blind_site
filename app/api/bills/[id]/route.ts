@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus } from '@prisma/client';
 import { userAddressLines } from '@/lib/users/formatAddress';
@@ -159,7 +158,6 @@ export const GET = withAdmin(async (_request, context) => {
 });
 
 export const PATCH = withAdmin(async (request, { me, params }) => {
-    revalidateAdmin();
     try {
         const performedById = me.id;
 
@@ -625,7 +623,6 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
  * émise est de la rouvrir d'abord.
  */
 export const DELETE = withAdmin(async (_request, { me, params }) => {
-    revalidateAdmin();
     try {
         const performedById = me.id;
 

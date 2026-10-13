@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { PaymentType, PaymentMethod, Prisma, BillingStatus } from '@prisma/client';
 import { PaymentCreateInputSchema } from '@/types/api/payment.api';
@@ -83,7 +82,6 @@ export const GET = withAdmin(async (request) => {
 // derive it from orders). A billId is only persisted for ENREGISTREMENT and a
 // cotisationYear only for COTISATION; both are validated/coerced server-side.
 export const POST = withAdmin(async (request, { me }) => {
-    revalidateAdmin();
     try {
         const body = await request.json();
         const parsed = PaymentCreateInputSchema.safeParse(body);

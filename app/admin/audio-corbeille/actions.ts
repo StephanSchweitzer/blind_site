@@ -1,8 +1,9 @@
 'use server';
 
+import { prisma } from '@/lib/prisma';
 import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { refresh } from 'next/cache';
+import { revalidateChangedBooks, snapshotPublicBooks, type PublicBooksSnapshot } from '@/lib/revalidate-public';
 import { restoreTrack, restoreTracksByIds, AudioTrashError } from '@/lib/audio/trash';
 import { purgeTrashNow } from '@/lib/audio/purge';
 
@@ -30,15 +31,33 @@ const DENIED: ActionResult = { ok: false, message: 'Permissions insuffisantes' }
 
 const asAdminAction = (body: (me: CurrentUser) => Promise<ActionResult>) => asAdmin(DENIED, body);
 
+/**
+ * Les livres dont ces lignes de corbeille viennent, lus avant la restauration.
+ * Ne jette pas, comme snapshotPublicBooks : null fera tout invalider.
+ */
+async function snapshotTrashedBooks(trashIds: number[]): Promise<PublicBooksSnapshot> {
+    try {
+        const rows = await prisma.deletedAudioTrack.findMany({
+            where: { id: { in: trashIds } },
+            select: { bookId: true },
+        });
+        return await snapshotPublicBooks(rows.map((r) => r.bookId));
+    } catch (error) {
+        console.error('snapshotTrashedBooks:', error);
+        return null;
+    }
+}
+
 export async function restoreTrashedTrack(trashId: number): Promise<ActionResult> {
     return asAdminAction(async (me) => {
         if (!Number.isInteger(trashId)) return { ok: false, message: 'Identifiant invalide' };
 
         try {
+            const publicBefore = await snapshotTrashedBooks([trashId]);
             const { bookId } = await restoreTrack({ trashId, userId: me.id });
-            revalidateAdmin();
-            // Le poids du livre a pu changer : le catalogue public l'affiche.
-            if (bookId) revalidateCatalogue();
+            refresh();
+            // La durée du livre a pu changer : le catalogue public l'affiche.
+            if (bookId) await revalidateChangedBooks(publicBefore);
             return {
                 ok: true,
                 message: bookId
@@ -73,9 +92,10 @@ export async function restoreTrashedGroup(trashIds: number[]): Promise<ActionRes
         if (!ids.length) return { ok: false, message: 'Identifiants invalides' };
 
         try {
+            const publicBefore = await snapshotTrashedBooks(ids);
             const { restored, failed } = await restoreTracksByIds({ trashIds: ids, userId: me.id });
-            revalidateAdmin();
-            if (restored > 0) revalidateCatalogue();
+            refresh();
+            if (restored > 0) await revalidateChangedBooks(publicBefore);
 
             if (failed.length === 0) {
                 return {
@@ -116,7 +136,7 @@ export async function purgeTrashedTracks(trashIds: number[]): Promise<ActionResu
 
         try {
             const { purged, failed, skipped } = await purgeTrashNow({ trashIds: ids, userId: me.id });
-            revalidateAdmin();
+            refresh();
 
             const s = (n: number) => (n > 1 ? 's' : '');
             if (purged === 0 && failed === 0) {

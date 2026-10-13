@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, BillingStatus, BillKind, PaymentType, PaymentMethod } from '@prisma/client';
 import {
@@ -117,7 +116,6 @@ const ATTACH_BLOCK_ERROR: Record<OrderAttachBlock, string> = {
  * admin picks the client, the orders, and the bill's state/dates directly.
  */
 export const POST = withAdmin(async (request, { me }) => {
-    revalidateAdmin();
     try {
         const performedById = me.id;
         const body = await request.json();

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 import bcrypt from 'bcrypt';
@@ -46,7 +45,6 @@ interface UserCreateRequestBody extends Omit<UserCreateInput, 'password'> {
 }
 
 export const POST = withAdmin(async (request, { me }) => {
-    revalidateAdmin();
     try {
         const body = await request.json() as UserCreateRequestBody;
 

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { PaymentType, Prisma, BillingStatus } from '@prisma/client';
 import { isClientRequiredForPaymentType } from '@/lib/payment-enums';
@@ -68,7 +67,6 @@ export const GET = withAdmin(async (_request, context) => {
 });
 
 export const PATCH = withAdmin(async (request, { me, params }) => {
-    revalidateAdmin();
     try {
         const { id } = await params!;
         const paymentId = parseInt(id);
@@ -270,7 +268,6 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
 
 // Soft delete: mark inactive, stamp deletedAt, store an optional reason.
 export const DELETE = withAdmin(async (request, context) => {
-    revalidateAdmin();
     try {
         const { id } = await context.params!;
         const paymentId = parseInt(id);

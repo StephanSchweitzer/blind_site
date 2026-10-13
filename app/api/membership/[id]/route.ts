@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { withSuperAdmin } from '@/lib/auth/guards';
@@ -35,7 +34,6 @@ export const PUT = withSuperAdmin(async (req, { params }) => {
                 ...(b.active !== undefined && { active: b.active }),
             },
         });
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.nousRejoindre, PATH);
         return NextResponse.json(item);
     } catch (error) {
@@ -52,7 +50,6 @@ export const DELETE = withSuperAdmin(async (_req, { params }) => {
         if (optionId === null) return invalidIdResponse();
 
         await prisma.membershipOption.delete({ where: { id: optionId } });
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.nousRejoindre, PATH);
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { UserActivityStatus } from '@prisma/client';
 import { OFFERED_USER_ACTIVITY_STATUSES, isDatedActivityStatus } from '@/lib/user-activity-enums';
@@ -56,8 +55,6 @@ export const GET = withAdmin(async (_request, { params }) => {
 // Record a status change: writes a history event (capturing the acting admin)
 // and updates the user's current activityStatus.
 export const POST = withAdmin(async (request, { me, params }) => {
-    revalidateAdmin();
-
     const { id } = await params!;
     const userId = parseInt(id, 10);
     if (Number.isNaN(userId)) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import { resolvePrefix } from '@/lib/audio/state';
 import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
@@ -97,6 +97,7 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
     // again (its leftover original is just removed), so a run that timed out
     // half way is finished simply by confirming again.
     const run = async (onProgress?: (done: number, total: number) => void) => {
+        const publicBefore = await snapshotPublicBooks([bookId]);
         let result: Awaited<ReturnType<typeof softDeleteTracks>>;
         try {
             result = await softDeleteTracks({
@@ -131,10 +132,10 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
         // attempt's leftovers alike, never a track whose removal failed.
         const deleted = { length: result.parked.length };
         if (deleted.length > 0) {
-            // Le catalogue public affiche la durée et la disponibilité, que
-            // refreshBookAudioState vient de relire : sans cette invalidation, il gardait
-            // l'ancienne jusqu'à une heure (le repli de unstable_cache).
-            revalidateCatalogue();
+            // Le catalogue public affiche la durée, que refreshBookAudioState vient de
+            // relire : invalidé si elle a bougé et que le livre y figure (sinon il
+            // gardait l'ancienne jusqu'au repli de unstable_cache, un jour).
+            await revalidateChangedBooks(publicBefore);
         }
         const failed = result.failed.map((f) => ({ name: f.filename, message: f.reason }));
 

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isAdmin, isSuperAdmin, withAdmin } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { getUserDisplayName } from '@/lib/users/displayName';
 
 /**
@@ -79,7 +78,6 @@ export const POST = withAdmin(async (_request, { me, params }) => {
             select: { id: true },
         });
 
-        revalidateAdmin();
         return NextResponse.json({
             message: `${named} a été restauré. La fiche réapparaît dans les listes et les recherches.`,
             restoredId: userId,

@@ -17,5 +17,5 @@ export const getInitialNews = unstable_cache(
     (): Promise<NewsResponse> =>
         listPublicNews({ search: '', type: null, page: 1, limit: NEWS_PAGE_SIZE, suggest: false }),
     ['dernieres-infos-initial-v1'],
-    { tags: [CACHE_TAGS.news], revalidate: 3600 },
+    { tags: [CACHE_TAGS.news], revalidate: 86400 },
 );

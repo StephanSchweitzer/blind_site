@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { withSuperAdmin } from '@/lib/auth/guards';
@@ -30,7 +29,6 @@ export const PUT = withSuperAdmin(async (req, { params }) => {
                 ...(active !== undefined && { active }),
             },
         });
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.informationsPratiques, PATH);
         return NextResponse.json(item);
     } catch (error) {
@@ -47,7 +45,6 @@ export const DELETE = withSuperAdmin(async (_req, { params }) => {
         if (infoId === null) return invalidIdResponse();
 
         await prisma.practicalInfo.delete({ where: { id: infoId } });
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.informationsPratiques, PATH);
         return NextResponse.json({ success: true });
     } catch (error) {

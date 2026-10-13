@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { guardReaderEligible, guardCanReassignReader } from '@/lib/statusSync';
 import { guardUserIsActive } from '@/lib/users/activityGuard';
@@ -81,7 +80,6 @@ export const GET = withAdmin(async (_request, { params }) => {
  * directement.
  */
 export const POST = withAdmin(async (request, { params }) => {
-    revalidateAdmin();
     try {
         const { id } = (await params) ?? {};
         const assignmentId = Number(id);

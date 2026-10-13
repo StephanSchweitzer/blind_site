@@ -29,12 +29,13 @@ export interface HomeFigures {
  *   (`returnedToECADate`), over a rolling twelve months rather than « depuis le
  *   1er janvier », which would read « 3 livres » every January.
  * - The title count is read through getCatalogueData, so it is the catalogue
- *   page's own number; the entry carries the `catalogue` tag too, so a book
- *   write refreshes both together.
+ *   page's own number; the entry carries the `catalogue` tag too, so a write
+ *   that changes the count refreshes both together.
  *
  * No tag of its own: none of the other writes that move these numbers (a
  * status change, a returned attribution) is worth a purge for a sentence that
- * is fine an hour late — `revalidate` keeps it current enough.
+ * is fine a day late — `revalidate` keeps it current enough. It was an hour;
+ * each refresh rewrites the whole home page, an ISR write on Vercel.
  *
  * May throw; the page renders nothing rather than zeros.
  */
@@ -54,5 +55,5 @@ export const getHomeFigures = unstable_cache(
         return { lecteurs, auditeurs, enregistrements, titres: catalogue.totalBooks };
     },
     ['home-figures'],
-    { tags: [CACHE_TAGS.catalogue], revalidate: 3600 },
+    { tags: [CACHE_TAGS.catalogue], revalidate: 86400 },
 );

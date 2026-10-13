@@ -1,6 +1,5 @@
 // app/api/news/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
@@ -63,8 +62,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
 // PUT: Update a specific article by ID
 export const PUT = withAdmin(async (req, { params }) => {
-    revalidateAdmin();
-
     try {
         const { id: string_id } = await params!;  // Correctly destructure 'id' and rename to string_id
         const id = parseInt(string_id, 10);
@@ -141,8 +138,6 @@ export const PUT = withAdmin(async (req, { params }) => {
 
 // DELETE: Delete a specific article by ID
 export const DELETE = withAdmin(async (_req, { params }) => {
-    revalidateAdmin();
-
     try {
         const { id: string_id } = await params!;  // Correctly destructure 'id' and rename to string_id
         const id = parseInt(string_id, 10);

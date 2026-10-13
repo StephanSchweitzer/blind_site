@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { withSuperAdmin } from '@/lib/auth/guards';
@@ -33,7 +32,6 @@ export const PUT = withSuperAdmin(async (req, { params }) => {
         if (iconKey !== undefined) data.iconKey = iconKey;
 
         const event = await prisma.historyEvent.update({ where: { id: eventId }, data });
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.historique, PATH);
         return NextResponse.json(event);
     } catch (error) {
@@ -50,7 +48,6 @@ export const DELETE = withSuperAdmin(async (_req, { params }) => {
         if (eventId === null) return invalidIdResponse();
 
         await prisma.historyEvent.delete({ where: { id: eventId } });
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.historique, PATH);
         return NextResponse.json({ success: true });
     } catch (error) {

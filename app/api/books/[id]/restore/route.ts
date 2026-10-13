@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { unexpectedErrorResponse } from '@/lib/api-errors';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { revalidateChangedBooks, snapshotPublicBooks, type PublicBooksSnapshot } from '@/lib/revalidate-public';
 import { restoreTracksByIds } from '@/lib/audio/trash';
 import { isbnConflictMessage, readBookRestorePreview } from '@/lib/books/restorePreview';
 
@@ -100,6 +99,7 @@ export const POST = withAdmin(async (request, { params, me }) => {
     // Posé dès que la fiche est réellement ressortie : à partir de là, une
     // exception ne doit plus se lire « la restauration a échoué ».
     let bookRestored = false;
+    let publicBefore: PublicBooksSnapshot = null;
     try {
         const preview = await readBookRestorePreview(bookId);
         if (!preview) {
@@ -129,6 +129,7 @@ export const POST = withAdmin(async (request, { params, me }) => {
         );
         const trashIds = [...new Set(requestedIds)].filter((id) => restorable.has(id));
 
+        publicBefore = await snapshotPublicBooks([bookId]);
         try {
             await prisma.book.update({
                 where: { id: bookId },
@@ -166,14 +167,15 @@ export const POST = withAdmin(async (request, { params, me }) => {
                 `(${failed[0].reason}) — voir Corbeille audio.`;
         }
 
-        revalidateAdmin();
-        revalidateCatalogue();
+        await revalidateChangedBooks(publicBefore);
         return NextResponse.json({
             message,
             restoredId: bookId,
             audio: { restoredTracks: restored, failedTracks: failed.length },
         });
     } catch (error) {
+        // La fiche est ressortie même si les pistes ont calé : le site public doit le voir.
+        if (bookRestored) await revalidateChangedBooks(publicBefore);
         return unexpectedErrorResponse({
             where: `POST /api/books/${bookId}/restore`,
             error,

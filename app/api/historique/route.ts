@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { withSuperAdmin } from '@/lib/auth/guards';
@@ -27,7 +26,6 @@ export const POST = withSuperAdmin(async (req) => {
         const event = await prisma.historyEvent.create({
             data: { year: parsedYear, title, description, iconKey },
         });
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.historique, PATH);
         return NextResponse.json(event, { status: 201 });
     } catch (error) {

@@ -4,8 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { listRawObjects } from '@/lib/audio/bucket';
 import { refreshBookAudioState, resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTracks } from '@/lib/audio/trash';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 
 /** An upload that lands more than this far off the announced size is suspect. */
 const SIZE_TOLERANCE_BYTES = 0;
@@ -206,6 +205,9 @@ export const POST = withAdmin(async (req, { params, me }) => {
     // in the listing handed to the refresh below rather than listing again.
     const remainingObjects = objects.filter((o) => !misSizedRemoved.has(o.key));
 
+    // Before the refresh below, which writes the duration the public catalogue shows.
+    const publicBefore = await snapshotPublicBooks([bookId]);
+
     // This is where the weight of a recording finally becomes known, so it is
     // also where the demandes still waiting on a tarif get theirs — the reader
     // returned the book long before, and the demande is already « Terminé ».
@@ -220,9 +222,13 @@ export const POST = withAdmin(async (req, { params, me }) => {
     if (confirmed.length && !book.available && state.status === 'OK') {
         await prisma.book.update({ where: { id: bookId }, data: { available: true } });
         becameAvailable = true;
-        revalidateAdmin();
-        revalidateCatalogue();
     }
+
+    // The new duration, or the book turning « Disponible », reaches the public pages
+    // the book is actually on. This used to fire only when the book became
+    // available, so a duration filled in by an upload waited for the
+    // unstable_cache fallback.
+    await revalidateChangedBooks(publicBefore);
 
     return NextResponse.json({
         confirmed: confirmed.length,

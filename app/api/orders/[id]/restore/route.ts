@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { BillingStatus } from '@prisma/client';
 import { recomputeBillTotal, detachOrderFromBill, logBillEvent } from '@/lib/billing';
@@ -205,7 +204,6 @@ export const POST = withAdmin(async (_request, { params, me }) => {
             });
         }
 
-        revalidateAdmin();
 
         if (result.kind === 'restored-detached') {
             return NextResponse.json({

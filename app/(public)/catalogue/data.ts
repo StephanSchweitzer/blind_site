@@ -4,7 +4,11 @@ import { CACHE_TAGS } from '@/lib/cache-tags';
 import { PublicBook, toPublicBook } from '@/lib/books/publicBook';
 import type { Genre } from '@prisma/client';
 
-const CATALOGUE_PAGE_SIZE = 9;
+/**
+ * Exported for lib/revalidate-public.ts, which has to know whether a book sits
+ * on this cached first page: a book further down never reaches the cache.
+ */
+export const CATALOGUE_PAGE_SIZE = 9;
 
 interface CatalogueData {
     initialBooks: PublicBook[];
@@ -52,5 +56,5 @@ export const getCatalogueData = unstable_cache(
         };
     },
     ['catalogue-initial-v3'],
-    { tags: [CACHE_TAGS.catalogue], revalidate: 3600 },
+    { tags: [CACHE_TAGS.catalogue], revalidate: 86400 },
 );

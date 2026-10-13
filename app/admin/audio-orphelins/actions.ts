@@ -3,8 +3,9 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { refresh } from 'next/cache';
+import { revalidateChangedBooks, revalidatePublic, snapshotPublicBooks } from '@/lib/revalidate-public';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 import { listRawObjects } from '@/lib/audio/bucket';
 import { refreshBookAudioState } from '@/lib/audio/state';
 import { findFolderClaimant, describeClaimant } from '@/lib/audio/sharedFolder';
@@ -128,6 +129,7 @@ export async function linkOrphanToBook(
                 note = appendOrphanNote(note, `ancien chemin du livre #${book.id} remplacé (dossier vide) : ${existing}`);
             }
 
+            const publicBefore = await snapshotPublicBooks([bookId]);
             await prisma.book.update({
                 where: { id: bookId },
                 data: { audio_filepath: orphan.prefix },
@@ -146,8 +148,8 @@ export async function linkOrphanToBook(
                 },
             });
 
-            revalidateAdmin();
-            revalidateCatalogue();
+            refresh();
+            await revalidateChangedBooks(publicBefore);
             return {
                 ok: true,
                 message: `Dossier rattaché à « ${book.title} » — ${state.trackCount ?? 0} piste${(state.trackCount ?? 0) > 1 ? 's' : ''}.`,
@@ -243,8 +245,9 @@ export async function createBookForOrphan(
                 },
             });
 
-            revalidateAdmin();
-            revalidateCatalogue();
+            refresh();
+            // Un livre neuf, visible : il ouvre la première page du catalogue.
+            revalidatePublic(CACHE_TAGS.catalogue, '/catalogue');
             return {
                 ok: true,
                 message: `Livre « ${book.title} » (#${book.id}) créé et rattaché — ${state.trackCount ?? 0} piste${(state.trackCount ?? 0) > 1 ? 's' : ''}.`,
@@ -280,6 +283,7 @@ export async function unlinkOrphan(orphanId: number): Promise<ActionResult> {
                 select: { id: true, audio_filepath: true },
             });
 
+            const publicBefore = await snapshotPublicBooks([orphan.linkedBookId]);
             // Only clear the path if it still points here: the book may have been
             // re-pointed elsewhere since, and that newer decision wins.
             if (book && book.audio_filepath?.trim() === orphan.prefix) {
@@ -299,8 +303,8 @@ export async function unlinkOrphan(orphanId: number): Promise<ActionResult> {
                 },
             });
 
-            revalidateAdmin();
-            revalidateCatalogue();
+            refresh();
+            await revalidateChangedBooks(publicBefore);
             return { ok: true, message: 'Rattachement annulé — le dossier est de nouveau orphelin.' };
         } catch (error) {
             console.error('unlinkOrphan error:', error);
@@ -339,7 +343,7 @@ export async function dismissOrphan(orphanId: number, reason: string): Promise<A
                 },
             });
 
-            revalidateAdmin();
+            refresh();
             return { ok: true, message: 'Dossier écarté. Rien n’a été supprimé du stockage.' };
         } catch (error) {
             console.error('dismissOrphan error:', error);
@@ -365,7 +369,7 @@ export async function restoreOrphan(orphanId: number): Promise<ActionResult> {
                 },
             });
 
-            revalidateAdmin();
+            refresh();
             return { ok: true, message: 'Dossier remis dans la file à traiter.' };
         } catch (error) {
             console.error('restoreOrphan error:', error);

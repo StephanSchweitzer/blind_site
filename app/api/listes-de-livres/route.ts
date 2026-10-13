@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
@@ -14,7 +13,6 @@ import { withAdmin } from '@/lib/auth/guards';
 // noms de permanents avant f3faa02.
 
 export const POST = withAdmin(async (req, { me }) => {
-    revalidateAdmin();
     try {
         const body = await req.json();
         const { title, description, audioPath, bookIds, active } = body;

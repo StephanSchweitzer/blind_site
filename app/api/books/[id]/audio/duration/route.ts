@@ -3,8 +3,7 @@ import { withAdmin } from '@/lib/auth/guards';
 import { measureBookDurations, MeasureError } from '@/lib/audio/measure';
 import { refreshBookAudioState } from '@/lib/audio/state';
 import { prisma } from '@/lib/prisma';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 
 /**
  * measure.ts reasons its own MAX_TRACKS=200 ceiling as "about thirty seconds
@@ -58,13 +57,10 @@ export const POST = withAdmin(async (_req, { params, me }) => {
         );
     }
 
-    // Read what was stored before touching anything, so the revalidation below
-    // can tell a real move (including down to nothing) from a re-read that
-    // confirms the same figure.
-    const before = await prisma.book.findUnique({
-        where: { id: bookId },
-        select: { readingDurationMinutes: true },
-    });
+    // Read what the public site shows before touching anything, so the
+    // revalidation below can tell a real move (including down to nothing) from a
+    // re-read that confirms the same figure.
+    const publicBefore = await snapshotPublicBooks([bookId]);
 
     // Re-read the folder so the duration lands next to a track count and weight
     // taken at the same moment, and so the cached columns cannot disagree with
@@ -77,13 +73,9 @@ export const POST = withAdmin(async (_req, { params, me }) => {
         select: { readingDurationMinutes: true },
     });
 
-    // Worth invalidating whenever a figure reached the public pages, or just
-    // stopped doing so — a duration cleared to null is as much a change to the
-    // catalogue as one newly filled in.
-    if (book?.readingDurationMinutes != null || before?.readingDurationMinutes != null) {
-        revalidateAdmin();
-        revalidateCatalogue();
-    }
+    // A duration cleared to null is as much a change to the catalogue as one
+    // newly filled in; the same figure measured again is none.
+    await revalidateChangedBooks(publicBefore);
 
     return NextResponse.json({
         readingDurationMinutes: book?.readingDurationMinutes ?? null,

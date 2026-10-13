@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
@@ -79,6 +79,7 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
         );
     }
 
+    const publicBefore = await snapshotPublicBooks([bookId]);
     try {
         const result = await softDeleteTrack({
             bookId,
@@ -86,10 +87,10 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
             filename,
             userId: me.id,
         });
-        // Le catalogue public affiche la durée et la disponibilité, que
-        // refreshBookAudioState vient de relire : sans cette invalidation, il gardait
-        // l'ancienne jusqu'à une heure (le repli de unstable_cache).
-        revalidateCatalogue();
+        // Le catalogue public affiche la durée, que refreshBookAudioState vient de
+        // relire : invalidé si elle a bougé et que le livre y figure (sinon il
+        // gardait l'ancienne jusqu'au repli de unstable_cache, un jour).
+        await revalidateChangedBooks(publicBefore);
         return NextResponse.json({
             message: `« ${filename} » a été déplacé dans la corbeille.`,
             ...result,
@@ -223,10 +224,12 @@ export const PATCH = withAdmin(async (req, { params, me }) => {
 
     const newKey = `${prefix}${newName}`;
 
+    const publicBefore = await snapshotPublicBooks([bookId]);
     try {
         const result = await renameTrack({ bookId, oldKey: key, newKey, userId: me.id });
-        // Même raison que la suppression ci-dessus.
-        revalidateCatalogue();
+        // Même raison que la suppression ci-dessus ; un renommage ne change
+        // d'ordinaire pas la durée, et n'invalide alors rien.
+        await revalidateChangedBooks(publicBefore);
         return NextResponse.json({
             message: `« ${filename} » a été renommé en « ${newName} ».`,
             key: newKey,

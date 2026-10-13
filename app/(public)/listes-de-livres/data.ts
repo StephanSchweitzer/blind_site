@@ -61,5 +61,5 @@ export const getCoupsDeCoeurPage = unstable_cache(
         return { items, total };
     },
     ['coups-de-coeur-page-v3'],
-    { tags: [CACHE_TAGS.coupsDeCoeur], revalidate: 3600 },
+    { tags: [CACHE_TAGS.coupsDeCoeur], revalidate: 86400 },
 );

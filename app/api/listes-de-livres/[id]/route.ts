@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
@@ -43,7 +42,6 @@ export const GET = withAdmin(async (_req, { params }) => {
 
 // PUT: Update a specific coup de coeur by ID
 export const PUT = withAdmin(async (req, { params }) => {
-    revalidateAdmin();
     const { id } = (await params) ?? {};
     const coupId = Number(id);
     if (!Number.isInteger(coupId)) {
@@ -115,7 +113,6 @@ export const PUT = withAdmin(async (req, { params }) => {
 
 // DELETE: Delete a specific coup de coeur by ID
 export const DELETE = withAdmin(async (_req, { params }) => {
-    revalidateAdmin();
     const { id } = (await params) ?? {};
     const coupId = Number(id);
     if (!Number.isInteger(coupId)) {

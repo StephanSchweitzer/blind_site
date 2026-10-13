@@ -3,8 +3,8 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { refresh } from 'next/cache';
+import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 import { refreshBookAudioState } from '@/lib/audio/state';
 import { isDoubleRecording } from '@/lib/audio-enums';
 import { sendReviewEscalation } from '@/lib/email/sendReviewEscalation';
@@ -157,6 +157,9 @@ export async function fuseBooks(
         // dire « aucune modification enregistrée ».
         let committed = false;
         try {
+            // Avant resolveAudioSide, qui relit déjà l'audio des deux fiches.
+            const publicBefore = await snapshotPublicBooks([survivorId, removedId]);
+
             // Settled BEFORE the transaction, because deciding it reaches the
             // bucket and refreshBookAudioState must not run inside one.
             const keepAudioFrom = await resolveAudioSide(survivorId, removedId);
@@ -294,8 +297,8 @@ export async function fuseBooks(
                 console.error('fuseBooks: audio state refresh failed for book', survivorId, error);
             }
 
-            revalidateAdmin();
-            revalidateCatalogue();
+            refresh();
+            await revalidateChangedBooks(publicBefore);
             return { ok: true, message: 'Livres fusionnés avec succès' };
         } catch (error) {
             const msg = error instanceof Error ? error.message : '';
@@ -360,6 +363,7 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
         if (!Number.isInteger(bookId)) return { ok: false, message: 'Identifiant invalide' };
 
         try {
+            const publicBefore = await snapshotPublicBooks([bookId]);
             const result = await deleteBookWithAudio({
                 bookId,
                 performedById: me.id,
@@ -367,8 +371,8 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
             });
             if (!result.ok) return { ok: false, message: result.error };
 
-            revalidateAdmin();
-            revalidateCatalogue();
+            refresh();
+            await revalidateChangedBooks(publicBefore);
             // « attend dans Audio orphelins » : faux depuis la suppression douce —
             // le dossier reste attaché à la fiche masquée (voir deleteBookWithAudio).
             const { trackCount, keptBy, orphanedPrefix } = result.audio;
@@ -496,7 +500,7 @@ export async function escalateReview(
             }
 
             await prisma.book.update({ where: { id: flaggedId }, data: { escalatedAt: new Date() } });
-            revalidateAdmin();
+            refresh();
             return { ok: true, message: 'Doublon signalé à Stéphan pour traitement manuel' };
         } catch (error) {
             // L'e-mail part AVANT l'écriture d'`escalatedAt` : une panne ici a pu
@@ -523,7 +527,7 @@ export async function dismissReview(bookId: number): Promise<ActionResult> {
 
         try {
             await prisma.book.update({ where: { id: bookId }, data: { needsReview: false } });
-            revalidateAdmin();
+            refresh();
             return { ok: true, message: 'Livre retiré de la file de révision' };
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {

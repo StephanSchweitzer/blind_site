@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { logBillEvent } from '@/lib/billing';
 import { getUserNameOnly } from '@/lib/users/displayName';
 
@@ -82,7 +81,6 @@ export const POST = withAdmin(async (_request, { params, me }) => {
             });
         }
 
-        revalidateAdmin();
         return NextResponse.json({
             message: 'La facture a été restaurée, vide : ses demandes ne sont pas rattachées de nouveau. Utilisez « Ajouter une demande » pour la remplir.',
             restoredId: billId,

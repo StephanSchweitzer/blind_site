@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import {
     closeElapsedUnavailabilities,
     describeExpiryResult,
@@ -14,7 +13,6 @@ import {
 export const POST = withAdmin(async () => {
     try {
         const result = await closeElapsedUnavailabilities();
-        if (result.closed > 0) revalidateAdmin();
         return NextResponse.json({ ...result, message: describeExpiryResult(result) });
     } catch (error) {
         console.error('Manual unavailability sweep failed:', error);

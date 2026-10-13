@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { UserActivityStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { isEffectivelyActive, parseUnavailabilityWindow, toDayString } from '@/lib/users/activityStatus';
 import type { MyUnavailabilityResponse } from '@/types';
 
@@ -134,7 +133,6 @@ export const POST = withAuth(async (request, { me }) => {
         }
         // A window in force changes who is free on /admin/disponibilites and who
         // the attribution form may offer — revalidate after the write, never before.
-        revalidateAdmin();
         return NextResponse.json(respond('UNAVAILABLE', window));
     } catch (error) {
         console.error('Erreur lors de la déclaration d’indisponibilité:', error);
@@ -158,7 +156,6 @@ export const DELETE = withAuth(async (_request, { me }) => {
         if (!result.ok) {
             return NextResponse.json({ message: result.message }, { status: result.status });
         }
-        revalidateAdmin();
         return NextResponse.json(respond('ACTIVE', null));
     } catch (error) {
         console.error('Erreur lors de l’annulation d’indisponibilité:', error);

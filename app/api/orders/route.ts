@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { prisma } from '@/lib/prisma';
 import { Prisma, OrderBillingStatus } from '@prisma/client';
 import { accrueOrderToOpenDraft, issueDraftIfOverThreshold } from '@/lib/billing';
@@ -232,7 +231,6 @@ export const GET = withAdmin(async (request) => {
 });
 
 export const POST = withAdmin(async (request, { me }) => {
-    revalidateAdmin();
     try {
         const body = await request.json();
 

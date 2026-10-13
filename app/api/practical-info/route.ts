@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { withSuperAdmin } from '@/lib/auth/guards';
@@ -33,7 +32,6 @@ export const POST = withSuperAdmin(async (req) => {
                 sortOrder: (last?.sortOrder ?? -1) + 1,
             },
         });
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.informationsPratiques, PATH);
         return NextResponse.json(item, { status: 201 });
     } catch (error) {
@@ -53,7 +51,6 @@ export const PATCH = withSuperAdmin(async (req) => {
                 prisma.practicalInfo.update({ where: { id: it.id }, data: { sortOrder: it.sortOrder } }),
             ),
         );
-        revalidateAdmin();
         revalidatePublic(CACHE_TAGS.informationsPratiques, PATH);
         return NextResponse.json({ success: true });
     } catch (error) {

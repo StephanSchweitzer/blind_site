@@ -14,7 +14,7 @@ export const metadata = {
 // sont lus dans le navigateur (hooks/useListUrl.ts) — un `searchParams` lu ici
 // la ferait rendre à chaque visite. Le tag `news` la régénère après chaque
 // modification ; ce délai n'est qu'un filet.
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 export default async function DernieresInfoPage() {
     const initialData = await getInitialNews();

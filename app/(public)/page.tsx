@@ -27,8 +27,10 @@ const organizationJsonLd = {
 };
 
 // Les chiffres d'« Aujourd'hui aux ECA » (./chiffres.ts) : la page est servie
-// depuis le cache et regénérée au plus toutes les heures, comme le catalogue.
-export const revalidate = 3600;
+// depuis le cache et regénérée au plus une fois par jour, comme le catalogue —
+// chaque régénération est une écriture ISR facturée par Vercel. Une écriture qui
+// change le nombre de titres la régénère aussitôt (tag `catalogue`).
+export const revalidate = 86400;
 
 const nombre = new Intl.NumberFormat('fr-FR');
 

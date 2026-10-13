@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
-import { revalidateCatalogue } from '@/lib/revalidate-public';
+import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 import { prisma } from '@/lib/prisma';
 import {
     AssignmentUpdateInputSchema,
@@ -80,7 +79,6 @@ export const GET = withAdmin(async (_request, { params }) => {
  * Reader assignments are managed via POST /api/assignments/[id]/readers.
  */
 export const PUT = withAdmin(async (request, { me, params }) => {
-    revalidateAdmin();
     try {
         const performedById = me.id;
 
@@ -488,6 +486,12 @@ export const PUT = withAdmin(async (request, { me, params }) => {
             updateData.deliveryMethod = validation.data.deliveryMethod;
         }
 
+        // Le livre repasse « En attente » quand l'attribution sort de Terminé : relu
+        // avant, pour n'invalider le site public que là où il le montre.
+        const publicBefore = assignmentLeavesTermine
+            ? await snapshotPublicBooks([existingAssignment.catalogueId])
+            : null;
+
         const {
             assignment: updatedAssignment,
             orderTransition,
@@ -644,7 +648,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         });
 
         if (assignmentLeavesTermine) {
-            revalidateCatalogue();
+            await revalidateChangedBooks(publicBefore);
         }
 
         return NextResponse.json({
@@ -702,7 +706,6 @@ export const PUT = withAdmin(async (request, { me, params }) => {
  * annulait le verrou de devant.
  */
 export const DELETE = withAdmin(async (_request, { me, params }) => {
-    revalidateAdmin();
     try {
         const performedById = me.id;
 

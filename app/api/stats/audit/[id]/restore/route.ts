@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withSuperAdmin } from '@/lib/auth/guards';
-import { revalidateAdmin } from '@/lib/revalidate-admin';
 import { isAuditedModel } from '@/lib/audit/config';
 import { withoutAudit } from '@/lib/audit/context';
 import { TRUNCATION_MARKER_RE, modelLabel } from '@/lib/audit/labels';
@@ -171,7 +170,6 @@ export const POST = withSuperAdmin(async (request, ctx) => {
             },
         });
 
-        revalidateAdmin();
         // Password hashes are never written to the trail, so a restored account
         // comes back without one and has to go through a reset.
         const caveat = event.model === 'User'

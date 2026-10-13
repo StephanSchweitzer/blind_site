@@ -17,7 +17,7 @@ import { parsePageParam } from '@/lib/pagination';
  * revalidatePublic invalide à chaque modification — jamais plus périmée que la
  * page 1. `revalidate` n'est qu'un filet, comme dans data.ts.
  */
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 // Aucune page générée au build : chacune l'est à sa première demande, puis
 // servie depuis le cache.
