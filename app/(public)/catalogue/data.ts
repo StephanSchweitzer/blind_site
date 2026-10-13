@@ -23,8 +23,10 @@ interface CatalogueData {
  * genre write; `revalidate` is only a long fallback. Search / filter /
  * pagination continue to hit /api/catalogue at runtime.
  *
- * May throw — the page catches and renders an empty state so a transient DB
- * error is not what gets cached for the fallback window.
+ * May throw — unstable_cache never stores a throw. The page rethrows it in
+ * production, so a failed regeneration keeps the last good page instead of
+ * caching an empty one; it renders the empty state only at build time and in
+ * dev (lib/isr-read-error.ts).
  */
 export const getCatalogueData = unstable_cache(
     async (): Promise<CatalogueData> => {

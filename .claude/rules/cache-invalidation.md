@@ -21,6 +21,12 @@ paths:
   moved, the coups de cœur only when the book is (or was) in an active list, and nothing when
   nothing public changed. A new visible book: `revalidatePublic(CACHE_TAGS.catalogue, …)`.
   `revalidateCatalogue()` (both, unconditionally) is for genre writes only.
+- **An ISR render that fails must throw, not degrade.** Whatever an ISR page or route returns
+  is cached for the whole window — an empty catalogue or a 500 included; a throw is not, and
+  the last good version stays. Gate any empty-state / 500 fallback on `degradeOnReadError()`
+  (`lib/isr-read-error.ts`): true only during `next build` (a throw would fail the deploy) and
+  in dev. An on-demand ISR route also caches its 404s: bound its params
+  (`dynamicParams = false`) rather than validating inside the handler.
 - **No path-wide admin invalidation.** Back-office pages are `force-dynamic`; a
   `revalidatePath('/admin', 'layout')` refreshes none of them and only throws away the
   prerendered admin pages and the reference-data cache. Server Actions call `refresh()` from

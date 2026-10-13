@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getHomeFigures, type HomeFigures } from "./chiffres";
 import { getSiteContact } from "./contact/data";
+import { degradeOnReadError } from "@/lib/isr-read-error";
 import { PhoneLines } from "@/components/PhoneLines";
 import { Dos } from "@/components/Dos";
 import { ArrowRight, Headphones, Mail, Mic, Phone } from "lucide-react";
@@ -114,15 +115,19 @@ function AujourdhuiAuxEca({ chiffres }: { chiffres: HomeFigures }) {
 }
 
 export default async function Home() {
-    // Une base injoignable ne doit pas faire tomber l'accueil : chaque bloc qui
-    // en dépend se tait.
+    // Une base injoignable ne doit pas faire tomber l'accueil. Au build (et en
+    // dev), chaque bloc qui en dépend se tait. En production, on jette : un
+    // accueil amputé serait mis en cache pour un jour, alors qu'une régénération
+    // en échec laisse servir la dernière bonne version. Voir lib/isr-read-error.ts.
     const [chiffres, contact] = await Promise.all([
         getHomeFigures().catch((error) => {
             console.error("Chiffres de l'accueil indisponibles :", error);
+            if (!degradeOnReadError()) throw error;
             return null;
         }),
         getSiteContact().catch((error) => {
             console.error("Coordonnées de l'accueil indisponibles :", error);
+            if (!degradeOnReadError()) throw error;
             return null;
         }),
     ]);

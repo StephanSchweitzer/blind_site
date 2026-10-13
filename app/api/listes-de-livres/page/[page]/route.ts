@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCoupsDeCoeurPage, COUPS_DE_COEUR_PAGE_SIZE } from '@/app/(public)/listes-de-livres/data';
 import { parsePageParam } from '@/lib/pagination';
+import { degradeOnReadError } from '@/lib/isr-read-error';
 
 /**
  * Une page de /listes-de-livres, pour la pagination côté navigateur.
@@ -70,6 +71,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pag
         return NextResponse.json({ items, total });
     } catch (error) {
         console.error('Error fetching coups de coeur page:', error);
+        // Une réponse 500 renvoyée ici serait mise en cache comme une autre, pour
+        // un jour : en production on jette, et la dernière bonne version reste
+        // servie. Voir lib/isr-read-error.ts.
+        if (!degradeOnReadError()) throw error;
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

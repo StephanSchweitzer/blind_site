@@ -3,12 +3,17 @@ import { BooksClient } from './BooksClient';
 import FrontendNavbar from "@/components/Frontend-Navbar";
 import { getCatalogueData } from './data';
 import { PageHeader } from '@/components/PageHeader';
+import { degradeOnReadError } from '@/lib/isr-read-error';
 
 async function getInitialData() {
     try {
         return await getCatalogueData();
     } catch (error) {
         console.error('Error fetching initial data:', error);
+        // Un catalogue vide rendu ici serait mis en cache pour un jour : en
+        // production on jette, et la dernière bonne version reste servie. Le
+        // repli vide ne sert qu'au build (et en dev). Voir lib/isr-read-error.ts.
+        if (!degradeOnReadError()) throw error;
         return {
             initialBooks: [],
             genres: [],
