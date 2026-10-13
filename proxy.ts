@@ -1,6 +1,7 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { SESSION_HINT_COOKIE, SESSION_HINT_MAX_AGE } from '@/lib/auth/session-hint';
 
 /**
  * Whether the account behind this token may see the back office RIGHT NOW.
@@ -97,7 +98,16 @@ export default withAuth(
             }
             // The database is the authority for /admin: a stale token flag below
             // must not bounce someone who has already changed their password.
-            return NextResponse.next();
+            const response = NextResponse.next();
+            // Re-set on every visit so it lives as long as the rolling session
+            // (lib/auth/session-hint.ts). Not httpOnly: the page reads it.
+            response.cookies.set(SESSION_HINT_COOKIE, '1', {
+                path: '/',
+                sameSite: 'lax',
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: SESSION_HINT_MAX_AGE,
+            });
+            return response;
         }
 
         if (token?.passwordNeedsChange === true) {

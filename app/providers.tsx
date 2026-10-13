@@ -1,12 +1,40 @@
 'use client'
 
-import { SessionProvider } from 'next-auth/react'
+import { SessionProvider, useSession } from 'next-auth/react'
 import { ThemeProvider } from 'next-themes';
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
+import { clearSessionHint, hasSessionHint } from '@/lib/auth/session-hint';
 
 type Props = {
     children?: React.ReactNode
+}
+
+/**
+ * The session SessionProvider starts from. `undefined` makes it ask
+ * /api/auth/session on mount; `null` means « signed out » and asks nothing.
+ *
+ * `null` only for a browser that has never signed in (lib/auth/session-hint.ts)
+ * and only outside /admin and /auth, whose pages need the real answer and see
+ * few visitors. On the server, `undefined` as before: the public pages are
+ * prerendered for everyone, and the state is not markup — the navbar renders
+ * the same for « loading » and « signed out ». Signing in still loads the
+ * session: next-auth's signIn() forces a read whatever the provider started from.
+ */
+function initialSession(): null | undefined {
+    if (typeof window === 'undefined') return undefined;
+    const path = window.location.pathname;
+    if (path.startsWith('/admin') || path.startsWith('/auth') || path === '/profile') return undefined;
+    return hasSessionHint() ? undefined : null;
+}
+
+/** A hint whose session has expired or been signed out costs one read, then goes. */
+function ForgetStaleSessionHint() {
+    const { status } = useSession();
+    useEffect(() => {
+        if (status === 'unauthenticated') clearSessionHint();
+    }, [status]);
+    return null;
 }
 
 // No ChakraProvider: it wrapped every page, public ones included, while not a
@@ -16,12 +44,14 @@ type Props = {
 //
 // refetchOnWindowFocus={false}: by default every return to the tab re-asked
 // /api/auth/session — a function invocation each time, on public pages that
-// are otherwise served from the cache, and a DB read for anyone signed in. The
-// session is still read once per page load; what it decides (menu, sign-in
-// link) is cosmetic, the authority is the DB check in proxy.ts and the guards.
+// are otherwise served from the cache, and a DB read for anyone signed in. What
+// the session decides on the public site (menu, sign-in link) is cosmetic, the
+// authority is the DB check in proxy.ts and the guards.
 export const Providers = ({ children }: Props) => {
+    const [session] = useState(initialSession);
     return (
-        <SessionProvider refetchOnWindowFocus={false}>
+        <SessionProvider session={session} refetchOnWindowFocus={false}>
+            <ForgetStaleSessionHint />
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
                 <ConfirmProvider>{children}</ConfirmProvider>
             </ThemeProvider>

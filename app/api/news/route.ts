@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import { News } from '@prisma/client';
 import { newsTypeLabels } from '@/types/news';
 import { withAdmin } from '@/lib/auth/guards';
+import { PUBLIC_READ_HEADERS } from '@/lib/public-read-cache';
 
 export const POST = withAdmin(async (req, { me }) => {
     // Request body parsing
@@ -75,7 +76,10 @@ export async function GET(req: NextRequest) {
         // contents, types and the author's DISPLAYED name only, and an explicit
         // whitelist of returned fields. See listPublicNews.
         const { searchParams } = new URL(req.url);
-        return NextResponse.json(await listPublicNews(parsePublicNewsQuery((key) => searchParams.get(key))));
+        return NextResponse.json(
+            await listPublicNews(parsePublicNewsQuery((key) => searchParams.get(key))),
+            { headers: PUBLIC_READ_HEADERS },
+        );
     } catch (error) {
         console.error('Error fetching news:', error);
         // No `details`: this route is public, and an exception message can carry

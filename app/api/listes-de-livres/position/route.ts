@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { COUPS_DE_COEUR_PAGE_SIZE } from '@/app/(public)/listes-de-livres/data';
+import { PUBLIC_READ_HEADERS } from '@/lib/public-read-cache';
 
 export async function GET(request: Request) {
     try {
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
 
         const page = Math.floor(position / COUPS_DE_COEUR_PAGE_SIZE) + 1;
 
-        return NextResponse.json({ page });
+        return NextResponse.json({ page }, { headers: PUBLIC_READ_HEADERS });
     } catch (error) {
         console.error('Error getting coup de coeur position:', error);
         return NextResponse.json(

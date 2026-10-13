@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { buildPublicCoupsDeCoeurSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
+import { PUBLIC_READ_HEADERS } from '@/lib/public-read-cache';
 
 export async function GET(request: NextRequest) {
     try {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        if (!suggest) return NextResponse.json(results);
+        if (!suggest) return NextResponse.json(results, { headers: PUBLIC_READ_HEADERS });
 
         // Vérifiées sous le même filtre public (listes actives, livres visibles) :
         // un mot tiré d'une liste dépubliée ne peut pas ressortir par ici.
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
                     toRow: (l) => ({ id: l.id, title: l.title, description: l.description }),
                 })
                 : [];
-        return NextResponse.json({ results, searchSuggestions });
+        return NextResponse.json({ results, searchSuggestions }, { headers: PUBLIC_READ_HEADERS });
     } catch (error) {
         console.error('Failed to fetch preview results:', error);
         return NextResponse.json({ error: 'Failed to fetch preview results' }, { status: 500 });

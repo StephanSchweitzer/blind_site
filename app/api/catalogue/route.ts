@@ -1,6 +1,7 @@
 // app/api/catalogue/route.ts
 import { NextRequest } from 'next/server';
 import { listPublicBooks, parseBookListQuery } from '@/lib/books/bookList';
+import { PUBLIC_READ_CACHE_CONTROL } from '@/lib/public-read-cache';
 
 /**
  * Recherche, filtres et pagination du catalogue PUBLIC (/catalogue).
@@ -13,15 +14,12 @@ import { listPublicBooks, parseBookListQuery } from '@/lib/books/bookList';
  * vue back-office, derrière `withAdmin`.
  *
  * Même corps pour tout le monde, donc cacheable par le CDN pour tout le monde :
- * plus besoin de `private` pour les sessions ni de `Vary: Cookie`.
- *
- * `max-age=0` garde le navigateur hors du jeu : sans lui, il resservait sa
- * propre copie d'une URL déjà vue, et un permanent qui venait de masquer un
- * livre le retrouvait dans la recherche publique. Le CDN, lui, garde sa minute.
+ * plus besoin de `private` pour les sessions ni de `Vary: Cookie`. Durées et
+ * raisons : lib/public-read-cache.ts.
  */
 const PUBLIC_READ_HEADERS: HeadersInit = {
     'Content-Type': 'application/json',
-    'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+    'Cache-Control': PUBLIC_READ_CACHE_CONTROL,
 };
 
 export async function GET(request: NextRequest): Promise<Response> {

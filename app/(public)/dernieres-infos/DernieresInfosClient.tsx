@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
+import { useDebounce } from 'use-debounce';
 import { SearchBar } from '@/dernieres-infos/SearchBar';
 import { PublicPaginatedList } from '@/components/ui/public-pagination';
 import { outOfRangePage, pageInfo, parsePageParam } from '@/lib/pagination';
@@ -14,6 +15,10 @@ import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 
 // PUBLIC_NEWS_PAGE_SIZE (lib/news/newsList.ts), which is server-only.
 const NEWS_PAGE_SIZE = 5;
+
+// As the catalogue (BooksClient.tsx). Without it every keystroke was its own
+// /api/news call — a function invocation per letter typed.
+const DEBOUNCE_DELAY = 300;
 
 type NewsQuery = { search: string; type: string; page: number };
 
@@ -42,6 +47,9 @@ interface DernieresInfosClientProps {
 
 export function DernieresInfosClient({ initialData }: DernieresInfosClientProps) {
     const [searchTerm, setSearchTerm] = useState('');
+    // What is searched: the field itself answers every keystroke, the request
+    // waits until the typing stops.
+    const [debouncedSearch] = useDebounce(searchTerm, DEBOUNCE_DELAY);
     const [currentPage, setCurrentPage] = useState(1);
     const [newsPosts, setNewsPosts] = useState<NewsPost[]>(initialData.items);
     const [totalItems, setTotalItems] = useState(initialData.totalItems);
@@ -49,6 +57,8 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
     const [selectedType, setSelectedType] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    // Pending from the keystroke, not 300 ms later, as the catalogue does.
+    const isPending = isLoading || searchTerm !== debouncedSearch;
     const [error, setError] = useState<string | null>(null);
     const [suggestions, setSuggestions] = useState<RescueSuggestion[]>([]);
     const isFirstRender = useRef(true);
@@ -77,7 +87,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                 page: page.toString(),
                 limit: String(NEWS_PAGE_SIZE),
                 ...(selectedType !== 'all' && { type: selectedType }),
-                ...(searchTerm && { search: searchTerm, suggest: '1' })
+                ...(debouncedSearch && { search: debouncedSearch, suggest: '1' })
             });
 
             const response = await fetch(`/api/news?${queryParams}`);
@@ -105,7 +115,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
         } finally {
             setIsLoading(false);
         }
-    }, [selectedType, searchTerm]);
+    }, [selectedType, debouncedSearch]);
 
     useEffect(() => {
         // The server already provided the default first page (page 1, all
@@ -114,14 +124,14 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
         // hit /api/news once the user actually searches, filters, or paginates
         // — or arrives by a link that carries a search (client navigation
         // mounts with the URL's state already applied).
-        const query = { search: searchTerm, type: selectedType, page: currentPage };
+        const query = { search: debouncedSearch, type: selectedType, page: currentPage };
         if (isFirstRender.current) {
             isFirstRender.current = false;
             if (newsParams(query).toString() === '') return;
         }
 
         const loadPage = async () => {
-            // Keystrokes each start a load: only the latest may land, or an
+            // Each settled search starts a load: only the latest may land, or an
             // older answer arriving last would show — and write to the URL —
             // a search the visitor has already typed past.
             const load = ++latestLoad.current;
@@ -146,7 +156,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
         };
 
         loadPage();
-    }, [currentPage, searchTerm, selectedType, fetchNewsPosts, writeUrl]);
+    }, [currentPage, debouncedSearch, selectedType, fetchNewsPosts, writeUrl]);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
@@ -246,9 +256,9 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                 noun={{ one: 'actualité', many: 'actualités', feminine: true }}
                 label="Pages des actualités"
                 onPageChange={setCurrentPage}
-                pending={isLoading}
+                pending={isPending}
                 announce={
-                    isLoading
+                    isPending
                         ? 'Chargement des actualités…'
                         : error
                             ? ''
@@ -257,7 +267,7 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                                 : undefined
                 }
             >
-                {isLoading ? (
+                {isPending ? (
                     <div className="flex flex-col items-center justify-center py-16">
                         <div aria-hidden="true" className="relative">
                             <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 dark:border-blue-900"></div>
