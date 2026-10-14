@@ -32,10 +32,33 @@ export interface OwnedCollection {
     ownerKey: string;
     /** Synthetic field the change is recorded under, inside the owner's diff. */
     field: string;
+    /** Relations to load with each child row, when `describe` needs more than the row's own columns. */
+    include?: Record<string, unknown>;
     /** One row → the words it contributes; null leaves it out entirely. */
     describe: (row: Record<string, unknown>) => string | null;
     /** What separates two entries once the collection is written out. */
     separator: string;
+    /**
+     * Trace what was added and removed rather than the whole set before and
+     * after. Right for a set that grows long — a liste can hold dozens of books,
+     * and one more of them is the fact, not the other forty. The diff then
+     * carries `<field>Added` / `<field>Removed` (see COLLECTION_DELTAS in
+     * ./labels), each side a JSON array of names.
+     */
+    delta?: {
+        /** Which rows are the same entry, before and after — not its wording. */
+        identify: (row: Record<string, unknown>) => string;
+    };
+    /**
+     * Keep the collection in the owner's DELETE snapshot, so restoring the owner
+     * brings it back too. Only meaningful when deleting the owner removes the
+     * rows by cascade: a route that empties the collection first leaves nothing
+     * for the snapshot to see.
+     */
+    restorable?: {
+        /** French noun for one entry, singular and plural, for the restore message. */
+        noun: [string, string];
+    };
 }
 
 const text = (value: unknown): string | null =>
@@ -66,7 +89,69 @@ export const OWNED_COLLECTIONS: Record<string, OwnedCollection> = {
         },
         separator: ', ',
     },
+
+    // The books of a liste. A join row has no life of its own — adding a book to
+    // a liste is an edit of the liste — so it is traced on the CoupsDeCoeur row,
+    // as « Livres ajoutés » / « Livres retirés ». Identified by bookId, not by
+    // title: two doublons can carry the same one.
+    CoupsDeCoeurBooks: {
+        owner: 'CoupsDeCoeur',
+        ownerKey: 'coupsDeCoeurId',
+        field: 'books',
+        include: { book: { select: { title: true } } },
+        describe: (row) => {
+            const book = row.book as { title?: unknown } | null | undefined;
+            const title = text(book?.title);
+            if (title) return title;
+            return typeof row.bookId === 'number' ? `Livre n°${row.bookId}` : null;
+        },
+        separator: ' · ',
+        delta: { identify: (row) => String(row.bookId) },
+        restorable: { noun: ['livre', 'livres'] },
+    },
 };
+
+/** The collections whose rows travel in `owner`'s DELETE snapshot. */
+export function restorableCollectionsOf(owner: string): Array<[string, OwnedCollection]> {
+    return Object.entries(OWNED_COLLECTIONS).filter(
+        ([, spec]) => spec.owner === owner && spec.restorable !== undefined
+    );
+}
+
+/**
+ * Snapshot key holding the owned rows of a deleted owner, as a JSON object
+ * `{ ChildModel: [row, …] }` with the owner key left out. Underscored so it can
+ * never be a column: the restore strips it before replaying the row.
+ */
+export const OWNED_SNAPSHOT_KEY = '_owned';
+
+/**
+ * What changed between two states of a delta-traced collection, as the two
+ * diff lines it produces. Names are sorted; an entry is matched on
+ * `delta.identify`, so a book retitled in between is neither added nor removed.
+ */
+export function collectionDelta(
+    spec: OwnedCollection,
+    before: Record<string, unknown>[],
+    after: Record<string, unknown>[]
+): Record<string, [string | null, string | null]> {
+    const identify = spec.delta?.identify ?? ((row: Record<string, unknown>) => spec.describe(row) ?? '');
+    const keysBefore = new Set(before.map(identify));
+    const keysAfter = new Set(after.map(identify));
+    const names = (rows: Record<string, unknown>[]) =>
+        rows
+            .map((row) => spec.describe(row))
+            .filter((name): name is string => name !== null)
+            .sort((a, b) => a.localeCompare(b, 'fr'));
+
+    const added = names(after.filter((row) => !keysBefore.has(identify(row))));
+    const removed = names(before.filter((row) => !keysAfter.has(identify(row))));
+
+    const changes: Record<string, [string | null, string | null]> = {};
+    if (removed.length > 0) changes[`${spec.field}Removed`] = [JSON.stringify(removed), null];
+    if (added.length > 0) changes[`${spec.field}Added`] = [null, JSON.stringify(added)];
+    return changes;
+}
 
 export function isOwnedCollection(model: string | undefined): boolean {
     return model !== undefined && model in OWNED_COLLECTIONS;

@@ -174,6 +174,10 @@ const FIELD_LABELS: Record<string, string> = {
     // column on User, so neither can collide with one.
     addresses: 'Adresses',
     languages: 'Langues',
+    // Synthetic too: the books of a liste de livres (CoupsDeCoeurBooks), traced
+    // by difference — see COLLECTION_DELTAS below.
+    booksAdded: 'Livres ajoutés',
+    booksRemoved: 'Livres retirés',
 
     // books
     title: 'Titre',
@@ -310,6 +314,33 @@ export function fieldLabel(field: string): string {
 
 export const isReservedField = (field: string): boolean => field in RESERVED_FIELD_LABELS;
 
+/**
+ * The diff lines of an owned collection traced by difference
+ * (`delta` in lib/audit/owned-collections.ts), per collection field. Each side
+ * holds a JSON array of names: `added` on the « après » side, `removed` on the
+ * « avant » side. Declared here rather than derived from OWNED_COLLECTIONS,
+ * because the journal's client code reads it and that module has no business
+ * in the browser bundle.
+ */
+export const COLLECTION_DELTAS: Record<string, { added: string; removed: string }> = {
+    books: { added: 'booksAdded', removed: 'booksRemoved' },
+};
+
+const DELTA_FIELDS = new Set(Object.values(COLLECTION_DELTAS).flatMap(({ added, removed }) => [added, removed]));
+
+export const isCollectionDeltaField = (field: string): boolean => DELTA_FIELDS.has(field);
+
+/** The names one side of a delta line holds, or null when it isn't one. */
+export function parseDeltaNames(value: string | number | boolean | null): string[] | null {
+    if (typeof value !== 'string') return null;
+    try {
+        const parsed: unknown = JSON.parse(value);
+        return Array.isArray(parsed) && parsed.every((name) => typeof name === 'string') ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
 /** Marker written in place of a value too long to keep. */
 export const TRUNCATION_MARKER_RE = /^\[(texte de \d+ caractères|binaire|valeur illisible)\]$/;
 
@@ -415,6 +446,11 @@ export function formatAuditValue(
     if (value === null) return '—';
     if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
     if (typeof value === 'number') return String(value);
+
+    if (field && isCollectionDeltaField(field)) {
+        const names = parseDeltaNames(value);
+        if (names) return names.length === 0 ? '—' : names.join(' · ');
+    }
 
     const asEnum = enumValueLabel(model, field, value);
     if (asEnum) return asEnum;

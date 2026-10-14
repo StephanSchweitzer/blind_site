@@ -238,7 +238,7 @@ model CoupsDeCoeurBooks {
   coupsDeCoeurId Int
   bookId         Int
   book           Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  coupsDeCoeur   CoupsDeCoeur @relation(fields: [coupsDeCoeurId], references: [id])
+  coupsDeCoeur   CoupsDeCoeur @relation(fields: [coupsDeCoeurId], references: [id], onDelete: Cascade)
 
   @@id([coupsDeCoeurId, bookId])
 }

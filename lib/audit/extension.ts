@@ -23,7 +23,15 @@ import {
     withinPayloadBudget,
 } from './diff';
 import { getAuditActor, getAuditTransactionClient, isAuditBypassed, runAsAuditRead } from './context';
-import { OWNED_COLLECTIONS, OwnedCollection, describeCollection, isOwnedCollection } from './owned-collections';
+import {
+    OWNED_COLLECTIONS,
+    OWNED_SNAPSHOT_KEY,
+    OwnedCollection,
+    collectionDelta,
+    describeCollection,
+    isOwnedCollection,
+    restorableCollectionsOf,
+} from './owned-collections';
 
 /**
  * Prisma client extension that turns every write to an audited model into an
@@ -39,7 +47,9 @@ import { OWNED_COLLECTIONS, OwnedCollection, describeCollection, isOwnedCollecti
  *                        single summary event instead
  *   owned collections  → no event of their own: one UPDATE event on the row that
  *                        OWNS them, naming the whole collection before and after
- *                        (see lib/audit/owned-collections.ts)
+ *                        — or, for a `delta` one, what was added and removed
+ *                        (see lib/audit/owned-collections.ts). A `restorable`
+ *                        one also rides in its owner's DELETE snapshot
  *
  * Cost: one extra read before an update/delete (the "before" state). The "after"
  * state is normally derived from the write's own `data`, so a plain field edit
@@ -74,7 +84,13 @@ interface AuditRowInput {
     snapshot?: AuditSnapshot | null;
 }
 
-const ATOMIC_OPS = new Set(['increment', 'decrement', 'multiply', 'divide']);
+/** A deleted row's restorable collections: the rows to snapshot, the diff to show. */
+interface OwnedAtDelete {
+    rows: Record<string, Row[]>;
+    changes: AuditChanges;
+}
+
+const ATOMIC_OPS =new Set(['increment', 'decrement', 'multiply', 'divide']);
 
 /**
  * The client the trail must use for this write: the caller's interactive
@@ -267,6 +283,8 @@ interface BuildArgs {
     where: unknown;
     data: unknown;
     before: Row | Row[] | null;
+    /** A single-row delete's restorable collections, read before the write. */
+    owned?: OwnedAtDelete | null;
     result: unknown;
     /**
      * True when the caller narrowed the write with `select`. The returned row is
@@ -283,6 +301,7 @@ async function buildEvents({
     where,
     data,
     before,
+    owned,
     result,
     narrowed,
 }: BuildArgs): Promise<AuditRowInput[]> {
@@ -367,12 +386,16 @@ async function buildEvents({
         const prior = Array.isArray(before) ? null : before;
         const recordId = prior ? recordIdOf(model, prior) : recordIdFromWhere(model, where);
         if (!recordId) return [];
+        const snapshot = prior ? encodeSnapshot(prior) : null;
+        if (snapshot && owned) snapshot[OWNED_SNAPSHOT_KEY] = JSON.stringify(owned.rows);
         return [{
             model,
             recordId,
             operation: 'DELETE',
-            changes: {},
-            snapshot: prior ? encodeSnapshot(prior) : null,
+            // What went with it, in the journal's own words — « Livres
+            // retirés : … ». The snapshot is the restorable copy.
+            changes: owned?.changes ?? {},
+            snapshot,
         }];
     }
 
@@ -447,6 +470,20 @@ async function buildEvents({
 const MASS_UPDATE_MARKER = 'écriture groupée sur plus de 50 fiches';
 
 /**
+ * A unique `where` in the shape findMany accepts. A single-row write on a
+ * composite key names it `{ coupsDeCoeurId_bookId: { coupsDeCoeurId, bookId } }`,
+ * which only the unique finders take — findMany refuses it, and the capture of
+ * « retirer un livre de la liste » was silently abandoned.
+ */
+function flattenCompoundKey(model: string, where: unknown): unknown {
+    const fields = primaryKeyFields(model);
+    const name = fields.join('_');
+    if (fields.length < 2 || !isWrapperObject(where) || !isWrapperObject(where[name])) return where;
+    const { [name]: compound, ...rest } = where;
+    return { ...rest, ...(compound as Row) };
+}
+
+/**
  * The owners a write to an owned collection concerns — whose collections have to
  * be read on both sides of it.
  *
@@ -480,7 +517,7 @@ async function ownersTouched(
     if (delegate && where !== undefined) {
         const rows = await runAsAuditRead(() =>
             delegate.findMany({
-                where,
+                where: flattenCompoundKey(model, where),
                 // One row over the cap is enough to know the write is a mass operation.
                 take: BULK_ROW_LIMIT + 1,
                 select: { [spec.ownerKey]: true },
@@ -496,33 +533,74 @@ async function ownersTouched(
     return { owners: [...owners], overflow: owners.size > BULK_ROW_LIMIT };
 }
 
-/** Each owner's collection, written out as one value — null when it is empty. */
+/** Each owner's collection rows, `include` applied — an empty list when it has none. */
 async function readCollections(
     base: PrismaClient,
     model: string,
     spec: OwnedCollection,
     owners: number[]
-): Promise<Map<number, AuditValue>> {
-    const rendered = new Map<number, AuditValue>(owners.map((owner) => [owner, null]));
+): Promise<Map<number, Row[]>> {
+    const grouped = new Map<number, Row[]>(owners.map((owner) => [owner, []]));
     const delegate = delegateFor(base, model);
-    if (!delegate || owners.length === 0) return rendered;
+    if (!delegate || owners.length === 0) return grouped;
 
-    const grouped = new Map<number, Row[]>();
     const collectionRows = await runAsAuditRead(() =>
-        delegate.findMany({ where: { [spec.ownerKey]: { in: owners } } })
+        delegate.findMany({
+            where: { [spec.ownerKey]: { in: owners } },
+            ...(spec.include ? { include: spec.include } : {}),
+        })
     );
     for (const row of collectionRows) {
         const owner = row[spec.ownerKey];
         if (typeof owner !== 'number') continue;
-        const rows = grouped.get(owner);
-        if (rows) rows.push(row);
-        else grouped.set(owner, [row]);
+        grouped.get(owner)?.push(row);
+    }
+    return grouped;
+}
+
+/**
+ * The owner's diff for one collection write: the whole set before → after, or
+ * — for a delta-traced collection — only what was added and removed. Empty when
+ * the set came out as it went in.
+ */
+function collectionChanges(spec: OwnedCollection, before: Row[], after: Row[]): AuditChanges {
+    if (spec.delta) return collectionDelta(spec, before, after);
+    const from = encodeValue(describeCollection(spec, before));
+    const to = encodeValue(describeCollection(spec, after));
+    return from === to ? {} : { [spec.field]: [from, to] };
+}
+
+/**
+ * Before a single-row delete: the restorable collections the row owns, so the
+ * DELETE snapshot can bring them back and the event can name what went with it.
+ * Read BEFORE the write — the rows go by cascade, invisibly to this extension.
+ */
+async function ownedBeforeDelete(
+    base: PrismaClient,
+    model: string,
+    before: Row | Row[] | null
+): Promise<OwnedAtDelete | null> {
+    const collections = restorableCollectionsOf(model);
+    if (collections.length === 0 || !before || Array.isArray(before) || typeof before.id !== 'number') {
+        return null;
     }
 
-    for (const [owner, rows] of grouped) {
-        rendered.set(owner, encodeValue(describeCollection(spec, rows)));
+    const rows: Record<string, Row[]> = {};
+    const changes: AuditChanges = {};
+    for (const [child, spec] of collections) {
+        const owned = (await readCollections(base, child, spec, [before.id])).get(before.id) ?? [];
+        if (owned.length === 0) continue;
+        // The snapshot keeps the columns only: not the relations `include`
+        // loaded for the names (a `select` without the id gets past
+        // encodeSnapshot's relation check), and not the owner key, which the
+        // restore sets back from the record id.
+        const dropped = new Set([spec.ownerKey, ...Object.keys(spec.include ?? {})]);
+        rows[child] = owned.map((row) =>
+            encodeSnapshot(Object.fromEntries(Object.entries(row).filter(([field]) => !dropped.has(field))))
+        );
+        Object.assign(changes, collectionChanges(spec, owned, []));
     }
-    return rendered;
+    return Object.keys(rows).length === 0 ? null : { rows, changes };
 }
 
 /** Backstop against a pathologically large payload reaching the table. */
@@ -608,15 +686,18 @@ export function auditExtension(base: PrismaClient) {
                             }
                             const after = await readCollections(client, model, spec, owners);
                             await writeAuditEvents(client, owners.flatMap((owner) => {
-                                const from = before?.get(owner) ?? null;
-                                const to = after.get(owner) ?? null;
+                                const changes = collectionChanges(
+                                    spec,
+                                    before?.get(owner) ?? [],
+                                    after.get(owner) ?? []
+                                );
                                 // A set re-saved as it stood is not a change.
-                                if (from === to) return [];
+                                if (Object.keys(changes).length === 0) return [];
                                 return [{
                                     model: spec.owner,
                                     recordId: String(owner),
                                     operation: 'UPDATE' as const,
-                                    changes: { [spec.field]: [from, to] },
+                                    changes,
                                 }];
                             }));
                         });
@@ -627,6 +708,11 @@ export function auditExtension(base: PrismaClient) {
                     const before = await safely(`${model}.${operation} (état avant)`, () =>
                         loadBefore(client, model, operation, call.where)
                     );
+                    const owned = operation === 'delete'
+                        ? await safely(`${model}.${operation} (collections)`, () =>
+                            ownedBeforeDelete(client, model, before)
+                        )
+                        : null;
 
                     // Deliberately outside every try/catch: a real failure of the
                     // write must surface to the caller untouched, and must not be
@@ -641,6 +727,7 @@ export function auditExtension(base: PrismaClient) {
                             where: call.where,
                             data,
                             before,
+                            owned,
                             result,
                             narrowed: call.select !== undefined,
                         });

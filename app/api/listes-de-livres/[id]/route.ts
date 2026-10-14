@@ -4,7 +4,6 @@ import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 import { isRecordNotFound, notFoundResponse } from '@/lib/api-errors';
-
 // Back-office only. The public /listes-de-livres page reads the active list
 // through `/api/listes-de-livres` (and /preview, /position), which stay open;
 // this route is the editor's view of a single entry.
@@ -72,17 +71,28 @@ export const PUT = withAdmin(async (req, { params }) => {
 
             console.log(updated);
 
-            // Delete and recreate relationships in bulk
-            await tx.coupsDeCoeurBooks.deleteMany({
-                where: { coupsDeCoeurId: coupId }
+            // Sync the set, never replace it: a delete-all + create-all would
+            // make the journal report every book as removed then added.
+            const wanted = new Set<number>(bookIds.map(bookId => parseInt(bookId, 10)));
+            const current = await tx.coupsDeCoeurBooks.findMany({
+                where: { coupsDeCoeurId: coupId },
+                select: { bookId: true }
             });
+            const present = new Set(current.map(row => row.bookId));
 
-            await tx.coupsDeCoeurBooks.createMany({
-                data: bookIds.map(bookId => ({
-                    coupsDeCoeurId: coupId,
-                    bookId: parseInt(bookId, 10)
-                }))
-            });
+            const removed = [...present].filter(bookId => !wanted.has(bookId));
+            if (removed.length > 0) {
+                await tx.coupsDeCoeurBooks.deleteMany({
+                    where: { coupsDeCoeurId: coupId, bookId: { in: removed } }
+                });
+            }
+
+            const added = [...wanted].filter(bookId => !present.has(bookId));
+            if (added.length > 0) {
+                await tx.coupsDeCoeurBooks.createMany({
+                    data: added.map(bookId => ({ coupsDeCoeurId: coupId, bookId }))
+                });
+            }
 
             // Fetch the final result
             return tx.coupsDeCoeur.findUnique({
@@ -120,18 +130,13 @@ export const DELETE = withAdmin(async (_req, { params }) => {
     }
 
     try {
-        // Les deux suppressions dans UNE transaction. En deux instructions
-        // séparées, l'échec de la seconde laissait la liste en place mais
-        // vidée de tous ses livres — un état que rien ne rattrape, puisque le
-        // rattachement n'existe plus nulle part.
-        await prisma.$transaction(async (tx) => {
-            await tx.coupsDeCoeurBooks.deleteMany({
-                where: { coupsDeCoeurId: coupId }
-            });
-
-            await tx.coupsDeCoeur.delete({
-                where: { id: coupId }
-            });
+        // Ses livres partent avec elle par cascade (CoupsDeCoeurBooks), en une
+        // seule instruction : ni liste vidée mais restée en place, ni livres à
+        // retirer d'abord. C'est aussi ce qui laisse le journal les voir encore
+        // au moment de la suppression — il les garde dans l'instantané, et une
+        // restauration les rattache.
+        await prisma.coupsDeCoeur.delete({
+            where: { id: coupId }
         });
 
         revalidatePublic(CACHE_TAGS.coupsDeCoeur, '/listes-de-livres');

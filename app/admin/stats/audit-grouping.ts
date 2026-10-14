@@ -1,5 +1,5 @@
 import { BULK_RECORD_ID } from '@/lib/audit/config';
-import { isReservedField } from '@/lib/audit/labels';
+import { COLLECTION_DELTAS, isReservedField, parseDeltaNames } from '@/lib/audit/labels';
 import type { AuditChangeMap, AuditEventItem, AuditFieldLabelEntry } from '@/types';
 
 /**
@@ -55,7 +55,42 @@ export function netChanges(events: AuditEventItem[]): AuditChangeMap {
     for (const [field, [before, after]] of Object.entries(net)) {
         if (before === after && !isReservedField(field)) delete net[field];
     }
+    for (const delta of Object.values(COLLECTION_DELTAS)) netCollectionDelta(events, net, delta);
     return net;
+}
+
+/**
+ * A collection traced by difference does not net like a field: each event
+ * carries only ITS additions and removals, so keeping the oldest « avant » and
+ * the newest « après » would drop every book but the last one added. The burst
+ * is replayed instead — a book added then removed within it cancels out, the
+ * way a field that came back to its value does above.
+ */
+function netCollectionDelta(
+    events: AuditEventItem[],
+    net: AuditChangeMap,
+    { added, removed }: { added: string; removed: string }
+): void {
+    if (!events.some((event) => added in event.changes || removed in event.changes)) return;
+
+    const plus = new Set<string>();
+    const minus = new Set<string>();
+    for (const event of [...events].reverse()) {
+        for (const name of parseDeltaNames(event.changes[removed]?.[0] ?? null) ?? []) {
+            if (plus.has(name)) plus.delete(name);
+            else minus.add(name);
+        }
+        for (const name of parseDeltaNames(event.changes[added]?.[1] ?? null) ?? []) {
+            if (minus.has(name)) minus.delete(name);
+            else plus.add(name);
+        }
+    }
+
+    const sorted = (names: Set<string>) => JSON.stringify([...names].sort((a, b) => a.localeCompare(b, 'fr')));
+    delete net[added];
+    delete net[removed];
+    if (minus.size > 0) net[removed] = [sorted(minus), null];
+    if (plus.size > 0) net[added] = [null, sorted(plus)];
 }
 
 /**

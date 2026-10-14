@@ -15,8 +15,10 @@
  *     their own history;
  *   - machine-written tables rewritten wholesale by scripts (OrphanAudioFolder,
  *     AudioFilepathBackup): pure churn, no human decision behind them;
- *   - the pure join tables (BookGenre, CoupsDeCoeurBooks): they only ever move
- *     with the Book / CoupsDeCoeur row that owns them, which IS audited;
+ *   - the pure join table BookGenre: it only ever moves with the Book row that
+ *     owns it, which IS audited. CoupsDeCoeurBooks is NOT in that situation —
+ *     adding a book to a liste never touches the CoupsDeCoeur row — so it is an
+ *     owned collection instead (OWNED_COLLECTIONS);
  *   - Address and ReaderLanguage, for the same reason one step further: they are
  *     a field of a fiche, not records, and the form edits them by replacing the
  *     whole set. They are traced against the User that owns them instead — see

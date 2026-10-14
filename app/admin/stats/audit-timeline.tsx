@@ -403,6 +403,13 @@ function DiffTable({ group }: { group: EventGroup }) {
 
     return (
         <div className="overflow-x-auto">
+            {/* A deletion that carries a diff names what went with the row —
+                the books of a liste. Where its content is still applies. */}
+            {event.operation === 'DELETE' && (
+                <p className="text-sm text-muted-foreground mb-2">
+                    {DELETE_DETAIL_TEXT[event.restoreState ?? 'ABSENT']}
+                </p>
+            )}
             <table className="w-full text-sm">
                 <thead>
                     <tr className="text-xs text-muted-foreground text-left">

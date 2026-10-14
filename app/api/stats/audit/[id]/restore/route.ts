@@ -8,6 +8,7 @@ import { TRUNCATION_MARKER_RE, modelLabel } from '@/lib/audit/labels';
 import { resolveRecordLabels } from '@/lib/audit/record-labels';
 import { resolveMergedBook } from '@/lib/books/merged';
 import { reattachAudioAfterBookRestore } from '@/lib/books/restoreBookAudio';
+import { type OwnedRestore, ownerColumns, restoreOwnedCollections } from '@/lib/audit/restore-owned';
 import type { AuditChangeMap, AuditRestoreResponse } from '@/types';
 
 /**
@@ -119,7 +120,7 @@ export const POST = withSuperAdmin(async (request, ctx) => {
 
         // The write itself is not traced as a CREATE: the RESTORE event below
         // says the same thing, once, and names its source.
-        await withoutAudit(() => delegate.create({ data: snapshot }));
+        await withoutAudit(() => delegate.create({ data: ownerColumns(snapshot) }));
 
         // An explicit id does not advance the sequence, so the next create would
         // collide with the row just restored. Skipped for the models whose id is
@@ -149,15 +150,25 @@ export const POST = withSuperAdmin(async (request, ctx) => {
             }
         }
 
+        // Les livres d'une liste, par exemple : gardés dans l'instantané, ils
+        // reviennent avec elle — sauf ceux qui ont disparu depuis.
+        let owned: OwnedRestore = { changes: {}, note: '' };
+        try {
+            owned = await restoreOwnedCollections(event.model, recordId, snapshot);
+        } catch (error) {
+            console.error('Restauration : rattachements impossibles', recordId, error);
+            owned = { changes: {}, note: ' Ses rattachements n’ont pas pu être restaurés.' };
+        }
 
         const changes: AuditChangeMap = { _source: [null, event.id] };
-        for (const [field, value] of Object.entries(snapshot)) {
+        for (const [field, value] of Object.entries(ownerColumns(snapshot))) {
             if (field === 'id') continue;
             changes[field] = [
                 null,
                 typeof value === 'object' && value !== null ? JSON.stringify(value) : value,
             ];
         }
+        Object.assign(changes, owned.changes);
 
         await prisma.auditEvent.create({
             data: {
@@ -198,7 +209,7 @@ export const POST = withSuperAdmin(async (request, ctx) => {
             : `${modelLabel(event.model)} n°${recordId}`;
         return NextResponse.json<AuditRestoreResponse>({
             success: true,
-            message: `${named} restauré.${caveat}${audioNote}${orphanNote}`,
+            message: `${named} restauré.${caveat}${audioNote}${orphanNote}${owned.note}`,
         });
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
