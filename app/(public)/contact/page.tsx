@@ -56,9 +56,10 @@ export default async function Contact() {
         <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-12">
-                <PageHeader title="Coordonnées">
-                    <p>Contactez-nous ou venez nous rendre visite</p>
-                </PageHeader>
+                {/* Sans sous-titre : « Contactez-nous ou venez nous rendre
+                    visite » annonçait ce que le bloc « Venez nous rendre
+                    visite » dit plus bas. */}
+                <PageHeader title="Coordonnées" />
 
                 {!contact ? (
                     <section className="glass-card p-8 text-center">

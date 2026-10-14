@@ -160,8 +160,9 @@ export default async function Home() {
 
     // Le texte est celui de l'association, mot pour mot : ses phrases ont
     // seulement été redistribuées entre l'en-tête, les deux blocs « Auditeurs »
-    // et « Lecteurs bénévoles », et la conclusion. Les libellés des boutons
-    // reprennent ceux du menu.
+    // et « Lecteurs bénévoles », et la conclusion — ce qui se répétait a été
+    // retiré, rien n'a été réécrit. Les libellés des boutons reprennent ceux
+    // du menu.
     return (
         <div className="flex min-h-screen flex-col">
             <script
@@ -196,8 +197,12 @@ export default async function Home() {
                                 ECA&nbsp;: Enregistrements à la Carte pour les Aveugles
                             </h1>
                         </div>
+                        {/* Sans la parenthèse « (Enregistrements à la Carte pour
+                            les Aveugles) » : le titre juste au-dessus vient de la
+                            donner, et un lecteur d'écran entendait le nom en
+                            entier deux fois de suite. */}
                         <p className="max-w-prose text-xl text-muted-foreground">
-                            Les ECA (Enregistrements à la Carte pour les Aveugles) proposent à leurs auditeurs un service
+                            Les ECA proposent à leurs auditeurs un service
                             personnalisé d&apos;enregistrement des livres et documents de leurs choix.
                         </p>
                     </div>
@@ -249,11 +254,18 @@ export default async function Home() {
                                 l&apos;enregistrement vocal que ce soit pour leur divertissement, leurs besoins professionnels
                                 ou de formation. Les ECA mettent aussi à leur disposition les titres du catalogue.
                             </p>
+                            {/* Les informations pratiques plutôt que le contact :
+                                téléphone et courriel sont déjà dans la carte
+                                d'en-tête, alors que la page qui dit comment ça
+                                marche, ce que ça coûte et combien de temps ça prend
+                                restait rangée sous « Nous connaître ». */}
                             <div className="flex flex-wrap gap-3">
                                 <Link href="/catalogue" className={bouton}>
                                     Catalogue <ArrowRight aria-hidden="true" className="h-4 w-4" />
                                 </Link>
-                                <Link href="/contact" className={boutonSecondaire}>Contact</Link>
+                                <Link href="/nous-connaitre/informations-pratiques" className={boutonSecondaire}>
+                                    Informations Pratiques
+                                </Link>
                             </div>
                         </section>
                         <section aria-labelledby="lecteurs" className="glass-card flex flex-col gap-4 p-6 sm:p-8">
@@ -277,12 +289,13 @@ export default async function Home() {
 
                     {/* Du texte, pas une carte : rien ici ne se clique. Les deux
                         filets, purement décoratifs, le posent en travers des deux
-                        colonnes comme un pont. */}
+                        colonnes comme un pont. La phrase qui suivait, « C'est donc
+                        un service à la carte qui est proposé. », est retirée : elle
+                        redisait le titre et l'introduction. */}
                     <div className="flex items-center gap-6">
                         <span aria-hidden="true" className="hidden h-px flex-1 bg-foreground/20 md:block" />
                         <p className="max-w-2xl text-xl font-medium md:text-center text-foreground">
                             Ainsi se met en place une passerelle humaine et chaleureuse entre voyants et malvoyants.
-                            C&apos;est donc un service à la carte qui est proposé.
                         </p>
                         <span aria-hidden="true" className="hidden h-px flex-1 bg-foreground/20 md:block" />
                     </div>

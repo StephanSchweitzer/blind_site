@@ -79,13 +79,10 @@ export default async function NousRejoindre() {
                     })}
                 </div>
 
-                {/* CTA Section */}
+                {/* Le bouton seul, sous sa question : la phrase générique qui
+                    les séparait ne disait rien que les cartes n'aient dit. */}
                 <section className="glass-card-lg p-8 text-center">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Prêt à nous rejoindre ?</h2>
-                    <p className="text-gray-700 dark:text-gray-100 mb-6 max-w-lg mx-auto">
-                        Quelle que soit la forme de votre engagement, votre participation est précieuse pour faire vivre notre mission
-                        d&apos;accessibilité à la lecture.
-                    </p>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Prêt à nous rejoindre ?</h2>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                         <a href="/contact" className="bg-primary text-white hover:bg-primary/90 font-medium py-3 px-8 rounded-lg">
                             Nous contacter

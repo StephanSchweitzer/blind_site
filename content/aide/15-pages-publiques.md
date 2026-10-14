@@ -40,7 +40,7 @@ La page d'accueil du site public dit en quelques phrases où en est le service :
 
 Ces chiffres ne se saisissent nulle part : ils se calculent seuls, à partir des fiches des membres (leur statut), des attributions (leur date de retour aux ECA) et du catalogue. Ils se mettent à jour au plus tard le lendemain d'un changement — le nombre de titres, lui, dès qu'un livre est ajouté, masqué, supprimé ou restauré. Si un chiffre vous paraît faux, c'est donc la donnée d'origine qu'il faut vérifier — un lecteur resté « Actif » qui ne lit plus, une attribution rendue sans date de retour. Aucun nom ni aucun titre n'y apparaît.
 
-Au-dessus, la page d'accueil donne le téléphone et le courriel de la page **Contact**, puis deux blocs : « Auditeurs » (vers le catalogue et le contact) et « Lecteurs bénévoles » (vers Nous rejoindre).
+Au-dessus, la page d'accueil donne le téléphone et le courriel de la page **Contact**, puis deux blocs : « Auditeurs » (vers le catalogue et les informations pratiques) et « Lecteurs bénévoles » (vers Nous rejoindre).
 
 ## La couleur des livres
 

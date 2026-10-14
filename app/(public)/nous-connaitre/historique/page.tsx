@@ -79,13 +79,10 @@ export default async function HistoriquePage() {
                     })}
                 </div>
 
+                {/* Le titre et les deux boutons, sans la phrase générique qui
+                    les séparait. */}
                 <section className="glass-card-lg p-8 text-center">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">L&apos;histoire continue...</h2>
-                    <p className="text-gray-700 dark:text-gray-100 mb-6 max-w-lg mx-auto">
-                        Aujourd&apos;hui, les ECA poursuivent leur mission avec le même engagement et enthousiasme qu&apos;à leurs débuts.
-                        Nous continuons à évoluer et à nous adapter pour rendre la culture et l&apos;information
-                        toujours plus accessibles.
-                    </p>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">L&apos;histoire continue...</h2>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                         <a href="/nous-rejoindre" className="bg-primary hover:bg-primary/90 text-white font-medium py-3 px-8 rounded-lg">
                             Rejoignez notre histoire

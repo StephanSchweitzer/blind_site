@@ -21,9 +21,10 @@ export default async function InformationsPratique() {
         <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-12">
-                <PageHeader title="Informations Pratiques">
-                    <p>Tout ce que vous devez savoir sur nos services</p>
-                </PageHeader>
+                {/* Sans sous-titre : « Tout ce que vous devez savoir sur nos
+                    services » ne disait rien que le titre et les questions ne
+                    disent. */}
+                <PageHeader title="Informations Pratiques" />
 
                 {/* Deux questions par rangée sur grand écran : une seule, sur 1152 px,
                     laissait un tiers de chaque carte vide (le texte y est limité à

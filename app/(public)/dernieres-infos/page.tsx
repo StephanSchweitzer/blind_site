@@ -26,9 +26,9 @@ export default async function DernieresInfoPage() {
         <main id="contenu-principal" className="relative flex-1">
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-8">
-                <PageHeader title="Dernières Informations">
-                    <p>Restez informé des actualités et des événements</p>
-                </PageHeader>
+                {/* Sans sous-titre : « Restez informé des actualités et des
+                    événements » redisait le titre. */}
+                <PageHeader title="Dernières Informations" />
 
                 <DernieresInfosClient initialData={initialData} />
             </div>
