@@ -28,11 +28,17 @@ Si l'on clique sur le champ « Gérer la disponibilité de... », que l'on reche
 
 ![Disponibilités - capture 5](/admin/aide/images/disponibilites-05.jpg)
 
-Nous pouvons (1) mettre à jour le statut, comme dans la fenêtre contextuelle « Membre », (2) mettre à jour la disponibilité et les langues, comme dans la fenêtre contextuelle « Membre », et (3) consulter les attributions actuelles du lecteur.
+La fenêtre se lit de haut en bas. Le nom ouvre le dossier de la personne dans un nouvel onglet. Dessous, une ligne résume la situation : les attributions en cours sur le maximum autorisé, la date de la dernière attribution et l'adresse e-mail, sur laquelle on peut cliquer pour écrire à la personne. La fenêtre est ensuite partagée en deux colonnes. À gauche, ce qui concerne le statut : (1) le cadre « Statut de disponibilité » — le statut, les dates d'une indisponibilité et, pour une personne active, l'interrupteur « Prend des attributions » — et (2), dessous, l'historique des statuts. À droite, (3) les attributions et (4) les « Réglages du lecteur » : maximum d'attributions simultanées, langues et notes de disponibilité. L'historique, les attributions et les réglages sont repliés : leur résumé reste visible, et l'on clique dessus pour les déplier. Sur un écran étroit, les deux colonnes se suivent.
 
 ![Disponibilités - capture 6](/admin/aide/images/disponibilites-06.jpg)
 
-Dans la section « Attributions », nous pouvons (1) ouvrir de nouveaux onglets contenant les attributions et les demandes mentionnées en suivant les liens, (2) consulter les attributions terminées en cliquant sur la section « Attributions terminées », et (3) consulter l'historique des statuts en cliquant sur la section « Historique des statuts ».
+Pour déclarer une absence, cliquez sur « Indisponible », puis choisissez une durée comptée depuis aujourd'hui (1 semaine, 2 semaines, 1 mois, 3 mois) ou saisissez les dates. Si la personne est déjà indisponible, ses dates tiennent sur une seule ligne : « Modifier les dates » les rouvre, avec des raccourcis pour prolonger l'absence (+1 semaine, +2 semaines, +1 mois) et « Annuler » pour revenir aux dates enregistrées. Un commentaire facultatif peut accompagner le changement ; il est conservé dans l'historique.
+
+« Prend des attributions » est indépendant du statut : une personne active peut être retirée des sélecteurs de lecteur sans être indisponible. Le retour automatique au statut « Actif », à la fin d'une indisponibilité, ne réactive pas cet interrupteur.
+
+Rien n'est enregistré avant d'avoir cliqué sur « Enregistrer ». Si l'on ferme la fenêtre avec des modifications en cours, elle demande confirmation avant de les abandonner.
+
+Une fois le volet « Attributions » déplié, nous pouvons (1) ouvrir dans un nouvel onglet l'attribution, en cliquant sur le titre du livre, ou la demande mentionnée, et (2) afficher les attributions terminées. Un symbole orange, visible même volet replié, signale les livres encore chez une personne qui n'est pas disponible ; une date en orange signale un livre parti depuis plus de six mois.
 
 ![Disponibilités - capture 7](/admin/aide/images/disponibilites-07.jpg)
 

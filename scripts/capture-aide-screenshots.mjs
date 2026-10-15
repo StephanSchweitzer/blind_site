@@ -1139,13 +1139,16 @@ const SPECS = [
         clip: '[role="dialog"]',
         // Les numeros reprennent ceux du paragraphe de 11-disponibilites.md.
         annotations: [
-            { n: 1, selector: '[role="dialog"] section.rounded-xl' },
-            // Le coin haut-droit : a gauche, la pastille recouvrirait « Réglages du
-            // lecteur » et « Attributions », dont le texte commence au bord du cadre.
-            { n: 2, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(1)', coin: 'hd' },
-            { n: 3, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2)', coin: 'hd' },
+            // Colonne de gauche : le statut, puis son historique ; a droite,
+            // les attributions puis les reglages.
+            { n: 1, selector: '[role="dialog"] .grid > div:nth-child(1) > section:nth-child(1)' },
+            // Le coin haut-droit : a gauche, la pastille recouvrirait les titres,
+            // dont le texte commence au bord du cadre.
+            { n: 2, selector: '[role="dialog"] .grid > div:nth-child(1) > section:nth-child(2)', coin: 'hd' },
+            { n: 3, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1)', coin: 'hd' },
+            { n: 4, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(2)', coin: 'hd' },
         ],
-        why: 'les trois zones de la fenêtre : statut, réglages du lecteur, attributions',
+        why: 'les deux colonnes : statut et historique, attributions et réglages, repliés',
     },
     {
         name: 'disponibilites-07.jpg',
@@ -1158,18 +1161,22 @@ const SPECS = [
             { clickText: 'Attribuables seulement' }, { sleep: 600 },
             { clickInRow: { cell: '3 / 3', text: 'Gérer', sauf: 'ne prend pas' } },
             { waitFor: '[role="dialog"] section' }, { sleep: 1800 },
+            // Le volet est replie a l'ouverture : on le deplie pour la photo.
+            { clickSelector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) h3 button' },
+            { sleep: 600 },
         ],
-        clip: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2)',
-        // Coin haut-droit : les trois cadres commencent sur du texte.
+        clip: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1)',
+        // Coin haut-droit : les cadres commencent sur du texte.
         annotations: [
-            // Les liens de CHAQUE attribution, sous le meme numero.
-            { n: 1, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) ul > li:nth-child(1) > div.mt-1', coin: 'hd' },
-            { n: 1, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) ul > li:nth-child(2) > div.mt-1', coin: 'hd' },
-            { n: 1, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) ul > li:nth-child(3) > div.mt-1', coin: 'hd' },
-            { n: 2, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) details > summary', coin: 'hd' },
-            { n: 3, selector: '[role="dialog"] .lg\\:grid-cols-2 > section:nth-child(2) > div.border-t', coin: 'hd' },
+            // Les liens de CHAQUE attribution, sous le meme numero. `> div > ul`
+            // ne prend que la liste des attributions en cours, pas celle des
+            // terminees, rangee un niveau plus bas.
+            { n: 1, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) > div > ul > li:nth-child(1)', coin: 'hd' },
+            { n: 1, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) > div > ul > li:nth-child(2)', coin: 'hd' },
+            { n: 1, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) > div > ul > li:nth-child(3)', coin: 'hd' },
+            { n: 2, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) > div > div.mt-2 > button', coin: 'hd' },
         ],
-        why: 'la colonne Attributions : liens, attributions terminées, historique des statuts',
+        why: 'le volet Attributions déplié : liens, attributions terminées',
     },
     {
         name: 'disponibilites-08.jpg',

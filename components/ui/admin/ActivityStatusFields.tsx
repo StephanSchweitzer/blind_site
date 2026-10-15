@@ -141,14 +141,21 @@ function DayField({
 export function ActivityWindowFields({
     draft,
     hint = true,
+    stacked = false,
 }: {
     draft: ActivityStatusDraft;
     /** Set false when the surrounding form already explains the window. */
     hint?: boolean;
+    /**
+     * Du above Au at every width. For a narrow column on a wide screen, where
+     * the viewport breakpoint would still put them side by side and squeeze
+     * the end date behind its « Aujourd'hui » button.
+     */
+    stacked?: boolean;
 }) {
     return (
         <div className="space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className={`grid grid-cols-1 gap-2 ${stacked ? '' : 'sm:grid-cols-2'}`}>
                 <DayField
                     label="Du"
                     value={draft.from}
