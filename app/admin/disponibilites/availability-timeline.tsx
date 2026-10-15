@@ -18,12 +18,14 @@ import { getMemberTypeColor, getMemberTypeLabel } from '@/lib/user-enums';
 
 /**
  * Period view of who is away when: a "how many at once" profile, then one row
- * per indisponibilité grouped by what state it is in.
+ * per indisponibilité, one tab per state it is in.
  *
  * THE PROFILE IS THE STACK OF THE ROWS BELOW IT — literally, day by day. That
  * is the whole design: it is not a second, independently-computed statistic
  * that happens to sit above the calendar, it is the calendar's own silhouette.
  * A reader who understands the rows understands the curve without being told.
+ * The tabs only choose which rows are listed: the profile always stacks all
+ * of them, so it still answers « combien en même temps » whatever tab is open.
  *
  * It replaced a weekly bar chart, which failed on three counts:
  *   - counts over time are a continuous quantity, and detached bars broke it
@@ -73,16 +75,33 @@ const STATE_LABEL: Record<AbsenceState, string> = {
     openEnded: 'Indisponibilité sans date de fin',
 };
 
-/** Group heading above each block of rows. */
+/** Tab label for each group of rows. */
 const STATE_GROUP: Record<AbsenceState, string> = {
-    current: 'Indisponibilités en cours',
+    current: 'En cours',
     openEnded: 'Sans date de fin',
     upcoming: 'À venir',
     elapsed: 'Terminées',
 };
 
-/** Reading order of the groups: what blocks a hand-off today comes first. */
-const GROUP_ORDER: AbsenceState[] = ['current', 'openEnded', 'upcoming', 'elapsed'];
+/** Reading order of the tabs: what blocks a hand-off today comes first. */
+const GROUP_ORDER: AbsenceState[] = ['current', 'upcoming', 'openEnded', 'elapsed'];
+
+/**
+ * Rows shown before « Afficher les N autres », within one tab. The tabs
+ * already split the list three ways; this keeps a busy tab from still
+ * pushing the lecteur table a screen further down.
+ */
+const ROWS_PREVIEW = 12;
+
+/**
+ * Order within a tab, by the date that matters in it: who comes back first,
+ * who leaves first, who has been away longest.
+ */
+const compareInGroup = (state: AbsenceState) => (a: Absence, b: Absence) => {
+    const key = (x: Absence) =>
+        (state === 'current' || state === 'elapsed' ? x.until : x.from) ?? '0000-00-00';
+    return key(a).localeCompare(key(b)) || a.person.name.localeCompare(b.person.name, 'fr');
+};
 
 /**
  * Width of the left name gutter, shared by every band so the chart, the axis
@@ -198,16 +217,39 @@ export default function AvailabilityTimeline({
         () =>
             GROUP_ORDER.map((state) => ({
                 state,
-                rows: absences
-                    .filter((a) => a.state === state)
-                    .sort(
-                        (a, b) =>
-                            (a.from ?? '0000-00-00').localeCompare(b.from ?? '0000-00-00') ||
-                            a.person.name.localeCompare(b.person.name, 'fr')
-                    ),
+                rows: absences.filter((a) => a.state === state).sort(compareInGroup(state)),
             })).filter((group) => group.rows.length > 0),
         [absences]
     );
+
+    // One tab of rows at a time. The chosen tab can empty out under a filter
+    // or a period change — fall back to the first one that has rows rather
+    // than show an empty calendar under a list of full tabs.
+    const [chosenTab, setChosenTab] = useState<AbsenceState>('current');
+    const [showAllRows, setShowAllRows] = useState(false);
+    // Somebody just saved from the panel: open the tab their row now lives in,
+    // so closing the panel lands on the change. Adjusted during render, not in
+    // an effect (react-hooks/set-state-in-effect).
+    const [syncedHighlight, setSyncedHighlight] = useState(highlightPersonId);
+    if (highlightPersonId !== syncedHighlight) {
+        setSyncedHighlight(highlightPersonId);
+        const saved = absences.find((a) => a.person.id === highlightPersonId);
+        if (saved) {
+            setChosenTab(saved.state);
+            setShowAllRows(true);
+        }
+    }
+    const activeGroup = groups.find((g) => g.state === chosenTab) ?? groups[0];
+    const chooseTab = (state: AbsenceState) => {
+        setChosenTab(state);
+        setShowAllRows(false);
+    };
+    const hiddenRows = activeGroup ? activeGroup.rows.length - ROWS_PREVIEW : 0;
+    const shownRows = !activeGroup
+        ? []
+        : showAllRows || hiddenRows <= 0
+            ? activeGroup.rows
+            : activeGroup.rows.slice(0, ROWS_PREVIEW);
 
     const todayPct = today >= start && today <= end ? pct(today) : null;
     const ticks = monthTicks(start, end);
@@ -239,7 +281,7 @@ export default function AvailabilityTimeline({
                 <h4 className="text-sm font-semibold text-foreground">
                     Combien de personnes absentes en même temps
                     <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        le cumul, jour par jour, des lignes ci-dessous
+                        le cumul, jour par jour, de tous les onglets ci-dessous
                     </span>
                 </h4>
                 {/* Volontairement PAS « attribuables » : la tuile du haut compte
@@ -354,118 +396,140 @@ export default function AvailabilityTimeline({
                         </div>
                     </div>
 
-                    {/* ── legend ─────────────────────────────────────────── */}
-                    <div
-                        className={`flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 ${GUTTER_OFFSET} text-xs text-muted-foreground`}
-                    >
-                        {(['current', 'upcoming', 'openEnded'] as const).map((state) => (
-                            <span key={state} className="flex items-center gap-1.5">
-                                <span className={`w-3 h-3 rounded-sm ${STATE_BAR[state]}`} />
-                                {STATE_LABEL[state]}
+                    {/* ── tabs, which are also the legend ──────────────────
+                        Every row used to sit on one list, the three colours
+                        interleaved down a page. Each colour is now its own
+                        tab: the swatch says what the bars below will look
+                        like, the count says how many there are. */}
+                    {groups.length > 0 && (
+                        <div
+                            className={`flex flex-wrap items-end justify-between gap-x-4 gap-y-2 pt-1 ${GUTTER_OFFSET} border-b border-border`}
+                        >
+                            <div className="flex flex-wrap gap-1" aria-label="Indisponibilités affichées">
+                                {groups.map((group) => {
+                                    const selected = group.state === activeGroup?.state;
+                                    return (
+                                        <button
+                                            key={group.state}
+                                            type="button"
+                                            onClick={() => chooseTab(group.state)}
+                                            aria-pressed={selected}
+                                            title={STATE_LABEL[group.state]}
+                                            className={`-mb-px flex items-center gap-1.5 rounded-t-md border px-3 py-1.5 text-xs transition-colors ${
+                                                selected
+                                                    ? 'border-border border-b-card bg-card font-semibold text-foreground'
+                                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <span
+                                                aria-hidden
+                                                className={`w-2.5 h-2.5 rounded-sm ${STATE_BAR[group.state]}`}
+                                            />
+                                            {STATE_GROUP[group.state]}
+                                            <span className="font-normal tabular-nums text-muted-foreground">
+                                                {group.rows.length}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <span className="flex items-center gap-1.5 pb-2 text-xs text-muted-foreground">
+                                <span className="w-0.5 h-3 bg-red-500" /> Aujourd&apos;hui
                             </span>
-                        ))}
-                        <span className="flex items-center gap-1.5">
-                            <span className="w-0.5 h-3 bg-red-500" /> Aujourd&apos;hui
-                        </span>
-                    </div>
+                        </div>
+                    )}
 
-                    {groups.length === 0 ? (
+                    {!activeGroup ? (
                         <p className="text-sm text-muted-foreground py-10 text-center">
                             Aucune indisponibilité sur cette période.
                         </p>
                     ) : (
-                        <div className="mt-2 space-y-3">
-                            {groups.map((group) => (
-                                <div key={group.state}>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span
-                                            aria-hidden
-                                            className={`w-2.5 h-2.5 rounded-sm ${STATE_BAR[group.state]}`}
-                                        />
-                                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                            {STATE_GROUP[group.state]}
-                                            <span className="ml-1.5 font-normal normal-case">
-                                                ({group.rows.length})
-                                            </span>
-                                        </h4>
-                                    </div>
-                                    <div className="space-y-1">
-                                        {group.rows.map(({ person, from, until, state }) => {
-                                            const barStart = from && from > start ? from : start;
-                                            const barEnd = until && until < end ? until : end;
-                                            const left = pct(barStart);
-                                            // +1 day so a single-day absence is still visible.
-                                            const width = Math.max(
-                                                pct(addDays(barEnd, 1)) - left,
-                                                0.8
-                                            );
-                                            const range = describeRange(from, until);
-                                            const label = [
-                                                person.name,
-                                                STATE_LABEL[state].toLowerCase(),
-                                                range,
-                                                person.activeAssignments > 0
-                                                    ? `${person.activeAssignments} attribution(s) en cours`
-                                                    : null,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' — ');
-                                            const highlighted = person.id === highlightPersonId;
+                        <div className="mt-2 space-y-1">
+                            {shownRows.map(({ person, from, until, state }) => {
+                                const barStart = from && from > start ? from : start;
+                                const barEnd = until && until < end ? until : end;
+                                const left = pct(barStart);
+                                // +1 day so a single-day absence is still visible.
+                                const width = Math.max(
+                                    pct(addDays(barEnd, 1)) - left,
+                                    0.8
+                                );
+                                const range = describeRange(from, until);
+                                const label = [
+                                    person.name,
+                                    STATE_LABEL[state].toLowerCase(),
+                                    range,
+                                    person.activeAssignments > 0
+                                        ? `${person.activeAssignments} attribution(s) en cours`
+                                        : null,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' — ');
+                                const highlighted = person.id === highlightPersonId;
 
-                                            return (
-                                                <div
-                                                    key={person.id}
-                                                    className={`flex items-center rounded ${
-                                                        highlighted
-                                                            ? 'ring-2 ring-primary ring-offset-1 ring-offset-card animate-in fade-in duration-300'
-                                                            : ''
+                                return (
+                                    <div
+                                        key={person.id}
+                                        className={`flex items-center rounded ${
+                                            highlighted
+                                                ? 'ring-2 ring-primary ring-offset-1 ring-offset-card animate-in fade-in duration-300'
+                                                : ''
+                                        }`}
+                                    >
+                                        <div
+                                            className={`${GUTTER} shrink-0 flex items-center gap-1.5 pr-3`}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => onSelectPerson(person.id)}
+                                                className="text-xs font-medium text-foreground truncate hover:underline text-left"
+                                            >
+                                                {person.name}
+                                            </button>
+                                            <span
+                                                className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${getMemberTypeColor(person.memberType)}`}
+                                            >
+                                                {getMemberTypeLabel(person.memberType)}
+                                            </span>
+                                        </div>
+                                        <div className="relative flex-1 h-7 rounded bg-muted/50">
+                                            {gridlines}
+                                            <button
+                                                type="button"
+                                                onClick={() => onSelectPerson(person.id)}
+                                                aria-label={label}
+                                                className={`absolute top-1 bottom-1 rounded px-1.5 text-left overflow-hidden transition-opacity hover:opacity-80 ${STATE_BAR[state]}`}
+                                                style={{
+                                                    left: `${left}%`,
+                                                    width: `${width}%`,
+                                                }}
+                                            >
+                                                <span
+                                                    className={`block truncate text-[10px] leading-5 ${
+                                                        state === 'elapsed'
+                                                            ? 'text-foreground/70'
+                                                            : 'text-white'
                                                     }`}
                                                 >
-                                                    <div
-                                                        className={`${GUTTER} shrink-0 flex items-center gap-1.5 pr-3`}
-                                                    >
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => onSelectPerson(person.id)}
-                                                            className="text-xs font-medium text-foreground truncate hover:underline text-left"
-                                                        >
-                                                            {person.name}
-                                                        </button>
-                                                        <span
-                                                            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${getMemberTypeColor(person.memberType)}`}
-                                                        >
-                                                            {getMemberTypeLabel(person.memberType)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="relative flex-1 h-7 rounded bg-muted/50">
-                                                        {gridlines}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => onSelectPerson(person.id)}
-                                                            aria-label={label}
-                                                            className={`absolute top-1 bottom-1 rounded px-1.5 text-left overflow-hidden transition-opacity hover:opacity-80 ${STATE_BAR[state]}`}
-                                                            style={{
-                                                                left: `${left}%`,
-                                                                width: `${width}%`,
-                                                            }}
-                                                        >
-                                                            <span
-                                                                className={`block truncate text-[10px] leading-5 ${
-                                                                    state === 'elapsed'
-                                                                        ? 'text-foreground/70'
-                                                                        : 'text-white'
-                                                                }`}
-                                                            >
-                                                                {range}
-                                                            </span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                                    {range}
+                                                </span>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
+                            {hiddenRows > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllRows(!showAllRows)}
+                                    aria-expanded={showAllRows}
+                                    className={`${GUTTER_OFFSET} mt-1 text-xs font-medium text-muted-foreground hover:text-foreground`}
+                                >
+                                    {showAllRows
+                                        ? 'Réduire'
+                                        : `Afficher les ${hiddenRows} autre${plural(hiddenRows)}`}
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

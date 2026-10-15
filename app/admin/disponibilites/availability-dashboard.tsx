@@ -3,15 +3,16 @@
 import React, { useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-    AlertTriangle,
     ArrowDownNarrowWide,
     ArrowDownWideNarrow,
     BookOpen,
+    CalendarCheck,
     CalendarClock,
     CalendarOff,
+    CalendarRange,
     CheckCircle2,
-    ChevronDown,
     ChevronUp,
+    CirclePause,
     Languages,
     Loader2,
     MessageSquareText,
@@ -292,12 +293,16 @@ function LanguageFilterChip({ languages, onClear }: { languages: string[]; onCle
 }
 
 /**
- * Blocs affichés d'office dans un groupe d'alertes. Au-delà, le groupe se
- * replie derrière « Afficher les N autres » : une ligne par personne faisait
- * de chaque groupe une colonne de vingt lignes, et les six groupes une page
- * entière avant d'atteindre le calendrier.
+ * Noms affichés d'office dans un groupe, le bloc « + N autres » faisant le
+ * sixième : environ deux rangées sur un écran de bureau.
+ *
+ * Ces groupes sont des repères, pas une liste de tâches. Une ligne par
+ * personne, puis même douze blocs par groupe, transformaient la section en
+ * mur de noms — et les bénévoles qui ouvrent cette page y lisaient « tout va
+ * mal » là où il n'y a, le plus souvent, que des absences ordinaires. Le
+ * reste se déplie à la demande, et le calendrier juste dessous donne le détail.
  */
-const ALERT_GROUP_PREVIEW = 12;
+const ALERT_GROUP_PREVIEW = 5;
 
 interface AlertRow {
     key: number;
@@ -314,19 +319,22 @@ interface AlertRow {
 }
 
 /**
- * One alert group: a block per person, name first, the one fact that ranks
- * them beside it, the full sentence on hover. Renders nothing when empty.
+ * One group of « Points à surveiller »: a neutral card, an icon in the same
+ * colour as the matching calendar tab, a block per person. No warning
+ * triangle and no tinted background — an indisponibilité is ordinary, and six
+ * amber boxes read as six incidents. Renders nothing when empty.
  */
 function AlertGroup({
     title,
     description,
-    tone,
+    icon,
     rows,
     onOpen,
 }: {
     title: string;
     description: string;
-    tone: 'warn' | 'info';
+    /** Icône déjà colorée, cf. les couleurs du calendrier. */
+    icon: React.ReactNode;
     rows: AlertRow[];
     onOpen: (id: number) => void;
 }) {
@@ -334,30 +342,19 @@ function AlertGroup({
 
     if (rows.length === 0) return null;
 
-    const toneClass = {
-        warn: 'border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20',
-        info: 'border-blue-300 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/20',
-    }[tone];
-    const countClass = {
-        warn: 'bg-amber-200/70 text-amber-900 dark:bg-amber-900/50 dark:text-amber-200',
-        info: 'bg-blue-200/70 text-blue-900 dark:bg-blue-900/50 dark:text-blue-200',
-    }[tone];
-    const blockClass = {
-        warn: 'border-amber-200 hover:border-amber-400 dark:border-amber-900/50 dark:hover:border-amber-700',
-        info: 'border-blue-200 hover:border-blue-400 dark:border-blue-900/50 dark:hover:border-blue-700',
-    }[tone];
-
     const hidden = rows.length - ALERT_GROUP_PREVIEW;
     const visible = expanded || hidden <= 0 ? rows : rows.slice(0, ALERT_GROUP_PREVIEW);
+    const blockClass =
+        'flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-sm transition-colors hover:bg-muted';
 
     return (
-        <section className={`rounded-lg border p-4 ${toneClass}`} aria-label={title}>
+        <section className="rounded-lg border border-border bg-card p-4" aria-label={title}>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <AlertTriangle size={15} className="shrink-0" />
+                <span className="shrink-0" aria-hidden>
+                    {icon}
+                </span>
                 <span className="min-w-0">{title}</span>
-                <span
-                    className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${countClass}`}
-                >
+                <span className="text-xs font-normal text-muted-foreground tabular-nums">
                     {rows.length}
                 </span>
             </h3>
@@ -371,7 +368,7 @@ function AlertGroup({
                             onClick={() => onOpen(row.person.id)}
                             title={`${row.person.name} — ${row.detail}`}
                             aria-label={`${row.person.name}, ${getMemberTypeLabel(row.person.memberType)} : ${row.detail}`}
-                            className={`flex max-w-full items-center gap-1.5 rounded-md border bg-card/80 px-2 py-1 text-left text-sm transition-colors hover:bg-card ${blockClass}`}
+                            className={blockClass}
                         >
                             <span className="truncate font-medium text-foreground">{row.person.name}</span>
                             {/* Le type ne se lit que quand il fait exception :
@@ -388,26 +385,25 @@ function AlertGroup({
                         </button>
                     </li>
                 ))}
+                {hidden > 0 && (
+                    <li>
+                        <button
+                            type="button"
+                            onClick={() => setExpanded(!expanded)}
+                            aria-expanded={expanded}
+                            className="flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                            {expanded ? (
+                                <>
+                                    <ChevronUp size={13} /> Réduire
+                                </>
+                            ) : (
+                                <>+ {hidden} autre{hidden > 1 ? 's' : ''}</>
+                            )}
+                        </button>
+                    </li>
+                )}
             </ul>
-            {hidden > 0 && (
-                <button
-                    type="button"
-                    onClick={() => setExpanded(!expanded)}
-                    aria-expanded={expanded}
-                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-                >
-                    {expanded ? (
-                        <>
-                            <ChevronUp size={13} /> Réduire
-                        </>
-                    ) : (
-                        <>
-                            <ChevronDown size={13} />
-                            {hidden === 1 ? 'Afficher 1 autre personne' : `Afficher les ${hidden} autres`}
-                        </>
-                    )}
-                </button>
-            )}
         </section>
     );
 }
@@ -751,8 +747,8 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     icon={<CalendarClock size={20} />}
                     value={totalAlerts}
                     label="Points à surveiller"
-                    hint={`échéances dans les ${warningDays} prochains jours`}
-                    tone={totalAlerts > 0 ? 'warn' : 'good'}
+                    hint={`repères pour les ${warningDays} prochains jours`}
+                    tone="neutral"
                 />
             </div>
 
@@ -775,8 +771,8 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                 <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
                     <AlertGroup
                         title="Retours prochains"
-                        description={`Ces personnes redeviennent actives dans les ${warningDays} prochains jours — de nouveau attribuables.`}
-                        tone="info"
+                        description={`Ces personnes reviennent d’ici  jours : de quoi penser à leur prochaine attribution.`}
+                        icon={<CalendarCheck size={15} className="text-green-600 dark:text-green-400" />}
                         onOpen={openPerson}
                         rows={filteredAlerts.endingSoon.map((a) => ({
                             key: a.person.id,
@@ -786,9 +782,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         }))}
                     />
                     <AlertGroup
-                        title="Départs prochains"
-                        description={`Indisponibilités qui démarrent dans les ${warningDays} prochains jours — évitez de leur confier un long enregistrement.`}
-                        tone="warn"
+                        title="Absences à venir"
+                        description={`Ces personnes s’absentent d’ici  jours : un livre plus court leur conviendra peut-être mieux.`}
+                        icon={<CalendarClock size={15} className="text-amber-500" />}
                         onOpen={openPerson}
                         rows={filteredAlerts.startingSoon.map((a) => ({
                             key: a.person.id,
@@ -800,9 +796,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         }))}
                     />
                     <AlertGroup
-                        title="Absents avec des attributions en cours"
-                        description="Ces personnes sont (ou seront bientôt) indisponibles alors qu'un livre est encore chez elles."
-                        tone="warn"
+                        title="Absents avec un livre en cours"
+                        description="Un livre les attend pendant leur absence. Rien d’urgent, simplement bon à savoir."
+                        icon={<BookOpen size={15} className="text-violet-500" />}
                         onOpen={openPerson}
                         rows={filteredAlerts.awayWithAttributions.map((a) => ({
                             key: a.person.id,
@@ -814,9 +810,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         }))}
                     />
                     <AlertGroup
-                        title="Indisponibilités sans date de fin"
-                        description="Rien ne les clôturera automatiquement : fixez une date de fin ou changez le statut."
-                        tone="warn"
+                        title="Absences sans date de retour"
+                        description="Quand vous connaîtrez leur date de retour, l’indiquer leur rendra le statut « Actif » tout seul."
+                        icon={<CalendarRange size={15} className="text-fuchsia-500" />}
                         onOpen={openPerson}
                         rows={filteredAlerts.openEnded.map((a) => ({
                             key: a.person.id,
@@ -828,9 +824,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         }))}
                     />
                     <AlertGroup
-                        title="Actifs mais marqués « ne prend pas d'attribution »"
-                        description="Leur statut est actif, mais leur fiche indique qu'ils ne prennent pas d'attribution. Ils n'apparaissent pas dans les sélecteurs de lecteur."
-                        tone="warn"
+                        title="En pause pour les attributions"
+                        description="Toujours actifs, mais ne souhaitent pas de nouveau livre pour l’instant : ils ne sont pas proposés comme lecteur."
+                        icon={<CirclePause size={15} className="text-sky-500" />}
                         onOpen={openPerson}
                         rows={filteredAlerts.flaggedUnavailable.map((p) => ({
                             key: p.id,
@@ -842,9 +838,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         }))}
                     />
                     <AlertGroup
-                        title="Indisponibilités arrivées à terme"
-                        description="Leur date de fin est passée mais le statut n'a pas encore été refermé. Elles se lisent déjà comme « Actif »."
-                        tone="warn"
+                        title="Absences terminées"
+                        description="Leur absence est terminée et ils comptent déjà comme actifs ; il reste seulement à refermer l’indisponibilité."
+                        icon={<CheckCircle2 size={15} className="text-muted-foreground" />}
                         onOpen={openPerson}
                         rows={filteredAlerts.elapsed.map((a) => ({
                             key: a.person.id,
