@@ -281,7 +281,7 @@ export default function AvailabilityTimeline({
                 <h4 className="text-sm font-semibold text-foreground">
                     Combien de personnes absentes en même temps
                     <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        le cumul, jour par jour, de tous les onglets ci-dessous
+                        le cumul, jour par jour, de toutes les indisponibilités ci-dessous
                     </span>
                 </h4>
                 {/* Volontairement PAS « attribuables » : la tuile du haut compte
@@ -396,44 +396,61 @@ export default function AvailabilityTimeline({
                         </div>
                     </div>
 
-                    {/* ── tabs, which are also the legend ──────────────────
+                    {/* ── which rows to list: buttons that are also the legend ──
                         Every row used to sit on one list, the three colours
-                        interleaved down a page. Each colour is now its own
-                        tab: the swatch says what the bars below will look
-                        like, the count says how many there are. */}
+                        interleaved down a page; each colour is now its own
+                        view. First drawn as underlined tabs, they read as a
+                        legend — nobody guessed they could be clicked. A
+                        labelled segmented control (« Afficher : », a framed
+                        group, the chosen one raised) is the shape people
+                        already know is a choice. The swatch stays inside
+                        each button, so there is still one key, not two. */}
                     {groups.length > 0 && (
                         <div
-                            className={`flex flex-wrap items-end justify-between gap-x-4 gap-y-2 pt-1 ${GUTTER_OFFSET} border-b border-border`}
+                            className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-1 ${GUTTER_OFFSET}`}
                         >
-                            <div className="flex flex-wrap gap-1" aria-label="Indisponibilités affichées">
-                                {groups.map((group) => {
-                                    const selected = group.state === activeGroup?.state;
-                                    return (
-                                        <button
-                                            key={group.state}
-                                            type="button"
-                                            onClick={() => chooseTab(group.state)}
-                                            aria-pressed={selected}
-                                            title={STATE_LABEL[group.state]}
-                                            className={`-mb-px flex items-center gap-1.5 rounded-t-md border px-3 py-1.5 text-xs transition-colors ${
-                                                selected
-                                                    ? 'border-border border-b-card bg-card font-semibold text-foreground'
-                                                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                                            }`}
-                                        >
-                                            <span
-                                                aria-hidden
-                                                className={`w-2.5 h-2.5 rounded-sm ${STATE_BAR[group.state]}`}
-                                            />
-                                            {STATE_GROUP[group.state]}
-                                            <span className="font-normal tabular-nums text-muted-foreground">
-                                                {group.rows.length}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span id="timeline-view-label" className="text-xs font-medium text-muted-foreground">
+                                    Afficher :
+                                </span>
+                                <div
+                                    role="group"
+                                    aria-labelledby="timeline-view-label"
+                                    className="inline-flex flex-wrap gap-1 rounded-lg border border-border bg-muted/60 p-1"
+                                >
+                                    {groups.map((group) => {
+                                        const selected = group.state === activeGroup?.state;
+                                        return (
+                                            <button
+                                                key={group.state}
+                                                type="button"
+                                                onClick={() => chooseTab(group.state)}
+                                                aria-pressed={selected}
+                                                title={STATE_LABEL[group.state]}
+                                                className={`flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                                    selected
+                                                        ? 'bg-card font-semibold text-foreground shadow-sm ring-1 ring-border'
+                                                        : 'text-muted-foreground hover:bg-card/70 hover:text-foreground'
+                                                }`}
+                                            >
+                                                <span
+                                                    aria-hidden
+                                                    className={`w-3 h-3 rounded-sm ${STATE_BAR[group.state]}`}
+                                                />
+                                                {STATE_GROUP[group.state]}
+                                                <span
+                                                    className={`rounded-full px-1.5 text-xs font-medium tabular-nums ${
+                                                        selected ? 'bg-muted text-foreground' : 'text-muted-foreground'
+                                                    }`}
+                                                >
+                                                    {group.rows.length}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <span className="flex items-center gap-1.5 pb-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <span className="w-0.5 h-3 bg-red-500" /> Aujourd&apos;hui
                             </span>
                         </div>

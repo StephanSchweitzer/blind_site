@@ -44,7 +44,7 @@ Une fois le volet « Attributions » déplié, nous pouvons (1) ouvrir dans un n
 
 Sous les compteurs, « Points à surveiller » rassemble quelques repères pour les semaines à venir : qui revient bientôt, qui s'absente bientôt, qui garde un livre pendant son absence, les absences sans date de retour, et les personnes en pause pour les attributions. Chaque groupe montre quelques noms ; « + N autres » affiche le reste. Un clic sur un nom ouvre sa disponibilité.
 
-En faisant défiler la page vers le bas, on arrive à la section « Calendrier des indisponibilités ». On peut filtrer la période et le type de membre en haut à droite de cette section. Sous la courbe, les indisponibilités sont rangées en onglets — « En cours », « À venir », « Sans date de fin » —, chacun de la couleur de ses barres et suivi du nombre de personnes ; la courbe, elle, compte toujours tout le monde.
+En faisant défiler la page vers le bas, on arrive à la section « Calendrier des indisponibilités ». On peut filtrer la période et le type de membre en haut à droite de cette section. Sous la courbe, les boutons « Afficher : » choisissent les indisponibilités listées — « En cours », « À venir » ou « Sans date de fin » —, chacun de la couleur de ses barres et suivi du nombre de personnes ; la courbe, elle, compte toujours tout le monde.
 
 ![Disponibilités - capture 8](/admin/aide/images/disponibilites-08.jpg)
 
