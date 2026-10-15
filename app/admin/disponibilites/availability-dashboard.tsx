@@ -124,6 +124,13 @@ interface ReaderRow {
 }
 
 /**
+ * Lignes par page de la table des lecteurs. Plus courtes que les 25 des autres
+ * listes : ici la table vient après le calendrier, sur une page déjà longue,
+ * et on y cherche quelqu'un à qui confier un livre — les premiers suffisent.
+ */
+const READER_PAGE_SIZES = [12, 25, 50] as const;
+
+/**
  * Départage deux lecteurs à charge égale : le plus anciennement sollicité
  * d'abord, « jamais attribué » tout en haut. C'est la règle d'équité que
  * portait l'ancien onglet « sans attribution en cours » — les bénévoles qu'on
@@ -146,10 +153,10 @@ function compareIdle(a: ReaderRow, b: ReaderRow): number {
  * au chargement, pour qu'un lien de la barre de pages ouvert dans un autre
  * onglet tombe au même endroit ; un clic simple, lui, ne fait que changer l'état.
  */
-function usePagedRows<T>(rows: T[], resetKey: string) {
+function usePagedRows<T>(rows: T[], resetKey: string, sizes: readonly number[]) {
     const searchParams = useSearchParams();
     const [page, setPage] = useState(() => parsePageParam(searchParams.get('page')));
-    const [pageSize, setPageSize] = useState(() => parsePageSizeParam(searchParams.get('perPage')));
+    const [pageSize, setPageSize] = useState(() => parsePageSizeParam(searchParams.get('perPage'), sizes));
     const [syncedKey, setSyncedKey] = useState(resetKey);
 
     if (resetKey !== syncedKey) {
@@ -163,7 +170,7 @@ function usePagedRows<T>(rows: T[], resetKey: string) {
 
     const navigate = (href: string) => {
         const params = new URL(href, window.location.origin).searchParams;
-        setPageSize(parsePageSizeParam(params.get('perPage')));
+        setPageSize(parsePageSizeParam(params.get('perPage'), sizes));
         setPage(parsePageParam(params.get('page')));
     };
 
@@ -598,11 +605,12 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
 
     const readerPage = usePagedRows(
         displayedReaders,
-        `${search}|${onlyAssignable}|${onlyDormant}|${readerSort}|${languageFilter.join(',')}`
+        `${search}|${onlyAssignable}|${onlyDormant}|${readerSort}|${languageFilter.join(',')}`,
+        READER_PAGE_SIZES
     );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* ── header ─────────────────────────────────────────────────── */}
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -797,118 +805,122 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             </div>
 
             {/* ── alerts ─────────────────────────────────────────────────── */}
-            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-                <CalendarClock size={18} className="text-muted-foreground" />
-                Points à surveiller
-                <SearchChip search={search} onClear={() => setSearch('')} />
-                <LanguageFilterChip languages={languageFilter} onClear={() => setLanguageFilter([])} />
-            </h2>
-            {totalAlerts === 0 ? (
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-green-600 dark:text-green-400" />
-                    {(search.trim() || languageFilter.length > 0) && totalAlertsUnfiltered > 0
-                        ? `Aucun point à surveiller pour ce filtre : ${totalAlertsUnfiltered} au total hors filtre par nom/langue.`
-                        : <>Rien à signaler : aucune indisponibilité n&apos;arrive à échéance dans les{' '}
-                            {warningDays} prochains jours.</>}
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
-                    <AlertGroup
-                        title="Retours prochains"
-                        description={`Ces personnes reviennent d’ici  jours : de quoi penser à leur prochaine attribution.`}
-                        icon={<CalendarCheck size={15} className="text-green-600 dark:text-green-400" />}
-                        onOpen={openPerson}
-                        rows={filteredAlerts.endingSoon.map((a) => ({
-                            key: a.person.id,
-                            person: a.person,
-                            meta: formatDayKeyShort(a.until!),
-                            detail: `de retour le ${formatDayKey(a.until!)} (${describeDelay(a.daysAway ?? 0)})`,
-                        }))}
-                    />
-                    <AlertGroup
-                        title="Absences à venir"
-                        description={`Ces personnes s’absentent d’ici  jours : un livre plus court leur conviendra peut-être mieux.`}
-                        icon={<CalendarClock size={15} className="text-amber-500" />}
-                        onOpen={openPerson}
-                        rows={filteredAlerts.startingSoon.map((a) => ({
-                            key: a.person.id,
-                            person: a.person,
-                            meta: formatDayKeyShort(a.from!),
-                            detail: `indisponible à partir du ${formatDayKey(a.from!)} (${describeDelay(a.daysAway ?? 0)})${
-                                a.until ? `, jusqu'au ${formatDayKey(a.until)}` : ''
-                            }`,
-                        }))}
-                    />
-                    <AlertGroup
-                        title="Absents avec un livre en cours"
-                        description="Un livre les attend pendant leur absence. Rien d’urgent, simplement bon à savoir."
-                        icon={<BookOpen size={15} className="text-violet-500" />}
-                        onOpen={openPerson}
-                        rows={filteredAlerts.awayWithAttributions.map((a) => ({
-                            key: a.person.id,
-                            person: a.person,
-                            meta: `${a.person.activeAssignments} en cours`,
-                            detail: `${a.person.activeAssignments} attribution(s) en cours${
-                                a.until ? `, indisponible jusqu'au ${formatDayKey(a.until)}` : ', sans date de fin'
-                            }`,
-                        }))}
-                    />
-                    <AlertGroup
-                        title="Absences sans date de retour"
-                        description="Quand vous connaîtrez leur date de retour, l’indiquer leur rendra le statut « Actif » tout seul."
-                        icon={<CalendarRange size={15} className="text-fuchsia-500" />}
-                        onOpen={openPerson}
-                        rows={filteredAlerts.openEnded.map((a) => ({
-                            key: a.person.id,
-                            person: a.person,
-                            meta: a.from ? `depuis le ${formatDayKeyShort(a.from)}` : 'sans date',
-                            detail: a.from
-                                ? `indisponible depuis le ${formatDayKey(a.from)}`
-                                : 'indisponible, aucune date renseignée',
-                        }))}
-                    />
-                    <AlertGroup
-                        title="En pause pour les attributions"
-                        description="Toujours actifs, mais ne souhaitent pas de nouveau livre pour l’instant : ils ne sont pas proposés comme lecteur."
-                        icon={<CirclePause size={15} className="text-sky-500" />}
-                        onOpen={openPerson}
-                        rows={filteredAlerts.flaggedUnavailable.map((p) => ({
-                            key: p.id,
-                            person: p,
-                            hasNote: Boolean(p.availabilityNotes),
-                            detail: p.availabilityNotes
-                                ? `« ${p.availabilityNotes} »`
-                                : 'aucune précision sur la fiche',
-                        }))}
-                    />
-                    <AlertGroup
-                        title="Absences terminées"
-                        description="Leur absence est terminée et ils comptent déjà comme actifs ; il reste seulement à refermer l’indisponibilité."
-                        icon={<CheckCircle2 size={15} className="text-muted-foreground" />}
-                        onOpen={openPerson}
-                        rows={filteredAlerts.elapsed.map((a) => ({
-                            key: a.person.id,
-                            person: a.person,
-                            meta: `fin le ${formatDayKeyShort(a.until!)}`,
-                            detail: `terminée le ${formatDayKey(a.until!)}`,
-                        }))}
-                    />
-                </div>
-            )}
+            {/* One block, so the wider gap between sections falls around it —
+                not between its heading and its own cards. */}
+            <section className="space-y-3">
+                <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <CalendarClock size={18} className="text-muted-foreground" />
+                    Points à surveiller
+                    <SearchChip search={search} onClear={() => setSearch('')} />
+                    <LanguageFilterChip languages={languageFilter} onClear={() => setLanguageFilter([])} />
+                </h2>
+                {totalAlerts === 0 ? (
+                    <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground flex items-center gap-2">
+                        <CheckCircle2 size={16} className="text-green-600 dark:text-green-400" />
+                        {(search.trim() || languageFilter.length > 0) && totalAlertsUnfiltered > 0
+                            ? `Aucun point à surveiller pour ce filtre : ${totalAlertsUnfiltered} au total hors filtre par nom/langue.`
+                            : <>Rien à signaler : aucune indisponibilité n&apos;arrive à échéance dans les{' '}
+                                {warningDays} prochains jours.</>}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
+                        <AlertGroup
+                            title="Retours prochains"
+                            description={`Ces personnes reviennent d’ici ${warningDays} jours : de quoi penser à leur prochaine attribution.`}
+                            icon={<CalendarCheck size={15} className="text-green-600 dark:text-green-400" />}
+                            onOpen={openPerson}
+                            rows={filteredAlerts.endingSoon.map((a) => ({
+                                key: a.person.id,
+                                person: a.person,
+                                meta: formatDayKeyShort(a.until!),
+                                detail: `de retour le ${formatDayKey(a.until!)} (${describeDelay(a.daysAway ?? 0)})`,
+                            }))}
+                        />
+                        <AlertGroup
+                            title="Absences à venir"
+                            description={`Ces personnes s’absentent d’ici ${warningDays} jours : un livre plus court leur conviendra peut-être mieux.`}
+                            icon={<CalendarClock size={15} className="text-amber-500" />}
+                            onOpen={openPerson}
+                            rows={filteredAlerts.startingSoon.map((a) => ({
+                                key: a.person.id,
+                                person: a.person,
+                                meta: formatDayKeyShort(a.from!),
+                                detail: `indisponible à partir du ${formatDayKey(a.from!)} (${describeDelay(a.daysAway ?? 0)})${
+                                    a.until ? `, jusqu'au ${formatDayKey(a.until)}` : ''
+                                }`,
+                            }))}
+                        />
+                        <AlertGroup
+                            title="Absents avec un livre en cours"
+                            description="Un livre les attend pendant leur absence. Rien d’urgent, simplement bon à savoir."
+                            icon={<BookOpen size={15} className="text-violet-500" />}
+                            onOpen={openPerson}
+                            rows={filteredAlerts.awayWithAttributions.map((a) => ({
+                                key: a.person.id,
+                                person: a.person,
+                                meta: `${a.person.activeAssignments} en cours`,
+                                detail: `${a.person.activeAssignments} attribution(s) en cours${
+                                    a.until ? `, indisponible jusqu'au ${formatDayKey(a.until)}` : ', sans date de fin'
+                                }`,
+                            }))}
+                        />
+                        <AlertGroup
+                            title="Absences sans date de retour"
+                            description="Quand vous connaîtrez leur date de retour, l’indiquer leur rendra le statut « Actif » tout seul."
+                            icon={<CalendarRange size={15} className="text-fuchsia-500" />}
+                            onOpen={openPerson}
+                            rows={filteredAlerts.openEnded.map((a) => ({
+                                key: a.person.id,
+                                person: a.person,
+                                meta: a.from ? `depuis le ${formatDayKeyShort(a.from)}` : 'sans date',
+                                detail: a.from
+                                    ? `indisponible depuis le ${formatDayKey(a.from)}`
+                                    : 'indisponible, aucune date renseignée',
+                            }))}
+                        />
+                        <AlertGroup
+                            title="En pause pour les attributions"
+                            description="Toujours actifs, mais ne souhaitent pas de nouveau livre pour l’instant : ils ne sont pas proposés comme lecteur."
+                            icon={<CirclePause size={15} className="text-sky-500" />}
+                            onOpen={openPerson}
+                            rows={filteredAlerts.flaggedUnavailable.map((p) => ({
+                                key: p.id,
+                                person: p,
+                                hasNote: Boolean(p.availabilityNotes),
+                                detail: p.availabilityNotes
+                                    ? `« ${p.availabilityNotes} »`
+                                    : 'aucune précision sur la fiche',
+                            }))}
+                        />
+                        <AlertGroup
+                            title="Absences terminées"
+                            description="Leur absence est terminée et ils comptent déjà comme actifs ; il reste seulement à refermer l’indisponibilité."
+                            icon={<CheckCircle2 size={15} className="text-muted-foreground" />}
+                            onOpen={openPerson}
+                            rows={filteredAlerts.elapsed.map((a) => ({
+                                key: a.person.id,
+                                person: a.person,
+                                meta: `fin le ${formatDayKeyShort(a.until!)}`,
+                                detail: `terminée le ${formatDayKey(a.until!)}`,
+                            }))}
+                        />
+                    </div>
+                )}
 
-            {/* Sweeps every elapsed indisponibilité server-side, not just the
-                filtered ones on screen, so this stays gated on the unfiltered
-                count. */}
-            {alerts.elapsed.length > 0 && (
-                <Button variant="outline" size="sm" onClick={runSweep} disabled={isSweeping}>
-                    {isSweeping ? (
-                        <Loader2 size={15} className="mr-2 animate-spin" />
-                    ) : (
-                        <CheckCircle2 size={15} className="mr-2" />
-                    )}
-                    Clôturer les indisponibilités terminées
-                </Button>
-            )}
+                {/* Sweeps every elapsed indisponibilité server-side, not just the
+                    filtered ones on screen, so this stays gated on the unfiltered
+                    count. */}
+                {alerts.elapsed.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={runSweep} disabled={isSweeping}>
+                        {isSweeping ? (
+                            <Loader2 size={15} className="mr-2 animate-spin" />
+                        ) : (
+                            <CheckCircle2 size={15} className="mr-2" />
+                        )}
+                        Clôturer les indisponibilités terminées
+                    </Button>
+                )}
+            </section>
 
             {/* ── filters ────────────────────────────────────────────────── */}
             <Card
@@ -1057,6 +1069,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         info={readerPage.info}
                         noun={{ one: 'lecteur', many: 'lecteurs' }}
                         label="Pages des lecteurs"
+                        pageSizes={READER_PAGE_SIZES}
                         onNavigate={readerPage.navigate}
                         // Les filtres de cette page ne sont pas dans l'URL : les liens
                         // ne portent que la page et la taille.

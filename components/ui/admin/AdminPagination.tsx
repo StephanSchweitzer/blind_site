@@ -49,6 +49,13 @@ export type AdminPaginationProps = {
      */
     resizable?: boolean;
     /**
+     * Tailles du sélecteur, la première étant la taille par défaut (celle qui
+     * ne s'écrit pas dans l'URL). Par défaut, celles de toutes les listes
+     * (25 / 50 / 100). Une liste qui partage sa page avec d'autres sections
+     * peut en proposer de plus petites — /admin/disponibilites : 12 / 25 / 50.
+     */
+    pageSizes?: readonly number[];
+    /**
      * La requête courante, pour les listes qui écrivent leur URL par
      * `history.replaceState` (catalogue, dernières infos) : `useSearchParams`
      * ne voit pas ces écritures, et les liens perdraient la recherche, les
@@ -60,7 +67,7 @@ export type AdminPaginationProps = {
 const DEEP_LINK_PARAMS = ['order', 'assignment', 'bill', 'payment', 'user', 'news'];
 
 /** Construit l'URL d'une page, les autres paramètres gardés tels quels. */
-function useHrefFor(query?: string) {
+function useHrefFor(query?: string, defaultSize: number = ADMIN_PAGE_SIZE) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     return (updates: { page?: number; perPage?: number }) => {
@@ -73,7 +80,7 @@ function useHrefFor(query?: string) {
             else params.delete('page');
         }
         if (updates.perPage !== undefined) {
-            if (updates.perPage !== ADMIN_PAGE_SIZE) params.set('perPage', String(updates.perPage));
+            if (updates.perPage !== defaultSize) params.set('perPage', String(updates.perPage));
             else params.delete('perPage');
         }
         const qs = params.toString();
@@ -167,10 +174,11 @@ export function AdminPaginationTop({
     onNavigate,
     pending = false,
     resizable = true,
+    pageSizes = ADMIN_PAGE_SIZES,
     query,
     anchorId,
 }: AdminPaginationProps & { anchorId: string }) {
-    const hrefFor = useHrefFor(query);
+    const hrefFor = useHrefFor(query, pageSizes[0]);
     const sizeId = useId();
     const { prev, next } = prevNextLinks({ info, hrefFor, go: onNavigate });
     const { from, to, total, page, totalPages, pageSize } = info;
@@ -209,7 +217,7 @@ export function AdminPaginationTop({
                     </nav>
                 )}
                 {/* Pas sur téléphone : 100 lignes en cartes, c'est un long défilement. */}
-                {resizable && total > ADMIN_PAGE_SIZES[0] && (
+                {resizable && total > pageSizes[0] && (
                     <div className="hidden items-center gap-2 sm:flex">
                         <label htmlFor={sizeId} className="text-sm text-muted-foreground whitespace-nowrap">
                             Lignes par page
@@ -227,7 +235,7 @@ export function AdminPaginationTop({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
-                                {ADMIN_PAGE_SIZES.map((size) => (
+                                {pageSizes.map((size) => (
                                     <SelectItem key={size} value={String(size)} className="text-foreground">
                                         {size}
                                     </SelectItem>
@@ -251,10 +259,11 @@ export function AdminPaginationBottom({
     label,
     onNavigate,
     pending = false,
+    pageSizes = ADMIN_PAGE_SIZES,
     query,
     anchorId,
 }: AdminPaginationProps & { anchorId: string }) {
-    const hrefFor = useHrefFor(query);
+    const hrefFor = useHrefFor(query, pageSizes[0]);
     const jumpId = useId();
     const [jump, setJump] = useState('');
     const { page, totalPages, from, to, total } = info;

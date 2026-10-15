@@ -69,11 +69,19 @@ export function pageSkip(page: number, limit: number): number {
  */
 export const ADMIN_PAGE_SIZES = [25, 50, 100] as const;
 
-/** `?perPage=` ramené à l'une des tailles proposées ; sinon la taille par défaut. */
-export function parsePageSizeParam(raw: string | string[] | null | undefined): number {
+/**
+ * `?perPage=` ramené à l'une des tailles proposées ; sinon la taille par
+ * défaut, qui est la première de la liste (ADMIN_PAGE_SIZE pour la liste
+ * commune). Une liste peut proposer ses propres tailles — cf. `pageSizes`
+ * dans AdminPagination.
+ */
+export function parsePageSizeParam(
+    raw: string | string[] | null | undefined,
+    sizes: readonly number[] = ADMIN_PAGE_SIZES,
+): number {
     const value = Array.isArray(raw) ? raw[0] : raw;
     const parsed = Number.parseInt(value ?? '', 10);
-    return (ADMIN_PAGE_SIZES as readonly number[]).includes(parsed) ? parsed : ADMIN_PAGE_SIZE;
+    return sizes.includes(parsed) ? parsed : sizes[0];
 }
 
 /** Tout ce qu'une liste paginée affiche d'elle-même, calculé en un seul endroit. */
