@@ -10,8 +10,11 @@ import {
     CalendarClock,
     CalendarOff,
     CheckCircle2,
+    ChevronDown,
+    ChevronUp,
     Languages,
     Loader2,
+    MessageSquareText,
     Moon,
     RefreshCw,
     Search,
@@ -45,6 +48,7 @@ import {
     daysBetween,
     describeDelay,
     formatDayKey,
+    formatDayKeyShort,
     freeReaders,
     isLecteur,
     isTakingAttributions,
@@ -287,7 +291,32 @@ function LanguageFilterChip({ languages, onClear }: { languages: string[]; onCle
     );
 }
 
-/** One alert group. Renders nothing at all when it is empty. */
+/**
+ * Blocs affichés d'office dans un groupe d'alertes. Au-delà, le groupe se
+ * replie derrière « Afficher les N autres » : une ligne par personne faisait
+ * de chaque groupe une colonne de vingt lignes, et les six groupes une page
+ * entière avant d'atteindre le calendrier.
+ */
+const ALERT_GROUP_PREVIEW = 12;
+
+interface AlertRow {
+    key: number;
+    person: AvailabilityPerson;
+    /** Le repère lu d'un coup d'œil dans le bloc : « 18 oct. », « 2 en cours »… */
+    meta?: string;
+    /**
+     * Une note libre sur la fiche : signalée par une icône, lue en infobulle.
+     * Tronquée dans le bloc, elle en faisait des largeurs toutes différentes.
+     */
+    hasNote?: boolean;
+    /** La phrase complète, en infobulle et pour les lecteurs d'écran. */
+    detail: string;
+}
+
+/**
+ * One alert group: a block per person, name first, the one fact that ranks
+ * them beside it, the full sentence on hover. Renders nothing when empty.
+ */
 function AlertGroup({
     title,
     description,
@@ -298,34 +327,88 @@ function AlertGroup({
     title: string;
     description: string;
     tone: 'warn' | 'info';
-    rows: Array<{ key: number; person: AvailabilityPerson; detail: string }>;
+    rows: AlertRow[];
     onOpen: (id: number) => void;
 }) {
+    const [expanded, setExpanded] = useState(false);
+
     if (rows.length === 0) return null;
 
     const toneClass = {
         warn: 'border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20',
         info: 'border-blue-300 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/20',
     }[tone];
+    const countClass = {
+        warn: 'bg-amber-200/70 text-amber-900 dark:bg-amber-900/50 dark:text-amber-200',
+        info: 'bg-blue-200/70 text-blue-900 dark:bg-blue-900/50 dark:text-blue-200',
+    }[tone];
+    const blockClass = {
+        warn: 'border-amber-200 hover:border-amber-400 dark:border-amber-900/50 dark:hover:border-amber-700',
+        info: 'border-blue-200 hover:border-blue-400 dark:border-blue-900/50 dark:hover:border-blue-700',
+    }[tone];
+
+    const hidden = rows.length - ALERT_GROUP_PREVIEW;
+    const visible = expanded || hidden <= 0 ? rows : rows.slice(0, ALERT_GROUP_PREVIEW);
 
     return (
-        <div className={`rounded-lg border p-4 ${toneClass}`}>
+        <section className={`rounded-lg border p-4 ${toneClass}`} aria-label={title}>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <AlertTriangle size={15} />
-                {title}
-                <span className="text-xs font-normal text-muted-foreground">({rows.length})</span>
+                <AlertTriangle size={15} className="shrink-0" />
+                <span className="min-w-0">{title}</span>
+                <span
+                    className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${countClass}`}
+                >
+                    {rows.length}
+                </span>
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 mb-2">{description}</p>
-            <ul className="space-y-1">
-                {rows.map((row) => (
-                    <li key={row.key} className="text-sm flex flex-wrap items-baseline gap-x-2">
-                        <PersonButton person={row.person} onOpen={onOpen} />
-                        <TypeBadge person={row.person} />
-                        <span className="text-muted-foreground">{row.detail}</span>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-3">{description}</p>
+            <ul className="flex flex-wrap gap-1.5">
+                {visible.map((row) => (
+                    <li key={row.key} className="min-w-0 max-w-full">
+                        {/* Ouvre le panneau de disponibilité, comme PersonButton. */}
+                        <button
+                            type="button"
+                            onClick={() => onOpen(row.person.id)}
+                            title={`${row.person.name} — ${row.detail}`}
+                            aria-label={`${row.person.name}, ${getMemberTypeLabel(row.person.memberType)} : ${row.detail}`}
+                            className={`flex max-w-full items-center gap-1.5 rounded-md border bg-card/80 px-2 py-1 text-left text-sm transition-colors hover:bg-card ${blockClass}`}
+                        >
+                            <span className="truncate font-medium text-foreground">{row.person.name}</span>
+                            {/* Le type ne se lit que quand il fait exception :
+                                presque tout le monde ici est lecteur. */}
+                            {!isLecteur(row.person) && <TypeBadge person={row.person} />}
+                            {row.meta && (
+                                <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                                    {row.meta}
+                                </span>
+                            )}
+                            {row.hasNote && (
+                                <MessageSquareText size={13} className="shrink-0 text-muted-foreground" aria-hidden />
+                            )}
+                        </button>
                     </li>
                 ))}
             </ul>
-        </div>
+            {hidden > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setExpanded(!expanded)}
+                    aria-expanded={expanded}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                    {expanded ? (
+                        <>
+                            <ChevronUp size={13} /> Réduire
+                        </>
+                    ) : (
+                        <>
+                            <ChevronDown size={13} />
+                            {hidden === 1 ? 'Afficher 1 autre personne' : `Afficher les ${hidden} autres`}
+                        </>
+                    )}
+                </button>
+            )}
+        </section>
     );
 }
 
@@ -689,7 +772,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             {warningDays} prochains jours.</>}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
                     <AlertGroup
                         title="Retours prochains"
                         description={`Ces personnes redeviennent actives dans les ${warningDays} prochains jours — de nouveau attribuables.`}
@@ -698,6 +781,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         rows={filteredAlerts.endingSoon.map((a) => ({
                             key: a.person.id,
                             person: a.person,
+                            meta: formatDayKeyShort(a.until!),
                             detail: `de retour le ${formatDayKey(a.until!)} (${describeDelay(a.daysAway ?? 0)})`,
                         }))}
                     />
@@ -709,6 +793,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         rows={filteredAlerts.startingSoon.map((a) => ({
                             key: a.person.id,
                             person: a.person,
+                            meta: formatDayKeyShort(a.from!),
                             detail: `indisponible à partir du ${formatDayKey(a.from!)} (${describeDelay(a.daysAway ?? 0)})${
                                 a.until ? `, jusqu'au ${formatDayKey(a.until)}` : ''
                             }`,
@@ -722,6 +807,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         rows={filteredAlerts.awayWithAttributions.map((a) => ({
                             key: a.person.id,
                             person: a.person,
+                            meta: `${a.person.activeAssignments} en cours`,
                             detail: `${a.person.activeAssignments} attribution(s) en cours${
                                 a.until ? `, indisponible jusqu'au ${formatDayKey(a.until)}` : ', sans date de fin'
                             }`,
@@ -735,6 +821,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         rows={filteredAlerts.openEnded.map((a) => ({
                             key: a.person.id,
                             person: a.person,
+                            meta: a.from ? `depuis le ${formatDayKeyShort(a.from)}` : 'sans date',
                             detail: a.from
                                 ? `indisponible depuis le ${formatDayKey(a.from)}`
                                 : 'indisponible, aucune date renseignée',
@@ -748,6 +835,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         rows={filteredAlerts.flaggedUnavailable.map((p) => ({
                             key: p.id,
                             person: p,
+                            hasNote: Boolean(p.availabilityNotes),
                             detail: p.availabilityNotes
                                 ? `« ${p.availabilityNotes} »`
                                 : 'aucune précision sur la fiche',
@@ -761,6 +849,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         rows={filteredAlerts.elapsed.map((a) => ({
                             key: a.person.id,
                             person: a.person,
+                            meta: `fin le ${formatDayKeyShort(a.until!)}`,
                             detail: `terminée le ${formatDayKey(a.until!)}`,
                         }))}
                     />
