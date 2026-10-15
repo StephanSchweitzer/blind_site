@@ -42,6 +42,8 @@ Une fois le volet « Attributions » déplié, nous pouvons (1) ouvrir dans un n
 
 ![Disponibilités - capture 7](/admin/aide/images/disponibilites-07.jpg)
 
+En haut de la page, trois compteurs : les lecteurs attribuables, les personnes indisponibles aujourd'hui et les lecteurs au maximum de leurs attributions. Un clic sur un compteur mène à la liste correspondante — le tableau des lecteurs, le calendrier, ou le tableau trié des plus chargés aux moins chargés.
+
 Sous les compteurs, « Points à surveiller » rassemble quelques repères pour les semaines à venir : qui revient bientôt, qui s'absente bientôt, qui garde un livre pendant son absence, les absences sans date de retour, et les personnes en pause pour les attributions. Chaque groupe montre quelques noms ; « + N autres » affiche le reste. Un clic sur un nom ouvre sa disponibilité.
 
 En faisant défiler la page vers le bas, on arrive à la section « Calendrier des indisponibilités ». On peut filtrer la période et le type de membre en haut à droite de cette section. Sous la courbe, les boutons « Afficher : » choisissent les indisponibilités listées — « En cours », « À venir » ou « Sans date de fin » —, chacun de la couleur de ses barres et suivi du nombre de personnes ; la courbe, elle, compte toujours tout le monde.

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useMemo, useState, useTransition } from 'react';
+import React, { useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowDownNarrowWide,
     ArrowDownWideNarrow,
+    ArrowRight,
     BookOpen,
     CalendarCheck,
     CalendarClock,
@@ -216,17 +217,27 @@ function TypeBadge({ person }: { person: AvailabilityPerson }) {
     );
 }
 
+/**
+ * A counter that is also a shortcut: it scrolls to the section that lists
+ * the people it counts. Drawn as a button with an arrow and a hover state —
+ * a tile that only looks like a card is a tile nobody thinks of clicking.
+ */
 function StatTile({
     icon,
     value,
     label,
     hint,
+    action,
+    onClick,
     tone = 'neutral',
 }: {
     icon: React.ReactNode;
     value: number;
     label: string;
     hint?: string;
+    /** Où mène le clic, dit en clair : « Voir le calendrier ». */
+    action: string;
+    onClick: () => void;
     tone?: 'neutral' | 'good' | 'warn' | 'bad';
 }) {
     const toneClass = {
@@ -237,16 +248,22 @@ function StatTile({
     }[tone];
 
     return (
-        <Card className="border-border bg-card">
-            <CardContent className="p-4 flex items-start gap-3">
-                <span className={`mt-0.5 ${toneClass}`}>{icon}</span>
-                <div className="min-w-0">
-                    <div className={`text-2xl font-semibold leading-none ${toneClass}`}>{value}</div>
-                    <div className="text-sm text-foreground mt-1">{label}</div>
-                    {hint && <div className="text-xs text-muted-foreground mt-0.5">{hint}</div>}
-                </div>
-            </CardContent>
-        </Card>
+        <button
+            type="button"
+            onClick={onClick}
+            className="group flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-4 text-left text-card-foreground shadow-sm transition-colors hover:border-primary/50 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+            <span className={`mt-0.5 ${toneClass}`}>{icon}</span>
+            <span className="min-w-0 flex-1">
+                <span className={`block text-2xl font-semibold leading-none ${toneClass}`}>{value}</span>
+                <span className="block text-sm text-foreground mt-1">{label}</span>
+                {hint && <span className="block text-xs text-muted-foreground mt-0.5">{hint}</span>}
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                    {action}
+                    <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                </span>
+            </span>
+        </button>
     );
 }
 
@@ -432,6 +449,15 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     };
 
     const { people, today, warningDays, justClosed } = data;
+
+    // Where the counter tiles lead. Focus follows the scroll so a keyboard
+    // user lands in the section too, not back at the top of the page.
+    const calendarRef = useRef<HTMLDivElement>(null);
+    const readersRef = useRef<HTMLDivElement>(null);
+    const goTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+        ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        ref.current?.focus({ preventScroll: true });
+    };
 
     const alerts = useMemo(
         () => buildAlerts(people, today, warningDays),
@@ -718,7 +744,11 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             )}
 
             {/* ── summary ────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Pas de tuile « Points à surveiller » : la section juste dessous
+                compte déjà chacun de ses groupes, et un gros total y ajoutait
+                surtout de l'inquiétude. Chaque tuile mène à la section qui
+                liste les personnes qu'elle compte, réglée pour les montrer. */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* « Attribuables », pas « libres » : un lecteur qui a 1 livre
                     sur 3 peut en prendre un autre, et c'est bien à cette
                     question-là qu'on répond en ouvrant cette page. */}
@@ -728,6 +758,13 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     label="Lecteurs attribuables"
                     hint={`dont ${freeRoster.length} sans aucun livre en cours`}
                     tone="good"
+                    action="Voir les lecteurs"
+                    onClick={() => {
+                        setOnlyAssignable(true);
+                        setOnlyDormant(false);
+                        setReaderSort('freest');
+                        goTo(readersRef);
+                    }}
                 />
                 <StatTile
                     icon={<CalendarOff size={20} />}
@@ -735,6 +772,11 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     label="Indisponibles aujourd'hui"
                     hint={`${readerRoster.filter((p) => p.effectiveStatus === 'UNAVAILABLE').length} lecteur(s)`}
                     tone={awayToday.length > 0 ? 'warn' : 'neutral'}
+                    action="Voir le calendrier"
+                    onClick={() => {
+                        setTypeFilter('all');
+                        goTo(calendarRef);
+                    }}
                 />
                 <StatTile
                     icon={<BookOpen size={20} />}
@@ -742,13 +784,15 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     label="Lecteurs au maximum"
                     hint="ont atteint leur nombre d'attributions simultanées"
                     tone={saturated.length > 0 ? 'warn' : 'neutral'}
-                />
-                <StatTile
-                    icon={<CalendarClock size={20} />}
-                    value={totalAlerts}
-                    label="Points à surveiller"
-                    hint={`repères pour les ${warningDays} prochains jours`}
-                    tone="neutral"
+                    action="Voir les plus chargés"
+                    onClick={() => {
+                        // Ils ne sont pas attribuables : le filtre par défaut
+                        // les cacherait précisément.
+                        setOnlyAssignable(false);
+                        setOnlyDormant(false);
+                        setReaderSort('busiest');
+                        goTo(readersRef);
+                    }}
                 />
             </div>
 
@@ -867,7 +911,11 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             )}
 
             {/* ── filters ────────────────────────────────────────────────── */}
-            <Card className="border-border bg-card">
+            <Card
+                ref={calendarRef}
+                tabIndex={-1}
+                className="border-border bg-card scroll-mt-36 focus:outline-none"
+            >
                 <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <CardTitle className="text-lg text-foreground flex items-center gap-2">
@@ -940,7 +988,11 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             </Card>
 
             {/* ── lecteurs : une table, deux sens de lecture ─────────────── */}
-            <Card className="border-border bg-card">
+            <Card
+                ref={readersRef}
+                tabIndex={-1}
+                className="border-border bg-card scroll-mt-36 focus:outline-none"
+            >
                 <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center gap-2">
                         <CardTitle className="text-lg text-foreground">Lecteurs</CardTitle>
