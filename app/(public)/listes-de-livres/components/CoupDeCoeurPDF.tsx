@@ -3,6 +3,7 @@ import { Document, Page, View, Text, Image, StyleSheet, Font } from '@react-pdf/
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import type { PublicBook } from '@/lib/books/publicBook';
 import { groupBy } from 'lodash';
+import { hyphenateFr, noHyphenation } from '@/lib/hyphenate-fr';
 
 /**
  * Mise en page « papier » : la liste s'imprime et se poste aux auditeurs, donc
@@ -12,8 +13,9 @@ import { groupBy } from 'lodash';
  * durée, plus petite —, la hiérarchie vient du gras et de l'alignement, un
  * paragraphe justifié par livre, et aucun saut de page forcé : seuls les titres
  * ne restent jamais seuls en bas de page. Les présentations étant désormais
- * résumées, la mise en page peut respirer un peu (interlignes et espaces entre
- * notices plus larges).
+ * résumées, la mise en page peut respirer un peu (interlignes, marges et espaces
+ * entre notices élargis deux fois, en mai puis en octobre 2026 ; l'auteur repris
+ * sur la dernière ligne du titre rend une partie de la place).
  */
 const BODY = 11;
 const META = 9;
@@ -21,7 +23,10 @@ const TITLE = 16;
 // Interligne en points, posé texte par texte (un lineHeight sur <Page>
 // fait disparaître, sans erreur, le numéro de page — Text à `render` — et un
 // coefficient posé sur un Text est multiplié par un corps que react-pdf choisit seul).
-const LEADING = '14pt';
+const LEADING = '14.5pt';
+// Chasse de l'espace de Liberation Serif (250/1000 cadratin, comme Times) : l'écart
+// entre deux mots d'un titre, posé mot à mot (voir BookEntry).
+const WORD_SPACE = BODY * 0.25;
 
 // Les polices intégrées de react-pdf (Times-Roman…) ne couvrent que le latin
 // occidental : le « ł » d'un auteur polonais sortait en signe illisible. Liberation
@@ -41,32 +46,36 @@ const LOGO_WIDTH = 92;
 const LOGO_RATIO = 1000 / 508;
 
 const s = StyleSheet.create({
-    page: { paddingTop: 46, paddingBottom: 50, paddingHorizontal: 54, fontFamily: SERIF, fontSize: BODY, color: '#000000' },
+    page: { paddingTop: 52, paddingBottom: 56, paddingHorizontal: 60, fontFamily: SERIF, fontSize: BODY, color: '#000000' },
 
-    header: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+    header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
     logo: { width: LOGO_WIDTH, height: LOGO_WIDTH / LOGO_RATIO },
     headerText: { flex: 1, paddingLeft: 14, paddingRight: LOGO_WIDTH, alignItems: 'center' },
     title: { fontWeight: 'bold', fontSize: TITLE, textAlign: 'center', lineHeight: '19pt' },
     subtitle: { textAlign: 'center', marginTop: 3, lineHeight: LEADING },
-    notice: { borderWidth: 0.75, borderColor: '#000000', paddingVertical: 6, paddingHorizontal: 12, marginBottom: 10, textAlign: 'center', lineHeight: LEADING },
+    notice: { borderWidth: 0.75, borderColor: '#000000', paddingVertical: 7, paddingHorizontal: 12, marginBottom: 12, textAlign: 'center', lineHeight: LEADING },
 
-    genreTitle: { fontWeight: 'bold', textAlign: 'center', marginTop: 14, marginBottom: 9, lineHeight: LEADING },
+    genreTitle: { fontWeight: 'bold', textAlign: 'center', marginTop: 18, marginBottom: 10, lineHeight: LEADING },
 
-    book: { marginBottom: 12 },
-    // Titre et auteur sur une ligne quand ils y tiennent ; sinon l'auteur passe à
-    // la ligne suivante, calé à droite (flexWrap), plutôt que d'écraser le titre.
-    bookHead: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 2 },
-    bookTitle: { fontWeight: 'bold', lineHeight: LEADING },
+    book: { marginBottom: 15 },
+    // Le titre posé mot à mot dans une rangée qui passe à la ligne (flexWrap), puis
+    // l'auteur : l'auteur se range ainsi au bout de la DERNIÈRE ligne du titre,
+    // calé à droite, et ne prend une ligne à lui que s'il n'y tient pas. Un titre
+    // d'un seul Text occupait toute la largeur dès qu'il passait à la ligne, et
+    // l'auteur tombait toujours en dessous.
+    bookHead: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 3 },
+    titleWord: { fontWeight: 'bold', lineHeight: LEADING, marginRight: WORD_SPACE },
+    titleLastWord: { fontWeight: 'bold', lineHeight: LEADING },
     // marginLeft auto : l'auteur est poussé au bout de sa ligne, qu'il la partage
     // avec le titre ou non.
     author: { fontWeight: 'bold', marginLeft: 'auto', paddingLeft: 12, textAlign: 'right', lineHeight: LEADING },
     // La ligne éditeur / année / pages / durée se lit avant le résumé, sous le
     // titre : on sait de quoi il s'agit (et combien ça dure) avant de lire.
-    meta: { fontSize: META, lineHeight: '12pt', marginBottom: 3 },
+    meta: { fontSize: META, lineHeight: '12pt', marginBottom: 4 },
     bookDesc: { textAlign: 'justify', lineHeight: LEADING },
 
-    contact: { textAlign: 'center', marginTop: 18, lineHeight: LEADING },
-    footer: { position: 'absolute', bottom: 16, left: 0, right: 0 },
+    contact: { textAlign: 'center', marginTop: 22, lineHeight: LEADING },
+    footer: { position: 'absolute', bottom: 20, left: 0, right: 0 },
     pageNumber: { fontFamily: SERIF, fontSize: META, textAlign: 'center' },
 });
 
@@ -120,16 +129,40 @@ const groupBooksByGenre = (books: { book: PublicBook }[]) => {
 const KEEP_TOGETHER_MAX_CHARS = 1500;
 const keepsTogether = (book: PublicBook) => (book.description?.length ?? 0) <= KEEP_TOGETHER_MAX_CHARS;
 
+/**
+ * Les mots du titre, un par élément de la rangée. Coupés aux seules espaces
+ * ordinaires : une espace insécable déjà saisie lie ses deux mots, et la
+ * ponctuation haute (« ? », « : »…) ou un guillemet ne commence ni ne finit
+ * jamais une ligne seul.
+ */
+const titleWords = (title: string) =>
+    title
+        .trim()
+        .replace(/ +(?=[?!:;»])/g, NBSP)
+        .replace(/« +/g, `«${NBSP}`)
+        .split(/[ \t\r\n]+/);
+
 const BookEntry = ({ book }: { book: PublicBook }) => {
     const meta = formatBookMeta(book);
+    const words = titleWords(book.title);
     return (
         <View style={s.book} wrap={!keepsTogether(book)}>
             <View style={s.bookHead}>
-                <Text style={s.bookTitle}>{book.title}</Text>
-                <Text style={s.author}>{book.author}</Text>
+                {words.map((word, i) => (
+                    <Text
+                        key={i}
+                        style={i === words.length - 1 ? s.titleLastWord : s.titleWord}
+                        hyphenationCallback={noHyphenation}
+                    >
+                        {word}
+                    </Text>
+                ))}
+                <Text style={s.author} hyphenationCallback={noHyphenation}>{book.author}</Text>
             </View>
-            {meta && <Text style={s.meta}>{meta}</Text>}
-            {book.description && <Text style={s.bookDesc}>{unquoted(book.description)}</Text>}
+            {meta && <Text style={s.meta} hyphenationCallback={noHyphenation}>{meta}</Text>}
+            {book.description && (
+                <Text style={s.bookDesc} hyphenationCallback={hyphenateFr}>{unquoted(book.description)}</Text>
+            )}
         </View>
     );
 };
@@ -143,7 +176,7 @@ export const CoupDeCoeurPDF = ({ content, logoSrc = LOGO_SRC }: { content: CoupD
     if (!cdc) return null;
 
     return (
-        <Document title={`Liste de livres — ${cdc.title}`}>
+        <Document title={`Liste de livres — ${cdc.title}`} language="fr-FR">
             <Page size="A4" style={s.page} wrap>
                 {/* Pied de page : vue absolue fixée en bas, le Text numéroté dedans — un
                     Text `render` posé directement en absolu n'était pas calé en bas. */}
@@ -156,24 +189,24 @@ export const CoupDeCoeurPDF = ({ content, logoSrc = LOGO_SRC }: { content: CoupD
                     {/* eslint-disable-next-line jsx-a11y/alt-text */}
                     <Image src={logoSrc} style={s.logo} />
                     <View style={s.headerText}>
-                        <Text style={s.title}>{cdc.title}</Text>
-                        {cdc.description && <Text style={s.subtitle}>{cdc.description}</Text>}
+                        <Text style={s.title} hyphenationCallback={noHyphenation}>{cdc.title}</Text>
+                        {cdc.description && <Text style={s.subtitle} hyphenationCallback={hyphenateFr}>{cdc.description}</Text>}
                     </View>
                 </View>
 
-                <Text style={s.notice}>{NOTICE}</Text>
+                <Text style={s.notice} hyphenationCallback={hyphenateFr}>{NOTICE}</Text>
 
                 {groupBooksByGenre(cdc.books).flatMap(([genre, [firstBook, ...rest]]) => [
                     // Le titre de section et sa première notice sont inséparables : s'ils
                     // ne tiennent pas, les deux passent à la page suivante.
                     <View key={`genre-${genre}`} wrap={!keepsTogether(firstBook)}>
-                        <Text style={s.genreTitle} minPresenceAhead={60}>{genre}</Text>
+                        <Text style={s.genreTitle} minPresenceAhead={60} hyphenationCallback={noHyphenation}>{genre}</Text>
                         <BookEntry book={firstBook} />
                     </View>,
                     ...rest.map(book => <BookEntry key={book.id} book={book} />),
                 ])}
 
-                <Text style={s.contact}>
+                <Text style={s.contact} hyphenationCallback={noHyphenation}>
                     À demander au 01 88 32 31 47 ou 48  ·  ecapermanence@gmail.com
                 </Text>
 
